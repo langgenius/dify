@@ -1,9 +1,11 @@
 import json
 import logging
 import os
+import re
 import traceback
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Any, Union, cast
+from typing import Any, Protocol, Union, cast
 from urllib.parse import urlparse
 
 from openinference.semconv.trace import (
@@ -19,7 +21,7 @@ from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.semconv.attributes import exception_attributes
-from opentelemetry.trace import Span, Status, StatusCode, set_span_in_context, use_span
+from opentelemetry.trace import Span, Status, StatusCode, get_current_span, set_span_in_context, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.types import AttributeValue
 from sqlalchemy.orm import sessionmaker
@@ -36,15 +38,105 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.ops.exceptions import PendingTraceParentContextError
 from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import DifyCoreRepositoryFactory
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.model import EndUser, MessageFile
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
+
+# This parent-span carrier store is intentionally Phoenix-local for the current
+# nested workflow tracing feature. If other trace providers need the same
+# cross-task parent restoration behavior, move the storage and retry signaling
+# behind a core trace coordination interface instead of duplicating it here.
+_PHOENIX_PARENT_SPAN_CONTEXT_TTL_SECONDS = 300
+_TRACEPARENT_PATTERN = re.compile(
+    r"^(?P<version>[0-9a-f]{2})-(?P<trace_id>[0-9a-f]{32})-(?P<span_id>[0-9a-f]{16})-(?P<flags>[0-9a-f]{2})$"
+)
+
+
+def _phoenix_parent_span_redis_key(parent_node_execution_id: str) -> str:
+    """Build the Redis key that stores a restorable Phoenix parent span carrier."""
+    return f"trace:phoenix:parent_span:{parent_node_execution_id}"
+
+
+def _publish_parent_span_context(parent_node_execution_id: str, carrier: Mapping[str, str]) -> None:
+    """Persist a tracecontext carrier so nested workflow spans can restore the tool span parent."""
+    redis_client.setex(
+        _phoenix_parent_span_redis_key(parent_node_execution_id),
+        _PHOENIX_PARENT_SPAN_CONTEXT_TTL_SECONDS,
+        safe_json_dumps(dict(carrier)),
+    )
+
+
+def _resolve_published_parent_span_context(parent_node_execution_id: str) -> dict[str, str]:
+    """Load a previously published tool-span carrier for nested workflow parenting."""
+    raw_carrier = redis_client.get(_phoenix_parent_span_redis_key(parent_node_execution_id))
+    if raw_carrier is None:
+        raise PendingTraceParentContextError(parent_node_execution_id)
+
+    if isinstance(raw_carrier, bytes):
+        raw_carrier = raw_carrier.decode("utf-8")
+
+    carrier = json.loads(raw_carrier)
+    if not isinstance(carrier, dict):
+        raise ValueError(
+            "Phoenix parent span context must be stored as a JSON object: "
+            f"parent_node_execution_id={parent_node_execution_id}"
+        )
+
+    normalized_carrier = {str(key): str(value) for key, value in carrier.items()}
+    if not normalized_carrier:
+        raise ValueError(
+            f"Phoenix parent span context payload is empty: parent_node_execution_id={parent_node_execution_id}"
+        )
+
+    traceparent = normalized_carrier.get("traceparent")
+    if not isinstance(traceparent, str):
+        raise ValueError(
+            "Phoenix parent span context payload is missing traceparent: "
+            f"parent_node_execution_id={parent_node_execution_id}"
+        )
+
+    traceparent_match = _TRACEPARENT_PATTERN.fullmatch(traceparent)
+    if traceparent_match is None:
+        raise ValueError(
+            "Phoenix parent span context payload has invalid traceparent format: "
+            f"parent_node_execution_id={parent_node_execution_id}"
+        )
+
+    if traceparent_match.group("version") == "ff":
+        raise ValueError(
+            "Phoenix parent span context payload has unsupported traceparent version: "
+            f"parent_node_execution_id={parent_node_execution_id}"
+        )
+
+    if traceparent_match.group("trace_id") == "0" * 32:
+        raise ValueError(
+            "Phoenix parent span context payload has zero trace_id in traceparent: "
+            f"parent_node_execution_id={parent_node_execution_id}"
+        )
+
+    if traceparent_match.group("span_id") == "0" * 16:
+        raise ValueError(
+            "Phoenix parent span context payload has zero span_id in traceparent: "
+            f"parent_node_execution_id={parent_node_execution_id}"
+        )
+
+    extracted_context = TraceContextTextMapPropagator().extract(carrier=normalized_carrier)
+    extracted_span_context = get_current_span(extracted_context).get_span_context()
+    if not extracted_span_context.is_valid or not extracted_span_context.is_remote:
+        raise ValueError(
+            "Phoenix parent span context payload could not be restored into a valid parent span: "
+            f"parent_node_execution_id={parent_node_execution_id}"
+        )
+
+    return normalized_carrier
 
 
 def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[trace_sdk.Tracer, SimpleSpanProcessor]:
@@ -177,6 +269,246 @@ def _get_node_span_kind(node_type: str) -> OpenInferenceSpanKindValues:
     return _NODE_TYPE_TO_SPAN_KIND.get(node_type, OpenInferenceSpanKindValues.CHAIN)
 
 
+def _resolve_workflow_session_id(trace_info: WorkflowTraceInfo) -> str:
+    """Resolve the workflow session ID for Phoenix workflow spans."""
+    if trace_info.conversation_id:
+        return trace_info.conversation_id
+
+    parent_workflow_run_id, _ = _resolve_workflow_parent_context(trace_info)
+    if parent_workflow_run_id:
+        return parent_workflow_run_id
+
+    return trace_info.workflow_run_id
+
+
+def _resolve_workflow_parent_context(trace_info: BaseTraceInfo) -> tuple[str | None, str | None]:
+    """Expose the typed parent context already resolved on the trace info."""
+    return trace_info.resolved_parent_context
+
+
+def _resolve_workflow_root_trace_id(trace_info: WorkflowTraceInfo) -> str:
+    """Resolve the canonical root trace ID for Phoenix workflow spans."""
+    trace_correlation_override, _ = _resolve_workflow_parent_context(trace_info)
+    return trace_correlation_override or trace_info.resolved_trace_id or trace_info.workflow_run_id
+
+
+class _NodeExecutionIdentityLike(Protocol):
+    @property
+    def node_execution_id(self) -> str | None: ...
+
+    @property
+    def node_id(self) -> str: ...
+
+    @property
+    def predecessor_node_id(self) -> str | None: ...
+
+
+class _NodeExecutionLike(_NodeExecutionIdentityLike, Protocol):
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def node_type(self) -> str: ...
+
+    @property
+    def title(self) -> str | None: ...
+
+    @property
+    def inputs(self) -> Mapping[str, Any] | None: ...
+
+    @property
+    def process_data(self) -> Mapping[str, Any] | None: ...
+
+    @property
+    def outputs(self) -> Mapping[str, Any] | None: ...
+
+    @property
+    def status(self) -> WorkflowNodeExecutionStatus: ...
+
+    @property
+    def error(self) -> str | None: ...
+
+    @property
+    def elapsed_time(self) -> float | None: ...
+
+    @property
+    def metadata(self) -> Mapping[Any, Any] | None: ...
+
+    @property
+    def created_at(self) -> datetime | None: ...
+
+
+_PHOENIX_STRUCTURED_NODE_TYPES = frozenset({"start", "end", "loop", "iteration"})
+
+
+def _resolve_workflow_span_name(trace_info: WorkflowTraceInfo) -> str:
+    """Resolve the Phoenix workflow span display name."""
+    workflow_run_id = trace_info.workflow_run_id.strip() if trace_info.workflow_run_id else ""
+    if workflow_run_id:
+        return f"{TraceTaskName.WORKFLOW_TRACE.value}_{workflow_run_id}"
+    return TraceTaskName.WORKFLOW_TRACE.value
+
+
+def _build_node_title_by_id(trace_info: WorkflowTraceInfo) -> dict[str, str]:
+    """Build an authoritative node-title index from the persisted workflow graph."""
+    workflow_data = trace_info.workflow_data
+    workflow_graph = getattr(workflow_data, "graph_dict", None)
+    if not isinstance(workflow_graph, Mapping):
+        workflow_graph = workflow_data.get("graph") if isinstance(workflow_data, Mapping) else None
+    if not isinstance(workflow_graph, Mapping):
+        return {}
+
+    graph_nodes = workflow_graph.get("nodes")
+    if not isinstance(graph_nodes, Sequence):
+        return {}
+
+    node_title_by_id: dict[str, str] = {}
+    for graph_node in graph_nodes:
+        if not isinstance(graph_node, Mapping):
+            continue
+        node_id = graph_node.get("id")
+        node_data = graph_node.get("data")
+        if not isinstance(node_id, str) or not isinstance(node_data, Mapping):
+            continue
+        node_title = node_data.get("title")
+        if isinstance(node_title, str) and node_title.strip():
+            node_title_by_id[node_id] = node_title.strip()
+
+    return node_title_by_id
+
+
+def _resolve_workflow_node_span_name(
+    node_execution: _NodeExecutionLike,
+    node_title_by_id: Mapping[str, str] | None = None,
+) -> str:
+    """Resolve the Phoenix workflow node span display name."""
+    node_type = str(node_execution.node_type or "")
+    graph_node_title = None
+    if node_title_by_id is not None and isinstance(node_execution.node_id, str):
+        graph_node_title = node_title_by_id.get(node_execution.node_id)
+
+    node_title = graph_node_title or (node_execution.title.strip() if isinstance(node_execution.title, str) else "")
+    if node_title:
+        return f"{node_type}_{node_title}"
+    return node_type
+
+
+def _get_node_execution_id(node_execution: _NodeExecutionIdentityLike) -> str:
+    """Return the stable execution identifier for a workflow node execution."""
+    return str(getattr(node_execution, "id", None) or node_execution.node_execution_id)
+
+
+def _build_execution_id_by_node_id(node_executions: Sequence[_NodeExecutionIdentityLike]) -> dict[str, str]:
+    """Index unique workflow graph node ids by execution id.
+
+    This Phoenix-local hierarchy reconstruction intentionally drops ambiguous
+    node ids instead of guessing based on repository order. That keeps parent
+    selection deterministic until upstream tracing exposes explicit parent span
+    data for repeated executions.
+    """
+    execution_id_by_node_id: dict[str, str] = {}
+    ambiguous_node_ids: set[str] = set()
+
+    for node_execution in node_executions:
+        node_id = node_execution.node_id
+        if not isinstance(node_id, str):
+            continue
+        execution_id = _get_node_execution_id(node_execution)
+
+        if node_id in ambiguous_node_ids:
+            continue
+
+        existing_execution_id = execution_id_by_node_id.get(node_id)
+        if existing_execution_id is None:
+            execution_id_by_node_id[node_id] = execution_id
+            continue
+
+        if existing_execution_id != execution_id:
+            ambiguous_node_ids.add(node_id)
+            execution_id_by_node_id.pop(node_id, None)
+
+    return execution_id_by_node_id
+
+
+def _build_graph_parent_index(node_executions: Sequence[_NodeExecutionIdentityLike]) -> dict[str, str]:
+    """Build an execution-id parent index from predecessor node ids."""
+    execution_id_by_node_id = _build_execution_id_by_node_id(node_executions)
+    graph_parent_index: dict[str, str] = {}
+
+    for node_execution in node_executions:
+        predecessor_node_id = node_execution.predecessor_node_id
+        if not isinstance(predecessor_node_id, str):
+            continue
+
+        predecessor_execution_id = execution_id_by_node_id.get(predecessor_node_id)
+        if predecessor_execution_id is not None:
+            execution_id = _get_node_execution_id(node_execution)
+            graph_parent_index[execution_id] = predecessor_execution_id
+
+    return graph_parent_index
+
+
+def _resolve_structured_parent_execution_id(
+    node_execution: object, execution_id_by_node_id: Mapping[str, str]
+) -> str | None:
+    """Resolve Phoenix-local structured parents from loop/iteration node ids.
+
+    Any execution carrying ``iteration_id`` or ``loop_id`` belongs to an
+    enclosing structured node. When predecessor node ids are ambiguous because
+    the graph node repeats inside that structure, Phoenix can still keep the
+    child span under the enclosing loop/iteration span without relying on
+    execution-order heuristics.
+    """
+    execution_metadata = getattr(node_execution, "execution_metadata_dict", None)
+    if not isinstance(execution_metadata, Mapping):
+        execution_metadata = getattr(node_execution, "metadata", None)
+    if not isinstance(execution_metadata, Mapping):
+        execution_metadata = {}
+
+    for enclosing_node_id in (
+        getattr(node_execution, "iteration_id", None),
+        getattr(node_execution, "loop_id", None),
+        execution_metadata.get("iteration_id"),
+        execution_metadata.get("loop_id"),
+    ):
+        if not isinstance(enclosing_node_id, str):
+            continue
+
+        enclosing_execution_id = execution_id_by_node_id.get(enclosing_node_id)
+        if enclosing_execution_id is not None:
+            return enclosing_execution_id
+
+    return None
+
+
+def _resolve_node_parent(
+    execution_id: str,
+    predecessor_execution_id: str | None,
+    structured_parent_execution_id: str | None,
+    span_by_execution_id: Mapping[str, Span],
+    graph_parent_index: Mapping[str, str],
+    workflow_span: Span,
+) -> Span:
+    """Resolve the parent span for a workflow node execution."""
+    if predecessor_execution_id is not None:
+        predecessor_span = span_by_execution_id.get(predecessor_execution_id)
+        if predecessor_span is not None:
+            return predecessor_span
+
+    graph_parent_execution_id = graph_parent_index.get(execution_id)
+    if graph_parent_execution_id is not None:
+        graph_parent_span = span_by_execution_id.get(graph_parent_execution_id)
+        if graph_parent_span is not None:
+            return graph_parent_span
+
+    if structured_parent_execution_id is not None:
+        structured_parent_span = span_by_execution_id.get(structured_parent_execution_id)
+        if structured_parent_span is not None:
+            return structured_parent_span
+
+    return workflow_span
+
+
 class ArizePhoenixDataTrace(BaseTraceInstance):
     def __init__(
         self,
@@ -189,6 +521,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
         self.propagator = TraceContextTextMapPropagator()
         self.dify_trace_ids: set[str] = set()
+        self.root_span_carriers: dict[str, dict[str, str]] = {}
+        self.carrier: dict[str, str] = {}
 
     def trace(self, trace_info: BaseTraceInfo):
         logger.info("[Arize/Phoenix] Trace Entity Info: %s", trace_info)
@@ -235,13 +569,41 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             file_list=safe_json_dumps(file_list),
             query=trace_info.query or "",
         )
+        workflow_session_id = _resolve_workflow_session_id(trace_info)
+        parent_workflow_run_id, parent_node_execution_id = _resolve_workflow_parent_context(trace_info)
+        logger.info(
+            "[Arize/Phoenix] Workflow session resolution: workflow_run_id=%s conversation_id=%s "
+            "parent_workflow_run_id=%s parent_node_execution_id=%s resolved_session_id=%s",
+            trace_info.workflow_run_id,
+            trace_info.conversation_id,
+            parent_workflow_run_id,
+            parent_node_execution_id,
+            workflow_session_id,
+        )
 
-        dify_trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
-        self.ensure_root_span(dify_trace_id)
-        root_span_context = self.propagator.extract(carrier=self.carrier)
+        if parent_node_execution_id:
+            workflow_parent_carrier = _resolve_published_parent_span_context(parent_node_execution_id)
+        else:
+            root_trace_id = _resolve_workflow_root_trace_id(trace_info)
+            workflow_root_span_name: str | None = trace_info.workflow_run_id
+            if not isinstance(workflow_root_span_name, str) or not workflow_root_span_name.strip():
+                workflow_root_span_name = None
+
+            workflow_parent_carrier = self.ensure_root_span(
+                root_trace_id,
+                root_span_name=workflow_root_span_name,
+                root_span_attributes={
+                    SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.workflow_run_inputs),
+                    SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
+                    SpanAttributes.OUTPUT_VALUE: safe_json_dumps(trace_info.workflow_run_outputs),
+                    SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
+                },
+            )
+
+        workflow_span_context = self.propagator.extract(carrier=workflow_parent_carrier)
 
         workflow_span = self.tracer.start_span(
-            name=TraceTaskName.WORKFLOW_TRACE.value,
+            name=_resolve_workflow_span_name(trace_info),
             attributes={
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.workflow_run_inputs),
@@ -249,10 +611,10 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.OUTPUT_VALUE: safe_json_dumps(trace_info.workflow_run_outputs),
                 SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.METADATA: safe_json_dumps(metadata),
-                SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
+                SpanAttributes.SESSION_ID: workflow_session_id or "",
             },
             start_time=datetime_to_nanos(trace_info.start_time),
-            context=root_span_context,
+            context=workflow_span_context,
         )
 
         # Through workflow_run_id, get all_nodes_execution using repository
@@ -276,16 +638,50 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         workflow_node_executions = workflow_node_execution_repository.get_by_workflow_execution(
             workflow_execution_id=trace_info.workflow_run_id
         )
+        node_title_by_id = _build_node_title_by_id(trace_info)
+        execution_id_by_node_id = _build_execution_id_by_node_id(workflow_node_executions)
+        graph_parent_index = _build_graph_parent_index(workflow_node_executions)
+        node_execution_by_execution_id = {
+            _get_node_execution_id(node_execution): node_execution for node_execution in workflow_node_executions
+        }
+        span_by_execution_id: dict[str, Span] = {}
+        emitting_execution_ids: set[str] = set()
 
+        workflow_span_error: Exception | str | None = trace_info.error
         try:
-            for node_execution in workflow_node_executions:
+
+            def emit_node_span(node_execution: _NodeExecutionLike) -> Span:
+                execution_id = _get_node_execution_id(node_execution)
+                existing_span = span_by_execution_id.get(execution_id)
+                if existing_span is not None:
+                    return existing_span
+
+                graph_parent_execution_id = graph_parent_index.get(execution_id)
+                structured_parent_execution_id = _resolve_structured_parent_execution_id(
+                    node_execution, execution_id_by_node_id
+                )
+
+                if execution_id not in emitting_execution_ids:
+                    emitting_execution_ids.add(execution_id)
+                    try:
+                        for parent_execution_id in (graph_parent_execution_id, structured_parent_execution_id):
+                            if parent_execution_id is None or parent_execution_id == execution_id:
+                                continue
+                            if parent_execution_id in span_by_execution_id:
+                                continue
+                            parent_node_execution = node_execution_by_execution_id.get(parent_execution_id)
+                            if parent_node_execution is not None:
+                                emit_node_span(parent_node_execution)
+                    finally:
+                        emitting_execution_ids.discard(execution_id)
+
                 tenant_id = trace_info.tenant_id  # Use from trace_info instead
                 app_id = trace_info.metadata.get("app_id")  # Use from trace_info instead
                 inputs_value = node_execution.inputs or {}
                 outputs_value = node_execution.outputs or {}
 
                 created_at = node_execution.created_at or datetime.now()
-                elapsed_time = node_execution.elapsed_time
+                elapsed_time = node_execution.elapsed_time or 0
                 finished_at = created_at + timedelta(seconds=elapsed_time)
 
                 process_data = node_execution.process_data or {}
@@ -324,9 +720,17 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         node_metadata["prompt_tokens"] = usage_data.get("prompt_tokens", 0)
                         node_metadata["completion_tokens"] = usage_data.get("completion_tokens", 0)
 
-                workflow_span_context = set_span_in_context(workflow_span)
+                parent_span = _resolve_node_parent(
+                    execution_id=execution_id,
+                    predecessor_execution_id=None,
+                    structured_parent_execution_id=structured_parent_execution_id,
+                    span_by_execution_id=span_by_execution_id,
+                    graph_parent_index=graph_parent_index,
+                    workflow_span=workflow_span,
+                )
+                workflow_span_context = set_span_in_context(parent_span)
                 node_span = self.tracer.start_span(
-                    name=node_execution.node_type,
+                    name=_resolve_workflow_node_span_name(node_execution, node_title_by_id),
                     attributes={
                         SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind.value,
                         SpanAttributes.INPUT_VALUE: safe_json_dumps(inputs_value),
@@ -334,13 +738,20 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         SpanAttributes.OUTPUT_VALUE: safe_json_dumps(outputs_value),
                         SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                         SpanAttributes.METADATA: safe_json_dumps(node_metadata),
-                        SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
+                        SpanAttributes.SESSION_ID: workflow_session_id or "",
                     },
                     start_time=datetime_to_nanos(created_at),
                     context=workflow_span_context,
                 )
-
+                span_by_execution_id[execution_id] = node_span
+                node_span_error: Exception | str | None = None
                 try:
+                    if node_execution.node_type == "tool":
+                        parent_span_carrier: dict[str, str] = {}
+                        with use_span(node_span, end_on_exit=False):
+                            self.propagator.inject(carrier=parent_span_carrier)
+                        _publish_parent_span_context(execution_id, parent_span_carrier)
+
                     if node_execution.node_type == "llm":
                         llm_attributes: dict[str, Any] = {
                             SpanAttributes.INPUT_VALUE: json.dumps(process_data.get("prompts", []), ensure_ascii=False),
@@ -362,17 +773,26 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                             )
                         llm_attributes.update(self._construct_llm_attributes(process_data.get("prompts", [])))
                         node_span.set_attributes(llm_attributes)
+                except Exception as e:
+                    node_span_error = e
+                    raise
                 finally:
-                    if node_execution.status == WorkflowNodeExecutionStatus.FAILED:
+                    if node_span_error is not None:
+                        set_span_status(node_span, node_span_error)
+                    elif node_execution.status == WorkflowNodeExecutionStatus.FAILED:
                         set_span_status(node_span, node_execution.error)
                     else:
                         set_span_status(node_span)
                     node_span.end(end_time=datetime_to_nanos(finished_at))
+                return node_span
+
+            for node_execution in workflow_node_executions:
+                emit_node_span(node_execution)
+        except Exception as e:
+            workflow_span_error = e
+            raise
         finally:
-            if trace_info.error:
-                set_span_status(workflow_span, trace_info.error)
-            else:
-                set_span_status(workflow_span)
+            set_span_status(workflow_span, workflow_span_error)
             workflow_span.end(end_time=datetime_to_nanos(trace_info.end_time))
 
     def message_trace(self, trace_info: MessageTraceInfo):
@@ -735,22 +1155,39 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         finally:
             span.end(end_time=datetime_to_nanos(trace_info.end_time))
 
-    def ensure_root_span(self, dify_trace_id: str | None):
+    def ensure_root_span(
+        self,
+        dify_trace_id: str | None,
+        *,
+        root_span_name: str | None = None,
+        root_span_attributes: Mapping[str, AttributeValue] | None = None,
+    ):
         """Ensure a unique root span exists for the given Dify trace ID."""
-        if str(dify_trace_id) not in self.dify_trace_ids:
-            self.carrier: dict[str, str] = {}
+        trace_key = str(dify_trace_id)
+        if trace_key not in self.dify_trace_ids:
+            carrier: dict[str, str] = {}
 
-            root_span = self.tracer.start_span(name="Dify")
-            root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value)
-            root_span.set_attribute("dify_project_name", str(self.project))
-            root_span.set_attribute("dify_trace_id", str(dify_trace_id))
+            span_name = root_span_name.strip() if isinstance(root_span_name, str) and root_span_name.strip() else "Dify"
+            root_span_attributes_dict: dict[str, AttributeValue] = {
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
+                "dify_project_name": str(self.project),
+                "dify_trace_id": trace_key,
+            }
+            if root_span_attributes:
+                root_span_attributes_dict.update(root_span_attributes)
+
+            root_span = self.tracer.start_span(name=span_name, attributes=root_span_attributes_dict)
 
             with use_span(root_span, end_on_exit=False):
-                self.propagator.inject(carrier=self.carrier)
+                self.propagator.inject(carrier=carrier)
 
             set_span_status(root_span)
             root_span.end()
-            self.dify_trace_ids.add(str(dify_trace_id))
+            self.dify_trace_ids.add(trace_key)
+            self.root_span_carriers[trace_key] = carrier
+
+        self.carrier = self.root_span_carriers[trace_key]
+        return self.carrier
 
     def api_check(self):
         try:
