@@ -404,6 +404,37 @@ def bearer_feature_required(fn: Callable) -> Callable:
     return inner
 
 
+# "full" is the catch-all scope carried by dfoa_ tokens; any scope check
+# passes when the bearer holds it. dfoe_ ships with apps:run and a few
+# narrower scopes; PATs (future) carry only what the user requested at
+# mint time.
+SCOPE_FULL = "full"
+
+
+def require_scope(scope: str) -> Callable:
+    """Route-level scope gate — must run AFTER validate_bearer so that
+    g.auth_ctx is set. Raises Forbidden('insufficient_scope: <scope>')
+    when the bearer lacks both the requested scope and the catch-all.
+    """
+
+    def wrap(fn: Callable) -> Callable:
+        @wraps(fn)
+        def inner(*args, **kwargs):
+            ctx = getattr(g, "auth_ctx", None)
+            if ctx is None:
+                raise RuntimeError(
+                    "require_scope used without validate_bearer; "
+                    "stack @validate_bearer above @require_scope"
+                )
+            if SCOPE_FULL not in ctx.scopes and scope not in ctx.scopes:
+                raise Forbidden(f"insufficient_scope: {scope}")
+            return fn(*args, **kwargs)
+
+        return inner
+
+    return wrap
+
+
 # ============================================================================
 # Wiring — called once from the app factory
 # ============================================================================
