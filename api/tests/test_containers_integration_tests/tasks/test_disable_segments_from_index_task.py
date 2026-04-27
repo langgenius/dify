@@ -242,8 +242,6 @@ class TestDisableSegmentsFromIndexTask:
             '{"separator": "\\n\\n", "max_tokens": 1000, "chunk_overlap": 50}}'
             "}"
         )
-        process_rule.created_by = dataset.created_by
-        process_rule.updated_by = dataset.updated_by
 
         db_session_with_containers.add(process_rule)
         db_session_with_containers.commit()
