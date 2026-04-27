@@ -10,6 +10,7 @@ import { isSupportMCP } from '@/utils/plugin-version-feature'
 import { useStore } from '../../store'
 import { AgentStrategy } from '../_base/components/agent-strategy'
 import Field from '../_base/components/field'
+import FormInputBoolean from '../_base/components/form-input-boolean'
 import { MCPToolAvailabilityProvider } from '../_base/components/mcp-tool-availability'
 import MemoryConfig from '../_base/components/memory-config'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
@@ -101,6 +102,22 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             />
           </>
         )}
+        <Split />
+        <Field
+          title={t('nodes.agent.enableHumanClarification.label', { ns: 'workflow' })}
+          tooltip={t('nodes.agent.enableHumanClarification.tooltip', { ns: 'workflow' })}
+          className="px-0 py-2"
+        >
+          <FormInputBoolean
+            value={inputs.enable_human_clarification ?? false}
+            onChange={(value) => {
+              setInputs({
+                ...inputs,
+                enable_human_clarification: value,
+              })
+            }}
+          />
+        </Field>
       </div>
       <div>
         <OutputVars>
