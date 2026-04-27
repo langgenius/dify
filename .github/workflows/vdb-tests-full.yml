@@ -81,6 +81,7 @@ jobs:
             chroma
             elasticsearch
             oceanbase
+            valkey
 
       - name: setup test config
         run: |

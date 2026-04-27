@@ -46,6 +46,7 @@ members = [
     "dify-vdb-tidb-on-qdrant",
     "dify-vdb-tidb-vector",
     "dify-vdb-upstash",
+    "dify-vdb-valkey",
     "dify-vdb-vastbase",
     "dify-vdb-vikingdb",
     "dify-vdb-weaviate",
@@ -1478,6 +1479,7 @@ vdb-all = [
     { name = "dify-vdb-tidb-on-qdrant" },
     { name = "dify-vdb-tidb-vector" },
     { name = "dify-vdb-upstash" },
+    { name = "dify-vdb-valkey" },
     { name = "dify-vdb-vastbase" },
     { name = "dify-vdb-vikingdb" },
     { name = "dify-vdb-weaviate" },
@@ -1559,6 +1561,9 @@ vdb-tidb-vector = [
 ]
 vdb-upstash = [
     { name = "dify-vdb-upstash" },
+]
+vdb-valkey = [
+    { name = "dify-vdb-valkey" },
 ]
 vdb-vastbase = [
     { name = "dify-vdb-vastbase" },
@@ -1743,6 +1748,7 @@ vdb-all = [
     { name = "dify-vdb-tidb-on-qdrant", editable = "providers/vdb/vdb-tidb-on-qdrant" },
     { name = "dify-vdb-tidb-vector", editable = "providers/vdb/vdb-tidb-vector" },
     { name = "dify-vdb-upstash", editable = "providers/vdb/vdb-upstash" },
+    { name = "dify-vdb-valkey", editable = "providers/vdb/vdb-valkey" },
     { name = "dify-vdb-vastbase", editable = "providers/vdb/vdb-vastbase" },
     { name = "dify-vdb-vikingdb", editable = "providers/vdb/vdb-vikingdb" },
     { name = "dify-vdb-weaviate", editable = "providers/vdb/vdb-weaviate" },
@@ -1773,6 +1779,7 @@ vdb-tencent = [{ name = "dify-vdb-tencent", editable = "providers/vdb/vdb-tencen
 vdb-tidb-on-qdrant = [{ name = "dify-vdb-tidb-on-qdrant", editable = "providers/vdb/vdb-tidb-on-qdrant" }]
 vdb-tidb-vector = [{ name = "dify-vdb-tidb-vector", editable = "providers/vdb/vdb-tidb-vector" }]
 vdb-upstash = [{ name = "dify-vdb-upstash", editable = "providers/vdb/vdb-upstash" }]
+vdb-valkey = [{ name = "dify-vdb-valkey", editable = "providers/vdb/vdb-valkey" }]
 vdb-vastbase = [{ name = "dify-vdb-vastbase", editable = "providers/vdb/vdb-vastbase" }]
 vdb-vikingdb = [{ name = "dify-vdb-vikingdb", editable = "providers/vdb/vdb-vikingdb" }]
 vdb-weaviate = [{ name = "dify-vdb-weaviate", editable = "providers/vdb/vdb-weaviate" }]
@@ -2180,6 +2187,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "upstash-vector", specifier = "==0.8.0" }]
+
+[[package]]
+name = "dify-vdb-valkey"
+version = "0.0.1"
+source = { editable = "providers/vdb/vdb-valkey" }
+dependencies = [
+    { name = "valkey-glide" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "valkey-glide", specifier = ">=1.3.0" }]
 
 [[package]]
 name = "dify-vdb-vastbase"
@@ -7226,6 +7244,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/53/66/a435d9ae49850b2f071f7ebd8119dd4e84872b01630d6736761e6e7fd847/validators-0.35.0.tar.gz", hash = "sha256:992d6c48a4e77c81f1b4daba10d16c3a9bb0dbb79b3a19ea847ff0928e70497a", size = 73399, upload-time = "2025-05-01T05:42:06.7Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fa/6e/3e955517e22cbdd565f2f8b2e73d52528b14b8bcfdb04f62466b071de847/validators-0.35.0-py3-none-any.whl", hash = "sha256:e8c947097eae7892cb3d26868d637f79f47b4a0554bc6b80065dfe5aac3705dd", size = 44712, upload-time = "2025-05-01T05:42:04.203Z" },
+]
+
+[[package]]
+name = "valkey-glide"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/32/35/fb0401c4bc7be748d937e95213786d21d9e56767b3ad816db5bad6f92c01/valkey_glide-2.0.1.tar.gz", hash = "sha256:4f9c62a88aedffd725cced7d28a9488b27e3f675d1a5294b4962624e97d346c4", size = 1026255, upload-time = "2025-06-20T01:08:15.861Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/6d/1e7b432cbc02fe63e7496b984b7fc830fb7de388c877b237e0579a6300fc/valkey_glide-2.0.1-cp312-cp312-macosx_10_7_x86_64.whl", hash = "sha256:f55ec8968b0fde364a5b3399be34b89dcb9068994b5cd384e20db0773ad12723", size = 5075024, upload-time = "2025-06-20T01:07:42.917Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/39/6e9f83970590d17d19f596e1b3a366d39077624888e3dd709309efc67690/valkey_glide-2.0.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:21598f49313912ad27dc700d7b13a3b4bfed7ed9dffad207235cac7d218f4966", size = 4748418, upload-time = "2025-06-20T01:07:44.64Z" },
+    { url = "https://files.pythonhosted.org/packages/98/0e/91335c13dc8e7ceb95063234c16010b46e2dd874a2edef62dea155081647/valkey_glide-2.0.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f662285146529328e2b5a0a7047f699339b4e0d250eb1f252b15c9befa0dea05", size = 4767264, upload-time = "2025-06-20T01:07:46.185Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/94/ee4d9d441f83fec1464d9f4e52f7940bdd2aeb917589e6abd57498880876/valkey_glide-2.0.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3939aaa8411fcbba00cb1ff7c7ba73f388bb1deca919972f65cba7eda1d5fa95", size = 5093543, upload-time = "2025-06-20T01:07:47.345Z" },
 ]
 
 [[package]]

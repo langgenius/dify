@@ -13,5 +13,6 @@ yq eval '.services.couchbase-server.ports += ["11210:11210"]' -i docker/docker-c
 yq eval '.services.tidb.ports += ["4000:4000"]' -i docker/tidb/docker-compose.yaml
 yq eval '.services.oceanbase.ports += ["2881:2881"]' -i docker/docker-compose.yaml
 yq eval '.services.opengauss.ports += ["6600:6600"]' -i docker/docker-compose.yaml
+yq eval '.services.valkey.ports += ["6379:6379"]' -i docker/docker-compose.yaml
 
-echo "Ports exposed for sandbox, weaviate (HTTP 8080, gRPC 50051), tidb, qdrant, chroma, milvus, pgvector, pgvecto-rs, elasticsearch, couchbase, opengauss"
+echo "Ports exposed for sandbox, weaviate (HTTP 8080, gRPC 50051), tidb, qdrant, chroma, milvus, pgvector, pgvecto-rs, elasticsearch, couchbase, opengauss, valkey"
