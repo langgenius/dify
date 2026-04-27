@@ -318,7 +318,6 @@ def _row_from_cache(data: dict) -> ResolvedRow:
 class Accepts(StrEnum):
     USER_ACCOUNT = "user_account"
     USER_EXT_SSO = "user_ext_sso"
-    APP = "app"
 
 
 ACCEPT_USER_ANY: frozenset[Accepts] = frozenset({Accepts.USER_ACCOUNT, Accepts.USER_EXT_SSO})
@@ -355,8 +354,9 @@ def _extract_bearer(req) -> str | None:
 def validate_bearer(*, accept: frozenset[Accepts]) -> Callable:
     """Opt-in: omitting it leaves the route unauthenticated.
 
-    Coexists with legacy ``app-`` keys (tenant+app scoped, resolved in
-    ``service_api/wraps.py``) and user-level OAuth bearers (resolved here).
+    Resolves user-level OAuth bearers (``dfoa_`` / ``dfoe_``). Legacy
+    ``app-`` keys belong to ``service_api/wraps.py:validate_app_token``
+    and are rejected here as the wrong auth scheme for this surface.
     """
 
     def wrap(fn: Callable) -> Callable:
@@ -365,12 +365,6 @@ def validate_bearer(*, accept: frozenset[Accepts]) -> Callable:
             token = _extract_bearer(request)
             if token is None:
                 raise Unauthorized("missing bearer token")
-
-            # app- keys bypass the OAuth authenticator (work even when disabled).
-            if token.startswith("app-"):
-                if Accepts.APP not in accept:
-                    raise Unauthorized("app-scoped keys not accepted here")
-                return fn(*args, **kwargs)
 
             if _authenticator is None:
                 raise ServiceUnavailable(
