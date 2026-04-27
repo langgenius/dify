@@ -15,6 +15,7 @@ export type AccessRule = {
   name: string
   description: string
   assignedRoles: AssignedRole[]
+  permissions: string[]
 }
 
 export type AccessRuleRowProps = {
