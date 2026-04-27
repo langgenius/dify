@@ -128,7 +128,10 @@ describe('Uploading', () => {
   // ================================
   describe('Upload Behavior', () => {
     it('should call uploadFile on mount', async () => {
-      mockUploadFile.mockResolvedValue({})
+      mockUploadFile.mockResolvedValue({
+        unique_identifier: 'uid',
+        manifest: createMockManifest(),
+      })
 
       render(<Uploading {...defaultProps} />)
 
@@ -138,7 +141,7 @@ describe('Uploading', () => {
     })
 
     it('should call uploadFile with isBundle=true for bundle files', async () => {
-      mockUploadFile.mockResolvedValue({})
+      mockUploadFile.mockResolvedValue(createMockDependencies())
 
       render(<Uploading {...defaultProps} isBundle />)
 
@@ -161,13 +164,52 @@ describe('Uploading', () => {
       })
     })
 
-    // NOTE: The uploadFile API has an unconventional contract where it always rejects.
-    // Success vs failure is determined by whether response.message exists:
-    // - If response.message exists → treated as failure (calls onFailed)
-    // - If response.message is absent → treated as success (calls onPackageUploaded/onBundleUploaded)
-    // This explains why we use mockRejectedValue for "success" scenarios below.
+    // Success payloads arrive on resolve when HTTP status is 2xx (e.g. 200 or 201).
+    // Non-2xx responses reject the XHR; the parsed body is still passed through finishUpload via e.response.
 
-    it('should call onPackageUploaded when upload rejects without error message (success case)', async () => {
+    it('should call onPackageUploaded when upload resolves with package payload (2xx)', async () => {
+      const mockResult = {
+        unique_identifier: 'test-uid',
+        manifest: createMockManifest(),
+      }
+      mockUploadFile.mockResolvedValue(mockResult)
+
+      const onPackageUploaded = vi.fn()
+      render(
+        <Uploading
+          {...defaultProps}
+          isBundle={false}
+          onPackageUploaded={onPackageUploaded}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(onPackageUploaded).toHaveBeenCalledWith({
+          uniqueIdentifier: mockResult.unique_identifier,
+          manifest: mockResult.manifest,
+        })
+      })
+    })
+
+    it('should call onBundleUploaded when upload resolves with bundle payload (2xx)', async () => {
+      const mockDependencies = createMockDependencies()
+      mockUploadFile.mockResolvedValue(mockDependencies)
+
+      const onBundleUploaded = vi.fn()
+      render(
+        <Uploading
+          {...defaultProps}
+          isBundle
+          onBundleUploaded={onBundleUploaded}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(onBundleUploaded).toHaveBeenCalledWith(mockDependencies)
+      })
+    })
+
+    it('should call onPackageUploaded when upload rejects without error message (non-2xx body)', async () => {
       const mockResult = {
         unique_identifier: 'test-uid',
         manifest: createMockManifest(),
@@ -190,26 +232,6 @@ describe('Uploading', () => {
           uniqueIdentifier: mockResult.unique_identifier,
           manifest: mockResult.manifest,
         })
-      })
-    })
-
-    it('should call onBundleUploaded when upload rejects without error message (success case)', async () => {
-      const mockDependencies = createMockDependencies()
-      mockUploadFile.mockRejectedValue({
-        response: mockDependencies,
-      })
-
-      const onBundleUploaded = vi.fn()
-      render(
-        <Uploading
-          {...defaultProps}
-          isBundle
-          onBundleUploaded={onBundleUploaded}
-        />,
-      )
-
-      await waitFor(() => {
-        expect(onBundleUploaded).toHaveBeenCalledWith(mockDependencies)
       })
     })
   })
@@ -260,36 +282,34 @@ describe('Uploading', () => {
   // Edge Cases Tests
   // ================================
   describe('Edge Cases', () => {
-    it('should handle empty response gracefully', async () => {
+    it('should call onFailed when package payload is empty', async () => {
       mockUploadFile.mockRejectedValue({
         response: {},
       })
 
+      const onFailed = vi.fn()
       const onPackageUploaded = vi.fn()
-      render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} />)
+      render(<Uploading {...defaultProps} onFailed={onFailed} onPackageUploaded={onPackageUploaded} />)
 
       await waitFor(() => {
-        expect(onPackageUploaded).toHaveBeenCalledWith({
-          uniqueIdentifier: undefined,
-          manifest: undefined,
-        })
+        expect(onFailed).toHaveBeenCalledWith('plugin.installModal.pluginLoadErrorDesc')
       })
+      expect(onPackageUploaded).not.toHaveBeenCalled()
     })
 
-    it('should handle response with only unique_identifier', async () => {
+    it('should call onFailed when package response omits manifest', async () => {
       mockUploadFile.mockRejectedValue({
         response: { unique_identifier: 'only-uid' },
       })
 
+      const onFailed = vi.fn()
       const onPackageUploaded = vi.fn()
-      render(<Uploading {...defaultProps} onPackageUploaded={onPackageUploaded} />)
+      render(<Uploading {...defaultProps} onFailed={onFailed} onPackageUploaded={onPackageUploaded} />)
 
       await waitFor(() => {
-        expect(onPackageUploaded).toHaveBeenCalledWith({
-          uniqueIdentifier: 'only-uid',
-          manifest: undefined,
-        })
+        expect(onFailed).toHaveBeenCalledWith('plugin.installModal.pluginLoadErrorDesc')
       })
+      expect(onPackageUploaded).not.toHaveBeenCalled()
     })
 
     it('should handle file with special characters in name', () => {
@@ -319,7 +339,10 @@ describe('Uploading', () => {
     })
 
     it('should pass isBundle=false to uploadFile for package files', async () => {
-      mockUploadFile.mockResolvedValue({})
+      mockUploadFile.mockResolvedValue({
+        unique_identifier: 'u',
+        manifest: createMockManifest(),
+      })
 
       render(<Uploading {...defaultProps} isBundle={false} />)
 
@@ -329,7 +352,7 @@ describe('Uploading', () => {
     })
 
     it('should pass isBundle=true to uploadFile for bundle files', async () => {
-      mockUploadFile.mockResolvedValue({})
+      mockUploadFile.mockResolvedValue(createMockDependencies())
 
       render(<Uploading {...defaultProps} isBundle />)
 

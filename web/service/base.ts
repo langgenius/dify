@@ -437,7 +437,7 @@ export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?
     xhr.responseType = 'json'
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
-        if (xhr.status === 201)
+        if (xhr.status >= 200 && xhr.status < 300)
           resolve(xhr.response)
         else
           reject(xhr)
