@@ -1908,13 +1908,6 @@ class WorkflowDraftVariableFile(TypeBase):
     # Primary key
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        default_factory=naive_utc_now,
-        server_default=func.current_timestamp(),
-    )
-
     tenant_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
@@ -1972,6 +1965,13 @@ class WorkflowDraftVariableFile(TypeBase):
         lazy="raise",
         uselist=False,
         primaryjoin=lambda: orm.foreign(WorkflowDraftVariableFile.upload_file_id) == UploadFile.id,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default_factory=naive_utc_now,
+        server_default=func.current_timestamp(),
     )
 
 
