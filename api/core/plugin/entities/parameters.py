@@ -12,6 +12,7 @@ class PluginParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
     icon: str | None = Field(default=None, description="The icon of the option, can be a url or a base64 encoded image")
+    children: list["PluginParameterOption"] = Field(default_factory=list, description="The child options of the option")
 
     @field_validator("value", mode="before")
     @classmethod
@@ -39,6 +40,7 @@ class PluginParameterType(StrEnum):
     TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
     ANY = CommonParameterType.ANY
     DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT
+    DYNAMIC_TREE_SELECT = CommonParameterType.DYNAMIC_TREE_SELECT
     CHECKBOX = CommonParameterType.CHECKBOX
     # deprecated, should not use.
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES
@@ -114,6 +116,12 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     return ""
                 else:
                     return value if isinstance(value, str) else str(value)
+            case PluginParameterType.DYNAMIC_TREE_SELECT:
+                if isinstance(value, list):
+                    return [item if isinstance(item, str) else str(item) for item in value]
+                if value is None:
+                    return ""
+                return value if isinstance(value, str) else str(value)
 
             case PluginParameterType.BOOLEAN:
                 if value is None:
