@@ -16,6 +16,7 @@ from controllers.console.workspace.plugin import (
     PluginDeleteInstallTaskItemApi,
     PluginFetchDynamicSelectOptionsApi,
     PluginFetchDynamicSelectOptionsWithCredentialsApi,
+    PluginFetchDynamicTreeSelectOptionsApi,
     PluginFetchInstallTaskApi,
     PluginFetchInstallTasksApi,
     PluginFetchManifestApi,
@@ -310,6 +311,24 @@ class TestPluginFetchDynamicSelectOptionsApi:
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options",
+                return_value=[1, 2],
+            ),
+        ):
+            result = method(api)
+
+        assert result["options"] == [1, 2]
+
+
+class TestPluginFetchDynamicTreeSelectOptionsApi:
+    def test_fetch_dynamic_tree_options(self, app, user):
+        api = PluginFetchDynamicTreeSelectOptionsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?plugin_id=p&provider=x&action=y&parameter=z&credential_id=c1"),
+            patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
+            patch(
+                "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_tree_select_options",
                 return_value=[1, 2],
             ),
         ):

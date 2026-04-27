@@ -25,7 +25,7 @@ from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.encryption import create_provider_encrypter
+from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -652,6 +652,53 @@ class BuiltinToolManageService:
                     )
                     .limit(1)
                 )
+
+    @staticmethod
+    def get_builtin_tool_provider_runtime_credentials(
+        tenant_id: str,
+        provider: str,
+        credential_id: str | None,
+    ) -> tuple[Mapping[str, Any], str]:
+        """
+        Get decrypted runtime credentials for a builtin tool provider.
+
+        Returns the tenant-scoped selected credential by explicit id or default/oldest fallback.
+        """
+        provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+        if not provider_controller.need_credentials:
+            return {}, CredentialType.UNAUTHORIZED.value
+
+        with Session(db.engine, autoflush=False) as session:
+            if credential_id:
+                db_provider = session.scalar(
+                    select(BuiltinToolProvider)
+                    .where(
+                        BuiltinToolProvider.tenant_id == tenant_id,
+                        BuiltinToolProvider.provider == provider,
+                        BuiltinToolProvider.id == credential_id,
+                    )
+                    .limit(1)
+                )
+            else:
+                db_provider = session.scalar(
+                    select(BuiltinToolProvider)
+                    .where(
+                        BuiltinToolProvider.tenant_id == tenant_id,
+                        BuiltinToolProvider.provider == provider,
+                    )
+                    .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+                    .limit(1)
+                )
+
+        if db_provider is None:
+            raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
+
+        encrypter, _ = create_tool_provider_encrypter(
+            tenant_id=tenant_id,
+            controller=provider_controller,
+        )
+
+        return encrypter.decrypt(db_provider.credentials), db_provider.credential_type
 
     @staticmethod
     def save_custom_oauth_client_params(

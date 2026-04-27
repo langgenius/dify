@@ -108,6 +108,14 @@ class ParserDynamicOptionsWithCredentials(BaseModel):
     credentials: Mapping[str, Any]
 
 
+class ParserDynamicTreeOptions(BaseModel):
+    plugin_id: str
+    provider: str
+    action: str
+    parameter: str
+    credential_id: str | None = None
+
+
 class PluginPermissionSettingsPayload(BaseModel):
     install_permission: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE
     debug_permission: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE
@@ -156,6 +164,7 @@ register_schema_models(
     ParserPermissionChange,
     ParserDynamicOptions,
     ParserDynamicOptionsWithCredentials,
+    ParserDynamicTreeOptions,
     ParserPreferencesChange,
     ParserExcludePlugin,
     ParserReadme,
@@ -703,6 +712,35 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
                 parameter=args.parameter,
                 credential_id=args.credential_id,
                 credentials=args.credentials,
+            )
+        except PluginDaemonClientSideError as e:
+            return {"code": "plugin_error", "message": e.description}, 400
+
+        return jsonable_encoder({"options": options})
+
+
+@console_ns.route("/workspaces/current/plugin/parameters/dynamic-tree-options")
+class PluginFetchDynamicTreeSelectOptionsApi(Resource):
+    @console_ns.expect(console_ns.models[ParserDynamicTreeOptions.__name__])
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @account_initialization_required
+    def get(self):
+        current_user, tenant_id = current_account_with_tenant()
+        user_id = current_user.id
+
+        args = ParserDynamicTreeOptions.model_validate(request.args.to_dict(flat=True))  # type: ignore
+
+        try:
+            options = PluginParameterService.get_dynamic_tree_select_options(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                plugin_id=args.plugin_id,
+                provider=args.provider,
+                action=args.action,
+                parameter=args.parameter,
+                credential_id=args.credential_id,
             )
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400

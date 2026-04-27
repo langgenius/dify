@@ -6,24 +6,18 @@ HIDDEN_VALUE replacement, and error handling for missing records.
 
 from __future__ import annotations
 
-import json
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 
-from core.plugin.entities.plugin_daemon import CredentialType
-from models.tools import BuiltinToolProvider
 from services.plugin.plugin_parameter_service import PluginParameterService
 
 
 class TestGetDynamicSelectOptionsTool:
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
-    @patch("services.plugin.plugin_parameter_service.ToolManager")
-    def test_no_credentials_needed(self, mock_tool_mgr, mock_client_cls):
-        provider_ctrl = MagicMock()
-        provider_ctrl.need_credentials = False
-        mock_tool_mgr.get_builtin_provider.return_value = provider_ctrl
+    @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
+    def test_no_credentials_needed(self, mock_builtin_tool_service, mock_client_cls):
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = ({}, "unauthorized")
         mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
 
         result = PluginParameterService.get_dynamic_select_options(
@@ -42,66 +36,36 @@ class TestGetDynamicSelectOptionsTool:
         assert call_kwargs[0][5] == {}  # empty credentials
 
     @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
-    @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
-    @patch("services.plugin.plugin_parameter_service.ToolManager")
-    def test_fetches_credentials_with_credential_id(
-        self,
-        mock_tool_mgr,
-        mock_encrypter_fn,
-        mock_client_cls,
-        flask_app_with_containers,
-        db_session_with_containers,
-    ):
-        tenant_id = str(uuid4())
-        provider_ctrl = MagicMock()
-        provider_ctrl.need_credentials = True
-        mock_tool_mgr.get_builtin_provider.return_value = provider_ctrl
-        encrypter = MagicMock()
-        encrypter.decrypt.return_value = {"api_key": "decrypted"}
-        mock_encrypter_fn.return_value = (encrypter, None)
+    @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
+    def test_fetches_credentials_with_credential_id(self, mock_builtin_tool_service, mock_client_cls):
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = (
+            {"api_key": "decrypted"},
+            "api-key",
+        )
         mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
 
-        db_record = BuiltinToolProvider(
-            tenant_id=tenant_id,
-            user_id=str(uuid4()),
-            provider="google",
-            name="API KEY 1",
-            encrypted_credentials=json.dumps({"api_key": "encrypted"}),
-            credential_type=CredentialType.API_KEY,
-        )
-        db_session_with_containers.add(db_record)
-        db_session_with_containers.commit()
-
         result = PluginParameterService.get_dynamic_select_options(
-            tenant_id=tenant_id,
+            tenant_id="t1",
             user_id="u1",
             plugin_id="p1",
             provider="google",
             action="search",
             parameter="engine",
-            credential_id=db_record.id,
+            credential_id="cred-id",
             provider_type="tool",
         )
 
         assert result == ["opt1"]
 
-    @patch("services.plugin.plugin_parameter_service.create_tool_provider_encrypter")
-    @patch("services.plugin.plugin_parameter_service.ToolManager")
-    def test_raises_when_tool_provider_not_found(
-        self,
-        mock_tool_mgr,
-        mock_encrypter_fn,
-        flask_app_with_containers,
-        db_session_with_containers,
-    ):
-        provider_ctrl = MagicMock()
-        provider_ctrl.need_credentials = True
-        mock_tool_mgr.get_builtin_provider.return_value = provider_ctrl
-        mock_encrypter_fn.return_value = (MagicMock(), None)
+    @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
+    def test_raises_when_tool_provider_not_found(self, mock_builtin_tool_service):
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.side_effect = ValueError(
+            "not found"
+        )
 
         with pytest.raises(ValueError, match="not found"):
             PluginParameterService.get_dynamic_select_options(
-                tenant_id=str(uuid4()),
+                tenant_id="t1",
                 user_id="u1",
                 plugin_id="p1",
                 provider="google",
@@ -224,3 +188,23 @@ class TestGetDynamicSelectOptionsWithCredentials:
                 credential_id="nonexistent",
                 credentials={"token": "val"},
             )
+
+
+class TestGetDynamicTreeSelectOptions:
+    @patch("services.plugin.plugin_parameter_service.DynamicSelectClient")
+    @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
+    def test_no_credentials_needed(self, mock_builtin_tool_service, mock_client_cls):
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.return_value = ({}, "unauthorized")
+        mock_client_cls.return_value.fetch_dynamic_select_options.return_value.options = ["opt1"]
+
+        result = PluginParameterService.get_dynamic_tree_select_options(
+            tenant_id="t1",
+            user_id="u1",
+            plugin_id="p1",
+            provider="google",
+            action="search",
+            parameter="engine",
+            credential_id=None,
+        )
+
+        assert result == ["opt1"]
