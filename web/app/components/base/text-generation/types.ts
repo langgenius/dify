@@ -4,7 +4,6 @@ import type {
   VisionFile,
 } from '@/types/app'
 
-export type { VisionFile } from '@/types/app'
 export { TransferMethod } from '@/types/app'
 
 export type TextGenerationConfig = Omit<ModelConfig, 'model'> & {
