@@ -6,7 +6,7 @@ requires-python = "~=3.12.0"
 dependencies = [
     # Legacy: mature and widely deployed
     "bleach>=6.3.0",
-    "boto3>=1.42.91",
+    "boto3>=1.42.96",
     "celery>=5.6.3",
     "croniter>=6.2.2",
     "flask>=3.1.3,<4.0.0",
@@ -185,12 +185,12 @@ dev = [
 storage = [
     "azure-storage-blob>=12.28.0",
     "bce-python-sdk>=0.9.70",
-    "cos-python-sdk-v5>=1.9.41",
+    "cos-python-sdk-v5>=1.9.42",
     "esdk-obs-python>=3.22.2",
     "google-cloud-storage>=3.10.1",
     "opendal>=0.46.0",
     "oss2>=2.19.1",
-    "supabase>=2.28.3",
+    "supabase>=2.29.0",
     "tos>=2.9.0",
 ]
 
