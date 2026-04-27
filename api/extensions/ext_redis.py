@@ -447,6 +447,18 @@ def init_app(app: DifyApp):
     redis_client.initialize(client)
     app.extensions["redis"] = redis_client
 
+    # Event Bus (pub/sub / streams) client.
+    #
+    # Default: reuse the main Redis client. This gives the Event Bus the same
+    # HA semantics as the main client — Sentinel failover works for free
+    # without encoding Sentinel topology into a single pubsub URL.
+    #
+    # Override path: if PUBSUB_REDIS_URL is set (or the main client is in
+    # Cluster mode, in which case _build_default_pubsub_url produces a seed
+    # URL from REDIS_CLUSTERS), build a dedicated pubsub client. This is the
+    # "advanced fan-out" path — e.g. pointing the Event Bus at an independent
+    # Redis Cluster so streaming events can scale horizontally without
+    # touching the main Redis.
     global _pubsub_redis_client
     _pubsub_redis_client = client
     if dify_config.normalized_pubsub_redis_url:
