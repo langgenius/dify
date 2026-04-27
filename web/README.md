@@ -57,6 +57,8 @@ pnpm -C web run dev
 pnpm -C web run dev:vinext
 # (optional) start the dev proxy server so that you can use online API in development
 pnpm -C web run dev:proxy
+# (optional) start the dev proxy for the Enterprise frontend; it listens on 8082 by default
+pnpm -C web run dev:proxy -- --target enterprise
 ```
 
 Open <http://localhost:3000> with your browser to see the result.
