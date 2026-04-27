@@ -8,6 +8,7 @@ from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import ApiProviderSchemaType
+from models import Account, AccountStatus, Tenant, TenantStatus
 from core.tools.errors import ApiToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from models import Account, Tenant
@@ -57,7 +58,7 @@ class TestApiToolManageService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -66,7 +67,7 @@ class TestApiToolManageService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

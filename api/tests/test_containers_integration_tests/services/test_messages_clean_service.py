@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from graphon.file import FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import (
@@ -119,7 +120,7 @@ class TestMessagesCleanServiceIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()
@@ -127,7 +128,7 @@ class TestMessagesCleanServiceIntegration:
         tenant = Tenant(
             name=fake.company(),
             plan=str(plan),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()

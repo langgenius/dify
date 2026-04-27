@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Pipeline
 from models.workflow import Workflow
 from tasks.rag_pipeline.priority_rag_pipeline_run_task import (
@@ -69,14 +69,14 @@ class TestRagPipelineRunTasks:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

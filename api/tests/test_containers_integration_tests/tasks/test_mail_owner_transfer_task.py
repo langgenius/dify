@@ -13,7 +13,7 @@ import pytest
 from faker import Faker
 
 from libs.email_i18n import EmailType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from tasks.mail_owner_transfer_task import (
     send_new_owner_transfer_notify_email_task,
     send_old_owner_transfer_notify_email_task,
@@ -61,7 +61,7 @@ class TestMailOwnerTransferTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
@@ -69,7 +69,7 @@ class TestMailOwnerTransferTask:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

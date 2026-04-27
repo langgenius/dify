@@ -10,7 +10,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from extensions.storage.storage_type import StorageType
-from models import Account, Tenant
+from models import Account, AccountStatus, Tenant, TenantStatus
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
@@ -66,7 +66,7 @@ class TestFileService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -75,7 +75,7 @@ class TestFileService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

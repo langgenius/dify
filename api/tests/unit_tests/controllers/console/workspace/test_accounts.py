@@ -29,6 +29,7 @@ from controllers.console.workspace.error import (
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
 )
+from models.account import AccountStatus
 from services.errors.account import CurrentPasswordIncorrectError as ServicePwdError
 
 
@@ -66,7 +67,7 @@ class TestAccountInitApi:
         api = AccountInitApi()
         method = unwrap(api.post)
 
-        account = MagicMock(status="active")
+        account = MagicMock(status=AccountStatus.ACTIVE)
 
         with (
             app.test_request_context("/account/init"),

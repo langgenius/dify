@@ -4,7 +4,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom
 from services.dataset_service import DatasetService
@@ -20,14 +20,14 @@ class DatasetDeleteIntegrationDataFactory:
             email=f"owner-{uuid4()}@example.com",
             name="Owner",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=f"tenant-{uuid4()}",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

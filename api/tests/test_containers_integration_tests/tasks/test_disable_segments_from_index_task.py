@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, Dataset, DocumentSegment
+from models import Account, AccountStatus, Dataset, DocumentSegment, TenantStatus
 from models import Document as DatasetDocument
 from models.dataset import DatasetProcessRule
 from models.enums import DataSourceType, DocumentCreatedFrom, ProcessRuleMode, SegmentStatus
@@ -51,7 +51,7 @@ class TestDisableSegmentsFromIndexTask:
             email=fake.email(),
             name=fake.name(),
             avatar=fake.url(),
-            status="active",
+            status=AccountStatus.ACTIVE,
             interface_language="en-US",
         )
         account.id = fake.uuid4()
@@ -68,7 +68,7 @@ class TestDisableSegmentsFromIndexTask:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         tenant.id = account.tenant_id
         tenant.created_at = fake.date_time_this_year()

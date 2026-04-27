@@ -4,7 +4,7 @@ import pytest
 from faker import Faker
 
 from libs.email_i18n import EmailType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from tasks.mail_change_mail_task import send_change_mail_completed_notification_task, send_change_mail_task
 
 
@@ -46,7 +46,7 @@ class TestMailChangeMailTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
@@ -54,7 +54,7 @@ class TestMailChangeMailTask:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

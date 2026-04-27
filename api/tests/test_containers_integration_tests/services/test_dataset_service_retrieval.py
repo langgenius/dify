@@ -16,7 +16,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import (
     AppDatasetJoin,
     Dataset,
@@ -42,11 +42,11 @@ class DatasetRetrievalTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         tenant = Tenant(
             name=f"tenant-{uuid4()}",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add_all([account, tenant])
         db_session_with_containers.flush()
@@ -72,7 +72,7 @@ class DatasetRetrievalTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()

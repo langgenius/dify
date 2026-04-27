@@ -12,7 +12,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models import Account, App, Workflow
+from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.model import AppMode
 from models.workflow import WorkflowType
 from services.workflow_service import WorkflowService
@@ -49,7 +49,7 @@ class TestWorkflowService:
             email=fake.email(),
             name=fake.name(),
             avatar=fake.url(),
-            status="active",
+            status=AccountStatus.ACTIVE,
             interface_language="en-US",  # Set interface language for Site creation
         )
         account.created_at = fake.date_time_this_year()
@@ -62,7 +62,7 @@ class TestWorkflowService:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()

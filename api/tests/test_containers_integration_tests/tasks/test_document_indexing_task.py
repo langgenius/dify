@@ -7,7 +7,7 @@ from faker import Faker
 from core.entities.document_task import DocumentTask
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from enums.cloud_plan import CloudPlan
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (
@@ -71,14 +71,14 @@ class TestDocumentIndexingTasks:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -153,14 +153,14 @@ class TestDocumentIndexingTasks:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

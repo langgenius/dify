@@ -18,6 +18,7 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from models import Account, AccountStatus, Tenant, TenantStatus
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.message_entities import PromptMessageRole
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
@@ -104,7 +105,7 @@ class TestWorkflowConverter:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -113,7 +114,7 @@ class TestWorkflowConverter:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

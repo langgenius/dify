@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import (
     AppDatasetJoin,
     Dataset,
@@ -110,7 +110,7 @@ class TestCleanDatasetTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -120,7 +120,7 @@ class TestCleanDatasetTask:
         tenant = Tenant(
             name=fake.company(),
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
 
         db_session_with_containers.add(tenant)

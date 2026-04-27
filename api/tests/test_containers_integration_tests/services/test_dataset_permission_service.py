@@ -11,7 +11,7 @@ import pytest
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import (
     Dataset,
     DatasetPermission,
@@ -35,10 +35,10 @@ class DatasetPermissionTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         if tenant is None:
-            tenant = Tenant(name=f"tenant-{uuid4()}", status="normal")
+            tenant = Tenant(name=f"tenant-{uuid4()}", status=TenantStatus.NORMAL)
             db.session.add_all([account, tenant])
         else:
             db.session.add(account)

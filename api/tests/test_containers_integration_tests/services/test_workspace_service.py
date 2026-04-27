@@ -6,7 +6,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from services.workspace_service import WorkspaceService
 
 
@@ -50,7 +50,7 @@ class TestWorkspaceService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -59,7 +59,7 @@ class TestWorkspaceService:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
             plan="basic",
             custom_config='{"replace_webapp_logo": true, "remove_webapp_brand": false}',
         )
@@ -542,11 +542,11 @@ class TestWorkspaceService:
     ):
         """TenantAccountJoin must exist; missing join should raise AssertionError."""
         fake = Faker()
-        account = Account(email=fake.email(), name=fake.name(), interface_language="en-US", status="active")
+        account = Account(email=fake.email(), name=fake.name(), interface_language="en-US", status=AccountStatus.ACTIVE)
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
-        tenant = Tenant(name=fake.company(), status="normal", plan="basic")
+        tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL, plan="basic")
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
 

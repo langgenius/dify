@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy import func, select
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_update_task import document_indexing_update_task
@@ -41,12 +41,12 @@ class TestDocumentIndexingUpdateTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
-        tenant = Tenant(name=fake.company(), status="normal")
+        tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
 

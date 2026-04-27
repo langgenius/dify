@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.account import TenantAccountJoin, TenantAccountRole
+from models.account import AccountStatus, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import Account, Tenant
 from models.provider import LoadBalancingModelConfig, Provider, ProviderModelSetting
 from services.model_load_balancing_service import ModelLoadBalancingService
@@ -81,7 +81,7 @@ class TestModelLoadBalancingService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -90,7 +90,7 @@ class TestModelLoadBalancingService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

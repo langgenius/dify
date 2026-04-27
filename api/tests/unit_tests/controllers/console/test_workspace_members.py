@@ -5,7 +5,7 @@ import pytest
 from flask import Flask, g
 
 from controllers.console.workspace.members import MemberInviteEmailApi
-from models.account import Account, TenantAccountRole
+from models.account import Account, AccountStatus, TenantAccountRole
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ class TestMemberInviteEmailApi:
         mock_invite_member.return_value = "token-abc"
 
         tenant = SimpleNamespace(id="tenant-1", name="Test Tenant")
-        inviter = SimpleNamespace(email="Owner@Example.com", current_tenant=tenant, status="active")
+        inviter = SimpleNamespace(email="Owner@Example.com", current_tenant=tenant, status=AccountStatus.ACTIVE)
         mock_current_account.return_value = (inviter, tenant.id)
 
         with patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "https://console.example.com"):

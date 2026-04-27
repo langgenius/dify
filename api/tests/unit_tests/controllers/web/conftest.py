@@ -8,6 +8,8 @@ from typing import Any
 import pytest
 from flask import Flask
 
+from models.account import TenantStatus
+
 
 @pytest.fixture
 def app() -> Flask:
@@ -53,7 +55,7 @@ def make_app_model(
     """Build a fake App model with common defaults."""
     tenant = SimpleNamespace(
         id=tenant_id,
-        status="normal",
+        status=TenantStatus.NORMAL,
         plan="basic",
         custom_config_dict={},
     )

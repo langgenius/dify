@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from libs.password import hash_password
-from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import App, Site
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
@@ -67,7 +67,7 @@ class TestWebAppAuthService:
             email=unique_email,
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -76,7 +76,7 @@ class TestWebAppAuthService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -120,7 +120,7 @@ class TestWebAppAuthService:
             email=unique_email,
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         # Hash password
@@ -139,7 +139,7 @@ class TestWebAppAuthService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -342,7 +342,7 @@ class TestWebAppAuthService:
             email=unique_email,
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -712,7 +712,7 @@ class TestWebAppAuthService:
         fake = Faker()
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
 
         db_session_with_containers.add(tenant)

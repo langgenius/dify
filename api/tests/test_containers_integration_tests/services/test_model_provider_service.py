@@ -5,6 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.entities.model_entities import ModelStatus
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
@@ -52,7 +53,7 @@ class TestModelProviderService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -61,7 +62,7 @@ class TestModelProviderService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

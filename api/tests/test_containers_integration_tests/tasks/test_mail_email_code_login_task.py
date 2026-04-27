@@ -17,7 +17,7 @@ from faker import Faker
 from sqlalchemy import delete
 
 from libs.email_i18n import EmailType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 
 
@@ -90,7 +90,7 @@ class TestSendEmailCodeLoginMailTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -119,7 +119,7 @@ class TestSendEmailCodeLoginMailTask:
         tenant = Tenant(
             name=fake.company(),
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
 
         db_session_with_containers.add(tenant)

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from models.enums import DatasetMetadataType, DataSourceType, DocumentCreatedFrom
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
@@ -53,7 +53,7 @@ class TestMetadataService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -62,7 +62,7 @@ class TestMetadataService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

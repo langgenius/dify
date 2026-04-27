@@ -6,6 +6,8 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.dataset import Dataset, ExternalKnowledgeBindings
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import (
     Account,

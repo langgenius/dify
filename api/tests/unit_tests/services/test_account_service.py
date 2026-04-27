@@ -194,7 +194,7 @@ class TestAccountService:
     def test_authenticate_account_banned(self, mock_db_dependencies):
         """Test authentication when account is banned."""
         # Setup test data
-        mock_account = TestAccountAssociatedDataFactory.create_account_mock(status="banned")
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(status=AccountStatus.BANNED)
 
         mock_db_dependencies["db"].session.scalar.return_value = mock_account
 
@@ -218,7 +218,7 @@ class TestAccountService:
     def test_authenticate_pending_account_activates(self, mock_db_dependencies, mock_password_dependencies):
         """Test authentication for a pending account, which should activate on login."""
         # Setup test data
-        mock_account = TestAccountAssociatedDataFactory.create_account_mock(status="pending")
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(status=AccountStatus.PENDING)
 
         mock_db_dependencies["db"].session.scalar.return_value = mock_account
 
@@ -439,7 +439,7 @@ class TestAccountService:
     def test_load_user_banned(self, mock_db_dependencies):
         """Test user loading when user is banned."""
         # Setup test data
-        mock_account = TestAccountAssociatedDataFactory.create_account_mock(status="banned")
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(status=AccountStatus.BANNED)
 
         mock_db_dependencies["db"].session.get.return_value = mock_account
 
@@ -1432,7 +1432,7 @@ class TestRegisterService:
 
             # Mock RegisterService.register
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
-                account_id="new-user-456", email="newuser@example.com", name="newuser", status="pending"
+                account_id="new-user-456", email="newuser@example.com", name="newuser", status=AccountStatus.PENDING
             )
             with patch("services.account_service.RegisterService.register") as mock_register:
                 mock_register.return_value = mock_new_account
@@ -1481,7 +1481,7 @@ class TestRegisterService:
             mock_lookup.return_value = None
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
-                account_id="new-user-789", email="invitee@example.com", name="invitee", status="pending"
+                account_id="new-user-789", email="invitee@example.com", name="invitee", status=AccountStatus.PENDING
             )
             with patch("services.account_service.RegisterService.register") as mock_register:
                 mock_register.return_value = mock_new_account
@@ -1525,7 +1525,7 @@ class TestRegisterService:
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
-            account_id="existing-user-456", email="existing@example.com", status="pending"
+            account_id="existing-user-456", email="existing@example.com", status=AccountStatus.PENDING
         )
 
         with (
@@ -1567,7 +1567,7 @@ class TestRegisterService:
         mock_tenant.id = "tenant-456"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
-            account_id="existing-user-456", email="existing@example.com", status="active"
+            account_id="existing-user-456", email="existing@example.com", status=AccountStatus.ACTIVE
         )
 
         mock_db_dependencies[

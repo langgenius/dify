@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import ToolProviderType
-from models import Account, Tenant
+from models import Account, AccountStatus, Tenant, TenantStatus
 from models.tools import MCPToolProvider
 from services.tools.mcp_tools_manage_service import UNCHANGED_SERVER_URL_PLACEHOLDER, MCPToolManageService
 
@@ -60,7 +60,7 @@ class TestMCPToolManageService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -69,7 +69,7 @@ class TestMCPToolManageService:
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
