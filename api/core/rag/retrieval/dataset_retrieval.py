@@ -846,6 +846,10 @@ class DatasetRetrieval:
                 if thread_exceptions:
                     break
 
+            # Ensure all threads are fully joined before reading results
+            for thread in all_threads:
+                thread.join()
+
             if thread_exceptions:
                 raise thread_exceptions[0]
         self._on_query(query, attachment_ids, dataset_ids, app_id, user_from, user_id)
@@ -1068,74 +1072,99 @@ class DatasetRetrieval:
         document_ids_filter: list[str] | None = None,
         metadata_condition: MetadataFilteringCondition | None = None,
         attachment_ids: list[str] | None = None,
+        exceptions: list[Exception] | None = None,
+        lock: "threading.Lock | None" = None,
     ):
-        with flask_app.app_context():
-            dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
-            dataset = db.session.scalar(dataset_stmt)
+        try:
+            with flask_app.app_context():
+                dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
+                dataset = db.session.scalar(dataset_stmt)
 
-            if not dataset:
-                return []
+                if not dataset:
+                    return []
 
-            if dataset.provider == "external" and query:
-                external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
-                    tenant_id=dataset.tenant_id,
-                    dataset_id=dataset_id,
-                    query=query,
-                    external_retrieval_parameters=dataset.retrieval_model,
-                    metadata_condition=metadata_condition,
-                )
-                for external_document in external_documents:
-                    document = Document(
-                        page_content=external_document.get("content"),
-                        metadata=external_document.get("metadata"),
-                        provider="external",
-                    )
-                    if document.metadata is not None:
-                        document.metadata["score"] = external_document.get("score")
-                        document.metadata["title"] = external_document.get("title")
-                        document.metadata["dataset_id"] = dataset_id
-                        document.metadata["dataset_name"] = dataset.name
-                    all_documents.append(document)
-            else:
-                # get retrieval model , if the model is not setting , using default
-                retrieval_model: DefaultRetrievalModelDict = (
-                    cast(DefaultRetrievalModelDict, dataset.retrieval_model)
-                    if dataset.retrieval_model
-                    else default_retrieval_model
-                )
-
-                if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
-                    # use keyword table query
-                    documents = RetrievalService.retrieve(
-                        retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
-                        dataset_id=dataset.id,
+                if dataset.provider == "external" and query:
+                    external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
+                        tenant_id=dataset.tenant_id,
+                        dataset_id=dataset_id,
                         query=query,
-                        top_k=top_k,
-                        document_ids_filter=document_ids_filter,
+                        external_retrieval_parameters=dataset.retrieval_model,
+                        metadata_condition=metadata_condition,
                     )
-                    if documents:
-                        all_documents.extend(documents)
+                    results: list[Document] = []
+                    for external_document in external_documents:
+                        document = Document(
+                            page_content=external_document.get("content"),
+                            metadata=external_document.get("metadata"),
+                            provider="external",
+                        )
+                        if document.metadata is not None:
+                            document.metadata["score"] = external_document.get("score")
+                            document.metadata["title"] = external_document.get("title")
+                            document.metadata["dataset_id"] = dataset_id
+                            document.metadata["dataset_name"] = dataset.name
+                        results.append(document)
+                    if lock:
+                        with lock:
+                            all_documents.extend(results)
+                    else:
+                        all_documents.extend(results)
                 else:
-                    if top_k > 0:
-                        # retrieval source
+                    # get retrieval model , if the model is not setting , using default
+                    retrieval_model: DefaultRetrievalModelDict = (
+                        cast(DefaultRetrievalModelDict, dataset.retrieval_model)
+                        if dataset.retrieval_model
+                        else default_retrieval_model
+                    )
+
+                    if dataset.indexing_technique == IndexTechniqueType.ECONOMY:
+                        # use keyword table query
                         documents = RetrievalService.retrieve(
-                            retrieval_method=retrieval_model["search_method"],
+                            retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                             dataset_id=dataset.id,
                             query=query,
-                            top_k=retrieval_model.get("top_k") or 4,
-                            score_threshold=retrieval_model.get("score_threshold", 0.0)
-                            if retrieval_model["score_threshold_enabled"]
-                            else 0.0,
-                            reranking_model=retrieval_model.get("reranking_model", None)
-                            if retrieval_model["reranking_enable"]
-                            else None,
-                            reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
-                            weights=retrieval_model.get("weights", None),
+                            top_k=top_k,
                             document_ids_filter=document_ids_filter,
-                            attachment_ids=attachment_ids,
                         )
+                        if documents:
+                            if lock:
+                                with lock:
+                                    all_documents.extend(documents)
+                            else:
+                                all_documents.extend(documents)
+                    else:
+                        if top_k > 0:
+                            # retrieval source
+                            documents = RetrievalService.retrieve(
+                                retrieval_method=retrieval_model["search_method"],
+                                dataset_id=dataset.id,
+                                query=query,
+                                top_k=retrieval_model.get("top_k") or 4,
+                                score_threshold=retrieval_model.get("score_threshold", 0.0)
+                                if retrieval_model["score_threshold_enabled"]
+                                else 0.0,
+                                reranking_model=retrieval_model.get("reranking_model", None)
+                                if retrieval_model["reranking_enable"]
+                                else None,
+                                reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
+                                weights=retrieval_model.get("weights", None),
+                                document_ids_filter=document_ids_filter,
+                                attachment_ids=attachment_ids,
+                            )
 
-                        all_documents.extend(documents)
+                            if lock:
+                                with lock:
+                                    all_documents.extend(documents)
+                            else:
+                                all_documents.extend(documents)
+        except Exception as e:
+            logger.error("Error retrieving from dataset %s: %s", dataset_id, e, exc_info=True)
+            if exceptions is not None:
+                if lock:
+                    with lock:
+                        exceptions.append(e)
+                else:
+                    exceptions.append(e)
 
     def to_dataset_retriever_tool(
         self,
@@ -1746,6 +1775,8 @@ class DatasetRetrieval:
             with flask_app.app_context():
                 threads = []
                 all_documents_item: list[Document] = []
+                retriever_exceptions: list[Exception] = []
+                retriever_lock = threading.Lock()
                 index_type = None
                 for dataset in available_datasets:
                     # Check for cancellation signal
@@ -1773,6 +1804,8 @@ class DatasetRetrieval:
                             "document_ids_filter": document_ids_filter,
                             "metadata_condition": metadata_condition,
                             "attachment_ids": [attachment_id] if attachment_id else None,
+                            "exceptions": retriever_exceptions,
+                            "lock": retriever_lock,
                         },
                     )
                     threads.append(retrieval_thread)
@@ -1786,6 +1819,17 @@ class DatasetRetrieval:
                             break
                     if cancel_event and cancel_event.is_set():
                         break
+
+                # Ensure all threads are fully joined before processing results
+                for thread in threads:
+                    thread.join()
+
+                if retriever_exceptions:
+                    logger.warning(
+                        "%d retriever thread(s) failed: %s", len(retriever_exceptions), retriever_exceptions[0]
+                    )
+                    if not all_documents_item:
+                        raise retriever_exceptions[0]
 
                 # Skip second reranking when there is only one dataset
                 if reranking_enable and dataset_count > 1:

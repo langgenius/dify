@@ -1518,7 +1518,16 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
+            exceptions=None,
+            lock=None,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -1593,7 +1602,16 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
+            exceptions=None,
+            lock=None,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -1703,7 +1721,16 @@ class TestRetrievalService:
 
         # Mock _retriever to return documents
         def side_effect_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
+            exceptions=None,
+            lock=None,
         ):
             all_documents.extend([doc1, doc2])
 
@@ -3555,7 +3582,16 @@ class TestKnowledgeRetrievalRegression:
         )
 
         def fake_retriever(
-            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
+            exceptions=None,
+            lock=None,
         ):
             all_documents.append(document)
 
@@ -4102,25 +4138,6 @@ def _doc(
     if extra:
         metadata.update(extra)
     return Document(page_content=content, metadata=metadata, provider=provider)
-
-
-class _ImmediateThread:
-    def __init__(self, target=None, kwargs=None):
-        self._target = target
-        self._kwargs = kwargs or {}
-        self._alive = False
-
-    def start(self) -> None:
-        self._alive = True
-        if self._target:
-            self._target(**self._kwargs)
-        self._alive = False
-
-    def join(self, timeout=None) -> None:
-        return None
-
-    def is_alive(self) -> bool:
-        return self._alive
 
 
 class _JoinDrivenThread:
@@ -5135,3 +5152,165 @@ class TestInternalHooksCoverage:
                     metadata_fields=[],
                     query="q",
                 )
+
+
+class TestRetrieverExceptionHandling:
+    """Tests for _retriever exception propagation and _multiple_retrieve_thread partial failure tolerance."""
+
+    @pytest.fixture
+    def retrieval(self) -> DatasetRetrieval:
+        return DatasetRetrieval()
+
+    def test_retriever_catches_exception_and_appends_to_list(self, retrieval: DatasetRetrieval) -> None:
+        """When _retriever hits an error, it should log and append to the exceptions list."""
+        flask_app = SimpleNamespace(app_context=lambda: nullcontext())
+        all_documents: list[Document] = []
+        exceptions: list[Exception] = []
+
+        with patch(
+            "core.rag.retrieval.dataset_retrieval.db.session.scalar",
+            side_effect=RuntimeError("db connection lost"),
+        ):
+            retrieval._retriever(
+                flask_app=flask_app,  # type: ignore[arg-type]
+                dataset_id="d1",
+                query="python",
+                top_k=1,
+                all_documents=all_documents,
+                exceptions=exceptions,
+            )
+
+        assert len(exceptions) == 1
+        assert "db connection lost" in str(exceptions[0])
+        assert all_documents == []
+
+    def test_retriever_without_exceptions_list_does_not_crash(self, retrieval: DatasetRetrieval) -> None:
+        """When exceptions param is None (default), _retriever should not crash on error."""
+        flask_app = SimpleNamespace(app_context=lambda: nullcontext())
+        all_documents: list[Document] = []
+
+        with patch(
+            "core.rag.retrieval.dataset_retrieval.db.session.scalar",
+            side_effect=RuntimeError("db error"),
+        ):
+            retrieval._retriever(
+                flask_app=flask_app,  # type: ignore[arg-type]
+                dataset_id="d1",
+                query="python",
+                top_k=1,
+                all_documents=all_documents,
+            )
+
+        assert all_documents == []
+
+    def test_multiple_retrieve_thread_collects_exceptions_when_all_retrievers_fail(
+        self, retrieval: DatasetRetrieval
+    ) -> None:
+        """When all _retriever threads fail, exceptions should be collected in thread_exceptions."""
+        dataset = SimpleNamespace(
+            id="d1",
+            provider="dify",
+            indexing_technique="high_quality",
+        )
+        app = Flask(__name__)
+
+        def failing_retriever(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
+            exceptions=None,
+            lock=None,
+        ):
+            if exceptions is not None:
+                exceptions.append(RuntimeError("retrieval failed"))
+
+        thread_exceptions: list[Exception] = []
+        with app.app_context():
+            with (
+                patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
+                patch.object(retrieval, "_retriever", side_effect=failing_retriever),
+            ):
+                retrieval._multiple_retrieve_thread(
+                    flask_app=app,
+                    available_datasets=[dataset],
+                    metadata_condition=None,
+                    metadata_filter_document_ids=None,
+                    all_documents=[],
+                    tenant_id="tenant-1",
+                    reranking_enable=False,
+                    reranking_mode="reranking_model",
+                    reranking_model=None,
+                    weights=None,
+                    top_k=5,
+                    score_threshold=0.0,
+                    query="test",
+                    attachment_id=None,
+                    dataset_count=1,
+                    thread_exceptions=thread_exceptions,
+                )
+
+        assert len(thread_exceptions) == 1
+        assert "retrieval failed" in str(thread_exceptions[0])
+
+    def test_multiple_retrieve_thread_returns_partial_results_on_partial_failure(
+        self, retrieval: DatasetRetrieval
+    ) -> None:
+        """When some _retriever threads fail but others succeed, partial results should be returned."""
+        dataset_ok = SimpleNamespace(id="d-ok", provider="dify", indexing_technique="high_quality")
+        dataset_bad = SimpleNamespace(id="d-bad", provider="dify", indexing_technique="high_quality")
+        app = Flask(__name__)
+
+        good_doc = _doc(provider="dify", score=0.9, dataset_id="d-ok")
+
+        def selective_retriever(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            all_documents,
+            document_ids_filter,
+            metadata_condition,
+            attachment_ids,
+            exceptions=None,
+            lock=None,
+        ):
+            if dataset_id == "d-bad":
+                if exceptions is not None:
+                    exceptions.append(RuntimeError("bad dataset"))
+            else:
+                all_documents.append(good_doc)
+
+        all_documents: list[Document] = []
+        thread_exceptions: list[Exception] = []
+        with app.app_context():
+            with (
+                patch("core.rag.retrieval.dataset_retrieval.threading.Thread", _ImmediateThread),
+                patch.object(retrieval, "_retriever", side_effect=selective_retriever),
+            ):
+                retrieval._multiple_retrieve_thread(
+                    flask_app=app,
+                    available_datasets=[dataset_ok, dataset_bad],
+                    metadata_condition=None,
+                    metadata_filter_document_ids=None,
+                    all_documents=all_documents,
+                    tenant_id="tenant-1",
+                    reranking_enable=False,
+                    reranking_mode="reranking_model",
+                    reranking_model=None,
+                    weights=None,
+                    top_k=5,
+                    score_threshold=0.0,
+                    query="test",
+                    attachment_id=None,
+                    dataset_count=2,
+                    thread_exceptions=thread_exceptions,
+                )
+
+        assert len(thread_exceptions) == 0, "Should not propagate error when partial results exist"
+        assert len(all_documents) == 1
+        assert all_documents[0].metadata["dataset_id"] == "d-ok"
