@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -14,6 +15,7 @@ from controllers.console.workspace.account import (
     AccountDeleteVerifyApi,
     AccountInitApi,
     AccountIntegrateApi,
+    AccountIntegrateResponse,
     AccountInterfaceLanguageApi,
     AccountInterfaceThemeApi,
     AccountNameApi,
@@ -23,6 +25,7 @@ from controllers.console.workspace.account import (
     ChangeEmailCheckApi,
     ChangeEmailResetApi,
     CheckEmailUnique,
+    EducationStatusResponse,
 )
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
@@ -206,6 +209,19 @@ class TestAccountIntegrateApi:
 
         assert "data" in result
         assert len(result["data"]) == 2
+
+    def test_integrate_response_accepts_z_timestamp(self):
+        response = AccountIntegrateResponse.model_validate(
+            {"provider": "google", "created_at": "2024-01-01T00:00:00Z", "is_bound": True}
+        )
+
+        assert response.created_at == 1704067200
+
+    def test_education_status_accepts_naive_iso_timestamp(self):
+        response = EducationStatusResponse.model_validate({"expire_at": "2024-01-01T00:00:00"})
+
+        expected = int(datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).timestamp())
+        assert response.expire_at == expected
 
 
 class TestAccountDeleteApi:

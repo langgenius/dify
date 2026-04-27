@@ -185,13 +185,27 @@ def _serialize_account(account) -> dict[str, Any]:
     return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
+def _to_timestamp(value: datetime | int | str | None) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+
+    dt: datetime
+    if isinstance(value, str):
+        normalized = value.replace("Z", "+00:00") if value.endswith("Z") else value
+        dt = datetime.fromisoformat(normalized)
+    else:
+        dt = value
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.utc)
+    else:
+        dt = dt.astimezone(pytz.utc)
+    return int(dt.timestamp())
 
 
 class AccountIntegrateResponse(ResponseModel):
+    id: str | None = None
     provider: str
     created_at: int | None = None
     is_bound: bool
@@ -199,7 +213,7 @@ class AccountIntegrateResponse(ResponseModel):
 
     @field_validator("created_at", mode="before")
     @classmethod
-    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+    def _normalize_created_at(cls, value: datetime | int | str | None) -> int | None:
         return _to_timestamp(value)
 
 
@@ -219,14 +233,14 @@ class EducationStatusResponse(ResponseModel):
 
     @field_validator("expire_at", mode="before")
     @classmethod
-    def _normalize_expire_at(cls, value: datetime | int | None) -> int | None:
+    def _normalize_expire_at(cls, value: datetime | int | str | None) -> int | None:
         return _to_timestamp(value)
 
 
 class EducationAutocompleteResponse(ResponseModel):
-    data: list[str] = Field(default_factory=list)
-    curr_page: int | None = None
-    has_next: bool | None = None
+    data: list[str]
+    curr_page: int
+    has_next: bool
 
 
 register_schema_models(
@@ -454,9 +468,7 @@ class AccountIntegrateApi(Resource):
                     }
                 )
 
-        return AccountIntegrateListResponse(
-            data=[AccountIntegrateResponse.model_validate(item) for item in integrate_data]
-        ).model_dump(mode="json")
+        return AccountIntegrateListResponse.model_validate({"data": integrate_data}).model_dump(mode="json")
 
 
 @console_ns.route("/account/delete/verify")
@@ -518,7 +530,7 @@ class EducationVerifyApi(Resource):
         account, _ = current_account_with_tenant()
 
         return EducationVerifyResponse.model_validate(
-            BillingService.EducationIdentity.verify(account.id, account.email) or {}
+            BillingService.EducationIdentity.verify(account.id, account.email)
         ).model_dump(mode="json")
 
 
@@ -547,11 +559,9 @@ class EducationApi(Resource):
     def get(self):
         account, _ = current_account_with_tenant()
 
-        res = BillingService.EducationIdentity.status(account.id) or {}
-        # convert expire_at to UTC timestamp from isoformat
-        if res and "expire_at" in res:
-            res["expire_at"] = datetime.fromisoformat(res["expire_at"]).astimezone(pytz.utc)
-        return EducationStatusResponse.model_validate(res).model_dump(mode="json")
+        return EducationStatusResponse.model_validate(BillingService.EducationIdentity.status(account.id)).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/account/education/autocomplete")
@@ -568,7 +578,7 @@ class EducationAutoCompleteApi(Resource):
         args = EducationAutocompleteQuery.model_validate(payload)
 
         return EducationAutocompleteResponse.model_validate(
-            BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit) or {}
+            BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit)
         ).model_dump(mode="json")
 
 
