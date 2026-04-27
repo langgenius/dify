@@ -15,6 +15,7 @@ from typing import Any, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -51,6 +52,8 @@ from .model import App, Tag, TagBinding, UploadFile
 from .types import AdjustedJSON, BinaryData, EnumText, LongText, StringUUID, adjusted_json_index
 
 logger = logging.getLogger(__name__)
+
+_dict_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class PreProcessingRuleItem(TypedDict):
@@ -235,7 +238,7 @@ class Dataset(Base):
 
     @property
     def index_struct_dict(self):
-        return json.loads(self.index_struct) if self.index_struct else None
+        return _dict_adapter.validate_json(self.index_struct) if self.index_struct else None
 
     @property
     def external_retrieval_model(self):
@@ -372,7 +375,9 @@ class Dataset(Base):
             "external_knowledge_id": external_knowledge_binding.external_knowledge_id,
             "external_knowledge_api_id": external_knowledge_api.id,
             "external_knowledge_api_name": external_knowledge_api.name,
-            "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
+            "external_knowledge_api_endpoint": _dict_adapter.validate_json(external_knowledge_api.settings).get(
+                "endpoint", ""
+            ),
         }
 
     @property
@@ -475,9 +480,11 @@ class DatasetProcessRule(Base):  # bug
 
     @property
     def rules_dict(self) -> dict[str, Any] | None:
+        if not self.rules:
+            return None
         try:
-            return json.loads(self.rules) if self.rules else None
-        except JSONDecodeError:
+            return _dict_adapter.validate_json(self.rules)
+        except ValidationError:
             return None
 
 
@@ -581,18 +588,16 @@ class Document(Base):
     def data_source_info_dict(self) -> dict[str, Any]:
         if self.data_source_info:
             try:
-                data_source_info_dict: dict[str, Any] = json.loads(self.data_source_info)
-            except JSONDecodeError:
-                data_source_info_dict = {}
-
-            return data_source_info_dict
+                return _dict_adapter.validate_json(self.data_source_info)
+            except ValidationError:
+                return {}
         return {}
 
     @property
     def data_source_detail_dict(self) -> dict[str, Any]:
         if self.data_source_info:
             if self.data_source_type == "upload_file":
-                data_source_info_dict: dict[str, Any] = json.loads(self.data_source_info)
+                data_source_info_dict: dict[str, Any] = _dict_adapter.validate_json(self.data_source_info)
                 file_detail = db.session.scalar(
                     select(UploadFile).where(UploadFile.id == data_source_info_dict["upload_file_id"])
                 )
@@ -609,7 +614,7 @@ class Document(Base):
                         }
                     }
             elif self.data_source_type in {"notion_import", "website_crawl"}:
-                result: dict[str, Any] = json.loads(self.data_source_info)
+                result: dict[str, Any] = _dict_adapter.validate_json(self.data_source_info)
                 return result
         return {}
 
@@ -1413,9 +1418,11 @@ class ExternalKnowledgeApis(TypeBase):
 
     @property
     def settings_dict(self) -> dict[str, Any] | None:
+        if not self.settings:
+            return None
         try:
-            return json.loads(self.settings) if self.settings else None
-        except JSONDecodeError:
+            return _dict_adapter.validate_json(self.settings)
+        except ValidationError:
             return None
 
     @property

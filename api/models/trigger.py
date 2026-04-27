@@ -1,12 +1,12 @@
-import json
 import time
 from collections.abc import Mapping
 from datetime import datetime
 from functools import cached_property
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict
 from uuid import uuid4
 
 import sqlalchemy as sa
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import DateTime, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,6 +22,8 @@ from .engine import db
 from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from .model import Account
 from .types import EnumText, LongText, StringUUID
+
+_dict_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 TriggerJsonObject = dict[str, object]
 TriggerCredentials = dict[str, str]
@@ -210,7 +212,10 @@ class TriggerOAuthTenantClient(TypeBase):
 
     @property
     def oauth_params(self) -> Mapping[str, object]:
-        return cast(TriggerJsonObject, json.loads(self.encrypted_oauth_params or "{}"))
+        try:
+            return _dict_adapter.validate_json(self.encrypted_oauth_params or "{}")
+        except ValidationError:
+            return {}
 
 
 class WorkflowTriggerLog(TypeBase):
@@ -299,6 +304,18 @@ class WorkflowTriggerLog(TypeBase):
 
     def to_dict(self) -> WorkflowTriggerLogDict:
         """Convert to dictionary for API responses"""
+        trigger_metadata: Any | None = None
+        if self.trigger_metadata:
+            try:
+                trigger_metadata = _dict_adapter.validate_json(self.trigger_metadata)
+            except ValidationError:
+                trigger_metadata = None
+        outputs: Any | None = None
+        if self.outputs:
+            try:
+                outputs = _dict_adapter.validate_json(self.outputs)
+            except ValidationError:
+                outputs = None
         return {
             "id": self.id,
             "tenant_id": self.tenant_id,
@@ -306,11 +323,11 @@ class WorkflowTriggerLog(TypeBase):
             "workflow_id": self.workflow_id,
             "workflow_run_id": self.workflow_run_id,
             "root_node_id": self.root_node_id,
-            "trigger_metadata": json.loads(self.trigger_metadata) if self.trigger_metadata else None,
+            "trigger_metadata": trigger_metadata,
             "trigger_type": self.trigger_type,
-            "trigger_data": json.loads(self.trigger_data),
-            "inputs": json.loads(self.inputs),
-            "outputs": json.loads(self.outputs) if self.outputs else None,
+            "trigger_data": _dict_adapter.validate_json(self.trigger_data),
+            "inputs": _dict_adapter.validate_json(self.inputs),
+            "outputs": outputs,
             "status": self.status,
             "error": self.error,
             "queue_name": self.queue_name,
