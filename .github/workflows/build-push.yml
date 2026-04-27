@@ -26,6 +26,9 @@ jobs:
   build:
     runs-on: ${{ matrix.runs_on }}
     if: github.repository == 'langgenius/dify'
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       matrix:
         include:
@@ -42,7 +45,7 @@ jobs:
             build_context: "{{defaultContext}}:api"
             file: "Dockerfile"
             platform: linux/arm64
-            runs_on: ubuntu-24.04-arm
+            runs_on: depot-ubuntu-24.04-4
           - service_name: "build-web-amd64"
             image_name_env: "DIFY_WEB_IMAGE_NAME"
             artifact_context: "web"
@@ -56,7 +59,7 @@ jobs:
             build_context: "{{defaultContext}}"
             file: "web/Dockerfile"
             platform: linux/arm64
-            runs_on: ubuntu-24.04-arm
+            runs_on: depot-ubuntu-24.04-4
 
     steps:
       - name: Prepare
@@ -70,8 +73,8 @@ jobs:
           username: ${{ env.DOCKERHUB_USER }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
 
       - name: Extract metadata for Docker
         id: meta
@@ -81,16 +84,15 @@ jobs:
 
       - name: Build Docker image
         id: build
-        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+        uses: depot/build-push-action@v1
         with:
+          project: ${{ vars.DEPOT_PROJECT_ID }}
           context: ${{ matrix.build_context }}
           file: ${{ matrix.file }}
           platforms: ${{ matrix.platform }}
           build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env[matrix.image_name_env] }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ matrix.service_name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service_name }}
 
       - name: Export digest
         env:
@@ -107,6 +109,30 @@ jobs:
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
+
+  fork-build-validate:
+    if: github.repository != 'langgenius/dify'
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - service_name: "validate-api-amd64"
+            build_context: "{{defaultContext}}:api"
+            file: "Dockerfile"
+          - service_name: "validate-web-amd64"
+            build_context: "{{defaultContext}}"
+            file: "web/Dockerfile"
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@98e3b2c9eab4f4f98a95c0c0a3ea5e5e672fd2a8 # v3.10.0
+
+      - name: Validate Docker image
+        uses: docker/build-push-action@5cd29d66b4a8d8e6f4d5dfe2e9329f0b1d446289 # v6.18.0
+        with:
+          push: false
+          context: ${{ matrix.build_context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64
 
   create-manifest:
     needs: build
