@@ -4,20 +4,15 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 
-vi.mock('@/app/components/base/tooltip', () => ({
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
   __esModule: true,
-  default: ({
-    children,
-    popupContent,
-  }: {
-    children: React.ReactNode
-    popupContent: React.ReactNode
-  }) => (
+  Tooltip: ({ children }: { children: React.ReactNode }) => (
     <div>
       {children}
-      {popupContent}
     </div>
   ),
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -91,12 +86,18 @@ describe('question-classifier/node', () => {
     render(
       <Node
         {...baseNodeProps}
-        data={createData({ classes: [createTopic(), createTopic({ id: 'topic-2', name: 'Refunds' })] })}
+        data={createData({
+          classes: [
+            createTopic({ label: 'Billing' } as Partial<Topic>),
+            createTopic({ id: 'topic-2', name: 'Refunds', label: 'Refund desk' } as Partial<Topic>),
+          ],
+        })}
       />,
     )
 
     expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()
-    expect(screen.getByText('Billing questions')).toBeInTheDocument()
+    expect(screen.getByText('Billing')).toBeInTheDocument()
+    expect(screen.getByText('Refund desk')).toBeInTheDocument()
     expect(screen.getByText('handle-topic-1')).toBeInTheDocument()
     expect(screen.getByText('handle-topic-2')).toBeInTheDocument()
   })

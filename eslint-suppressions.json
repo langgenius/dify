@@ -1822,7 +1822,7 @@
   },
   "web/app/components/base/prompt-editor/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
@@ -5100,37 +5100,6 @@
   "web/app/components/workflow/nodes/question-classifier/components/advanced-setting.tsx": {
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/question-classifier/components/class-item.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/question-classifier/components/class-list.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "react/unsupported-syntax": {
-      "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/question-classifier/default.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/question-classifier/node.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/question-classifier/use-config.ts": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/question-classifier/use-single-run-form-params.ts": {
