@@ -1,11 +1,12 @@
 """Final working unit tests for admin endpoints - tests business logic directly."""
 
 import uuid
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 from werkzeug.exceptions import NotFound, Unauthorized
 
+import controllers.console.admin as admin_module
 from controllers.console.admin import (
     DeleteExploreBannerApi,
     InsertExploreAppApi,
@@ -15,6 +16,22 @@ from controllers.console.admin import (
     InsertExploreBannerPayload,
 )
 from models.model import App, InstalledApp, RecommendedApp
+
+
+@pytest.fixture(autouse=True)
+def _patch_db_engine():
+    with patch.object(type(admin_module.db), "engine", new_callable=PropertyMock, return_value=MagicMock()):
+        yield
+
+
+def _make_sm(session_mock):
+    """Return a sessionmaker mock whose .begin() context manager yields session_mock."""
+    ctx = MagicMock()
+    ctx.__enter__.return_value = session_mock
+    ctx.__exit__.return_value = False
+    sm = MagicMock()
+    sm.return_value.begin.return_value = ctx
+    return sm
 
 
 @pytest.fixture(autouse=True)
@@ -77,31 +94,15 @@ def mock_banner_payload(mocker):
     )
 
 
-@pytest.fixture
-def mock_session_factory(mocker):
-    mock_session = Mock()
-    mock_session.execute = Mock()
-    mock_session.add = Mock()
-    mock_session.commit = Mock()
-
-    mocker.patch(
-        "controllers.console.admin.session_factory.create_session",
-        return_value=Mock(
-            __enter__=lambda s: mock_session,
-            __exit__=Mock(return_value=False),
-        ),
-    )
-
-
 class TestDeleteExploreBannerApi:
     def setup_method(self):
         self.api = DeleteExploreBannerApi()
 
     def test_delete_banner_not_found(self, mocker, mock_admin_auth):
-        mocker.patch(
-            "controllers.console.admin.db.session.execute",
-            return_value=Mock(scalar_one_or_none=lambda: None),
-        )
+        session = Mock()
+        session.execute.return_value = Mock(scalar_one_or_none=lambda: None)
+
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         with pytest.raises(NotFound, match="is not found"):
             self.api.delete(uuid.uuid4())
@@ -109,17 +110,16 @@ class TestDeleteExploreBannerApi:
     def test_delete_banner_success(self, mocker, mock_admin_auth):
         mock_banner = Mock()
 
-        mocker.patch(
-            "controllers.console.admin.db.session.execute",
-            return_value=Mock(scalar_one_or_none=lambda: mock_banner),
-        )
-        mocker.patch("controllers.console.admin.db.session.delete")
-        mocker.patch("controllers.console.admin.db.session.commit")
+        session = Mock()
+        session.execute.return_value = Mock(scalar_one_or_none=lambda: mock_banner)
+
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         response, status = self.api.delete(uuid.uuid4())
 
         assert status == 204
         assert response["result"] == "success"
+        session.delete.assert_called_once_with(mock_banner)
 
 
 class TestInsertExploreBannerApi:
@@ -127,13 +127,15 @@ class TestInsertExploreBannerApi:
         self.api = InsertExploreBannerApi()
 
     def test_insert_banner_success(self, mocker, mock_admin_auth, mock_banner_payload):
-        mocker.patch("controllers.console.admin.db.session.add")
-        mocker.patch("controllers.console.admin.db.session.commit")
+        session = Mock()
+
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         response, status = self.api.post()
 
         assert status == 201
         assert response["result"] == "success"
+        session.add.assert_called_once()
 
     def test_banner_payload_valid_language(self):
         payload = {
@@ -169,14 +171,10 @@ class TestInsertExploreAppApiDelete:
         self.api = InsertExploreAppApi()
 
     def test_delete_when_not_in_explore(self, mocker, mock_admin_auth):
-        mocker.patch(
-            "controllers.console.admin.session_factory.create_session",
-            return_value=Mock(
-                __enter__=lambda s: s,
-                __exit__=Mock(return_value=False),
-                execute=lambda *_: Mock(scalar_one_or_none=lambda: None),
-            ),
-        )
+        session = Mock()
+        session.execute.return_value = Mock(scalar_one_or_none=lambda: None)
+
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         response, status = self.api.delete(uuid.uuid4())
 
@@ -195,29 +193,15 @@ class TestInsertExploreAppApiDelete:
 
         mock_trial = Mock()
 
-        # Mock session context manager and its execute
-        mock_session = Mock()
-        mock_session.execute = Mock()
-        mock_session.delete = Mock()
-
-        # Set up side effects for execute calls
-        mock_session.execute.side_effect = [
+        session = Mock()
+        session.execute.side_effect = [
             Mock(scalar_one_or_none=lambda: mock_recommended),
             Mock(scalar_one_or_none=lambda: mock_app),
             Mock(scalars=Mock(return_value=Mock(all=lambda: []))),
             Mock(scalar_one_or_none=lambda: mock_trial),
         ]
 
-        mocker.patch(
-            "controllers.console.admin.session_factory.create_session",
-            return_value=Mock(
-                __enter__=lambda s: mock_session,
-                __exit__=Mock(return_value=False),
-            ),
-        )
-
-        mocker.patch("controllers.console.admin.db.session.delete")
-        mocker.patch("controllers.console.admin.db.session.commit")
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         response, status = self.api.delete(app_id)
 
@@ -237,33 +221,20 @@ class TestInsertExploreAppApiDelete:
 
         mock_installed_app = Mock(spec=InstalledApp)
 
-        # Mock session
-        mock_session = Mock()
-        mock_session.execute = Mock()
-        mock_session.delete = Mock()
-
-        mock_session.execute.side_effect = [
+        session = Mock()
+        session.execute.side_effect = [
             Mock(scalar_one_or_none=lambda: mock_recommended),
             Mock(scalar_one_or_none=lambda: mock_app),
             Mock(scalars=Mock(return_value=Mock(all=lambda: [mock_installed_app]))),
             Mock(scalar_one_or_none=lambda: None),
         ]
 
-        mocker.patch(
-            "controllers.console.admin.session_factory.create_session",
-            return_value=Mock(
-                __enter__=lambda s: mock_session,
-                __exit__=Mock(return_value=False),
-            ),
-        )
-
-        mocker.patch("controllers.console.admin.db.session.delete")
-        mocker.patch("controllers.console.admin.db.session.commit")
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         response, status = self.api.delete(app_id)
 
         assert status == 204
-        assert mock_session.delete.called
+        assert session.delete.called
 
 
 class TestInsertExploreAppListApi:
@@ -271,10 +242,10 @@ class TestInsertExploreAppListApi:
         self.api = InsertExploreAppListApi()
 
     def test_app_not_found(self, mocker, mock_admin_auth, mock_console_payload):
-        mocker.patch(
-            "controllers.console.admin.db.session.execute",
-            return_value=Mock(scalar_one_or_none=lambda: None),
-        )
+        session = Mock()
+        session.execute.return_value = Mock(scalar_one_or_none=lambda: None)
+
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         with pytest.raises(NotFound, match="is not found"):
             self.api.post()
@@ -291,26 +262,13 @@ class TestInsertExploreAppListApi:
         mock_app.tenant_id = "tenant"
         mock_app.is_public = False
 
-        # db.session.execute → fetch App
-        mocker.patch(
-            "controllers.console.admin.db.session.execute",
-            return_value=Mock(scalar_one_or_none=lambda: mock_app),
-        )
+        session = Mock()
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: None),  # RecommendedApp not found
+        ]
 
-        # session_factory.create_session → recommended_app lookup
-        mock_session = Mock()
-        mock_session.execute = Mock(return_value=Mock(scalar_one_or_none=lambda: None))
-
-        mocker.patch(
-            "controllers.console.admin.session_factory.create_session",
-            return_value=Mock(
-                __enter__=lambda s: mock_session,
-                __exit__=Mock(return_value=False),
-            ),
-        )
-
-        mocker.patch("controllers.console.admin.db.session.add")
-        mocker.patch("controllers.console.admin.db.session.commit")
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         response, status = self.api.post()
 
@@ -318,7 +276,7 @@ class TestInsertExploreAppListApi:
         assert response["result"] == "success"
         assert mock_app.is_public is True
 
-    def test_update_recommended_app(self, mocker, mock_admin_auth, mock_console_payload, mock_session_factory):
+    def test_update_recommended_app(self, mocker, mock_admin_auth, mock_console_payload):
         mock_app = Mock(spec=App)
         mock_app.id = "app-id"
         mock_app.site = None
@@ -326,15 +284,13 @@ class TestInsertExploreAppListApi:
 
         mock_recommended = Mock(spec=RecommendedApp)
 
-        mocker.patch(
-            "controllers.console.admin.db.session.execute",
-            side_effect=[
-                Mock(scalar_one_or_none=lambda: mock_app),
-                Mock(scalar_one_or_none=lambda: mock_recommended),
-            ],
-        )
+        session = Mock()
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: mock_recommended),  # RecommendedApp found
+        ]
 
-        mocker.patch("controllers.console.admin.db.session.commit")
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         response, status = self.api.post()
 
@@ -347,7 +303,6 @@ class TestInsertExploreAppListApi:
         mocker,
         mock_admin_auth,
         mock_console_payload,
-        mock_session_factory,
     ):
         site = Mock()
         site.description = "Site Desc"
@@ -361,30 +316,29 @@ class TestInsertExploreAppListApi:
         mock_app.tenant_id = "tenant"
         mock_app.is_public = False
 
-        mocker.patch(
-            "controllers.console.admin.db.session.execute",
-            side_effect=[
-                Mock(scalar_one_or_none=lambda: mock_app),
-                Mock(scalar_one_or_none=lambda: None),
-                Mock(scalar_one_or_none=lambda: None),
-            ],
-        )
+        mock_recommended = Mock(spec=RecommendedApp)
 
-        commit_spy = mocker.patch("controllers.console.admin.db.session.commit")
+        session = Mock()
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: mock_recommended),  # RecommendedApp found
+        ]
+
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         response, status = self.api.post()
 
         assert status == 200
         assert response["result"] == "success"
         assert mock_app.is_public is True
-        commit_spy.assert_called_once()
+        assert mock_recommended.description == "Site Desc"
+        assert mock_recommended.copyright == "Site Copyright"
 
     def test_create_trial_app_when_can_trial_enabled(
         self,
         mocker,
         mock_admin_auth,
         mock_console_payload,
-        mock_session_factory,
     ):
         mock_console_payload["can_trial"] = True
         mock_console_payload["trial_limit"] = 5
@@ -395,28 +349,24 @@ class TestInsertExploreAppListApi:
         mock_app.tenant_id = "tenant"
         mock_app.is_public = False
 
-        mocker.patch(
-            "controllers.console.admin.db.session.execute",
-            side_effect=[
-                Mock(scalar_one_or_none=lambda: mock_app),
-                Mock(scalar_one_or_none=lambda: None),
-                Mock(scalar_one_or_none=lambda: None),
-            ],
-        )
+        session = Mock()
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: None),  # RecommendedApp not found
+            Mock(scalar_one_or_none=lambda: None),  # TrialApp not found
+        ]
 
-        add_spy = mocker.patch("controllers.console.admin.db.session.add")
-        mocker.patch("controllers.console.admin.db.session.commit")
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         self.api.post()
 
-        assert any(call.args[0].__class__.__name__ == "TrialApp" for call in add_spy.call_args_list)
+        assert any(call.args[0].__class__.__name__ == "TrialApp" for call in session.add.call_args_list)
 
     def test_update_recommended_app_with_trial(
         self,
         mocker,
         mock_admin_auth,
         mock_console_payload,
-        mock_session_factory,
     ):
         """Test updating a recommended app when trial is enabled."""
         mock_console_payload["can_trial"] = True
@@ -430,17 +380,14 @@ class TestInsertExploreAppListApi:
 
         mock_recommended = Mock(spec=RecommendedApp)
 
-        mocker.patch(
-            "controllers.console.admin.db.session.execute",
-            side_effect=[
-                Mock(scalar_one_or_none=lambda: mock_app),
-                Mock(scalar_one_or_none=lambda: mock_recommended),
-                Mock(scalar_one_or_none=lambda: None),
-            ],
-        )
+        session = Mock()
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: mock_recommended),  # RecommendedApp found
+            Mock(scalar_one_or_none=lambda: None),  # TrialApp not found
+        ]
 
-        add_spy = mocker.patch("controllers.console.admin.db.session.add")
-        mocker.patch("controllers.console.admin.db.session.commit")
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         response, status = self.api.post()
 
@@ -453,7 +400,6 @@ class TestInsertExploreAppListApi:
         mocker,
         mock_admin_auth,
         mock_console_payload,
-        mock_session_factory,
     ):
         """Test updating a recommended app without trial enabled."""
         mock_app = Mock(spec=App)
@@ -463,15 +409,13 @@ class TestInsertExploreAppListApi:
 
         mock_recommended = Mock(spec=RecommendedApp)
 
-        mocker.patch(
-            "controllers.console.admin.db.session.execute",
-            side_effect=[
-                Mock(scalar_one_or_none=lambda: mock_app),
-                Mock(scalar_one_or_none=lambda: mock_recommended),
-            ],
-        )
+        session = Mock()
+        session.execute.side_effect = [
+            Mock(scalar_one_or_none=lambda: mock_app),  # App query
+            Mock(scalar_one_or_none=lambda: mock_recommended),  # RecommendedApp found
+        ]
 
-        mocker.patch("controllers.console.admin.db.session.commit")
+        mocker.patch("controllers.console.admin.sessionmaker", _make_sm(session))
 
         response, status = self.api.post()
 
@@ -784,16 +728,13 @@ class TestExploreAppBusinessLogicDirect:
         # Test session.add pattern
         mock_recommended_app = Mock(spec=RecommendedApp)
         mock_session.add(mock_recommended_app)
-        mock_session.commit()
 
         # Verify session was used correctly
         mock_session.add.assert_called_once_with(mock_recommended_app)
-        mock_session.commit.assert_called_once()
 
         # Test session.delete pattern
         mock_recommended_app_to_delete = Mock(spec=RecommendedApp)
         mock_session.delete(mock_recommended_app_to_delete)
-        mock_session.commit()
 
         # Verify delete pattern
         mock_session.delete.assert_called_once_with(mock_recommended_app_to_delete)

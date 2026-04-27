@@ -8,13 +8,13 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import console_ns
 from controllers.console.wraps import only_edition_cloud
-from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from libs.token import extract_access_token
 from models.model import App, ExporleBanner, InstalledApp, RecommendedApp, TrialApp
@@ -99,23 +99,23 @@ class InsertExploreAppListApi(Resource):
     def post(self):
         payload = InsertExploreAppPayload.model_validate(console_ns.payload)
 
-        app = db.session.execute(select(App).where(App.id == payload.app_id)).scalar_one_or_none()
-        if not app:
-            raise NotFound(f"App '{payload.app_id}' is not found")
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            app = session.execute(select(App).where(App.id == payload.app_id)).scalar_one_or_none()
+            if not app:
+                raise NotFound(f"App '{payload.app_id}' is not found")
 
-        site = app.site
-        if not site:
-            desc = payload.desc or ""
-            copy_right = payload.copyright or ""
-            privacy_policy = payload.privacy_policy or ""
-            custom_disclaimer = payload.custom_disclaimer or ""
-        else:
-            desc = site.description or payload.desc or ""
-            copy_right = site.copyright or payload.copyright or ""
-            privacy_policy = site.privacy_policy or payload.privacy_policy or ""
-            custom_disclaimer = site.custom_disclaimer or payload.custom_disclaimer or ""
+            site = app.site
+            if not site:
+                desc = payload.desc or ""
+                copy_right = payload.copyright or ""
+                privacy_policy = payload.privacy_policy or ""
+                custom_disclaimer = payload.custom_disclaimer or ""
+            else:
+                desc = site.description or payload.desc or ""
+                copy_right = site.copyright or payload.copyright or ""
+                privacy_policy = site.privacy_policy or payload.privacy_policy or ""
+                custom_disclaimer = site.custom_disclaimer or payload.custom_disclaimer or ""
 
-        with session_factory.create_session() as session:
             recommended_app = session.execute(
                 select(RecommendedApp).where(RecommendedApp.app_id == payload.app_id)
             ).scalar_one_or_none()
@@ -132,13 +132,13 @@ class InsertExploreAppListApi(Resource):
                     position=payload.position,
                 )
 
-                db.session.add(recommended_app)
+                session.add(recommended_app)
                 if payload.can_trial:
-                    trial_app = db.session.execute(
+                    trial_app = session.execute(
                         select(TrialApp).where(TrialApp.app_id == payload.app_id)
                     ).scalar_one_or_none()
                     if not trial_app:
-                        db.session.add(
+                        session.add(
                             TrialApp(
                                 app_id=payload.app_id,
                                 tenant_id=app.tenant_id,
@@ -149,7 +149,6 @@ class InsertExploreAppListApi(Resource):
                         trial_app.trial_limit = payload.trial_limit
 
                 app.is_public = True
-                db.session.commit()
 
                 return {"result": "success"}, 201
             else:
@@ -162,11 +161,11 @@ class InsertExploreAppListApi(Resource):
                 recommended_app.position = payload.position
 
                 if payload.can_trial:
-                    trial_app = db.session.execute(
+                    trial_app = session.execute(
                         select(TrialApp).where(TrialApp.app_id == payload.app_id)
                     ).scalar_one_or_none()
                     if not trial_app:
-                        db.session.add(
+                        session.add(
                             TrialApp(
                                 app_id=payload.app_id,
                                 tenant_id=app.tenant_id,
@@ -176,8 +175,6 @@ class InsertExploreAppListApi(Resource):
                     else:
                         trial_app.trial_limit = payload.trial_limit
                 app.is_public = True
-
-                db.session.commit()
 
                 return {"result": "success"}, 200
 
@@ -191,21 +188,18 @@ class InsertExploreAppApi(Resource):
     @only_edition_cloud
     @admin_required
     def delete(self, app_id):
-        with session_factory.create_session() as session:
+        with sessionmaker(bind=db.engine).begin() as session:
             recommended_app = session.execute(
                 select(RecommendedApp).where(RecommendedApp.app_id == str(app_id))
             ).scalar_one_or_none()
 
-        if not recommended_app:
-            return {"result": "success"}, 204
+            if not recommended_app:
+                return {"result": "success"}, 204
 
-        with session_factory.create_session() as session:
             app = session.execute(select(App).where(App.id == recommended_app.app_id)).scalar_one_or_none()
+            if app:
+                app.is_public = False
 
-        if app:
-            app.is_public = False
-
-        with session_factory.create_session() as session:
             installed_apps = (
                 session.execute(
                     select(InstalledApp).where(
@@ -226,8 +220,7 @@ class InsertExploreAppApi(Resource):
             if trial_app:
                 session.delete(trial_app)
 
-        db.session.delete(recommended_app)
-        db.session.commit()
+            session.delete(recommended_app)
 
         return {"result": "success"}, 204
 
@@ -254,8 +247,8 @@ class InsertExploreBannerApi(Resource):
             sort=payload.sort,
             language=payload.language,
         )
-        db.session.add(banner)
-        db.session.commit()
+        with sessionmaker(bind=db.engine).begin() as session:
+            session.add(banner)
 
         return {"result": "success"}, 201
 
@@ -269,12 +262,12 @@ class DeleteExploreBannerApi(Resource):
     @only_edition_cloud
     @admin_required
     def delete(self, banner_id):
-        banner = db.session.execute(select(ExporleBanner).where(ExporleBanner.id == banner_id)).scalar_one_or_none()
-        if not banner:
-            raise NotFound(f"Banner '{banner_id}' is not found")
+        with sessionmaker(bind=db.engine).begin() as session:
+            banner = session.execute(select(ExporleBanner).where(ExporleBanner.id == banner_id)).scalar_one_or_none()
+            if not banner:
+                raise NotFound(f"Banner '{banner_id}' is not found")
 
-        db.session.delete(banner)
-        db.session.commit()
+            session.delete(banner)
 
         return {"result": "success"}, 204
 
@@ -375,7 +368,8 @@ class BatchAddNotificationAccountsApi(Resource):
         chunk_size = 500
         for i in range(0, len(emails), chunk_size):
             chunk = emails[i : i + chunk_size]
-            rows = db.session.execute(select(Account.id, Account.email).where(Account.email.in_(chunk))).all()
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+                rows = session.execute(select(Account.id, Account.email).where(Account.email.in_(chunk))).all()
             account_ids.extend(str(row.id) for row in rows)
 
         if not account_ids:

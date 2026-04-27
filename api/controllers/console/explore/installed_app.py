@@ -6,6 +6,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, computed_field, field_validator
 from sqlalchemy import and_, select
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.schema import register_schema_models
@@ -134,33 +135,34 @@ class InstalledAppsListApi(Resource):
         query = InstalledAppsListQuery.model_validate(request.args.to_dict())
         current_user, current_tenant_id = current_account_with_tenant()
 
-        if query.app_id:
-            installed_apps = db.session.scalars(
-                select(InstalledApp).where(
-                    and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == query.app_id)
-                )
-            ).all()
-        else:
-            installed_apps = db.session.scalars(
-                select(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id)
-            ).all()
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            if query.app_id:
+                installed_apps = session.scalars(
+                    select(InstalledApp).where(
+                        and_(InstalledApp.tenant_id == current_tenant_id, InstalledApp.app_id == query.app_id)
+                    )
+                ).all()
+            else:
+                installed_apps = session.scalars(
+                    select(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id)
+                ).all()
 
-        if current_user.current_tenant is None:
-            raise ValueError("current_user.current_tenant must not be None")
-        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
-        installed_app_list: list[dict[str, Any]] = [
-            {
-                "id": installed_app.id,
-                "app": installed_app.app,
-                "app_owner_tenant_id": installed_app.app_owner_tenant_id,
-                "is_pinned": installed_app.is_pinned,
-                "last_used_at": installed_app.last_used_at,
-                "editable": current_user.role in {"owner", "admin"},
-                "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
-            }
-            for installed_app in installed_apps
-            if installed_app.app is not None
-        ]
+            if current_user.current_tenant is None:
+                raise ValueError("current_user.current_tenant must not be None")
+            current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
+            installed_app_list: list[dict[str, Any]] = [
+                {
+                    "id": installed_app.id,
+                    "app": installed_app.app,
+                    "app_owner_tenant_id": installed_app.app_owner_tenant_id,
+                    "is_pinned": installed_app.is_pinned,
+                    "last_used_at": installed_app.last_used_at,
+                    "editable": current_user.role in {"owner", "admin"},
+                    "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
+                }
+                for installed_app in installed_apps
+                if installed_app.app is not None
+            ]
 
         # filter out apps that user doesn't have access to
         if FeatureService.get_system_features().webapp_auth.enabled:
@@ -212,42 +214,41 @@ class InstalledAppsListApi(Resource):
     @cloud_edition_billing_resource_check("apps")
     def post(self):
         payload = InstalledAppCreatePayload.model_validate(console_ns.payload or {})
-
-        recommended_app = db.session.scalar(
-            select(RecommendedApp).where(RecommendedApp.app_id == payload.app_id).limit(1)
-        )
-        if recommended_app is None:
-            raise NotFound("Recommended app not found")
-
         _, current_tenant_id = current_account_with_tenant()
 
-        app = db.session.get(App, payload.app_id)
-
-        if app is None:
-            raise NotFound("App entity not found")
-
-        if not app.is_public:
-            raise Forbidden("You can't install a non-public app")
-
-        installed_app = db.session.scalar(
-            select(InstalledApp)
-            .where(and_(InstalledApp.app_id == payload.app_id, InstalledApp.tenant_id == current_tenant_id))
-            .limit(1)
-        )
-
-        if installed_app is None:
-            # todo: position
-            recommended_app.install_count += 1
-
-            new_installed_app = InstalledApp(
-                app_id=payload.app_id,
-                tenant_id=current_tenant_id,
-                app_owner_tenant_id=app.tenant_id,
-                is_pinned=False,
-                last_used_at=naive_utc_now(),
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            recommended_app = session.scalar(
+                select(RecommendedApp).where(RecommendedApp.app_id == payload.app_id).limit(1)
             )
-            db.session.add(new_installed_app)
-            db.session.commit()
+            if recommended_app is None:
+                raise NotFound("Recommended app not found")
+
+            app = session.get(App, payload.app_id)
+
+            if app is None:
+                raise NotFound("App entity not found")
+
+            if not app.is_public:
+                raise Forbidden("You can't install a non-public app")
+
+            installed_app = session.scalar(
+                select(InstalledApp)
+                .where(and_(InstalledApp.app_id == payload.app_id, InstalledApp.tenant_id == current_tenant_id))
+                .limit(1)
+            )
+
+            if installed_app is None:
+                # todo: position
+                recommended_app.install_count += 1
+
+                new_installed_app = InstalledApp(
+                    app_id=payload.app_id,
+                    tenant_id=current_tenant_id,
+                    app_owner_tenant_id=app.tenant_id,
+                    is_pinned=False,
+                    last_used_at=naive_utc_now(),
+                )
+                session.add(new_installed_app)
 
         return {"message": "App installed successfully"}
 
@@ -264,20 +265,17 @@ class InstalledAppApi(InstalledAppResource):
         if installed_app.app_owner_tenant_id == current_tenant_id:
             raise BadRequest("You can't uninstall an app owned by the current tenant")
 
-        db.session.delete(installed_app)
-        db.session.commit()
+        with sessionmaker(bind=db.engine).begin() as session:
+            session.delete(session.merge(installed_app))
 
         return {"result": "success", "message": "App uninstalled successfully"}, 204
 
     def patch(self, installed_app):
         payload = InstalledAppUpdatePayload.model_validate(console_ns.payload or {})
 
-        commit_args = False
         if payload.is_pinned is not None:
-            installed_app.is_pinned = payload.is_pinned
-            commit_args = True
-
-        if commit_args:
-            db.session.commit()
+            with sessionmaker(bind=db.engine).begin() as session:
+                merged = session.merge(installed_app)
+                merged.is_pinned = payload.is_pinned
 
         return {"result": "success", "message": "App info updated successfully"}
