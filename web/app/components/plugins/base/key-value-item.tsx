@@ -2,15 +2,11 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiClipboardLine,
-} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { CopyCheck } from '../../base/icons/src/vender/line/files'
 
 type Props = {
   label: string
@@ -45,7 +41,7 @@ const KeyValueItem: FC<Props> = ({
     }
   }, [isCopied])
 
-  const CopyIcon = isCopied ? CopyCheck : RiClipboardLine
+  const copyIconClassName = isCopied ? 'i-custom-vender-line-files-copy-check' : 'i-ri-clipboard-line'
   const copyLabel = t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })
 
   return (
@@ -59,7 +55,7 @@ const KeyValueItem: FC<Props> = ({
           <TooltipTrigger
             render={(
               <ActionButton aria-label={copyLabel} onClick={handleCopy}>
-                <CopyIcon aria-hidden className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+                <span aria-hidden className={cn('h-3.5 w-3.5 shrink-0 text-text-tertiary', copyIconClassName)} />
               </ActionButton>
             )}
           />

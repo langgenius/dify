@@ -13,11 +13,6 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiCloseLine,
-  RiLoader2Line,
-  RiLoopLeftLine,
-} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -218,8 +213,8 @@ const MCPDetailContent: FC<Props> = ({
               onEdit={showUpdateModal}
               onRemove={showDeleteConfirm}
             />
-            <ActionButton onClick={onHide}>
-              <RiCloseLine className="h-4 w-4" />
+            <ActionButton aria-label={t('operation.close', { ns: 'common' })} onClick={onHide}>
+              <span aria-hidden className="i-ri-close-line h-4 w-4" />
             </ActionButton>
           </div>
         </div>
@@ -251,7 +246,7 @@ const MCPDetailContent: FC<Props> = ({
               className="w-full"
               disabled
             >
-              <RiLoader2Line className={cn('mr-1 h-4 w-4 animate-spin')} />
+              <span aria-hidden className="mr-1 i-ri-loader-2-line h-4 w-4 animate-spin" />
               {t('mcp.authorizing', { ns: 'tools' })}
             </Button>
           )}
@@ -292,7 +287,7 @@ const MCPDetailContent: FC<Props> = ({
               </div>
               <div>
                 <Button size="small" onClick={showUpdateConfirm}>
-                  <RiLoopLeftLine className="mr-1 h-3.5 w-3.5" />
+                  <span aria-hidden className="mr-1 i-ri-loop-left-line h-3.5 w-3.5" />
                   {t('mcp.update', { ns: 'tools' })}
                 </Button>
               </div>

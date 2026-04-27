@@ -3,7 +3,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BucketsGray } from '@/app/components/base/icons/src/public/knowledge/online-drive'
 
 type BucketProps = {
   bucketName: string
@@ -40,7 +39,7 @@ const Bucket = ({
               className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
               onClick={handleBackToBucketList}
             >
-              <BucketsGray aria-hidden />
+              <span aria-hidden className="i-custom-public-knowledge-online-drive-buckets-gray size-4" />
             </button>
           )}
         />

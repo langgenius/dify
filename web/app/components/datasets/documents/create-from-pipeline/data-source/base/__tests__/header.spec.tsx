@@ -2,13 +2,6 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import Header from '../header'
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
-}))
-
 vi.mock('@/app/components/base/divider', () => ({
   default: () => <span data-testid="divider" />,
 }))

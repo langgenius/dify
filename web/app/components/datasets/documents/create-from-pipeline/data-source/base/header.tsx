@@ -1,7 +1,6 @@
 import type { CredentialSelectorProps } from './credential-selector'
 import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -41,7 +40,7 @@ const Header = ({
                 aria-label={configurationTip}
                 onClick={onClickConfiguration}
               >
-                <RiEqualizer2Line aria-hidden className="h-4 w-4" />
+                <span aria-hidden className="i-ri-equalizer-2-line h-4 w-4" />
               </Button>
             )}
           />
@@ -56,7 +55,7 @@ const Header = ({
         target="_blank"
         rel="noopener noreferrer"
       >
-        <RiBookOpenLine className="size-3.5 shrink-0" />
+        <span aria-hidden className="i-ri-book-open-line size-3.5 shrink-0" />
         <span title={docTitle}>{docTitle}</span>
       </a>
     </div>

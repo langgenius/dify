@@ -2,10 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Bucket from '../bucket'
 
-vi.mock('@/app/components/base/icons/src/public/knowledge/online-drive', () => ({
-  BucketsGray: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="buckets-gray" {...props} />,
-}))
-
 describe('Bucket', () => {
   const defaultProps = {
     bucketName: 'my-bucket',
@@ -23,8 +19,8 @@ describe('Bucket', () => {
   })
 
   it('should render bucket icon', () => {
-    render(<Bucket {...defaultProps} />)
-    expect(screen.getByTestId('buckets-gray'))!.toBeInTheDocument()
+    const { container } = render(<Bucket {...defaultProps} />)
+    expect(container.querySelector('.i-custom-public-knowledge-online-drive-buckets-gray')).toBeInTheDocument()
   })
 
   it('should call handleBackToBucketList on icon button click', () => {

@@ -42,8 +42,7 @@ describe('TaskStatusIndicator', () => {
 
     it('should render install icon by default', () => {
       const { container } = render(<TaskStatusIndicator {...defaultProps} />)
-      // RiInstallLine renders as svg
-      expect(container.querySelector('svg')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-install-line')).toBeInTheDocument()
       expect(screen.queryByTestId('downloading-icon')).not.toBeInTheDocument()
     })
   })
@@ -121,7 +120,6 @@ describe('TaskStatusIndicator', () => {
           totalPluginsLength={3}
         />,
       )
-      // RiCheckboxCircleFill is rendered as svg with text-text-success
       const successIcon = container.querySelector('.text-text-success')
       expect(successIcon).toBeInTheDocument()
     })

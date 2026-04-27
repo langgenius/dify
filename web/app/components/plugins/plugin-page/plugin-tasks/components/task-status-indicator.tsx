@@ -1,11 +1,6 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiCheckboxCircleFill,
-  RiErrorWarningFill,
-  RiInstallLine,
-} from '@remixicon/react'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'
 
@@ -57,10 +52,10 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
             {showDownloadingIcon
               ? <DownloadingIcon />
               : (
-                  <RiInstallLine
+                  <span
                     aria-hidden
                     className={cn(
-                      'h-4 w-4 text-components-button-secondary-text',
+                      'i-ri-install-line h-4 w-4 text-components-button-secondary-text',
                       showErrorStyle && 'text-components-button-destructive-secondary-text',
                     )}
                   />
@@ -82,10 +77,10 @@ const TaskStatusIndicator: FC<TaskStatusIndicatorProps> = ({
                 />
               )}
               {showSuccessIcon && !isInstalling && !isInstallingWithSuccess && !isInstallingWithError && (
-                <RiCheckboxCircleFill aria-hidden className="h-3.5 w-3.5 text-text-success" />
+                <span aria-hidden className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
               )}
               {isFailed && (
-                <RiErrorWarningFill aria-hidden className="h-3.5 w-3.5 text-text-destructive" />
+                <span aria-hidden className="i-ri-error-warning-fill h-3.5 w-3.5 text-text-destructive" />
               )}
             </div>
           </button>
