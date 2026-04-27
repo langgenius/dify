@@ -200,7 +200,8 @@ class AnnotationReplyActionStatusApi(Resource):
         error_msg = ""
         if job_status == "error":
             app_annotation_error_key = f"{action}_app_annotation_error_{str(job_id)}"
-            error_msg = redis_client.get(app_annotation_error_key).decode()
+            error_result = redis_client.get(app_annotation_error_key)
+            error_msg = error_result.decode() if error_result else "Unknown error"
 
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
 
@@ -431,7 +432,8 @@ class AnnotationBatchImportStatusApi(Resource):
         error_msg = ""
         if job_status == "error":
             indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
-            error_msg = redis_client.get(indexing_error_msg_key).decode()
+            error_result = redis_client.get(indexing_error_msg_key)
+            error_msg = error_result.decode() if error_result else "Unknown error"
 
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
 
