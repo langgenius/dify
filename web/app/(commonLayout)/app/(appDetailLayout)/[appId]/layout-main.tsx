@@ -12,6 +12,8 @@ import {
   RiTerminalBoxLine,
   RiTerminalWindowFill,
   RiTerminalWindowLine,
+  RiUserSettingsFill,
+  RiUserSettingsLine,
 } from '@remixicon/react'
 import { useUnmount } from 'ahooks'
 import * as React from 'react'
@@ -73,51 +75,58 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }>>([])
 
   const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum) => {
-    const navConfig = []
-
-    if (isCurrentWorkspaceEditor) {
-      navConfig.push({
-        name: t('appMenus.promptEng', { ns: 'common' }),
-        href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
-        icon: RiTerminalWindowLine,
-        selectedIcon: RiTerminalWindowFill,
-      })
-    }
-
-    navConfig.push({
-      name: t('appMenus.apiAccess', { ns: 'common' }),
-      href: `/app/${appId}/develop`,
-      icon: RiTerminalBoxLine,
-      selectedIcon: RiTerminalBoxFill,
-    })
-
-    if (isCurrentWorkspaceEditor) {
-      navConfig.push({
-        name: mode !== AppModeEnum.WORKFLOW
-          ? t('appMenus.logAndAnn', { ns: 'common' })
-          : t('appMenus.logs', { ns: 'common' }),
-        href: `/app/${appId}/logs`,
-        icon: RiFileList3Line,
-        selectedIcon: RiFileList3Fill,
-      })
-    }
-
-    navConfig.push({
-      name: t('appMenus.overview', { ns: 'common' }),
-      href: `/app/${appId}/overview`,
-      icon: RiDashboard2Line,
-      selectedIcon: RiDashboard2Fill,
-    })
-
-    if (isCurrentWorkspaceEditor && canAccessSnippetsAndEvaluation) {
-      navConfig.push({
-        name: t('appMenus.evaluation', { ns: 'common' }),
-        href: `/app/${appId}/evaluation`,
-        icon: EvaluationIcon,
-        selectedIcon: EvaluationIcon,
-      })
-    }
-
+    const navConfig = [
+      ...(isCurrentWorkspaceEditor
+        ? [{
+            name: t('appMenus.promptEng', { ns: 'common' }),
+            href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
+            icon: RiTerminalWindowLine,
+            selectedIcon: RiTerminalWindowFill,
+          }]
+        : []
+      ),
+      {
+        name: t('appMenus.apiAccess', { ns: 'common' }),
+        href: `/app/${appId}/develop`,
+        icon: RiTerminalBoxLine,
+        selectedIcon: RiTerminalBoxFill,
+      },
+      ...(isCurrentWorkspaceEditor
+        ? [{
+            name: mode !== AppModeEnum.WORKFLOW
+              ? t('appMenus.logAndAnn', { ns: 'common' })
+              : t('appMenus.logs', { ns: 'common' }),
+            href: `/app/${appId}/logs`,
+            icon: RiFileList3Line,
+            selectedIcon: RiFileList3Fill,
+          }]
+        : []
+      ),
+      {
+        name: t('appMenus.overview', { ns: 'common' }),
+        href: `/app/${appId}/overview`,
+        icon: RiDashboard2Line,
+        selectedIcon: RiDashboard2Fill,
+      },
+      ...(isCurrentWorkspaceEditor && canAccessSnippetsAndEvaluation
+        ? [{
+            name: t('appMenus.evaluation', { ns: 'common' }),
+            href: `/app/${appId}/evaluation`,
+            icon: EvaluationIcon,
+            selectedIcon: EvaluationIcon,
+          }]
+        : []
+      ),
+      ...(isCurrentWorkspaceEditor
+        ? [{
+            name: 'Access Config',
+            href: `/app/${appId}/access-config`,
+            icon: RiUserSettingsLine,
+            selectedIcon: RiUserSettingsFill,
+          }]
+        : []
+      ),
+    ]
     return navConfig
   }, [canAccessSnippetsAndEvaluation, t])
 

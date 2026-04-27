@@ -9,6 +9,8 @@ import {
   RiFileTextLine,
   RiFocus2Fill,
   RiFocus2Line,
+  RiUserSettingsFill,
+  RiUserSettingsLine,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -88,6 +90,13 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         href: `/datasets/${datasetId}/settings`,
         icon: RiEqualizer2Line,
         selectedIcon: RiEqualizer2Fill,
+        disabled: false,
+      },
+      {
+        name: 'Access Config',
+        href: `/datasets/${datasetId}/access-config`,
+        icon: RiUserSettingsLine,
+        selectedIcon: RiUserSettingsFill,
         disabled: false,
       },
     ]
