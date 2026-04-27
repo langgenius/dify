@@ -126,17 +126,21 @@ describe('@langgenius/dify-ui/toast', () => {
   })
 
   it('should respect the host timeout configuration', async () => {
+    const onClose = vi.fn()
     const screen = await render(<ToastHost timeout={3000} />)
 
-    toast('Configured timeout')
+    toast('Configured timeout', {
+      onClose,
+    })
     await expect.element(screen.getByText('Configured timeout')).toBeInTheDocument()
 
     await vi.advanceTimersByTimeAsync(2999)
+    expect(onClose).not.toHaveBeenCalled()
     expect(document.body).toHaveTextContent('Configured timeout')
 
     await vi.advanceTimersByTimeAsync(1)
     await vi.waitFor(() => {
-      expect(document.body).not.toHaveTextContent('Configured timeout')
+      expect(onClose).toHaveBeenCalledTimes(1)
     })
   })
 
