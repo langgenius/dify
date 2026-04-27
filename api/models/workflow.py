@@ -1906,12 +1906,7 @@ class WorkflowDraftVariableFile(TypeBase):
     __tablename__ = "workflow_draft_variable_files"
 
     # Primary key
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        primary_key=True,
-        default_factory=lambda: str(uuidv7()),
-        init=False
-    )
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
