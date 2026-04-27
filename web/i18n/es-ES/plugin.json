@@ -220,7 +220,6 @@
   "privilege.title": "Preferencias del plugin",
   "privilege.whoCanDebug": "¿Quién puede depurar plugins?",
   "privilege.whoCanInstall": "¿Quién puede instalar y administrar complementos?",
-  "publishPlugins": "Publicar plugins",
   "readmeInfo.failedToFetch": "No se pudo obtener el README",
   "readmeInfo.needHelpCheckReadme": "¿Necesitas ayuda? Revisa el README.",
   "readmeInfo.noReadmeAvailable": "No hay archivo README disponible",

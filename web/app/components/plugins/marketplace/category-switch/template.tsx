@@ -52,20 +52,17 @@ export const TemplateCategorySwitch = ({
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <HeroLanguagesFilter
-        languages={filterTemplateLanguages}
-        onLanguagesChange={languages => setFilterTemplateLanguages(languages.length ? languages : null)}
-      />
-      <div className="text-text-primary-on-surface">
-        ·
-      </div>
+    <div className="flex shrink-0 items-center gap-2 justify-between">
       <CommonCategorySwitch
         className={className}
         variant={variant}
         options={options}
         activeValue={activeTemplateCategory}
         onChange={handleActiveTemplateCategoryChange}
+      />
+      <HeroLanguagesFilter
+        languages={filterTemplateLanguages}
+        onLanguagesChange={languages => setFilterTemplateLanguages(languages.length ? languages : null)}
       />
     </div>
   )
