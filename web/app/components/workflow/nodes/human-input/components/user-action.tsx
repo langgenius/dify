@@ -12,7 +12,7 @@ import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'nodes.humanInput'
 const ACTION_ID_MAX_LENGTH = 20
-const BUTTON_TEXT_MAX_LENGTH = 20
+const ACTION_VALUE_MAX_LENGTH = 100
 
 type UserActionItemProps = {
   data: UserAction
@@ -63,9 +63,9 @@ const UserActionItem: FC<UserActionItemProps> = ({
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value
-    if (value.length > BUTTON_TEXT_MAX_LENGTH) {
-      value = value.slice(0, BUTTON_TEXT_MAX_LENGTH)
-      toast.error(t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow', maxLength: BUTTON_TEXT_MAX_LENGTH }))
+    if (value.length > ACTION_VALUE_MAX_LENGTH) {
+      value = value.slice(0, ACTION_VALUE_MAX_LENGTH)
+      toast.error(t(`${i18nPrefix}.userActions.buttonTextTooLong`, { ns: 'workflow', maxLength: ACTION_VALUE_MAX_LENGTH }))
     }
     onChange({ ...data, title: value })
   }
