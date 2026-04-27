@@ -7,6 +7,7 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.file_access import DatabaseFileAccessController
 from core.model_manager import ModelInstance
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from core.prompt.utils.image_detail_config import image_detail_config_for_prompt_file
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import file_manager
@@ -111,7 +112,7 @@ class TokenBufferMemory:
             for file in file_objs:
                 prompt_message = file_manager.to_prompt_message_content(
                     file,
-                    image_detail_config=detail,
+                    image_detail_config=image_detail_config_for_prompt_file(file, detail),
                 )
                 prompt_message_contents.append(prompt_message)
             prompt_message_contents.append(TextPromptMessageContent(data=text_content))

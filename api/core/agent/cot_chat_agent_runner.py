@@ -1,5 +1,6 @@
 import json
 
+from core.prompt.utils.image_detail_config import image_detail_config_for_prompt_file
 from core.agent.cot_agent_runner import CotAgentRunner
 from graphon.file import file_manager
 from graphon.model_runtime.entities import (
@@ -11,7 +12,6 @@ from graphon.model_runtime.entities import (
 )
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-
 
 class CotChatAgentRunner(CotAgentRunner):
     def _organize_system_prompt(self) -> SystemPromptMessage:
@@ -55,7 +55,7 @@ class CotChatAgentRunner(CotAgentRunner):
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(
                         file,
-                        image_detail_config=image_detail_config,
+                        image_detail_config=image_detail_config_for_prompt_file(file, image_detail_config),
                     )
                 )
             prompt_message_contents.append(TextPromptMessageContent(data=query))

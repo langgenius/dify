@@ -96,6 +96,7 @@ const DebugWithSingleModel = (
     const currentProvider = textGenerationModelList.find(item => item.provider === modelConfig.provider)
     const currentModel = currentProvider?.models.find(model => model.model === modelConfig.model_id)
     const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
+    const supportDocument = currentModel?.features?.includes(ModelFeatureEnum.document)
 
     const configData = {
       ...config,
@@ -114,7 +115,7 @@ const DebugWithSingleModel = (
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
 
-    if ((config.file_upload as any)?.enabled && files?.length && supportVision)
+    if ((config.file_upload as any)?.enabled && files?.length && (supportVision || supportDocument))
       data.files = files
 
     handleSend(

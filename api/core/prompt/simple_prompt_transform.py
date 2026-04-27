@@ -10,6 +10,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.prompt.utils.image_detail_config import image_detail_config_for_prompt_file
 from graphon.file import file_manager
 from graphon.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
@@ -296,12 +297,18 @@ class SimplePromptTransform(PromptTransform):
         if files:
             for file in files:
                 prompt_message_contents.append(
-                    file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                    file_manager.to_prompt_message_content(
+                        file,
+                        image_detail_config=image_detail_config_for_prompt_file(file, image_detail_config),
+                    )
                 )
         if context_files:
             for file in context_files:
                 prompt_message_contents.append(
-                    file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                    file_manager.to_prompt_message_content(
+                        file,
+                        image_detail_config=image_detail_config_for_prompt_file(file, image_detail_config),
+                    )
                 )
         if prompt_message_contents:
             prompt_message_contents.append(TextPromptMessageContent(data=prompt))

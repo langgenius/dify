@@ -21,6 +21,7 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
+from core.prompt.utils.image_detail_config import image_detail_config_for_prompt_file
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolParameter,
@@ -120,7 +121,8 @@ class BaseAgentRunner(AppRunner):
         model_schema = llm_model.get_model_schema(model_instance.model_name, model_instance.credentials)
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
-        self.files = application_generate_entity.files if ModelFeature.VISION in features else []
+        supports_file_context = ModelFeature.VISION in features or ModelFeature.DOCUMENT in features
+        self.files = application_generate_entity.files if supports_file_context else []
         self.query: str | None = ""
         self._current_thoughts: list[PromptMessage] = []
 
@@ -542,7 +544,7 @@ class BaseAgentRunner(AppRunner):
             prompt_message_contents.append(
                 file_manager.to_prompt_message_content(
                     file,
-                    image_detail_config=image_detail_config,
+                    image_detail_config=image_detail_config_for_prompt_file(file, image_detail_config),
                 )
             )
         prompt_message_contents.append(TextPromptMessageContent(data=message.query))
