@@ -41,10 +41,10 @@ const RoleList = ({
           key={group.id}
           className={cn(groupIndex > 0 && 'mt-6')}
         >
-          <h3 className="mb-2 px-3 system-xs-medium-uppercase tracking-wide text-text-tertiary">
+          <h3 className="mb-2 pr-3 system-xs-medium-uppercase tracking-wide text-text-tertiary">
             {group.title}
           </h3>
-          <div className="overflow-hidden rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn">
+          <div className="overflow-hidden">
             {group.items.map((row, rowIndex) => (
               <Row
                 key={row.id}

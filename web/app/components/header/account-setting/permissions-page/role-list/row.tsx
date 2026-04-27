@@ -27,7 +27,7 @@ const Row = ({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 px-4 py-3.5',
+        'flex items-start gap-3 py-3.5',
         className,
       )}
     >
