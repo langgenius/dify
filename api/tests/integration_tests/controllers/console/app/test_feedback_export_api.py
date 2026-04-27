@@ -3,7 +3,6 @@
 import json
 import uuid
 from datetime import datetime
-from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -15,7 +14,7 @@ from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import FeedbackFromSource, FeedbackRating
-from models.model import AppMode, MessageFeedback
+from models.model import AppMode, Conversation, Message, MessageFeedback
 from services.feedback_service import FeedbackService
 
 
@@ -99,19 +98,20 @@ class TestFeedbackExportApi:
             created_at=naive_utc_now(),
         )
 
-        # Mock message and conversation
-        mock_message = SimpleNamespace(
+        mock_message = Message(
             id=message_id,
+            app_id=app_id,
             conversation_id=conversation_id,
             query="What is the weather today?",
+            message={"text": "What is the weather today?"},
             answer="It's sunny and 25 degrees outside.",
             inputs={"query": "What is the weather today?"},
             created_at=naive_utc_now(),
         )
 
-        mock_conversation = SimpleNamespace(id=conversation_id, name="Weather Conversation", app_id=app_id)
+        mock_conversation = Conversation(id=conversation_id, name="Weather Conversation", app_id=app_id)
 
-        mock_app = SimpleNamespace(id=app_id, name="Weather App")
+        mock_app = App(id=app_id, name="Weather App")
 
         return {
             "user_feedback": user_feedback,
