@@ -523,8 +523,8 @@ catalogs:
       specifier: 2.0.0
       version: 2.0.0
     uuid:
-      specifier: 13.0.0
-      version: 13.0.0
+      specifier: 14.0.0
+      version: 14.0.0
     vinext:
       specifier: 0.0.41
       version: 0.0.41
@@ -1090,7 +1090,7 @@ importers:
         version: 2.0.0(react@19.2.5)(scheduler@0.27.0)
       uuid:
         specifier: 'catalog:'
-        version: 13.0.0
+        version: 14.0.0
       zod:
         specifier: 'catalog:'
         version: 4.3.6
@@ -8082,8 +8082,8 @@ packages:
     resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
     hasBin: true
 
-  uuid@13.0.0:
-    resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==}
+  uuid@14.0.0:
+    resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
     hasBin: true
 
   valibot@1.3.1:
@@ -16041,7 +16041,7 @@ snapshots:
 
   uuid@11.1.0: {}
 
-  uuid@13.0.0: {}
+  uuid@14.0.0: {}
 
   valibot@1.3.1(typescript@6.0.3):
     optionalDependencies:

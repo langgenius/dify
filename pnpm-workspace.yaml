@@ -220,7 +220,7 @@ catalog:
   uglify-js: 3.19.3
   unist-util-visit: 5.1.0
   use-context-selector: 2.0.0
-  uuid: 13.0.0
+  uuid: 14.0.0
   vinext: 0.0.41
   vite: npm:@voidzero-dev/vite-plus-core@0.1.19
   vite-plugin-inspect: 12.0.0-beta.1
