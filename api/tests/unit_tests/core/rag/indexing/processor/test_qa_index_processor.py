@@ -316,7 +316,7 @@ class TestQAIndexProcessor:
             with pytest.raises(ValueError, match="must be high quality"):
                 processor.index(dataset, dataset_document, {"qa_chunks": []})
 
-    def test_format_preview_returns_qa_preview(self, processor: QAIndexProcessor) -> None:
+    def test_format_preview_returns_preview_items(self, processor: QAIndexProcessor) -> None:
         qa_chunks = SimpleNamespace(qa_chunks=[SimpleNamespace(question="Q1", answer="A1")])
 
         with patch(
@@ -327,7 +327,7 @@ class TestQAIndexProcessor:
 
         assert preview["chunk_structure"] == "qa_model"
         assert preview["total_segments"] == 1
-        assert preview["qa_preview"] == [{"question": "Q1", "answer": "A1"}]
+        assert preview["preview"] == [{"question": "Q1", "answer": "A1"}]
 
     def test_generate_summary_preview_returns_input(self, processor: QAIndexProcessor) -> None:
         preview_items = [PreviewDetail(content="Q1")]
