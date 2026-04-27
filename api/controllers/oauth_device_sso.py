@@ -1,7 +1,7 @@
 """Legacy /v1/* mounts for SSO-branch device-flow endpoints. Canonical
-handlers live in controllers/openapi/oauth_device/. This file just
-re-registers them on the legacy blueprint until Phase F retires the
-legacy paths entirely.
+handlers live in controllers/openapi/oauth_device_sso.py. This file
+just re-registers them on the legacy blueprint until Phase F retires
+the legacy paths entirely.
 
 Note: /v1/device/sso-complete (no /oauth/ in the path) is the existing
 ACS callback. Its canonical home is /openapi/v1/oauth/device/sso-complete.
@@ -11,16 +11,18 @@ from __future__ import annotations
 
 from flask import Blueprint
 
-from controllers.openapi.oauth_device.approval_context import approval_context
-from controllers.openapi.oauth_device.approve_external import approve_external
-from controllers.openapi.oauth_device.sso_complete import sso_complete
-from controllers.openapi.oauth_device.sso_initiate import sso_initiate
+from controllers.openapi.oauth_device_sso import (
+    approval_context,
+    approve_external,
+    sso_complete,
+    sso_initiate,
+)
 from libs.device_flow_security import attach_anti_framing
 
 bp = Blueprint("oauth_device_sso", __name__, url_prefix="/v1")
 attach_anti_framing(bp)
 
-# Legacy /v1/* mounts — handlers live in controllers/openapi/oauth_device/.
+# Legacy /v1/* mounts — handlers live in controllers/openapi/oauth_device_sso.py.
 # Removed in Phase F.
 bp.add_url_rule(
     "/oauth/device/sso-initiate",

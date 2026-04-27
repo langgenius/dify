@@ -10,8 +10,7 @@ from flask.views import MethodView
 
 from controllers.console import bp as console_bp
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi.oauth_device.approve import DeviceApproveApi
-from controllers.openapi.oauth_device.deny import DeviceDenyApi
+from controllers.openapi.oauth_device import DeviceApproveApi, DeviceDenyApi
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]

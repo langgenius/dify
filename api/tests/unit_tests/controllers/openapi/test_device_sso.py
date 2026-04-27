@@ -10,10 +10,12 @@ from flask.views import MethodView
 
 from controllers.oauth_device_sso import bp as legacy_sso_bp
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi.oauth_device.approval_context import approval_context
-from controllers.openapi.oauth_device.approve_external import approve_external
-from controllers.openapi.oauth_device.sso_complete import sso_complete
-from controllers.openapi.oauth_device.sso_initiate import sso_initiate
+from controllers.openapi.oauth_device_sso import (
+    approval_context,
+    approve_external,
+    sso_complete,
+    sso_initiate,
+)
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -115,6 +117,6 @@ def test_sso_complete_idp_callback_url_uses_canonical_path():
     canonical /openapi/v1/ path so IdPs are configured against the
     forward-looking ACS endpoint, not the legacy alias.
     """
-    from controllers.openapi.oauth_device import sso_initiate as si
+    from controllers.openapi import oauth_device_sso
 
-    assert si._SSO_COMPLETE_PATH == "/openapi/v1/oauth/device/sso-complete"
+    assert oauth_device_sso._SSO_COMPLETE_PATH == "/openapi/v1/oauth/device/sso-complete"

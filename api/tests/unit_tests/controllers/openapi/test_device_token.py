@@ -9,7 +9,7 @@ from flask import Flask
 from flask.views import MethodView
 
 from controllers.openapi import bp as openapi_bp
-from controllers.openapi.oauth_device.token import OAuthDeviceTokenApi
+from controllers.openapi.oauth_device import OAuthDeviceTokenApi
 from controllers.service_api import bp as service_api_bp
 
 if not hasattr(builtins, "MethodView"):

@@ -1,14 +1,16 @@
 """Legacy /v1/* mounts for the OAuth bearer + device-flow endpoints.
 Canonical handlers live in controllers/openapi/. This file just
-re-registers them on the service_api_ns until Phase F retires the
+re-registers them on service_api_ns until Phase F retires the
 legacy paths entirely.
 """
 from __future__ import annotations
 
 from controllers.openapi.account import AccountApi, AccountSessionsSelfApi
-from controllers.openapi.oauth_device.code import OAuthDeviceCodeApi
-from controllers.openapi.oauth_device.lookup import OAuthDeviceLookupApi
-from controllers.openapi.oauth_device.token import OAuthDeviceTokenApi
+from controllers.openapi.oauth_device import (
+    OAuthDeviceCodeApi,
+    OAuthDeviceLookupApi,
+    OAuthDeviceTokenApi,
+)
 from controllers.service_api import service_api_ns
 
 # Legacy /v1/* mounts — handlers live in controllers/openapi/.
