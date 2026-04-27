@@ -7,7 +7,7 @@ import os
 import time
 import urllib.parse
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, TypedDict
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
@@ -23,6 +23,12 @@ from graphon.http.protocols import HttpResponseProtocol
 
 if TYPE_CHECKING:
     from graphon.file import File
+
+
+class SignedQueryDict(TypedDict):
+    timestamp: str
+    nonce: str
+    sign: str
 
 
 class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
@@ -96,7 +102,12 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         self._assert_upload_file_access(upload_file_id=upload_file_id)
         base_url = self._base_url(for_external=for_external)
         url = f"{base_url}/files/{upload_file_id}/file-preview"
-        query = self._sign_query(payload=f"file-preview|{upload_file_id}")
+        signed = self._sign_query(payload=f"file-preview|{upload_file_id}")
+        query: dict[str, str] = {
+            "timestamp": signed["timestamp"],
+            "nonce": signed["nonce"],
+            "sign": signed["sign"],
+        }
         if as_attachment:
             query["as_attachment"] = "true"
         return f"{url}?{urllib.parse.urlencode(query)}"
@@ -130,7 +141,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     def _secret_key() -> bytes:
         return dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
 
-    def _sign_query(self, *, payload: str) -> dict[str, str]:
+    def _sign_query(self, *, payload: str) -> SignedQueryDict:
         timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()
         sign = hmac.new(self._secret_key(), f"{payload}|{timestamp}|{nonce}".encode(), hashlib.sha256).digest()
