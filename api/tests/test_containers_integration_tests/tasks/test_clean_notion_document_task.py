@@ -602,14 +602,25 @@ class TestCleanNotionDocumentTask:
         # Note: This test successfully verifies database operations.
         # IndexProcessor verification would require more sophisticated mocking.
 
-    def test_clean_notion_document_task_database_transaction_rollback(
+    def test_clean_notion_document_task_continues_when_index_processor_fails(
         self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies
     ):
         """
-        Test cleanup task behavior when database operations fail.
+        Index processor failure (e.g. transient billing API error propagated via
+        ``FeatureService`` when ``Vector(dataset)`` lazily resolves the embedding
+        model) must NOT abort the cleanup task. The Document rows have already
+        been hard-deleted in the first session block before vector cleanup runs,
+        so any uncaught exception escaping the task would strand
+        ``DocumentSegment`` rows in PG with no parent ``Document``.
 
-        This test verifies that the task properly handles database errors
-        and maintains data consistency.
+        Contract: the task swallows the index_processor exception, logs it, and
+        proceeds to delete the segments — leaving PG consistent. (Vector orphans,
+        if any, can be reaped later by an offline scanner.)
+
+        Regression guard for the production incident where ``clean_document_task``
+        / ``clean_notion_document_task`` failed with
+        ``ValueError("Unable to retrieve billing information...")`` and left
+        tens of thousands of orphan segments per affected tenant.
         """
         fake = Faker()
 
@@ -672,17 +683,28 @@ class TestCleanNotionDocumentTask:
         db_session_with_containers.add(segment)
         db_session_with_containers.commit()
 
-        # Mock index processor to raise an exception
+        # Simulate the production failure mode: index_processor.clean() raises a
+        # ValueError mirroring ``BillingService._send_request`` returning non-200.
         mock_index_processor = mock_index_processor_factory.return_value.init_index_processor.return_value
-        mock_index_processor.clean.side_effect = Exception("Index processor error")
+        mock_index_processor.clean.side_effect = ValueError(
+            "Unable to retrieve billing information. Please try again later or contact support."
+        )
 
-        # Execute cleanup task - current implementation propagates the exception
-        with pytest.raises(Exception, match="Index processor error"):
-            clean_notion_document_task([document.id], dataset.id)
+        # Execute cleanup task — must NOT raise even though clean() raises.
+        # Before the safety-net wrapper this would have re-raised the ValueError,
+        # aborting the task and leaving DocumentSegment stranded in PG.
+        clean_notion_document_task([document.id], dataset.id)
 
-        # Note: This test demonstrates the task's error handling capability.
-        # Even with external service errors, the database operations complete successfully.
-        # In a production environment, proper error handling would determine transaction rollback behavior.
+        # Vector cleanup was attempted exactly once.
+        mock_index_processor.clean.assert_called_once()
+
+        # The crucial assertion: despite the index processor failure, the
+        # final session block (line 51-52, ``DELETE FROM document_segments``)
+        # still ran and committed. This is what the wrapper buys us — without
+        # it the production incident left tens of thousands of orphan segments
+        # per affected tenant. Aligns with the assertion shape used by the
+        # happy-path test (``test_clean_notion_document_task_success``).
+        assert _count_segments(db_session_with_containers, DocumentSegment.document_id == document.id) == 0
 
     def test_clean_notion_document_task_with_large_number_of_documents(
         self, db_session_with_containers, mock_index_processor_factory, mock_external_service_dependencies

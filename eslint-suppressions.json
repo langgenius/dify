@@ -2051,7 +2051,7 @@
   },
   "web/app/components/base/text-generation/types.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 3
+      "count": 1
     }
   },
   "web/app/components/base/textarea/index.stories.tsx": {
@@ -2059,11 +2059,6 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/textarea/index.tsx": {
-    "react-refresh/only-export-components": {
       "count": 1
     }
   },
@@ -2414,18 +2409,8 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/documents/create-from-pipeline/data-source/base/header.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/documents/create-from-pipeline/data-source/online-documents/index.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/documents/create-from-pipeline/data-source/online-drive/file-list/header/breadcrumbs/bucket.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2513,11 +2498,6 @@
     }
   },
   "web/app/components/datasets/documents/detail/completed/common/regeneration-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/documents/detail/completed/common/summary-status.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -2779,11 +2759,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/develop/secret-key/input-copy.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/develop/secret-key/secret-key-generate.tsx": {
@@ -3151,16 +3126,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/base/badges/icon-with-tooltip.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/base/key-value-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/card/index.tsx": {
     "ts/no-non-null-asserted-optional-chain": {
       "count": 1
@@ -3320,22 +3285,9 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/detail-header/components/plugin-source-badge.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/detail-header/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/endpoint-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/plugins/plugin-detail-panel/endpoint-list.tsx": {
@@ -3532,11 +3484,6 @@
     }
   },
   "web/app/components/plugins/plugin-page/plugin-info.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-page/plugin-tasks/components/task-status-indicator.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -3812,14 +3759,6 @@
   "web/app/components/tools/mcp/create-card.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/tools/mcp/detail/content.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "web/app/components/tools/mcp/detail/tool-item.tsx": {
@@ -5384,14 +5323,6 @@
   "web/app/components/workflow/panel/chat-variable-panel/components/object-value-list.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "web/app/components/workflow/panel/chat-variable-panel/type.ts": {

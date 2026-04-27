@@ -168,11 +168,15 @@ export const getWidthAllocations = (
 ) => {
   const availableWidth = triggerWidth - 56
   const totalTextLength = (nodeTitle + varName + type).length || 1
-  const priorityWidth = 15
+  const priorityWidth = nodeTitle ? 15 : 0
+  const minVarNameWidth = varName ? 16 : 0
   return {
     maxNodeNameWidth: priorityWidth + Math.floor(nodeTitle.length / totalTextLength * availableWidth),
     maxTypeWidth: Math.floor(type.length / totalTextLength * availableWidth),
-    maxVarNameWidth: -priorityWidth + Math.floor(varName.length / totalTextLength * availableWidth),
+    maxVarNameWidth: Math.max(
+      minVarNameWidth,
+      -priorityWidth + Math.floor(varName.length / totalTextLength * availableWidth),
+    ),
   }
 }
 

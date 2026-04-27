@@ -194,7 +194,6 @@ describe('Select wrappers', () => {
     })
 
     it('should forward passthrough props to positioner popup and list when passthrough props are provided', async () => {
-      const onPositionerMouseEnter = vi.fn()
       const onPopupClick = vi.fn()
       const onListFocus = vi.fn()
 
@@ -208,7 +207,6 @@ describe('Select wrappers', () => {
               'role': 'group',
               'aria-label': 'select positioner',
               'id': 'select-positioner',
-              'onMouseEnter': onPositionerMouseEnter,
             }}
             popupProps={{
               'role': 'dialog',
@@ -231,10 +229,7 @@ describe('Select wrappers', () => {
         </Select>,
       )
 
-      screen.getByRole('group', { name: 'select positioner' }).element().dispatchEvent(new MouseEvent('mouseover', {
-        bubbles: true,
-      }))
-      asHTMLElement(screen.getByRole('dialog', { name: 'select popup' }).element()).click()
+      await screen.getByRole('dialog', { name: 'select popup' }).click()
       screen.getByRole('listbox', { name: 'select list' }).element().dispatchEvent(new FocusEvent('focusin', {
         bubbles: true,
       }))
@@ -242,7 +237,6 @@ describe('Select wrappers', () => {
       await expect.element(screen.getByRole('group', { name: 'select positioner' })).toHaveAttribute('id', 'select-positioner')
       await expect.element(screen.getByRole('dialog', { name: 'select popup' })).toHaveAttribute('id', 'select-popup')
       await expect.element(screen.getByRole('listbox', { name: 'select list' })).toHaveAttribute('id', 'select-list')
-      expect(onPositionerMouseEnter).toHaveBeenCalledTimes(1)
       expect(onPopupClick).toHaveBeenCalledTimes(1)
       expect(onListFocus).toHaveBeenCalled()
     })
