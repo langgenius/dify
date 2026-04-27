@@ -14,7 +14,7 @@ api = ExternalApi(
 
 service_api_ns = Namespace("service_api", description="Service operations", path="/")
 
-from . import index
+from . import index, oauth
 from .app import (
     annotation,
     app,
@@ -54,6 +54,7 @@ __all__ = [
     "message",
     "metadata",
     "models",
+    "oauth",
     "rag_pipeline_workflow",
     "segment",
     "site",

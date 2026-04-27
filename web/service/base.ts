@@ -794,6 +794,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      // /device is the device-flow chooser; logged-out is a valid state
+      // there. Redirecting to /signin loses the user_code context and
+      // the post-login flow lands on /apps instead of returning here.
+      if (location.pathname === `${basePath}/device`)
+        return Promise.reject(err)
       if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
         jumpTo(loginUrl)
         return Promise.reject(err)

@@ -81,6 +81,7 @@ from .auth import (
     forgot_password,
     login,
     oauth,
+    oauth_device,
     oauth_server,
 )
 
@@ -189,6 +190,7 @@ __all__ = [
     "models",
     "notification",
     "oauth",
+    "oauth_device",
     "oauth_server",
     "ops_trace",
     "parameter",

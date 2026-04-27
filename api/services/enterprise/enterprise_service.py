@@ -107,6 +107,15 @@ class EnterpriseService:
         return EnterpriseRequest.send_request("GET", f"/workspace/{tenant_id}/info")
 
     @classmethod
+    def initiate_device_flow_sso(cls, signed_state: str) -> dict:
+        return EnterpriseRequest.send_request(
+            "POST",
+            "/device-flow/sso-initiate",
+            json={"signed_state": signed_state},
+            raise_for_status=True,
+        )
+
+    @classmethod
     def join_default_workspace(cls, *, account_id: str) -> DefaultWorkspaceJoinResult:
         """
         Call enterprise inner API to add an account to the default workspace.

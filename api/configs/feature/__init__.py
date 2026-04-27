@@ -874,6 +874,11 @@ class AuthConfig(BaseSettings):
         default=86400,
     )
 
+    ENABLE_OAUTH_BEARER: bool = Field(
+        description="Enable OAuth bearer authentication (device-flow + Service API /v1/* bearer middleware).",
+        default=True,
+    )
+
 
 class ModerationConfig(BaseSettings):
     """
@@ -1147,6 +1152,14 @@ class CeleryScheduleTasksConfig(BaseSettings):
     ENABLE_WORKFLOW_RUN_CLEANUP_TASK: bool = Field(
         description="Enable scheduled workflow run cleanup task",
         default=False,
+    )
+    ENABLE_CLEAN_OAUTH_ACCESS_TOKENS_TASK: bool = Field(
+        description="Enable scheduled cleanup of revoked/expired OAuth access-token rows past retention.",
+        default=True,
+    )
+    OAUTH_ACCESS_TOKEN_RETENTION_DAYS: PositiveInt = Field(
+        description="Days to retain revoked OAuth access-token rows before deletion.",
+        default=30,
     )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
         description="Enable mail clean document notify task",

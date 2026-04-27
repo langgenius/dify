@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 import sqlalchemy as sa
 from sqlalchemy import func
@@ -83,4 +83,39 @@ class DatasourceOauthTenantParamConfig(TypeBase):
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
         init=False,
+    )
+
+
+class OAuthAccessToken(TypeBase):
+    """Device-flow bearer. account_id NOT NULL ⇒ dfoa_ (Dify account);
+    account_id NULL + subject_issuer ⇒ dfoe_ (external SSO, EE-only).
+    Partial unique index on (subject_email, subject_issuer, client_id,
+    device_label) WHERE revoked_at IS NULL lets re-login rotate in place.
+    """
+
+    __tablename__ = "oauth_access_tokens"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="oauth_access_tokens_pkey"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
+    )
+    subject_email: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    client_id: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    device_label: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    prefix: Mapped[str] = mapped_column(sa.String(8), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    subject_issuer: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True, default=None)
+    account_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True, default=None)
+    token_hash: Mapped[Optional[str]] = mapped_column(sa.String(64), nullable=True, default=None)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True, default=None
+    )
+    revoked_at: Mapped[Optional[datetime]] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True, default=None
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), nullable=False, server_default=func.now(), init=False
     )
