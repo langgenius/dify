@@ -28,7 +28,7 @@ def _build_template_transform_node(
     )
     return TemplateTransformNode(
         node_id=node_id,
-        config=typed_node_data,
+        data=typed_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         **kwargs,

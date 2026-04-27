@@ -39,7 +39,7 @@ def mock_graph_runtime_state():
 def test_node_uses_default_max_output_length_when_not_overridden(graph_init_params, mock_graph_runtime_state):
     node = TemplateTransformNode(
         node_id="test_node",
-        config=TemplateTransformNodeData(
+        data=TemplateTransformNodeData(
             title="Template Transform",
             type="template-transform",
             variables=[],

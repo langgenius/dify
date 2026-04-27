@@ -31,7 +31,7 @@ def make_start_node(user_inputs, variables):
 
     return StartNode(
         node_id="start",
-        config=node_data,
+        data=node_data,
         graph_init_params=build_test_graph_init_params(
             workflow_id="wf",
             graph_config={},
@@ -260,7 +260,7 @@ def test_start_node_outputs_full_variable_pool_snapshot():
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
     node = StartNode(
         node_id="start",
-        config=node_data,
+        data=node_data,
         graph_init_params=build_test_graph_init_params(
             workflow_id="wf",
             graph_config={},

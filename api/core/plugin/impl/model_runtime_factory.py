@@ -3,12 +3,45 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from core.plugin.impl.model import PluginModelClient
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from graphon.model_runtime.model_providers.base.ai_model import AIModel
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.model_providers.base.moderation_model import ModerationModel
+from graphon.model_runtime.model_providers.base.rerank_model import RerankModel
+from graphon.model_runtime.model_providers.base.speech2text_model import Speech2TextModel
+from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
+from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from graphon.model_runtime.protocols.runtime import ModelRuntime
 
 if TYPE_CHECKING:
     from core.model_manager import ModelManager
     from core.plugin.impl.model_runtime import PluginModelRuntime
     from core.provider_manager import ProviderManager
+
+_MODEL_CLASS_BY_TYPE: dict[ModelType, type[AIModel]] = {
+    ModelType.LLM: LargeLanguageModel,
+    ModelType.TEXT_EMBEDDING: TextEmbeddingModel,
+    ModelType.RERANK: RerankModel,
+    ModelType.SPEECH2TEXT: Speech2TextModel,
+    ModelType.MODERATION: ModerationModel,
+    ModelType.TTS: TTSModel,
+}
+
+
+def create_model_type_instance(
+    *,
+    runtime: ModelRuntime,
+    provider_schema: ProviderEntity,
+    model_type: ModelType,
+) -> AIModel:
+    """Build the graphon model wrapper explicitly against the request runtime."""
+    model_class = _MODEL_CLASS_BY_TYPE.get(model_type)
+    if model_class is None:
+        raise ValueError(f"Unsupported model type: {model_type}")
+
+    return model_class(provider_schema=provider_schema, model_runtime=runtime)
 
 
 class PluginModelAssembly:
@@ -38,8 +71,21 @@ class PluginModelAssembly:
     @property
     def model_provider_factory(self) -> ModelProviderFactory:
         if self._model_provider_factory is None:
-            self._model_provider_factory = ModelProviderFactory(model_runtime=self.model_runtime)
+            self._model_provider_factory = ModelProviderFactory(runtime=self.model_runtime)
         return self._model_provider_factory
+
+    def create_model_type_instance(
+        self,
+        *,
+        provider: str,
+        model_type: ModelType,
+    ) -> AIModel:
+        provider_schema = self.model_provider_factory.get_provider_schema(provider=provider)
+        return create_model_type_instance(
+            runtime=self.model_runtime,
+            provider_schema=provider_schema,
+            model_type=model_type,
+        )
 
     @property
     def provider_manager(self) -> ProviderManager:
@@ -77,6 +123,20 @@ def create_plugin_model_runtime(*, tenant_id: str, user_id: str | None = None) -
 def create_plugin_model_provider_factory(*, tenant_id: str, user_id: str | None = None) -> ModelProviderFactory:
     """Create a tenant-bound model provider factory for service flows."""
     return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).model_provider_factory
+
+
+def create_plugin_model_type_instance(
+    *,
+    tenant_id: str,
+    provider: str,
+    model_type: ModelType,
+    user_id: str | None = None,
+) -> AIModel:
+    """Create a tenant-bound model wrapper for the requested provider and model type."""
+    return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).create_model_type_instance(
+        provider=provider,
+        model_type=model_type,
+    )
 
 
 def create_plugin_provider_manager(*, tenant_id: str, user_id: str | None = None) -> ProviderManager:

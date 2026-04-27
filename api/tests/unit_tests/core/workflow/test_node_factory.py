@@ -13,11 +13,11 @@ from graphon.nodes.code.entities import CodeLanguage
 from graphon.variables.segments import StringSegment
 
 
-def _assert_typed_node_config(config, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
+def _assert_typed_node_data(data, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
     _ = node_id
-    assert isinstance(config, BaseNodeData)
-    assert config.type == node_type
-    assert config.version == version
+    assert isinstance(data, BaseNodeData)
+    assert data.type == node_type
+    assert data.version == version
 
 
 def _node_constructor(*, return_value):
@@ -464,7 +464,7 @@ class TestDifyNodeFactoryCreateNode:
         matched_node_class.assert_called_once()
         kwargs = matched_node_class.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
-        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
+        _assert_typed_node_data(kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
         latest_node_class.assert_not_called()
@@ -484,7 +484,7 @@ class TestDifyNodeFactoryCreateNode:
         latest_node_class.assert_called_once()
         kwargs = latest_node_class.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
-        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
+        _assert_typed_node_data(kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
 
@@ -522,7 +522,7 @@ class TestDifyNodeFactoryCreateNode:
         assert result is created_node
         kwargs = constructor.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
-        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=node_type)
+        _assert_typed_node_data(kwargs["data"], node_id="node-id", node_type=node_type)
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
 
@@ -623,7 +623,7 @@ class TestDifyNodeFactoryCreateNode:
 
         constructor_kwargs = constructor.call_args.kwargs
         assert constructor_kwargs["node_id"] == "node-id"
-        _assert_typed_node_config(constructor_kwargs["config"], node_id="node-id", node_type=node_type)
+        _assert_typed_node_data(constructor_kwargs["data"], node_id="node-id", node_type=node_type)
         assert constructor_kwargs["graph_init_params"] is sentinel.graph_init_params
         assert constructor_kwargs["graph_runtime_state"] is factory.graph_runtime_state
         assert constructor_kwargs["credentials_provider"] is sentinel.credentials_provider

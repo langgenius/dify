@@ -49,7 +49,7 @@ def document_extractor_node(graph_init_params):
     http_client = Mock()
     node = DocumentExtractorNode(
         node_id="test_node_id",
-        config=node_data,
+        data=node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=Mock(),
         http_client=http_client,
@@ -186,12 +186,13 @@ def test_run_extract_text(
 
     monkeypatch.setattr("graphon.file.file_manager.download", mock_download)
 
+    dispatch_mock = None
     if mime_type == "application/pdf":
-        mock_pdf_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("graphon.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
+        dispatch_mock = Mock(return_value=expected_text[0])
+        monkeypatch.setattr("graphon.nodes.document_extractor.node._extract_text_by_file_extension", dispatch_mock)
     elif mime_type.startswith("application/vnd.openxmlformats"):
-        mock_docx_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("graphon.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
+        dispatch_mock = Mock(return_value=expected_text[0])
+        monkeypatch.setattr("graphon.nodes.document_extractor.node._extract_text_by_mime_type", dispatch_mock)
 
     result = document_extractor_node._run()
 
@@ -199,6 +200,19 @@ def test_run_extract_text(
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
     assert result.outputs is not None
     assert result.outputs["text"] == ArrayStringSegment(value=expected_text)
+
+    if mime_type == "application/pdf":
+        dispatch_mock.assert_called_once_with(
+            file_content=file_content,
+            file_extension=extension,
+            unstructured_api_config=document_extractor_node._unstructured_api_config,
+        )
+    elif mime_type.startswith("application/vnd.openxmlformats"):
+        dispatch_mock.assert_called_once_with(
+            file_content=file_content,
+            mime_type=mime_type,
+            unstructured_api_config=document_extractor_node._unstructured_api_config,
+        )
 
     if transfer_method == FileTransferMethod.REMOTE_URL:
         document_extractor_node._http_client.get.assert_called_once_with("https://example.com/file.txt")
@@ -439,24 +453,42 @@ def test_extract_text_from_file_routes_excel_inputs(document_extractor_node, ext
     file.extension = extension
     file.mime_type = mime_type
 
-    with (
-        patch(
-            "graphon.nodes.document_extractor.node._download_file_content",
-            return_value=b"excel",
-        ),
-        patch(
-            "graphon.nodes.document_extractor.node._extract_text_from_excel",
-            return_value="excel text",
-        ) as mock_extract,
+    with patch(
+        "graphon.nodes.document_extractor.node._download_file_content",
+        return_value=b"excel",
     ):
-        result = _extract_text_from_file(
-            document_extractor_node.http_client,
-            file,
-            unstructured_api_config=document_extractor_node._unstructured_api_config,
-        )
+        if extension:
+            with patch(
+                "graphon.nodes.document_extractor.node._extract_text_by_file_extension",
+                return_value="excel text",
+            ) as mock_extract:
+                result = _extract_text_from_file(
+                    document_extractor_node.http_client,
+                    file,
+                    unstructured_api_config=document_extractor_node._unstructured_api_config,
+                )
+            mock_extract.assert_called_once_with(
+                file_content=b"excel",
+                file_extension=extension,
+                unstructured_api_config=document_extractor_node._unstructured_api_config,
+            )
+        else:
+            with patch(
+                "graphon.nodes.document_extractor.node._extract_text_by_mime_type",
+                return_value="excel text",
+            ) as mock_extract:
+                result = _extract_text_from_file(
+                    document_extractor_node.http_client,
+                    file,
+                    unstructured_api_config=document_extractor_node._unstructured_api_config,
+                )
+            mock_extract.assert_called_once_with(
+                file_content=b"excel",
+                mime_type=mime_type,
+                unstructured_api_config=document_extractor_node._unstructured_api_config,
+            )
 
     assert result == "excel text"
-    mock_extract.assert_called_once_with(b"excel")
 
 
 def test_extract_text_from_file_rejects_missing_extension_and_mime_type(document_extractor_node):

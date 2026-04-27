@@ -7,7 +7,6 @@ import pytest
 
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.model_manager import ModelInstance
 from core.workflow import workflow_entry
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.base_node_data import BaseNodeData
@@ -16,10 +15,12 @@ from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph import Graph
 from graphon.graph_events import GraphRunFailedEvent
-from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
+from graphon.nodes.llm.entities import ContextConfig, LLMNodeData, ModelConfig
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.runtime import ChildGraphNotFoundError, VariablePool
 from graphon.variables.variables import StringVariable
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
@@ -29,9 +30,30 @@ def _build_typed_node_config(node_type: NodeType):
     return {"id": "node-id", "data": BaseNodeData(type=node_type)}
 
 
-def _build_wrapped_model_instance() -> tuple[SimpleNamespace, ModelInstance]:
-    raw_model_instance = ModelInstance.__new__(ModelInstance)
-    return SimpleNamespace(_model_instance=raw_model_instance), raw_model_instance
+def _build_model_config(*, provider: str = "openai", model_name: str = "gpt-4o") -> ModelConfig:
+    return ModelConfig(provider=provider, name=model_name, mode=LLMMode.CHAT)
+
+
+def _build_llm_node_data(*, provider: str = "openai", model_name: str = "gpt-4o") -> LLMNodeData:
+    return LLMNodeData(
+        type=BuiltinNodeTypes.LLM,
+        title="Child Model",
+        model=_build_model_config(provider=provider, model_name=model_name),
+        prompt_template=[],
+        context=ContextConfig(enabled=False),
+    )
+
+
+def _build_question_classifier_node_data(
+    *, provider: str = "openai", model_name: str = "gpt-4o"
+) -> QuestionClassifierNodeData:
+    return QuestionClassifierNodeData(
+        type=BuiltinNodeTypes.QUESTION_CLASSIFIER,
+        title="Child Model",
+        query_variable_selector=["sys", "query"],
+        model=_build_model_config(provider=provider, model_name=model_name),
+        classes=[],
+    )
 
 
 class _FakeModelNodeMixin:
@@ -40,22 +62,26 @@ class _FakeModelNodeMixin:
         return "1"
 
     def post_init(self) -> None:
-        self.model_instance, self.raw_model_instance = _build_wrapped_model_instance()
+        self.model_instance = SimpleNamespace(provider="stale-provider", model_name="stale-model")
         self.usage_snapshot = LLMUsage.empty_usage()
         self.usage_snapshot.total_tokens = 1
 
     def _run(self) -> NodeRunResult:
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={
+                "model_provider": self.node_data.model.provider,
+                "model_name": self.node_data.model.name,
+            },
             llm_usage=self.usage_snapshot,
         )
 
 
-class _FakeLLMNode(_FakeModelNodeMixin, Node[BaseNodeData]):
+class _FakeLLMNode(_FakeModelNodeMixin, Node[LLMNodeData]):
     node_type = BuiltinNodeTypes.LLM
 
 
-class _FakeQuestionClassifierNode(_FakeModelNodeMixin, Node[BaseNodeData]):
+class _FakeQuestionClassifierNode(_FakeModelNodeMixin, Node[QuestionClassifierNodeData]):
     node_type = BuiltinNodeTypes.QUESTION_CLASSIFIER
 
 
@@ -75,7 +101,7 @@ class TestWorkflowChildEngineBuilder:
         assert result is expected
 
     def test_build_child_engine_raises_when_root_node_is_missing(self):
-        builder = workflow_entry._WorkflowChildEngineBuilder()
+        builder = workflow_entry._WorkflowChildEngineBuilder(tenant_id="tenant-id")
         graph_init_params = SimpleNamespace(graph_config={"nodes": []})
         parent_graph_runtime_state = SimpleNamespace(
             execution_context=sentinel.execution_context,
@@ -92,7 +118,7 @@ class TestWorkflowChildEngineBuilder:
                 )
 
     def test_build_child_engine_constructs_graph_engine_with_quota_layer_only(self):
-        builder = workflow_entry._WorkflowChildEngineBuilder()
+        builder = workflow_entry._WorkflowChildEngineBuilder(tenant_id="tenant-id")
         graph_init_params = SimpleNamespace(graph_config={"nodes": [{"id": "root"}]})
         parent_graph_runtime_state = SimpleNamespace(
             execution_context=sentinel.execution_context,
@@ -114,7 +140,7 @@ class TestWorkflowChildEngineBuilder:
             patch.object(workflow_entry, "GraphEngine", return_value=child_engine) as graph_engine_cls,
             patch.object(workflow_entry, "GraphEngineConfig", return_value=sentinel.graph_engine_config),
             patch.object(workflow_entry, "InMemoryChannel", return_value=sentinel.command_channel),
-            patch.object(workflow_entry, "LLMQuotaLayer", return_value=sentinel.llm_quota_layer),
+            patch.object(workflow_entry, "LLMQuotaLayer", return_value=sentinel.llm_quota_layer) as llm_quota_layer_cls,
         ):
             result = builder.build_child_engine(
                 workflow_id="workflow-id",
@@ -147,11 +173,12 @@ class TestWorkflowChildEngineBuilder:
             config=sentinel.graph_engine_config,
             child_engine_builder=builder,
         )
+        llm_quota_layer_cls.assert_called_once_with(tenant_id="tenant-id")
         assert child_engine.layer.call_args_list == [((sentinel.llm_quota_layer,), {})]
 
     @pytest.mark.parametrize("node_cls", [_FakeLLMNode, _FakeQuestionClassifierNode])
     def test_build_child_engine_runs_llm_quota_layer_for_child_model_nodes(self, node_cls):
-        builder = workflow_entry._WorkflowChildEngineBuilder()
+        builder = workflow_entry._WorkflowChildEngineBuilder(tenant_id="tenant-id")
         graph_init_params = build_test_graph_init_params(
             graph_config={"nodes": [{"id": "root"}], "edges": []},
         )
@@ -163,12 +190,10 @@ class TestWorkflowChildEngineBuilder:
 
         def build_graph(*, graph_config, node_factory, root_node_id):
             _ = graph_config
+            node_data = _build_llm_node_data() if node_cls is _FakeLLMNode else _build_question_classifier_node_data()
             node = node_cls(
                 node_id=root_node_id,
-                config=BaseNodeData(
-                    type=node_cls.node_type,
-                    title="Child Model",
-                ),
+                data=node_data,
                 graph_init_params=node_factory.graph_init_params,
                 graph_runtime_state=node_factory.graph_runtime_state,
             )
@@ -191,8 +216,8 @@ class TestWorkflowChildEngineBuilder:
                 ),
             ),
             patch.object(workflow_entry.Graph, "init", side_effect=build_graph),
-            patch("core.app.workflow.layers.llm_quota.ensure_llm_quota_available") as ensure_quota,
-            patch("core.app.workflow.layers.llm_quota.deduct_llm_quota") as deduct_quota,
+            patch("core.app.workflow.layers.llm_quota.ensure_llm_quota_available_for_model") as ensure_quota,
+            patch("core.app.workflow.layers.llm_quota.deduct_llm_quota_for_model") as deduct_quota,
         ):
             child_engine = builder.build_child_engine(
                 workflow_id="workflow-id",
@@ -203,10 +228,15 @@ class TestWorkflowChildEngineBuilder:
             list(child_engine.run())
 
         node = created_node["node"]
-        ensure_quota.assert_called_once_with(model_instance=node.raw_model_instance)
+        ensure_quota.assert_called_once_with(
+            tenant_id="tenant-id",
+            provider=node.node_data.model.provider,
+            model=node.node_data.model.name,
+        )
         deduct_quota.assert_called_once_with(
-            tenant_id="tenant",
-            model_instance=node.raw_model_instance,
+            tenant_id="tenant-id",
+            provider=node.node_data.model.provider,
+            model=node.node_data.model.name,
             usage=node.usage_snapshot,
         )
 
@@ -252,7 +282,7 @@ class TestWorkflowEntryInit:
                 "ExecutionLimitsLayer",
                 return_value=execution_limits_layer,
             ) as execution_limits_layer_cls,
-            patch.object(workflow_entry, "LLMQuotaLayer", return_value=llm_quota_layer),
+            patch.object(workflow_entry, "LLMQuotaLayer", return_value=llm_quota_layer) as llm_quota_layer_cls,
             patch.object(workflow_entry, "ObservabilityLayer", return_value=observability_layer),
         ):
             entry = workflow_entry.WorkflowEntry(
@@ -291,6 +321,7 @@ class TestWorkflowEntryInit:
             max_steps=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_time=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_TIME,
         )
+        llm_quota_layer_cls.assert_called_once_with(tenant_id="tenant-id")
         assert graph_engine.layer.call_args_list == [
             ((debug_layer,), {}),
             ((execution_limits_layer,), {}),
@@ -334,7 +365,7 @@ class TestWorkflowEntrySingleStepRun:
             def extract_variable_selector_to_variable_mapping(**_kwargs):
                 return {}
 
-        variable_pool = VariablePool(system_variables=default_system_variables(), user_inputs={})
+        variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables(), user_inputs={})
         variable_loader = MagicMock()
         variable_loader.load_variables.return_value = [
             StringVariable(

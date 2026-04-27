@@ -45,7 +45,7 @@ dependencies = [
 
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]~=0.7.0",
-    "graphon~=0.2.2",
+    "graphon~=0.3.0",
     "httpx-sse~=0.4.0",
     "json-repair~=0.59.4",
 ]

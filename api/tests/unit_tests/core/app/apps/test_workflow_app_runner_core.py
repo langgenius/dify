@@ -54,7 +54,7 @@ class TestWorkflowBasedAppRunner:
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
 
         runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=default_system_variables()),
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
 
@@ -93,7 +93,7 @@ class TestWorkflowBasedAppRunner:
     def test_get_graph_and_variable_pool_for_single_node_run(self, monkeypatch):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=default_system_variables()),
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
 
@@ -162,7 +162,7 @@ class TestWorkflowBasedAppRunner:
             app_id="app",
         )
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=default_system_variables()),
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
 
@@ -241,7 +241,7 @@ class TestWorkflowBasedAppRunner:
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=default_system_variables()),
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
         graph_runtime_state.register_paused_node("node-1")
@@ -284,7 +284,7 @@ class TestWorkflowBasedAppRunner:
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=default_system_variables()),
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
         workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
@@ -423,7 +423,7 @@ class TestWorkflowBasedAppRunner:
 
         runner = WorkflowBasedAppRunner(queue_manager=_QueueManager(), app_id="app")
         graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=default_system_variables()),
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
         workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))

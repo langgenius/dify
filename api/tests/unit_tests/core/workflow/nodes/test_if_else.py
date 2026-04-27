@@ -29,7 +29,7 @@ def _build_if_else_node(
         node_id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        config=node_data if isinstance(node_data, IfElseNodeData) else IfElseNodeData.model_validate(node_data),
+        data=node_data if isinstance(node_data, IfElseNodeData) else IfElseNodeData.model_validate(node_data),
     )
 
 
@@ -48,7 +48,10 @@ def test_execute_if_else_result_true():
     )
 
     # construct variable pool
-    pool = VariablePool(system_variables=build_system_variables(user_id="aaa", files=[]), user_inputs={})
+    pool = VariablePool.from_bootstrap(
+        system_variables=build_system_variables(user_id="aaa", files=[]),
+        user_inputs={},
+    )
     pool.add(["start", "array_contains"], ["ab", "def"])
     pool.add(["start", "array_not_contains"], ["ac", "def"])
     pool.add(["start", "contains"], "cabcde")
@@ -148,7 +151,7 @@ def test_execute_if_else_result_false():
     )
 
     # construct variable pool
-    pool = VariablePool(
+    pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -305,7 +308,7 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
     )
 
     # construct variable pool with boolean values
-    pool = VariablePool(
+    pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(files=[], user_id="aaa"),
     )
     pool.add(["start", "bool_true"], True)
@@ -359,7 +362,7 @@ def test_execute_if_else_boolean_false_conditions():
     )
 
     # construct variable pool with boolean values
-    pool = VariablePool(
+    pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(files=[], user_id="aaa"),
     )
     pool.add(["start", "bool_true"], True)
@@ -424,7 +427,7 @@ def test_execute_if_else_boolean_cases_structure():
     )
 
     # construct variable pool with boolean values
-    pool = VariablePool(
+    pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(files=[], user_id="aaa"),
     )
     pool.add(["start", "bool_true"], True)

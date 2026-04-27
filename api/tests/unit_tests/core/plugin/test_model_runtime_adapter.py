@@ -13,6 +13,8 @@ from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import TENANT_SCOPE_SCHEMA_CACHE_USER_ID, PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
@@ -146,7 +148,31 @@ class TestPluginModelRuntime:
 
     def test_invoke_llm_resolves_plugin_fields(self) -> None:
         client = Mock(spec=PluginModelClient)
-        client.invoke_llm.return_value = sentinel.result
+        usage = LLMUsage.empty_usage()
+        client.invoke_llm.return_value = iter(
+            [
+                LLMResultChunk(
+                    model="gpt-4o-mini",
+                    prompt_messages=[],
+                    system_fingerprint="fp-plugin",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content="plugin "),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="gpt-4o-mini",
+                    prompt_messages=[],
+                    system_fingerprint="fp-plugin",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(content="response"),
+                        usage=usage,
+                        finish_reason="stop",
+                    ),
+                ),
+            ]
+        )
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
 
         result = runtime.invoke_llm(
@@ -160,7 +186,11 @@ class TestPluginModelRuntime:
             stream=False,
         )
 
-        assert result is sentinel.result
+        assert result.model == "gpt-4o-mini"
+        assert result.prompt_messages == []
+        assert result.message.content == "plugin response"
+        assert result.usage == usage
+        assert result.system_fingerprint == "fp-plugin"
         client.invoke_llm.assert_called_once_with(
             tenant_id="tenant",
             user_id="user",
