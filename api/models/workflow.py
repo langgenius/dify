@@ -1909,13 +1909,14 @@ class WorkflowDraftVariableFile(TypeBase):
     id: Mapped[str] = mapped_column(
         StringUUID,
         primary_key=True,
-        default=lambda: str(uuidv7()),
+        default_factory=lambda: str(uuidv7()),
+        init=False
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=naive_utc_now,
+        default_factory=naive_utc_now,
         server_default=func.current_timestamp(),
     )
 

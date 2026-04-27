@@ -1086,7 +1086,6 @@ class DraftVariableSaver:
         assert self._user.current_tenant_id
         # Create WorkflowDraftVariableFile record
         variable_file = WorkflowDraftVariableFile(
-            id=str(uuidv7()),
             upload_file_id=upload_file.id,
             size=original_size,
             length=original_length,
@@ -1095,6 +1094,7 @@ class DraftVariableSaver:
             tenant_id=self._user.current_tenant_id,
             user_id=self._user.id,
         )
+        variable_file.id = str(uuidv7())
         engine = bind = self._session.get_bind()
         assert isinstance(engine, Engine)
         with sessionmaker(bind=engine, expire_on_commit=False).begin() as session:
