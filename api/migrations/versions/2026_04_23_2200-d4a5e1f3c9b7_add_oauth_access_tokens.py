@@ -82,8 +82,10 @@ def upgrade():
         postgresql_where=sa.text("revoked_at IS NULL"),
     )
     # Partial unique index — rotate-in-place keyed on (subject, client, device).
-    # subject_issuer NULL vs populated distinguishes account vs external-SSO rows
-    # for the same email, because Postgres treats NULL as distinct.
+    # The app always writes a non-NULL subject_issuer (account flow uses a
+    # sentinel, external-SSO uses the verified IdP issuer); without that the
+    # composite key would never collide because Postgres treats NULLs as
+    # distinct in unique indices.
     op.create_index(
         "uq_oauth_active_per_device",
         "oauth_access_tokens",

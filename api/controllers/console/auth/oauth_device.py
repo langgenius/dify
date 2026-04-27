@@ -36,6 +36,7 @@ def bearer_feature_required(fn):
 
     return inner
 from services.oauth_device_flow import (
+    ACCOUNT_ISSUER_SENTINEL,
     PREFIX_OAUTH_ACCOUNT,
     DeviceFlowRedis,
     DeviceFlowStatus,
@@ -90,7 +91,7 @@ class DeviceApproveApi(Resource):
                 db.session,
                 redis_client,
                 subject_email=account.email,
-                subject_issuer=None,
+                subject_issuer=ACCOUNT_ISSUER_SENTINEL,
                 account_id=str(account.id),
                 client_id=state.client_id,
                 device_label=state.device_label,
@@ -104,7 +105,7 @@ class DeviceApproveApi(Resource):
                     device_code,
                     subject_email=account.email,
                     account_id=str(account.id),
-                    subject_issuer=None,
+                    subject_issuer=ACCOUNT_ISSUER_SENTINEL,
                     minted_token=mint.token,
                     token_id=str(mint.token_id),
                     poll_payload=poll_payload,

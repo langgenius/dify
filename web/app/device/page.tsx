@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSearchParams } from '@/next/navigation'
+import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { commonQueryKeys, userProfileQueryOptions } from '@/service/use-common'
@@ -13,6 +13,7 @@ import Chooser from './components/chooser'
 import AuthorizeAccount from './components/authorize-account'
 import AuthorizeSSO from './components/authorize-sso'
 import { isValidUserCode } from './utils/user-code'
+import { classifyLookupError } from './utils/error-copy'
 
 type View =
   | { kind: 'code_entry' }
@@ -21,9 +22,13 @@ type View =
   | { kind: 'authorize_sso' }
   | { kind: 'success' }
   | { kind: 'error_expired' }
+  | { kind: 'error_rate_limited' }
+  | { kind: 'error_lookup_failed' }
 
 export default function DevicePage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const urlUserCode = (searchParams.get('user_code') || '').trim().toUpperCase()
   const ssoVerified = searchParams.get('sso_verified') === '1'
 
@@ -61,19 +66,25 @@ export default function DevicePage() {
   // URL-driven view transitions. Only advances while the user is still on
   // the entry/chooser screens — never clobbers terminal views (success /
   // error_expired / authorize_*) when userProfile refetches.
+  // After consuming the params, scrub them from the URL so they don't
+  // leak via history / Referer / server logs (RFC 8628 §5.4).
   useEffect(() => {
     if (view.kind !== 'code_entry' && view.kind !== 'chooser') return
+    let consumed = false
     if (ssoVerified) {
       setView({ kind: 'authorize_sso' })
-      return
+      consumed = true
     }
-    if (urlUserCode && isValidUserCode(urlUserCode)) {
+    else if (urlUserCode && isValidUserCode(urlUserCode)) {
       if (account)
         setView({ kind: 'authorize_account', userCode: urlUserCode })
       else
         setView({ kind: 'chooser', userCode: urlUserCode })
+      consumed = true
     }
-  }, [urlUserCode, ssoVerified, account, view.kind])
+    if (consumed && (urlUserCode || ssoVerified))
+      router.replace(pathname)
+  }, [urlUserCode, ssoVerified, account, view.kind, router, pathname])
 
   const onContinue = async () => {
     if (!isValidUserCode(typed)) return
@@ -84,8 +95,14 @@ export default function DevicePage() {
         return
       }
     }
-    catch {
-      setView({ kind: 'error_expired' })
+    catch (e) {
+      const outcome = classifyLookupError(e)
+      if (outcome === 'rate_limited')
+        setView({ kind: 'error_rate_limited' })
+      else if (outcome === 'failed')
+        setView({ kind: 'error_lookup_failed' })
+      else
+        setView({ kind: 'error_expired' })
       return
     }
     if (account) setView({ kind: 'authorize_account', userCode: typed })
@@ -160,6 +177,24 @@ export default function DevicePage() {
               <code className="rounded bg-components-panel-bg px-1">difyctl auth login</code>
               {' '}
               again to get a new one.
+            </p>
+          </div>
+        )}
+
+        {view.kind === 'error_rate_limited' && (
+          <div>
+            <h1 className="text-2xl font-semibold text-text-primary">Too many attempts</h1>
+            <p className="mt-2 text-sm text-text-secondary">
+              We&apos;ve received too many requests for this code. Wait a moment and try again.
+            </p>
+          </div>
+        )}
+
+        {view.kind === 'error_lookup_failed' && (
+          <div>
+            <h1 className="text-2xl font-semibold text-text-primary">Could not verify the code</h1>
+            <p className="mt-2 text-sm text-text-secondary">
+              Something went wrong on our side. Try again in a moment.
             </p>
           </div>
         )}

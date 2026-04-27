@@ -29,8 +29,26 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-DEVICE_CODE_KEY_FMT = "device_code:{code}"
-USER_CODE_KEY_FMT = "user_code:{code}"
+_DEVICE_CODE_KEY_PREFIX = "device_code:"
+_USER_CODE_KEY_PREFIX = "user_code:"
+DEVICE_CODE_KEY_FMT = _DEVICE_CODE_KEY_PREFIX + "{code}"
+USER_CODE_KEY_FMT = _USER_CODE_KEY_PREFIX + "{code}"
+
+# Atomic GET → status-check → DEL(both keys). Two concurrent pollers must
+# not both observe APPROVED — only the winner gets the plaintext token,
+# the loser sees nil and the caller maps that to expired_token.
+_CONSUME_ON_POLL_LUA = """
+local raw = redis.call('GET', KEYS[1])
+if not raw then return nil end
+local ok, decoded = pcall(cjson.decode, raw)
+if not ok then return nil end
+if decoded.status == 'pending' then return nil end
+if decoded.user_code then
+    redis.call('DEL', ARGV[1] .. decoded.user_code)
+end
+redis.call('DEL', KEYS[1])
+return raw
+"""
 
 DEVICE_FLOW_TTL_SECONDS = 15 * 60  # RFC 8628 expires_in
 APPROVED_TTL_SECONDS_MIN = 60      # plaintext-token lifetime floor
@@ -112,6 +130,7 @@ class DeviceFlowRedis:
 
     def __init__(self, redis_client) -> None:
         self._redis = redis_client
+        self._consume_on_poll_script = redis_client.register_script(_CONSUME_ON_POLL_LUA)
 
     def start(self, client_id: str, device_label: str, created_ip: str) -> tuple[str, str, int]:
         device_code = _random_device_code()
@@ -205,19 +224,23 @@ class DeviceFlowRedis:
         )
 
     def consume_on_poll(self, device_code: str) -> DeviceFlowState | None:
-        """Race-safe via DEL: concurrent polls — one wins, the other gets
-        None and the caller maps that to expired_token.
+        """Race-safe via Lua EVAL: GET + status-check + DEL execute in a
+        single Redis transaction so only one of N concurrent pollers
+        observes the APPROVED state. Losers get None, mapped to
+        expired_token by the caller.
         """
-        state = self._load_state(device_code)
-        if state is None:
-            return None
-        if state.status is DeviceFlowStatus.PENDING:
-            return None
-        self._redis.delete(
-            DEVICE_CODE_KEY_FMT.format(code=device_code),
-            USER_CODE_KEY_FMT.format(code=state.user_code),
+        raw = self._consume_on_poll_script(
+            keys=[DEVICE_CODE_KEY_FMT.format(code=device_code)],
+            args=[_USER_CODE_KEY_PREFIX],
         )
-        return state
+        if raw is None:
+            return None
+        text_ = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
+        try:
+            return DeviceFlowState.from_json(text_)
+        except (ValueError, KeyError):
+            logger.error("device_flow: corrupt state on consume %s", device_code)
+            return None
 
     def record_poll(self, device_code: str, interval_seconds: int) -> SlowDownDecision:
         now = time.time()
@@ -253,6 +276,12 @@ class DeviceFlowRedis:
 OAUTH_BODY_BYTES = 32  # ~256 bits entropy
 PREFIX_OAUTH_ACCOUNT = "dfoa_"
 PREFIX_OAUTH_EXTERNAL_SSO = "dfoe_"
+
+# Sentinel issuer for account-flow rows. Postgres' default partial unique
+# index treats NULLs as distinct, which would let two live `dfoa_` rows
+# share (email, client, device) and break rotate-in-place. Storing a
+# non-empty literal makes the composite key collide as intended.
+ACCOUNT_ISSUER_SENTINEL = "dify:account"
 
 
 @dataclass(frozen=True, slots=True)
@@ -295,7 +324,20 @@ def mint_oauth_token(
     index predicate so re-login INSERTs fresh. Pre-rotate Redis entry is
     deleted so stale AuthContext drops immediately.
     """
-    if prefix not in (PREFIX_OAUTH_ACCOUNT, PREFIX_OAUTH_EXTERNAL_SSO):
+    if prefix == PREFIX_OAUTH_ACCOUNT:
+        # Account flow always writes the sentinel — caller may pass None
+        # (for clarity) or the sentinel itself; nothing else is valid.
+        if subject_issuer not in (None, ACCOUNT_ISSUER_SENTINEL):
+            raise ValueError(
+                f"account-flow token must use ACCOUNT_ISSUER_SENTINEL, got {subject_issuer!r}"
+            )
+        subject_issuer = ACCOUNT_ISSUER_SENTINEL
+    elif prefix == PREFIX_OAUTH_EXTERNAL_SSO:
+        # Defense in depth: enterprise canonicalises + rejects empty,
+        # but a regression there must not yield a NULL composite key here.
+        if not subject_issuer or not subject_issuer.strip():
+            raise ValueError("external-SSO token requires non-empty subject_issuer")
+    else:
         raise ValueError(f"unknown oauth prefix: {prefix!r}")
 
     token = generate_token(prefix)
@@ -333,11 +375,13 @@ def _upsert(
     expires_at: datetime,
 ) -> UpsertOutcome:
     # Snapshot prior live row's hash for Redis invalidation post-rotate.
+    # subject_issuer is always non-null here (account flow uses sentinel,
+    # external-SSO is validated upstream), so equality matches the index.
     prior = session.execute(
         select(OAuthAccessToken.id, OAuthAccessToken.token_hash)
         .where(
             OAuthAccessToken.subject_email == subject_email,
-            OAuthAccessToken.subject_issuer.is_not_distinct_from(subject_issuer),
+            OAuthAccessToken.subject_issuer == subject_issuer,
             OAuthAccessToken.client_id == client_id,
             OAuthAccessToken.device_label == device_label,
             OAuthAccessToken.revoked_at.is_(None),

@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-_CE_LIKE_STATUSES = {LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST}
+# Fail-closed: any non-EE-active status (default NONE on CE, plus INACTIVE / EXPIRED / LOST)
+# is denied. Future LicenseStatus values default to denial unless explicitly admitted.
+_EE_ENABLED_STATUSES = {LicenseStatus.ACTIVE, LicenseStatus.EXPIRING}
 
 
 def enterprise_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
@@ -36,7 +38,7 @@ def enterprise_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         settings = FeatureService.get_system_features()
-        if settings.license.status in _CE_LIKE_STATUSES:
+        if settings.license.status not in _EE_ENABLED_STATUSES:
             raise NotFound()
         return view(*args, **kwargs)
 

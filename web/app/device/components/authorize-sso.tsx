@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import type { ApprovalContext } from '@/service/device-flow'
 import { approveExternal, fetchApprovalContext } from '@/service/device-flow'
+import { approveErrorCopy } from '../utils/error-copy'
 
 type Props = {
   onApproved: () => void
@@ -29,9 +30,9 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
     let cancelled = false
     fetchApprovalContext()
       .then((c) => { if (!cancelled) setCtx(c) })
-      .catch((e: any) => {
+      .catch((e) => {
         if (!cancelled)
-          setLoadErr(e?.message || 'Failed to load session')
+          setLoadErr(approveErrorCopy(e))
       })
     return () => { cancelled = true }
   }, [])
@@ -43,8 +44,8 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
       await approveExternal(ctx, ctx.user_code)
       onApproved()
     }
-    catch (e: any) {
-      onError(e?.message || 'Approve failed')
+    catch (e) {
+      onError(approveErrorCopy(e))
     }
     finally {
       setBusy(false)

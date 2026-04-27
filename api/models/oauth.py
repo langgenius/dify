@@ -87,10 +87,13 @@ class DatasourceOauthTenantParamConfig(TypeBase):
 
 
 class OAuthAccessToken(TypeBase):
-    """Device-flow bearer. account_id NOT NULL ⇒ dfoa_ (Dify account);
-    account_id NULL + subject_issuer ⇒ dfoe_ (external SSO, EE-only).
-    Partial unique index on (subject_email, subject_issuer, client_id,
-    device_label) WHERE revoked_at IS NULL lets re-login rotate in place.
+    """Device-flow bearer. account_id NOT NULL ⇒ dfoa_ (Dify account,
+    subject_issuer = "dify:account" sentinel); account_id NULL +
+    subject_issuer = verified IdP issuer ⇒ dfoe_ (external SSO, EE-only).
+    subject_issuer is non-NULL for all rows the app writes — Postgres
+    treats NULLs as distinct in unique indices, so the partial unique
+    index on (subject_email, subject_issuer, client_id, device_label)
+    WHERE revoked_at IS NULL would otherwise fail to rotate in place.
     """
 
     __tablename__ = "oauth_access_tokens"

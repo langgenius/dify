@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { deviceApproveAccount, deviceDenyAccount } from '@/service/device-flow'
+import { approveErrorCopy } from '../utils/error-copy'
 
 type Props = {
   userCode: string
@@ -30,8 +31,8 @@ const AuthorizeAccount: FC<Props> = ({
       await deviceApproveAccount(userCode)
       onApproved()
     }
-    catch (e: any) {
-      onError(e?.message || 'Approve failed')
+    catch (e) {
+      onError(approveErrorCopy(e))
     }
     finally {
       setBusy(false)
@@ -44,8 +45,8 @@ const AuthorizeAccount: FC<Props> = ({
       await deviceDenyAccount(userCode)
       onDenied()
     }
-    catch (e: any) {
-      onError(e?.message || 'Deny failed')
+    catch (e) {
+      onError(approveErrorCopy(e))
     }
     finally {
       setBusy(false)
