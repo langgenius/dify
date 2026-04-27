@@ -1,6 +1,7 @@
 from collections.abc import Generator, Mapping
 from typing import Any
 
+from configs import dify_config
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
     GetOnlineDocumentPageContentRequest,
@@ -15,6 +16,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginDatasourceProviderEntity,
 )
 from core.plugin.impl.base import BasePluginClient
+from core.plugin.utils.chunk_merger import merge_blob_chunks
 from core.schemas.resolver import resolve_dify_schema_refs
 from models.provider_ids import DatasourceProviderID, GenericProviderID
 from services.tools.tools_transform_service import ToolTransformService
@@ -221,7 +223,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         datasource_provider_id = GenericProviderID(datasource_provider)
 
-        return self._request_with_plugin_daemon_response_stream(
+        response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_online_document_page_content",
             DatasourceMessage,
@@ -239,6 +241,7 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
+        return merge_blob_chunks(response, max_file_size=dify_config.PLUGIN_MAX_FILE_SIZE)
 
     def online_drive_browse_files(
         self,
@@ -310,7 +313,7 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        yield from response
+        yield from merge_blob_chunks(response, max_file_size=dify_config.PLUGIN_MAX_FILE_SIZE)
 
     def validate_provider_credentials(
         self, tenant_id: str, user_id: str, provider: str, plugin_id: str, credentials: dict[str, Any]
