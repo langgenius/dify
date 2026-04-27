@@ -148,11 +148,11 @@ def _build_from_local_file(
         )
 
         return File(
-            id=mapping.get("id"),
+            file_id=mapping.get("id"),
             filename=row.name,
             extension="." + row.extension,
             mime_type=row.mime_type,
-            type=file_type,
+            file_type=file_type,
             transfer_method=transfer_method,
             remote_url=row.source_url,
             reference=build_file_reference(record_id=str(row.id)),
@@ -196,11 +196,11 @@ def _build_from_remote_url(
             )
 
             return File(
-                id=mapping.get("id"),
+                file_id=mapping.get("id"),
                 filename=upload_file.name,
                 extension="." + upload_file.extension,
                 mime_type=upload_file.mime_type,
-                type=file_type,
+                file_type=file_type,
                 transfer_method=transfer_method,
                 remote_url=helpers.get_signed_file_url(upload_file_id=str(upload_file_id)),
                 reference=build_file_reference(record_id=str(upload_file.id)),
@@ -222,9 +222,9 @@ def _build_from_remote_url(
     )
 
     return File(
-        id=mapping.get("id"),
+        file_id=mapping.get("id"),
         filename=filename,
-        type=file_type,
+        file_type=file_type,
         transfer_method=transfer_method,
         remote_url=url,
         mime_type=mime_type,
@@ -263,9 +263,9 @@ def _build_from_tool_file(
         )
 
         return File(
-            id=mapping.get("id"),
+            file_id=mapping.get("id"),
             filename=tool_file.name,
-            type=file_type,
+            file_type=file_type,
             transfer_method=transfer_method,
             remote_url=tool_file.original_url,
             reference=build_file_reference(record_id=str(tool_file.id)),
@@ -306,9 +306,9 @@ def _build_from_datasource_file(
         )
 
         return File(
-            id=mapping.get("datasource_file_id"),
+            file_id=mapping.get("datasource_file_id"),
             filename=datasource_file.name,
-            type=file_type,
+            file_type=file_type,
             transfer_method=FileTransferMethod.TOOL_FILE,
             remote_url=datasource_file.source_url,
             reference=build_file_reference(record_id=str(datasource_file.id)),

@@ -97,6 +97,7 @@ const PluginTasks = () => {
         onOpenChange={setOpen}
       >
         <DropdownMenuTrigger
+          nativeButton={false}
           render={<div />}
           disabled={!canOpenMenu}
         >

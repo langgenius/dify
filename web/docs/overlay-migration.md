@@ -1,6 +1,8 @@
 # Overlay Migration Guide
 
-This document tracks the migration away from legacy overlay APIs.
+This document tracks the Dify-web migration away from legacy overlay APIs.
+
+> **See also:** [`packages/dify-ui/README.md`] for the permanent overlay / portal / z-index contract of the replacement primitives. This document covers the one-off migration mechanics (allowlist, deprecated import paths, coexistence z-index strategy) and is expected to shrink and eventually be removed once the legacy overlays are gone.
 
 ## Scope
 
@@ -31,7 +33,7 @@ This document tracks the migration away from legacy overlay APIs.
 ## Migration phases
 
 1. Business/UI features outside `app/components/base/**`
-   - Migrate old calls to semantic primitives from `@/app/components/base/ui/**`.
+   - Migrate old calls to semantic primitives from `@langgenius/dify-ui/*`.
    - Keep deprecated imports out of newly touched files.
 1. Legacy base components in allowlist
    - Migrate allowlisted base callers gradually.
@@ -42,18 +44,12 @@ This document tracks the migration away from legacy overlay APIs.
 
 ## Allowlist maintenance
 
-- After each migration batch, run:
-
-```sh
-pnpm -C web lint:fix --prune-suppressions <changed-files>
-```
-
 - If a migrated file was in the allowlist, remove it from `web/eslint.constants.mjs` in the same PR.
 - Never increase allowlist scope to bypass new code.
 
 ## z-index strategy
 
-All new overlay primitives in `base/ui/` share a single z-index value:
+All new overlay primitives in `@langgenius/dify-ui/*` share a single z-index value:
 **`z-1002`**, except Toast which stays one layer above at **`z-1003`**.
 
 ### Why z-[1002]?
@@ -61,13 +57,13 @@ All new overlay primitives in `base/ui/` share a single z-index value:
 During the migration period, legacy and new overlays coexist. Legacy overlays
 portal to `document.body` with explicit z-index values:
 
-| Layer                             | z-index        | Components                                   |
-| --------------------------------- | -------------- | -------------------------------------------- |
-| Legacy Drawer                     | `z-30`         | `base/drawer`                                |
-| Legacy Modal                      | `z-60`         | `base/modal` (default)                       |
-| Legacy PortalToFollowElem callers | up to `z-1001` | various business components                  |
-| **New UI primitives**             | **`z-1002`**   | `base/ui/*` (Popover, Dialog, Tooltip, etc.) |
-| Toast                             | `z-1003`       | `base/ui/toast`                              |
+| Layer                             | z-index        | Components                                               |
+| --------------------------------- | -------------- | -------------------------------------------------------- |
+| Legacy Drawer                     | `z-30`         | `base/drawer`                                            |
+| Legacy Modal                      | `z-60`         | `base/modal` (default)                                   |
+| Legacy PortalToFollowElem callers | up to `z-1001` | various business components                              |
+| **New UI primitives**             | **`z-1002`**   | `@langgenius/dify-ui/*` (Popover, Dialog, Tooltip, etc.) |
+| Toast                             | `z-1003`       | `@langgenius/dify-ui/toast`                              |
 
 `z-1002` sits above all common legacy overlays, so new primitives always
 render on top without needing per-call-site z-index hacks. Among themselves,
@@ -81,8 +77,8 @@ back to `z-9999`.
 ### Rules
 
 - **Do NOT add z-index overrides** (e.g. `className="z-1003"`) on new
-  `base/ui/*` components. If you find yourself needing one, the parent legacy
-  overlay should be migrated instead.
+  `@langgenius/dify-ui/*` components. If you find yourself needing one, the
+  parent legacy overlay should be migrated instead.
 - When migrating a legacy overlay that has a high z-index, remove the z-index
   entirely — the new primitive's default `z-1002` handles it.
 - `portalToFollowElemContentClassName` with z-index values (e.g. `z-1000`)
@@ -92,12 +88,8 @@ back to `z-9999`.
 
 Once all legacy overlays are removed:
 
-1. Reduce `z-1002` back to `z-50` across all `base/ui/` primitives.
+1. Reduce `z-1002` back to `z-50` across all `@langgenius/dify-ui/*` primitives.
 1. Reduce Toast from `z-1003` to `z-51`.
 1. Remove this section from the migration guide.
 
-## React Refresh policy for base UI primitives
-
-- We keep primitive aliases (for example `DropdownMenu = Menu.Root`) in the same module.
-- For `app/components/base/ui/**/*.tsx`, `react-refresh/only-export-components` is currently set to `off` in ESLint to avoid false positives and IDE noise during migration.
-- Do not use file-level `eslint-disable` comments for this policy; keep control in the scoped ESLint override.
+[`packages/dify-ui/README.md`]: ../../packages/dify-ui/README.md

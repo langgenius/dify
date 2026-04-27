@@ -15,6 +15,7 @@ import {
   RiExpandRightLine,
   RiLayoutLeft2Line,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useCallback,
   useState,
@@ -26,7 +27,7 @@ import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = {
@@ -55,7 +56,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
     isResponding,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
 

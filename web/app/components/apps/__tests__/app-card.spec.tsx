@@ -1,13 +1,23 @@
 import type { Mock } from 'vitest'
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AccessMode } from '@/models/access-control'
 import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import AppCard from '../app-card'
+
+let mockWebappAuthEnabled = false
+
+const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    webapp_auth: { enabled: mockWebappAuthEnabled },
+    branding: { enabled: false },
+  },
+})
 
 // Mock next/navigation
 const mockPush = vi.fn()
@@ -65,16 +75,7 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-// Mock global public store - allow dynamic configuration
-let mockWebappAuthEnabled = false
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: Record<string, unknown>) => unknown) => selector({
-    systemFeatures: {
-      webapp_auth: { enabled: mockWebappAuthEnabled },
-      branding: { enabled: false },
-    },
-  }),
-}))
+// systemFeatures is seeded into the QueryClient via the local render helper.
 
 vi.mock('@/service/apps', () => ({
   deleteApp: vi.fn(() => Promise.resolve()),

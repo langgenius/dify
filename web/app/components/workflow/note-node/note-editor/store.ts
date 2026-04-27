@@ -7,7 +7,7 @@ import NoteEditorContext from './context'
 
 type Shape = {
   linkAnchorElement: HTMLElement | null
-  setLinkAnchorElement: (open?: boolean) => void
+  setLinkAnchorElement: (open?: boolean | HTMLElement | null) => void
   linkOperatorShow: boolean
   setLinkOperatorShow: (linkOperatorShow: boolean) => void
   selectedIsBold: boolean
@@ -28,6 +28,11 @@ export const createNoteEditorStore = () => {
   return createStore<Shape>(set => ({
     linkAnchorElement: null,
     setLinkAnchorElement: (open) => {
+      if (open instanceof HTMLElement) {
+        set(() => ({ linkAnchorElement: open }))
+        return
+      }
+
       if (open) {
         setTimeout(() => {
           const nativeSelection = window.getSelection()

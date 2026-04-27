@@ -64,12 +64,13 @@ class TestSpanData:
 
     def test_span_data_missing_required_fields(self):
         with pytest.raises(ValidationError):
-            SpanData(
-                trace_id=123,
-                # span_id missing
-                name="test_span",
-                start_time=1000,
-                end_time=2000,
+            SpanData.model_validate(
+                {
+                    "trace_id": 123,
+                    "name": "test_span",
+                    "start_time": 1000,
+                    "end_time": 2000,
+                }
             )
 
     def test_span_data_arbitrary_types_allowed(self):

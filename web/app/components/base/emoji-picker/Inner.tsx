@@ -45,20 +45,21 @@ type IEmojiPickerInnerProps = {
 }
 
 const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
+  emoji,
+  background,
   onSelect,
   className,
 }) => {
   const { categories } = data as EmojiMartData
-  const [selectedEmoji, setSelectedEmoji] = useState('')
-  const [selectedBackground, setSelectedBackground] = useState(backgroundColors[0])
-  const [showStyleColors, setShowStyleColors] = useState(false)
+  const [selectedEmoji, setSelectedEmoji] = useState(emoji || '')
+  const [selectedBackground, setSelectedBackground] = useState(background || backgroundColors[0])
+  const [showStyleColors, setShowStyleColors] = useState(!!emoji)
 
   const [searchedEmojis, setSearchedEmojis] = useState<string[]>([])
   const [isSearching, setIsSearching] = useState(false)
 
   React.useEffect(() => {
     if (selectedEmoji) {
-      setShowStyleColors(true)
       /* v8 ignore next 2 - @preserve */
       if (selectedBackground)
         onSelect?.(selectedEmoji, selectedBackground)
@@ -105,6 +106,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                       className="inline-flex h-10 w-10 items-center justify-center rounded-lg"
                       onClick={() => {
                         setSelectedEmoji(emoji)
+                        setShowStyleColors(true)
                       }}
                     >
                       <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1" data-testid={`emoji-search-result-${emoji}`}>
@@ -130,6 +132,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                       className="inline-flex h-10 w-10 items-center justify-center rounded-lg"
                       onClick={() => {
                         setSelectedEmoji(emoji)
+                        setShowStyleColors(true)
                       }}
                     >
                       <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg p-1 ring-components-input-border-hover ring-offset-1 hover:ring-1" data-testid={`emoji-container-${emoji}`}>

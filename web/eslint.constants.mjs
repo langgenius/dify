@@ -5,7 +5,7 @@ export const NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS = [
   },
 ]
 
-export const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
+const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: ['next/image'],
     message: 'Do not import next/image. Use native img tags instead.',
@@ -20,13 +20,28 @@ export const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
   },
 ]
 
+const BASE_UI_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@base-ui/react',
+      '@base-ui/react/*',
+    ],
+    message: 'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+  },
+]
+
+export const WEB_RESTRICTED_IMPORT_PATTERNS = [
+  ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+  ...BASE_UI_RESTRICTED_IMPORT_PATTERNS,
+]
+
 export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: [
       '**/portal-to-follow-elem',
       '**/portal-to-follow-elem/index',
     ],
-    message: 'Deprecated: use semantic overlay primitives from @/app/components/base/ui/ instead. See issue #32767.',
+    message: 'Deprecated: use semantic overlay primitives from @langgenius/dify-ui (popover / dropdown-menu / tooltip / context-menu) instead. See issue #32767.',
   },
   {
     group: [
@@ -64,20 +79,13 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
 export const OVERLAY_MIGRATION_LEGACY_BASE_FILES = [
   'app/components/base/chat/chat-with-history/header/mobile-operation-dropdown.tsx',
   'app/components/base/chat/chat-with-history/header/operation.tsx',
-  'app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown.tsx',
   'app/components/base/chat/chat-with-history/sidebar/operation.tsx',
   'app/components/base/chat/chat/citation/popup.tsx',
   'app/components/base/chat/chat/citation/progress-tooltip.tsx',
   'app/components/base/chat/chat/citation/tooltip.tsx',
-  'app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown.tsx',
   'app/components/base/chip/index.tsx',
   'app/components/base/date-and-time-picker/date-picker/index.tsx',
   'app/components/base/date-and-time-picker/time-picker/index.tsx',
-  'app/components/base/features/new-feature-panel/file-upload/setting-modal.tsx',
-  'app/components/base/features/new-feature-panel/text-to-speech/voice-settings.tsx',
-  'app/components/base/file-uploader/file-from-link-or-local/index.tsx',
-  'app/components/base/image-uploader/chat-image-uploader.tsx',
-  'app/components/base/image-uploader/text-generation-image-uploader.tsx',
   'app/components/base/modal/modal.tsx',
   'app/components/base/prompt-editor/plugins/context-block/component.tsx',
   'app/components/base/prompt-editor/plugins/history-block/component.tsx',

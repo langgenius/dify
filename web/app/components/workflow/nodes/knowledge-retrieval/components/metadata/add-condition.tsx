@@ -2,8 +2,11 @@ import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-re
 import type { MetadataInDoc } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  RiAddLine,
-} from '@remixicon/react'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import { RiAddLine } from '@remixicon/react'
 import {
   useCallback,
   useMemo,
@@ -11,11 +14,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import MetadataIcon from './metadata-icon'
 
 const AddCondition = ({
@@ -36,25 +34,24 @@ const AddCondition = ({
   }, [handleAddCondition])
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={{
-        mainAxis: 3,
-        crossAxis: 0,
-      }}
-    >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
-        <Button
-          size="small"
-          variant="secondary"
-        >
-          <RiAddLine className="h-3.5 w-3.5" />
-          {t('nodes.knowledgeRetrieval.metadata.panel.add', { ns: 'workflow' })}
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-10">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <Button
+            size="small"
+            variant="secondary"
+          >
+            <RiAddLine className="h-3.5 w-3.5" />
+            {t('nodes.knowledgeRetrieval.metadata.panel.add', { ns: 'workflow' })}
+          </Button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={12}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        positionerProps={{ style: { zIndex: 1002 } }}
+      >
         <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="p-2 pb-1">
             <Input
@@ -65,30 +62,28 @@ const AddCondition = ({
             />
           </div>
           <div className="p-1">
-            {
-              filteredMetadataList?.map(metadata => (
-                <div
-                  key={metadata.name}
-                  className="flex h-6 cursor-pointer items-center rounded-md px-3 system-sm-medium text-text-secondary hover:bg-state-base-hover"
-                >
-                  <div className="mr-1 p-px">
-                    <MetadataIcon type={metadata.type} />
-                  </div>
-                  <div
-                    className="grow truncate"
-                    title={metadata.name}
-                    onClick={() => handleAddConditionWrapped(metadata)}
-                  >
-                    {metadata.name}
-                  </div>
-                  <div className="shrink-0 system-xs-regular text-text-tertiary">{metadata.type}</div>
+            {filteredMetadataList?.map(metadata => (
+              <div
+                key={metadata.name}
+                className="flex h-6 cursor-pointer items-center rounded-md px-3 system-sm-medium text-text-secondary hover:bg-state-base-hover"
+              >
+                <div className="mr-1 p-px">
+                  <MetadataIcon type={metadata.type} />
                 </div>
-              ))
-            }
+                <div
+                  className="grow truncate"
+                  title={metadata.name}
+                  onClick={() => handleAddConditionWrapped(metadata)}
+                >
+                  {metadata.name}
+                </div>
+                <div className="shrink-0 system-xs-regular text-text-tertiary">{metadata.type}</div>
+              </div>
+            ))}
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

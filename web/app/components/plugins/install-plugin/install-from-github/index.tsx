@@ -1,7 +1,6 @@
 'use client'
 
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
-import type { Item } from '@/app/components/base/select'
 import type { InstallState } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -21,6 +20,11 @@ import SelectPackage from './steps/selectPackage'
 import SetURL from './steps/setURL'
 
 const i18nPrefix = 'installFromGitHub'
+
+type SelectOption = {
+  value: string | number
+  name: string
+}
 
 type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
@@ -53,12 +57,12 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const versions: Item[] = state.releases.map(release => ({
+  const versions: SelectOption[] = state.releases.map(release => ({
     value: release.tag_name,
     name: release.tag_name,
   }))
 
-  const packages: Item[] = state.selectedVersion
+  const packages: SelectOption[] = state.selectedVersion
     ? (state.releases
         .find(release => release.tag_name === state.selectedVersion)
         ?.assets
@@ -198,10 +202,10 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
                   repoUrl={state.repoUrl}
                   selectedVersion={state.selectedVersion}
                   versions={versions}
-                  onSelectVersion={item => setState(prevState => ({ ...prevState, selectedVersion: item.value as string }))}
+                  onSelectVersion={item => setState(prevState => ({ ...prevState, selectedVersion: String(item.value) }))}
                   selectedPackage={state.selectedPackage}
                   packages={packages}
-                  onSelectPackage={item => setState(prevState => ({ ...prevState, selectedPackage: item.value as string }))}
+                  onSelectPackage={item => setState(prevState => ({ ...prevState, selectedPackage: String(item.value) }))}
                   onUploaded={handleUploaded}
                   onFailed={handleUploadFail}
                   onBack={handleBack}

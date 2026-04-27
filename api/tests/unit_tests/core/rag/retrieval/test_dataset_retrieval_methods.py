@@ -451,12 +451,11 @@ class TestDatasetRetrievalKnowledgeRetrieval:
                             mock_document.data_source_type = "upload_file"
                             mock_document.doc_metadata = {}
 
-                            mock_session.query.return_value.filter.return_value.all.return_value = [
-                                mock_dataset_from_db
-                            ]
-                            mock_session.query.return_value.filter.return_value.all.__iter__ = lambda self: iter(
-                                [mock_dataset_from_db, mock_document]
-                            )
+                            mock_datasets = MagicMock()
+                            mock_datasets.all.return_value = [mock_dataset_from_db]
+                            mock_documents = MagicMock()
+                            mock_documents.all.return_value = [mock_document]
+                            mock_session.scalars.side_effect = [mock_datasets, mock_documents]
 
                             # Act
                             result = dataset_retrieval.knowledge_retrieval(request)

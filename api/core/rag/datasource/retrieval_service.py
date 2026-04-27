@@ -158,7 +158,7 @@ class RetrievalService:
                     )
 
             if futures:
-                for future in concurrent.futures.as_completed(futures, timeout=3600):
+                for _ in concurrent.futures.as_completed(futures, timeout=3600):
                     if exceptions:
                         for f in futures:
                             f.cancel()
@@ -551,6 +551,7 @@ class RetrievalService:
                 child_index_nodes = session.execute(child_chunk_stmt).scalars().all()
 
                 for i in child_index_nodes:
+                    assert i.index_node_id
                     segment_ids.append(i.segment_id)
                     if i.segment_id in child_chunk_map:
                         child_chunk_map[i.segment_id].append(i)

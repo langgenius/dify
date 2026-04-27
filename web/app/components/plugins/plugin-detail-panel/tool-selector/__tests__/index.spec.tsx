@@ -167,13 +167,15 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   ),
   PortalToFollowElemTrigger: ({
     children,
+    render,
     onClick,
   }: {
     children: ReactNode
+    render?: ReactNode
     onClick?: () => void
   }) => (
     <div data-testid="portal-trigger" onClick={onClick}>
-      {children}
+      {render ?? children}
     </div>
   ),
   PortalToFollowElemContent: ({ children }: { children: ReactNode }) => (

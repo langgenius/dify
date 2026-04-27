@@ -272,9 +272,6 @@ export type DocPathWithoutLang =
   | DocPathWithoutLangBase
   | `${DocPathWithoutLangBase}#${string}`
 
-// Full documentation path with language prefix
-type DifyDocPath = `${DocLanguage}/${DocPathWithoutLang}`
-
 // API Reference path translations (English -> other languages)
 export const apiReferencePathTranslations: Record<string, { zh?: string; ja?: string }> = {
   '/api-reference/annotations/configure-annotation-reply': { zh: '/api-reference/标注管理/配置标注回复', ja: '/api-reference/アノテーション管理/アノテーション返信を設定' },

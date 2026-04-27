@@ -9,10 +9,12 @@ import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+// eslint-disable-next-line no-restricted-imports -- legacy overlay migration is handled separately from this change
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -21,7 +23,7 @@ import {
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import {
   createCustomCollection,
 } from '@/service/tools'
@@ -70,7 +72,10 @@ const ToolPicker: FC<Props> = ({
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
 
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const invalidateCustomTools = useInvalidateAllCustomTools()

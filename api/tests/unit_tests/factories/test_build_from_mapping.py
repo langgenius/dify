@@ -306,7 +306,7 @@ def test_invalid_transfer_method():
         "upload_file_id": TEST_UPLOAD_FILE_ID,
         "type": "image",
     }
-    with pytest.raises(ValueError, match="No matching enum found for value 'invalid_method'"):
+    with pytest.raises(ValueError, match="'invalid_method' is not a valid FileTransferMethod"):
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID)
 
 

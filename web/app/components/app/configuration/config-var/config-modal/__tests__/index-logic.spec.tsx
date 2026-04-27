@@ -43,7 +43,7 @@ vi.mock('../form-fields', () => ({
         >
           invalid-name-change
         </button>
-        <button data-testid="valid-json-change" onClick={() => props.onJSONSchemaChange('{\n  \"foo\": \"bar\"\n}')}>valid-json-change</button>
+        <button data-testid="valid-json-change" onClick={() => props.onJSONSchemaChange('{\n  "foo": "bar"\n}')}>valid-json-change</button>
         <button data-testid="empty-json-change" onClick={() => props.onJSONSchemaChange('   ')}>empty-json-change</button>
         <button data-testid="invalid-json-change" onClick={() => props.onJSONSchemaChange('{invalid-json}')}>invalid-json-change</button>
         <button data-testid="type-change" onClick={() => props.onTypeChange({ value: InputVarType.singleFile })}>type-change</button>

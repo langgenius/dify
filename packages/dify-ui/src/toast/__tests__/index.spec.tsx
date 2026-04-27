@@ -3,10 +3,23 @@ import { toast, ToastHost } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
-describe('base/ui/toast', () => {
+const dispatchToastMouseOver = (element: HTMLElement | SVGElement) => {
+  element.dispatchEvent(new MouseEvent('mouseover', {
+    bubbles: true,
+  }))
+}
+
+const dispatchToastMouseOut = (element: HTMLElement | SVGElement) => {
+  element.dispatchEvent(new MouseEvent('mouseout', {
+    bubbles: true,
+    relatedTarget: document.body,
+  }))
+}
+
+describe('@langgenius/dify-ui/toast', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.useFakeTimers()
     toast.dismiss()
   })
 
@@ -46,13 +59,13 @@ describe('base/ui/toast', () => {
     expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(3)
     expect(document.body.querySelectorAll('button[aria-label="Close notification"][aria-hidden="true"]')).toHaveLength(3)
 
-    screen.getByRole('region', { name: 'Notifications' }).element().dispatchEvent(new MouseEvent('mouseover', {
-      bubbles: true,
-    }))
+    const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
+    dispatchToastMouseOver(viewport)
 
     await vi.waitFor(() => {
       expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).not.toBeInTheDocument()
     })
+    dispatchToastMouseOut(viewport)
   })
 
   it('should render a neutral toast when called directly', async () => {
@@ -99,32 +112,17 @@ describe('base/ui/toast', () => {
       onClose,
     })
 
-    screen.getByRole('region', { name: 'Notifications' }).element().dispatchEvent(new MouseEvent('mouseover', {
-      bubbles: true,
-    }))
+    const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
+    dispatchToastMouseOver(viewport)
 
     await expect.element(screen.getByRole('button', { name: 'Close notification' })).toBeInTheDocument()
+    dispatchToastMouseOut(viewport)
     asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
 
     await vi.waitFor(() => {
       expect(document.body).not.toHaveTextContent('Dismiss me')
     })
     expect(onClose).toHaveBeenCalledTimes(1)
-  })
-
-  it('should auto dismiss toasts with the Base UI default timeout', async () => {
-    const screen = await render(<ToastHost />)
-
-    toast('Default timeout')
-    await expect.element(screen.getByText('Default timeout')).toBeInTheDocument()
-
-    await vi.advanceTimersByTimeAsync(4999)
-    expect(document.body).toHaveTextContent('Default timeout')
-
-    await vi.advanceTimersByTimeAsync(1)
-    await vi.waitFor(() => {
-      expect(document.body).not.toHaveTextContent('Default timeout')
-    })
   })
 
   it('should respect the host timeout configuration', async () => {

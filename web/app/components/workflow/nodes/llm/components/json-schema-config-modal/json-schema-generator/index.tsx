@@ -3,14 +3,14 @@ import type { SchemaRoot } from '../../../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+import { useCallback, useState } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useTheme from '@/hooks/use-theme'
@@ -27,61 +27,68 @@ type JsonSchemaGeneratorProps = {
   crossAxisOffset?: number
 }
 
-enum GeneratorView {
-  promptEditor = 'promptEditor',
-  result = 'result',
+const GENERATOR_VIEWS = {
+  promptEditor: 'promptEditor',
+  result: 'result',
+} as const
+
+type GeneratorView = typeof GENERATOR_VIEWS[keyof typeof GENERATOR_VIEWS]
+
+const createEmptyModel = (): Model => ({
+  name: '',
+  provider: '',
+  mode: ModelModeType.completion,
+  completion_params: {} as CompletionParams,
+})
+
+const getStoredModel = (): Model | null => {
+  if (typeof window === 'undefined')
+    return null
+
+  const savedModel = window.localStorage.getItem('auto-gen-model')
+
+  if (!savedModel)
+    return null
+
+  return JSON.parse(savedModel) as Model
 }
 
 const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   onApply,
   crossAxisOffset,
 }) => {
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
-    : null
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState(GeneratorView.promptEditor)
-  const [model, setModel] = useState<Model>(localModel || {
-    name: '',
-    provider: '',
-    mode: ModelModeType.completion,
-    completion_params: {} as CompletionParams,
-  })
+  const [view, setView] = useState<GeneratorView>(GENERATOR_VIEWS.promptEditor)
+  const [model, setModel] = useState<Model | null>(() => getStoredModel())
   const [instruction, setInstruction] = useState('')
   const [schema, setSchema] = useState<SchemaRoot | null>(null)
   const { theme } = useTheme()
   const {
     defaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
+  const resolvedModel = React.useMemo<Model>(() => {
+    if (model)
+      return model
+
+    if (!defaultModel)
+      return createEmptyModel()
+
+    return {
+      ...createEmptyModel(),
+      name: defaultModel.model,
+      provider: defaultModel.provider.provider,
+    }
+  }, [defaultModel, model])
   const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
   const { emit } = useMittContext()
   const SchemaGenerator = theme === Theme.light ? SchemaGeneratorLight : SchemaGeneratorDark
 
-  useEffect(() => {
-    if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
-        : null
-      if (localModel) {
-        setModel(localModel)
-      }
-      else {
-        setModel(prev => ({
-          ...prev,
-          name: defaultModel.model,
-          provider: defaultModel.provider.provider,
-        }))
-      }
-    }
-  }, [defaultModel])
-
   const handleTrigger = useCallback((e: React.MouseEvent<HTMLElement, MouseEvent>) => {
     e.stopPropagation()
     if (advancedEditing || isAddingNewField)
       emit('quitEditing', {})
-    setOpen(!open)
-  }, [open, advancedEditing, isAddingNewField, emit])
+  }, [advancedEditing, isAddingNewField, emit])
 
   const onClose = useCallback(() => {
     setOpen(false)
@@ -89,39 +96,39 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
 
   const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
     const newModel = {
-      ...model,
+      ...resolvedModel,
       provider: newValue.provider,
       name: newValue.modelId,
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+    window.localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+  }, [resolvedModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
     const newModel = {
-      ...model,
+      ...resolvedModel,
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+    window.localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+  }, [resolvedModel])
 
   const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } = useGenerateStructuredOutputRules()
 
   const generateSchema = useCallback(async () => {
-    const { output, error } = await generateStructuredOutputRules({ instruction, model_config: model! })
+    const { output, error } = await generateStructuredOutputRules({ instruction, model_config: resolvedModel })
     if (error) {
       toast.error(error)
       setSchema(null)
-      setView(GeneratorView.promptEditor)
+      setView(GENERATOR_VIEWS.promptEditor)
       return
     }
     return output
-  }, [instruction, model, generateStructuredOutputRules])
+  }, [generateStructuredOutputRules, instruction, resolvedModel])
 
   const handleGenerate = useCallback(async () => {
-    setView(GeneratorView.result)
+    setView(GENERATOR_VIEWS.result)
     const output = await generateSchema()
     if (output === undefined)
       return
@@ -129,7 +136,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   }, [generateSchema])
 
   const goBackToPromptEditor = () => {
-    setView(GeneratorView.promptEditor)
+    setView(GENERATOR_VIEWS.promptEditor)
   }
 
   const handleRegenerate = useCallback(async () => {
@@ -145,31 +152,34 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   }
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: crossAxisOffset ?? 0,
-      }}
     >
-      <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <button
-          type="button"
-          className={cn(
-            'flex h-6 w-6 items-center justify-center rounded-md p-0.5 hover:bg-state-accent-hover',
-            open && 'bg-state-accent-active',
-          )}
-        >
-          <SchemaGenerator />
-        </button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-100">
-        {view === GeneratorView.promptEditor && (
+      <PopoverTrigger
+        render={(
+          <button
+            type="button"
+            onClick={handleTrigger}
+            className={cn(
+              'flex h-6 w-6 items-center justify-center rounded-md p-0.5 hover:bg-state-accent-hover',
+              open && 'bg-state-accent-active',
+            )}
+          >
+            <SchemaGenerator />
+          </button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        alignOffset={crossAxisOffset ?? 0}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
+        {view === GENERATOR_VIEWS.promptEditor && (
           <PromptEditor
             instruction={instruction}
-            model={model}
+            model={resolvedModel}
             onInstructionChange={setInstruction}
             onCompletionParamsChange={handleCompletionParamsChange}
             onGenerate={handleGenerate}
@@ -177,7 +187,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
             onModelChange={handleModelChange}
           />
         )}
-        {view === GeneratorView.result && (
+        {view === GENERATOR_VIEWS.result && (
           <GeneratedResult
             schema={schema!}
             isGenerating={isGenerating}
@@ -187,8 +197,8 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
             onClose={onClose}
           />
         )}
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

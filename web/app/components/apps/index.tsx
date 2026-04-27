@@ -9,6 +9,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAppDetail } from '@/service/explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import List from './list'
@@ -16,9 +17,14 @@ import List from './list'
 const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), { ssr: false })
 const CreateAppModal = dynamic(() => import('../explore/create-app-modal'), { ssr: false })
 const TryApp = dynamic(() => import('../explore/try-app'), { ssr: false })
+const ImportFromMarketplaceTemplateModal = dynamic(() => import('./import-from-marketplace-template-modal'), { ssr: false })
 
 const Apps = () => {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
+  const { replace } = useRouter()
+  const templateId = searchParams.get('template-id')
+  const templateDismissedRef = useRef(false)
 
   useDocumentTitle(t('menus.apps', { ns: 'common' }))
   useEducationInit()
@@ -58,6 +64,14 @@ const Apps = () => {
 
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
 
+  const handleCloseTemplateModal = useCallback(() => {
+    templateDismissedRef.current = true
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('template-id')
+    const query = params.toString()
+    replace(query ? `?${query}` : window.location.pathname, { scroll: false })
+  }, [searchParams, replace])
+
   const {
     handleImportDSL,
     handleImportDSLConfirm,
@@ -73,6 +87,22 @@ const Apps = () => {
       },
     })
   }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
+
+  const handleMarketplaceTemplateConfirm = useCallback(async (dslContent: string) => {
+    await handleImportDSL({
+      mode: DSLImportMode.YAML_CONTENT,
+      yaml_content: dslContent,
+    }, {
+      onSuccess: () => {
+        handleCloseTemplateModal()
+        onSuccess()
+      },
+      onPending: () => {
+        handleCloseTemplateModal()
+        setShowDSLConfirmModal(true)
+      },
+    })
+  }, [handleImportDSL, handleCloseTemplateModal, onSuccess])
 
   const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -150,6 +180,14 @@ const Apps = () => {
             onConfirm={onCreate}
             confirmDisabled={isFetching}
             onHide={() => setIsShowCreateModal(false)}
+          />
+        )}
+
+        {templateId && !templateDismissedRef.current && (
+          <ImportFromMarketplaceTemplateModal
+            templateId={templateId}
+            onClose={handleCloseTemplateModal}
+            onConfirm={handleMarketplaceTemplateConfirm}
           />
         )}
       </div>

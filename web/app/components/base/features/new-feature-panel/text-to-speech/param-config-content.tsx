@@ -1,6 +1,5 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import type { Item } from '@/app/components/base/select'
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -16,6 +15,11 @@ import { languages } from '@/i18n-config/language'
 import { usePathname } from '@/next/navigation'
 import { useAppVoices } from '@/service/use-apps'
 import { TtsAutoPlay } from '@/types/app'
+
+type SelectOption = {
+  value: string | number
+  name: string
+}
 
 type VoiceParamConfigProps = {
   onClose: () => void
@@ -99,7 +103,7 @@ const VoiceParamConfig = ({
         </div>
         <Listbox
           value={languageItem}
-          onChange={(value: Item) => {
+          onChange={(value: SelectOption) => {
             handleChange({
               language: String(value.value),
             })
@@ -166,7 +170,7 @@ const VoiceParamConfig = ({
           <Listbox
             value={voiceItem}
             disabled={!languageItem}
-            onChange={(value: Item) => {
+            onChange={(value: SelectOption) => {
               handleChange({
                 voice: String(value.value),
               })
@@ -195,7 +199,7 @@ const VoiceParamConfig = ({
                 <ListboxOptions
                   className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-hidden sm:text-sm"
                 >
-                  {voiceItems?.map((item: Item) => (
+                  {voiceItems?.map((item: SelectOption) => (
                     <ListboxOption
                       key={item.value}
                       className="relative cursor-pointer rounded-lg py-2 pr-9 pl-3 text-text-secondary select-none hover:bg-state-base-hover data-active:bg-state-base-active"

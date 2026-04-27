@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +19,7 @@ import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndD
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
@@ -38,15 +39,30 @@ const InstallPluginDropdown = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const { enable_marketplace, plugin_installation_permission } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
+  const { data: plugin_installation_permission } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.plugin_installation_permission,
+  })
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const file = event.target.files?.[0] ?? null
+    event.target.value = ''
     if (file) {
       setSelectedFile(file)
       setSelectedAction('local')
       setIsMenuOpen(false)
     }
+  }
+
+  const handleCloseLocalInstaller = () => {
+    setSelectedAction(null)
+    setSelectedFile(null)
+    if (fileInputRef.current)
+      fileInputRef.current.value = ''
   }
 
   // TODO TEST INSTALL : uninstall
@@ -97,6 +113,13 @@ const InstallPluginDropdown = ({
   return (
     <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <div className="relative">
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+          accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
+        />
         <DropdownMenuTrigger
           render={(
             <Button
@@ -118,13 +141,6 @@ const InstallPluginDropdown = ({
           <span className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-3 system-xs-medium-uppercase text-text-tertiary">
             {t('installFrom', { ns: 'plugin' })}
           </span>
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleFileChange}
-            accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
-          />
           {installMethods.map(({ icon: Icon, text, action }) => (
             <DropdownMenuItem
               key={action}
@@ -149,7 +165,7 @@ const InstallPluginDropdown = ({
         && (
           <InstallFromLocalPackage
             file={selectedFile}
-            onClose={() => setSelectedAction(null)}
+            onClose={handleCloseLocalInstaller}
             onSuccess={noop}
           />
         )}

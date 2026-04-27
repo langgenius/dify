@@ -73,6 +73,8 @@ vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
 
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+
 // Mock service/use-triggers
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({
