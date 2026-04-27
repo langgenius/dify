@@ -10,11 +10,7 @@ sub-groups in one module:
     POST /oauth/device/approve
     POST /oauth/device/deny
 
-The five Resource classes are also re-registered on legacy mounts:
-service_api_ns at /v1/oauth/device/{code,token,lookup} (from
-service_api/oauth.py) and console_ns at /console/api/oauth/device/{approve,deny}
-(from the deferred _register_legacy_console_mount() at module bottom).
-All legacy mounts retire in Phase F. SSO branch lives in oauth_device_sso.py.
+SSO branch lives in oauth_device_sso.py.
 """
 from __future__ import annotations
 
@@ -369,17 +365,3 @@ def _emit_deny_audit(state) -> None:
     )
 
 
-# =========================================================================
-# Legacy console-side mount — deferred import breaks a cycle that would
-# form between this module (imports controllers.console.wraps) and
-# controllers.console.__init__ (loads .auth.oauth_device).
-# =========================================================================
-
-
-def _register_legacy_console_mount() -> None:
-    from controllers.console import console_ns
-    console_ns.add_resource(DeviceApproveApi, "/oauth/device/approve")
-    console_ns.add_resource(DeviceDenyApi, "/oauth/device/deny")
-
-
-_register_legacy_console_mount()

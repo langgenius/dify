@@ -109,15 +109,6 @@ def init_app(app: DifyApp):
     app.register_blueprint(inner_api_bp)
     app.register_blueprint(mcp_bp)
 
-    # SSO-branch device-flow routes. No CORS config — these endpoints are
-    # user-interactive (same-origin browser traffic) and cookie-authed;
-    # allowing cross-origin would defeat the SameSite=Lax cookie's purpose.
-    # Gated on ENABLE_OAUTH_BEARER: without the bearer authenticator, tokens
-    # minted here cannot be validated, so skip the blueprint entirely.
-    if dify_config.ENABLE_OAUTH_BEARER:
-        from controllers.oauth_device_sso import bp as oauth_device_sso_bp
-        app.register_blueprint(oauth_device_sso_bp)
-
     # Register trigger blueprint with CORS for webhook calls
     _apply_cors_once(
         trigger_bp,

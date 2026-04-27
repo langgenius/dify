@@ -1,10 +1,6 @@
 """User-scoped account endpoints. /account is the bearer-authed
 identity read; /account/sessions and /account/sessions/<id> manage
-the user's active OAuth tokens (Phase C steps 11–12).
-
-The /account class is also registered on the legacy /v1/me path from
-service_api/oauth.py until Phase F retires that mount. Likewise
-/account/sessions/self is re-mounted at /v1/oauth/authorizations/self.
+the user's active OAuth tokens.
 """
 from __future__ import annotations
 

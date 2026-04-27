@@ -8,8 +8,6 @@ EE-only. Browser flow:
 
 Function-based (raw @bp.route) rather than Resource classes because the
 handlers do redirects + cookie kwargs that don't fit the Resource shape.
-Same handlers are also re-registered on the legacy /v1/* paths from
-controllers/oauth_device_sso.py until Phase F retires the legacy mount.
 """
 from __future__ import annotations
 
