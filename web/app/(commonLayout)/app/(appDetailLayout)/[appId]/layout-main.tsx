@@ -12,6 +12,8 @@ import {
   RiTerminalBoxLine,
   RiTerminalWindowFill,
   RiTerminalWindowLine,
+  RiUserSettingsFill,
+  RiUserSettingsLine,
 } from '@remixicon/react'
 import { useUnmount } from 'ahooks'
 import * as React from 'react'
@@ -100,6 +102,15 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiDashboard2Line,
         selectedIcon: RiDashboard2Fill,
       },
+      ...(isCurrentWorkspaceEditor
+        ? [{
+            name: 'Access Config',
+            href: `/app/${appId}/access-config`,
+            icon: RiUserSettingsLine,
+            selectedIcon: RiUserSettingsFill,
+          }]
+        : []
+      ),
     ]
     return navConfig
   }, [t])

@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  AccessRule,
-  AssignedRole,
-} from '@/app/components/header/account-setting/access-rules-page/access-rule-row'
+import type { AccessRule } from '@/app/components/header/account-setting/access-rules-page/access-rule-row'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -14,8 +11,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useState } from 'react'
-import AccessRuleRow from '@/app/components/header/account-setting/access-rules-page/access-rule-row'
-import AddRuleTargetsModal from '@/app/components/header/account-setting/access-rules-page/add-rule-targets-modal'
+import AccessRulesEditor from '@/app/components/access-rules-editor'
 
 export type AccessConfigModalProps = {
   open: boolean
@@ -46,38 +42,6 @@ const AccessConfigModalBody = ({
   onSave,
 }: AccessConfigModalBodyProps) => {
   const [rules, setRules] = useState<AccessRule[]>(initialRules)
-  const [addingRule, setAddingRule] = useState<AccessRule | null>(null)
-
-  const handleAddRole = useCallback((rule: AccessRule) => {
-    setAddingRule(rule)
-  }, [])
-
-  const handleCloseAddModal = useCallback(() => {
-    setAddingRule(null)
-  }, [])
-
-  const handleAddSubmit = useCallback(
-    (_selection: { roleIds: string[], memberIds: string[] }) => {
-      // TODO: wire up to API when backend is ready.
-    },
-    [],
-  )
-
-  const handleRemoveRole = useCallback(
-    (target: AccessRule, role: AssignedRole) => {
-      setRules(prev =>
-        prev.map(rule =>
-          rule.id === target.id
-            ? {
-                ...rule,
-                assignedRoles: rule.assignedRoles.filter(r => r.id !== role.id),
-              }
-            : rule,
-        ),
-      )
-    },
-    [],
-  )
 
   const handleSave = useCallback(() => {
     onSave?.(rules)
@@ -105,17 +69,7 @@ const AccessConfigModalBody = ({
         className="min-h-0 flex-1"
         slotClassNames={{ viewport: 'px-6 overscroll-contain' }}
       >
-        <div className="flex flex-col">
-          {rules.map(rule => (
-            <AccessRuleRow
-              key={rule.id}
-              rule={rule}
-              showMenu={false}
-              onAddRole={handleAddRole}
-              onRemoveRole={handleRemoveRole}
-            />
-          ))}
-        </div>
+        <AccessRulesEditor rules={rules} onRulesChange={setRules} />
       </ScrollArea>
 
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-divider-subtle px-6 py-4">
@@ -126,17 +80,6 @@ const AccessConfigModalBody = ({
           {saveLabel}
         </Button>
       </div>
-
-      {addingRule && (
-        <AddRuleTargetsModal
-          open
-          ruleName={addingRule.name}
-          initialRoleIds={addingRule.assignedRoles.map(role => role.id)}
-          initialMemberIds={[]}
-          onClose={handleCloseAddModal}
-          onSubmit={handleAddSubmit}
-        />
-      )}
     </DialogContent>
   )
 }
@@ -159,15 +102,17 @@ const AccessConfigModal = ({
           onClose()
       }}
     >
-      <AccessConfigModalBody
-        title={title}
-        description={description}
-        initialRules={initialRules}
-        saveLabel={saveLabel}
-        cancelLabel={cancelLabel}
-        onClose={onClose}
-        onSave={onSave}
-      />
+      {open && (
+        <AccessConfigModalBody
+          title={title}
+          description={description}
+          initialRules={initialRules}
+          saveLabel={saveLabel}
+          cancelLabel={cancelLabel}
+          onClose={onClose}
+          onSave={onSave}
+        />
+      )}
     </Dialog>
   )
 }
