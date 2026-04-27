@@ -68,6 +68,9 @@ const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/ds
 const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
   ssr: false,
 })
+const AppAccessConfigModal = dynamic(() => import('@/app/components/apps/app-access-config-modal'), {
+  ssr: false,
+})
 
 type AppCardProps = {
   app: App
@@ -86,6 +89,7 @@ type AppCardOperationsMenuProps = {
   onSwitch: () => void
   onDelete: () => void
   onAccessControl: () => void
+  onAccessConfig: () => void
 }
 
 const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
@@ -99,6 +103,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   onSwitch,
   onDelete,
   onAccessControl,
+  onAccessConfig,
 }) => {
   const { t } = useTranslation()
   const openAsyncWindow = useAsyncWindowOpen()
@@ -167,6 +172,10 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
           <DropdownMenuSeparator />
         </>
       )}
+      <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onAccessConfig)}>
+        <span className="text-sm leading-5 text-text-secondary">Access Config</span>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
       <DropdownMenuItem
         variant="destructive"
         className="gap-2 px-3"
@@ -217,6 +226,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
+  const [showAccessConfig, setShowAccessConfig] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
@@ -285,6 +295,13 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowAccessControl(true)
+    })
+  }, [])
+
+  const handleShowAccessConfig = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowAccessConfig(true)
     })
   }, [])
 
@@ -550,6 +567,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
                               onSwitch={handleShowSwitchModal}
                               onDelete={handleShowDeleteConfirm}
                               onAccessControl={handleShowAccessControl}
+                              onAccessConfig={handleShowAccessConfig}
                             />
                           )
                         : (
@@ -564,6 +582,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
                               onSwitch={handleShowSwitchModal}
                               onDelete={handleShowDeleteConfirm}
                               onAccessControl={handleShowAccessControl}
+                              onAccessConfig={handleShowAccessConfig}
                             />
                           )}
                     </DropdownMenuContent>
@@ -669,6 +688,13 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
       )}
       {showAccessControl && (
         <AccessControl app={app} onConfirm={onUpdateAccessControl} onClose={() => setShowAccessControl(false)} />
+      )}
+      {showAccessConfig && (
+        <AppAccessConfigModal
+          open
+          app={app}
+          onClose={() => setShowAccessConfig(false)}
+        />
       )}
     </>
   )

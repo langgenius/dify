@@ -10,6 +10,7 @@ import { downloadBlob } from '@/utils/download'
 type ModalState = {
   showRenameModal: boolean
   showConfirmDelete: boolean
+  showAccessConfig: boolean
   confirmMessage: string
 }
 
@@ -30,6 +31,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   const [modalState, setModalState] = useState<ModalState>({
     showRenameModal: false,
     showConfirmDelete: false,
+    showAccessConfig: false,
     confirmMessage: '',
   })
 
@@ -47,6 +49,14 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
 
   const closeConfirmDelete = useCallback(() => {
     setModalState(prev => ({ ...prev, showConfirmDelete: false }))
+  }, [])
+
+  const openAccessConfig = useCallback(() => {
+    setModalState(prev => ({ ...prev, showAccessConfig: true }))
+  }, [])
+
+  const closeAccessConfig = useCallback(() => {
+    setModalState(prev => ({ ...prev, showAccessConfig: false }))
   }, [])
 
   // API mutations
@@ -122,6 +132,8 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
     openRenameModal,
     closeRenameModal,
     closeConfirmDelete,
+    openAccessConfig,
+    closeAccessConfig,
 
     // Export state
     exporting,

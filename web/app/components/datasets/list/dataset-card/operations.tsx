@@ -11,6 +11,7 @@ type OperationsProps = {
   openRenameModal: () => void
   handleExportPipeline: () => void
   detectIsUsedByApp: () => void
+  openAccessConfig: () => void
   onClose?: () => void
 }
 
@@ -20,6 +21,7 @@ const Operations = ({
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
+  openAccessConfig,
   onClose,
 }: OperationsProps) => {
   const { t } = useTranslation()
@@ -39,23 +41,32 @@ const Operations = ({
     detectIsUsedByApp()
   }
 
+  const handleAccessConfig = () => {
+    onClose?.()
+    openAccessConfig()
+  }
+
   return (
     <>
       <DropdownMenuItem onClick={handleRename}>
-        <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+        <span aria-hidden className="mr-1 i-ri-edit-line size-4 text-text-tertiary" />
         {t('operation.edit', { ns: 'common' })}
       </DropdownMenuItem>
       {showExportPipeline && (
         <DropdownMenuItem onClick={handleExport}>
-          <span aria-hidden className="i-ri-file-download-line size-4 text-text-tertiary" />
+          <span aria-hidden className="mr-1 i-ri-file-download-line size-4 text-text-tertiary" />
           {t('operations.exportPipeline', { ns: 'datasetPipeline' })}
         </DropdownMenuItem>
       )}
+      <DropdownMenuItem onClick={handleAccessConfig}>
+        <span aria-hidden className="mr-1 i-ri-user-settings-line size-4 text-text-tertiary" />
+        Access Config
+      </DropdownMenuItem>
       {showDelete && (
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onClick={handleDelete}>
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+            <span aria-hidden className="mr-1 i-ri-delete-bin-line size-4" />
             {t('operation.delete', { ns: 'common' })}
           </DropdownMenuItem>
         </>

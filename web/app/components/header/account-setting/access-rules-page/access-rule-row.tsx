@@ -21,6 +21,7 @@ export type AccessRule = {
 export type AccessRuleRowProps = {
   rule: AccessRule
   className?: string
+  showMenu?: boolean
   onEdit?: (rule: AccessRule) => void
   onCopy?: (rule: AccessRule) => void
   onDelete?: (rule: AccessRule) => void
@@ -31,6 +32,7 @@ export type AccessRuleRowProps = {
 const AccessRuleRow = ({
   rule,
   className,
+  showMenu = true,
   onEdit,
   onCopy,
   onDelete,
@@ -70,11 +72,13 @@ const AccessRuleRow = ({
           </button>
         </div>
       </div>
-      <AccessRuleRowMenu
-        onEdit={handleEdit}
-        onCopy={handleCopy}
-        onDelete={handleDelete}
-      />
+      {showMenu && (
+        <AccessRuleRowMenu
+          onEdit={handleEdit}
+          onCopy={handleCopy}
+          onDelete={handleDelete}
+        />
+      )}
     </div>
   )
 }
