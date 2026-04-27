@@ -16,13 +16,14 @@ api = ExternalApi(
 
 openapi_ns = Namespace("openapi", description="User-scoped operations", path="/")
 
-from . import account, index, oauth_device, oauth_device_sso
+from . import account, index, oauth_device, oauth_device_sso, workspaces
 
 __all__ = [
     "account",
     "index",
     "oauth_device",
     "oauth_device_sso",
+    "workspaces",
 ]
 
 api.add_namespace(openapi_ns)
