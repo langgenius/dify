@@ -1,21 +1,15 @@
-from services.errors.base import BaseServiceError
+from core.errors.service_errors import (
+    ConversationCompletedError,
+    ConversationNotExistsError,
+    ConversationVariableNotExistsError,
+    ConversationVariableTypeMismatchError,
+    LastConversationNotExistsError,
+)
 
-
-class LastConversationNotExistsError(BaseServiceError):
-    pass
-
-
-class ConversationNotExistsError(BaseServiceError):
-    pass
-
-
-class ConversationCompletedError(Exception):
-    pass
-
-
-class ConversationVariableNotExistsError(BaseServiceError):
-    pass
-
-
-class ConversationVariableTypeMismatchError(BaseServiceError):
-    pass
+__all__ = [
+    "ConversationCompletedError",
+    "ConversationNotExistsError",
+    "ConversationVariableNotExistsError",
+    "ConversationVariableTypeMismatchError",
+    "LastConversationNotExistsError",
+]

@@ -1,3 +1,3 @@
-class BaseServiceError(ValueError):
-    def __init__(self, description: str | None = None):
-        self.description = description
+from core.errors.service_errors import BaseServiceError
+
+__all__ = ["BaseServiceError"]

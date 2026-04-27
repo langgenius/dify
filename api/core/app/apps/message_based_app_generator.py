@@ -27,6 +27,7 @@ from core.app.entities.task_entities import (
     CompletionAppStreamResponse,
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
+from core.errors.service_errors import AppModelConfigBrokenError, ConversationNotExistsError, MessageNotExistsError
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.file_reference import resolve_file_record_id
 from extensions.ext_database import db
@@ -36,9 +37,6 @@ from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
-from services.errors.app_model_config import AppModelConfigBrokenError
-from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 

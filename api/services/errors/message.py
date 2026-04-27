@@ -1,17 +1,13 @@
-from services.errors.base import BaseServiceError
+from core.errors.service_errors import (
+    FirstMessageNotExistsError,
+    LastMessageNotExistsError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 
-
-class FirstMessageNotExistsError(BaseServiceError):
-    pass
-
-
-class LastMessageNotExistsError(BaseServiceError):
-    pass
-
-
-class MessageNotExistsError(BaseServiceError):
-    pass
-
-
-class SuggestedQuestionsAfterAnswerDisabledError(BaseServiceError):
-    pass
+__all__ = [
+    "FirstMessageNotExistsError",
+    "LastMessageNotExistsError",
+    "MessageNotExistsError",
+    "SuggestedQuestionsAfterAnswerDisabledError",
+]

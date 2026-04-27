@@ -20,13 +20,12 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
+from core.errors.service_errors import MessageNotExistsError, MoreLikeThisDisabledError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account, App, EndUser, Message
-from services.errors.app import MoreLikeThisDisabledError
-from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 

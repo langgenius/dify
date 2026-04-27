@@ -1,9 +1,3 @@
-from services.errors.base import BaseServiceError
+from core.errors.service_errors import AppModelConfigBrokenError, ProviderNotFoundError
 
-
-class AppModelConfigBrokenError(BaseServiceError):
-    pass
-
-
-class ProviderNotFoundError(BaseServiceError):
-    pass
+__all__ = ["AppModelConfigBrokenError", "ProviderNotFoundError"]
