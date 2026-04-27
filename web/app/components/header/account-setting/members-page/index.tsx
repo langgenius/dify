@@ -1,9 +1,9 @@
 'use client'
-import type { InvitationResult } from '@/models/common'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import type { InvitationResult, Member } from '@/models/common'
+import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
@@ -11,7 +11,6 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMembers } from '@/service/use-common'
@@ -19,8 +18,8 @@ import EditWorkspaceModal from './edit-workspace-modal'
 import InviteButton from './invite-button'
 import InviteModal from './invite-modal'
 import InvitedModal from './invited-modal'
-import MemberMenu from './member-menu'
-import RoleBadges from './role-badges'
+import MemberDetailsModal from './member-details-modal'
+import MemberRow from './member-row'
 import TransferOwnershipModal from './transfer-ownership-modal'
 
 const MembersPage = () => {
@@ -37,7 +36,6 @@ const MembersPage = () => {
   const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
   const { data, refetch } = useMembers()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { formatTimeFromNow } = useFormatTimeFromNow()
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
@@ -47,6 +45,21 @@ const MembersPage = () => {
   const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
+  const [detailsMember, setDetailsMember] = useState<Member | null>(null)
+
+  const handleAssignRolesSubmit = (_roleIds: string[]) => {
+    // TODO: wire to backend once multi-role member endpoint is ready.
+    toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+    refetch()
+  }
+
+  const handleOpenDetails = useCallback((member: Member) => {
+    setDetailsMember(member)
+  }, [])
+
+  const handleTransferOwnership = useCallback(() => {
+    setShowTransferOwnershipModal(true)
+  }, [])
 
   return (
     <>
@@ -124,63 +137,20 @@ const MembersPage = () => {
             <div className="w-[215px] shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
           </div>
           <div className="relative min-w-[480px]">
-            {
-              accounts.map(account => (
-                <div key={account.id} className="flex border-b border-divider-subtle">
-                  <div className="flex grow items-center px-3 py-2">
-                    <Avatar avatar={account.avatar_url} size="sm" className="mr-2" name={account.name} />
-                    <div className="">
-                      <div className="system-sm-medium text-text-secondary">
-                        {account.name}
-                        {account.status === 'pending' && (
-                          <span className="ml-1 system-xs-medium text-text-warning">
-                            {t('members.pending', { ns: 'common' })}
-                          </span>
-                        )}
-                        {userProfile.email === account.email && (
-                          <span className="system-xs-regular text-text-tertiary">
-                            {t('members.you', { ns: 'common' })}
-                          </span>
-                        )}
-                      </div>
-                      <div className="system-xs-regular text-text-tertiary">{account.email}</div>
-                    </div>
-                  </div>
-                  <div className="flex w-[120px] shrink-0 items-center py-2 system-sm-regular text-text-secondary">
-                    {formatTimeFromNow(Number((account.last_active_at || account.created_at)) * 1000)}
-                  </div>
-                  {/* <div className="flex w-[215px] shrink-0 items-center">
-                    {isCurrentWorkspaceOwner && account.role === 'owner' && isAllowTransferWorkspace && (
-                      <TransferOwnership onOperate={() => setShowTransferOwnershipModal(true)}></TransferOwnership>
-                    )}
-                    {isCurrentWorkspaceOwner && account.role === 'owner' && !isAllowTransferWorkspace && (
-                      <div className="px-3 system-sm-regular text-text-secondary">{RoleMap[account.role] || RoleMap.normal}</div>
-                    )}
-                    {isCurrentWorkspaceOwner && account.role !== 'owner' && (
-                      <Operation member={account} operatorRole={currentWorkspace.role} onOperate={refetch} />
-                    )}
-                    {!isCurrentWorkspaceOwner && (
-                      <div className="px-3 system-sm-regular text-text-secondary">{RoleMap[account.role] || RoleMap.normal}</div>
-                    )}
-                  </div> */}
-                  <div className="flex w-[215px] shrink-0 items-center gap-2 px-3">
-                    <RoleBadges
-                      className="grow"
-                      roles={[RoleMap[account.role] || RoleMap.normal]}
-                    />
-                    {isCurrentWorkspaceManager && (
-                      <MemberMenu
-                        member={account}
-                        operatorRole={currentWorkspace.role}
-                        canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
-                        onOperate={refetch}
-                        onTransferOwnership={() => setShowTransferOwnershipModal(true)}
-                      />
-                    )}
-                  </div>
-                </div>
-              ))
-            }
+            {accounts.map(account => (
+              <MemberRow
+                key={account.id}
+                member={account}
+                roleLabel={RoleMap[account.role] || RoleMap.normal}
+                isCurrentUser={userProfile.email === account.email}
+                canManage={isCurrentWorkspaceManager}
+                operatorRole={currentWorkspace.role}
+                canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
+                onOpenDetails={handleOpenDetails}
+                onOperate={refetch}
+                onTransferOwnership={handleTransferOwnership}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -216,6 +186,19 @@ const MembersPage = () => {
         <TransferOwnershipModal
           show={showTransferOwnershipModal}
           onClose={() => setShowTransferOwnershipModal(false)}
+        />
+      )}
+      {detailsMember && (
+        <MemberDetailsModal
+          open={!!detailsMember}
+          member={detailsMember}
+          roleLabel={RoleMap[detailsMember.role] || RoleMap.normal}
+          canAssignRoles={
+            isCurrentWorkspaceManager
+            && detailsMember.role !== 'owner'
+          }
+          onClose={() => setDetailsMember(null)}
+          onAssignSubmit={handleAssignRolesSubmit}
         />
       )}
     </>
