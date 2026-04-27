@@ -1,12 +1,27 @@
 import json
 from typing import Any
 
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from core.helper import encrypter
 from extensions.ext_database import db
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
+
+
+class ApiKeyAuthCredentials(BaseModel):
+    """Credentials payload for API key authentication."""
+
+    auth_type: str = Field(..., min_length=1)
+
+
+class ApiKeyAuthArgs(BaseModel):
+    """Validated arguments for creating an API key auth provider."""
+
+    category: str = Field(..., min_length=1)
+    provider: str = Field(..., min_length=1)
+    credentials: ApiKeyAuthCredentials
 
 
 class ApiKeyAuthService:
@@ -64,14 +79,6 @@ class ApiKeyAuthService:
             db.session.commit()
 
     @classmethod
-    def validate_api_key_auth_args(cls, args):
-        if "category" not in args or not args["category"]:
-            raise ValueError("category is required")
-        if "provider" not in args or not args["provider"]:
-            raise ValueError("provider is required")
-        if "credentials" not in args or not args["credentials"]:
-            raise ValueError("credentials is required")
-        if not isinstance(args["credentials"], dict):
-            raise ValueError("credentials must be a dictionary")
-        if "auth_type" not in args["credentials"] or not args["credentials"]["auth_type"]:
-            raise ValueError("auth_type is required")
+    def validate_api_key_auth_args(cls, args: dict[str, Any] | None) -> None:
+        """Validate API key auth args using Pydantic model_validate."""
+        ApiKeyAuthArgs.model_validate(args)
