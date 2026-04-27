@@ -18,12 +18,13 @@ from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
-from enums.quota_type import QuotaType, unlimited
+from enums.quota_type import QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
 from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.quota_service import QuotaService, unlimited
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
@@ -106,7 +107,7 @@ class AppGenerateService:
         quota_charge = unlimited()
         if dify_config.BILLING_ENABLED:
             try:
-                quota_charge = QuotaType.WORKFLOW.consume(app_model.tenant_id)
+                quota_charge = QuotaService.reserve(QuotaType.WORKFLOW, app_model.tenant_id)
             except QuotaExceededError:
                 raise InvokeRateLimitError(f"Workflow execution quota limit reached for tenant {app_model.tenant_id}")
 
@@ -116,6 +117,7 @@ class AppGenerateService:
         request_id = RateLimit.gen_request_key()
         try:
             request_id = rate_limit.enter(request_id)
+            quota_charge.commit()
             effective_mode = (
                 AppMode.AGENT_CHAT if app_model.is_agent and app_model.mode != AppMode.AGENT_CHAT else app_model.mode
             )

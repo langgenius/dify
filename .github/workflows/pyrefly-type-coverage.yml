@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   pyrefly-type-coverage:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
       issues: write

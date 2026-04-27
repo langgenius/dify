@@ -156,11 +156,18 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def get_published_workflow_by_id(self, app_model: App, workflow_id: str) -> Workflow | None:
+    def get_published_workflow_by_id(
+        self, app_model: App, workflow_id: str, session: Session | None = None
+    ) -> Workflow | None:
         """
         fetch published workflow by workflow_id
+
+        When ``session`` is provided, reuse it so callers that already hold a
+        Session avoid checking out an extra request-scoped ``db.session``
+        connection. Falls back to ``db.session`` for backward compatibility.
         """
-        workflow = db.session.scalar(
+        bind = session if session is not None else db.session
+        workflow = bind.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -178,16 +185,20 @@ class WorkflowService:
             )
         return workflow
 
-    def get_published_workflow(self, app_model: App) -> Workflow | None:
+    def get_published_workflow(self, app_model: App, session: Session | None = None) -> Workflow | None:
         """
         Get published workflow
+
+        When ``session`` is provided, reuse it so callers that already hold a
+        Session avoid checking out an extra request-scoped ``db.session``
+        connection. Falls back to ``db.session`` for backward compatibility.
         """
 
         if not app_model.workflow_id:
             return None
 
-        # fetch published workflow by workflow_id
-        workflow = db.session.scalar(
+        bind = session if session is not None else db.session
+        workflow = bind.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
