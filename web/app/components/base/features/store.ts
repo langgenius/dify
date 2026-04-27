@@ -17,8 +17,6 @@ export type FeaturesAction = {
 
 export type FeatureStoreState = FeaturesState & FeaturesAction & FeaturesModal
 
-export type FeaturesStore = ReturnType<typeof createFeaturesStore>
-
 export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
   const DEFAULT_PROPS: FeaturesState = {
     features: {

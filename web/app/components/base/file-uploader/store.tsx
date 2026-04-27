@@ -1,26 +1,21 @@
 import type {
   FileEntity,
 } from './types'
-import {
-  createContext,
-  useContext,
-  useRef,
-} from 'react'
-import {
-  create,
-  useStore as useZustandStore,
-} from 'zustand'
+import { createStore } from 'zustand/vanilla'
+import { createStoreContext, useContextStore, useContextStoreApi, useStoreRef } from '@/stores/create-context-store'
 
 type Shape = {
   files: FileEntity[]
   setFiles: (files: FileEntity[]) => void
 }
 
+export const FileContext = createStoreContext<Shape>('File')
+
 export const createFileStore = (
   value: FileEntity[] = [],
   onChange?: (files: FileEntity[]) => void,
 ) => {
-  return create<Shape>(set => ({
+  return createStore<Shape>(set => ({
     files: value ? [...value] : [],
     setFiles: (files) => {
       set({ files })
@@ -29,19 +24,12 @@ export const createFileStore = (
   }))
 }
 
-type FileStore = ReturnType<typeof createFileStore>
-export const FileContext = createContext<FileStore | null>(null)
-
 export function useStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(FileContext)
-  if (!store)
-    throw new Error('Missing FileContext.Provider in the tree')
-
-  return useZustandStore(store, selector)
+  return useContextStore(FileContext, selector)
 }
 
-export const useFileStore = () => {
-  return useContext(FileContext)!
+export function useFileStore() {
+  return useContextStoreApi(FileContext)
 }
 
 type FileProviderProps = {
@@ -49,18 +37,15 @@ type FileProviderProps = {
   value?: FileEntity[]
   onChange?: (files: FileEntity[]) => void
 }
-export const FileContextProvider = ({
+export function FileContextProvider({
   children,
-  value,
+  value = [],
   onChange,
-}: FileProviderProps) => {
-  const storeRef = useRef<FileStore | undefined>(undefined)
-
-  if (!storeRef.current)
-    storeRef.current = createFileStore(value, onChange)
+}: FileProviderProps) {
+  const store = useStoreRef(() => createFileStore(value, onChange))
 
   return (
-    <FileContext.Provider value={storeRef.current}>
+    <FileContext.Provider value={store}>
       {children}
     </FileContext.Provider>
   )

@@ -1,13 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { use } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import DataSourceProvider, { DataSourceContext } from '../provider'
-
-const mockStore = { getState: vi.fn(), setState: vi.fn(), subscribe: vi.fn() }
-
-vi.mock('../', () => ({
-  createDataSourceStore: () => mockStore,
-}))
 
 // Test consumer component that reads from context
 function ContextConsumer() {
@@ -20,10 +14,6 @@ function ContextConsumer() {
 }
 
 describe('DataSourceProvider', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   // Rendering: verifies children are passed through
   describe('Rendering', () => {
     it('should render children', () => {
@@ -62,11 +52,11 @@ describe('DataSourceProvider', () => {
   // Stability: verifies the store reference is stable across re-renders
   describe('Store Stability', () => {
     it('should reuse same store on re-render (stable reference)', () => {
-      const storeValues: Array<typeof mockStore | null> = []
+      const storeValues: unknown[] = []
 
       function StoreCapture() {
         const store = use(DataSourceContext)
-        storeValues.push(store as typeof mockStore | null)
+        storeValues.push(store)
         return null
       }
 
