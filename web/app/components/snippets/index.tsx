@@ -70,7 +70,7 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
 const SnippetPageWrapper = ({ snippetId }: SnippetPageProps) => {
   return (
     <SnippetAndEvaluationPlanGuard fallbackHref="/apps">
-      <WorkflowContextProvider>
+      <WorkflowContextProvider key={snippetId}>
         <SnippetPage snippetId={snippetId} />
       </WorkflowContextProvider>
     </SnippetAndEvaluationPlanGuard>

@@ -25,6 +25,10 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   MediaType: { mobile: 'mobile', desktop: 'desktop' },
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
+}))
+
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: { setAppSidebarExpand: typeof mockSetAppSidebarExpand }) => unknown) => selector({
     setAppSidebarExpand: mockSetAppSidebarExpand,

@@ -2059,7 +2059,7 @@
   },
   "web/app/components/base/text-generation/types.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 3
+      "count": 1
     }
   },
   "web/app/components/base/textarea/index.stories.tsx": {
@@ -2067,11 +2067,6 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/textarea/index.tsx": {
-    "react-refresh/only-export-components": {
       "count": 1
     }
   },

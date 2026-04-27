@@ -7,6 +7,18 @@ const isNotFoundError = (error: unknown) => {
   return !!error && typeof error === 'object' && 'status' in error && error.status === 404
 }
 
+export const fetchSnippetDraftWorkflow = async (snippetId: string) => {
+  try {
+    return await get<SnippetWorkflow>(`/snippets/${snippetId}/workflows/draft`, {}, { silent: true })
+  }
+  catch (error) {
+    if (isNotFoundError(error))
+      return undefined
+
+    throw error
+  }
+}
+
 const invalidateSnippetWorkflowQueries = async (
   queryClient: ReturnType<typeof useQueryClient>,
   snippetId: string,
@@ -49,17 +61,10 @@ export const useSnippetDraftWorkflow = (
   return useQuery({
     ...queryOptions,
     queryFn: async () => {
-      try {
-        const draftWorkflow = await get<SnippetWorkflow>(`/snippets/${snippetId}/workflows/draft`, {}, { silent: true })
+      const draftWorkflow = await fetchSnippetDraftWorkflow(snippetId)
+      if (draftWorkflow)
         onSuccess?.(draftWorkflow)
-        return draftWorkflow
-      }
-      catch (error) {
-        if (isNotFoundError(error))
-          return undefined
-
-        throw error
-      }
+      return draftWorkflow
     },
   })
 }

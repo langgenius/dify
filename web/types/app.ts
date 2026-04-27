@@ -79,8 +79,7 @@ export const AppTypeEnum = {
 /**
  * Variable type
  */
-export const VariableTypes = ['string', 'number', 'select'] as const
-export type VariableType = typeof VariableTypes[number]
+type VariableType = 'string' | 'number' | 'select'
 
 /**
  * Prompt variable parameter
@@ -98,7 +97,7 @@ export type PromptVariable = {
   max_length?: number
 }
 
-export type TextTypeFormItem = {
+type TextTypeFormItem = {
   default: string
   label: string
   variable: string
@@ -107,7 +106,7 @@ export type TextTypeFormItem = {
   hide: boolean
 }
 
-export type SelectTypeFormItem = {
+type SelectTypeFormItem = {
   default: string
   label: string
   variable: string
