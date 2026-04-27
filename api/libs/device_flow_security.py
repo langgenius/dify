@@ -51,7 +51,7 @@ def enterprise_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
 
 APPROVAL_GRANT_COOKIE_NAME = "device_approval_grant"
-APPROVAL_GRANT_COOKIE_PATH = "/v1/oauth/device"
+APPROVAL_GRANT_COOKIE_PATH = "/openapi/v1/oauth/device"
 APPROVAL_GRANT_COOKIE_TTL_SECONDS = 300  # 5 min
 NONCE_TTL_SECONDS = 600  # 2x cookie TTL — defeats clock-skew late replay
 NONCE_KEY_FMT = "device_approval_grant_nonce:{nonce}"
