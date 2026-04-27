@@ -499,6 +499,20 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
+    inner_OPENAPI_CORS_ALLOW_ORIGINS: str = Field(
+        description=(
+            "Comma-separated allowlist for /openapi/v1/* CORS. "
+            "Default empty = same-origin only. Browser-cookie routes within "
+            "the group reject cross-origin OPTIONS regardless of this list."
+        ),
+        validation_alias=AliasChoices("OPENAPI_CORS_ALLOW_ORIGINS"),
+        default="",
+    )
+
+    @computed_field
+    def OPENAPI_CORS_ALLOW_ORIGINS(self) -> list[str]:
+        return [o for o in self.inner_OPENAPI_CORS_ALLOW_ORIGINS.split(",") if o]
+
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = Field(
         ge=1, description="Maximum connection timeout in seconds for HTTP requests", default=10
     )
