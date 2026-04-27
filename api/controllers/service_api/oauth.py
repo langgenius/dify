@@ -8,12 +8,13 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-from flask import g, request
-from flask_restx import Resource, reqparse
+from flask import g
+from flask_restx import Resource
 from sqlalchemy import update
 from werkzeug.exceptions import BadRequest
 
 from controllers.openapi.oauth_device.code import OAuthDeviceCodeApi
+from controllers.openapi.oauth_device.lookup import OAuthDeviceLookupApi
 from controllers.openapi.oauth_device.token import OAuthDeviceTokenApi
 from controllers.service_api import service_api_ns
 from extensions.ext_database import db
@@ -25,18 +26,11 @@ from libs.oauth_bearer import (
     validate_bearer,
 )
 from libs.rate_limit import (
-    LIMIT_LOOKUP_PUBLIC,
     LIMIT_ME_PER_ACCOUNT,
     LIMIT_ME_PER_EMAIL,
     enforce,
-    rate_limit,
 )
 from models import Account, OAuthAccessToken, Tenant, TenantAccountJoin
-from services.oauth_device_flow import (
-    DEVICE_FLOW_TTL_SECONDS,
-    DeviceFlowRedis,
-    DeviceFlowStatus,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +38,7 @@ logger = logging.getLogger(__name__)
 # Removed in Phase F.
 service_api_ns.add_resource(OAuthDeviceCodeApi, "/oauth/device/code")
 service_api_ns.add_resource(OAuthDeviceTokenApi, "/oauth/device/token")
+service_api_ns.add_resource(OAuthDeviceLookupApi, "/oauth/device/lookup")
 
 
 # ============================================================================
@@ -160,40 +155,5 @@ class OAuthAuthorizationsSelfApi(Resource):
 
         return {"status": "revoked"}, 200
 
-
-# ============================================================================
-# GET /v1/oauth/device/lookup  (unauthenticated — /device page pre-validates)
-# ============================================================================
-
-
-_lookup_parser = reqparse.RequestParser()
-_lookup_parser.add_argument("user_code", type=str, required=True, location="args")
-
-
-@service_api_ns.route("/oauth/device/lookup")
-class OAuthDeviceLookupApi(Resource):
-    """Read-only — public for pre-validate before login. user_code is
-    high-entropy + short-TTL; per-IP rate limit blocks enumeration.
-    """
-
-    @rate_limit(LIMIT_LOOKUP_PUBLIC)
-    def get(self):
-        args = _lookup_parser.parse_args()
-        user_code = args["user_code"].strip().upper()
-
-        store = DeviceFlowRedis(redis_client)
-        found = store.load_by_user_code(user_code)
-        if found is None:
-            return {"valid": False, "expires_in_remaining": 0, "client_id": None}, 200
-
-        _device_code, state = found
-        if state.status is not DeviceFlowStatus.PENDING:
-            return {"valid": False, "expires_in_remaining": 0, "client_id": state.client_id}, 200
-
-        return {
-            "valid": True,
-            "expires_in_remaining": DEVICE_FLOW_TTL_SECONDS,
-            "client_id": state.client_id,
-        }, 200
 
 
