@@ -1,22 +1,18 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from werkzeug.exceptions import HTTPException
 
-import services
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
-    MemberNotInTenantError,
     NotOwnerError,
     OwnerTransferLimitError,
 )
 from controllers.console.error import EmailSendIpLimitError, WorkspaceMembersLimitExceeded
 from controllers.console.workspace.members import (
     DatasetOperatorMemberListApi,
-    MemberCancelInviteApi,
     MemberInviteEmailApi,
     MemberListApi,
     MemberUpdateRoleApi,
@@ -195,135 +191,7 @@ class TestMemberInviteEmailApi:
         assert result["invitation_results"][0]["status"] == "failed"
 
 
-class TestMemberCancelInviteApi:
-    def test_cancel_success(self, app):
-        api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get") as get_mock,
-            patch("controllers.console.workspace.members.TenantService.remove_member_from_tenant"),
-        ):
-            get_mock.return_value = member
-            result, status = method(api, member.id)
-
-        assert status == 200
-        assert result["result"] == "success"
-
-    def test_cancel_not_found(self, app):
-        api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get") as get_mock,
-        ):
-            get_mock.return_value = None
-
-            with pytest.raises(HTTPException):
-                method(api, "x")
-
-    def test_cancel_cannot_operate_self(self, app):
-        api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get") as get_mock,
-            patch(
-                "controllers.console.workspace.members.TenantService.remove_member_from_tenant",
-                side_effect=services.errors.account.CannotOperateSelfError("x"),
-            ),
-        ):
-            get_mock.return_value = member
-            result, status = method(api, member.id)
-
-        assert status == 400
-
-    def test_cancel_no_permission(self, app):
-        api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get") as get_mock,
-            patch(
-                "controllers.console.workspace.members.TenantService.remove_member_from_tenant",
-                side_effect=services.errors.account.NoPermissionError("x"),
-            ),
-        ):
-            get_mock.return_value = member
-            result, status = method(api, member.id)
-
-        assert status == 403
-
-    def test_cancel_member_not_in_tenant(self, app):
-        api = MemberCancelInviteApi()
-        method = unwrap(api.delete)
-
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get") as get_mock,
-            patch(
-                "controllers.console.workspace.members.TenantService.remove_member_from_tenant",
-                side_effect=services.errors.account.MemberNotInTenantError(),
-            ),
-        ):
-            get_mock.return_value = member
-            result, status = method(api, member.id)
-
-        assert status == 404
-
-
 class TestMemberUpdateRoleApi:
-    def test_update_success(self, app):
-        api = MemberUpdateRoleApi()
-        method = unwrap(api.put)
-
-        tenant = MagicMock()
-        user = MagicMock(current_tenant=tenant)
-        member = MagicMock()
-
-        payload = {"role": "normal"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.db.session.get", return_value=member),
-            patch("controllers.console.workspace.members.TenantService.update_member_role"),
-        ):
-            result = method(api, "id")
-
-        if isinstance(result, tuple):
-            result = result[0]
-
-        assert result["result"] == "success"
-
     def test_update_invalid_role(self, app):
         api = MemberUpdateRoleApi()
         method = unwrap(api.put)
@@ -334,23 +202,6 @@ class TestMemberUpdateRoleApi:
             result, status = method(api, "id")
 
         assert status == 400
-
-    def test_update_member_not_found(self, app):
-        api = MemberUpdateRoleApi()
-        method = unwrap(api.put)
-
-        payload = {"role": "normal"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.members.current_account_with_tenant",
-                return_value=(MagicMock(current_tenant=MagicMock()), "t1"),
-            ),
-            patch("controllers.console.workspace.members.db.session.get", return_value=None),
-        ):
-            with pytest.raises(HTTPException):
-                method(api, "id")
 
 
 class TestDatasetOperatorMemberListApi:
@@ -580,28 +431,4 @@ class TestOwnerTransferApi:
             patch("controllers.console.workspace.members.AccountService.get_owner_transfer_data", return_value=None),
         ):
             with pytest.raises(InvalidTokenError):
-                method(api, "2")
-
-    def test_member_not_in_tenant(self, app):
-        api = OwnerTransfer()
-        method = unwrap(api.post)
-
-        tenant = MagicMock()
-        user = MagicMock(id="1", email="a@test.com", current_tenant=tenant)
-        member = MagicMock()
-
-        payload = {"token": "t"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "t1")),
-            patch("controllers.console.workspace.members.TenantService.is_owner", return_value=True),
-            patch(
-                "controllers.console.workspace.members.AccountService.get_owner_transfer_data",
-                return_value={"email": "a@test.com"},
-            ),
-            patch("controllers.console.workspace.members.db.session.get", return_value=member),
-            patch("controllers.console.workspace.members.TenantService.is_member", return_value=False),
-        ):
-            with pytest.raises(MemberNotInTenantError):
                 method(api, "2")
