@@ -5338,14 +5338,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/panel/chat-variable-panel/components/variable-type-select.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/workflow/panel/chat-variable-panel/type.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
