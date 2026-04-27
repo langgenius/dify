@@ -3,7 +3,7 @@ import {
   RiExternalLinkLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
@@ -18,6 +18,7 @@ type IConfirm = {
   maskClosable?: boolean
   email?: string
   showLink?: boolean
+  confirmText?: string
 }
 
 function Confirm({
@@ -29,6 +30,7 @@ function Confirm({
   maskClosable = true,
   showLink,
   email,
+  confirmText,
 }: IConfirm) {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -52,26 +54,24 @@ function Confirm({
     }
   }, [onCancel])
 
-  const handleClickOutside = (event: MouseEvent) => {
+  const handleClickOutside = useCallback((event: MouseEvent) => {
     if (maskClosable && dialogRef.current && !dialogRef.current.contains(event.target as Node))
       onCancel()
-  }
+  }, [maskClosable, onCancel])
 
   useEffect(() => {
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [maskClosable])
+  }, [handleClickOutside])
 
   useEffect(() => {
-    if (isShow) {
-      setIsVisible(true)
-    }
-    else {
-      const timer = setTimeout(() => setIsVisible(false), 200)
-      return () => clearTimeout(timer)
-    }
+    const timer = setTimeout(() => {
+      setIsVisible(isShow)
+    }, isShow ? 0 : 200)
+
+    return () => clearTimeout(timer)
   }, [isShow])
 
   if (!isVisible)
@@ -106,7 +106,7 @@ function Confirm({
                 </>
               )}
             </div>
-            <Button variant="primary" className="w-20!" onClick={onConfirm}>{t('operation.ok', { ns: 'common' })}</Button>
+            <Button variant="primary" className={confirmText ? 'min-w-20!' : 'w-20!'} onClick={onConfirm}>{confirmText || t('operation.ok', { ns: 'common' })}</Button>
           </div>
         </div>
       </div>

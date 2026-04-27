@@ -9,11 +9,11 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
+import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import {
-  useRouter,
   useSearchParams,
 } from '@/next/navigation'
 import {
@@ -36,18 +36,18 @@ const EducationApplyAge = () => {
     isPending,
     mutateAsync: educationAdd,
   } = useEducationAdd({ onSuccess: noop })
-  const [modalShow, setShowModal] = useState<undefined | { title: string, desc: string, onConfirm?: () => void }>(undefined)
+  const [modalShow, setModalShow] = useState<undefined | { title: string, desc: string, confirmText?: string, onConfirm?: () => void }>(undefined)
   const { onPlanInfoChanged } = useProviderContext()
   const updateEducationStatus = useInvalidateEducationStatus()
-  const router = useRouter()
   const docLink = useDocLink()
+  const { handleEducationDiscount } = useEducationDiscount()
 
-  const handleModalConfirm = () => {
-    setShowModal(undefined)
+  const handleSuccessConfirm = async () => {
+    setModalShow(undefined)
     onPlanInfoChanged()
     updateEducationStatus()
     localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
-    router.replace('/')
+    await handleEducationDiscount()
   }
 
   const searchParams = useSearchParams()
@@ -59,10 +59,11 @@ const EducationApplyAge = () => {
       institution: schoolName,
     }).then((res) => {
       if (res.message === 'success') {
-        setShowModal({
+        setModalShow({
           title: t('successTitle', { ns: 'education' }),
           desc: t('successContent', { ns: 'education' }),
-          onConfirm: handleModalConfirm,
+          confirmText: t('useEducationDiscount', { ns: 'education' }),
+          onConfirm: handleSuccessConfirm,
         })
       }
       else {
@@ -171,6 +172,7 @@ const EducationApplyAge = () => {
         isShow={!!modalShow}
         title={modalShow?.title || ''}
         content={modalShow?.desc}
+        confirmText={modalShow?.confirmText}
         onConfirm={modalShow?.onConfirm || noop}
         onCancel={modalShow?.onConfirm || noop}
       />
