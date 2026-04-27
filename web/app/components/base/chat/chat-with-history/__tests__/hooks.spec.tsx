@@ -1163,7 +1163,7 @@ describe('useChatWithHistory', () => {
                   rendered_content: 'Submitted summary',
                   action_id: 'submit',
                   action_text: 'Submit',
-                  form_data: {
+                  submitted_data: {
                     summary: 'approved',
                   },
                 },

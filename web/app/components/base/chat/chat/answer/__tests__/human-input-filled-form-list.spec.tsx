@@ -16,7 +16,7 @@ const createFormData = (
   rendered_content: 'fallback content',
   action_id: 'approve',
   action_text: 'Approve',
-  form_data: {
+  submitted_data: {
     summary: 'Approved',
   },
 

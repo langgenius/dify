@@ -8,7 +8,7 @@ import SubmittedFormContent from './submitted-form-content'
 export const SubmittedHumanInputContent = ({
   formData,
 }: SubmittedHumanInputContentProps) => {
-  const { rendered_content, action_id, action_text, form_content, form_data, inputs } = formData
+  const { rendered_content, action_id, action_text, form_content, submitted_data, inputs } = formData
 
   const executedAction = useMemo(() => {
     return {
@@ -17,16 +17,16 @@ export const SubmittedHumanInputContent = ({
     }
   }, [action_id, action_text])
 
-  const content = form_content && inputs && form_data && Object.keys(form_data).length > 0
+  const content = form_content && inputs && submitted_data && Object.keys(submitted_data).length > 0
     ? (
         <SubmittedFormContent
           formContent={form_content}
           formInputFields={inputs}
-          values={form_data}
+          values={submitted_data}
         />
       )
-    : form_data && Object.keys(form_data).length > 0
-      ? <SubmittedFieldValues values={form_data} />
+    : submitted_data && Object.keys(submitted_data).length > 0
+      ? <SubmittedFieldValues values={submitted_data} />
       : <SubmittedContent content={rendered_content} />
 
   return (

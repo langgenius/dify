@@ -355,7 +355,7 @@ export type HumanInputFilledFormData = {
   action_text: string
   form_content?: string
   inputs?: FormInputItem[]
-  form_data?: Record<string, HumanInputFormValue>
+  submitted_data?: Record<string, HumanInputFormValue>
 }
 
 export type HumanInputFormFilledResponse = {

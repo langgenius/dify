@@ -9,7 +9,7 @@ const createFilledForm = (overrides: Partial<HumanInputFilledFormData> = {}): Hu
   rendered_content: 'Approved by Alice',
   action_id: 'approve',
   action_text: 'Approve',
-  form_data: {
+  submitted_data: {
     summary: 'Approved by Alice',
   },
   ...overrides,

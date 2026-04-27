@@ -41,7 +41,7 @@ describe('SubmittedHumanInputContent Integration', () => {
           output_variable_name: 'answer',
           default: { type: 'constant', value: '', selector: [] },
         }],
-        form_data: {
+        submitted_data: {
           answer: 'approved',
         },
       }}
@@ -72,7 +72,7 @@ describe('SubmittedHumanInputContent Integration', () => {
             allowed_file_upload_methods: [],
           },
         ],
-        form_data: {
+        submitted_data: {
           decision: 'approve',
           attachment: {
             related_id: 'file-1',
@@ -100,7 +100,7 @@ describe('SubmittedHumanInputContent Integration', () => {
     render(
       <SubmittedHumanInputContent formData={{
         ...mockFormData,
-        form_data: {},
+        submitted_data: {},
       }}
       />,
     )

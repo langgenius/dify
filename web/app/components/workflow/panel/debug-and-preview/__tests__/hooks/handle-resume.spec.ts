@@ -782,7 +782,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'rn-human', form_data: { a: 1 } },
+          data: { node_id: 'rn-human', submitted_data: { a: 1 } },
         })
       })
 
@@ -796,7 +796,7 @@ describe('useChat – handleResume', () => {
 
       act(() => {
         capturedResumeOptions.onHumanInputFormFilled({
-          data: { node_id: 'rn-human', form_data: { b: 2 } },
+          data: { node_id: 'rn-human', submitted_data: { b: 2 } },
         })
       })
 
@@ -937,7 +937,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     act(() => {
       capturedResumeOptions.onHumanInputFormFilled({
-        data: { node_id: 'hn-bare', form_data: { x: 1 } },
+        data: { node_id: 'hn-bare', submitted_data: { x: 1 } },
       })
     })
 
