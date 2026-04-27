@@ -218,12 +218,12 @@ class TestDraftVariableSaver:
         ) as _mock_try_offload:
             mock_segment = StringSegment(value="small value")
             mock_draft_var_file = WorkflowDraftVariableFile(
-                id=str(uuidv7()),
                 size=1024,
                 length=10,
                 value_type=SegmentType.ARRAY_STRING,
                 upload_file_id=str(uuid.uuid4()),
             )
+            mock_draft_var_file.id = str(uuidv7())
 
             _mock_try_offload.return_value = mock_segment, mock_draft_var_file
             draft_var = draft_saver._create_draft_variable(name="small_var", value=mock_segment, visible=True)
