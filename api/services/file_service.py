@@ -74,6 +74,9 @@ class FileService:
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
+        if FileService.is_file_extension_allowed(extension=extension) is False:
+            raise UnsupportedFileTypeError()
+
         # get file size
         file_size = len(content)
 
