@@ -46,6 +46,8 @@ ENV TZ=UTC
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 ENV PYTHONIOENCODING=utf-8
+ENV HOME=/home/dify
+ENV XDG_RUNTIME_DIR=/tmp/dify-runtime
 
 WORKDIR /app/api
 
@@ -55,8 +57,9 @@ ARG NODE_MAJOR=22
 ARG NODE_PACKAGE_VERSION=22.21.0-1nodesource1
 ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
 RUN groupadd -r -g ${dify_uid} dify && \
-    useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
-    chown -R dify:dify /app
+    useradd -r -m -d ${HOME} -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
+    mkdir -p ${XDG_RUNTIME_DIR} && \
+    chown -R dify:dify /app ${HOME} ${XDG_RUNTIME_DIR}
 
 RUN \
     apt-get update \
