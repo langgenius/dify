@@ -61,13 +61,31 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
 
     # check segment is exist
     if index_node_ids:
-        index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-        with session_factory.create_session() as session:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if dataset:
-                index_processor.clean(
-                    dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
-                )
+        # Wrap vector / keyword index cleanup in try/except so that a transient
+        # failure here (e.g. billing API hiccup propagated via FeatureService when
+        # ModelManager is initialized inside ``Vector(dataset)``) does not abort
+        # the entire task and leave document_segments / child_chunks / image_files
+        # / metadata bindings stranded in PG. Mirrors the pattern already used in
+        # ``clean_dataset_task`` so the document row's hard delete (already
+        # committed by the caller) does not produce orphan PG rows just because
+        # the vector backend or one of its transitive dependencies was unhappy.
+        try:
+            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+            with session_factory.create_session() as session:
+                dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+                if dataset:
+                    index_processor.clean(
+                        dataset, index_node_ids, with_keywords=True, delete_child_chunks=True, delete_summaries=True
+                    )
+        except Exception:
+            logger.exception(
+                "Failed to clean vector / keyword index in clean_document_task, "
+                "document_id=%s, dataset_id=%s, index_node_ids_count=%d. "
+                "Continuing with PG / storage cleanup; vector orphans can be reaped later.",
+                document_id,
+                dataset_id,
+                len(index_node_ids),
+            )
 
     total_image_files = []
     with session_factory.create_session() as session, session.begin():
