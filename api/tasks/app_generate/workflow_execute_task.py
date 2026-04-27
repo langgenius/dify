@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import time
 import uuid
 from collections.abc import Generator, Mapping
 from enum import StrEnum
@@ -23,6 +24,7 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, Wor
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.runtime import GraphRuntimeState
+from libs.broadcast_channel.meta import EVENT_META_KEY, EventMeta
 from libs.flask_utils import set_login_user
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -172,7 +174,13 @@ class _AppRunner:
                 return response
 
             assert isinstance(response, Generator)
-            _publish_streaming_response(response, exec_params.workflow_run_id, exec_params.app_mode)
+            _publish_streaming_response(
+                response,
+                exec_params.workflow_run_id,
+                exec_params.app_mode,
+                tenant_id=exec_params.tenant_id,
+                app_id=exec_params.app_id,
+            )
 
     def _run_app(
         self,
@@ -242,14 +250,30 @@ def _publish_streaming_response(
     response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
     workflow_run_id: str,
     app_mode: AppMode,
+    *,
+    tenant_id: str = "",
+    app_id: str = "",
 ) -> None:
     topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
     for event in response_stream:
         try:
             if isinstance(event, BaseModel):
-                payload = json.dumps(event.model_dump(mode="json"), ensure_ascii=False)
+                event_dict = event.model_dump(mode="json")
+            elif isinstance(event, Mapping):
+                event_dict = dict(event)
             else:
                 payload = json.dumps(event, ensure_ascii=False, default=str)
+                topic.publish(payload.encode())
+                continue
+
+            _meta: EventMeta = {
+                "emit_ts": time.time(),
+                "tenant_id": tenant_id,
+                "app_id": app_id,
+                "workflow_run_id": workflow_run_id,
+            }
+            event_dict[EVENT_META_KEY] = _meta
+            payload = json.dumps(event_dict, ensure_ascii=False, default=str)
         except (TypeError, ValueError):
             logger.exception("error while encoding event")
             continue
@@ -439,7 +463,9 @@ def _resume_advanced_chat(
         raise
 
     assert isinstance(response, Generator)
-    _publish_streaming_response(response, workflow_run_id, AppMode.ADVANCED_CHAT)
+    _publish_streaming_response(
+        response, workflow_run_id, AppMode.ADVANCED_CHAT, tenant_id=app_model.tenant_id, app_id=app_model.id
+    )
 
 
 def _resume_workflow(
@@ -494,7 +520,9 @@ def _resume_workflow(
         raise
 
     assert isinstance(response, Generator)
-    _publish_streaming_response(response, workflow_run_id, AppMode.WORKFLOW)
+    _publish_streaming_response(
+        response, workflow_run_id, AppMode.WORKFLOW, tenant_id=app_model.tenant_id, app_id=app_model.id
+    )
 
     try:
         workflow_run_repo.delete_workflow_pause(pause_entity)
