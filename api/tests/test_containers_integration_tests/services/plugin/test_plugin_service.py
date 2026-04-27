@@ -224,11 +224,13 @@ class TestUpgradePluginWithMarketplace:
         mock_fs.get_system_features.return_value = _make_features()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.return_value = MagicMock()
+        installer.decode_plugin_from_identifier.return_value = MagicMock()  # pkg file exists on disk
         installer.upgrade_plugin.return_value = MagicMock()
 
         PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
 
         mock_marketplace.record_install_plugin_event.assert_called_once_with("new-uid")
+        installer.decode_plugin_from_identifier.assert_called_once_with("t1", "new-uid")
         installer.upgrade_plugin.assert_called_once()
 
     @patch("services.plugin.plugin_service.download_plugin_pkg")
@@ -240,6 +242,28 @@ class TestUpgradePluginWithMarketplace:
         mock_fs.get_system_features.return_value = _make_features()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.side_effect = RuntimeError("not found")
+        mock_download.return_value = b"pkg-bytes"
+        upload_resp = MagicMock()
+        upload_resp.verification = None
+        installer.upload_pkg.return_value = upload_resp
+        installer.upgrade_plugin.return_value = MagicMock()
+
+        PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
+
+        mock_download.assert_called_once_with("new-uid")
+        installer.upload_pkg.assert_called_once()
+
+    @patch("services.plugin.plugin_service.download_plugin_pkg")
+    @patch("services.plugin.plugin_service.FeatureService")
+    @patch("services.plugin.plugin_service.PluginInstaller")
+    @patch("services.plugin.plugin_service.dify_config")
+    def test_redownloads_when_pkg_file_missing(self, mock_config, mock_installer_cls, mock_fs, mock_download):
+        """When manifest exists but .difypkg file is missing on disk, re-download from marketplace."""
+        mock_config.MARKETPLACE_ENABLED = True
+        mock_fs.get_system_features.return_value = _make_features()
+        installer = mock_installer_cls.return_value
+        installer.fetch_plugin_manifest.return_value = MagicMock()  # manifest exists in DB
+        installer.decode_plugin_from_identifier.side_effect = RuntimeError("package not found")  # but no pkg file
         mock_download.return_value = b"pkg-bytes"
         upload_resp = MagicMock()
         upload_resp.verification = None
