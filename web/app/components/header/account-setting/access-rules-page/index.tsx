@@ -1,8 +1,9 @@
 'use client'
 
 import type { AccessRule } from './access-rule-row'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import AccessRuleSection from './access-rule-section'
+import AddRuleTargetsModal from './add-rule-targets-modal'
 
 // todo: replace with API data when backend is ready
 const APP_ACCESS_RULES: AccessRule[] = [
@@ -96,35 +97,64 @@ const KNOWLEDGE_BASE_ACCESS_RULES: AccessRule[] = [
 ]
 
 const AccessRulesPage = () => {
+  const [addingRule, setAddingRule] = useState<AccessRule | null>(null)
+
+  const handleAddRole = useCallback((rule: AccessRule) => {
+    setAddingRule(rule)
+  }, [])
+
+  const closeAddModal = useCallback(() => {
+    setAddingRule(null)
+  }, [])
+
+  const handleAddSubmit = useCallback(
+    (_selection: { roleIds: string[], memberIds: string[] }) => {
+      // TODO: wire up to API when backend is ready.
+    },
+    [],
+  )
+
   const noop = useCallback(() => {
-    // TODO: wire up to API when backend is ready
+    // TODO: wire up to API when backend is ready.
   }, [])
 
   return (
-    <div className="flex flex-col gap-6">
-      <AccessRuleSection
-        title="App Access Rules"
-        rules={APP_ACCESS_RULES}
-        createButtonLabel="Create App permission set"
-        onCreate={noop}
-        onEditRule={noop}
-        onCopyRule={noop}
-        onDeleteRule={noop}
-        onAddRole={noop}
-        onRemoveRole={noop}
-      />
-      <AccessRuleSection
-        title="Knowledge Base Access Rules"
-        rules={KNOWLEDGE_BASE_ACCESS_RULES}
-        createButtonLabel="Create KB permission set"
-        onCreate={noop}
-        onEditRule={noop}
-        onCopyRule={noop}
-        onDeleteRule={noop}
-        onAddRole={noop}
-        onRemoveRole={noop}
-      />
-    </div>
+    <>
+      <div className="flex flex-col gap-6">
+        <AccessRuleSection
+          title="App Access Rules"
+          rules={APP_ACCESS_RULES}
+          createButtonLabel="Create App permission set"
+          onCreate={noop}
+          onEditRule={noop}
+          onCopyRule={noop}
+          onDeleteRule={noop}
+          onAddRole={handleAddRole}
+          onRemoveRole={noop}
+        />
+        <AccessRuleSection
+          title="Knowledge Base Access Rules"
+          rules={KNOWLEDGE_BASE_ACCESS_RULES}
+          createButtonLabel="Create KB permission set"
+          onCreate={noop}
+          onEditRule={noop}
+          onCopyRule={noop}
+          onDeleteRule={noop}
+          onAddRole={handleAddRole}
+          onRemoveRole={noop}
+        />
+      </div>
+      {addingRule && (
+        <AddRuleTargetsModal
+          open
+          ruleName={addingRule.name}
+          initialRoleIds={addingRule.assignedRoles.map(role => role.id)}
+          initialMemberIds={[]}
+          onClose={closeAddModal}
+          onSubmit={handleAddSubmit}
+        />
+      )}
+    </>
   )
 }
 
