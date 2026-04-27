@@ -98,14 +98,14 @@ function createStore({
   return store
 }
 
-export type WorkflowHistoryStore = {
+type WorkflowHistoryStore = {
   nodes: Node[]
   edges: Edge[]
   workflowHistoryEvent: WorkflowHistoryEventT | undefined
   workflowHistoryEventMeta?: WorkflowHistoryEventMeta
 }
 
-export type WorkflowHistoryActions = {
+type WorkflowHistoryActions = {
   setNodes?: (nodes: Node[]) => void
   setEdges?: (edges: Edge[]) => void
 }
