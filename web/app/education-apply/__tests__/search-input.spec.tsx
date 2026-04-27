@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -23,73 +22,6 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/input', () => ({
-  default: ({
-    value,
-    onChange,
-    placeholder,
-    className,
-  }: {
-    value?: string
-    onChange: (event: { target: { value: string } }) => void
-    placeholder?: string
-    className?: string
-  }) => (
-    <input
-      className={className}
-      placeholder={placeholder}
-      value={value}
-      onChange={e => onChange({ target: { value: e.target.value } })}
-    />
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const PopoverContext = React.createContext({
-    open: false,
-    setOpen: (_open: boolean) => {},
-  })
-
-  const Popover = ({
-    children,
-    open: controlledOpen,
-    onOpenChange,
-  }: {
-    children: ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
-    const isControlled = controlledOpen !== undefined
-    const open = isControlled ? !!controlledOpen : uncontrolledOpen
-    const setOpen = (nextOpen: boolean) => {
-      if (!isControlled)
-        setUncontrolledOpen(nextOpen)
-      onOpenChange?.(nextOpen)
-    }
-
-    return (
-      <PopoverContext.Provider value={{ open, setOpen }}>
-        {children}
-      </PopoverContext.Provider>
-    )
-  }
-
-  const PopoverTrigger = ({ render }: { render: ReactNode }) => <>{render}</>
-
-  const PopoverContent = ({ children }: { children: ReactNode }) => {
-    const { open } = React.useContext(PopoverContext)
-    return open ? <div data-testid="education-search-popover">{children}</div> : null
-  }
-
-  return {
-    Popover,
-    PopoverTrigger,
-    PopoverContent,
-  }
-})
-
 const ControlledSearchInput = () => {
   const [value, setValue] = useState('')
   return <SearchInput value={value} onChange={setValue} />
@@ -102,27 +34,38 @@ describe('education-apply/search-input', () => {
     educationMocks.hasNext = false
   })
 
-  it('opens the popover, queries schools, and closes after selection', async () => {
+  it('keeps the search field editable when used as the popover trigger', async () => {
+    const user = userEvent.setup()
+    educationMocks.schools = []
+
+    render(<ControlledSearchInput />)
+
+    const input = screen.getByPlaceholderText('form.schoolName.placeholder') as HTMLInputElement
+    expect(input.type).toBe('text')
+
+    await user.type(input, 'Alpha')
+
+    expect(input).toHaveValue('Alpha')
+    expect(educationMocks.setSchools).toHaveBeenCalledWith([])
+    expect(educationMocks.querySchoolsWithDebounced).toHaveBeenLastCalledWith({
+      keywords: 'Alpha',
+      page: 0,
+    })
+  })
+
+  it('closes the popover after selecting a school', async () => {
     const user = userEvent.setup()
 
     render(<ControlledSearchInput />)
 
-    const input = screen.getByPlaceholderText('form.schoolName.placeholder')
-    await user.type(input, 'A')
+    await user.type(screen.getByPlaceholderText('form.schoolName.placeholder'), 'A')
 
-    expect(educationMocks.setSchools).toHaveBeenCalledWith([])
-    expect(educationMocks.querySchoolsWithDebounced).toHaveBeenLastCalledWith({
-      keywords: 'A',
-      page: 0,
-    })
-
-    expect(screen.getByTestId('education-search-popover')).toBeInTheDocument()
     expect(screen.getByText('Alpha University')).toBeInTheDocument()
 
     await user.click(screen.getByText('Beta College'))
 
     expect(screen.getByDisplayValue('Beta College')).toBeInTheDocument()
-    expect(screen.queryByTestId('education-search-popover')).not.toBeInTheDocument()
+    expect(screen.queryByText('Alpha University')).not.toBeInTheDocument()
   })
 
   it('loads the next page when the dropdown is scrolled to the bottom', async () => {
