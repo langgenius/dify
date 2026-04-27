@@ -1,9 +1,9 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BucketsGray } from '@/app/components/base/icons/src/public/knowledge/online-drive'
-import Tooltip from '@/app/components/base/tooltip'
 
 type BucketProps = {
   bucketName: string
@@ -27,19 +27,26 @@ const Bucket = ({
     if (!disabled)
       handleClickBucketName()
   }, [disabled, handleClickBucketName])
+  const allBucketsLabel = t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })
 
   return (
     <>
-      <Tooltip
-        popupContent={t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })}
-      >
-        <button
-          type="button"
-          className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover"
-          onClick={handleBackToBucketList}
-        >
-          <BucketsGray />
-        </button>
+      <Tooltip>
+        <TooltipTrigger
+          render={(
+            <button
+              type="button"
+              aria-label={allBucketsLabel}
+              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              onClick={handleBackToBucketList}
+            >
+              <BucketsGray aria-hidden />
+            </button>
+          )}
+        />
+        <TooltipContent>
+          {allBucketsLabel}
+        </TooltipContent>
       </Tooltip>
       <span className="system-xs-regular text-divider-deep">/</span>
       <button

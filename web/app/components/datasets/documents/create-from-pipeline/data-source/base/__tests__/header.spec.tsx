@@ -3,15 +3,14 @@ import { describe, expect, it, vi } from 'vitest'
 import Header from '../header'
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
+  Button: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
 }))
 
 vi.mock('@/app/components/base/divider', () => ({
   default: () => <span data-testid="divider" />,
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div data-testid="tooltip">{children}</div>,
 }))
 
 vi.mock('../credential-selector', () => ({

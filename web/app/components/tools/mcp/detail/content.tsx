@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { ComponentProps, FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
 import {
   AlertDialog,
@@ -12,6 +12,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiCloseLine,
   RiLoader2Line,
@@ -23,7 +24,6 @@ import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useAppContext } from '@/context/app-context'
@@ -47,6 +47,11 @@ type Props = {
   onHide: () => void
   isTriggerAuthorize: boolean
   onFirstCreate: () => void
+}
+
+type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
+type MutationResult = {
+  result?: string
 }
 
 const MCPDetailContent: FC<Props> = ({
@@ -128,14 +133,14 @@ const MCPDetailContent: FC<Props> = ({
     }
   }, [onFirstCreate, isCurrentWorkspaceManager, detail, authorizeMcp, handleUpdateTools, handleOAuthCallback, onUpdate])
 
-  const handleUpdate = useCallback(async (data: any) => {
+  const handleUpdate = useCallback(async (data: MCPModalConfirmPayload) => {
     if (!detail)
       return
     const res = await updateMCP({
       ...data,
       provider_id: detail.id,
-    })
-    if ((res as any)?.result === 'success') {
+    }) as MutationResult
+    if (res.result === 'success') {
       hideUpdateModal()
       onUpdate()
       handleAuthorize()
@@ -146,9 +151,9 @@ const MCPDetailContent: FC<Props> = ({
     if (!detail)
       return
     showDeleting()
-    const res = await deleteMCP(detail.id)
+    const res = await deleteMCP(detail.id) as MutationResult
     hideDeleting()
-    if ((res as any)?.result === 'success') {
+    if (res.result === 'success') {
       hideDeleteConfirm()
       onUpdate(true)
     }
@@ -161,6 +166,8 @@ const MCPDetailContent: FC<Props> = ({
 
   if (!detail)
     return null
+  const identifierLabel = t('mcp.identifier', { ns: 'tools' })
+  const serverUrlLabel = t('mcp.modal.serverUrl', { ns: 'tools' })
 
   return (
     <>
@@ -174,12 +181,35 @@ const MCPDetailContent: FC<Props> = ({
               <div className="truncate system-md-semibold text-text-primary" title={detail.name}>{detail.name}</div>
             </div>
             <div className="mt-0.5 flex items-center gap-1">
-              <Tooltip popupContent={t('mcp.identifier', { ns: 'tools' })}>
-                <div className="shrink-0 cursor-pointer system-xs-regular text-text-secondary" onClick={() => copy(detail.server_identifier || '')}>{detail.server_identifier}</div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <button
+                      type="button"
+                      aria-label={identifierLabel}
+                      className="shrink-0 cursor-pointer rounded border-0 bg-transparent p-0 text-left system-xs-regular text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      onClick={() => copy(detail.server_identifier || '')}
+                    >
+                      {detail.server_identifier}
+                    </button>
+                  )}
+                />
+                <TooltipContent>
+                  {identifierLabel}
+                </TooltipContent>
               </Tooltip>
               <div className="shrink-0 system-xs-regular text-text-quaternary">·</div>
-              <Tooltip popupContent={t('mcp.modal.serverUrl', { ns: 'tools' })}>
-                <div className="truncate system-xs-regular text-text-secondary">{detail.server_url}</div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <div aria-label={serverUrlLabel} className="truncate system-xs-regular text-text-secondary">
+                      {detail.server_url}
+                    </div>
+                  )}
+                />
+                <TooltipContent>
+                  {serverUrlLabel}
+                </TooltipContent>
               </Tooltip>
             </div>
           </div>
