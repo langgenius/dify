@@ -10,9 +10,12 @@ from dify_trace_arize_phoenix.arize_phoenix_trace import (
     safe_json_dumps,
     set_span_status,
     setup_tracer,
+    string_to_span_id64,
+    string_to_trace_id128,
     wrap_span_metadata,
 )
 from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
+from opentelemetry import trace
 from opentelemetry.sdk.trace import Tracer
 from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
 from opentelemetry.trace import StatusCode
@@ -229,47 +232,141 @@ def test_trace_exception(trace_instance):
             trace_instance.trace(_make_workflow_info())
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.sessionmaker")
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.DifyCoreRepositoryFactory")
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
-def test_workflow_trace_full(mock_db, mock_repo_factory, mock_sessionmaker, trace_instance):
-    mock_db.engine = MagicMock()
+def test_workflow_trace_full(trace_instance):
     info = _make_workflow_info()
-    repo = MagicMock()
-    mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
+    workflow_span = MagicMock()
+    llm_span = MagicMock()
+    trace_instance.tracer.start_span.side_effect = [workflow_span, llm_span]
+    trace_instance._get_app_info_from_workflow_run_id = MagicMock(return_value={"app_id": "app1", "app_name": "Demo"})
+    trace_instance._get_parent_workflow_context = MagicMock(return_value=None)
+    trace_instance._get_workflow_graph = MagicMock(return_value=None)
 
     node1 = MagicMock()
     node1.node_type = "llm"
     node1.status = "succeeded"
-    node1.inputs = {"q": "hi"}
-    node1.outputs = {"a": "bye", "usage": {"total_tokens": 5}}
+    node1.inputs = '{"q": "hi"}'
+    node1.outputs = '{"a": "bye", "usage": {"total_tokens": 5}}'
     node1.created_at = _dt()
     node1.elapsed_time = 1.0
-    node1.process_data = {
-        "prompts": [{"role": "user", "content": "hi"}],
-        "model_provider": "openai",
-        "model_name": "gpt-4",
-    }
-    node1.metadata = {"k": "v"}
+    node1.process_data = '{"prompts":[{"role":"user","content":"hi"}],"model_provider":"openai","model_name":"gpt-4"}'
+    node1.execution_metadata = "{}"
     node1.title = "title"
     node1.id = "n1"
+    node1.node_id = "n1"
+    node1.index = 1
+    node1.predecessor_node_id = None
     node1.error = None
+    node1.tenant_id = "t1"
+    node1.app_id = "app1"
 
-    repo.get_by_workflow_execution.return_value = [node1]
+    trace_instance._get_workflow_nodes = MagicMock(return_value=[node1])
 
-    with patch.object(trace_instance, "get_service_account_with_tenant"):
-        trace_instance.workflow_trace(info)
+    trace_instance.workflow_trace(info)
 
-    assert trace_instance.tracer.start_span.call_count >= 2
+    assert trace_instance.tracer.start_span.call_count == 2
 
 
-@patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
-def test_workflow_trace_no_app_id(mock_db, trace_instance):
-    mock_db.engine = MagicMock()
-    info = _make_workflow_info()
-    info.metadata = {}
-    with pytest.raises(ValueError, match="No app_id found in trace_info metadata"):
-        trace_instance.workflow_trace(info)
+def test_workflow_trace_uses_parent_tool_span_context_for_child_workflow(trace_instance):
+    parent_span_context = MagicMock(trace_id=123, span_id=456)
+    parent_tool_span = MagicMock()
+    parent_tool_span.get_span_context.return_value = parent_span_context
+    workflow_span = MagicMock()
+    trace_instance.tracer.start_span.return_value = workflow_span
+    trace_instance._get_app_info_from_workflow_run_id = MagicMock(
+        return_value={"app_id": "app1", "app_name": "Child App"}
+    )
+    trace_instance._get_parent_workflow_context = MagicMock(
+        return_value={
+            "trace_id": 123,
+            "parent_span_context": parent_span_context,
+            "workflow_tool_name": "Workflow Tool",
+        }
+    )
+    trace_instance._get_workflow_nodes = MagicMock(return_value=[])
+    trace_instance._get_workflow_graph = MagicMock(return_value=None)
+
+    trace_instance.workflow_trace(_make_workflow_info(workflow_run_id="child-run"))
+
+    start_call = trace_instance.tracer.start_span.call_args
+    current_parent = trace.get_current_span(start_call.kwargs["context"]).get_span_context()
+    assert current_parent.trace_id == parent_span_context.trace_id
+    assert current_parent.span_id == parent_span_context.span_id
+
+
+def test_workflow_trace_uses_deterministic_workflow_context_for_root_trace(trace_instance):
+    workflow_span = MagicMock()
+    trace_instance.tracer.start_span.return_value = workflow_span
+    trace_instance._get_app_info_from_workflow_run_id = MagicMock(return_value={"app_id": "app1", "app_name": "Demo"})
+    trace_instance._get_parent_workflow_context = MagicMock(return_value=None)
+    trace_instance._get_workflow_nodes = MagicMock(return_value=[])
+    trace_instance._get_workflow_graph = MagicMock(return_value=None)
+
+    info = _make_workflow_info(workflow_run_id="root-run")
+    trace_instance.workflow_trace(info)
+
+    start_call = trace_instance.tracer.start_span.call_args
+    current_parent = trace.get_current_span(start_call.kwargs["context"]).get_span_context()
+    assert current_parent.trace_id == string_to_trace_id128("root-run")
+    assert current_parent.span_id == string_to_span_id64("root-run")
+
+
+def test_workflow_trace_uses_parent_trace_context_metadata_when_cached_parent_is_missing(trace_instance):
+    workflow_span = MagicMock()
+    trace_instance.tracer.start_span.return_value = workflow_span
+    trace_instance._get_app_info_from_workflow_run_id = MagicMock(
+        return_value={"app_id": "app1", "app_name": "Child App"}
+    )
+    trace_instance._get_workflow_nodes = MagicMock(return_value=[])
+    trace_instance._get_workflow_graph = MagicMock(return_value=None)
+
+    info = _make_workflow_info(
+        workflow_run_id="child-run",
+        metadata={
+            "app_id": "app1",
+            "parent_trace_context": {
+                "parent_workflow_run_id": "parent-run",
+                "parent_node_execution_id": "parent-node-exec",
+            },
+        },
+    )
+    trace_instance.workflow_trace(info)
+
+    start_call = trace_instance.tracer.start_span.call_args
+    current_parent = trace.get_current_span(start_call.kwargs["context"]).get_span_context()
+    assert current_parent.trace_id == string_to_trace_id128("parent-run")
+    assert current_parent.span_id == string_to_span_id64("parent-node-exec")
+
+
+def test_get_parent_workflow_context_uses_cached_parent_span_context(trace_instance):
+    parent_span_context = MagicMock(trace_id=321, span_id=654)
+    trace_instance.child_workflow_parent_contexts["child-run"] = {
+        "trace_id": 321,
+        "parent_span_context": parent_span_context,
+        "workflow_tool_name": "Workflow Tool",
+    }
+
+    context = trace_instance._get_parent_workflow_context(_make_workflow_info(workflow_run_id="child-run"))
+
+    assert context["parent_span_context"] is parent_span_context
+
+
+def test_get_parent_workflow_context_builds_synthetic_parent_context_from_metadata(trace_instance):
+    context = trace_instance._get_parent_workflow_context(
+        _make_workflow_info(
+            workflow_run_id="child-run",
+            metadata={
+                "app_id": "app1",
+                "parent_trace_context": {
+                    "parent_workflow_run_id": "outer-run",
+                    "parent_node_execution_id": "outer-node",
+                },
+            },
+        )
+    )
+
+    parent_span_context = context["parent_span_context"]
+    assert parent_span_context.trace_id == string_to_trace_id128("outer-run")
+    assert parent_span_context.span_id == string_to_span_id64("outer-node")
 
 
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
@@ -329,6 +426,7 @@ def test_moderation_trace_ok(trace_instance):
     info = ModerationTraceInfo(flagged=True, action="a", preset_response="p", query="q", metadata={})
     info.message_data = MagicMock()
     info.message_data.error = None
+    info.message_data.status = "succeeded"
     trace_instance.moderation_trace(info)
     # root span (1) + moderation span (1) = 2
     assert trace_instance.tracer.start_span.call_count >= 1
@@ -338,6 +436,8 @@ def test_suggested_question_trace_ok(trace_instance):
     info = SuggestedQuestionTraceInfo(suggested_question=["?"], total_tokens=1, level="i", metadata={})
     info.message_data = MagicMock()
     info.error = None
+    info.message_data.created_at = _dt()
+    info.message_data.updated_at = _dt()
     trace_instance.suggested_question_trace(info)
     assert trace_instance.tracer.start_span.call_count >= 1
 
@@ -346,6 +446,12 @@ def test_dataset_retrieval_trace_ok(trace_instance):
     info = DatasetRetrievalTraceInfo(documents=[], metadata={})
     info.message_data = MagicMock()
     info.error = None
+    info.message_data.status = "succeeded"
+    info.message_data.error = None
+    info.message_data.created_at = _dt()
+    info.message_data.updated_at = _dt()
+    info.message_data.model_provider = "provider"
+    info.message_data.model_id = "model"
     trace_instance.dataset_retrieval_trace(info)
     assert trace_instance.tracer.start_span.call_count >= 1
 
@@ -364,6 +470,8 @@ def test_generate_name_trace_ok(trace_instance):
     info = GenerateNameTraceInfo(tenant_id="t", metadata={})
     info.message_data = MagicMock()
     info.message_data.error = None
+    info.message_data.status = "succeeded"
+    info.message_data.conversation_id = "conversation-1"
     trace_instance.generate_name_trace(info)
     assert trace_instance.tracer.start_span.call_count >= 1
 
@@ -397,3 +505,184 @@ def test_api_check_success(trace_instance):
 def test_ensure_root_span_basic(trace_instance):
     trace_instance.ensure_root_span("tid")
     assert "tid" in trace_instance.dify_trace_ids
+
+
+def test_find_logical_parent_span_uses_matching_node_context_keys(trace_instance):
+    parent_span = MagicMock()
+    child_execution = MagicMock()
+    child_execution.id = "exec-child"
+    child_execution.node_id = "child-node"
+    child_execution.index = 3
+
+    logical_parent = trace_instance._find_logical_parent_span(
+        child_execution,
+        node_spans={"parent-node": parent_span},
+        execution_context={
+            "parent-node": {
+                "index": 1,
+                "node_type": "tool",
+                "status": "succeeded",
+                "created_at": _dt(),
+            }
+        },
+    )
+
+    assert logical_parent is parent_span
+
+
+def test_workflow_trace_keeps_same_workflow_nodes_as_flat_siblings(trace_instance):
+    workflow_span = MagicMock()
+    start_node_span = MagicMock()
+    tool_node_span = MagicMock()
+    trace_instance.tracer.start_span.side_effect = [workflow_span, start_node_span, tool_node_span]
+    trace_instance._get_app_info_from_workflow_run_id = MagicMock(return_value={"app_id": "app1", "app_name": "Demo"})
+    trace_instance._get_parent_workflow_context = MagicMock(return_value=None)
+    trace_instance._get_workflow_graph = MagicMock(
+        return_value={
+            "nodes": [{"id": "start-node"}, {"id": "tool-node"}],
+            "edges": [{"source": "start-node", "target": "tool-node"}],
+        }
+    )
+
+    start_node = MagicMock()
+    start_node.node_type = "start"
+    start_node.status = "succeeded"
+    start_node.inputs = "{}"
+    start_node.outputs = "{}"
+    start_node.created_at = _dt()
+    start_node.elapsed_time = 0.1
+    start_node.process_data = "{}"
+    start_node.execution_metadata = "{}"
+    start_node.title = "Start"
+    start_node.id = "exec-start"
+    start_node.node_id = "start-node"
+    start_node.index = 1
+    start_node.predecessor_node_id = None
+    start_node.error = None
+    start_node.tenant_id = "t1"
+    start_node.app_id = "app1"
+
+    tool_node = MagicMock()
+    tool_node.node_type = "tool"
+    tool_node.status = "succeeded"
+    tool_node.inputs = "{}"
+    tool_node.outputs = "{}"
+    tool_node.created_at = _dt()
+    tool_node.elapsed_time = 0.2
+    tool_node.process_data = "{}"
+    tool_node.execution_metadata = "{}"
+    tool_node.title = "Tool"
+    tool_node.id = "exec-tool"
+    tool_node.node_id = "tool-node"
+    tool_node.index = 2
+    tool_node.predecessor_node_id = "start-node"
+    tool_node.error = None
+    tool_node.tenant_id = "t1"
+    tool_node.app_id = "app1"
+
+    trace_instance._get_workflow_nodes = MagicMock(return_value=[start_node, tool_node])
+
+    trace_instance.workflow_trace(_make_workflow_info(workflow_run_id="root-run"))
+
+    start_call = trace_instance.tracer.start_span.call_args_list[1]
+    tool_call = trace_instance.tracer.start_span.call_args_list[2]
+    assert start_call.kwargs["context"] == tool_call.kwargs["context"]
+
+
+def test_find_parent_workflow_tool_rejects_timing_only_match(trace_instance):
+    workflow_tool = MagicMock()
+    workflow_tool.name = "Workflow Tool"
+    workflow_tool.app_id = "app-child"
+    child_run = MagicMock(created_at=_dt(), workflow_id="wf-child", tenant_id="tenant-1", app_id="app-child")
+    unrelated_tool = MagicMock(
+        id="tool-1",
+        workflow_run_id="parent-run",
+        created_at=_dt() - timedelta(seconds=2),
+        inputs="{}",
+        outputs='{"status": "started"}',
+        process_data='{"tool_provider": "workflow"}',
+        tenant_id="tenant-1",
+    )
+
+    trace_instance._get_workflow_app_id = MagicMock(return_value="app-child")
+    trace_instance._get_app_info_from_workflow_run_id = MagicMock(return_value={"app_name": "Parent App"})
+
+    child_run_result = MagicMock()
+    child_run_result.scalars.return_value.first.return_value = child_run
+    workflow_tool_result = MagicMock()
+    workflow_tool_result.scalars.return_value.first.return_value = workflow_tool
+    candidate_result = MagicMock()
+    candidate_result.scalars.return_value.all.return_value = [unrelated_tool]
+
+    with patch(
+        "dify_trace_arize_phoenix.arize_phoenix_trace.db.session.execute",
+        side_effect=[child_run_result, workflow_tool_result, candidate_result],
+    ):
+        result = trace_instance._find_parent_workflow_tool("child-run")
+
+    assert result is None
+
+
+def test_find_parent_workflow_tool_accepts_verified_lineage(trace_instance):
+    workflow_tool = MagicMock()
+    workflow_tool.name = "Workflow Tool"
+    workflow_tool.app_id = "app-child"
+    child_run = MagicMock(created_at=_dt(), workflow_id="wf-child", tenant_id="tenant-1", app_id="app-child")
+    tool_node = MagicMock(
+        id="tool-1",
+        workflow_run_id="parent-run",
+        created_at=_dt() - timedelta(seconds=1),
+        inputs='{"app_id": "app-child"}',
+        outputs='{"workflow_run_id": "child-run"}',
+        process_data='{"tool_name": "Workflow Tool"}',
+        tenant_id="tenant-1",
+    )
+    trace_instance._get_workflow_app_id = MagicMock(return_value="app-child")
+    trace_instance._get_app_info_from_workflow_run_id = MagicMock(return_value={"app_name": "Parent App"})
+
+    child_run_result = MagicMock()
+    child_run_result.scalars.return_value.first.return_value = child_run
+    workflow_tool_result = MagicMock()
+    workflow_tool_result.scalars.return_value.first.return_value = workflow_tool
+    candidate_result = MagicMock()
+    candidate_result.scalars.return_value.all.return_value = [tool_node]
+
+    with patch(
+        "dify_trace_arize_phoenix.arize_phoenix_trace.db.session.execute",
+        side_effect=[child_run_result, workflow_tool_result, candidate_result],
+    ):
+        result = trace_instance._find_parent_workflow_tool("child-run")
+
+    assert result is not None
+    assert result["parent_workflow_run_id"] == "parent-run"
+
+
+def test_find_child_workflow_by_timing_does_not_claim_unverified_candidate(trace_instance):
+    tool_node = MagicMock(
+        id="tool-1",
+        workflow_run_id="parent-run",
+        created_at=_dt(),
+        outputs="{}",
+        process_data='{"app_id": "app-child"}',
+        inputs="{}",
+        tenant_id="tenant-1",
+    )
+    unrelated_child = MagicMock(id="child-a", created_at=_dt() + timedelta(seconds=1), app_id="app-child")
+    related_child = MagicMock(id="child-b", created_at=_dt() + timedelta(seconds=2), app_id="app-child")
+
+    first_result = MagicMock()
+    first_result.scalars.return_value.all.return_value = [unrelated_child, related_child]
+    second_result = MagicMock()
+    second_result.scalars.return_value.all.return_value = []
+
+    with patch(
+        "dify_trace_arize_phoenix.arize_phoenix_trace.db.session.execute", side_effect=[first_result, second_result]
+    ):
+        with patch.object(
+            trace_instance,
+            "_workflow_run_matches_tool_lineage",
+            side_effect=[False, True],
+        ):
+            result = trace_instance._find_child_workflow_by_timing(tool_node)
+
+    assert result == "child-b"
