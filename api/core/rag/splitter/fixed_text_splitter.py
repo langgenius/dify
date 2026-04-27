@@ -9,7 +9,6 @@ from typing import Any, Literal
 
 from core.model_manager import ModelInstance
 from core.rag.splitter.text_splitter import RecursiveCharacterTextSplitter
-from graphon.model_runtime.model_providers.base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
 
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
@@ -25,15 +24,6 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
         disallowed_special: Literal["all"] | AbstractSet[str] = "all",
         **kwargs: Any,
     ) -> T:
-        def _token_encoder(texts: list[str]) -> list[int]:
-            if not texts:
-                return []
-
-            if embedding_model_instance:
-                return embedding_model_instance.get_text_embedding_num_tokens(texts=texts)
-            else:
-                return [GPT2Tokenizer.get_num_tokens(text) for text in texts]
-
         def _character_encoder(texts: list[str]) -> list[int]:
             if not texts:
                 return []

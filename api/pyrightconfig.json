@@ -4,8 +4,6 @@
     "tests/",
     ".venv",
     "migrations/",
-    "core/rag",
-    "providers/vdb/",
     "providers/trace/*/tests",
   ],
   "typeCheckingMode": "strict",
