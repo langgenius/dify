@@ -188,7 +188,7 @@ class Dataset(TypeBase):
     )
     data_source_type: Mapped[DataSourceType] = mapped_column(EnumText(DataSourceType, length=255))
     indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
-    index_struct: Mapped[str| None] = mapped_column(LongText, nullable=True)
+    index_struct: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -197,19 +197,21 @@ class Dataset(TypeBase):
     )
     embedding_model: Mapped[str] = mapped_column(sa.String(255), nullable=True)
     embedding_model_provider: Mapped[str] = mapped_column(sa.String(255), nullable=True)
-    keyword_number : Mapped[str]= mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
+    keyword_number: Mapped[str] = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
     collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    retrieval_model: Mapped[str| None] = mapped_column(AdjustedJSON, nullable=True)
-    summary_index_setting: Mapped[str| None] = mapped_column(AdjustedJSON, nullable=True)
+    retrieval_model: Mapped[str | None] = mapped_column(AdjustedJSON, nullable=True)
+    summary_index_setting: Mapped[str | None] = mapped_column(AdjustedJSON, nullable=True)
     built_in_field_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     icon_info: Mapped[str] = mapped_column(AdjustedJSON, nullable=True)
-    runtime_mode : Mapped[DatasetRuntimeMode]= mapped_column(
+    runtime_mode: Mapped[DatasetRuntimeMode] = mapped_column(
         EnumText(DatasetRuntimeMode, length=255), nullable=True, server_default=sa.text("'general'")
     )
-    pipeline_id : Mapped[str]= mapped_column(StringUUID, nullable=True)
+    pipeline_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
     chunk_structure: Mapped[str] = mapped_column(sa.String(255), nullable=True)
-    enable_api : Mapped[bool]= mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    is_multimodal: Mapped[bool] = mapped_column(sa.Boolean, default=False, nullable=False, server_default=sa.text("false"))
+    enable_api: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    is_multimodal: Mapped[bool] = mapped_column(
+        sa.Boolean, default=False, nullable=False, server_default=sa.text("false")
+    )
 
     @property
     def total_documents(self):
