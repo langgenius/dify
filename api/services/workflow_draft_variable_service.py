@@ -1083,10 +1083,10 @@ class DraftVariableSaver:
             mimetype=content_type,
             user=self._user,
         )
-
+        assert self._user.current_tenant_id
         # Create WorkflowDraftVariableFile record
         variable_file = WorkflowDraftVariableFile(
-            id=uuidv7(),
+            id=str(uuidv7()),
             upload_file_id=upload_file.id,
             size=original_size,
             length=original_length,
