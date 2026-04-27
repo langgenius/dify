@@ -398,6 +398,8 @@ export type WorkflowRunHistory = {
 }
 export type WorkflowRunHistoryResponse = {
   data: WorkflowRunHistory[]
+  has_more: boolean
+  limit: number
 }
 
 export type NodesDefaultConfigsResponse = {
