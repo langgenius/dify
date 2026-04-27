@@ -3,6 +3,15 @@ from datetime import datetime
 from typing import Any, TypedDict
 
 from core.rag.extractor.watercrawl.client import PageOptions, SpiderOptions, WaterCrawlAPIClient
+from core.rag.extractor.watercrawl.exceptions import WaterCrawlError
+
+
+def _require_json_dict(value: object, *, operation: str) -> dict[str, Any]:
+    """Narrow client responses: ``process_response`` is typed as a broad union."""
+    if not isinstance(value, dict):
+        msg = f"WaterCrawl API {operation} returned {type(value).__name__}, expected a JSON object"
+        raise WaterCrawlError(msg)
+    return value
 
 
 class WatercrawlDocumentData(TypedDict):
@@ -58,12 +67,15 @@ class WaterCrawlProvider:
             "locale": "en-US",
             "actions": [],
         }
-        result = self.client.create_crawl_request(url=url, spider_options=spider_options, page_options=page_options)
+        result = _require_json_dict(
+            self.client.create_crawl_request(url=url, spider_options=spider_options, page_options=page_options),
+            operation="create_crawl_request",
+        )
 
         return {"status": "active", "job_id": result.get("uuid")}
 
     def get_crawl_status(self, crawl_request_id: str) -> WatercrawlCrawlStatusResponse:
-        response = self.client.get_crawl_request(crawl_request_id)
+        response = _require_json_dict(self.client.get_crawl_request(crawl_request_id), operation="get_crawl_request")
         data: list[WatercrawlDocumentData] = []
         if response["status"] in ["new", "running"]:
             status = "active"
@@ -129,7 +141,10 @@ class WaterCrawlProvider:
         query_params.update({"prefetched": "true"})
         while True:
             page += 1
-            response = self.client.get_crawl_request_results(crawl_request_id, page, page_size, query_params)
+            response = _require_json_dict(
+                self.client.get_crawl_request_results(crawl_request_id, page, page_size, query_params),
+                operation="get_crawl_request_results",
+            )
             if not response["results"]:
                 break
 
