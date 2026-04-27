@@ -1679,7 +1679,7 @@ dev = [
     { name = "types-tensorflow", specifier = ">=2.18.0.20260408" },
     { name = "types-tqdm", specifier = ">=4.67.3.20260408" },
     { name = "types-ujson", specifier = ">=5.10.0" },
-    { name = "xinference-client", specifier = ">=2.5.0" },
+    { name = "xinference-client", specifier = ">=2.7.0" },
 ]
 storage = [
     { name = "azure-storage-blob", specifier = ">=12.28.0" },
@@ -1776,7 +1776,7 @@ vdb-upstash = [{ name = "dify-vdb-upstash", editable = "providers/vdb/vdb-upstas
 vdb-vastbase = [{ name = "dify-vdb-vastbase", editable = "providers/vdb/vdb-vastbase" }]
 vdb-vikingdb = [{ name = "dify-vdb-vikingdb", editable = "providers/vdb/vdb-vikingdb" }]
 vdb-weaviate = [{ name = "dify-vdb-weaviate", editable = "providers/vdb/vdb-weaviate" }]
-vdb-xinference = [{ name = "xinference-client", specifier = ">=2.5.0" }]
+vdb-xinference = [{ name = "xinference-client", specifier = ">=2.7.0" }]
 
 [[package]]
 name = "dify-trace-aliyun"
@@ -7481,7 +7481,7 @@ wheels = [
 
 [[package]]
 name = "xinference-client"
-version = "2.5.0"
+version = "2.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -7489,9 +7489,9 @@ dependencies = [
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d0/8a/4d7c72510f3c462195c2e7aa63559cafcf20f7d1901132d533b7498bab1c/xinference_client-2.5.0.tar.gz", hash = "sha256:0680324e2f438b8b208ca80e8a7e1c22e9152fce54f8c024c75e2ce57bfa5639", size = 58430, upload-time = "2026-04-13T07:21:40.145Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/86/89723d8a4f862bac49581ef99c9e52c014acf42355710335470062efabf1/xinference_client-2.7.0.tar.gz", hash = "sha256:51c174bc1704a505512550097d4b2025480a840d97bed8097dfbfaec2172ca9e", size = 58577, upload-time = "2026-04-25T14:37:37.345Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5b/dd/4fd501b8092c01f0775142850e3b601d743edf733077b756defe4a01cc37/xinference_client-2.5.0-py3-none-any.whl", hash = "sha256:bb90f069a2c30ac6ea7453ab37a0fadd34c28b655afa51fe20c18e67a361c269", size = 40006, upload-time = "2026-04-13T07:21:38.851Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/22/f9b92941be1cba5b2347211bb04c354a6ba2bad0e7b2da41510f77959327/xinference_client-2.7.0-py3-none-any.whl", hash = "sha256:76377804eb7fd2ece8a7d1e5c517d8aed8b5a511834066e43414ad74bcb34c09", size = 40154, upload-time = "2026-04-25T14:37:35.959Z" },
 ]
 
 [[package]]
