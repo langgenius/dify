@@ -2,7 +2,7 @@
   "name": "dify",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@10.33.2",
   "engines": {
     "node": "^22.22.1"
   },
