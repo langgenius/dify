@@ -1,11 +1,13 @@
 'use client'
 
 import type { AccessRule } from './access-rule-row'
+import type { PermissionSetFormValues, PermissionSetModalMode } from './permission-set-modal'
+import type { ResourceType } from './permission-set-modal/permissions-data'
 import { useCallback, useState } from 'react'
 import AccessRuleSection from './access-rule-section'
 import AddRuleTargetsModal from './add-rule-targets-modal'
+import PermissionSetModal from './permission-set-modal'
 
-// todo: replace with API data when backend is ready
 const APP_ACCESS_RULES: AccessRule[] = [
   {
     id: 'app-full-access',
@@ -17,6 +19,17 @@ const APP_ACCESS_RULES: AccessRule[] = [
       { id: 'app-admin', name: 'App Admin' },
       { id: 'executive', name: 'Executive' },
     ],
+    permissions: [
+      'app.editing_and_layout',
+      'app.test_and_debug',
+      'app.delete',
+      'app.import_export_dsl',
+      'app.release_version_management',
+      'app.annotation_management',
+      'app.api_management.toggle',
+      'app.api_management.create_key',
+      'app.api_management.delete_key',
+    ],
   },
   {
     id: 'app-can-edit',
@@ -25,6 +38,11 @@ const APP_ACCESS_RULES: AccessRule[] = [
     assignedRoles: [
       { id: 'app-editor', name: 'App Editor' },
       { id: 'it-staff', name: 'IT Staff' },
+    ],
+    permissions: [
+      'app.editing_and_layout',
+      'app.test_and_debug',
+      'app.release_version_management',
     ],
   },
   {
@@ -36,6 +54,9 @@ const APP_ACCESS_RULES: AccessRule[] = [
       { id: 'ops-staff', name: 'Ops Staff' },
       { id: 'member', name: 'Member' },
     ],
+    permissions: [
+      'app.test_and_debug',
+    ],
   },
   {
     id: 'app-can-preview',
@@ -44,10 +65,10 @@ const APP_ACCESS_RULES: AccessRule[] = [
     assignedRoles: [
       { id: 'partner', name: 'Partner' },
     ],
+    permissions: [],
   },
 ]
 
-// todo: replace with API data when backend is ready
 const KNOWLEDGE_BASE_ACCESS_RULES: AccessRule[] = [
   {
     id: 'kb-full-access',
@@ -59,6 +80,16 @@ const KNOWLEDGE_BASE_ACCESS_RULES: AccessRule[] = [
       { id: 'kb-admin', name: 'KB Admin' },
       { id: 'executive', name: 'Executive' },
     ],
+    permissions: [
+      'kb.view',
+      'kb.edit_configuration',
+      'kb.manage_documents.add',
+      'kb.manage_documents.delete',
+      'kb.manage_documents.download',
+      'kb.import_export_pipeline',
+      'kb.pipeline_publishing_versioning',
+      'kb.delete',
+    ],
   },
   {
     id: 'kb-can-edit',
@@ -69,6 +100,12 @@ const KNOWLEDGE_BASE_ACCESS_RULES: AccessRule[] = [
       { id: 'ops-staff', name: 'Ops Staff' },
       { id: 'it-staff', name: 'IT Staff' },
     ],
+    permissions: [
+      'kb.edit_configuration',
+      'kb.manage_documents.add',
+      'kb.manage_documents.delete',
+      'kb.manage_documents.download',
+    ],
   },
   {
     id: 'kb-can-view',
@@ -77,6 +114,7 @@ const KNOWLEDGE_BASE_ACCESS_RULES: AccessRule[] = [
     assignedRoles: [
       { id: 'member', name: 'Member' },
     ],
+    permissions: ['kb.view'],
   },
   {
     id: 'kb-can-preview',
@@ -85,6 +123,7 @@ const KNOWLEDGE_BASE_ACCESS_RULES: AccessRule[] = [
     assignedRoles: [
       { id: 'partner', name: 'Partner' },
     ],
+    permissions: [],
   },
   {
     id: 'kb-can-test',
@@ -93,18 +132,31 @@ const KNOWLEDGE_BASE_ACCESS_RULES: AccessRule[] = [
     assignedRoles: [
       { id: 'tester', name: 'Tester' },
     ],
+    permissions: ['kb.view'],
   },
 ]
 
+type PermissionSetModalState = {
+  mode: PermissionSetModalMode
+  resourceType: ResourceType
+  initialValues?: PermissionSetFormValues
+}
+
 const AccessRulesPage = () => {
   const [addingRule, setAddingRule] = useState<AccessRule | null>(null)
-
-  const handleAddRole = useCallback((rule: AccessRule) => {
-    setAddingRule(rule)
-  }, [])
+  const [permissionSetModalState, setPermissionSetModalState]
+    = useState<PermissionSetModalState | null>(null)
 
   const closeAddModal = useCallback(() => {
     setAddingRule(null)
+  }, [])
+
+  const closePermissionSetModal = useCallback(() => {
+    setPermissionSetModalState(null)
+  }, [])
+
+  const handleAddRole = useCallback((rule: AccessRule) => {
+    setAddingRule(rule)
   }, [])
 
   const handleAddSubmit = useCallback(
@@ -114,9 +166,46 @@ const AccessRulesPage = () => {
     [],
   )
 
+  const handleCreate = useCallback((resourceType: ResourceType) => {
+    setPermissionSetModalState({ mode: 'create', resourceType })
+  }, [])
+
+  const handleEdit = useCallback(
+    (resourceType: ResourceType, rule: AccessRule) => {
+      setPermissionSetModalState({
+        mode: 'edit',
+        resourceType,
+        initialValues: {
+          name: rule.name,
+          description: rule.description,
+          permissions: rule.permissions,
+        },
+      })
+    },
+    [],
+  )
+
+  const handlePermissionSetSubmit = useCallback(
+    (_values: PermissionSetFormValues) => {
+      // TODO: wire up to API when backend is ready.
+    },
+    [],
+  )
+
   const noop = useCallback(() => {
     // TODO: wire up to API when backend is ready.
   }, [])
+
+  const createApp = useCallback(() => handleCreate('app'), [handleCreate])
+  const createKb = useCallback(() => handleCreate('knowledge_base'), [handleCreate])
+  const editApp = useCallback(
+    (rule: AccessRule) => handleEdit('app', rule),
+    [handleEdit],
+  )
+  const editKb = useCallback(
+    (rule: AccessRule) => handleEdit('knowledge_base', rule),
+    [handleEdit],
+  )
 
   return (
     <>
@@ -125,8 +214,8 @@ const AccessRulesPage = () => {
           title="App Access Rules"
           rules={APP_ACCESS_RULES}
           createButtonLabel="Create App permission set"
-          onCreate={noop}
-          onEditRule={noop}
+          onCreate={createApp}
+          onEditRule={editApp}
           onCopyRule={noop}
           onDeleteRule={noop}
           onAddRole={handleAddRole}
@@ -136,8 +225,8 @@ const AccessRulesPage = () => {
           title="Knowledge Base Access Rules"
           rules={KNOWLEDGE_BASE_ACCESS_RULES}
           createButtonLabel="Create KB permission set"
-          onCreate={noop}
-          onEditRule={noop}
+          onCreate={createKb}
+          onEditRule={editKb}
           onCopyRule={noop}
           onDeleteRule={noop}
           onAddRole={handleAddRole}
@@ -152,6 +241,16 @@ const AccessRulesPage = () => {
           initialMemberIds={[]}
           onClose={closeAddModal}
           onSubmit={handleAddSubmit}
+        />
+      )}
+      {permissionSetModalState && (
+        <PermissionSetModal
+          open
+          mode={permissionSetModalState.mode}
+          resourceType={permissionSetModalState.resourceType}
+          initialValues={permissionSetModalState.initialValues}
+          onClose={closePermissionSetModal}
+          onSubmit={handlePermissionSetSubmit}
         />
       )}
     </>
