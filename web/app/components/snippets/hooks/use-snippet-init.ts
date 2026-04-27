@@ -9,7 +9,6 @@ import {
   buildSnippetDetailPayload,
   useSnippetApiDetail,
 } from '@/service/use-snippets'
-import { getSnippetDetailMock } from '@/service/use-snippets.mock'
 
 const normalizeNodesDefaultConfigs = (nodesDefaultConfigs: unknown) => {
   if (!nodesDefaultConfigs || typeof nodesDefaultConfigs !== 'object')
@@ -65,25 +64,19 @@ export const useSnippetInit = (snippetId: string) => {
     workflowStore.getState().setPublishedAt(publishedWorkflowQuery.data?.created_at ?? 0)
   }, [publishedWorkflowQuery.data?.created_at, publishedWorkflowQuery.isLoading, workflowStore])
 
-  const mockData = useMemo(() => getSnippetDetailMock(snippetId), [snippetId])
-  const shouldUseMockData = !snippetApiDetail.isLoading && !snippetApiDetail.data && !!mockData
-
   const data = useMemo(() => {
     if (snippetApiDetail.data && !draftWorkflowQuery.isLoading)
       return buildSnippetDetailPayload(snippetApiDetail.data, draftWorkflowQuery.data)
-
-    if (shouldUseMockData)
-      return mockData
 
     if (snippetApiDetail.error && isNotFoundError(snippetApiDetail.error))
       return null
 
     return undefined
-  }, [draftWorkflowQuery.data, draftWorkflowQuery.isLoading, mockData, shouldUseMockData, snippetApiDetail.data, snippetApiDetail.error])
+  }, [draftWorkflowQuery.data, draftWorkflowQuery.isLoading, snippetApiDetail.data, snippetApiDetail.error])
 
   return {
     ...snippetApiDetail,
     data,
-    isLoading: shouldUseMockData ? false : snippetApiDetail.isLoading || draftWorkflowQuery.isLoading,
+    isLoading: snippetApiDetail.isLoading || draftWorkflowQuery.isLoading,
   }
 }
