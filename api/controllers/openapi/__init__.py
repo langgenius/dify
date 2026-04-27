@@ -15,9 +15,11 @@ api = ExternalApi(
 openapi_ns = Namespace("openapi", description="User-scoped operations", path="/")
 
 from . import index
+from .oauth_device import code as oauth_device_code
 
 __all__ = [
     "index",
+    "oauth_device_code",
 ]
 
 api.add_namespace(openapi_ns)

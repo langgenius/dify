@@ -513,6 +513,20 @@ class HttpConfig(BaseSettings):
     def OPENAPI_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return [o for o in self.inner_OPENAPI_CORS_ALLOW_ORIGINS.split(",") if o]
 
+    inner_OPENAPI_KNOWN_CLIENT_IDS: str = Field(
+        description=(
+            "Comma-separated client_id values accepted at "
+            "POST /openapi/v1/oauth/device/code. New CLIs / SDKs added here "
+            "without code changes. Unknown client_id returns 400 unsupported_client."
+        ),
+        validation_alias=AliasChoices("OPENAPI_KNOWN_CLIENT_IDS"),
+        default="difyctl",
+    )
+
+    @computed_field
+    def OPENAPI_KNOWN_CLIENT_IDS(self) -> frozenset[str]:
+        return frozenset(c for c in self.inner_OPENAPI_KNOWN_CLIENT_IDS.split(",") if c)
+
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = Field(
         ge=1, description="Maximum connection timeout in seconds for HTTP requests", default=10
     )

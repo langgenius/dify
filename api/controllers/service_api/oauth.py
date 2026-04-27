@@ -13,6 +13,7 @@ from flask_restx import Resource, reqparse
 from sqlalchemy import update
 from werkzeug.exceptions import BadRequest
 
+from controllers.openapi.oauth_device.code import OAuthDeviceCodeApi
 from controllers.service_api import service_api_ns
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -24,7 +25,6 @@ from libs.oauth_bearer import (
     validate_bearer,
 )
 from libs.rate_limit import (
-    LIMIT_DEVICE_CODE_PER_IP,
     LIMIT_LOOKUP_PUBLIC,
     LIMIT_ME_PER_ACCOUNT,
     LIMIT_ME_PER_EMAIL,
@@ -42,7 +42,9 @@ from services.oauth_device_flow import (
 
 logger = logging.getLogger(__name__)
 
-KNOWN_CLIENT_IDS = frozenset({"difyctl"})
+# Legacy /v1/oauth/device/code mount — handler lives in
+# controllers/openapi/oauth_device/code.py. Removed in Phase F.
+service_api_ns.add_resource(OAuthDeviceCodeApi, "/oauth/device/code")
 
 
 # ============================================================================
@@ -158,49 +160,6 @@ class OAuthAuthorizationsSelfApi(Resource):
             redis_client.delete(TOKEN_CACHE_KEY_FMT.format(hash=pre_revoke_hash))
 
         return {"status": "revoked"}, 200
-
-
-# ============================================================================
-# POST /v1/oauth/device/code  (unauthenticated — CLI starts a flow)
-# ============================================================================
-
-
-_code_parser = reqparse.RequestParser()
-_code_parser.add_argument("client_id", type=str, required=True, location="json")
-_code_parser.add_argument("device_label", type=str, required=True, location="json")
-
-
-@service_api_ns.route("/oauth/device/code")
-class OAuthDeviceCodeApi(Resource):
-    @rate_limit(LIMIT_DEVICE_CODE_PER_IP)
-    def post(self):
-        args = _code_parser.parse_args()
-        client_id = args["client_id"]
-        device_label = args["device_label"]
-
-        if client_id not in KNOWN_CLIENT_IDS:
-            return {"error": "unsupported_client"}, 400
-
-        store = DeviceFlowRedis(redis_client)
-        ip = extract_remote_ip(request)
-        device_code, user_code, expires_in = store.start(client_id, device_label, created_ip=ip)
-
-        return {
-            "device_code": device_code,
-            "user_code": user_code,
-            "verification_uri": _verification_uri(),
-            "expires_in": expires_in,
-            "interval": DEFAULT_POLL_INTERVAL_SECONDS,
-        }, 200
-
-
-def _verification_uri() -> str:
-    from configs import dify_config
-
-    base = getattr(dify_config, "CONSOLE_WEB_URL", None)
-    if base:
-        return f"{base.rstrip('/')}/device"
-    return f"{request.host_url.rstrip('/')}/device"
 
 
 # ============================================================================
