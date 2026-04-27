@@ -180,6 +180,7 @@ class WorkflowConverter:
                     "text_to_speech": app_model_config_dict.get("text_to_speech"),
                     "file_upload": app_model_config_dict.get("file_upload"),
                     "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
+                    "retriever_resource": app_model_config_dict.get("retriever_resource"),
                 }
             case AppMode.ADVANCED_CHAT:
                 answer_node = self._convert_to_answer_node()
