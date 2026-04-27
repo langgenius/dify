@@ -14,12 +14,13 @@ api = ExternalApi(
 
 openapi_ns = Namespace("openapi", description="User-scoped operations", path="/")
 
-from . import index
+from . import account, index
 from .oauth_device import code as oauth_device_code
 from .oauth_device import lookup as oauth_device_lookup
 from .oauth_device import token as oauth_device_token
 
 __all__ = [
+    "account",
     "index",
     "oauth_device_code",
     "oauth_device_lookup",
