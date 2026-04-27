@@ -20,7 +20,6 @@ import {
   syncWorkflowDraft,
 } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
-import { normalizeWorkflowNodesForFrontend } from '../utils'
 import { useWorkflowTemplate } from './use-workflow-template'
 
 const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean => {
@@ -59,13 +58,7 @@ export const useWorkflowInit = () => {
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
-      setData({
-        ...res,
-        graph: {
-          ...res.graph,
-          nodes: normalizeWorkflowNodesForFrontend(res.graph.nodes),
-        },
-      })
+      setData(res)
       workflowStore.setState({
         envSecrets: (res.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
           acc[env.id] = env.value

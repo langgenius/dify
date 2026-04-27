@@ -1,8 +1,7 @@
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
-import type { Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 
 type TriggerStatusLike = {
@@ -32,15 +31,6 @@ type WorkflowFeaturesLike = {
   text_to_speech?: { enabled?: boolean }
   retriever_resource?: { enabled?: boolean }
   sensitive_word_avoidance?: { enabled?: boolean }
-}
-
-type HumanInputFieldLike = {
-  type: unknown
-  [key: string]: unknown
-}
-
-type HumanInputNodeExtra = {
-  inputs: HumanInputFieldLike[]
 }
 
 export const buildTriggerStatusMap = (triggers: TriggerStatusLike[]) => {
@@ -79,49 +69,6 @@ export const coerceReplayUserInputs = (rawInputs: unknown): Record<string, strin
   })
 
   return userInputs
-}
-
-const normalizeHumanInputFieldType = (
-  type: unknown,
-  direction: 'frontend' | 'backend',
-) => {
-  if (direction === 'frontend')
-    return type === 'file_list' ? 'file-list' : type
-
-  return type === 'file-list' ? 'file_list' : type
-}
-
-const isHumanInputNode = (node: Node): node is Node<HumanInputNodeExtra> => {
-  return node.data.type === BlockEnum.HumanInput && Array.isArray((node.data as Partial<HumanInputNodeExtra>).inputs)
-}
-
-const normalizeHumanInputNode = (
-  node: Node,
-  direction: 'frontend' | 'backend',
-): Node => {
-  if (!isHumanInputNode(node))
-    return node
-
-  const normalizedNode: Node<HumanInputNodeExtra> = {
-    ...node,
-    data: {
-      ...node.data,
-      inputs: node.data.inputs.map(input => ({
-        ...input,
-        type: normalizeHumanInputFieldType(input.type, direction),
-      })),
-    },
-  }
-
-  return normalizedNode
-}
-
-export const normalizeWorkflowNodesForFrontend = (nodes: Node[]) => {
-  return nodes.map(node => normalizeHumanInputNode(node, 'frontend'))
-}
-
-export const normalizeWorkflowNodesForBackend = (nodes: Node[]) => {
-  return nodes.map(node => normalizeHumanInputNode(node, 'backend'))
 }
 
 export const buildInitialFeatures = (

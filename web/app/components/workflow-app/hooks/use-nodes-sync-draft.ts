@@ -14,7 +14,6 @@ import { postWithKeepalive } from '@/service/fetch'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
-import { normalizeWorkflowNodesForBackend } from '../utils'
 
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
@@ -47,14 +46,14 @@ export const useNodesSyncDraft = () => {
       return null
 
     const features = featuresStore!.getState().features
-    const producedNodes = normalizeWorkflowNodesForBackend(produce(nodes, (draft) => {
+    const producedNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         Object.keys(node.data).forEach((key) => {
           if (key.startsWith('_'))
             delete node.data[key]
         })
       })
-    }))
+    })
     const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp), (draft) => {
       draft.forEach((edge) => {
         Object.keys(edge.data).forEach((key) => {

@@ -1,22 +1,10 @@
-import type { Node } from '@/app/components/workflow/types'
-import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import {
   buildInitialFeatures,
   buildTriggerStatusMap,
   coerceReplayUserInputs,
-  normalizeWorkflowNodesForBackend,
-  normalizeWorkflowNodesForFrontend,
 } from '../utils'
-
-type HumanInputTestField = {
-  type: string
-  output_variable_name: string
-}
-
-type HumanInputTestNode = Node<{
-  inputs: HumanInputTestField[]
-}>
 
 describe('workflow-app utils', () => {
   it('should map trigger statuses to enabled and disabled states', () => {
@@ -48,51 +36,6 @@ describe('workflow-app utils', () => {
     })
     expect(coerceReplayUserInputs('invalid')).toBeNull()
     expect(coerceReplayUserInputs(null)).toBeNull()
-  })
-
-  it('should normalize human-input multi-file types between frontend and backend payloads', () => {
-    const nodes: HumanInputTestNode[] = [
-      {
-        id: 'node-1',
-        type: 'custom',
-        position: { x: 0, y: 0 },
-        data: {
-          title: 'Human Input',
-          desc: '',
-          type: BlockEnum.HumanInput,
-          inputs: [
-            { type: 'paragraph', output_variable_name: 'summary' },
-            { type: 'file-list', output_variable_name: 'attachments' },
-          ],
-        },
-      },
-    ]
-
-    const backendNodes = normalizeWorkflowNodesForBackend(nodes) as HumanInputTestNode[]
-    expect(backendNodes[0]!.data.inputs).toEqual([
-      { type: 'paragraph', output_variable_name: 'summary' },
-      { type: 'file_list', output_variable_name: 'attachments' },
-    ])
-
-    const frontendPayloadNodes: HumanInputTestNode[] = [
-      {
-        ...nodes[0]!,
-        data: {
-          ...nodes[0]!.data,
-          inputs: [
-            { type: 'paragraph', output_variable_name: 'summary' },
-            { type: 'file_list', output_variable_name: 'attachments' },
-          ],
-        },
-      },
-    ]
-
-    const frontendNodes = normalizeWorkflowNodesForFrontend(frontendPayloadNodes) as HumanInputTestNode[]
-
-    expect(frontendNodes[0]!.data.inputs).toEqual([
-      { type: 'paragraph', output_variable_name: 'summary' },
-      { type: 'file-list', output_variable_name: 'attachments' },
-    ])
   })
 
   it('should build initial features with file-upload and feature fallbacks', () => {

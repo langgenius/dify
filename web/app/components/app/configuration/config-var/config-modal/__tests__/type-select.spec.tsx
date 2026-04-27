@@ -24,7 +24,7 @@ describe('TypeSelector', () => {
     )
 
     await user.click(screen.getByRole('combobox'))
-    const numberOption = await screen.findByRole('option', { name: 'Number' })
+    const [, numberOption] = await screen.findAllByRole('option')
     await user.click(numberOption)
 
     expect(onSelect).toHaveBeenCalledWith({ value: 'number', name: 'Number' })
@@ -46,10 +46,8 @@ describe('TypeSelector', () => {
 
     await user.click(screen.getByRole('combobox'))
 
-    const numberOption = await screen.findByRole('option', { name: 'Number' })
+    const [, numberOption] = await screen.findAllByRole('option')
     const popup = numberOption.closest('[data-side]')
-    if (!popup)
-      throw new Error('Expected popup container to exist')
 
     expect(popup).toHaveClass('w-(--anchor-width)')
   })
