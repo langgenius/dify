@@ -146,11 +146,19 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     pinned: false,
     limit: 100,
   })
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
+  const { data: appChatListData, isLoading: appChatListDataLoading, error: appChatListDataError } = useShareChatList({
     conversationId: chatShouldReloadKey,
     appSourceType,
     appId,
   })
+  // When the backend reports the conversation no longer exists (404), clear
+  // the stale conversation_id from localStorage so the chatbot falls back to
+  // starting a new conversation. Without this, the user would be stuck in an
+  // infinite retry loop (GitHub issue #34731).
+  useEffect(() => {
+    if (appChatListDataError instanceof Response && appChatListDataError.status === 404 && appId)
+      removeConversationIdInfo(appId)
+  }, [appChatListDataError, appId, removeConversationIdInfo])
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)

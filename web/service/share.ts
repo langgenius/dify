@@ -135,7 +135,10 @@ export const generationConversationName = async (appSourceType: AppSourceType, i
 }
 
 export const fetchChatList = async (conversationId: string, appSourceType: AppSourceType, installedAppId = '') => {
-  return getAction('get', appSourceType)(getUrl('messages', appSourceType, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } }) as any
+  // Pass silent: true so a stale conversation_id returning 404 does not spam
+  // toast errors to the user. The caller (useShareChatList) is responsible
+  // for detecting the 404 and clearing the stale id from localStorage.
+  return getAction('get', appSourceType)(getUrl('messages', appSourceType, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } }, { silent: true }) as any
 }
 
 // Abandoned API interface
