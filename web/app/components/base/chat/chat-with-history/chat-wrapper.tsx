@@ -79,6 +79,7 @@ const ChatWrapper = () => {
     handleSend,
     handleStop,
     handleSwitchSibling,
+    handleReconnect,
     isResponding: respondingState,
     suggestedQuestions,
   } = useChat(
@@ -140,37 +141,47 @@ const ChatWrapper = () => {
     setIsResponding(respondingState)
   }, [respondingState, setIsResponding])
 
-  // Resume paused workflows when chat history is loaded
+  // Resume paused workflows or reconnect to running workflows when chat history is loaded
   useEffect(() => {
     if (!appPrevChatTree || appPrevChatTree.length === 0)
       return
 
-    // Find the last answer item with workflow_run_id that needs resumption (DFS - find deepest first)
-    let lastPausedNode: ChatItemInTree | undefined
-    const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
-      nodes.forEach((node) => {
-        // DFS: recurse to children first
-        if (node.children && node.children.length > 0)
-          findLastPausedWorkflow(node.children)
+    const STREAM_RETENTION_SECONDS = 600
 
-        // Track the last node with humanInputFormDataList
-        if (node.isAnswer && node.workflow_run_id && node.humanInputFormDataList && node.humanInputFormDataList.length > 0)
-          lastPausedNode = node
+    let lastPausedNode: ChatItemInTree | undefined
+    let lastRunningNode: ChatItemInTree | undefined
+    const findReconnectableWorkflow = (nodes: ChatItemInTree[]) => {
+      nodes.forEach((node) => {
+        if (node.isAnswer && node.workflow_run_id) {
+          if (node.humanInputFormDataList && node.humanInputFormDataList.length > 0) {
+            lastPausedNode = node
+          }
+          else if (
+            node.created_at
+            && (Date.now() / 1000 - node.created_at) < STREAM_RETENTION_SECONDS
+          ) {
+            lastRunningNode = node
+          }
+        }
+
+        if (node.children && node.children.length > 0)
+          findReconnectableWorkflow(node.children)
       })
     }
 
-    findLastPausedWorkflow(appPrevChatTree)
+    findReconnectableWorkflow(appPrevChatTree)
 
-    // Only resume the last paused workflow
+    const callbacks = {
+      onGetSuggestedQuestions: (responseItemId: string) => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
+      onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
+      isPublicAPI: appSourceType === AppSourceType.webApp,
+    }
+
     if (lastPausedNode) {
-      handleSwitchSibling(
-        lastPausedNode.id,
-        {
-          onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
-          onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
-          isPublicAPI: appSourceType === AppSourceType.webApp,
-        },
-      )
+      handleSwitchSibling(lastPausedNode.id, callbacks)
+    }
+    else if (lastRunningNode) {
+      handleReconnect(lastRunningNode.id, lastRunningNode.workflow_run_id!, callbacks)
     }
   }, [])
 

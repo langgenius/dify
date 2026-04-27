@@ -42,6 +42,8 @@ function getFormattedChatList(messages: any[]) {
       citation: item.retriever_resources,
       message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
       parentMessageId: `question-${item.id}`,
+      workflow_run_id: item.workflow_run_id,
+      created_at: item.created_at,
     })
   })
   return newChatList

@@ -410,7 +410,7 @@ class WorkflowBasedAppRunner:
         elif isinstance(event, GraphRunFailedEvent):
             self._publish_event(QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count))
         elif isinstance(event, GraphRunAbortedEvent):
-            self._publish_event(QueueWorkflowFailedEvent(error=event.reason or "Unknown error", exceptions_count=0))
+            self._publish_event(QueueWorkflowPartialSuccessEvent(outputs={}, exceptions_count=0))
         elif isinstance(event, GraphRunPausedEvent):
             runtime_state = workflow_entry.graph_engine.graph_runtime_state
             paused_nodes = runtime_state.get_paused_nodes()

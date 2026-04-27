@@ -58,6 +58,7 @@ class MessageListItem(ResponseModel):
     message_files: list[MessageFile]
     status: str
     error: str | None = None
+    workflow_run_id: str | None = None
     extra_contents: list[ExecutionExtraContentDomainModel]
 
     @field_validator("inputs", mode="before")

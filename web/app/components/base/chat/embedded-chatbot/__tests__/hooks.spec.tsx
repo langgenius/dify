@@ -834,6 +834,34 @@ describe('useEmbeddedChatbot', () => {
       const question = chatList.find((m: unknown) => (m as Record<string, unknown>).id === 'question-msg-no-files')
       expect(question).toBeDefined()
     })
+
+    it('should pass through workflow_run_id and created_at from message items', async () => {
+      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: 'conversation-1' } }))
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      mockFetchChatList.mockResolvedValue({
+        data: [{
+          id: 'msg-wf',
+          query: 'Running workflow',
+          answer: 'Partial',
+          workflow_run_id: 'wf-embedded-1',
+          created_at: 1700000000,
+        }],
+      })
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      await waitFor(() => expect(result.current.appPrevChatList.length).toBeGreaterThan(0), { timeout: 3000 })
+
+      const questionNode = result.current.appPrevChatList.find(
+        (m: unknown) => (m as Record<string, unknown>).id === 'question-msg-wf',
+      ) as Record<string, unknown> | undefined
+      expect(questionNode).toBeDefined()
+      const answerNode = (questionNode!.children as Record<string, unknown>[])?.[0]
+      expect(answerNode).toBeDefined()
+      expect(answerNode!.workflow_run_id).toBe('wf-embedded-1')
+      expect(answerNode!.created_at).toBe(1700000000)
+    })
   })
 
   describe('currentConversationItem from pinned list', () => {

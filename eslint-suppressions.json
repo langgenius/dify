@@ -968,7 +968,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 17
+      "count": 20
     }
   },
   "web/app/components/base/chat/chat/index.tsx": {

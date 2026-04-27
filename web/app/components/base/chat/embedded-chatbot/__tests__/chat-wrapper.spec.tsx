@@ -177,6 +177,7 @@ const createUseChatReturn = (overrides: Partial<UseChatReturn> = {}): UseChatRet
   setTargetMessageId: vi.fn() as UseChatReturn['setTargetMessageId'],
   handleSend: vi.fn(),
   handleResume: vi.fn(),
+  handleReconnect: vi.fn(),
   setIsResponding: vi.fn() as UseChatReturn['setIsResponding'],
   handleStop: vi.fn(),
   handleSwitchSibling: vi.fn(),
@@ -539,6 +540,52 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       }))
       render(<ChatWrapper />)
       expect(handleSwitchSibling).toHaveBeenCalled()
+    })
+
+    it('should reconnect to a recent running workflow on mount', () => {
+      const handleReconnect = vi.fn()
+      vi.mocked(useChat).mockReturnValue(createUseChatReturn({
+        handleReconnect,
+      }))
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        appPrevChatList: [
+          {
+            id: 'running-node',
+            isAnswer: true,
+            content: 'partial',
+            workflow_run_id: 'run-active',
+            created_at: Math.floor(Date.now() / 1000) - 30,
+            children: [],
+          } as unknown as ChatItemInTree,
+        ],
+      }))
+      render(<ChatWrapper />)
+      expect(handleReconnect).toHaveBeenCalledWith(
+        'running-node',
+        'run-active',
+        expect.objectContaining({ isPublicAPI: true }),
+      )
+    })
+
+    it('should not reconnect to an old workflow beyond the retention window', () => {
+      const handleReconnect = vi.fn()
+      vi.mocked(useChat).mockReturnValue(createUseChatReturn({
+        handleReconnect,
+      }))
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(createContextValue({
+        appPrevChatList: [
+          {
+            id: 'old-node',
+            isAnswer: true,
+            content: 'done',
+            workflow_run_id: 'run-old',
+            created_at: Math.floor(Date.now() / 1000) - 700,
+            children: [],
+          } as unknown as ChatItemInTree,
+        ],
+      }))
+      render(<ChatWrapper />)
+      expect(handleReconnect).not.toHaveBeenCalled()
     })
 
     it('should handle conversation completion and suggested questions in chat actions', async () => {

@@ -111,6 +111,7 @@ export type IChatItem = {
   agent_thoughts?: ThoughtItem[]
   message_files?: FileEntity[]
   workflow_run_id?: string
+  created_at?: number
   // for agent log
   conversationId?: string
   input?: any
