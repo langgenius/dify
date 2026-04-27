@@ -29,6 +29,7 @@ type ShowOnCondition = {
 type OptionLabel = string | TypeWithI18N
 
 type SelectableOption = {
+  children?: SelectableOption[]
   icon?: string
   label: OptionLabel
   show_on?: ShowOnCondition[]
@@ -49,6 +50,7 @@ type FormInputState = {
   isCheckbox: boolean
   isConstant: boolean
   isDynamicSelect: boolean
+  isDynamicTreeSelect: boolean
   isFile: boolean
   isFiles: boolean
   isModelSelector: boolean
@@ -104,6 +106,7 @@ export const getFormInputState = (
   const isCheckbox = _type === FormTypeEnum.checkbox
   const isSelect = type === FormTypeEnum.select
   const isDynamicSelect = type === FormTypeEnum.dynamicSelect
+  const isDynamicTreeSelect = type === FormTypeEnum.dynamicTreeSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
   const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
@@ -119,6 +122,7 @@ export const getFormInputState = (
     isCheckbox,
     isConstant,
     isDynamicSelect,
+    isDynamicTreeSelect,
     isFile,
     isFiles,
     isModelSelector,
@@ -174,7 +178,7 @@ export const getFilterVar = (state: FormInputState) => {
 export const getVarKindType = (state: FormInputState) => {
   if (state.isFile)
     return VarKindType.variable
-  if (state.isSelect || state.isDynamicSelect || state.isBoolean || state.isNumber || state.isArray || state.isObject)
+  if (state.isSelect || state.isDynamicSelect || state.isDynamicTreeSelect || state.isBoolean || state.isNumber || state.isArray || state.isObject)
     return VarKindType.constant
   if (state.isString)
     return VarKindType.mixed

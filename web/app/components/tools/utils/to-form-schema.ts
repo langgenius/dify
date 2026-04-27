@@ -11,6 +11,13 @@ type FormValueInput = {
   value?: unknown
 }
 
+type ToolFormOption = {
+  label: TypeWithI18N
+  value: string
+  show_on: { variable: string, value: string }[]
+  children?: ToolFormOption[]
+}
+
 /**
  * Form schema type for tool credentials.
  * This type represents the schema returned by toolCredentialToFormSchemas.
@@ -25,11 +32,7 @@ export type ToolCredentialFormSchema = {
   tooltip?: TypeWithI18N
   placeholder?: TypeWithI18N
   show_on: { variable: string, value: string }[]
-  options?: {
-    label: TypeWithI18N
-    value: string
-    show_on: { variable: string, value: string }[]
-  }[]
+  options?: ToolFormOption[]
   help?: TypeWithI18N | null
   url?: string
 }
@@ -49,11 +52,7 @@ export type ToolFormSchema = {
   default?: string
   tooltip?: TypeWithI18N
   show_on: { variable: string, value: string }[]
-  options?: {
-    label: TypeWithI18N
-    value: string
-    show_on: { variable: string, value: string }[]
-  }[]
+  options?: ToolFormOption[]
   placeholder?: TypeWithI18N
   min?: number
   max?: number

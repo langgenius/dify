@@ -480,7 +480,13 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], 
   })
 }
 
-export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[]) => {
+type PluginMarketplaceInfo = {
+  organization: string
+  plugin: string
+  version: string
+}
+
+export const useFetchPluginsInMarketPlaceByInfo = (infos: PluginMarketplaceInfo[]) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByInfo', infos],
     queryFn: () => postMarketplace<{ data: PluginsFromMarketplaceByInfoResponse }>('/plugins/versions/batch', {
@@ -504,13 +510,7 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     canManagement,
   } = useReferenceSetting()
   const { refreshPluginList } = useRefreshPluginList()
-  const {
-    data,
-    isFetched,
-    isRefetching,
-    refetch,
-    ...rest
-  } = useQuery({
+  const pluginTaskQuery = useQuery({
     enabled: canManagement,
     queryKey: usePluginTaskListKey,
     queryFn: () => get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100'),
@@ -520,6 +520,12 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
       return taskDone ? false : 5000
     },
   })
+  const {
+    data,
+    isFetched,
+    isRefetching,
+    refetch,
+  } = pluginTaskQuery
 
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
@@ -530,9 +536,12 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     const lastData = cloneDeep(data)
     const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
     const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
+    const categoryManifest = category && Object.values(PluginCategoryEnum).includes(category as PluginCategoryEnum)
+      ? ({ category: category as PluginCategoryEnum } as unknown as PluginDeclaration)
+      : undefined
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
-      refreshPluginList(category ? { category } as any : undefined, !category)
-  }, [isRefetching])
+      refreshPluginList(categoryManifest, !categoryManifest)
+  }, [initialized, isRefetching, data, refreshPluginList, category])
 
   useEffect(() => {
     setInitialized(true)
@@ -543,11 +552,11 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   }, [refetch])
 
   return {
+    ...pluginTaskQuery,
     data,
     pluginTasks: data?.tasks || [],
     isFetched,
     handleRefetch,
-    ...rest,
   }
 }
 
@@ -626,7 +635,14 @@ export const usePluginInfo = (providerName?: string) => {
   })
 }
 
-export const useFetchDynamicOptions = (plugin_id: string, provider: string, action: string, parameter: string, provider_type?: string, extra?: Record<string, any>) => {
+export const useFetchDynamicOptions = (
+  plugin_id: string,
+  provider: string,
+  action: string,
+  parameter: string,
+  provider_type?: string,
+  extra?: Record<string, unknown>,
+) => {
   return useMutation({
     mutationFn: () => get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-options', {
       params: {
@@ -635,6 +651,26 @@ export const useFetchDynamicOptions = (plugin_id: string, provider: string, acti
         action,
         parameter,
         provider_type,
+        ...extra,
+      },
+    }),
+  })
+}
+
+export const useFetchDynamicTreeOptions = (
+  plugin_id: string,
+  provider: string,
+  action: string,
+  parameter: string,
+  extra?: Record<string, unknown>,
+) => {
+  return useMutation({
+    mutationFn: () => get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-tree-options', {
+      params: {
+        plugin_id,
+        provider,
+        action,
+        parameter,
         ...extra,
       },
     }),

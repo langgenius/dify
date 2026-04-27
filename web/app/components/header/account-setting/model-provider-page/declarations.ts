@@ -26,6 +26,7 @@ export enum FormTypeEnum {
   object = 'object',
   array = 'array',
   dynamicSelect = 'dynamic-select',
+  dynamicTreeSelect = 'dynamic-tree-select',
 }
 
 export type FormOption = {
@@ -33,6 +34,7 @@ export type FormOption = {
   value: string
   show_on: FormShowOnObject[]
   icon?: string
+  children?: FormOption[]
 }
 
 export enum ModelTypeEnum {
