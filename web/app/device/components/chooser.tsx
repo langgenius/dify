@@ -13,7 +13,7 @@ type Props = {
  * Chooser renders the two-button device-auth login selector. Account button
  * seeds postLoginRedirect + navigates to /signin so every existing account
  * login method (password / email-code / social OAuth / account-SSO) flows
- * through its usual plumbing. SSO button hits /v1/oauth/device/sso-initiate
+ * through its usual plumbing. SSO button hits /openapi/v1/oauth/device/sso-initiate
  * directly — the SSO branch skips /signin entirely.
  *
  * v1.0 scope: only account-SSO honours postLoginRedirect (via sso-auth's
@@ -31,10 +31,10 @@ const Chooser: FC<Props> = ({ userCode, ssoAvailable }) => {
   }
 
   const onSSO = () => {
-    // Full-page navigation, not router.push — /v1/oauth/device/sso-initiate
+    // Full-page navigation, not router.push — /openapi/v1/oauth/device/sso-initiate
     // issues a 302 to the IdP. Next's client router can't follow cross-
     // origin redirects; a plain window.location assignment handles it.
-    window.location.href = `/v1/oauth/device/sso-initiate?user_code=${encodeURIComponent(userCode)}`
+    window.location.href = `/openapi/v1/oauth/device/sso-initiate?user_code=${encodeURIComponent(userCode)}`
   }
 
   return (

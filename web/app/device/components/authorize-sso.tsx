@@ -13,9 +13,10 @@ type Props = {
 
 /**
  * AuthorizeSSO is the external-SSO branch authorize screen. On mount it
- * fetches /v1/oauth/device/approval-context to learn subject_email, issuer,
- * user_code, and csrf_token from the device_approval_grant cookie. On
- * Approve click, posts /v1/oauth/device/approve-external with the CSRF header.
+ * fetches /openapi/v1/oauth/device/approval-context to learn subject_email,
+ * issuer, user_code, and csrf_token from the device_approval_grant cookie.
+ * On Approve click, posts /openapi/v1/oauth/device/approve-external with
+ * the CSRF header.
  *
  * The user_code in state is bound to the cookie by server; we do not accept
  * one from the URL because the SSO branch deliberately detaches from the

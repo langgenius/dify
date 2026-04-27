@@ -1,18 +1,22 @@
-// Web-side calls into the Dify device-flow endpoints:
+// Web-side calls into the Dify device-flow endpoints. All routes now sit
+// under /openapi/v1/oauth/device/* (Phase G of the openapi migration). The
+// approve/deny endpoints still require the console session cookie + CSRF
+// token; lookup is unauthenticated; the SSO branch uses cookie + per-flow
+// CSRF baked into the approval-context response.
 //
-//   /v1/oauth/device/lookup            (public — GET, no auth, IP-rate-limited)
-//   /v1/oauth/device/approval-context  (cookie-authed — GET)
-//   /v1/oauth/device/approve-external  (cookie-authed + CSRF — POST)
-//   /console/api/oauth/device/approve  (session-authed — POST)
-//   /console/api/oauth/device/deny     (session-authed — POST)
+//   /openapi/v1/oauth/device/lookup            (public — GET)
+//   /openapi/v1/oauth/device/approve           (cookie + CSRF — POST)
+//   /openapi/v1/oauth/device/deny              (cookie + CSRF — POST)
+//   /openapi/v1/oauth/device/approval-context  (cookie — GET)
+//   /openapi/v1/oauth/device/approve-external  (cookie + per-flow CSRF — POST)
 //
-// Approve/deny use the standard service/base helpers so they get console-
-// session cookies automatically. Lookup + SSO-branch endpoints sit under
-// /v1 so they ride the existing service-API gateway route.
+// /openapi/v1/* is its own URL prefix, so we bypass service/base's
+// API_PREFIX (which targets /console/api) and call fetch directly.
 
-import { post } from './base'
+import Cookies from 'js-cookie'
+import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 
-const DEVICE_BASE = '/v1/oauth/device'
+const DEVICE_BASE = '/openapi/v1/oauth/device'
 
 // Typed error thrown by every wrapper here. The page/component layer
 // switches on `code` to choose user-facing copy / view; never render
@@ -49,6 +53,10 @@ function statusFallbackCode(status: number): string {
   return 'unknown'
 }
 
+function consoleCsrfHeader(): Record<string, string> {
+  return { [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '' }
+}
+
 // ----- Account branch --------------------------------------------------------
 
 export type DeviceLookupReply = {
@@ -65,13 +73,35 @@ export async function deviceLookup(user_code: string): Promise<DeviceLookupReply
   return res.json()
 }
 
-export const deviceApproveAccount = (user_code: string) =>
-  post<{ status: 'approved' }>('/oauth/device/approve', { body: { user_code } })
+export async function deviceApproveAccount(user_code: string): Promise<{ status: 'approved' }> {
+  const res = await fetch(`${DEVICE_BASE}/approve`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...consoleCsrfHeader(),
+    },
+    body: JSON.stringify({ user_code }),
+  })
+  if (!res.ok) await failFromResponse(res)
+  return res.json()
+}
 
-export const deviceDenyAccount = (user_code: string) =>
-  post<{ status: 'denied' }>('/oauth/device/deny', { body: { user_code } })
+export async function deviceDenyAccount(user_code: string): Promise<{ status: 'denied' }> {
+  const res = await fetch(`${DEVICE_BASE}/deny`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...consoleCsrfHeader(),
+    },
+    body: JSON.stringify({ user_code }),
+  })
+  if (!res.ok) await failFromResponse(res)
+  return res.json()
+}
 
-// ----- SSO branch (cookie-authed via /v1/oauth/device/*) --------------------
+// ----- SSO branch (cookie-authed via /openapi/v1/oauth/device/*) -----------
 
 export type ApprovalContext = {
   subject_email: string

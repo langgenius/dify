@@ -29,7 +29,7 @@ export function normaliseUserCodeInput(raw: string): string {
 
 /**
  * isValidUserCode tests whether the normalised form is a complete XXXX-XXXX
- * token suitable for submission to /console/api/oauth/device/lookup.
+ * token suitable for submission to /openapi/v1/oauth/device/lookup.
  */
 export function isValidUserCode(normalised: string): boolean {
   return /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(normalised)

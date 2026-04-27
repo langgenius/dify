@@ -17,7 +17,7 @@ type Props = {
 /**
  * AuthorizeAccount is the account-branch authorize screen. Called with a
  * live console session already established (user bounced through /signin).
- * Posts to /console/api/oauth/device/{approve,deny}; these endpoints mint
+ * Posts to /openapi/v1/oauth/device/{approve,deny}; these endpoints mint
  * the dfoa_ token server-side.
  */
 const AuthorizeAccount: FC<Props> = ({
