@@ -231,10 +231,8 @@ describe('Select wrappers', () => {
         </Select>,
       )
 
-      screen.getByRole('group', { name: 'select positioner' }).element().dispatchEvent(new MouseEvent('mouseover', {
-        bubbles: true,
-      }))
-      asHTMLElement(screen.getByRole('dialog', { name: 'select popup' }).element()).click()
+      await screen.getByRole('group', { name: 'select positioner' }).hover()
+      await screen.getByRole('dialog', { name: 'select popup' }).click()
       screen.getByRole('listbox', { name: 'select list' }).element().dispatchEvent(new FocusEvent('focusin', {
         bubbles: true,
       }))
