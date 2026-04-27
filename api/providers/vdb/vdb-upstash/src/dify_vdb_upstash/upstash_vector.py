@@ -44,17 +44,22 @@ class UpstashVector(BaseVector):
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self.add_texts(texts, embeddings)
 
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
-        vectors = [
-            Vector(
-                id=str(uuid4()),
-                vector=embedding,
-                metadata=doc.metadata,
-                data=doc.page_content,
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
+        ids: list[str] = []
+        vectors: list[Vector] = []
+        for doc, embedding in zip(documents, embeddings):
+            uid = str(uuid4())
+            ids.append(uid)
+            vectors.append(
+                Vector(
+                    id=uid,
+                    vector=embedding,
+                    metadata=doc.metadata,
+                    data=doc.page_content,
+                )
             )
-            for doc, embedding in zip(documents, embeddings)
-        ]
         self.index.upsert(vectors=vectors)
+        return ids
 
     def text_exists(self, id: str) -> bool:
         response = self.get_ids_by_metadata_field("doc_id", id)
