@@ -13,6 +13,7 @@ import type datasetHitTesting from '../i18n/en-US/dataset-hit-testing.json'
 import type datasetPipeline from '../i18n/en-US/dataset-pipeline.json'
 import type datasetSettings from '../i18n/en-US/dataset-settings.json'
 import type dataset from '../i18n/en-US/dataset.json'
+import type deployments from '../i18n/en-US/deployments.json'
 import type education from '../i18n/en-US/education.json'
 import type explore from '../i18n/en-US/explore.json'
 import type layout from '../i18n/en-US/layout.json'
@@ -46,6 +47,7 @@ export type Resources = {
   datasetHitTesting: typeof datasetHitTesting
   datasetPipeline: typeof datasetPipeline
   datasetSettings: typeof datasetSettings
+  deployments: typeof deployments
   education: typeof education
   explore: typeof explore
   layout: typeof layout
@@ -79,6 +81,7 @@ export const namespaces = [
   'datasetHitTesting',
   'datasetPipeline',
   'datasetSettings',
+  'deployments',
   'education',
   'explore',
   'layout',
