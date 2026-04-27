@@ -27,6 +27,11 @@ server {
       include proxy.conf;
     }
 
+    location /openapi {
+      proxy_pass http://api:5001;
+      include proxy.conf;
+    }
+
     location /files {
       proxy_pass http://api:5001;
       include proxy.conf;
