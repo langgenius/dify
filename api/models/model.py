@@ -2205,16 +2205,6 @@ class UploadFile(TypeBase):
     size: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     extension: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(255), nullable=True)
-
-    # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
-    # Its value is derived from the `CreatorUserRole` enumeration.
-    created_by_role: Mapped[CreatorUserRole] = mapped_column(
-        EnumText(CreatorUserRole, length=255),
-        nullable=False,
-        server_default=sa.text("'account'"),
-        default=CreatorUserRole.ACCOUNT,
-    )
-
     # The `created_by` field stores the ID of the entity that created this upload file.
     #
     # If `created_by_role` is `ACCOUNT`, it corresponds to `Account.id`.
@@ -2233,6 +2223,14 @@ class UploadFile(TypeBase):
     # `used` may indicate whether the file has been utilized by another service.
     used: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
+    # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
+    # Its value is derived from the `CreatorUserRole` enumeration.
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(
+        EnumText(CreatorUserRole, length=255),
+        nullable=False,
+        server_default=sa.text("'account'"),
+        default=CreatorUserRole.ACCOUNT,
+    )
     # `used_by` may indicate the ID of the user who utilized this file.
     used_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
