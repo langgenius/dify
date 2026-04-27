@@ -79,6 +79,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const appId = useStore(s => s.appId)
   const { nodePanelPresence } = useCollaboration(appId as string)
   const controlMode = useStore(s => s.controlMode)
+  const isContextMenuTarget = useStore(s => s.nodeMenu?.nodeId === id)
 
   const currentUserPresence = useMemo(() => {
     const userId = userProfile?.id || ''
@@ -123,7 +124,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { hasNodeInspectVars } = useInspectVarsCrud()
   const isLoading = data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running
   const hasVarValue = hasNodeInspectVars(id)
-  const showSelectedBorder = Boolean(data.selected || data._isBundled || data._isEntering)
+  const showSelectedBorder = Boolean(data.selected || isContextMenuTarget || data._isBundled || data._isEntering)
   const {
     showRunningBorder,
     showSuccessBorder,

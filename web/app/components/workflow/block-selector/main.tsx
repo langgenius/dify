@@ -159,10 +159,8 @@ const NodeSelector: FC<NodeSelectorProps> = ({
 
     if (onOpenChange)
       onOpenChange(newOpen)
-  }, [activeTab, disabled, onOpenChange])
+  }, [disabled, onOpenChange])
   const handleTrigger = useCallback<MouseEventHandler<HTMLElement>>((e) => {
-    if (disabled)
-      return
     e.stopPropagation()
   }, [])
 

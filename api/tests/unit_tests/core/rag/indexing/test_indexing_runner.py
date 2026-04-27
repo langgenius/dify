@@ -1484,11 +1484,8 @@ class TestIndexingRunnerProcessChunk:
 
         mock_dependencies["redis"].get.return_value = None
 
-        # Mock database query for segment updates
-        mock_query = MagicMock()
-        mock_dependencies["db"].session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.update.return_value = None
+        # Mock database update for segment status
+        mock_dependencies["db"].session.execute.return_value = None
 
         # Create a proper context manager mock
         mock_context = MagicMock()

@@ -259,59 +259,58 @@ def dispatch_triggered_workflow(
         tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
     )
     trigger_entity: TriggerProviderEntity = provider_controller.entity
+
+    # Ensure expire_on_commit is set to False to remain workflows available
     with session_factory.create_session() as session:
         workflows: Mapping[str, Workflow] = _get_latest_workflows_by_app_ids(session, subscribers)
 
-        end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(
-            type=InvokeFrom.TRIGGER,
-            tenant_id=subscription.tenant_id,
-            app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
-            user_id=user_id,
-        )
-        for plugin_trigger in subscribers:
-            # Get workflow from mapping
-            workflow: Workflow | None = workflows.get(plugin_trigger.app_id)
-            if not workflow:
-                logger.error(
-                    "Workflow not found for app %s",
-                    plugin_trigger.app_id,
-                )
-                continue
+    end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(
+        type=InvokeFrom.TRIGGER,
+        tenant_id=subscription.tenant_id,
+        app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
+        user_id=user_id,
+    )
 
-            # Find the trigger node in the workflow
-            event_node = None
-            for node_id, node_config in workflow.walk_nodes(TRIGGER_PLUGIN_NODE_TYPE):
-                if node_id == plugin_trigger.node_id:
-                    event_node = node_config
-                    break
-
-            if not event_node:
-                logger.error("Trigger event node not found for app %s", plugin_trigger.app_id)
-                continue
-
-            # invoke trigger
-            trigger_metadata = PluginTriggerMetadata(
-                plugin_unique_identifier=provider_controller.plugin_unique_identifier or "",
-                endpoint_id=subscription.endpoint_id,
-                provider_id=subscription.provider_id,
-                event_name=event_name,
-                icon_filename=trigger_entity.identity.icon or "",
-                icon_dark_filename=trigger_entity.identity.icon_dark or "",
+    for plugin_trigger in subscribers:
+        workflow: Workflow | None = workflows.get(plugin_trigger.app_id)
+        if not workflow:
+            logger.error(
+                "Workflow not found for app %s",
+                plugin_trigger.app_id,
             )
+            continue
 
-            # reserve quota before invoking trigger
-            quota_charge = unlimited()
-            try:
-                quota_charge = QuotaService.reserve(QuotaType.TRIGGER, subscription.tenant_id)
-            except QuotaExceededError:
-                AppTriggerService.mark_tenant_triggers_rate_limited(subscription.tenant_id)
-                logger.info(
-                    "Tenant %s rate limited, skipping plugin trigger %s", subscription.tenant_id, plugin_trigger.id
-                )
-                return 0
+        event_node = None
+        for node_id, node_config in workflow.walk_nodes(TRIGGER_PLUGIN_NODE_TYPE):
+            if node_id == plugin_trigger.node_id:
+                event_node = node_config
+                break
 
-            node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(event_node)
-            invoke_response: TriggerInvokeEventResponse | None = None
+        if not event_node:
+            logger.error("Trigger event node not found for app %s", plugin_trigger.app_id)
+            continue
+
+        trigger_metadata = PluginTriggerMetadata(
+            plugin_unique_identifier=provider_controller.plugin_unique_identifier or "",
+            endpoint_id=subscription.endpoint_id,
+            provider_id=subscription.provider_id,
+            event_name=event_name,
+            icon_filename=trigger_entity.identity.icon or "",
+            icon_dark_filename=trigger_entity.identity.icon_dark or "",
+        )
+
+        quota_charge = unlimited()
+        try:
+            quota_charge = QuotaService.reserve(QuotaType.TRIGGER, subscription.tenant_id)
+        except QuotaExceededError:
+            AppTriggerService.mark_tenant_triggers_rate_limited(subscription.tenant_id)
+            logger.info("Tenant %s rate limited, skipping plugin trigger %s", subscription.tenant_id, plugin_trigger.id)
+            return dispatched_count
+
+        node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(event_node)
+        invoke_response: TriggerInvokeEventResponse | None = None
+
+        with session_factory.create_session() as session:
             try:
                 invoke_response = TriggerManager.invoke_trigger_event(
                     tenant_id=subscription.tenant_id,
@@ -403,7 +402,7 @@ def dispatch_triggered_workflow(
                     plugin_trigger.app_id,
                 )
 
-        return dispatched_count
+    return dispatched_count
 
 
 def dispatch_triggered_workflows(

@@ -9,7 +9,6 @@ import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/type
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiStoreLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useKeyPress } from 'ahooks'
 import {
@@ -292,7 +291,7 @@ const AppPublisher = ({
         throw new Error('App not found')
       const { installed_apps } = await fetchInstalledAppList(appDetail.id)
       if (installed_apps?.length > 0)
-        return `${basePath}/explore/installed/${installed_apps[0].id}`
+        return `${basePath}/explore/installed/${installed_apps[0]!.id}`
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {
@@ -546,64 +545,60 @@ const AppPublisher = ({
               workflowTypeSwitchDisabledReason={workflowTypeSwitchDisabledReason}
               onWorkflowTypeSwitch={handleWorkflowTypeSwitch}
             />
-            {
-              !isEvaluationWorkflowType && (
-                <>
-                  <PublisherAccessSection
-                    enabled={systemFeatures.webapp_auth.enabled}
-                    isAppAccessSet={isAppAccessSet}
-                    isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
-                    accessMode={appDetail?.access_mode}
-                    onClick={() => {
-                      handleOpenChange(false)
-                      setShowAppAccessControl(true)
-                    }}
-                  />
-                  <PublisherActionsSection
-                    appDetail={appDetail}
-                    appURL={appURL}
-                    disabledFunctionButton={disabledFunctionButton}
-                    disabledFunctionTooltip={disabledFunctionTooltip}
-                    handleEmbed={() => {
-                      setEmbeddingModalOpen(true)
-                      handleOpenChange(false)
-                    }}
-                    handleOpenInExplore={() => {
-                      handleOpenChange(false)
-                      handleOpenInExplore()
-                    }}
-                    handleOpenRunConfig={handleOpenWorkflowLaunchDialog}
-                    handlePublish={handlePublish}
-                    hasHumanInputNode={hasHumanInputNode}
-                    hasTriggerNode={hasTriggerNode}
-                    inputs={inputs}
-                    missingStartNode={missingStartNode}
-                    onRefreshData={onRefreshData}
-                    outputs={outputs}
-                    published={published}
-                    publishedAt={publishedAt}
-                    showBatchRunConfig={hiddenLaunchVariables.length > 0 && (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION)}
-                    showRunConfig={hiddenLaunchVariables.length > 0}
-                    toolPublished={toolPublished}
-                    workflowToolAvailable={workflowToolAvailable}
-                    workflowToolMessage={workflowToolMessage}
-                  />
-                  {systemFeatures.enable_creators_platform && (
-                    <div className="border-t border-divider-subtle p-4">
-                      <SuggestedAction
-                        icon={<RiStoreLine className="h-4 w-4" />}
-                        disabled={!publishedAt || publishingToMarketplace}
-                        onClick={handlePublishToMarketplace}
-                      >
-                        {publishingToMarketplace
-                          ? t('common.publishingToMarketplace', { ns: 'workflow' })
-                          : t('common.publishToMarketplace', { ns: 'workflow' })}
-                      </SuggestedAction>
-                    </div>
-                  )}
-                </>
-              )
-            }
+            {!isEvaluationWorkflowType && (
+              <>
+                <PublisherAccessSection
+                  enabled={systemFeatures.webapp_auth.enabled}
+                  isAppAccessSet={isAppAccessSet}
+                  isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
+                  accessMode={appDetail?.access_mode}
+                  onClick={() => {
+                    setShowAppAccessControl(true)
+                    handleOpenChange(false)
+                  }}
+                />
+                <PublisherActionsSection
+                  appDetail={appDetail}
+                  appURL={appURL}
+                  disabledFunctionButton={disabledFunctionButton}
+                  disabledFunctionTooltip={disabledFunctionTooltip}
+                  handleEmbed={() => {
+                    setEmbeddingModalOpen(true)
+                    handleOpenChange(false)
+                  }}
+                  handleOpenInExplore={() => {
+                    handleOpenChange(false)
+                    handleOpenInExplore()
+                  }}
+                  handleOpenRunConfig={handleOpenWorkflowLaunchDialog}
+                  handlePublish={handlePublish}
+                  hasHumanInputNode={hasHumanInputNode}
+                  hasTriggerNode={hasTriggerNode}
+                  inputs={inputs}
+                  missingStartNode={missingStartNode}
+                  onRefreshData={onRefreshData}
+                  outputs={outputs}
+                  published={published}
+                  publishedAt={publishedAt}
+                  toolPublished={toolPublished}
+                  workflowToolAvailable={workflowToolAvailable}
+                  workflowToolMessage={workflowToolMessage}
+                />
+                {systemFeatures.enable_creators_platform && (
+                  <div className="border-t border-divider-subtle p-4">
+                    <SuggestedAction
+                      icon={<span className="i-ri-store-line h-4 w-4" />}
+                      disabled={!publishedAt || publishingToMarketplace}
+                      onClick={handlePublishToMarketplace}
+                    >
+                      {publishingToMarketplace
+                        ? t('common.publishingToMarketplace', { ns: 'workflow' })
+                        : t('common.publishToMarketplace', { ns: 'workflow' })}
+                    </SuggestedAction>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </PopoverContent>
         <EmbeddedModal

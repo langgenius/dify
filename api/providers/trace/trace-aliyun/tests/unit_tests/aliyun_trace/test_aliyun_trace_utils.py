@@ -1,4 +1,6 @@
 import json
+from collections.abc import Mapping
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 from dify_trace_aliyun.entities.semconv import (
@@ -170,7 +172,7 @@ def test_create_common_span_attributes():
 
 def test_format_retrieval_documents():
     # Not a list
-    assert format_retrieval_documents("not a list") == []
+    assert format_retrieval_documents(cast(list[object], "not a list")) == []
 
     # Valid list
     docs = [
@@ -211,7 +213,7 @@ def test_format_retrieval_documents():
 
 def test_format_input_messages():
     # Not a dict
-    assert format_input_messages(None) == serialize_json_data([])
+    assert format_input_messages(cast(Mapping[str, Any], None)) == serialize_json_data([])
 
     # No prompts
     assert format_input_messages({}) == serialize_json_data([])
@@ -244,7 +246,7 @@ def test_format_input_messages():
 
 def test_format_output_messages():
     # Not a dict
-    assert format_output_messages(None) == serialize_json_data([])
+    assert format_output_messages(cast(Mapping[str, Any], None)) == serialize_json_data([])
 
     # No text
     assert format_output_messages({"finish_reason": "stop"}) == serialize_json_data([])
