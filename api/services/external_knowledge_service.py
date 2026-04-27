@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -24,7 +24,24 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
 from services.errors.dataset import DatasetNameDuplicateError
 
 
+class ExternalRetrievalParameters(TypedDict):
+    top_k: int
+    score_threshold_enabled: bool
+    score_threshold: float
+
+
 class ExternalDatasetService:
+    @staticmethod
+    def normalize_external_retrieval_parameters(
+        external_retrieval_parameters: ExternalRetrievalParameters | dict[str, Any] | None,
+    ) -> ExternalRetrievalParameters:
+        source = external_retrieval_parameters or {}
+        return {
+            "top_k": int(source.get("top_k", 4)),
+            "score_threshold_enabled": bool(source.get("score_threshold_enabled", False)),
+            "score_threshold": float(source.get("score_threshold", 0.0)),
+        }
+
     @staticmethod
     def get_external_knowledge_apis(
         page, per_page, tenant_id, search=None
@@ -306,7 +323,7 @@ class ExternalDatasetService:
         tenant_id: str,
         dataset_id: str,
         query: str,
-        external_retrieval_parameters: dict[str, Any],
+        external_retrieval_parameters: ExternalRetrievalParameters,
         metadata_condition: MetadataFilteringCondition | None = None,
     ):
         external_knowledge_binding = db.session.scalar(
@@ -332,11 +349,14 @@ class ExternalDatasetService:
         headers = {"Content-Type": "application/json"}
         if settings.get("api_key"):
             headers["Authorization"] = f"Bearer {settings.get('api_key')}"
-        score_threshold_enabled = external_retrieval_parameters.get("score_threshold_enabled") or False
-        score_threshold = external_retrieval_parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
+        normalized_params = ExternalDatasetService.normalize_external_retrieval_parameters(
+            external_retrieval_parameters
+        )
+        score_threshold_enabled = normalized_params["score_threshold_enabled"]
+        score_threshold = normalized_params["score_threshold"] if score_threshold_enabled else 0.0
         request_params = {
             "retrieval_setting": {
-                "top_k": external_retrieval_parameters.get("top_k"),
+                "top_k": normalized_params["top_k"],
                 "score_threshold": score_threshold,
             },
             "query": query,

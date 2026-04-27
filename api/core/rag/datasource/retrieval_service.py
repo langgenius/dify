@@ -33,7 +33,7 @@ from models.dataset import (
 )
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
-from services.external_knowledge_service import ExternalDatasetService
+from services.external_knowledge_service import ExternalDatasetService, ExternalRetrievalParameters
 
 
 class SegmentAttachmentResult(TypedDict):
@@ -83,6 +83,12 @@ default_retrieval_model: DefaultRetrievalModelDict = {
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "top_k": 4,
     "score_threshold_enabled": False,
+}
+
+default_external_retrieval_model: ExternalRetrievalParameters = {
+    "top_k": 4,
+    "score_threshold_enabled": False,
+    "score_threshold": 0.0,
 }
 
 logger = logging.getLogger(__name__)
@@ -174,7 +180,7 @@ class RetrievalService:
         cls,
         dataset_id: str,
         query: str,
-        external_retrieval_model: dict[str, Any] | None = None,
+        external_retrieval_model: ExternalRetrievalParameters | None = None,
         metadata_filtering_conditions: dict[str, Any] | None = None,
     ):
         stmt = select(Dataset).where(Dataset.id == dataset_id)
@@ -190,7 +196,7 @@ class RetrievalService:
             dataset.tenant_id,
             dataset_id,
             query,
-            external_retrieval_model or {},
+            external_retrieval_model or default_external_retrieval_model,
             metadata_condition=metadata_condition,
         )
         return all_documents
