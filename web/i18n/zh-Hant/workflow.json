@@ -343,6 +343,7 @@
   "error.startNodeRequired": "請先新增一個起始節點，再執行 {{operation}}",
   "errorMsg.authRequired": "請先授權",
   "errorMsg.configureModel": "請配置模型",
+  "errorMsg.duplicateOutputVariable": "輸出節點變數「{{variable}}」重複。輸出節點變數名稱必須唯一。",
   "errorMsg.fieldRequired": "{{field}} 不能為空",
   "errorMsg.fields.code": "程式碼",
   "errorMsg.fields.model": "模型",

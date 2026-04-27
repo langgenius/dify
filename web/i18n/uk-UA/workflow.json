@@ -343,6 +343,7 @@
   "error.startNodeRequired": "Будь ласка, спершу додайте стартовий вузол перед {{operation}}",
   "errorMsg.authRequired": "Потрібна авторизація",
   "errorMsg.configureModel": "Налаштуйте модель",
+  "errorMsg.duplicateOutputVariable": "Дубльована змінна вузла виводу \"{{variable}}\". Назви змінних вузла виводу мають бути унікальними.",
   "errorMsg.fieldRequired": "{{field}} є обов'язковим",
   "errorMsg.fields.code": "Код",
   "errorMsg.fields.model": "Модель",

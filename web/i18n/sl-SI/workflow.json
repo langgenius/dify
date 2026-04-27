@@ -343,6 +343,7 @@
   "error.startNodeRequired": "Prosimo, najprej dodajte začetni vozel pred {{operation}}",
   "errorMsg.authRequired": "Zahtevana je avtorizacija",
   "errorMsg.configureModel": "Konfiguriraj model",
+  "errorMsg.duplicateOutputVariable": "Podvojena spremenljivka izhodnega vozlišča \"{{variable}}\". Imena spremenljivk izhodnega vozlišča morajo biti enolična.",
   "errorMsg.fieldRequired": "{{field}} je obvezno",
   "errorMsg.fields.code": "Koda",
   "errorMsg.fields.model": "Model",

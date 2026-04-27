@@ -343,6 +343,7 @@
   "error.startNodeRequired": "{{operation}}前に開始ノードを追加してください",
   "errorMsg.authRequired": "認証が必要です",
   "errorMsg.configureModel": "モデルを設定してください",
+  "errorMsg.duplicateOutputVariable": "出力ノード変数「{{variable}}」が重複しています。出力ノード変数名は一意である必要があります。",
   "errorMsg.fieldRequired": "{{field}} は必須です",
   "errorMsg.fields.code": "コード",
   "errorMsg.fields.model": "モデル",

@@ -343,6 +343,7 @@
   "error.startNodeRequired": "Por favor, agregue primero un nodo de inicio antes de {{operation}}",
   "errorMsg.authRequired": "Se requiere autorización",
   "errorMsg.configureModel": "Configura un modelo",
+  "errorMsg.duplicateOutputVariable": "Variable duplicada del nodo de salida \"{{variable}}\". Los nombres de las variables del nodo de salida deben ser únicos.",
   "errorMsg.fieldRequired": "Se requiere {{field}}",
   "errorMsg.fields.code": "Código",
   "errorMsg.fields.model": "Modelo",

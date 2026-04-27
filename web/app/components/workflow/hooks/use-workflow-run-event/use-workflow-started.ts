@@ -40,6 +40,7 @@ export const useWorkflowStarted = () => {
         status: WorkflowRunningStatus.Running,
       }
       draft.resultText = ''
+      draft.resultTextSelectorKey = undefined
     }))
     const nodes = getNodes()
     const newNodes = produce(nodes, (draft) => {

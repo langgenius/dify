@@ -343,6 +343,7 @@
   "error.startNodeRequired": "Por favor, adicione um nó inicial antes de {{operation}}",
   "errorMsg.authRequired": "Autorização é necessária",
   "errorMsg.configureModel": "Configure um modelo",
+  "errorMsg.duplicateOutputVariable": "Variável duplicada do nó de saída \"{{variable}}\". Os nomes das variáveis do nó de saída devem ser únicos.",
   "errorMsg.fieldRequired": "{{field}} é obrigatório",
   "errorMsg.fields.code": "Código",
   "errorMsg.fields.model": "Modelo",

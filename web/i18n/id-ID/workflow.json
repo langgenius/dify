@@ -343,6 +343,7 @@
   "error.startNodeRequired": "Silakan tambahkan node awal terlebih dahulu sebelum {{operation}}",
   "errorMsg.authRequired": "Otorisasi diperlukan",
   "errorMsg.configureModel": "Konfigurasikan model",
+  "errorMsg.duplicateOutputVariable": "Variabel node output duplikat \"{{variable}}\". Nama variabel node output harus unik.",
   "errorMsg.fieldRequired": "{{field}} wajib diisi",
   "errorMsg.fields.code": "Kode",
   "errorMsg.fields.model": "Model",

@@ -343,6 +343,7 @@
   "error.startNodeRequired": "Najpierw dodaj węzeł początkowy przed {{operation}}",
   "errorMsg.authRequired": "Wymagana autoryzacja",
   "errorMsg.configureModel": "Skonfiguruj model",
+  "errorMsg.duplicateOutputVariable": "Zduplikowana zmienna węzła wyjściowego \"{{variable}}\". Nazwy zmiennych węzła wyjściowego muszą być unikalne.",
   "errorMsg.fieldRequired": "{{field}} jest wymagane",
   "errorMsg.fields.code": "Kod",
   "errorMsg.fields.model": "Model",

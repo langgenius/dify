@@ -343,6 +343,7 @@
   "error.startNodeRequired": "لطفاً قبل از {{operation}} ابتدا یک گره شروع اضافه کنید",
   "errorMsg.authRequired": "احراز هویت الزامی است",
   "errorMsg.configureModel": "یک مدل پیکربندی کنید",
+  "errorMsg.duplicateOutputVariable": "متغیر گره خروجی «{{variable}}» تکراری است. نام متغیرهای گره خروجی باید یکتا باشند.",
   "errorMsg.fieldRequired": "{{field}} الزامی است",
   "errorMsg.fields.code": "کد",
   "errorMsg.fields.model": "مدل",

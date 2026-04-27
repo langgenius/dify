@@ -343,6 +343,7 @@
   "error.startNodeRequired": "โปรดเพิ่มโหนดเริ่มต้นก่อน {{operation}}",
   "errorMsg.authRequired": "ต้องได้รับอนุญาต",
   "errorMsg.configureModel": "กำหนดค่าโมเดล",
+  "errorMsg.duplicateOutputVariable": "ตัวแปรของโหนดเอาต์พุต \"{{variable}}\" ซ้ำกัน ชื่อตัวแปรของโหนดเอาต์พุตต้องไม่ซ้ำกัน",
   "errorMsg.fieldRequired": "{{field}} เป็นสิ่งจําเป็น",
   "errorMsg.fields.code": "รหัส",
   "errorMsg.fields.model": "แบบ",

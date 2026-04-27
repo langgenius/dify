@@ -343,6 +343,7 @@
   "error.startNodeRequired": "Vă rugăm să adăugați mai întâi un nod de pornire înainte de {{operation}}",
   "errorMsg.authRequired": "Autorizarea este necesară",
   "errorMsg.configureModel": "Configurați un model",
+  "errorMsg.duplicateOutputVariable": "Variabilă duplicată a nodului de ieșire „{{variable}}”. Numele variabilelor nodului de ieșire trebuie să fie unice.",
   "errorMsg.fieldRequired": "{{field}} este obligatoriu",
   "errorMsg.fields.code": "Cod",
   "errorMsg.fields.model": "Model",

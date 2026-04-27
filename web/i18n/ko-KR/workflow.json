@@ -343,6 +343,7 @@
   "error.startNodeRequired": "{{operation}} 전에 먼저 시작 노드를 추가해 주세요",
   "errorMsg.authRequired": "인증이 필요합니다",
   "errorMsg.configureModel": "모델을 구성하세요",
+  "errorMsg.duplicateOutputVariable": "출력 노드 변수 \"{{variable}}\"가 중복되었습니다. 출력 노드 변수 이름은 고유해야 합니다.",
   "errorMsg.fieldRequired": "{{field}}가 필요합니다",
   "errorMsg.fields.code": "코드",
   "errorMsg.fields.model": "모델",

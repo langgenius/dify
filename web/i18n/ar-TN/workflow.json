@@ -343,6 +343,7 @@
   "error.startNodeRequired": "الرجاء إضافة عقدة البداية أولاً قبل {{operation}}",
   "errorMsg.authRequired": "الترخيص مطلوب",
   "errorMsg.configureModel": "قم بتكوين نموذج",
+  "errorMsg.duplicateOutputVariable": "متغير عقدة الإخراج \"{{variable}}\" مكرر. يجب أن تكون أسماء متغيرات عقدة الإخراج فريدة.",
   "errorMsg.fieldRequired": "{{field}} مطلوب",
   "errorMsg.fields.code": "الكود",
   "errorMsg.fields.model": "النموذج",

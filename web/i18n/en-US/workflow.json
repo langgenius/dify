@@ -343,6 +343,7 @@
   "error.startNodeRequired": "Please add a start node first before {{operation}}",
   "errorMsg.authRequired": "Authorization is required",
   "errorMsg.configureModel": "Configure a model",
+  "errorMsg.duplicateOutputVariable": "Duplicate Output node variable \"{{variable}}\". Output node variable names must be unique.",
   "errorMsg.fieldRequired": "{{field}} is required",
   "errorMsg.fields.code": "Code",
   "errorMsg.fields.model": "Model",

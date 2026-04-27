@@ -343,6 +343,7 @@
   "error.startNodeRequired": "Vui lòng thêm một nút bắt đầu trước {{operation}}",
   "errorMsg.authRequired": "Yêu cầu xác thực",
   "errorMsg.configureModel": "Cấu hình mô hình",
+  "errorMsg.duplicateOutputVariable": "Biến của nút đầu ra \"{{variable}}\" bị trùng lặp. Tên biến của nút đầu ra phải là duy nhất.",
   "errorMsg.fieldRequired": "{{field}} là bắt buộc",
   "errorMsg.fields.code": "Mã",
   "errorMsg.fields.model": "Mô hình",

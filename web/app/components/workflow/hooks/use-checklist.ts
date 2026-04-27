@@ -91,6 +91,43 @@ const START_NODE_TYPES: BlockEnum[] = [
   BlockEnum.TriggerPlugin,
 ]
 
+const getDuplicateEndOutputMessages = (
+  nodes: Node[],
+  t: ReturnType<typeof useTranslation>['t'],
+) => {
+  const variableOccurrences = new Map<string, string[]>()
+
+  nodes.forEach((node) => {
+    if (node.type !== CUSTOM_NODE || node.data.type !== BlockEnum.End)
+      return
+
+    const outputs = ((node.data as { outputs?: Array<{ variable?: string }> }).outputs) || []
+    outputs.forEach((output) => {
+      const variable = output.variable?.trim()
+      if (!variable)
+        return
+
+      const occurrences = variableOccurrences.get(variable) || []
+      occurrences.push(node.id)
+      variableOccurrences.set(variable, occurrences)
+    })
+  })
+
+  const nodeMessages = new Map<string, string[]>()
+  variableOccurrences.forEach((nodeIds, variable) => {
+    if (nodeIds.length <= 1)
+      return
+
+    Array.from(new Set(nodeIds)).forEach((nodeId) => {
+      const messages = nodeMessages.get(nodeId) || []
+      messages.push(t('errorMsg.duplicateOutputVariable', { ns: 'workflow', variable }))
+      nodeMessages.set(nodeId, messages)
+    })
+  })
+
+  return nodeMessages
+}
+
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -179,6 +216,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const needWarningNodes = useMemo<ChecklistItem[]>(() => {
     const list: ChecklistItem[] = []
     const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
+    const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
     const { validNodes } = getValidTreeNodes(filteredNodes, edges)
     const installedPluginIds = new Set(modelProviders.map(p => extractPluginId(p.provider)))
 
@@ -253,6 +291,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           }
           if (hasInvalidVar)
             errorMessages.push(t('errorMsg.invalidVariable', { ns: 'workflow' }))
+
+          errorMessages.push(...(duplicateEndOutputMessages.get(node!.id) || []))
         }
 
         const isStartNodeMeta = nodesExtraData?.[node!.data.type as BlockEnum]?.metaData.isStart ?? false
@@ -386,6 +426,7 @@ export const useChecklistBeforePublish = () => {
     } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
+    const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
     if (maxDepth > MAX_TREE_DEPTH) {
@@ -497,6 +538,12 @@ export const useChecklistBeforePublish = () => {
 
       if (errorMessage) {
         toast.error(`[${node!.data.title}] ${errorMessage}`)
+        return false
+      }
+
+      const duplicateOutputMessages = duplicateEndOutputMessages.get(node!.id) || []
+      if (duplicateOutputMessages.length > 0) {
+        toast.error(`[${node!.data.title}] ${duplicateOutputMessages[0]}`)
         return false
       }
 
