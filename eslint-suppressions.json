@@ -1695,14 +1695,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/markdown-blocks/think-block.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/base/markdown-blocks/video-block.tsx": {
     "ts/no-explicit-any": {
       "count": 5

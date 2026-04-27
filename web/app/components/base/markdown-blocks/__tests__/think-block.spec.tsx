@@ -174,6 +174,53 @@ describe('ThinkBlock', () => {
       // Timer should be stopped immediately — isResponding undefined means not in active response
       expect(screen.getByText(/Thought/)).toBeInTheDocument()
     })
+
+    it('should preserve completed elapsed time after remounting a completed thought', () => {
+      const { rerender, unmount } = renderWithContext(
+        <ThinkBlock data-think={true}>
+          <p>Persistent completed thought</p>
+        </ThinkBlock>,
+        true,
+      )
+
+      act(() => {
+        vi.advanceTimersByTime(1500)
+      })
+
+      rerender(
+        <ChatContextProvider
+          config={undefined}
+          isResponding={true}
+          chatList={[]}
+          showPromptLog={false}
+          questionIcon={undefined}
+          answerIcon={undefined}
+          onSend={undefined}
+          onRegenerate={undefined}
+          onAnnotationEdited={undefined}
+          onAnnotationAdded={undefined}
+          onAnnotationRemoved={undefined}
+          onFeedback={undefined}
+        >
+          <ThinkBlock data-think={true}>
+            <p>Persistent completed thought[ENDTHINKFLAG]</p>
+          </ThinkBlock>
+        </ChatContextProvider>,
+      )
+
+      expect(screen.getByText(/Thought\(1\.5s\)/)).toBeInTheDocument()
+
+      unmount()
+
+      renderWithContext(
+        <ThinkBlock data-think={true}>
+          <p>Persistent completed thought[ENDTHINKFLAG]</p>
+        </ThinkBlock>,
+        true,
+      )
+
+      expect(screen.getByText(/Thought\(1\.5s\)/)).toBeInTheDocument()
+    })
   })
 
   describe('ENDTHINKFLAG handling', () => {

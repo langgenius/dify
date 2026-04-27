@@ -4,44 +4,63 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChatContext } from '../chat/chat/context'
 
-const hasEndThink = (children: any): boolean => {
+type ElementWithChildren = React.ReactElement<{ children?: React.ReactNode }>
+
+const isElementWithChildren = (children: React.ReactNode): children is ElementWithChildren => {
+  return React.isValidElement<{ children?: React.ReactNode }>(children) && children.props.children !== undefined
+}
+
+const hasEndThink = (children: React.ReactNode): boolean => {
   if (typeof children === 'string')
     return children.includes('[ENDTHINKFLAG]')
 
   if (Array.isArray(children))
     return children.some(child => hasEndThink(child))
 
-  if (children?.props?.children)
+  if (isElementWithChildren(children))
     return hasEndThink(children.props.children)
 
   return false
 }
 
-const removeEndThink = (children: any): any => {
+const removeEndThink = (children: React.ReactNode): React.ReactNode => {
   if (typeof children === 'string')
     return children.replace('[ENDTHINKFLAG]', '')
 
   if (Array.isArray(children))
     return children.map(child => removeEndThink(child))
 
-  if (children?.props?.children) {
-    return React.cloneElement(
-      children,
-      {
-        ...children.props,
-        children: removeEndThink(children.props.children),
-      },
-    )
-  }
+  if (isElementWithChildren(children))
+    return React.cloneElement(children, undefined, removeEndThink(children.props.children))
 
   return children
 }
 
-const useThinkTimer = (children: any) => {
+const getThinkContentKey = (children: React.ReactNode): string => {
+  if (typeof children === 'string')
+    return children.replace('[ENDTHINKFLAG]', '')
+
+  if (typeof children === 'number')
+    return String(children)
+
+  if (Array.isArray(children))
+    return children.map(child => getThinkContentKey(child)).join('')
+
+  if (isElementWithChildren(children))
+    return getThinkContentKey(children.props.children)
+
+  return ''
+}
+
+const completedThinkDurations = new Map<string, number>()
+
+const useThinkTimer = (children: React.ReactNode) => {
   const { isResponding } = useChatContext()
   const endThinkDetected = hasEndThink(children)
+  const contentKey = getThinkContentKey(children)
+  const cachedElapsedTime = completedThinkDurations.get(contentKey) ?? 0
   const [startTime] = useState(() => Date.now())
-  const [elapsedTime, setElapsedTime] = useState(0)
+  const [elapsedTime, setElapsedTime] = useState(cachedElapsedTime)
   const [isComplete, setIsComplete] = useState(() => endThinkDetected)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -63,9 +82,19 @@ const useThinkTimer = (children: any) => {
     // Stop timer when:
     // 1. Content has [ENDTHINKFLAG] marker (normal completion)
     // 2. isResponding is not true (false = user clicked stop, undefined = historical conversation)
-    if (endThinkDetected || !isResponding)
-      setIsComplete(true)
-  }, [endThinkDetected, isResponding])
+    if (endThinkDetected || !isResponding) {
+      const finalElapsedTime = Math.floor((Date.now() - startTime) / 100) / 10
+
+      queueMicrotask(() => {
+        setElapsedTime((currentElapsedTime) => {
+          const elapsedTimeToStore = currentElapsedTime || finalElapsedTime
+          completedThinkDurations.set(contentKey, elapsedTimeToStore)
+          return elapsedTimeToStore
+        })
+        setIsComplete(true)
+      })
+    }
+  }, [contentKey, endThinkDetected, isResponding, startTime])
 
   return { elapsedTime, isComplete }
 }
