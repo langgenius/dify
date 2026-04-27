@@ -6,6 +6,7 @@ class VectorType(StrEnum):
     ANALYTICDB = "analyticdb"
     CHROMA = "chroma"
     MILVUS = "milvus"
+    MONGODB = "mongodb"
     MYSCALE = "myscale"
     PGVECTOR = "pgvector"
     VASTBASE = "vastbase"

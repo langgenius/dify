@@ -32,6 +32,7 @@ from .vdb.iris_config import IrisVectorConfig
 from .vdb.lindorm_config import LindormConfig
 from .vdb.matrixone_config import MatrixoneConfig
 from .vdb.milvus_config import MilvusConfig
+from .vdb.mongodb_config import MongoDBConfig
 from .vdb.myscale_config import MyScaleConfig
 from .vdb.oceanbase_config import OceanBaseVectorConfig
 from .vdb.opengauss_config import OpenGaussConfig
@@ -375,6 +376,7 @@ class MiddlewareConfig(
     HuaweiCloudConfig,
     IrisVectorConfig,
     MilvusConfig,
+    MongoDBConfig,
     AlibabaCloudMySQLConfig,
     MyScaleConfig,
     OpenSearchConfig,

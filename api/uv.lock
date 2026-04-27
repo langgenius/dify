@@ -32,6 +32,7 @@ members = [
     "dify-vdb-lindorm",
     "dify-vdb-matrixone",
     "dify-vdb-milvus",
+    "dify-vdb-mongodb",
     "dify-vdb-myscale",
     "dify-vdb-oceanbase",
     "dify-vdb-opengauss",
@@ -1464,6 +1465,7 @@ vdb-all = [
     { name = "dify-vdb-lindorm" },
     { name = "dify-vdb-matrixone" },
     { name = "dify-vdb-milvus" },
+    { name = "dify-vdb-mongodb" },
     { name = "dify-vdb-myscale" },
     { name = "dify-vdb-oceanbase" },
     { name = "dify-vdb-opengauss" },
@@ -1517,6 +1519,9 @@ vdb-matrixone = [
 ]
 vdb-milvus = [
     { name = "dify-vdb-milvus" },
+]
+vdb-mongodb = [
+    { name = "dify-vdb-mongodb" },
 ]
 vdb-myscale = [
     { name = "dify-vdb-myscale" },
@@ -1729,6 +1734,7 @@ vdb-all = [
     { name = "dify-vdb-lindorm", editable = "providers/vdb/vdb-lindorm" },
     { name = "dify-vdb-matrixone", editable = "providers/vdb/vdb-matrixone" },
     { name = "dify-vdb-milvus", editable = "providers/vdb/vdb-milvus" },
+    { name = "dify-vdb-mongodb", editable = "providers/vdb/vdb-mongodb" },
     { name = "dify-vdb-myscale", editable = "providers/vdb/vdb-myscale" },
     { name = "dify-vdb-oceanbase", editable = "providers/vdb/vdb-oceanbase" },
     { name = "dify-vdb-opengauss", editable = "providers/vdb/vdb-opengauss" },
@@ -1759,6 +1765,7 @@ vdb-iris = [{ name = "dify-vdb-iris", editable = "providers/vdb/vdb-iris" }]
 vdb-lindorm = [{ name = "dify-vdb-lindorm", editable = "providers/vdb/vdb-lindorm" }]
 vdb-matrixone = [{ name = "dify-vdb-matrixone", editable = "providers/vdb/vdb-matrixone" }]
 vdb-milvus = [{ name = "dify-vdb-milvus", editable = "providers/vdb/vdb-milvus" }]
+vdb-mongodb = [{ name = "dify-vdb-mongodb", editable = "providers/vdb/vdb-mongodb" }]
 vdb-myscale = [{ name = "dify-vdb-myscale", editable = "providers/vdb/vdb-myscale" }]
 vdb-oceanbase = [{ name = "dify-vdb-oceanbase", editable = "providers/vdb/vdb-oceanbase" }]
 vdb-opengauss = [{ name = "dify-vdb-opengauss", editable = "providers/vdb/vdb-opengauss" }]
@@ -2036,6 +2043,17 @@ dependencies = [
 requires-dist = [{ name = "pymilvus", specifier = "~=2.6.12" }]
 
 [[package]]
+name = "dify-vdb-mongodb"
+version = "0.0.1"
+source = { editable = "providers/vdb/vdb-mongodb" }
+dependencies = [
+    { name = "pymongo" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pymongo", specifier = "~=4.10.1" }]
+
+[[package]]
 name = "dify-vdb-myscale"
 version = "0.0.1"
 source = { editable = "providers/vdb/vdb-myscale" }
@@ -2230,6 +2248,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/fc/f8/98eea607f65de6527f8a2e8885fc8015d3e6f5775df186e443e0964a11c3/distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed", size = 60722, upload-time = "2023-12-24T09:54:32.31Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2", size = 20277, upload-time = "2023-12-24T09:54:30.421Z" },
+]
+
+[[package]]
+name = "dnspython"
+version = "2.8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8c/8b/57666417c0f90f08bcafa776861060426765fdb422eb10212086fb811d26/dnspython-2.8.0.tar.gz", hash = "sha256:181d3c6996452cb1189c4046c61599b84a5a86e099562ffde77d26984ff26d0f", size = 368251, upload-time = "2025-09-07T18:58:00.022Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/5a/18ad964b0086c6e62e2e7500f7edc89e3faa45033c71c1893d34eed2b2de/dnspython-2.8.0-py3-none-any.whl", hash = "sha256:01d9bbc4a2d76bf0db7c1f729812ded6d912bd318d3b1cf81d30c0f845dbf3af", size = 331094, upload-time = "2025-09-07T18:57:58.071Z" },
 ]
 
 [[package]]
@@ -5235,6 +5262,26 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/1d/06/ba1b9ad8939a7289196df73934eb805bdd3e38473ccf2edcc06018f156c5/pymochow-2.4.0.tar.gz", hash = "sha256:63d9f9abc44d3643b4384fd233005978a0079b45bbb35700a81ccb99c1442cfd", size = 51300, upload-time = "2026-04-02T10:24:11.883Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f3/f8/d3c23f0e1d15c66ce3e431cf1866309c375c0685ff0ed6e4ae21f72161b2/pymochow-2.4.0-py3-none-any.whl", hash = "sha256:52d128aa9bea643f51aded91fed99af4d6421922e7696dfe9a1877684469d172", size = 79149, upload-time = "2026-04-02T10:24:10.029Z" },
+]
+
+[[package]]
+name = "pymongo"
+version = "4.10.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dnspython" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1a/35/b62a3139f908c68b69aac6a6a3f8cc146869de0a7929b994600e2c587c77/pymongo-4.10.1.tar.gz", hash = "sha256:a9de02be53b6bb98efe0b9eda84ffa1ec027fcb23a2de62c4f941d9a2f2f3330", size = 1903902, upload-time = "2024-10-01T23:07:58.525Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/d1/60ad99fe3f64d45e6c71ac0e3078e88d9b64112b1bae571fc3707344d6d1/pymongo-4.10.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:fbedc4617faa0edf423621bb0b3b8707836687161210d470e69a4184be9ca011", size = 943356, upload-time = "2024-10-01T23:06:50.9Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/9b/21d4c6b4ee9c1fa9691c68dc2a52565e0acb644b9e95148569b4736a4ebd/pymongo-4.10.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:7bd26b2aec8ceeb95a5d948d5cc0f62b0eb6d66f3f4230705c1e3d3d2c04ec76", size = 943142, upload-time = "2024-10-01T23:06:52.146Z" },
+    { url = "https://files.pythonhosted.org/packages/07/af/691b7454e219a8eb2d1641aecedd607e3a94b93650c2011ad8a8fd74ef9f/pymongo-4.10.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fb104c3c2a78d9d85571c8ac90ec4f95bca9b297c6eee5ada71fabf1129e1674", size = 1909129, upload-time = "2024-10-01T23:06:53.551Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/74/fd75d5ad4181d6e71ce0fca32404fb71b5046ac84d9a1a2f0862262dd032/pymongo-4.10.1-cp312-cp312-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:4924355245a9c79f77b5cda2db36e0f75ece5faf9f84d16014c0a297f6d66786", size = 1987763, upload-time = "2024-10-01T23:06:55.304Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/56/6d3d0ef63c6d8cb98c7c653a3a2e617675f77a95f3853851d17a7664876a/pymongo-4.10.1-cp312-cp312-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:11280809e5dacaef4971113f0b4ff4696ee94cfdb720019ff4fa4f9635138252", size = 1950821, upload-time = "2024-10-01T23:06:57.541Z" },
+    { url = "https://files.pythonhosted.org/packages/70/ed/1603fa0c0e51444752c3fa91f16c3a97e6d92eb9fe5e553dae4f18df16f6/pymongo-4.10.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e5d55f2a82e5eb23795f724991cac2bffbb1c0f219c0ba3bf73a835f97f1bb2e", size = 1912247, upload-time = "2024-10-01T23:06:59.023Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/66/e98b2308971d45667cb8179d4d66deca47336c90663a7e0527589f1038b7/pymongo-4.10.1-cp312-cp312-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e974ab16a60be71a8dfad4e5afccf8dd05d41c758060f5d5bda9a758605d9a5d", size = 1862230, upload-time = "2024-10-01T23:07:01.407Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/80/ba9b7ed212a5f8cf8ad7037ed5bbebc1c587fc09242108f153776e4a338b/pymongo-4.10.1-cp312-cp312-win32.whl", hash = "sha256:544890085d9641f271d4f7a47684450ed4a7344d6b72d5968bfae32203b1bb7c", size = 903045, upload-time = "2024-10-01T23:07:02.973Z" },
+    { url = "https://files.pythonhosted.org/packages/76/8b/5afce891d78159912c43726fab32641e3f9718f14be40f978c148ea8db48/pymongo-4.10.1-cp312-cp312-win_amd64.whl", hash = "sha256:dcc07b1277e8b4bf4d7382ca133850e323b7ab048b8353af496d050671c7ac52", size = 926686, upload-time = "2024-10-01T23:07:04.403Z" },
 ]
 
 [[package]]

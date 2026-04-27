@@ -73,6 +73,7 @@ dify-vdb-iris = { workspace = true }
 dify-vdb-lindorm = { workspace = true }
 dify-vdb-matrixone = { workspace = true }
 dify-vdb-milvus = { workspace = true }
+dify-vdb-mongodb = { workspace = true }
 dify-vdb-myscale = { workspace = true }
 dify-vdb-oceanbase = { workspace = true }
 dify-vdb-opengauss = { workspace = true }
@@ -218,6 +219,7 @@ vdb-all = [
     "dify-vdb-lindorm",
     "dify-vdb-matrixone",
     "dify-vdb-milvus",
+    "dify-vdb-mongodb",
     "dify-vdb-myscale",
     "dify-vdb-oceanbase",
     "dify-vdb-opengauss",
@@ -249,6 +251,7 @@ vdb-iris = ["dify-vdb-iris"]
 vdb-lindorm = ["dify-vdb-lindorm"]
 vdb-matrixone = ["dify-vdb-matrixone"]
 vdb-milvus = ["dify-vdb-milvus"]
+vdb-mongodb = ["dify-vdb-mongodb"]
 vdb-myscale = ["dify-vdb-myscale"]
 vdb-oceanbase = ["dify-vdb-oceanbase"]
 vdb-opengauss = ["dify-vdb-opengauss"]
