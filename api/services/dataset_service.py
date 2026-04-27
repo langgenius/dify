@@ -4047,10 +4047,13 @@ class DatasetPermissionService:
             db.session.execute(delete(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id))
             permissions = []
             for user in user_list:
+                account_id = user if isinstance(user, str) else user.get("user_id") or user.get("id")
+                if not isinstance(account_id, str):
+                    raise ValueError("Each partial member must be a user id string or include user_id/id")
                 permission = DatasetPermission(
                     tenant_id=tenant_id,
                     dataset_id=dataset_id,
-                    account_id=user["user_id"],
+                    account_id=account_id,
                 )
                 permissions.append(permission)
 
@@ -4073,7 +4076,12 @@ class DatasetPermissionService:
                 raise ValueError("Partial member list is required when setting to partial members.")
 
             local_member_list = cls.get_dataset_partial_member_list(dataset.id)
-            request_member_list = [user["user_id"] for user in requested_partial_member_list]
+            request_member_list = []
+            for member in requested_partial_member_list:
+                account_id = member if isinstance(member, str) else member.get("user_id") or member.get("id")
+                if not isinstance(account_id, str):
+                    raise ValueError("Each partial member must be a user id string or include user_id/id")
+                request_member_list.append(account_id)
             if set(local_member_list) != set(request_member_list):
                 raise ValueError("Dataset operators cannot change the dataset permissions.")
 

@@ -170,6 +170,32 @@ class DatasetUpdatePayload(BaseModel):
     def validate_indexing(cls, value: str | None) -> str | None:
         return _validate_indexing_technique(value)
 
+    @field_validator("partial_member_list", mode="before")
+    @classmethod
+    def validate_partial_member_list(cls, value: object) -> object:
+        if value is None:
+            return value
+        if not isinstance(value, list):
+            raise ValueError("partial_member_list must be a list")
+
+        normalized_member_list: list[dict[str, str]] = []
+        for item in value:
+            if isinstance(item, str):
+                normalized_member_list.append({"user_id": item})
+                continue
+            if isinstance(item, dict):
+                user_id = item.get("user_id") or item.get("id")
+                if isinstance(user_id, str):
+                    normalized_member_item = {"user_id": user_id}
+                    role = item.get("role")
+                    if isinstance(role, str):
+                        normalized_member_item["role"] = role
+                    normalized_member_list.append(normalized_member_item)
+                    continue
+            raise ValueError("Each partial_member_list item must be a user id string or an object with user_id/id")
+
+        return normalized_member_list
+
 
 class IndexingEstimatePayload(BaseModel):
     info_list: dict[str, Any]
