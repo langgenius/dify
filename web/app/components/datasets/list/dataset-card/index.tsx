@@ -37,6 +37,8 @@ const DatasetCard = ({
     openRenameModal,
     closeRenameModal,
     closeConfirmDelete,
+    openAccessConfig,
+    closeAccessConfig,
     handleExportPipeline,
     detectIsUsedByApp,
     onConfirmDelete,
@@ -88,6 +90,7 @@ const DatasetCard = ({
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}
+          openAccessConfig={openAccessConfig}
         />
       </div>
       <DatasetCardModals
@@ -95,6 +98,7 @@ const DatasetCard = ({
         modalState={modalState}
         onCloseRename={closeRenameModal}
         onCloseConfirm={closeConfirmDelete}
+        onCloseAccessConfig={closeAccessConfig}
         onConfirmDelete={onConfirmDelete}
         onSuccess={onSuccess}
       />

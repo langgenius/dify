@@ -14,6 +14,7 @@ type OperationsDropdownProps = {
   openRenameModal: () => void
   handleExportPipeline: (include?: boolean) => void
   detectIsUsedByApp: () => void
+  openAccessConfig: () => void
 }
 
 const OperationsDropdown = ({
@@ -22,6 +23,7 @@ const OperationsDropdown = ({
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
+  openAccessConfig,
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
 
@@ -58,6 +60,7 @@ const OperationsDropdown = ({
             openRenameModal={openRenameModal}
             handleExportPipeline={handleExportPipeline}
             detectIsUsedByApp={detectIsUsedByApp}
+            openAccessConfig={openAccessConfig}
           />
         </DropdownMenuContent>
       </DropdownMenu>

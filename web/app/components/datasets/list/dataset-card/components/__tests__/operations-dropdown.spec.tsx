@@ -34,6 +34,7 @@ describe('OperationsDropdown', () => {
     openRenameModal: vi.fn(),
     handleExportPipeline: vi.fn(),
     detectIsUsedByApp: vi.fn(),
+    openAccessConfig: vi.fn(),
   }
 
   beforeEach(() => {

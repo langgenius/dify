@@ -10,11 +10,17 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import dynamic from '@/next/dynamic'
 import RenameDatasetModal from '../../../rename-modal'
+
+const DatasetAccessConfigModal = dynamic(() => import('../dataset-access-config-modal'), {
+  ssr: false,
+})
 
 type ModalState = {
   showRenameModal: boolean
   showConfirmDelete: boolean
+  showAccessConfig: boolean
   confirmMessage: string
 }
 
@@ -23,6 +29,7 @@ type DatasetCardModalsProps = {
   modalState: ModalState
   onCloseRename: () => void
   onCloseConfirm: () => void
+  onCloseAccessConfig: () => void
   onConfirmDelete: () => void
   onSuccess?: () => void
 }
@@ -32,6 +39,7 @@ const DatasetCardModals = ({
   modalState,
   onCloseRename,
   onCloseConfirm,
+  onCloseAccessConfig,
   onConfirmDelete,
   onSuccess,
 }: DatasetCardModalsProps) => {
@@ -45,6 +53,13 @@ const DatasetCardModals = ({
           dataset={dataset}
           onClose={onCloseRename}
           onSuccess={onSuccess}
+        />
+      )}
+      {modalState.showAccessConfig && (
+        <DatasetAccessConfigModal
+          open
+          dataset={dataset}
+          onClose={onCloseAccessConfig}
         />
       )}
       <AlertDialog open={modalState.showConfirmDelete} onOpenChange={open => !open && onCloseConfirm()}>
