@@ -1,8 +1,13 @@
-import { useEffect, useMemo } from 'react'
+import type { SnippetWorkflow } from '@/types/snippet'
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
+  fetchSnippetDraftWorkflow,
   useSnippetDefaultBlockConfigs,
-  useSnippetDraftWorkflow,
   useSnippetPublishedWorkflow,
 } from '@/service/use-snippet-workflows'
 import {
@@ -36,17 +41,18 @@ const isNotFoundError = (error: unknown) => {
   return !!error && typeof error === 'object' && 'status' in error && error.status === 404
 }
 
+type DraftWorkflowState = {
+  snippetId: string
+  data?: SnippetWorkflow
+  isLoaded: boolean
+}
+
 export const useSnippetInit = (snippetId: string) => {
   const workflowStore = useWorkflowStore()
   const snippetApiDetail = useSnippetApiDetail(snippetId)
-  const draftWorkflowQuery = useSnippetDraftWorkflow(snippetId, (draftWorkflow) => {
-    const {
-      setDraftUpdatedAt,
-      setSyncWorkflowDraftHash,
-    } = workflowStore.getState()
-
-    setDraftUpdatedAt(draftWorkflow.updated_at)
-    setSyncWorkflowDraftHash(draftWorkflow.hash)
+  const [draftWorkflowState, setDraftWorkflowState] = useState<DraftWorkflowState>({
+    snippetId: '',
+    isLoaded: false,
   })
   useSnippetDefaultBlockConfigs(snippetId, (nodesDefaultConfigs) => {
     workflowStore.setState({
@@ -64,19 +70,60 @@ export const useSnippetInit = (snippetId: string) => {
     workflowStore.getState().setPublishedAt(publishedWorkflowQuery.data?.created_at ?? 0)
   }, [publishedWorkflowQuery.data?.created_at, publishedWorkflowQuery.isLoading, workflowStore])
 
+  useEffect(() => {
+    let ignore = false
+
+    if (!snippetId)
+      return
+
+    fetchSnippetDraftWorkflow(snippetId)
+      .then((response) => {
+        if (ignore)
+          return
+
+        if (response) {
+          const {
+            setDraftUpdatedAt,
+            setSyncWorkflowDraftHash,
+          } = workflowStore.getState()
+
+          setDraftUpdatedAt(response.updated_at)
+          setSyncWorkflowDraftHash(response.hash)
+        }
+
+        setDraftWorkflowState({
+          snippetId,
+          data: response,
+          isLoaded: true,
+        })
+      })
+      .catch(() => {
+        // Keep the canvas gated on unexpected draft fetch failures.
+        // `fetchSnippetDraftWorkflow` resolves with undefined for 404, so this
+        // branch represents a real initialization failure rather than "no draft".
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [snippetId, workflowStore])
+
+  const isDraftWorkflowLoading = !!snippetId && (!draftWorkflowState.isLoaded || draftWorkflowState.snippetId !== snippetId)
+  const draftWorkflow = draftWorkflowState.snippetId === snippetId ? draftWorkflowState.data : undefined
+
   const data = useMemo(() => {
-    if (snippetApiDetail.data && !draftWorkflowQuery.isLoading)
-      return buildSnippetDetailPayload(snippetApiDetail.data, draftWorkflowQuery.data)
+    if (snippetApiDetail.data && !isDraftWorkflowLoading)
+      return buildSnippetDetailPayload(snippetApiDetail.data, draftWorkflow)
 
     if (snippetApiDetail.error && isNotFoundError(snippetApiDetail.error))
       return null
 
     return undefined
-  }, [draftWorkflowQuery.data, draftWorkflowQuery.isLoading, snippetApiDetail.data, snippetApiDetail.error])
+  }, [draftWorkflow, isDraftWorkflowLoading, snippetApiDetail.data, snippetApiDetail.error])
 
   return {
     ...snippetApiDetail,
     data,
-    isLoading: snippetApiDetail.isLoading || draftWorkflowQuery.isLoading,
+    isLoading: snippetApiDetail.isLoading || isDraftWorkflowLoading,
   }
 }

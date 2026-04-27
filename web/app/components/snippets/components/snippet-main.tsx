@@ -1,6 +1,7 @@
 'use client'
 
 import type { WorkflowProps } from '@/app/components/workflow'
+import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
 import type { SnippetDetailPayload } from '@/models/snippet'
 import {
   useEffect,
@@ -197,7 +198,7 @@ const SnippetMain = ({
       nodes={nodes}
       edges={edges}
       viewport={viewport ?? graph.viewport}
-      hooksStore={hooksStore as any}
+      hooksStore={hooksStore as unknown as Partial<HooksStoreShape>}
     >
       <SnippetChildren
         snippetId={snippetId}
