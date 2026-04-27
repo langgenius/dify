@@ -174,7 +174,7 @@ const InputField: React.FC<InputFieldProps> = ({
         allowed_file_extensions: payload.allowed_file_extensions || [],
         allowed_file_types: payload.allowed_file_types,
         allowed_file_upload_methods: payload.allowed_file_upload_methods,
-        number_limits: payload.number_limits ?? payload.max_length,
+        number_limits: payload.max_length,
       }
     })
   }, [])
