@@ -191,6 +191,25 @@ describe('Popup', () => {
       expect(screen.queryByTestId('popup-download-btn')).not.toBeInTheDocument()
     })
 
+    it('should render download button when a later source has dataset_id but the first does not', async () => {
+      const user = userEvent.setup()
+      render(
+        <Popup data={makeData({
+          dataSourceType: 'upload_file',
+          documentId: 'doc-1',
+          sources: [
+            makeSource({ dataset_id: '', content: 'first hit' }),
+            makeSource({ dataset_id: 'ds-1', content: 'second hit' }),
+          ],
+        })}
+        />,
+      )
+
+      await openPopup(user)
+
+      expect(screen.getByTestId('popup-download-btn'))!.toBeInTheDocument()
+    })
+
     it('should disable the download button while isDownloading is true', async () => {
       mockUseDocumentDownload.mockReturnValue({
         mutateAsync: mockDownloadDocument,

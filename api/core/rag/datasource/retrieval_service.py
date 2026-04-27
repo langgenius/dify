@@ -85,6 +85,14 @@ default_retrieval_model: DefaultRetrievalModelDict = {
     "score_threshold_enabled": False,
 }
 
+# Hybrid search fetches from vector and full-text in parallel, then deduplicates and merges
+# scores (weighted or rerank). Using the *final* top_k as the per-channel limit is wrong:
+# a chunk can rank below k in *both* channels but still be top after fusion, so a larger
+# final top_k changes the candidate pool and reorders the head (#35482). Use a floor so
+# changing only top_k does not change which documents participate in merge.
+_HYBRID_PER_CHANNEL_RECALL_FLOOR: int = 50
+_HYBRID_PER_CHANNEL_RECALL_MAX: int = 200
+
 logger = logging.getLogger(__name__)
 
 
@@ -168,6 +176,20 @@ class RetrievalService:
             raise ValueError(";\n".join(exceptions))
 
         return all_documents
+
+    @staticmethod
+    def _hybrid_recall_top_k_for_merge(final_top_k: int) -> int:
+        """How many hits to request from each hybrid sub-retriever (vector, full-text).
+
+        Must not equal ``final_top_k`` alone: per-channel top-k must be large enough that
+        fusion/rerank sees a stable candidate set when the user only changes final top_k.
+        """
+        if final_top_k <= 0:
+            return final_top_k
+        return min(
+            _HYBRID_PER_CHANNEL_RECALL_MAX,
+            max(_HYBRID_PER_CHANNEL_RECALL_FLOOR, final_top_k),
+        )
 
     @classmethod
     def external_retrieve(
@@ -771,6 +793,14 @@ class RetrievalService:
             return
         with flask_app.app_context():
             all_documents_item: list[Document] = []
+            # For hybrid, per-channel top_k must not be tied to the final top_k only (see
+            # _hybrid_recall_top_k_for_merge). Otherwise the merged head changes when the user
+            # only raises final top_k.
+            recall_top_k = (
+                self._hybrid_recall_top_k_for_merge(top_k)
+                if retrieval_method == RetrievalMethod.HYBRID_SEARCH
+                else top_k
+            )
             # Optimize multithreading with thread pools
             with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
                 futures = []
@@ -795,7 +825,7 @@ class RetrievalService:
                                 flask_app=current_app._get_current_object(),  # type: ignore
                                 dataset_id=dataset.id,
                                 query=query,
-                                top_k=top_k,
+                                top_k=recall_top_k,
                                 score_threshold=score_threshold,
                                 reranking_model=reranking_model,
                                 all_documents=all_documents_item,
@@ -812,7 +842,7 @@ class RetrievalService:
                                 flask_app=current_app._get_current_object(),  # type: ignore
                                 dataset_id=dataset.id,
                                 query=attachment_id,
-                                top_k=top_k,
+                                top_k=recall_top_k,
                                 score_threshold=score_threshold,
                                 reranking_model=reranking_model,
                                 all_documents=all_documents_item,
@@ -829,7 +859,7 @@ class RetrievalService:
                             flask_app=current_app._get_current_object(),  # type: ignore
                             dataset_id=dataset.id,
                             query=query,
-                            top_k=top_k,
+                            top_k=recall_top_k,
                             score_threshold=score_threshold,
                             reranking_model=reranking_model,
                             all_documents=all_documents_item,

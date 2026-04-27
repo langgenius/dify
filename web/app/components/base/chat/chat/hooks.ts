@@ -363,6 +363,8 @@ export const useChat = (
               id: messageEnd.metadata.annotation_reply.id,
               authorName: messageEnd.metadata.annotation_reply.account.name,
             })
+            if (messageEnd.metadata?.retriever_resources)
+              responseItem.citation = messageEnd.metadata.retriever_resources
             return
           }
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
@@ -884,6 +886,8 @@ export const useChat = (
             id: messageEnd.metadata.annotation_reply.id,
             authorName: messageEnd.metadata.annotation_reply.account.name,
           })
+          if (messageEnd.metadata?.retriever_resources)
+            responseItem.citation = messageEnd.metadata.retriever_resources
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
