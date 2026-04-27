@@ -86,4 +86,53 @@ describe('NodeSelector', () => {
     expect(reopenedInput.value).toBe('')
     expect(screen.getByText('End')).toBeInTheDocument()
   })
+
+  it('does not open or emit open changes when disabled', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+
+    renderWorkflowComponent(
+      <NodeSelector
+        disabled
+        onOpenChange={onOpenChange}
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM]}
+        trigger={open => (
+          <button type="button">
+            {open ? 'selector-open' : 'selector-closed'}
+          </button>
+        )}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'selector-closed' }))
+
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(screen.queryByPlaceholderText('workflow.tabs.searchBlock')).not.toBeInTheDocument()
+  })
+
+  it('preserves the child trigger click handler when rendered as child', async () => {
+    const user = userEvent.setup()
+    const onTriggerClick = vi.fn()
+
+    renderWorkflowComponent(
+      <NodeSelector
+        asChild
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM]}
+        trigger={() => (
+          <button type="button" onClick={onTriggerClick}>
+            open-selector
+          </button>
+        )}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'open-selector' }))
+
+    expect(onTriggerClick).toHaveBeenCalledTimes(1)
+    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+  })
 })

@@ -39,7 +39,11 @@ import { usePublishWorkflow } from '@/service/use-workflow'
 import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
-const Popup = () => {
+type PopupProps = {
+  onRequestClose?: () => void
+}
+
+const Popup = ({ onRequestClose }: PopupProps) => {
   const { t } = useTranslation()
   const { datasetId } = useParams()
   const { push } = useRouter()
@@ -70,6 +74,7 @@ const Popup = () => {
       const checked = await handleCheckBeforePublish()
       if (checked) {
         if (!publishedAt && !confirmVisible) {
+          onRequestClose?.()
           showConfirm()
           return
         }
@@ -114,7 +119,7 @@ const Popup = () => {
       if (confirmVisible)
         hideConfirm()
     }
-  }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, hideConfirm])
+  }, [publishing, handleCheckBeforePublish, publishedAt, confirmVisible, showPublishing, publishWorkflow, pipelineId, datasetId, showConfirm, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, invalidDatasetList, hidePublishing, hideConfirm, onRequestClose])
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
     if (published)
@@ -155,13 +160,14 @@ const Popup = () => {
       hidePublishingAsCustomizedPipeline()
       hidePublishAsKnowledgePipelineModal()
     }
-  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal])
+  }, [showPublishingAsCustomizedPipeline, publishAsCustomizedPipeline, pipelineId, t, invalidCustomizedTemplateList, hidePublishingAsCustomizedPipeline, hidePublishAsKnowledgePipelineModal, docLink])
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
+    onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate)
       setShowPricingModal()
     else
       setShowPublishAsKnowledgePipelineModal()
-  }, [isAllowPublishAsCustomKnowledgePipelineTemplate, setShowPublishAsKnowledgePipelineModal, setShowPricingModal])
+  }, [isAllowPublishAsCustomKnowledgePipelineTemplate, onRequestClose, setShowPublishAsKnowledgePipelineModal, setShowPricingModal])
   return (
     <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5', isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
       <div className="p-4 pt-3">

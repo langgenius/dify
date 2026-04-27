@@ -18,18 +18,21 @@ type PortalToFollowElemProps = {
 type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode, asChild?: boolean }
 type PortalToFollowElemContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => {
-  const PortalContext = React.createContext({ open: false })
+vi.mock('@langgenius/dify-ui/popover', () => {
+  const PortalContext = React.createContext({
+    open: false,
+    onOpenChange: undefined as ((open: boolean) => void) | undefined,
+  })
 
-  const PortalToFollowElem = ({ children, open }: PortalToFollowElemProps) => {
+  const Popover = ({ children, open, onOpenChange }: PortalToFollowElemProps) => {
     return (
-      <PortalContext.Provider value={{ open: !!open }}>
+      <PortalContext.Provider value={{ open: !!open, onOpenChange }}>
         <div data-testid="portal">{children}</div>
       </PortalContext.Provider>
     )
   }
 
-  const PortalToFollowElemContent = ({ children, ...props }: PortalToFollowElemContentProps) => {
+  const PopoverContent = ({ children, ...props }: PortalToFollowElemContentProps) => {
     const { open } = React.useContext(PortalContext)
     if (!open)
       return null
@@ -40,24 +43,41 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => {
     )
   }
 
-  const PortalToFollowElemTrigger = ({ children, asChild, ...props }: PortalToFollowElemTriggerProps) => {
+  const PopoverTrigger = ({ children, asChild, render, ...props }: PortalToFollowElemTriggerProps & { render?: React.ReactNode }) => {
+    const { open, onOpenChange } = React.useContext(PortalContext)
+    const content = render ?? children
+    const handleClick = (e: React.MouseEvent<HTMLElement>) => {
+      props.onClick?.(e)
+      if (!props.onClick)
+        onOpenChange?.(!open)
+    }
+
+    if (React.isValidElement(content)) {
+      return React.cloneElement(content, {
+        ...props,
+        'onClick': handleClick,
+        'data-testid': 'portal-trigger',
+      } as React.HTMLAttributes<HTMLElement>)
+    }
+
     if (asChild && React.isValidElement(children)) {
       return React.cloneElement(children, {
         ...props,
+        'onClick': handleClick,
         'data-testid': 'portal-trigger',
       } as React.HTMLAttributes<HTMLElement>)
     }
     return (
-      <div data-testid="portal-trigger" {...props}>
-        {children}
+      <div data-testid="portal-trigger" {...props} onClick={handleClick}>
+        {content}
       </div>
     )
   }
 
   return {
-    PortalToFollowElem,
-    PortalToFollowElemContent,
-    PortalToFollowElemTrigger,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
   }
 })
 

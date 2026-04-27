@@ -1,4 +1,5 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
@@ -6,11 +7,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import Popup from './popup'
 
@@ -26,28 +22,31 @@ const Publisher = () => {
   }, [handleSyncWorkflowDraft])
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 40,
-      }}
+      onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger onClick={() => handleOpenChange(!open)}>
-        <Button
-          className="px-2"
-          variant="primary"
-        >
-          <span className="pl-1">{t('common.publish', { ns: 'workflow' })}</span>
-          <RiArrowDownSLine className="h-4 w-4" />
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-11">
-        <Popup />
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      <PopoverTrigger
+        nativeButton
+        render={(
+          <Button
+            className="px-2"
+            variant="primary"
+          >
+            <span className="pl-1">{t('common.publish', { ns: 'workflow' })}</span>
+            <RiArrowDownSLine className="h-4 w-4" />
+          </Button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        alignOffset={40}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
+        <Popup onRequestClose={() => handleOpenChange(false)} />
+      </PopoverContent>
+    </Popover>
   )
 }
 

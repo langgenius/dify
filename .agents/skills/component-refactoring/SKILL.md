@@ -367,7 +367,7 @@ For each extraction:
   ┌────────────────────────────────────────┐
   │ 1. Extract code                        │
   │ 2. Run: pnpm lint:fix                  │
-  │ 3. Run: pnpm type-check:tsgo           │
+  │ 3. Run: pnpm type-check                │
   │ 4. Run: pnpm test                      │
   │ 5. Test functionality manually         │
   │ 6. PASS? → Next extraction             │

@@ -91,6 +91,19 @@ class EnabledConfig(TypedDict):
     enabled: bool
 
 
+class SuggestedQuestionsAfterAnswerModelConfig(TypedDict):
+    provider: str
+    name: str
+    mode: NotRequired[str]
+    completion_params: NotRequired[dict[str, Any]]
+
+
+class SuggestedQuestionsAfterAnswerConfig(TypedDict):
+    enabled: bool
+    model: NotRequired[SuggestedQuestionsAfterAnswerModelConfig]
+    prompt: NotRequired[str]
+
+
 class EmbeddingModelInfo(TypedDict):
     embedding_provider_name: str
     embedding_model_name: str
@@ -220,7 +233,7 @@ class ModelConfig(TypedDict):
 class AppModelConfigDict(TypedDict):
     opening_statement: str | None
     suggested_questions: list[str]
-    suggested_questions_after_answer: EnabledConfig
+    suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig
     speech_to_text: EnabledConfig
     text_to_speech: EnabledConfig
     retriever_resource: EnabledConfig
@@ -680,8 +693,13 @@ class AppModelConfig(TypeBase):
         return cast(EnabledConfig, json.loads(value) if value else {"enabled": default_enabled})
 
     @property
-    def suggested_questions_after_answer_dict(self) -> EnabledConfig:
-        return self._get_enabled_config(self.suggested_questions_after_answer)
+    def suggested_questions_after_answer_dict(self) -> SuggestedQuestionsAfterAnswerConfig:
+        return cast(
+            SuggestedQuestionsAfterAnswerConfig,
+            json.loads(self.suggested_questions_after_answer)
+            if self.suggested_questions_after_answer
+            else {"enabled": False},
+        )
 
     @property
     def speech_to_text_dict(self) -> EnabledConfig:
@@ -1849,15 +1867,18 @@ class MessageAnnotation(TypeBase):
     )
 
     id: Mapped[str] = mapped_column(
-        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+        StringUUID,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
     )
     app_id: Mapped[str] = mapped_column(StringUUID)
     question: Mapped[str] = mapped_column(LongText, nullable=False)
     content: Mapped[str] = mapped_column(LongText, nullable=False)
+    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), init=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), default=None)
     message_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
-    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), default=0)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

@@ -480,7 +480,7 @@ describe('FieldInfo', () => {
 
       // Assert - SimpleSelect should be rendered
       // Assert - SimpleSelect should be rendered
-      expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox'))!.toBeInTheDocument()
     })
 
     it('should render textarea when showEdit is true and inputType is textarea', () => {

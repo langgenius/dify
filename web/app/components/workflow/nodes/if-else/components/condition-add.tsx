@@ -5,17 +5,17 @@ import type {
   Var,
 } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiAddLine } from '@remixicon/react'
 import {
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 
 type ConditionAddProps = {
@@ -25,6 +25,7 @@ type ConditionAddProps = {
   onSelectVariable: HandleAddCondition
   disabled?: boolean
 }
+
 const ConditionAdd = ({
   className,
   caseId,
@@ -38,29 +39,32 @@ const ConditionAdd = ({
   const handleSelectVariable = useCallback((valueSelector: ValueSelector, varItem: Var) => {
     onSelectVariable(caseId, valueSelector, varItem)
     setOpen(false)
-  }, [caseId, onSelectVariable, setOpen])
+  }, [caseId, onSelectVariable])
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 0,
-      }}
-    >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
-        <Button
-          size="small"
-          className={className}
-          disabled={disabled}
-        >
-          <RiAddLine className="mr-1 h-3.5 w-3.5" />
-          {t('nodes.ifElse.addCondition', { ns: 'workflow' })}
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1000">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <Button
+            size="small"
+            className={className}
+            disabled={disabled}
+          >
+            <RiAddLine className="mr-1 h-3.5 w-3.5" />
+            {t('nodes.ifElse.addCondition', { ns: 'workflow' })}
+          </Button>
+        )}
+        onClick={(e) => {
+          if (disabled)
+            e.preventDefault()
+        }}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        positionerProps={{ style: { zIndex: 1000 } }}
+      >
         <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <VarReferenceVars
             vars={variables}
@@ -68,8 +72,8 @@ const ConditionAdd = ({
             onChange={handleSelectVariable}
           />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 
