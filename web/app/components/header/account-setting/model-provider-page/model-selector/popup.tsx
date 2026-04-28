@@ -137,14 +137,26 @@ const Popup: FC<PopupProps> = ({
   }, [aiCreditVisibleProviders, installedProviderMap, modelList])
 
   const filteredModelList = useMemo(() => {
+    const normalizedSearch = searchText.toLowerCase()
+    const matchesLabel = (label: Record<string, string>) => {
+      if (label[language] !== undefined)
+        return label[language].toLowerCase().includes(normalizedSearch)
+      return Object.values(label).some(value =>
+        value.toLowerCase().includes(normalizedSearch),
+      )
+    }
+
     const filtered = installedModelList.map((model) => {
+      const providerMatched = !!searchText && (
+        matchesLabel(model.label)
+        || model.provider.toLowerCase().includes(normalizedSearch)
+      )
+
       const filteredModels = model.models
         .filter((modelItem) => {
-          if (modelItem.label[language] !== undefined)
-            return modelItem.label[language].toLowerCase().includes(searchText.toLowerCase())
-          return Object.values(modelItem.label).some(label =>
-            label.toLowerCase().includes(searchText.toLowerCase()),
-          )
+          if (!searchText || providerMatched)
+            return true
+          return matchesLabel(modelItem.label)
         })
         .filter((modelItem) => {
           if (scopeFeatures.length === 0)

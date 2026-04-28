@@ -244,7 +244,7 @@ describe('Popup', () => {
     expect(screen.queryByText('No model found for \u201Cclaude\u201D')).not.toBeInTheDocument()
   })
 
-  it('should show empty search placeholder when no model name matches', () => {
+  it('should show empty search placeholder when no provider or model name matches', () => {
     renderPopup(
       <Popup
         modelList={[
@@ -262,12 +262,106 @@ describe('Popup', () => {
 
     fireEvent.change(
       screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'mistral' } },
+    )
+
+    expect(screen.getByText('No model found for \u201Cmistral\u201D'))!.toBeInTheDocument()
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+  })
+
+  it('should show all models of a provider when searching by provider label', () => {
+    renderPopup(
+      <Popup
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+              makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
+            ],
+          }),
+          makeModel({
+            provider: 'anthropic',
+            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
+            models: [
+              makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } }),
+            ],
+          }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('openai'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4o'))!.toBeInTheDocument()
+    expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
+    expect(screen.queryByText('claude-3')).not.toBeInTheDocument()
+  })
+
+  it('should match by model provider key when model label does not contain the search text', () => {
+    renderPopup(
+      <Popup
+        modelList={[
+          makeModel({
+            provider: 'azure_openai',
+            label: { en_US: 'Azure', zh_Hans: 'Azure' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('azure_openai'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
+  })
+
+  it('should still apply scope features when matching by provider label', () => {
+    mockSupportFunctionCall.mockReturnValue(false)
+
+    renderPopup(
+      <Popup
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', features: [ModelFeatureEnum.vision] }),
+              makeModelItem({ model: 'gpt-4-tool', features: [ModelFeatureEnum.toolCall] }),
+            ],
+          }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+        scopeFeatures={[ModelFeatureEnum.toolCall]}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
       { target: { value: 'openai' } },
     )
 
     expect(screen.getByText('No model found for \u201Copenai\u201D'))!.toBeInTheDocument()
-    expect(screen.queryByText('openai')).not.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
   })
 
   it('should not show compatible-only helper text when no scope features are applied', () => {
