@@ -137,7 +137,7 @@ const AutoUpdateSetting: FC<Props> = ({
           <>
             <div className="flex items-center justify-between">
               <Label label={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })} />
-              <div className="flex flex-col justify-start">
+              <div className="flex flex-col items-end">
                 <TimePicker
                   value={timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(upgrade_time_of_day, timezone!))}
                   timezone={timezone}
