@@ -61,7 +61,7 @@ const useThinkTimer = (children: React.ReactNode) => {
   const cachedElapsedTime = completedThinkDurations.get(contentKey) ?? 0
   const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(cachedElapsedTime)
-  const [isComplete, setIsComplete] = useState(() => endThinkDetected)
+  const isComplete = endThinkDetected || !isResponding
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -69,7 +69,11 @@ const useThinkTimer = (children: React.ReactNode) => {
       return
 
     timerRef.current = setInterval(() => {
-      setElapsedTime(Math.floor((Date.now() - startTime) / 100) / 10)
+      setElapsedTime(() => {
+        const currentElapsedTime = Math.floor((Date.now() - startTime) / 100) / 10
+        completedThinkDurations.set(contentKey, currentElapsedTime)
+        return currentElapsedTime
+      })
     }, 100)
 
     return () => {
@@ -85,16 +89,9 @@ const useThinkTimer = (children: React.ReactNode) => {
     if (endThinkDetected || !isResponding) {
       const finalElapsedTime = Math.floor((Date.now() - startTime) / 100) / 10
 
-      queueMicrotask(() => {
-        setElapsedTime((currentElapsedTime) => {
-          const elapsedTimeToStore = currentElapsedTime || finalElapsedTime
-          completedThinkDurations.set(contentKey, elapsedTimeToStore)
-          return elapsedTimeToStore
-        })
-        setIsComplete(true)
-      })
+      completedThinkDurations.set(contentKey, elapsedTime || finalElapsedTime)
     }
-  }, [contentKey, endThinkDetected, isResponding, startTime])
+  }, [contentKey, elapsedTime, endThinkDetected, isResponding, startTime])
 
   return { elapsedTime, isComplete }
 }
@@ -103,19 +100,15 @@ type ThinkBlockProps = React.ComponentProps<'details'> & {
   'data-think'?: boolean
 }
 
-const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
+const ThinkContent = ({ children, className, open, ...rest }: Omit<ThinkBlockProps, 'data-think'>) => {
   const { elapsedTime, isComplete } = useThinkTimer(children)
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()
-  const { 'data-think': isThink = false, className, open, ...rest } = props
-
-  if (!isThink)
-    return (<details {...props}>{children}</details>)
 
   return (
     <details
       {...rest}
-      data-think={isThink}
+      data-think={true}
       className={cn('group', className)}
       open={isComplete ? open : true}
     >
@@ -141,6 +134,19 @@ const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
         {displayContent}
       </div>
     </details>
+  )
+}
+
+const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
+  const { 'data-think': isThink = false, ...rest } = props
+
+  if (!isThink)
+    return (<details {...props}>{children}</details>)
+
+  return (
+    <ThinkContent {...rest}>
+      {children}
+    </ThinkContent>
   )
 }
 
