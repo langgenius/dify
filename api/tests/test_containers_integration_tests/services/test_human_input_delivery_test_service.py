@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.workflow.human_input_adapter import (
@@ -88,7 +89,7 @@ class TestDeliveryTestRegistry:
         with pytest.raises(DeliveryTestUnsupportedError, match="Delivery method does not support test send."):
             registry.dispatch(context=context, method=method)
 
-    def test_default(self, flask_app_with_containers, db_session_with_containers):
+    def test_default(self, flask_app_with_containers, db_session_with_containers: Session):
         registry = DeliveryTestRegistry.default()
         assert len(registry._handlers) == 1
         assert isinstance(registry._handlers[0], EmailDeliveryTestHandler)
@@ -260,7 +261,7 @@ class TestEmailDeliveryTestHandler:
         )
         assert handler._resolve_recipients(tenant_id="t1", method=method) == ["ext@example.com"]
 
-    def test_resolve_recipients_member(self, flask_app_with_containers, db_session_with_containers):
+    def test_resolve_recipients_member(self, flask_app_with_containers, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         account = Account(name="Test User", email="member@example.com")
         db_session_with_containers.add(account)
@@ -282,7 +283,7 @@ class TestEmailDeliveryTestHandler:
         )
         assert handler._resolve_recipients(tenant_id=tenant_id, method=method) == ["member@example.com"]
 
-    def test_resolve_recipients_whole_workspace(self, flask_app_with_containers, db_session_with_containers):
+    def test_resolve_recipients_whole_workspace(self, flask_app_with_containers, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         account1 = Account(name="User 1", email=f"u1-{uuid4()}@example.com")
         account2 = Account(name="User 2", email=f"u2-{uuid4()}@example.com")

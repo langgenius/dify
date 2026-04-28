@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
@@ -45,10 +46,10 @@ def unwrap(func):
 
 class TestDraftWorkflowApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_get_draft_success(self, app):
+    def test_get_draft_success(self, app: Flask):
         api = DraftRagPipelineApi()
         method = unwrap(api.get)
 
@@ -68,7 +69,7 @@ class TestDraftWorkflowApi:
             result = method(api, pipeline)
             assert result == workflow
 
-    def test_get_draft_not_exist(self, app):
+    def test_get_draft_not_exist(self, app: Flask):
         api = DraftRagPipelineApi()
         method = unwrap(api.get)
 
@@ -86,7 +87,7 @@ class TestDraftWorkflowApi:
             with pytest.raises(DraftWorkflowNotExist):
                 method(api, pipeline)
 
-    def test_sync_hash_not_match(self, app):
+    def test_sync_hash_not_match(self, app: Flask):
         api = DraftRagPipelineApi()
         method = unwrap(api.post)
 
@@ -111,7 +112,7 @@ class TestDraftWorkflowApi:
             with pytest.raises(DraftWorkflowNotSync):
                 method(api, pipeline)
 
-    def test_sync_invalid_text_plain(self, app):
+    def test_sync_invalid_text_plain(self, app: Flask):
         api = DraftRagPipelineApi()
         method = unwrap(api.post)
 
@@ -128,7 +129,7 @@ class TestDraftWorkflowApi:
             response, status = method(api, pipeline)
             assert status == 400
 
-    def test_restore_published_workflow_to_draft_success(self, app):
+    def test_restore_published_workflow_to_draft_success(self, app: Flask):
         api = RagPipelineDraftWorkflowRestoreApi()
         method = unwrap(api.post)
 
@@ -155,7 +156,7 @@ class TestDraftWorkflowApi:
         assert result["result"] == "success"
         assert result["hash"] == "restored-hash"
 
-    def test_restore_published_workflow_to_draft_not_found(self, app):
+    def test_restore_published_workflow_to_draft_not_found(self, app: Flask):
         api = RagPipelineDraftWorkflowRestoreApi()
         method = unwrap(api.post)
 
@@ -179,7 +180,7 @@ class TestDraftWorkflowApi:
             with pytest.raises(NotFound):
                 method(api, pipeline, "published-workflow")
 
-    def test_restore_published_workflow_to_draft_returns_400_for_draft_source(self, app):
+    def test_restore_published_workflow_to_draft_returns_400_for_draft_source(self, app: Flask):
         api = RagPipelineDraftWorkflowRestoreApi()
         method = unwrap(api.post)
 
@@ -211,10 +212,10 @@ class TestDraftWorkflowApi:
 
 class TestDraftRunNodes:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_iteration_node_success(self, app):
+    def test_iteration_node_success(self, app: Flask):
         api = RagPipelineDraftRunIterationNodeApi()
         method = unwrap(api.post)
 
@@ -240,7 +241,7 @@ class TestDraftRunNodes:
             result = method(api, pipeline, "node")
             assert result == {"ok": True}
 
-    def test_iteration_node_conversation_not_exists(self, app):
+    def test_iteration_node_conversation_not_exists(self, app: Flask):
         api = RagPipelineDraftRunIterationNodeApi()
         method = unwrap(api.post)
 
@@ -262,7 +263,7 @@ class TestDraftRunNodes:
             with pytest.raises(NotFound):
                 method(api, pipeline, "node")
 
-    def test_loop_node_success(self, app):
+    def test_loop_node_success(self, app: Flask):
         api = RagPipelineDraftRunLoopNodeApi()
         method = unwrap(api.post)
 
@@ -290,10 +291,10 @@ class TestDraftRunNodes:
 
 class TestPipelineRunApis:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_draft_run_success(self, app):
+    def test_draft_run_success(self, app: Flask):
         api = DraftRagPipelineRunApi()
         method = unwrap(api.post)
 
@@ -325,7 +326,7 @@ class TestPipelineRunApis:
         ):
             assert method(api, pipeline) == {"ok": True}
 
-    def test_draft_run_rate_limit(self, app):
+    def test_draft_run_rate_limit(self, app: Flask):
         api = DraftRagPipelineRunApi()
         method = unwrap(api.post)
 
@@ -356,10 +357,10 @@ class TestPipelineRunApis:
 
 class TestDraftNodeRun:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_execution_not_found(self, app):
+    def test_execution_not_found(self, app: Flask):
         api = RagPipelineDraftNodeRunApi()
         method = unwrap(api.post)
 
@@ -387,7 +388,7 @@ class TestDraftNodeRun:
 
 class TestPublishedPipelineApis:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_publish_success(self, app, db_session_with_containers: Session):
@@ -436,10 +437,10 @@ class TestPublishedPipelineApis:
 
 class TestMiscApis:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_task_stop(self, app):
+    def test_task_stop(self, app: Flask):
         api = RagPipelineTaskStopApi()
         method = unwrap(api.post)
 
@@ -460,7 +461,7 @@ class TestMiscApis:
             stop_mock.assert_called_once()
             assert result["result"] == "success"
 
-    def test_transform_forbidden(self, app):
+    def test_transform_forbidden(self, app: Flask):
         api = RagPipelineTransformApi()
         method = unwrap(api.post)
 
@@ -476,7 +477,7 @@ class TestMiscApis:
             with pytest.raises(Forbidden):
                 method(api, "ds1")
 
-    def test_recommended_plugins(self, app):
+    def test_recommended_plugins(self, app: Flask):
         api = RagPipelineRecommendedPluginApi()
         method = unwrap(api.get)
 
@@ -496,10 +497,10 @@ class TestMiscApis:
 
 class TestPublishedRagPipelineRunApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_published_run_success(self, app):
+    def test_published_run_success(self, app: Flask):
         api = PublishedRagPipelineRunApi()
         method = unwrap(api.post)
 
@@ -533,7 +534,7 @@ class TestPublishedRagPipelineRunApi:
             result = method(api, pipeline)
             assert result == {"ok": True}
 
-    def test_published_run_rate_limit(self, app):
+    def test_published_run_rate_limit(self, app: Flask):
         api = PublishedRagPipelineRunApi()
         method = unwrap(api.post)
 
@@ -565,10 +566,10 @@ class TestPublishedRagPipelineRunApi:
 
 class TestDefaultBlockConfigApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_get_block_config_success(self, app):
+    def test_get_block_config_success(self, app: Flask):
         api = DefaultRagPipelineBlockConfigApi()
         method = unwrap(api.get)
 
@@ -587,7 +588,7 @@ class TestDefaultBlockConfigApi:
             result = method(api, pipeline, "llm")
             assert result == {"k": "v"}
 
-    def test_get_block_config_invalid_json(self, app):
+    def test_get_block_config_invalid_json(self, app: Flask):
         api = DefaultRagPipelineBlockConfigApi()
         method = unwrap(api.get)
 
@@ -600,10 +601,10 @@ class TestDefaultBlockConfigApi:
 
 class TestPublishedAllRagPipelineApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_get_published_workflows_success(self, app):
+    def test_get_published_workflows_success(self, app: Flask):
         api = PublishedAllRagPipelineApi()
         method = unwrap(api.get)
 
@@ -629,7 +630,7 @@ class TestPublishedAllRagPipelineApi:
         assert result["items"] == [{"id": "w1"}]
         assert result["has_more"] is False
 
-    def test_get_published_workflows_forbidden(self, app):
+    def test_get_published_workflows_forbidden(self, app: Flask):
         api = PublishedAllRagPipelineApi()
         method = unwrap(api.get)
 
@@ -649,10 +650,10 @@ class TestPublishedAllRagPipelineApi:
 
 class TestRagPipelineByIdApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_patch_success(self, app):
+    def test_patch_success(self, app: Flask):
         api = RagPipelineByIdApi()
         method = unwrap(api.patch)
 
@@ -682,7 +683,7 @@ class TestRagPipelineByIdApi:
 
         assert result == workflow
 
-    def test_patch_no_fields(self, app):
+    def test_patch_no_fields(self, app: Flask):
         api = RagPipelineByIdApi()
         method = unwrap(api.patch)
 
@@ -700,7 +701,7 @@ class TestRagPipelineByIdApi:
             result, status = method(api, pipeline, "w1")
             assert status == 400
 
-    def test_delete_success(self, app):
+    def test_delete_success(self, app: Flask):
         api = RagPipelineByIdApi()
         method = unwrap(api.delete)
 
@@ -720,7 +721,7 @@ class TestRagPipelineByIdApi:
         workflow_service.delete_workflow.assert_called_once()
         assert result == (None, 204)
 
-    def test_delete_active_workflow_rejected(self, app):
+    def test_delete_active_workflow_rejected(self, app: Flask):
         api = RagPipelineByIdApi()
         method = unwrap(api.delete)
 
@@ -733,10 +734,10 @@ class TestRagPipelineByIdApi:
 
 class TestRagPipelineWorkflowLastRunApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_last_run_success(self, app):
+    def test_last_run_success(self, app: Flask):
         api = RagPipelineWorkflowLastRunApi()
         method = unwrap(api.get)
 
@@ -758,7 +759,7 @@ class TestRagPipelineWorkflowLastRunApi:
             result = method(api, pipeline, "node1")
             assert result == node_exec
 
-    def test_last_run_not_found(self, app):
+    def test_last_run_not_found(self, app: Flask):
         api = RagPipelineWorkflowLastRunApi()
         method = unwrap(api.get)
 
@@ -780,10 +781,10 @@ class TestRagPipelineWorkflowLastRunApi:
 
 class TestRagPipelineDatasourceVariableApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_set_datasource_variables_success(self, app):
+    def test_set_datasource_variables_success(self, app: Flask):
         api = RagPipelineDatasourceVariableApi()
         method = unwrap(api.post)
 

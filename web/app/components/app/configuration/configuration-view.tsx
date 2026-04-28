@@ -174,14 +174,12 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             </AlertDialogContent>
           </AlertDialog>
 
-          {isShowSelectDataSet && (
-            <SelectDataSet
-              isShow={isShowSelectDataSet}
-              onClose={onCloseSelectDataSet}
-              selectedIds={selectedIds}
-              onSelect={onSelectDataSets}
-            />
-          )}
+          <SelectDataSet
+            isShow={isShowSelectDataSet}
+            onClose={onCloseSelectDataSet}
+            selectedIds={selectedIds}
+            onSelect={onSelectDataSets}
+          />
 
           {isShowHistoryModal && (
             <EditHistoryModal

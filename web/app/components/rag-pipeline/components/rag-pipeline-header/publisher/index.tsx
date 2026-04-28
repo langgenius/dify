@@ -1,6 +1,8 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
 import {
   memo,
   useCallback,
@@ -13,13 +15,19 @@ import Popup from './popup'
 const Publisher = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [confirmVisible, { setFalse: hideConfirm, setTrue: showConfirm }] = useBoolean(false)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
+    if (!newOpen && confirmVisible)
+      return
     if (newOpen)
       handleSyncWorkflowDraft(true)
     setOpen(newOpen)
-  }, [handleSyncWorkflowDraft])
+  }, [confirmVisible, handleSyncWorkflowDraft])
+  const closePopover = useCallback(() => {
+    setOpen(false)
+  }, [])
 
   return (
     <Popover
@@ -42,9 +50,14 @@ const Publisher = () => {
         placement="bottom-end"
         sideOffset={4}
         alignOffset={40}
-        popupClassName="border-none bg-transparent shadow-none"
+        popupClassName={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}
       >
-        <Popup onRequestClose={() => handleOpenChange(false)} />
+        <Popup
+          onRequestClose={closePopover}
+          confirmVisible={confirmVisible}
+          onShowConfirm={showConfirm}
+          onHideConfirm={hideConfirm}
+        />
       </PopoverContent>
     </Popover>
   )

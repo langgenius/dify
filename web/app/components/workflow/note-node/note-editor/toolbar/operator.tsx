@@ -12,7 +12,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
+import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
 export type OperatorProps = {
   onCopy: () => void
@@ -69,7 +69,7 @@ const Operator = ({
               }}
             >
               {t('common.copy', { ns: 'workflow' })}
-              <ShortcutsName keys={['ctrl', 'c']} />
+              <ShortcutKbd shortcut="workflow.copy" />
             </DropdownMenuItem>
             <DropdownMenuItem
               className="justify-between rounded-md px-3 text-sm text-text-secondary"
@@ -79,7 +79,7 @@ const Operator = ({
               }}
             >
               {t('common.duplicate', { ns: 'workflow' })}
-              <ShortcutsName keys={['ctrl', 'd']} />
+              <ShortcutKbd shortcut="workflow.duplicate" />
             </DropdownMenuItem>
           </div>
           <DropdownMenuSeparator className="my-0" />
@@ -107,7 +107,7 @@ const Operator = ({
               }}
             >
               {t('operation.delete', { ns: 'common' })}
-              <ShortcutsName keys={['del']} />
+              <ShortcutKbd shortcut="workflow.delete" />
             </DropdownMenuItem>
           </div>
         </div>

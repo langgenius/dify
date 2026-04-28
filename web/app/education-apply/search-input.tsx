@@ -87,33 +87,34 @@ const SearchInput = ({
           />
         )}
       />
-      {open && !!schools.length && !!value && (
-        <PopoverContent
-          placement="bottom"
-          sideOffset={4}
-          popupClassName="w-[var(--anchor-width)] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
-          positionerProps={{ style: { zIndex: 32 } }}
-        >
-          <div
-            className="max-h-[330px] overflow-y-auto"
-            onScroll={handleScroll}
-          >
-            {schools.map(school => (
+      {!!schools.length && !!value
+        ? (
+            <PopoverContent
+              placement="bottom"
+              sideOffset={4}
+              popupClassName="w-[var(--anchor-width)] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
+            >
               <div
-                key={school}
-                className="flex h-8 cursor-pointer items-center truncate rounded-lg px-2 py-1.5 system-md-regular text-text-secondary hover:bg-state-base-hover"
-                title={school}
-                onClick={() => {
-                  onChange(school)
-                  setOpen(false)
-                }}
+                className="max-h-[330px] overflow-y-auto"
+                onScroll={handleScroll}
               >
-                {school}
+                {schools.map(school => (
+                  <div
+                    key={school}
+                    className="flex h-8 cursor-pointer items-center truncate rounded-lg px-2 py-1.5 system-md-regular text-text-secondary hover:bg-state-base-hover"
+                    title={school}
+                    onClick={() => {
+                      onChange(school)
+                      setOpen(false)
+                    }}
+                  >
+                    {school}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </PopoverContent>
-      )}
+            </PopoverContent>
+          )
+        : null}
     </Popover>
   )
 }

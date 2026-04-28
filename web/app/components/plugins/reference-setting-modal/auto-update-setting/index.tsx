@@ -105,7 +105,7 @@ const AutoUpdateSetting: FC<Props> = ({
   const renderTimePickerTrigger = useCallback(({ inputElem, onClick, isOpen }: TriggerParams) => {
     return (
       <div
-        className="group float-right flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt"
+        className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt"
         onClick={onClick}
       >
         <div className="flex w-0 grow items-center gap-x-1">
@@ -137,7 +137,7 @@ const AutoUpdateSetting: FC<Props> = ({
           <>
             <div className="flex items-center justify-between">
               <Label label={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })} />
-              <div className="flex flex-col justify-start">
+              <div className="flex flex-col items-end">
                 <TimePicker
                   value={timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(upgrade_time_of_day, timezone!))}
                   timezone={timezone}

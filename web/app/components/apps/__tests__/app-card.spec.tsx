@@ -301,9 +301,9 @@ vi.mock('@/app/components/base/tooltip', () => ({
   default: ({ children, popupContent }: { children: React.ReactNode, popupContent: React.ReactNode }) => React.createElement('div', { title: popupContent }, children),
 }))
 
-// TagSelector has API dependency (service/tag) - mock for isolated testing
-vi.mock('@/app/components/base/tag-management/selector', () => ({
-  default: ({ tags }: { tags?: { id: string, name: string }[] }) => {
+// AppCardTags has tag API dependencies - mock for isolated testing
+vi.mock('@/features/tag-management/components/app-card-tags', () => ({
+  AppCardTags: ({ tags }: { tags?: { id: string, name: string }[] }) => {
     return React.createElement('div', { 'aria-label': 'tag-selector' }, tags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)))
   },
 }))
@@ -400,11 +400,28 @@ describe('AppCard', () => {
     it('should handle app with tags', () => {
       const appWithTags = {
         ...mockApp,
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
       }
       render(<AppCard app={appWithTags} />)
       // Verify the tag selector component renders
       expect(screen.getByLabelText('tag-selector')).toBeInTheDocument()
+    })
+
+    it('should display refreshed tag names from app props when tag ids stay the same', () => {
+      const firstApp = createMockApp({
+        tags: [{ id: 'tag1', name: 'Old Tag', type: 'app' as const, binding_count: 0 }],
+      })
+      const refreshedApp = createMockApp({
+        tags: [{ id: 'tag1', name: 'New Tag', type: 'app' as const, binding_count: 0 }],
+      })
+
+      const { rerender } = render(<AppCard app={firstApp} />)
+      expect(screen.getByText('Old Tag')).toBeInTheDocument()
+
+      rerender(<AppCard app={refreshedApp} />)
+
+      expect(screen.getByText('New Tag')).toBeInTheDocument()
+      expect(screen.queryByText('Old Tag')).not.toBeInTheDocument()
     })
 
     it('should render with onRefresh callback', () => {
@@ -467,6 +484,15 @@ describe('AppCard', () => {
     it('should render dropdown menu as non-modal', () => {
       render(<AppCard app={mockApp} />)
       expect(screen.getByTestId('dropdown-menu')).toHaveAttribute('data-modal', 'false')
+    })
+
+    it('should reveal operations trigger when card receives keyboard focus', () => {
+      render(<AppCard app={mockApp} />)
+      const operationsTriggerWrapper = screen.getByTestId('dropdown-menu-trigger').closest('.absolute')
+
+      expect(operationsTriggerWrapper).toHaveClass('group-focus-within:pointer-events-auto')
+      expect(operationsTriggerWrapper).toHaveClass('group-focus-within:opacity-100')
+      expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-1')
     })
 
     it('should show edit option when dropdown menu is opened', async () => {
@@ -1167,9 +1193,9 @@ describe('AppCard', () => {
       const multiTagApp = {
         ...mockApp,
         tags: [
-          { id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 0 },
-          { id: 'tag2', name: 'Tag 2', type: 'app', binding_count: 0 },
-          { id: 'tag3', name: 'Tag 3', type: 'app', binding_count: 0 },
+          { id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 },
+          { id: 'tag2', name: 'Tag 2', type: 'app' as const, binding_count: 0 },
+          { id: 'tag3', name: 'Tag 3', type: 'app' as const, binding_count: 0 },
         ],
       }
       render(<AppCard app={multiTagApp} />)
@@ -1324,7 +1350,7 @@ describe('AppCard', () => {
 
     it('should stop propagation when clicking tag selector area', () => {
       const multiTagApp = createMockApp({
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
       })
 
       render(<AppCard app={multiTagApp} />)

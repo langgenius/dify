@@ -1,5 +1,6 @@
 import type { CSSProperties, FC } from 'react'
 import type { ModelAndParameter } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,11 +93,16 @@ const DebugItem: FC<DebugItemProps> = ({
           modelAndParameter={modelAndParameter}
         />
         <DropdownMenu open={open} onOpenChange={setOpen}>
-          <DropdownMenuTrigger render={<div />}>
-            <ActionButton className={open ? 'bg-state-base-hover' : ''}>
-              <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-            </ActionButton>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            render={(
+              <ActionButton
+                className={cn(open && 'bg-state-base-hover', 'focus-visible:ring-2 focus-visible:ring-state-accent-solid')}
+                aria-label={t('operation.more', { ns: 'common' })}
+              >
+                <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
+              </ActionButton>
+            )}
+          />
           <DropdownMenuContent
             placement="bottom-end"
             sideOffset={4}

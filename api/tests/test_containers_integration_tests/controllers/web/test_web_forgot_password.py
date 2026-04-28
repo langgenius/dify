@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.web.forgot_password import (
     ForgotPasswordCheckApi,
@@ -29,7 +30,7 @@ def _patch_wraps():
 
 class TestForgotPasswordSendEmailApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     @patch("controllers.web.forgot_password.AccountService.send_reset_password_email")
@@ -42,7 +43,7 @@ class TestForgotPasswordSendEmailApi:
         mock_rate_limit,
         mock_get_account,
         mock_send_mail,
-        app,
+        app: Flask,
     ):
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
@@ -64,7 +65,7 @@ class TestForgotPasswordSendEmailApi:
 
 class TestForgotPasswordCheckApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     @patch("controllers.web.forgot_password.AccountService.reset_forgot_password_error_rate_limit")
@@ -81,7 +82,7 @@ class TestForgotPasswordCheckApi:
         mock_revoke_token,
         mock_generate_token,
         mock_reset_rate,
-        app,
+        app: Flask,
     ):
         mock_is_rate_limit.return_value = False
         mock_get_data.return_value = {"email": "User@Example.com", "code": "1234"}
@@ -117,7 +118,7 @@ class TestForgotPasswordCheckApi:
         mock_revoke_token,
         mock_generate_token,
         mock_reset_rate,
-        app,
+        app: Flask,
     ):
         mock_is_rate_limit.return_value = False
         mock_get_data.return_value = {"email": "MixedCase@Example.com", "code": "5678"}
@@ -142,7 +143,7 @@ class TestForgotPasswordCheckApi:
 
 class TestForgotPasswordResetApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     @patch("controllers.web.forgot_password.ForgotPasswordResetApi._update_existing_account")
@@ -157,7 +158,7 @@ class TestForgotPasswordResetApi:
         mock_db,
         mock_get_account,
         mock_update_account,
-        app,
+        app: Flask,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com", "code": "1234"}
         mock_account = MagicMock()
@@ -194,7 +195,7 @@ class TestForgotPasswordResetApi:
         mock_db,
         mock_token_bytes,
         mock_hash_password,
-        app,
+        app: Flask,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "user@example.com"}
         account = MagicMock()

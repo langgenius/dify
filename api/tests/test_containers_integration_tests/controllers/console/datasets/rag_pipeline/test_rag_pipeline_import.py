@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.console import console_ns
 from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
@@ -25,7 +26,7 @@ def unwrap(func):
 
 class TestRagPipelineImportApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def _payload(self, mode="create"):
@@ -128,7 +129,7 @@ class TestRagPipelineImportApi:
 
 class TestRagPipelineImportConfirmApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_confirm_success(self, app):
@@ -190,7 +191,7 @@ class TestRagPipelineImportConfirmApi:
 
 class TestRagPipelineImportCheckDependenciesApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_success(self, app):
@@ -219,7 +220,7 @@ class TestRagPipelineImportCheckDependenciesApi:
 
 class TestRagPipelineExportApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_with_include_secret(self, app):

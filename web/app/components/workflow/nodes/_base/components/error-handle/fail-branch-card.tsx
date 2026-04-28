@@ -21,6 +21,7 @@ const FailBranchCard = () => {
           <a
             href={docLink('/use-dify/debug/error-type')}
             target="_blank"
+            rel="noopener noreferrer"
             className="text-text-accent"
           >
             {t('common.learnMore', { ns: 'workflow' })}

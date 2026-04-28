@@ -121,6 +121,7 @@ const InputFieldPanel = () => {
         <Divider type="vertical" className="mx-1 h-3" />
         <button
           type="button"
+          aria-label={t('operation.close', { ns: 'common' })}
           className="flex size-6 shrink-0 items-center justify-center p-0.5"
           onClick={closePanel}
         >

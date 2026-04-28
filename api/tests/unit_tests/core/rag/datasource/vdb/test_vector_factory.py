@@ -316,6 +316,33 @@ def test_create_batches_texts_and_skips_empty_input(vector_factory_module):
     vector._vector_processor.create.assert_not_called()
 
 
+def test_create_skips_empty_text_documents_before_embedding(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1], [0.2]]
+    vector._vector_processor = MagicMock()
+
+    docs = [
+        Document(page_content="foo", metadata={"doc_id": "id-1"}),
+        Document(page_content="", metadata={"doc_id": "id-empty"}),
+        Document(page_content="  \n", metadata={"doc_id": "id-blank"}),
+        Document(page_content="bar", metadata={"doc_id": "id-2"}),
+    ]
+
+    vector.create(texts=docs, request_id="r-1")
+
+    vector._embeddings.embed_documents.assert_called_once_with(["foo", "bar"])
+    vector._vector_processor.create.assert_called_once_with(
+        texts=[docs[0], docs[3]], embeddings=[[0.1], [0.2]], request_id="r-1"
+    )
+
+    vector._embeddings.embed_documents.reset_mock()
+    vector._vector_processor.create.reset_mock()
+    vector.create(texts=[docs[1], docs[2]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
 def test_create_multimodal_filters_missing_uploads(vector_factory_module, monkeypatch):
     class _Field:
         def in_(self, value):
@@ -394,6 +421,48 @@ def test_add_texts_with_optional_duplicate_check(vector_factory_module):
 
     vector._filter_duplicate_texts.assert_not_called()
     vector._vector_processor.create.assert_called_once()
+
+
+def test_add_texts_skips_empty_text_documents(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1]]
+    vector._vector_processor = MagicMock()
+
+    docs = [
+        Document(page_content="keep", metadata={"doc_id": "id-1"}),
+        Document(page_content="", metadata={"doc_id": "id-empty"}),
+    ]
+
+    vector.add_texts(docs, source="api")
+
+    vector._embeddings.embed_documents.assert_called_once_with(["keep"])
+    vector._vector_processor.create.assert_called_once_with(texts=[docs[0]], embeddings=[[0.1]], source="api")
+
+    vector._embeddings.embed_documents.reset_mock()
+    vector._vector_processor.create.reset_mock()
+    vector.add_texts([docs[1]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
+def test_add_texts_filters_empty_documents_before_duplicate_check(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1]]
+    vector._vector_processor = MagicMock()
+    vector._filter_duplicate_texts = MagicMock(return_value=[])
+
+    docs = [
+        Document(page_content="keep", metadata={"doc_id": "id-1"}),
+        Document(page_content="   ", metadata={"doc_id": "id-empty"}),
+    ]
+
+    vector.add_texts(docs, duplicate_check=True)
+
+    vector._filter_duplicate_texts.assert_called_once_with([docs[0]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
 
 
 def test_vector_delegation_methods(vector_factory_module):

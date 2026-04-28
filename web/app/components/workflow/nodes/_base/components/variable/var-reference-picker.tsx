@@ -82,7 +82,6 @@ type Props = {
   placeholder?: string
   minWidth?: number
   popupFor?: 'assigned' | 'toAssigned'
-  zIndex?: number
   currentTool?: Tool
   currentProvider?: ToolWithProvider | TriggerWithProvider
   preferSchemaType?: boolean
@@ -117,7 +116,6 @@ const VarReferencePicker: FC<Props> = ({
   placeholder,
   minWidth,
   popupFor,
-  zIndex,
   currentTool,
   currentProvider,
   preferSchemaType,
@@ -415,11 +413,6 @@ const VarReferencePicker: FC<Props> = ({
           sideOffset={0}
           className="mt-1"
           popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-          positionerProps={{
-            style: {
-              zIndex: zIndex || 100,
-            },
-          }}
         >
           {!isConstant && (
             <VarReferencePopup
@@ -428,7 +421,6 @@ const VarReferencePicker: FC<Props> = ({
               onChange={handleVarReferenceChange}
               itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
               isSupportFileVar={isSupportFileVar}
-              zIndex={zIndex}
               preferSchemaType={preferSchemaType}
             />
           )}

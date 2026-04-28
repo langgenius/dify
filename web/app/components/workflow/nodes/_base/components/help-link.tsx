@@ -26,7 +26,7 @@ const HelpLink = ({
             aria-label={label}
             href={link}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="mr-1 flex h-6 w-6 items-center justify-center rounded-md hover:bg-state-base-hover"
           >
             <span aria-hidden className="i-ri-book-open-line h-4 w-4 text-gray-500" />

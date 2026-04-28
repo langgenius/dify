@@ -2,12 +2,12 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Model } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
 type ModelInfo = {
@@ -75,7 +75,18 @@ const PromptEditor: FC<PromptEditorProps> = ({
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
           <span>{t('nodes.llm.jsonSchema.instruction', { ns: 'workflow' })}</span>
-          <Tooltip popupContent={t('nodes.llm.jsonSchema.promptTooltip', { ns: 'workflow' })} />
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <span className="flex h-3.5 w-3.5 shrink-0 p-px">
+                  <span aria-hidden className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" />
+                </span>
+              )}
+            />
+            <TooltipContent>
+              {t('nodes.llm.jsonSchema.promptTooltip', { ns: 'workflow' })}
+            </TooltipContent>
+          </Tooltip>
         </div>
         <div className="flex items-center">
           <Textarea

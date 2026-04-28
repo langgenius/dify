@@ -1,0 +1,43 @@
+{
+  "name": "@langgenius/dev-proxy",
+  "type": "module",
+  "version": "0.0.5",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "types": "./dist/index.d.mts",
+  "bin": {
+    "dev-proxy": "./bin/dev-proxy.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": "^22.22.1"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "prepare": "pnpm run build",
+    "test": "vp test",
+    "type-check": "tsgo",
+    "prepublish": "pnpm run build"
+  },
+  "dependencies": {
+    "@hono/node-server": "catalog:",
+    "c12": "catalog:",
+    "hono": "catalog:"
+  },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

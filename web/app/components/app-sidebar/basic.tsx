@@ -4,7 +4,7 @@ import {
   ApiAggregate,
   WindowCursor,
 } from '@/app/components/base/icons/src/vender/workflow'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import AppIcon from '../base/app-icon'
 
 type IAppBasicProps = {
@@ -82,16 +82,9 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
             </div>
             {hoverTip
               && (
-                <Tooltip
-                  popupContent={(
-                    <div className="w-[240px]">
-                      {hoverTip}
-                    </div>
-                  )}
-                  popupClassName="ml-1"
-                  triggerClassName="w-4 h-4 ml-1"
-                  position="top"
-                />
+                <Infotip aria-label={hoverTip} className="ml-1" popupClassName="w-[240px]">
+                  {hoverTip}
+                </Infotip>
               )}
           </div>
           {!hideType && isExtraInLine && (

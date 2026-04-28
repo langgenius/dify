@@ -9,7 +9,7 @@ This module tests the core authentication endpoints including:
 """
 
 import base64
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -52,12 +52,12 @@ class TestLoginApi:
         return app
 
     @pytest.fixture
-    def api(self, app):
+    def api(self, app: Flask):
         """Create Flask-RESTX API instance."""
         return Api(app)
 
     @pytest.fixture
-    def client(self, app, api):
+    def client(self, app: Flask, api: Api):
         """Create test client."""
         api.add_resource(LoginApi, "/login")
         return app.test_client()
@@ -97,7 +97,7 @@ class TestLoginApi:
         mock_get_invitation,
         mock_is_rate_limit,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -141,14 +141,14 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
     def test_successful_login_with_valid_invitation(
         self,
-        mock_reset_rate_limit,
+        mock_reset_rate_limit: Mock,
         mock_login,
         mock_get_tenants,
         mock_authenticate,
         mock_get_invitation,
         mock_is_rate_limit,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -188,7 +188,7 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    def test_login_fails_when_rate_limited(self, mock_get_invitation, mock_is_rate_limit, mock_db, app):
+    def test_login_fails_when_rate_limited(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask):
         """
         Test login rejection when rate limit is exceeded.
 
@@ -216,7 +216,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", True)
     @patch("controllers.console.auth.login.BillingService.is_email_in_freeze")
-    def test_login_fails_when_account_frozen(self, mock_is_frozen, mock_db, app):
+    def test_login_fails_when_account_frozen(self, mock_is_frozen, mock_db, app: Flask):
         """
         Test login rejection for frozen accounts.
 
@@ -253,7 +253,7 @@ class TestLoginApi:
         mock_get_invitation,
         mock_is_rate_limit,
         mock_db,
-        app,
+        app: Flask,
     ):
         """
         Test login failure with invalid credentials.
@@ -290,7 +290,7 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     def test_login_fails_for_banned_account(
-        self, mock_authenticate, mock_get_invitation, mock_is_rate_limit, mock_db, app
+        self, mock_authenticate, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask
     ):
         """
         Test login rejection for banned accounts.
@@ -328,14 +328,14 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.FeatureService.get_system_features")
     def test_login_fails_when_no_workspace_and_limit_exceeded(
         self,
-        mock_get_features,
-        mock_get_tenants,
-        mock_authenticate,
-        mock_get_invitation,
-        mock_is_rate_limit,
-        mock_db,
-        app,
-        mock_account,
+        mock_get_features: MagicMock,
+        mock_get_tenants: MagicMock,
+        mock_authenticate: MagicMock,
+        mock_get_invitation: MagicMock,
+        mock_is_rate_limit: MagicMock,
+        mock_db: MagicMock,
+        app: Flask,
+        mock_account: MagicMock,
     ):
         """
         Test login failure when user has no workspace and workspace limit exceeded.
@@ -367,7 +367,7 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app):
+    def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask):
         """
         Test login failure when invitation email doesn't match login email.
 
@@ -491,7 +491,7 @@ class TestLogoutApi:
     @patch("controllers.console.auth.login.AccountService.logout")
     @patch("controllers.console.auth.login.flask_login.logout_user")
     def test_successful_logout(
-        self, mock_logout_user, mock_service_logout, mock_current_account, mock_db, app, mock_account
+        self, mock_logout_user, mock_service_logout, mock_current_account, mock_db, app: Flask, mock_account
     ):
         """
         Test successful logout flow.
@@ -518,7 +518,7 @@ class TestLogoutApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.current_account_with_tenant")
     @patch("controllers.console.auth.login.flask_login")
-    def test_logout_anonymous_user(self, mock_flask_login, mock_current_account, mock_db, app):
+    def test_logout_anonymous_user(self, mock_flask_login, mock_current_account, mock_db, app: Flask):
         """
         Test logout for anonymous (not logged in) user.
 
