@@ -22,7 +22,7 @@ export type NodePanelPresenceUser = {
   avatar?: string | null
 }
 
-export type NodePanelPresenceInfo = NodePanelPresenceUser & {
+type NodePanelPresenceInfo = NodePanelPresenceUser & {
   clientId: string
   timestamp: number
 }
@@ -39,7 +39,7 @@ export type CollaborationState = {
   error?: string
 }
 
-export type CollaborationEventType
+type CollaborationEventType
   = | 'mouse_move'
     | 'vars_and_features_update'
     | 'sync_request'

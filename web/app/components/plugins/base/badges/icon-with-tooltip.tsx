@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
-import Tooltip from '@/app/components/base/tooltip'
 import { Theme } from '@/types/app'
 
 type IconWithTooltipProps = {
@@ -22,15 +22,24 @@ const IconWithTooltip: FC<IconWithTooltipProps> = ({
   const isDark = theme === Theme.dark
   const iconClassName = cn('h-5 w-5', className)
   const Icon = isDark ? BadgeIconDark : BadgeIconLight
+  const icon = (
+    <span
+      aria-label={popupContent}
+      className="flex shrink-0 items-center justify-center"
+    >
+      <Icon className={iconClassName} />
+    </span>
+  )
+
+  if (!popupContent)
+    return icon
 
   return (
-    <Tooltip
-      popupClassName="p-1.5 border-[0.5px] border-[0.5px] border-components-panel-border bg-components-tooltip-bg text-text-secondary system-xs-medium"
-      popupContent={popupContent}
-    >
-      <div className="flex shrink-0 items-center justify-center">
-        <Icon className={iconClassName} />
-      </div>
+    <Tooltip>
+      <TooltipTrigger render={icon} />
+      <TooltipContent className="border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary">
+        {popupContent}
+      </TooltipContent>
     </Tooltip>
   )
 }

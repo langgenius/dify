@@ -50,7 +50,7 @@ from libs.uuid_utils import uuidv7
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
-    from .model import AppMode, UploadFile
+    from .model import AppMode
 
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
@@ -63,6 +63,10 @@ from .account import Account
 from .base import Base, DefaultFieldsDCMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
+
+# UploadFile uses TypeBase while workflow execution offload models use Base, so relationships
+# must target the class object directly instead of relying on string lookup across registries.
+from .model import UploadFile
 from .types import EnumText, LongText, StringUUID
 from .utils.file_input_compat import (
     build_file_from_mapping_without_lookup,
@@ -1096,8 +1100,6 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
 
     @staticmethod
     def _load_full_content(session: orm.Session, file_id: str, storage: Storage):
-        from .model import UploadFile
-
         stmt = sa.select(UploadFile).where(UploadFile.id == file_id)
         file = session.scalars(stmt).first()
         assert file is not None, f"UploadFile with id {file_id} should exist but not"
@@ -1191,10 +1193,11 @@ class WorkflowNodeExecutionOffload(Base):
     )
 
     file: Mapped[Optional["UploadFile"]] = orm.relationship(
+        UploadFile,
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowNodeExecutionOffload.file_id == UploadFile.id",
+        primaryjoin=lambda: orm.foreign(WorkflowNodeExecutionOffload.file_id) == UploadFile.id,
     )
 
 
@@ -1968,10 +1971,11 @@ class WorkflowDraftVariableFile(Base):
 
     # Relationship to UploadFile
     upload_file: Mapped["UploadFile"] = orm.relationship(
+        UploadFile,
         foreign_keys=[upload_file_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowDraftVariableFile.upload_file_id == UploadFile.id",
+        primaryjoin=lambda: orm.foreign(WorkflowDraftVariableFile.upload_file_id) == UploadFile.id,
     )
 
 

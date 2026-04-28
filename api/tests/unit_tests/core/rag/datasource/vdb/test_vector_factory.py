@@ -146,10 +146,7 @@ def test_get_vector_factory_entry_point_overrides_builtin(vector_factory_module,
 def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
     dataset = SimpleNamespace(id="dataset-1")
 
-    with (
-        patch.object(vector_factory_module.Vector, "_get_embeddings", return_value="embeddings"),
-        patch.object(vector_factory_module.Vector, "_init_vector", return_value="processor"),
-    ):
+    with patch.object(vector_factory_module.Vector, "_init_vector", return_value="processor"):
         default_vector = vector_factory_module.Vector(dataset)
         custom_vector = vector_factory_module.Vector(dataset, attributes=["doc_id"])
 
@@ -166,8 +163,55 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
         "original_chunk_id",
     ]
     assert custom_vector._attributes == ["doc_id"]
-    assert default_vector._embeddings == "embeddings"
+    # ``_embeddings`` is now a lazy proxy that defers materializing the real
+    # embedding model until ``embed_*`` is invoked, so cleanup paths never
+    # trigger billing/feature-service calls during ``Vector(dataset)``
+    # construction. See ``_LazyEmbeddings``.
+    assert isinstance(default_vector._embeddings, vector_factory_module._LazyEmbeddings)
     assert default_vector._vector_processor == "processor"
+
+
+def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_module, monkeypatch):
+    """``Vector(dataset)`` must not transitively call ``ModelManager`` during
+    construction. The real embedding model should only be materialized on the
+    first ``embed_*`` call (i.e. create / search paths) so cleanup paths
+    (``delete_by_ids`` / ``delete``) remain resilient to billing-API failures.
+    """
+    for_tenant_mock = MagicMock(side_effect=AssertionError("ModelManager.for_tenant must not be called eagerly"))
+    monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", for_tenant_mock)
+
+    dataset = SimpleNamespace(
+        tenant_id="tenant-1",
+        embedding_model_provider="openai",
+        embedding_model="text-embedding-3-small",
+    )
+
+    proxy = vector_factory_module._LazyEmbeddings(dataset)
+
+    # Construction alone does not trigger ModelManager / FeatureService / BillingService.
+    for_tenant_mock.assert_not_called()
+
+    # Exercising an embed_* method materializes the real model exactly once.
+    inner_model = MagicMock()
+    inner_model.embed_documents.return_value = [[0.1, 0.2]]
+    cached_embedding_mock = MagicMock(return_value=inner_model)
+    real_for_tenant = MagicMock()
+    real_for_tenant.get_model_instance.return_value = "embedding-model-instance"
+    monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", MagicMock(return_value=real_for_tenant))
+    monkeypatch.setattr(vector_factory_module, "CacheEmbedding", cached_embedding_mock)
+
+    result = proxy.embed_documents(["hello"])
+
+    assert result == [[0.1, 0.2]]
+    cached_embedding_mock.assert_called_once_with("embedding-model-instance")
+    inner_model.embed_documents.assert_called_once_with(["hello"])
+
+    # Subsequent calls reuse the materialized model (no re-resolution).
+    inner_model.embed_documents.reset_mock()
+    cached_embedding_mock.reset_mock()
+    proxy.embed_documents(["world"])
+    cached_embedding_mock.assert_not_called()
+    inner_model.embed_documents.assert_called_once_with(["world"])
 
 
 def test_init_vector_prefers_dataset_index_struct(vector_factory_module, monkeypatch):
