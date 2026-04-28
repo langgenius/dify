@@ -1,4 +1,3 @@
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
 import logging
 import time
 
@@ -7,6 +6,7 @@ from celery import shared_task
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
