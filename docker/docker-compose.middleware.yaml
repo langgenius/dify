@@ -59,20 +59,20 @@ services:
       - ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}:/var/lib/mysql
     ports:
       - "${EXPOSE_MYSQL_PORT:-3306}:3306"
-    # mysql:8.0's bootstrap runs a first-stage mysqld with --skip-networking
-    # whose unix-socket ping succeeds before TCP is open; force TCP and add
-    # start_period so compose --wait does not return on the false positive.
+    # mysqladmin ping passes during mysql:8.0's TCP-listening stage even while
+    # the server is still finalising init, leading to "Lost connection during
+    # query" on the first real query. Verify with a real SELECT instead.
     healthcheck:
       test:
         [
           "CMD",
-          "mysqladmin",
-          "ping",
+          "mysql",
           "-h",
           "127.0.0.1",
-          "-u",
-          "root",
+          "-uroot",
           "-p${DB_PASSWORD:-difyai123456}",
+          "-e",
+          "SELECT 1",
         ]
       interval: 1s
       timeout: 3s
