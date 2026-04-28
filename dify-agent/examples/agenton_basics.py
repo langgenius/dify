@@ -102,7 +102,9 @@ async def main() -> None:
                 ),
                 CompositorLayerConfig(
                     name="profile_prompt",
-                    deps={"profile": "profile"},
+                    # deps maps dependency field names to layer names only when
+                    # they differ.
+                    # deps={"profile": "profile"},
                     layer=ProfilePromptLayer(),
                 ),
                 CompositorLayerConfig(
