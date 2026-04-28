@@ -153,14 +153,14 @@ class TestDraftVarLoaderSimple:
         variable_file.upload_file = upload_file
 
         draft_var = WorkflowDraftVariable(
-            id="draft-var-id",
-            app_id="app-1",
-            node_id="test-node-id",
-            name="test_file",
-            description="test file description",
+     id = "draft-var-id"
+     ,app_id = "app-1"
+     ,node_id = "test-node-id"
+     ,name = "test_file"
+     ,description = "test file description"
+     ,variable_file = variable_file
         )
         draft_var._set_selector(["test-node-id", "test_file"])
-        draft_var.variable_file = variable_file
 
         persisted_file = File(
             file_id="file-1",

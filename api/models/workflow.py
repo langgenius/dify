@@ -1,3 +1,4 @@
+from functools import cached_property
 import copy
 import json
 import logging
@@ -1459,19 +1460,19 @@ class WorkflowDraftVariable(TypeBase):
     __allow_unmapped__ = True
 
     # id is the unique identifier of a draft variable.
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuid4()))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=naive_utc_now,
+        default_factory=naive_utc_now,
         server_default=func.current_timestamp(),
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=naive_utc_now,
+        default_factory=naive_utc_now,
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
     )
@@ -1589,20 +1590,9 @@ class WorkflowDraftVariable(TypeBase):
     #
     # Use double underscore prefix for better encapsulation,
     # making this attribute harder to access from outside the class.
-    __value: Segment | None
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """
-        The constructor of `WorkflowDraftVariable` is not intended for
-        direct use outside this file. Its solo purpose is setup private state
-        used by the model instance.
-
-        Please use the factory methods
-        (`new_conversation_variable`, `new_sys_variable`, `new_node_variable`)
-        defined below to create instances of this class.
-        """
-        super().__init__(*args, **kwargs)
-        self.__value = None
+    @cached_property
+    def __value(self):
+        ...
 
     @orm.reconstructor
     def _init_on_load(self):
@@ -1803,15 +1793,17 @@ class WorkflowDraftVariable(TypeBase):
         description: str = "",
         file_id: str | None = None,
     ) -> "WorkflowDraftVariable":
-        variable = WorkflowDraftVariable()
-        variable.id = str(uuid4())
-        variable.created_at = naive_utc_now()
-        variable.updated_at = naive_utc_now()
-        variable.description = description
-        variable.app_id = app_id
-        variable.user_id = user_id
-        variable.node_id = node_id
-        variable.name = name
+        variable = WorkflowDraftVariable(
+
+       id = str(uuid4())
+       ,created_at = naive_utc_now()
+       ,updated_at = naive_utc_now()
+       ,description = description
+       ,app_id = app_id
+       ,user_id = user_id
+       ,node_id = node_id
+       ,name = name
+        )
         variable.set_value(value)
         variable._set_selector(list(variable_utils.to_selector(node_id, name)))
         return variable
