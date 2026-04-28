@@ -103,7 +103,7 @@ class DatasetDocumentStore:
 
             if not segment_document:
                 max_position += 1
-
+                assert self._document_id
                 segment_document = DocumentSegment(
                     tenant_id=self._dataset.tenant_id,
                     dataset_id=self._dataset.id,

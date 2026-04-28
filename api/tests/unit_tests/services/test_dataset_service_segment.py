@@ -461,6 +461,7 @@ class TestSegmentServiceMutations:
             vector_service.create_segments_vector.side_effect = RuntimeError("vector failed")
 
             result = SegmentService.multi_create_segment(segments, document, dataset)
+            assert result
 
         assert len(result) == 2
         assert [segment.position for segment in result] == [2, 3]
