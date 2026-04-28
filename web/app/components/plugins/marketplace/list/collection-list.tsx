@@ -46,7 +46,7 @@ export function ViewMoreButton({ searchParams, searchTab }: ViewMoreButtonProps)
 
   return (
     <div
-      className="system-xs-medium flex cursor-pointer items-center text-text-accent"
+      className="flex cursor-pointer items-center text-text-accent system-xs-medium"
       onClick={() => onMoreClick(searchParams, searchTab)}
     >
       {t('marketplace.viewMore', { ns: 'plugin' })}
@@ -72,14 +72,23 @@ export function CollectionHeader<TCollection extends BaseCollection>({
     && !!collection.search_params
     && itemsLength > GRID_DISPLAY_LIMIT
 
+  // The API only ships translations for a subset of locales (typically en_US
+  // and zh_Hans). For any other locale (e.g. ja_JP, pt_BR) the keyed lookup
+  // returns undefined and the title/description render as empty divs. Fall
+  // back to the en_US translation, then to whatever value is available, so
+  // the header always shows something meaningful.
+  const lang = getLanguage(locale)
+  const label = collection.label[lang] || collection.label.en_US || Object.values(collection.label)[0] || ''
+  const description = collection.description[lang] || collection.description.en_US || Object.values(collection.description)[0] || ''
+
   return (
     <div className="mb-2 flex items-end justify-between">
       <div>
-        <div className="title-xl-semi-bold text-text-primary">
-          {collection.label[getLanguage(locale)]}
+        <div className="text-text-primary title-xl-semi-bold">
+          {label}
         </div>
-        <div className="system-xs-regular text-text-tertiary">
-          {collection.description[getLanguage(locale)]}
+        <div className="text-text-tertiary system-xs-regular">
+          {description}
         </div>
       </div>
       {showViewMore && viewMore}

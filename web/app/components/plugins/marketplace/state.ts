@@ -6,6 +6,7 @@ import { CATEGORY_ALL } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins, useMarketplaceTemplateCollectionsAndTemplates, useMarketplaceTemplates } from './query'
 import { CREATION_TYPE } from './search-params'
+import { useTemplateCollectionsMapFilteredBySystemLanguage, useTemplatesFilteredBySystemLanguage } from './use-sync-system-language'
 import { getCollectionsParams, getPluginFilterType, mapTemplateDetailToTemplate } from './utils'
 
 const getCategory = (category: string) => {
@@ -112,10 +113,31 @@ export function useTemplatesMarketplaceData(enabled = true) {
   // Scroll pagination
   useMarketplaceContainerScroll(handlePageChange)
 
+  // Raw templates as returned by the API (after pagination/flattening).
+  const rawTemplates = useMemo(
+    () => templatesQuery.data?.pages.flatMap(page => page.templates).map(mapTemplateDetailToTemplate),
+    [templatesQuery.data],
+  )
+
+  // If the "Filter by language" dropdown is empty, post-filter the returned
+  // templates by the user's system language. If the dropdown has any picks,
+  // pass the list through untouched (the server has already filtered).
+  //
+  // The same rule applies to the curated-collections layout, which is what
+  // the page renders in default mode (no search, no category, no manual
+  // filter) — without this, the system-language filter never visibly takes
+  // effect on first entry.
+  const hasManualFilter = filterTemplateLanguages.length > 0
+  const templates = useTemplatesFilteredBySystemLanguage(rawTemplates, hasManualFilter)
+  const templateCollectionTemplatesMap = useTemplateCollectionsMapFilteredBySystemLanguage(
+    templateCollectionsQuery.data?.templateCollectionTemplatesMap,
+    hasManualFilter,
+  )
+
   return {
     templateCollections: templateCollectionsQuery.data?.templateCollections,
-    templateCollectionTemplatesMap: templateCollectionsQuery.data?.templateCollectionTemplatesMap,
-    templates: templatesQuery.data?.pages.flatMap(page => page.templates).map(mapTemplateDetailToTemplate),
+    templateCollectionTemplatesMap,
+    templates,
     templatesTotal: templatesQuery.data?.pages[0]?.total,
     page: templatesQuery.data?.pages.length || 1,
     isLoading: templateCollectionsQuery.isLoading || templatesQuery.isLoading,
