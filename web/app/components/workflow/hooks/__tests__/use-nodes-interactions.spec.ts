@@ -1,10 +1,12 @@
 import type { Edge, Node } from '../../types'
 import { act } from '@testing-library/react'
+import { CollectionType } from '@/app/components/tools/types'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
 import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
+import { useStore as usePluginDependencyStore } from '../../plugin-dependency/store'
 import { BlockEnum, ControlMode } from '../../types'
 import { useNodesInteractions } from '../use-nodes-interactions'
 
@@ -27,6 +29,17 @@ const runtimeNodesMetaDataMap = vi.hoisted(() => ({
 const runtimeState = vi.hoisted(() => ({
   nodesReadOnly: false,
   workflowReadOnly: false,
+}))
+
+const toolServiceState = vi.hoisted(() => ({
+  builtInTools: [] as unknown[],
+  customTools: [] as unknown[],
+  workflowTools: [] as unknown[],
+  mcpTools: [] as unknown[],
+}))
+
+const triggerServiceState = vi.hoisted(() => ({
+  triggerPlugins: [] as unknown[],
 }))
 
 let currentNodes: Node[] = []
@@ -101,12 +114,29 @@ vi.mock('../use-workflow-history', async importOriginal => ({
   }),
 }))
 
+vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: toolServiceState.builtInTools }),
+  useAllCustomTools: () => ({ data: toolServiceState.customTools }),
+  useAllWorkflowTools: () => ({ data: toolServiceState.workflowTools }),
+  useAllMCPTools: () => ({ data: toolServiceState.mcpTools }),
+}))
+
+vi.mock('@/service/use-triggers', () => ({
+  useAllTriggerPlugins: () => ({ data: triggerServiceState.triggerPlugins }),
+}))
+
 describe('useNodesInteractions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetReactFlowMockState()
     runtimeState.nodesReadOnly = false
     runtimeState.workflowReadOnly = false
+    toolServiceState.builtInTools = []
+    toolServiceState.customTools = []
+    toolServiceState.workflowTools = []
+    toolServiceState.mcpTools = []
+    triggerServiceState.triggerPlugins = []
+    usePluginDependencyStore.getState().setDependencies([])
     currentNodes = [
       createNode({
         id: 'node-1',
@@ -841,6 +871,154 @@ describe('useNodesInteractions', () => {
       const newNode = pastedNodes.find(node => !currentNodes.some(existingNode => existingNode.id === node.id))
 
       expect(newNode?.data.title).toBe('Clipboard (2)')
+    })
+  })
+
+  describe('paste plugin dependencies', () => {
+    beforeEach(() => {
+      runtimeNodesMetaDataMap.value = {
+        [BlockEnum.Tool]: {
+          defaultValue: {
+            type: BlockEnum.Tool,
+            title: 'Tool',
+            desc: '',
+            provider_type: CollectionType.builtIn,
+            provider_id: '',
+            provider_name: '',
+            tool_name: '',
+            tool_label: '',
+            tool_parameters: {},
+            tool_configurations: {},
+          },
+          metaData: {
+            isSingleton: false,
+          },
+        },
+      }
+    })
+
+    it('should open plugin dependency install modal data when pasted nodes use missing plugins', async () => {
+      currentNodes = [
+        createNode({
+          id: 'existing-node',
+          data: {
+            type: BlockEnum.Code,
+            title: 'Existing',
+            desc: '',
+          },
+        }),
+      ]
+      currentEdges = []
+      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.edges = currentEdges as unknown as typeof rfState.edges
+      toolServiceState.builtInTools = [{
+        id: 'langgenius/other/other',
+        name: 'other',
+        plugin_id: 'other-plugin',
+        provider: 'other-provider',
+        plugin_unique_identifier: 'langgenius/other:1.0.0',
+      }]
+
+      const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+        historyStore: {
+          nodes: currentNodes,
+          edges: currentEdges,
+        },
+      })
+
+      store.setState({
+        clipboardElements: [
+          createNode({
+            id: 'clipboard-tool',
+            data: {
+              type: BlockEnum.Tool,
+              title: 'Search',
+              desc: '',
+              provider_type: CollectionType.builtIn,
+              provider_id: 'missing-search',
+              provider_name: 'search',
+              tool_name: 'search',
+              tool_label: 'Search',
+              tool_parameters: {},
+              tool_configurations: {},
+              plugin_unique_identifier: 'langgenius/search:1.2.3',
+            },
+          }),
+        ] as never,
+        clipboardEdges: [] as never,
+        mousePosition: {
+          pageX: 60,
+          pageY: 80,
+        } as never,
+      })
+
+      await act(async () => {
+        await result.current.handleNodesPaste()
+      })
+
+      expect(usePluginDependencyStore.getState().dependencies).toEqual([
+        {
+          type: 'marketplace',
+          value: {
+            marketplace_plugin_unique_identifier: 'langgenius/search:1.2.3',
+            plugin_unique_identifier: 'langgenius/search:1.2.3',
+            version: '1.2.3',
+          },
+        },
+      ])
+    })
+
+    it('should not open plugin dependency install modal data when pasted plugin is installed', async () => {
+      currentNodes = []
+      currentEdges = []
+      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.edges = currentEdges as unknown as typeof rfState.edges
+      toolServiceState.builtInTools = [{
+        id: 'missing-search',
+        name: 'search',
+        plugin_id: 'search-plugin',
+        provider: 'search',
+        plugin_unique_identifier: 'langgenius/search:1.2.3',
+      }]
+
+      const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+        historyStore: {
+          nodes: currentNodes,
+          edges: currentEdges,
+        },
+      })
+
+      store.setState({
+        clipboardElements: [
+          createNode({
+            id: 'clipboard-tool',
+            data: {
+              type: BlockEnum.Tool,
+              title: 'Search',
+              desc: '',
+              provider_type: CollectionType.builtIn,
+              provider_id: 'missing-search',
+              provider_name: 'search',
+              tool_name: 'search',
+              tool_label: 'Search',
+              tool_parameters: {},
+              tool_configurations: {},
+              plugin_unique_identifier: 'langgenius/search:1.2.3',
+            },
+          }),
+        ] as never,
+        clipboardEdges: [] as never,
+        mousePosition: {
+          pageX: 60,
+          pageY: 80,
+        } as never,
+      })
+
+      await act(async () => {
+        await result.current.handleNodesPaste()
+      })
+
+      expect(usePluginDependencyStore.getState().dependencies).toEqual([])
     })
   })
 

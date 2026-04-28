@@ -1,8 +1,11 @@
 import type { TriggerWithProvider } from '../../block-selector/types'
-import type { CommonNodeType, ToolWithProvider } from '../../types'
+import type { CommonNodeType, Node, ToolWithProvider } from '../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
 import {
+  createMarketplaceDependencyFromIdentifier,
+  getMissingPluginDependenciesFromNodes,
+  getVersionFromMarketplaceIdentifier,
   isNodePluginMissing,
   isPluginDependentNode,
   matchDataSource,
@@ -190,6 +193,55 @@ describe('plugin install check', () => {
       } as CommonNodeType
 
       expect(isNodePluginMissing(node, {})).toBe(false)
+    })
+  })
+
+  describe('dependency helpers', () => {
+    it('should parse the version from marketplace identifiers', () => {
+      expect(getVersionFromMarketplaceIdentifier('langgenius/search:1.2.3@sha256:abc')).toBe('1.2.3')
+      expect(getVersionFromMarketplaceIdentifier('langgenius/search')).toBeUndefined()
+    })
+
+    it('should create marketplace dependencies from plugin identifiers', () => {
+      expect(createMarketplaceDependencyFromIdentifier('langgenius/search:1.2.3')).toEqual({
+        type: 'marketplace',
+        value: {
+          marketplace_plugin_unique_identifier: 'langgenius/search:1.2.3',
+          plugin_unique_identifier: 'langgenius/search:1.2.3',
+          version: '1.2.3',
+        },
+      })
+    })
+
+    it('should collect unique dependencies from missing plugin nodes', () => {
+      const node = {
+        id: 'node-1',
+        type: 'custom',
+        position: { x: 0, y: 0 },
+        data: {
+          type: BlockEnum.Tool,
+          title: 'Tool',
+          desc: '',
+          provider_type: CollectionType.builtIn,
+          provider_id: 'missing-provider',
+          plugin_unique_identifier: 'langgenius/search:1.2.3',
+        },
+      } as unknown as Node
+
+      const dependencies = getMissingPluginDependenciesFromNodes([node, node], {
+        builtInTools: [createTool()],
+      })
+
+      expect(dependencies).toEqual([
+        {
+          type: 'marketplace',
+          value: {
+            marketplace_plugin_unique_identifier: 'langgenius/search:1.2.3',
+            plugin_unique_identifier: 'langgenius/search:1.2.3',
+            version: '1.2.3',
+          },
+        },
+      ])
     })
   })
 })

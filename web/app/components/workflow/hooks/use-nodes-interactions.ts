@@ -24,6 +24,13 @@ import {
   useReactFlow,
 } from 'reactflow'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
   CUSTOM_EDGE,
@@ -41,7 +48,8 @@ import { useNodeIterationInteractions } from '../nodes/iteration/use-interaction
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
-import { useWorkflowStore } from '../store'
+import { useStore as usePluginDependencyStore } from '../plugin-dependency/store'
+import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum, ControlMode, isTriggerNode } from '../types'
 
 import {
@@ -58,6 +66,7 @@ import {
   sanitizeClipboardValueByDefault,
   writeWorkflowClipboard,
 } from '../utils'
+import { getMissingPluginDependenciesFromNodes } from '../utils/plugin-install-check'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
@@ -149,6 +158,12 @@ export const useNodesInteractions = () => {
     ...systemFeaturesQueryOptions(),
     select: s => s.app_dsl_version,
   })
+  const { data: builtInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+  const { data: triggerPlugins } = useAllTriggerPlugins()
+  const dataSourceList = useStore(s => s.dataSourceList)
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -1920,6 +1935,23 @@ export const useNodesInteractions = () => {
     if (!compatibleClipboardElements.length)
       return
 
+    const missingPluginDependencies = getMissingPluginDependenciesFromNodes(
+      compatibleClipboardElements,
+      {
+        builtInTools,
+        customTools,
+        workflowTools,
+        mcpTools,
+        triggerPlugins,
+        dataSourceList,
+      },
+    )
+    if (missingPluginDependencies.length) {
+      usePluginDependencyStore.getState().setDependencies(
+        missingPluginDependencies,
+      )
+    }
+
     const rootClipboardNodes = compatibleClipboardElements.filter(
       node => !node.parentId || !compatibleClipboardNodeIds.has(node.parentId),
     )
@@ -2316,6 +2348,12 @@ export const useNodesInteractions = () => {
     handleNodeLoopChildrenCopy,
     getNodeDefaultValueForPaste,
     appDslVersion,
+    builtInTools,
+    customTools,
+    workflowTools,
+    mcpTools,
+    triggerPlugins,
+    dataSourceList,
   ])
 
   const handleNodesDuplicate = useCallback(

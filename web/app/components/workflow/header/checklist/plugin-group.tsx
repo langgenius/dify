@@ -7,13 +7,8 @@ import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '../../block-icon'
 import { useStore as usePluginDependencyStore } from '../../plugin-dependency/store'
+import { getVersionFromMarketplaceIdentifier } from '../../utils/plugin-install-check'
 import { ItemIndicator } from './item-indicator'
-
-function getVersionFromMarketplaceIdentifier(identifier: string): string | undefined {
-  const withoutHash = identifier.split('@')[0]
-  const [, version] = withoutHash!.split(':')
-  return version || undefined
-}
 
 export const ChecklistPluginGroup = memo(({
   items,
