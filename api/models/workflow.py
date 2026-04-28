@@ -1,10 +1,10 @@
-from functools import cached_property
 import copy
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
+from functools import cached_property
 from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
 from uuid import uuid4
 
@@ -1591,8 +1591,7 @@ class WorkflowDraftVariable(TypeBase):
     # Use double underscore prefix for better encapsulation,
     # making this attribute harder to access from outside the class.
     @cached_property
-    def __value(self):
-        ...
+    def __value(self): ...
 
     @orm.reconstructor
     def _init_on_load(self):
@@ -1794,15 +1793,14 @@ class WorkflowDraftVariable(TypeBase):
         file_id: str | None = None,
     ) -> "WorkflowDraftVariable":
         variable = WorkflowDraftVariable(
-
-       id = str(uuid4())
-       ,created_at = naive_utc_now()
-       ,updated_at = naive_utc_now()
-       ,description = description
-       ,app_id = app_id
-       ,user_id = user_id
-       ,node_id = node_id
-       ,name = name
+            id=str(uuid4()),
+            created_at=naive_utc_now(),
+            updated_at=naive_utc_now(),
+            description=description,
+            app_id=app_id,
+            user_id=user_id,
+            node_id=node_id,
+            name=name,
         )
         variable.set_value(value)
         variable._set_selector(list(variable_utils.to_selector(node_id, name)))
