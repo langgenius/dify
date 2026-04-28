@@ -101,17 +101,12 @@ class TestWorkflowNodeExecutionModel:
         """Test load_full_process_data when no process_data file exists."""
         from models.enums import ExecutionOffLoadType
 
-
         # Create offload data for inputs only, not process_data
         inputs_offload = WorkflowNodeExecutionOffload()
         inputs_offload.type_ = ExecutionOffLoadType.INPUTS
         inputs_offload.file_id = "inputs-file"
 
-        execution = WorkflowNodeExecutionModel(
-        offload_data = [inputs_offload]
-        ,process_data = '{"test": "data"}'
-
-        )
+        execution = WorkflowNodeExecutionModel(offload_data=[inputs_offload], process_data='{"test": "data"}')
 
         # Mock session and storage
         mock_session = Mock()
