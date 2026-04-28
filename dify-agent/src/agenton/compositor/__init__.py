@@ -12,14 +12,16 @@ layer names as values. Prompt aggregation depends on insertion order: prefix
 prompts are collected from first to last layer, while suffix prompts are
 collected in reverse.
 
-``Compositor.context`` enters layer contexts in compositor order and exits them
-in reverse order through ``AsyncExitStack``. It yields per-layer lifecycle
-signals so callers can mark individual layers, or all layers, as temporarily
-leaving.
+``Compositor.enter`` enters layers in compositor order and exits them in
+reverse order through ``AsyncExitStack``. It accepts an optional
+``CompositorControl`` whose keys must match the compositor layer names. When
+omitted, one is created from the compositor's layer names. Reuse the same
+``CompositorControl`` after setting ``tmp_leave`` to reenter those layer
+contexts.
 """
 
 from collections import OrderedDict
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterable
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass, field
 from importlib import import_module
@@ -28,7 +30,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Mapping, cast
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, JsonValue
 from typing_extensions import Self
 
-from agenton.layers.base import Layer, LayerContextSignal
+from agenton.layers.base import Layer, LayerControl
 
 
 class ImportedLayerConfig(BaseModel):
@@ -127,21 +129,27 @@ def _validate_compositor_config_input(value: CompositorConfigValue) -> Composito
     return _validate_config_model_input(CompositorConfig, value)
 
 
-@dataclass(slots=True)
-class CompositorContext:
-    """Signal slots for layer contexts entered by a compositor."""
+class CompositorControl:
+    """External controls for layer entry contexts entered by a compositor."""
 
-    signals: OrderedDict[str, LayerContextSignal]
+    __slots__ = ("layer_controls",)
+
+    layer_controls: OrderedDict[str, LayerControl]
+
+    def __init__(self, layer_names: Iterable[str]) -> None:
+        self.layer_controls = OrderedDict(
+            (layer_name, LayerControl()) for layer_name in layer_names
+        )
 
     @property
-    def temporary_leave(self) -> bool:
-        """Whether any entered layer is currently marked for temporary leave."""
-        return any(signal.temporary_leave for signal in self.signals.values())
+    def tmp_leave(self) -> bool:
+        """Whether any entered layer control is marked for temporary leave."""
+        return any(control.tmp_leave for control in self.layer_controls.values())
 
-    @temporary_leave.setter
-    def temporary_leave(self, value: bool) -> None:
-        for signal in self.signals.values():
-            signal.temporary_leave = value
+    @tmp_leave.setter
+    def tmp_leave(self, value: bool) -> None:
+        for control in self.layer_controls.values():
+            control.tmp_leave = value
 
 
 @dataclass(kw_only=True)
@@ -192,15 +200,33 @@ class Compositor[PromptT, ToolT]:
         self._deps_bound = True
 
     @asynccontextmanager
-    async def context(self) -> AsyncIterator[CompositorContext]:
-        """Enter each layer context in order and yield their signal slots."""
+    async def enter(
+        self,
+        control: CompositorControl | None = None,
+    ) -> AsyncIterator[CompositorControl]:
+        """Enter each layer context in order and yield compositor control."""
         if not self._deps_bound:
             raise RuntimeError("Compositor deps must be bound before entering context.")
-        signals: OrderedDict[str, LayerContextSignal] = OrderedDict()
+
+        if control is None:
+            control = CompositorControl(self.layers)
+        self._validate_control(control)
+
         async with AsyncExitStack() as stack:
             for layer_name, layer in self.layers.items():
-                signals[layer_name] = await stack.enter_async_context(layer.context())
-            yield CompositorContext(signals=signals)
+                await stack.enter_async_context(layer.enter(control.layer_controls[layer_name]))
+            yield control
+
+    def _validate_control(self, control: CompositorControl) -> None:
+        expected_layer_names = tuple(self.layers)
+        actual_layer_names = tuple(control.layer_controls)
+        if actual_layer_names != expected_layer_names:
+            expected = ", ".join(expected_layer_names)
+            actual = ", ".join(actual_layer_names)
+            raise ValueError(
+                "CompositorControl layer names must match compositor layers in order. "
+                f"Expected [{expected}], got [{actual}]."
+            )
 
     @property
     def prompts(self) -> list[PromptT]:
@@ -224,7 +250,7 @@ __all__ = [
     "CompositorConfig",
     "CompositorConfigValue",
     "CompositorLayerConfigInput",
-    "CompositorContext",
+    "CompositorControl",
     "CompositorLayerConfig",
     "CompositorLayerConfigValue",
     "ImportedLayerConfig",

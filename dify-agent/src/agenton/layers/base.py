@@ -11,10 +11,10 @@ inheritance patterns.
 implementations should treat ``self.deps`` as unavailable until a compositor or
 caller has resolved and bound dependencies.
 
-Layer async contexts use a bool signal to distinguish permanent exits from
-temporary exits. A normal first entry runs create logic and a normal exit runs
-delete logic; when the signal is set, exit runs temporary-leave logic and the
-next entry runs reenter logic.
+Layer async entry uses a caller-provided bool control to distinguish permanent
+exits from temporary exits. The control is also the external lifecycle state:
+reuse a ``tmp_leave`` control to reenter, or pass a fresh control to start from
+create logic.
 
 ``Layer`` is framework-neutral over prompt and tool item types. Typed families
 such as ``agenton.layers.types.PlainLayer`` bind those generic slots to a
@@ -72,14 +72,17 @@ class NoLayerDeps(LayerDeps):
 
 
 @dataclass(slots=True)
-class LayerContextSignal:
-    """Signal slot exposed inside a layer context.
+class LayerControl:
+    """Control slot passed into a layer entry context.
 
-    Set ``temporary_leave`` before leaving the context to run temporary-leave
-    logic instead of delete logic. A later entry will then run reenter logic.
+    ``Layer.enter`` requires the caller to provide this object. Set
+    ``tmp_leave`` before leaving the context to run temporary-leave logic
+    instead of delete logic. Reusing that same control on a later entry will
+    consume ``tmp_leave`` and run reenter logic; using a fresh control starts
+    from create logic.
     """
 
-    temporary_leave: bool = False
+    tmp_leave: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,13 +100,12 @@ class Layer[DepsT: LayerDeps, PromptT, ToolT](ABC):
     properties. They declare required dependencies in the ``DepsT`` container
     rather than by accepting dependencies in ``__init__``. The default async
     context manager handles create, delete, temporary-leave, and reenter
-    transitions; layers can override ``context`` when they need to wrap extra
+    transitions; layers can override ``enter`` when they need to wrap extra
     runtime resources.
     """
 
     deps_type: type[DepsT]
     deps: DepsT
-    _temporarily_left: bool
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
@@ -149,46 +151,43 @@ class Layer[DepsT: LayerDeps, PromptT, ToolT](ABC):
             resolved_deps[name] = deps[name]
         self.deps = self.deps_type(**resolved_deps)
 
-    def context(self) -> AbstractAsyncContextManager[LayerContextSignal]:
-        """Return the layer's async context manager.
+    def enter(self, control: LayerControl) -> AbstractAsyncContextManager[None]:
+        """Return the layer's async entry context manager.
 
-        The yielded ``LayerContextSignal`` is the signal slot available to code
-        inside the context. Subclasses can override this to wrap extra async
-        resources around ``self.lifecycle_context()``.
+        ``control`` is the lifecycle control slot for this entry. Subclasses can
+        override this to wrap extra async resources around
+        ``self.lifecycle_enter(control)``.
         """
-        return self.lifecycle_context()
+        return self.lifecycle_enter(control)
 
     @asynccontextmanager
-    async def lifecycle_context(self) -> AsyncIterator[LayerContextSignal]:
+    async def lifecycle_enter(self, control: LayerControl) -> AsyncIterator[None]:
         """Run the default create/reenter and delete/temporary-leave lifecycle."""
-        signal = LayerContextSignal()
-        was_temporarily_left = getattr(self, "_temporarily_left", False)
-        self._temporarily_left = False
-        if was_temporarily_left:
-            await self.on_context_reenter(signal)
+        was_tmp_left = control.tmp_leave
+        control.tmp_leave = False
+        if was_tmp_left:
+            await self.on_context_reenter(control)
         else:
-            await self.on_context_create(signal)
+            await self.on_context_create(control)
 
         try:
-            yield signal
+            yield
         finally:
-            if signal.temporary_leave:
-                await self.on_context_temporarily_leave(signal)
-                self._temporarily_left = True
+            if control.tmp_leave:
+                await self.on_context_tmp_leave(control)
             else:
-                await self.on_context_delete(signal)
-                self._temporarily_left = False
+                await self.on_context_delete(control)
 
-    async def on_context_create(self, signal: LayerContextSignal) -> None:
+    async def on_context_create(self, control: LayerControl) -> None:
         """Run when the layer context is entered from a non-temporary state."""
 
-    async def on_context_delete(self, signal: LayerContextSignal) -> None:
-        """Run when the layer context exits without a temporary-leave signal."""
+    async def on_context_delete(self, control: LayerControl) -> None:
+        """Run when the layer context exits without ``tmp_leave`` set."""
 
-    async def on_context_temporarily_leave(self, signal: LayerContextSignal) -> None:
-        """Run when the layer context exits with ``temporary_leave`` set."""
+    async def on_context_tmp_leave(self, control: LayerControl) -> None:
+        """Run when the layer context exits with ``tmp_leave`` set."""
 
-    async def on_context_reenter(self, signal: LayerContextSignal) -> None:
+    async def on_context_reenter(self, control: LayerControl) -> None:
         """Run when the layer context enters after a temporary leave."""
 
     @property

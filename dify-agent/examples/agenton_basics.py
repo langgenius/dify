@@ -9,7 +9,7 @@ from inspect import signature
 from typing_extensions import override
 
 from agenton.compositor import Compositor, CompositorLayerConfig
-from agenton.layers import LayerContextSignal, LayerDeps, NoLayerDeps, PlainLayer
+from agenton.layers import LayerControl, LayerDeps, NoLayerDeps, PlainLayer
 from agenton_collections.plain import DynamicToolsLayer, ObjectLayer, ToolsLayer, with_object
 
 
@@ -41,19 +41,19 @@ class TraceLayer(PlainLayer[NoLayerDeps]):
     events: list[str] = field(default_factory=list)
 
     @override
-    async def on_context_create(self, signal: LayerContextSignal) -> None:
+    async def on_context_create(self, control: LayerControl) -> None:
         self.events.append("create")
 
     @override
-    async def on_context_temporarily_leave(self, signal: LayerContextSignal) -> None:
-        self.events.append("temporary_leave")
+    async def on_context_tmp_leave(self, control: LayerControl) -> None:
+        self.events.append("tmp_leave")
 
     @override
-    async def on_context_reenter(self, signal: LayerContextSignal) -> None:
+    async def on_context_reenter(self, control: LayerControl) -> None:
         self.events.append("reenter")
 
     @override
-    async def on_context_delete(self, signal: LayerContextSignal) -> None:
+    async def on_context_delete(self, control: LayerControl) -> None:
         self.events.append("delete")
 
 
@@ -128,9 +128,9 @@ async def main() -> None:
         print(f"- {tool.__name__}{signature(tool)}")
     print([tool("layer composition") for tool in compositor.tools])
 
-    async with compositor.context() as context:
-        context.temporary_leave = True
-    async with compositor.context():
+    async with compositor.enter() as lifecycle_control:
+        lifecycle_control.tmp_leave = True
+    async with compositor.enter(lifecycle_control):
         pass
     print("\nLifecycle:", trace.events)
 
