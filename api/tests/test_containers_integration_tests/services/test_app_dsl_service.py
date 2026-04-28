@@ -17,7 +17,7 @@ from core.trigger.constants import (
 )
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
-from models import Account, AppMode
+from models import Account, App, AppMode
 from models.model import AppModelConfig, IconType
 from services import app_dsl_service
 from services.account_service import AccountService, TenantService
@@ -46,6 +46,29 @@ def _account_mock(*, tenant_id: str = _DEFAULT_TENANT_ID, account_id: str = _DEF
     account.current_tenant_id = tenant_id
     account.id = account_id
     return account
+
+
+def _app_stub(**overrides: object) -> MagicMock:
+    app = MagicMock(spec=App)
+    defaults: dict[str, object] = {
+        "id": str(uuid4()),
+        "tenant_id": _DEFAULT_TENANT_ID,
+        "mode": AppMode.CHAT.value,
+        "name": "n",
+        "description": "d",
+        "icon": "🤖",
+        "icon_type": IconType.EMOJI,
+        "icon_background": "#fff",
+        "use_icon_as_answer_icon": False,
+        "app_model_config": None,
+        "app_model_config_id": None,
+        "updated_by": None,
+        "updated_at": None,
+    }
+    defaults.update(overrides)
+    for key, value in defaults.items():
+        setattr(app, key, value)
+    return app
 
 
 def _yaml_dump(data: dict) -> str:
@@ -585,7 +608,7 @@ class TestAppDslService:
 
     def test_check_dependencies_returns_empty_when_no_redis_data(self, db_session_with_containers):
         service = AppDslService(db_session_with_containers)
-        app_model = SimpleNamespace(id=str(uuid4()), tenant_id=_DEFAULT_TENANT_ID)
+        app_model = _app_stub()
         result = service.check_dependencies(app_model=app_model)
         assert result.leaked_dependencies == []
 
@@ -614,7 +637,7 @@ class TestAppDslService:
         )
 
         service = AppDslService(db_session_with_containers)
-        result = service.check_dependencies(app_model=SimpleNamespace(id=app_id, tenant_id=_DEFAULT_TENANT_ID))
+        result = service.check_dependencies(app_model=_app_stub(id=app_id))
         assert len(result.leaked_dependencies) == 1
 
     def test_check_dependencies_with_real_app(self, db_session_with_containers, mock_external_service_dependencies):
@@ -656,18 +679,13 @@ class TestAppDslService:
             lambda _m: SimpleNamespace(kind="conv"),
         )
 
-        app = SimpleNamespace(
-            id=str(uuid4()),
-            tenant_id=_DEFAULT_TENANT_ID,
+        app = _app_stub(
             mode=AppMode.WORKFLOW.value,
             name="old",
             description="old-desc",
             icon_type=IconType.EMOJI,
             icon="old-icon",
             icon_background="#111111",
-            updated_by=None,
-            updated_at=None,
-            app_model_config=None,
         )
         service = AppDslService(db_session_with_containers)
         updated = service._create_or_update_app(
@@ -745,15 +763,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing workflow data"):
             service._create_or_update_app(
-                app=SimpleNamespace(
-                    id=str(uuid4()),
-                    tenant_id=_DEFAULT_TENANT_ID,
-                    mode=AppMode.WORKFLOW.value,
-                    name="n",
-                    description="d",
-                    icon_background="#fff",
-                    app_model_config=None,
-                ),
+                app=_app_stub(mode=AppMode.WORKFLOW.value),
                 data={"app": {"mode": AppMode.WORKFLOW.value}},
                 account=_account_mock(),
             )
@@ -762,15 +772,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing model_config"):
             service._create_or_update_app(
-                app=SimpleNamespace(
-                    id=str(uuid4()),
-                    tenant_id=_DEFAULT_TENANT_ID,
-                    mode=AppMode.CHAT.value,
-                    name="n",
-                    description="d",
-                    icon_background="#fff",
-                    app_model_config=None,
-                ),
+                app=_app_stub(mode=AppMode.CHAT.value),
                 data={"app": {"mode": AppMode.CHAT.value}},
                 account=_account_mock(),
             )
@@ -799,15 +801,7 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Invalid app mode"):
             service._create_or_update_app(
-                app=SimpleNamespace(
-                    id=str(uuid4()),
-                    tenant_id=_DEFAULT_TENANT_ID,
-                    mode=AppMode.RAG_PIPELINE.value,
-                    name="n",
-                    description="d",
-                    icon_background="#fff",
-                    app_model_config=None,
-                ),
+                app=_app_stub(mode=AppMode.RAG_PIPELINE.value),
                 data={"app": {"mode": AppMode.RAG_PIPELINE.value}},
                 account=_account_mock(),
             )
@@ -828,29 +822,18 @@ class TestAppDslService:
             lambda *_args, **_kwargs: model_calls.append(True),
         )
 
-        workflow_app = SimpleNamespace(
+        workflow_app = _app_stub(
             mode=AppMode.WORKFLOW.value,
-            tenant_id=_DEFAULT_TENANT_ID,
-            name="n",
             icon="i",
             icon_type="emoji",
-            icon_background="#fff",
-            description="d",
-            use_icon_as_answer_icon=False,
-            app_model_config=None,
         )
         AppDslService.export_dsl(workflow_app)
         assert workflow_calls == [True]
 
-        chat_app = SimpleNamespace(
+        chat_app = _app_stub(
             mode=AppMode.CHAT.value,
-            tenant_id=_DEFAULT_TENANT_ID,
-            name="n",
             icon="i",
             icon_type="emoji",
-            icon_background="#fff",
-            description="d",
-            use_icon_as_answer_icon=False,
             app_model_config=SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": []}}),
         )
         AppDslService.export_dsl(chat_app)
@@ -863,16 +846,14 @@ class TestAppDslService:
             lambda **_kwargs: None,
         )
 
-        emoji_app = SimpleNamespace(
+        emoji_app = _app_stub(
             mode=AppMode.WORKFLOW.value,
-            tenant_id=_DEFAULT_TENANT_ID,
             name="Emoji App",
             icon="🎨",
             icon_type=IconType.EMOJI,
             icon_background="#FF5733",
             description="App with emoji icon",
             use_icon_as_answer_icon=True,
-            app_model_config=None,
         )
         yaml_output = AppDslService.export_dsl(emoji_app)
         data = yaml.safe_load(yaml_output)
@@ -880,16 +861,13 @@ class TestAppDslService:
         assert data["app"]["icon_type"] == "emoji"
         assert data["app"]["icon_background"] == "#FF5733"
 
-        image_app = SimpleNamespace(
+        image_app = _app_stub(
             mode=AppMode.WORKFLOW.value,
-            tenant_id=_DEFAULT_TENANT_ID,
             name="Image App",
             icon="https://example.com/icon.png",
             icon_type=IconType.IMAGE,
             icon_background="#FFEAD5",
             description="App with image icon",
-            use_icon_as_answer_icon=False,
-            app_model_config=None,
         )
         yaml_output = AppDslService.export_dsl(image_app)
         data = yaml.safe_load(yaml_output)
@@ -1106,7 +1084,7 @@ class TestAppDslService:
         export_data: dict = {}
         AppDslService._append_workflow_export_data(
             export_data=export_data,
-            app_model=SimpleNamespace(tenant_id=_DEFAULT_TENANT_ID),
+            app_model=_app_stub(),
             include_secret=False,
             workflow_id=None,
         )
@@ -1132,7 +1110,7 @@ class TestAppDslService:
         with pytest.raises(ValueError, match="Missing draft workflow configuration"):
             AppDslService._append_workflow_export_data(
                 export_data={},
-                app_model=SimpleNamespace(tenant_id=_DEFAULT_TENANT_ID),
+                app_model=_app_stub(),
                 include_secret=False,
                 workflow_id=None,
             )
@@ -1160,7 +1138,7 @@ class TestAppDslService:
         monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
 
         app_model_config = SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}})
-        app_model = SimpleNamespace(tenant_id=_DEFAULT_TENANT_ID, app_model_config=app_model_config)
+        app_model = _app_stub(app_model_config=app_model_config)
         export_data: dict = {}
 
         AppDslService._append_model_config_export_data(export_data, app_model)
@@ -1169,7 +1147,7 @@ class TestAppDslService:
 
     def test_append_model_config_export_data_requires_app_config(self):
         with pytest.raises(ValueError, match="Missing app configuration"):
-            AppDslService._append_model_config_export_data({}, SimpleNamespace(app_model_config=None))
+            AppDslService._append_model_config_export_data({}, _app_stub(app_model_config=None))
 
     # ── Dependency Extraction ─────────────────────────────────────────
 
