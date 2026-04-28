@@ -67,6 +67,7 @@
   "badge.new": "NEW",
   "category.agents": "エージェント戦略",
   "category.all": "すべて",
+  "category.allTypes": "全種類",
   "category.bundles": "バンドル",
   "category.datasources": "データソース",
   "category.extensions": "拡張機能",
@@ -252,10 +253,12 @@
   "marketplace.verifiedTip": "このプラグインは Dify によって認証されています",
   "marketplace.viewMore": "もっと見る",
   "metadata.title": "プラグイン",
+  "pluginDevelopmentGuide": "プラグイン開発ガイド",
   "pluginInfoModal.packageName": "パッケージ",
   "pluginInfoModal.release": "リリース",
   "pluginInfoModal.repository": "リポジトリ",
   "pluginInfoModal.title": "プラグイン情報",
+  "pluginPublishGuide": "プラグイン公開ガイド",
   "plugins": "プラグイン",
   "privilege.admins": "管理者",
   "privilege.everyone": "みんな",
@@ -302,5 +305,6 @@
   "upgrade.title": "プラグインをインストールする",
   "upgrade.upgrade": "インストール",
   "upgrade.upgrading": "インストール中...",
-  "upgrade.usedInApps": "{{num}}のアプリで使用されています"
+  "upgrade.usedInApps": "{{num}}のアプリで使用されています",
+  "usedCount": "{{num}} 回使用"
 }

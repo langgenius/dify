@@ -67,6 +67,7 @@
   "badge.new": "NEW",
   "category.agents": "代理策略",
   "category.all": "都",
+  "category.allTypes": "所有種類",
   "category.bundles": "束",
   "category.datasources": "資料來源",
   "category.extensions": "擴展",
@@ -251,11 +252,12 @@
   "marketplace.verifiedTip": "由 Dify 驗證",
   "marketplace.viewMore": "查看更多",
   "metadata.title": "插件",
+  "pluginDevelopmentGuide": "插件開發指南",
   "pluginInfoModal.packageName": "包",
   "pluginInfoModal.release": "釋放",
   "pluginInfoModal.repository": "存儲庫",
   "pluginInfoModal.title": "插件資訊",
-  "pluginPublishGuide": "發佈插件",
+  "pluginPublishGuide": "插件發佈指南",
   "plugins": "插件",
   "privilege.admins": "管理員",
   "privilege.everyone": "每個人 都",
@@ -302,5 +304,6 @@
   "upgrade.title": "安裝插件",
   "upgrade.upgrade": "安裝",
   "upgrade.upgrading": "安裝。。。",
-  "upgrade.usedInApps": "用於 {{num}} 個應用"
+  "upgrade.usedInApps": "用於 {{num}} 個應用",
+  "usedCount": "{{num}} 回使用"
 }
