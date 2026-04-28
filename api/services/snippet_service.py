@@ -22,7 +22,8 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
-from services.errors.app import WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
 logger = logging.getLogger(__name__)
 
@@ -306,6 +307,31 @@ class SnippetService:
         )
         return workflow
 
+    def get_published_workflow_by_id(self, snippet: CustomizedSnippet, workflow_id: str) -> Workflow | None:
+        """
+        Get a published workflow snapshot by ID for snippet history restore.
+
+        :param snippet: CustomizedSnippet instance
+        :param workflow_id: Workflow ID
+        :return: Published Workflow or None
+        :raises IsDraftWorkflowError: If the workflow ID points to a draft workflow
+        """
+        workflow = (
+            db.session.query(Workflow)
+            .where(
+                Workflow.tenant_id == snippet.tenant_id,
+                Workflow.app_id == snippet.id,
+                self._snippet_kind_filter(),
+                Workflow.id == workflow_id,
+            )
+            .first()
+        )
+        if not workflow:
+            return None
+        if workflow.version == Workflow.VERSION_DRAFT:
+            raise IsDraftWorkflowError("source workflow must be published")
+        return workflow
+
     def sync_draft_workflow(
         self,
         *,
@@ -370,6 +396,46 @@ class SnippetService:
 
         db.session.commit()
         return workflow
+
+    def restore_published_workflow_to_draft(
+        self,
+        *,
+        snippet: CustomizedSnippet,
+        workflow_id: str,
+        account: Account,
+    ) -> Workflow:
+        """
+        Restore a published snippet workflow snapshot into the draft workflow.
+
+        :param snippet: CustomizedSnippet instance
+        :param workflow_id: Published workflow ID
+        :param account: Account making the change
+        :return: Restored draft Workflow
+        :raises WorkflowNotFoundError: If the source workflow does not exist
+        :raises IsDraftWorkflowError: If the source workflow is a draft
+        :raises ValueError: If the restored graph is invalid for snippets
+        """
+        source_workflow = self.get_published_workflow_by_id(snippet=snippet, workflow_id=workflow_id)
+        if not source_workflow:
+            raise WorkflowNotFoundError("Workflow not found.")
+
+        SnippetService.validate_snippet_graph_forbidden_nodes(source_workflow.graph_dict)
+
+        draft_workflow = self.get_draft_workflow(snippet=snippet)
+        draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
+            tenant_id=snippet.tenant_id,
+            app_id=snippet.id,
+            source_workflow=source_workflow,
+            draft_workflow=draft_workflow,
+            account=account,
+            updated_at_factory=lambda: datetime.now(UTC).replace(tzinfo=None),
+        )
+
+        if is_new_draft:
+            db.session.add(draft_workflow)
+
+        db.session.commit()
+        return draft_workflow
 
     def publish_workflow(
         self,

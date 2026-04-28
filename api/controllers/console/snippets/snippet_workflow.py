@@ -6,12 +6,16 @@ from typing import ParamSpec, TypeVar
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
-from controllers.console.app.workflow import workflow_model, workflow_pagination_model
+from controllers.console.app.workflow import (
+    RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
+    workflow_model,
+    workflow_pagination_model,
+)
 from controllers.console.app.workflow_run import (
     workflow_run_detail_model,
     workflow_run_node_execution_list_model,
@@ -42,7 +46,7 @@ from libs import helper
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.snippet import CustomizedSnippet
-from services.errors.app import WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
 
@@ -283,6 +287,44 @@ class SnippetPublishedAllWorkflowApi(Resource):
             "page": args.page,
             "limit": args.limit,
             "has_more": has_more,
+        }
+
+
+@console_ns.route("/snippets/<uuid:snippet_id>/workflows/<string:workflow_id>/restore")
+class SnippetDraftWorkflowRestoreApi(Resource):
+    @console_ns.doc("restore_snippet_workflow_to_draft")
+    @console_ns.doc(description="Restore a published snippet workflow version into the draft workflow")
+    @console_ns.doc(params={"snippet_id": "Snippet ID", "workflow_id": "Published workflow ID"})
+    @console_ns.response(200, "Workflow restored successfully")
+    @console_ns.response(400, "Source workflow must be published")
+    @console_ns.response(404, "Workflow not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_snippet
+    @edit_permission_required
+    def post(self, snippet: CustomizedSnippet, workflow_id: str):
+        """Restore a published snippet workflow version into the draft workflow."""
+        current_user, _ = current_account_with_tenant()
+        snippet_service = SnippetService()
+
+        try:
+            workflow = snippet_service.restore_published_workflow_to_draft(
+                snippet=snippet,
+                workflow_id=workflow_id,
+                account=current_user,
+            )
+        except IsDraftWorkflowError as exc:
+            raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
+        except WorkflowNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        except ValueError as exc:
+            raise BadRequest(str(exc)) from exc
+
+        return {
+            "result": "success",
+            "hash": workflow.unique_hash,
+            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
         }
 
 
