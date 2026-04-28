@@ -105,7 +105,7 @@ const AutoUpdateSetting: FC<Props> = ({
   const renderTimePickerTrigger = useCallback(({ inputElem, onClick, isOpen }: TriggerParams) => {
     return (
       <div
-        className="group float-right flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt"
+        className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt"
         onClick={onClick}
       >
         <div className="flex w-0 grow items-center gap-x-1">
