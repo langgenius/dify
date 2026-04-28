@@ -1,3 +1,4 @@
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 import logging
 import time
 
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 def clean_dataset_task(
     dataset_id: str,
     tenant_id: str,
-    indexing_technique: str,
+    indexing_technique: IndexTechniqueType,
     index_struct: str,
     collection_binding_id: str,
     doc_form: str,

@@ -268,17 +268,17 @@ class DatasetService:
         dataset = Dataset(
             name=name,
             indexing_technique=IndexTechniqueType(indexing_technique) if indexing_technique else None,
+            description=description,
+            created_by=account.id,
+            updated_by=account.id,
+            tenant_id=tenant_id,
+            embedding_model_provider=embedding_model.provider if embedding_model else None,
+            embedding_model=embedding_model.model_name if embedding_model else None,
+            retrieval_model=retrieval_model.model_dump() if retrieval_model else None,
+            permission=DatasetPermissionEnum(permission) if permission else DatasetPermissionEnum.ONLY_ME,
+            provider=provider,
         )
         # dataset = Dataset(name=name, provider=provider, config=config)
-        dataset.description = description
-        dataset.created_by = account.id
-        dataset.updated_by = account.id
-        dataset.tenant_id = tenant_id
-        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
-        dataset.embedding_model = embedding_model.model_name if embedding_model else None
-        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
-        dataset.permission = DatasetPermissionEnum(permission) if permission else DatasetPermissionEnum.ONLY_ME
-        dataset.provider = provider
         if summary_index_setting is not None:
             dataset.summary_index_setting = summary_index_setting
         db.session.add(dataset)
