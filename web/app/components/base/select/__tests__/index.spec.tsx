@@ -789,6 +789,22 @@ describe('PortalSelect', () => {
       expect(screen.getByTitle('Banana'))!.toBeInTheDocument()
     })
 
+    it('should render portal popup above legacy dialog layers', async () => {
+      const user = userEvent.setup()
+      render(
+        <PortalSelect
+          value=""
+          items={items}
+          onSelect={vi.fn()}
+        />,
+      )
+
+      await user.click(screen.getByText(/select/i))
+
+      const popupLayer = document.querySelector('[class*="z-[1001]"]')
+      expect(popupLayer).toBeInTheDocument()
+    })
+
     it('should render with custom placeholder', () => {
       render(
         <PortalSelect
