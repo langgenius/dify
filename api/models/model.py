@@ -2295,11 +2295,11 @@ class Site(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True)
-    icon : Mapped[str]= mapped_column(String(255))
-    icon_background : Mapped[str]= mapped_column(String(255))
-    description : Mapped[str]= mapped_column(LongText)
+    icon: Mapped[str] = mapped_column(String(255))
+    icon_background: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(LongText)
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)
-    chat_color_theme : Mapped[str]= mapped_column(String(255))
+    chat_color_theme: Mapped[str] = mapped_column(String(255))
     chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     copyright: Mapped[str] = mapped_column(String(255))
     privacy_policy: Mapped[str] = mapped_column(String(255))
@@ -2315,10 +2315,10 @@ class Site(TypeBase):
     status: Mapped[AppStatus] = mapped_column(
         EnumText(AppStatus, length=255), nullable=False, server_default=sa.text("'normal'"), default=AppStatus.NORMAL
     )
-    created_by : Mapped[str]= mapped_column(StringUUID, nullable=True)
-    created_at : Mapped[str]= mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by : Mapped[str]= mapped_column(StringUUID, nullable=True)
-    updated_at : Mapped[str]= mapped_column(
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[str] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_by: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    updated_at: Mapped[str] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
     code: Mapped[str] = mapped_column(String(255))
