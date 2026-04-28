@@ -1,7 +1,7 @@
 {
   "blocks.agent": "Агент",
   "blocks.answer": "Ответ",
-  "blocks.assigner": "Определитер",
+  "blocks.assigner": "Назначение переменных",
   "blocks.code": "Код",
   "blocks.datasource": "Источник данных",
   "blocks.datasource-empty": "Пустой источник данных",
@@ -29,7 +29,7 @@
   "blocks.trigger-schedule": "Триггер расписания",
   "blocks.trigger-webhook": "Вебхук-триггер",
   "blocks.variable-aggregator": "Агрегатор переменных",
-  "blocks.variable-assigner": "Определитер переменных",
+  "blocks.variable-assigner": "Назначение переменных",
   "blocksAbout.agent": "Вызов больших языковых моделей для ответа на вопросы или обработки естественного языка",
   "blocksAbout.answer": "Определите содержимое ответа в чате",
   "blocksAbout.assigner": "Узел назначения переменной используется для назначения значений записываемым переменным (например, переменным разговора).",
