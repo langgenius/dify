@@ -1,4 +1,3 @@
-from models.enums import SegmentStatus
 import logging
 import tempfile
 import time
@@ -20,6 +19,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import SegmentStatus
 from models.model import UploadFile
 from services.vector_service import VectorService
 

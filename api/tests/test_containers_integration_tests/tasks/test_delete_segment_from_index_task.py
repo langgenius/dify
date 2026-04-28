@@ -190,28 +190,27 @@ class TestDeleteSegmentFromIndexTask:
         segments = []
 
         for i in range(count):
-            created_at =fake.date_time_this_year()
+            created_at = fake.date_time_this_year()
             segment = DocumentSegment(
-
-         id = fake.uuid4()
-         ,tenant_id = document.tenant_id
-         ,dataset_id = document.dataset_id
-         ,document_id = document.id
-         ,position = i + 1
-         ,content = f"Test segment content {i + 1}: {fake.text(max_nb_chars=200)}"
-         ,answer = f"Test segment answer {i + 1}: {fake.text(max_nb_chars=100)}"
-         ,word_count = fake.random_int(min=10, max=100)
-         ,tokens = fake.random_int(min=5, max=50)
-         ,keywords = [fake.word() for _ in range(3)]
-         ,index_node_id = f"node_{fake.uuid4()}"
-         ,index_node_hash = fake.sha256()
-         ,hit_count = 0
-         ,enabled = True
-         ,status = SegmentStatus.COMPLETED
-         ,created_by = account.id
-         ,created_at = created_at
-         ,updated_by = account.id
-         ,updated_at = created_at
+                id=fake.uuid4(),
+                tenant_id=document.tenant_id,
+                dataset_id=document.dataset_id,
+                document_id=document.id,
+                position=i + 1,
+                content=f"Test segment content {i + 1}: {fake.text(max_nb_chars=200)}",
+                answer=f"Test segment answer {i + 1}: {fake.text(max_nb_chars=100)}",
+                word_count=fake.random_int(min=10, max=100),
+                tokens=fake.random_int(min=5, max=50),
+                keywords=[fake.word() for _ in range(3)],
+                index_node_id=f"node_{fake.uuid4()}",
+                index_node_hash=fake.sha256(),
+                hit_count=0,
+                enabled=True,
+                status=SegmentStatus.COMPLETED,
+                created_by=account.id,
+                created_at=created_at,
+                updated_by=account.id,
+                updated_at=created_at,
             )
 
             db_session_with_containers.add(segment)

@@ -185,30 +185,29 @@ class TestDisableSegmentsFromIndexTask:
         for i in range(count):
             id = fake.uuid4()
             segment = DocumentSegment(
-
-         id = id
-         ,tenant_id = dataset.tenant_id
-         ,dataset_id = dataset.id
-         ,document_id = document.id
-         ,position = i + 1
-         ,content = f"Test segment content {i + 1}: {fake.text(max_nb_chars=200)}"
-         ,answer = f"Test answer {i + 1}" if i % 2 == 0 else None
-         ,word_count = fake.random_int(min=10, max=100)
-         ,tokens = fake.random_int(min=5, max=50)
-         ,keywords = [fake.word() for _ in range(3)]
-         ,index_node_id = f"node_{id}"
-         ,index_node_hash = fake.sha256()
-         ,hit_count = 0
-         ,enabled = True
-         ,disabled_at = None
-         ,disabled_by = None
-         ,status = SegmentStatus.COMPLETED
-         ,created_by = account.id
-         ,updated_by = account.id
-         ,indexing_at = fake.date_time_this_year()
-         ,completed_at = fake.date_time_this_year()
-         ,error = None
-         ,stopped_at = None
+                id=id,
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset.id,
+                document_id=document.id,
+                position=i + 1,
+                content=f"Test segment content {i + 1}: {fake.text(max_nb_chars=200)}",
+                answer=f"Test answer {i + 1}" if i % 2 == 0 else None,
+                word_count=fake.random_int(min=10, max=100),
+                tokens=fake.random_int(min=5, max=50),
+                keywords=[fake.word() for _ in range(3)],
+                index_node_id=f"node_{id}",
+                index_node_hash=fake.sha256(),
+                hit_count=0,
+                enabled=True,
+                disabled_at=None,
+                disabled_by=None,
+                status=SegmentStatus.COMPLETED,
+                created_by=account.id,
+                updated_by=account.id,
+                indexing_at=fake.date_time_this_year(),
+                completed_at=fake.date_time_this_year(),
+                error=None,
+                stopped_at=None,
             )
 
             segments.append(segment)

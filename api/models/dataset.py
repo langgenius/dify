@@ -851,23 +851,25 @@ class DocumentSegment(TypeBase):
     tokens: Mapped[int]
 
     # indexing fields
-    keywords:Mapped[Any] = mapped_column(sa.JSON, nullable=True)
-    index_node_id : Mapped[str]= mapped_column(String(255), nullable=True)
+    keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True)
+    index_node_id: Mapped[str] = mapped_column(String(255), nullable=True)
     index_node_hash: Mapped[str] = mapped_column(String(255), nullable=True)
 
     # basic fields
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled_by: Mapped[str|None] = mapped_column(StringUUID, nullable=True)
-    status: Mapped[SegmentStatus] = mapped_column(EnumText(SegmentStatus, length=255), server_default=sa.text("'waiting'"))
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    status: Mapped[SegmentStatus] = mapped_column(
+        EnumText(SegmentStatus, length=255), server_default=sa.text("'waiting'")
+    )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by : Mapped[str|None]= mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    error: Mapped[str|None] = mapped_column(LongText, nullable=True)
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True)
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     @property
