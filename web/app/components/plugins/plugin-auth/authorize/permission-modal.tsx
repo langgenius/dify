@@ -10,8 +10,7 @@ import { useTranslation } from 'react-i18next'
 // eslint-disable-next-line no-restricted-imports -- legacy modal, migration tracked in #32767
 import Modal from '@/app/components/base/modal/modal'
 import PermissionSelector from '@/app/components/base/permission-selector'
-// eslint-disable-next-line no-restricted-imports -- legacy toast, migration tracked in #32811
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { PermissionLevel } from '@/models/permission'
 import { useMembers } from '@/service/use-common'
@@ -41,7 +40,6 @@ const PermissionModal = ({
   disabled,
 }: PermissionModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {
@@ -66,7 +64,7 @@ const PermissionModal = ({
     if (doingActionRef.current)
       return
     if (!isCreator) {
-      notify({ type: 'error', message: 'Only the credential creator can change permissions.' })
+      toast.error('Only the credential creator can change permissions.')
       return
     }
     try {
@@ -81,17 +79,14 @@ const PermissionModal = ({
         credential_id: credentialId,
         ...permissionPayload,
       })
-      notify({
-        type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       onClose?.()
       onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [isCreator, permission, selectedMemberIDs, updatePluginCredential, credentialId, notify, t, onClose, onUpdate, handleSetDoingAction])
+  }, [isCreator, permission, selectedMemberIDs, updatePluginCredential, credentialId, t, onClose, onUpdate, handleSetDoingAction])
 
   return (
     <Modal
