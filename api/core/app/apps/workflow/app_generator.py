@@ -8,10 +8,6 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.runtime import GraphRuntimeState
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -29,7 +25,11 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.entities.task_entities import (
+    WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
+    WorkflowAppStreamResponse,
+)
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, PauseStatePersistenceLayer
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
@@ -38,6 +38,10 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.runtime import GraphRuntimeState
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
@@ -612,7 +616,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> WorkflowAppBlockingResponse | Generator[WorkflowAppStreamResponse, None, None]:
+    ) -> (
+        WorkflowAppBlockingResponse
+        | WorkflowAppPausedBlockingResponse
+        | Generator[WorkflowAppStreamResponse, None, None]
+    ):
         """
         Handle response.
         :param application_generate_entity: application generate entity

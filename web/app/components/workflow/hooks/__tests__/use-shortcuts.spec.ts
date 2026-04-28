@@ -11,10 +11,18 @@ type KeyPressRegistration = {
   }
 }
 
+type ReactFlowNodeMock = {
+  id: string
+  data: {
+    _isBundled?: boolean
+  }
+}
+
 const keyPressRegistrations = vi.hoisted<KeyPressRegistration[]>(() => [])
 const mockZoomTo = vi.hoisted(() => vi.fn())
 const mockGetZoom = vi.hoisted(() => vi.fn(() => 1))
 const mockFitView = vi.hoisted(() => vi.fn())
+const mockGetNodes = vi.hoisted(() => vi.fn<() => ReactFlowNodeMock[]>(() => []))
 const mockHandleNodesDelete = vi.hoisted(() => vi.fn())
 const mockHandleEdgeDelete = vi.hoisted(() => vi.fn())
 const mockHandleNodesCopy = vi.hoisted(() => vi.fn())
@@ -41,6 +49,7 @@ vi.mock('reactflow', () => ({
     zoomTo: mockZoomTo,
     getZoom: mockGetZoom,
     fitView: mockFitView,
+    getNodes: mockGetNodes,
   }),
 }))
 
@@ -84,6 +93,14 @@ const createKeyboardEvent = (target: HTMLElement = document.body) => ({
   target,
 }) as unknown as KeyboardEvent
 
+const createSelectionMock = (commonAncestorContainer: Node): Selection => ({
+  isCollapsed: false,
+  rangeCount: 1,
+  getRangeAt: () => ({
+    commonAncestorContainer,
+  } as unknown as Range),
+} as unknown as Selection)
+
 const findRegistration = (matcher: (registration: KeyPressRegistration) => boolean) => {
   const registration = keyPressRegistrations.find(matcher)
   expect(registration).toBeDefined()
@@ -94,6 +111,7 @@ describe('useShortcuts', () => {
   beforeEach(() => {
     keyPressRegistrations.length = 0
     vi.clearAllMocks()
+    mockGetNodes.mockReturnValue([])
   })
 
   it('deletes selected nodes and edges only outside editable inputs', () => {
@@ -139,6 +157,35 @@ describe('useShortcuts', () => {
     expect(mockZoomTo).toHaveBeenNthCalledWith(2, 0.9)
     expect(mockZoomTo).toHaveBeenNthCalledWith(3, 1.1)
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(4)
+  })
+
+  it('copies bundled nodes even when an incidental text selection exists outside the workflow canvas', () => {
+    const getSelectionSpy = vi.spyOn(document, 'getSelection')
+    const textContainer = document.createElement('div')
+    const selectedText = document.createElement('span')
+    selectedText.textContent = 'Selected browser text'
+    textContainer.appendChild(selectedText)
+
+    getSelectionSpy.mockReturnValue(createSelectionMock(selectedText))
+    mockGetNodes.mockReturnValue([
+      {
+        id: 'bundled-node',
+        data: {
+          _isBundled: true,
+        },
+      },
+    ])
+
+    renderWorkflowHook(() => useShortcuts())
+
+    const copyShortcut = findRegistration(registration => registration.keyFilter === 'ctrl.c' || registration.keyFilter === 'meta.c')
+    const event = createKeyboardEvent()
+    copyShortcut.handler(event)
+
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(mockHandleNodesCopy).toHaveBeenCalledTimes(1)
+
+    getSelectionSpy.mockRestore()
   })
 
   it('dims on shift down, undims on shift up, and responds to zen toggle events', () => {

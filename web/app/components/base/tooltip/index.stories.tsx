@@ -4,7 +4,7 @@ import Tooltip from '.'
 const TooltipGrid = () => {
   return (
     <div className="flex w-full max-w-xl flex-col gap-6 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Hover tooltips</div>
+      <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Hover tooltips</div>
       <div className="flex flex-wrap gap-4">
         <Tooltip popupContent="Helpful hint explaining the setting.">
           <button
@@ -20,7 +20,7 @@ const TooltipGrid = () => {
           </span>
         </Tooltip>
       </div>
-      <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Click tooltips</div>
+      <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Click tooltips</div>
       <div className="flex flex-wrap gap-4">
         <Tooltip popupContent="Click again to close." triggerMethod="click" position="bottom-start">
           <button

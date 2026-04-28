@@ -1,5 +1,7 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -9,14 +11,12 @@ import { useContext } from 'use-context-selector'
 // import { Resolution } from '@/types/app'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Vision } from '@/app/components/base/icons/src/vender/features'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 // import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import ConfigContext from '@/context/debug-configuration'
 import { Resolution } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import ParamConfig from './param-config'
 
 const ConfigVision: FC = () => {
@@ -62,14 +62,14 @@ const ConfigVision: FC = () => {
     return null
 
   return (
-    <div className="mt-2 flex items-center gap-2 rounded-xl border-l-[0.5px] border-t-[0.5px] border-effects-highlight bg-background-section-burn p-2">
+    <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-2">
       <div className="shrink-0 p-1">
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
           <Vision className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="system-sm-semibold mr-1 text-text-secondary">{t('vision.name', { ns: 'appDebug' })}</div>
+        <div className="mr-1 system-sm-semibold text-text-secondary">{t('vision.name', { ns: 'appDebug' })}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">
@@ -100,7 +100,7 @@ const ConfigVision: FC = () => {
                     selected={file?.image?.detail === Resolution.high}
                     onSelect={noop}
                     className={cn(
-                      'cursor-not-allowed rounded-lg px-3  hover:shadow-none',
+                      'cursor-not-allowed rounded-lg px-3 hover:shadow-none',
                       file?.image?.detail !== Resolution.high && 'hover:border-components-option-card-option-border',
                     )}
                   />
@@ -109,7 +109,7 @@ const ConfigVision: FC = () => {
                     selected={file?.image?.detail === Resolution.low}
                     onSelect={noop}
                     className={cn(
-                      'cursor-not-allowed rounded-lg px-3  hover:shadow-none',
+                      'cursor-not-allowed rounded-lg px-3 hover:shadow-none',
                       file?.image?.detail !== Resolution.low && 'hover:border-components-option-card-option-border',
                     )}
                   />
@@ -119,10 +119,10 @@ const ConfigVision: FC = () => {
           : (
               <>
                 <ParamConfig />
-                <div className="ml-1 mr-3 h-3.5 w-px bg-divider-regular"></div>
+                <div className="mr-3 ml-1 h-3.5 w-px bg-divider-regular"></div>
                 <Switch
-                  value={isImageEnabled}
-                  onChange={handleChange}
+                  checked={isImageEnabled}
+                  onCheckedChange={handleChange}
                   size="md"
                 />
               </>

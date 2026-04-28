@@ -9,14 +9,15 @@ import type {
 import type {
   DatasetConfigs,
 } from '@/models/debug'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -24,7 +25,6 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import WeightedScore from './weighted-score'
 
 type Props = {
@@ -121,10 +121,10 @@ const ConfigContent: FC<Props> = ({
         ...datasetConfigs.weights!,
         vector_setting: {
           ...datasetConfigs.weights!.vector_setting!,
-          vector_weight: value.value[0],
+          vector_weight: value.value[0]!,
         },
         keyword_setting: {
-          keyword_weight: value.value[1],
+          keyword_weight: value.value[1]!,
         },
       },
     }
@@ -188,14 +188,14 @@ const ConfigContent: FC<Props> = ({
 
   return (
     <div>
-      <div className="text-text-primary system-xl-semibold">{t('retrievalSettings', { ns: 'dataset' })}</div>
-      <div className="text-text-tertiary system-xs-regular">
+      <div className="system-xl-semibold text-text-primary">{t('retrievalSettings', { ns: 'dataset' })}</div>
+      <div className="system-xs-regular text-text-tertiary">
         {t('defaultRetrievalTip', { ns: 'dataset' })}
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
           <div className="my-2 flex flex-col items-center py-1">
-            <div className="mb-2 mr-2 shrink-0 text-text-secondary system-xs-semibold-uppercase">
+            <div className="mr-2 mb-2 shrink-0 system-xs-semibold-uppercase text-text-secondary">
               {t('rerankSettings', { ns: 'dataset' })}
             </div>
             <Divider bgStyle="gradient" className="m-0 h-px!" />
@@ -203,21 +203,21 @@ const ConfigContent: FC<Props> = ({
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
             && (
-              <div className="mt-4 text-text-warning system-xs-medium">
+              <div className="mt-4 system-xs-medium text-text-warning">
                 {t('inconsistentEmbeddingModelTip', { ns: 'dataset' })}
               </div>
             )
           }
           {
             selectedDatasetsMode.mixtureInternalAndExternal && (
-              <div className="mt-4 text-text-warning system-xs-medium">
+              <div className="mt-4 system-xs-medium text-text-warning">
                 {t('mixtureInternalAndExternalTip', { ns: 'dataset' })}
               </div>
             )
           }
           {
             selectedDatasetsMode.allExternal && (
-              <div className="mt-4 text-text-warning system-xs-medium">
+              <div className="mt-4 system-xs-medium text-text-warning">
                 {t('allExternalTip', { ns: 'dataset' })}
               </div>
             )
@@ -225,7 +225,7 @@ const ConfigContent: FC<Props> = ({
           {
             selectedDatasetsMode.mixtureHighQualityAndEconomic
             && (
-              <div className="mt-4 text-text-warning system-xs-medium">
+              <div className="mt-4 system-xs-medium text-text-warning">
                 {t('mixtureHighQualityAndEconomicTip', { ns: 'dataset' })}
               </div>
             )
@@ -238,7 +238,7 @@ const ConfigContent: FC<Props> = ({
                     <div
                       key={option.value}
                       className={cn(
-                        'flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-sm-medium',
+                        'flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg system-sm-medium text-text-secondary',
                         selectedRerankMode === option.value && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
                       )}
                       onClick={() => handleRerankModeChange(option.value)}
@@ -267,12 +267,12 @@ const ConfigContent: FC<Props> = ({
                     canManuallyToggleRerank && (
                       <Switch
                         size="md"
-                        value={showRerankModel ?? false}
-                        onChange={handleManuallyToggleRerank}
+                        checked={showRerankModel ?? false}
+                        onCheckedChange={handleManuallyToggleRerank}
                       />
                     )
                   }
-                  <div className="ml-1 leading-[32px] text-text-secondary system-sm-semibold">{t('modelProvider.rerankModel.key', { ns: 'common' })}</div>
+                  <div className="ml-1 system-sm-semibold leading-[32px] text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</div>
                   <Tooltip
                     popupContent={(
                       <div className="w-[200px]">
@@ -362,7 +362,7 @@ const ConfigContent: FC<Props> = ({
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
         <div className="mt-4">
           <div className="flex items-center space-x-0.5">
-            <div className="text-[13px] font-medium leading-[32px] text-text-primary">{t('modelProvider.systemReasoningModel.key', { ns: 'common' })}</div>
+            <div className="text-[13px] leading-[32px] font-medium text-text-primary">{t('modelProvider.systemReasoningModel.key', { ns: 'common' })}</div>
             <Tooltip
               popupContent={t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}
             />

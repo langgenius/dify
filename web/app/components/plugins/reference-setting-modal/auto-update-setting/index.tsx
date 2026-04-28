@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AutoUpdateConfig } from './types'
 import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiTimeLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -12,7 +13,6 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
-import { cn } from '@/utils/classnames'
 import Label from '../label'
 import PluginsPicker from './plugins-picker'
 import StrategyPicker from './strategy-picker'
@@ -33,7 +33,7 @@ const SettingTimeZone: FC<{
 }) => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   return (
-    <span className="body-xs-regular cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}>{children}</span>
+    <span className="cursor-pointer body-xs-regular text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}>{children}</span>
   )
 }
 const AutoUpdateSetting: FC<Props> = ({
@@ -105,7 +105,7 @@ const AutoUpdateSetting: FC<Props> = ({
   const renderTimePickerTrigger = useCallback(({ inputElem, onClick, isOpen }: TriggerParams) => {
     return (
       <div
-        className="group float-right flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt"
+        className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt"
         onClick={onClick}
       >
         <div className="flex w-0 grow items-center gap-x-1">
@@ -137,7 +137,7 @@ const AutoUpdateSetting: FC<Props> = ({
           <>
             <div className="flex items-center justify-between">
               <Label label={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })} />
-              <div className="flex flex-col justify-start">
+              <div className="flex flex-col items-end">
                 <TimePicker
                   value={timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(upgrade_time_of_day, timezone!))}
                   timezone={timezone}
@@ -149,7 +149,7 @@ const AutoUpdateSetting: FC<Props> = ({
                   renderTrigger={renderTimePickerTrigger}
                   placement="bottom-end"
                 />
-                <div className="body-xs-regular mt-1 text-right text-text-tertiary">
+                <div className="mt-1 text-right body-xs-regular text-text-tertiary">
                   <Trans
                     i18nKey={`${i18nPrefix}.changeTimezone`}
                     ns="plugin"

@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useModalContext } from '@/context/modal-context'
@@ -69,7 +69,7 @@ const PlanUpgradeModal: FC<Props> = ({
         </div>
       </div>
 
-      <div className="mb-8 mt-10 flex justify-end space-x-2 px-8">
+      <div className="mt-10 mb-8 flex justify-end space-x-2 px-8">
         <Button
           onClick={onClose}
         >

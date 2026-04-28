@@ -2,7 +2,7 @@ import type {
   CommonNodeType,
   Node,
 } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import Add from './add'
 import Item from './item'
 
@@ -25,7 +25,7 @@ const Container = ({
 }: ContainerProps) => {
   return (
     <div className={cn(
-      'space-y-0.5 radius-lg bg-background-section-burn p-0.5',
+      'space-y-0.5 rounded-[10px] bg-background-section-burn p-0.5',
       isFailBranch && 'border-[0.5px] border-state-warning-hover-alt bg-state-warning-hover',
     )}
     >
@@ -33,7 +33,7 @@ const Container = ({
         branchName && (
           <div
             className={cn(
-              'system-2xs-semibold-uppercase flex items-center truncate px-2 text-text-tertiary',
+              'flex items-center truncate px-2 system-2xs-semibold-uppercase text-text-tertiary',
               isFailBranch && 'text-text-warning',
             )}
             title={branchName}

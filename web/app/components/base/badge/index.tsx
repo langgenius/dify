@@ -1,8 +1,8 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 enum BadgeState {
   Warning = 'warning',

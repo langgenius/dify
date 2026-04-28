@@ -4,6 +4,7 @@ import type { ToolVarInputs } from '../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -17,7 +18,6 @@ import Input from '@/app/components/workflow/nodes/_base/components/input-suppor
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import { VarType as VarKindType } from '../types'
 
 type Props = {

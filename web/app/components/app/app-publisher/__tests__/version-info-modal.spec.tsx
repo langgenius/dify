@@ -1,6 +1,6 @@
 /* eslint-disable ts/no-explicit-any */
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import VersionInfoModal from '../version-info-modal'
 
 vi.mock('react-i18next', () => ({
@@ -9,7 +9,7 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
   },
@@ -34,8 +34,8 @@ describe('VersionInfoModal', () => {
       />,
     )
 
-    expect(screen.getByDisplayValue('Release 1')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Initial release')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Release 1'))!.toBeInTheDocument()
+    expect(screen.getByDisplayValue('Initial release'))!.toBeInTheDocument()
   })
 
   it('should reject overlong titles', () => {
@@ -50,7 +50,7 @@ describe('VersionInfoModal', () => {
     )
 
     const [titleInput] = screen.getAllByRole('textbox')
-    fireEvent.change(titleInput, { target: { value: 'a'.repeat(16) } })
+    fireEvent.change(titleInput!, { target: { value: 'a'.repeat(16) } })
     fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
 
     expect(toast.error).toHaveBeenCalledWith('versionHistory.editField.titleLengthLimit')
@@ -75,8 +75,8 @@ describe('VersionInfoModal', () => {
     )
 
     const [titleInput, notesInput] = screen.getAllByRole('textbox')
-    fireEvent.change(titleInput, { target: { value: 'Release 2' } })
-    fireEvent.change(notesInput, { target: { value: 'Updated notes' } })
+    fireEvent.change(titleInput!, { target: { value: 'Release 2' } })
+    fireEvent.change(notesInput!, { target: { value: 'Updated notes' } })
     fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
 
     expect(handlePublish).toHaveBeenCalledWith({
@@ -106,16 +106,16 @@ describe('VersionInfoModal', () => {
 
     const [titleInput, notesInput] = screen.getAllByRole('textbox')
 
-    fireEvent.change(titleInput, { target: { value: 'a'.repeat(16) } })
+    fireEvent.change(titleInput!, { target: { value: 'a'.repeat(16) } })
     fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
     expect(toast.error).toHaveBeenCalledWith('versionHistory.editField.titleLengthLimit')
 
-    fireEvent.change(titleInput, { target: { value: 'Release 3' } })
-    fireEvent.change(notesInput, { target: { value: 'b'.repeat(101) } })
+    fireEvent.change(titleInput!, { target: { value: 'Release 3' } })
+    fireEvent.change(notesInput!, { target: { value: 'b'.repeat(101) } })
     fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
     expect(toast.error).toHaveBeenCalledWith('versionHistory.editField.releaseNotesLengthLimit')
 
-    fireEvent.change(notesInput, { target: { value: 'Stable release notes' } })
+    fireEvent.change(notesInput!, { target: { value: 'Stable release notes' } })
     fireEvent.click(screen.getByRole('button', { name: 'common.publish' }))
 
     expect(handlePublish).toHaveBeenCalledWith({

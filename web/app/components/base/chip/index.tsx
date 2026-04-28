@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiCheckLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import {
@@ -6,7 +7,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 
 export type Item = {
   value: number | string
@@ -97,7 +97,7 @@ const Chip: FC<Props> = ({
                     setOpen(false)
                   }}
                 >
-                  <div title={item.name} className="system-sm-medium grow truncate text-text-secondary">{item.name}</div>
+                  <div title={item.name} className="grow truncate system-sm-medium text-text-secondary">{item.name}</div>
                   {value === item.value && <RiCheckLine className="h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
                 </div>
               ))}

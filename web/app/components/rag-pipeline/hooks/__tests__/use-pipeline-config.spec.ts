@@ -223,7 +223,7 @@ describe('usePipelineConfig', () => {
 
       capturedCallback?.(dataSourceList)
 
-      expect(dataSourceList[0].declaration.identity.icon).toBe('/base/icon.png')
+      expect(dataSourceList[0]!.declaration.identity.icon).toBe('/base/icon.png')
     })
 
     it('should not modify icon if it already includes basePath', () => {
@@ -240,7 +240,7 @@ describe('usePipelineConfig', () => {
 
       capturedCallback?.(dataSourceList)
 
-      expect(dataSourceList[0].declaration.identity.icon).toBe('/base/icon.png')
+      expect(dataSourceList[0]!.declaration.identity.icon).toBe('/base/icon.png')
     })
 
     it('should handle non-string icon', () => {
@@ -257,7 +257,7 @@ describe('usePipelineConfig', () => {
 
       capturedCallback?.(dataSourceList)
 
-      expect(dataSourceList[0].declaration.identity.icon).toEqual({ url: '/icon.png' })
+      expect(dataSourceList[0]!.declaration.identity.icon).toEqual({ url: '/icon.png' })
     })
   })
 

@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
+import { Slider } from '@langgenius/dify-ui/slider'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
-import { Slider } from '@/app/components/base/ui/slider'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 import ItemPanel from './item-panel'
 
@@ -59,7 +59,7 @@ const AgentSetting: FC<Props> = ({
         ref={ref}
         className="flex h-full w-[640px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       >
-        <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
           <div className="flex flex-col text-base font-semibold text-text-primary">
             <div className="leading-6">{t('agent.setting.name', { ns: 'appDebug' })}</div>
           </div>
@@ -74,7 +74,7 @@ const AgentSetting: FC<Props> = ({
         </div>
         {/* Body */}
         <div
-          className="grow overflow-y-auto border-b p-6 pb-[68px] pt-5"
+          className="grow overflow-y-auto border-b p-6 pt-5 pb-[68px]"
           style={{
             borderBottom: 'rgba(0, 0, 0, 0.05)',
           }}
@@ -88,7 +88,7 @@ const AgentSetting: FC<Props> = ({
             name={t('agent.agentMode', { ns: 'appDebug' })}
             description={t('agent.agentModeDes', { ns: 'appDebug' })}
           >
-            <div className="text-[13px] font-medium leading-[18px] text-text-primary">{isFunctionCall ? t('agent.agentModeType.functionCall', { ns: 'appDebug' }) : t('agent.agentModeType.ReACT', { ns: 'appDebug' })}</div>
+            <div className="text-[13px] leading-[18px] font-medium text-text-primary">{isFunctionCall ? t('agent.agentModeType.functionCall', { ns: 'appDebug' }) : t('agent.agentModeType.ReACT', { ns: 'appDebug' })}</div>
           </ItemPanel>
 
           <ItemPanel
@@ -119,7 +119,7 @@ const AgentSetting: FC<Props> = ({
                 min={maxIterationsMin}
                 max={MAX_ITERATIONS_NUM}
                 step={1}
-                className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:ring-1 focus:ring-inset focus:ring-primary-600"
+                className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:ring-1 focus:ring-primary-600 focus:ring-inset"
                 value={tempPayload.max_iteration}
                 onChange={(e) => {
                   let value = Number.parseInt(e.target.value, 10)
@@ -139,12 +139,12 @@ const AgentSetting: FC<Props> = ({
 
           {!isFunctionCall && (
             <div className="rounded-xl bg-background-section-burn py-2 shadow-xs">
-              <div className="flex h-8 items-center px-4 text-sm font-semibold leading-6 text-text-secondary">{t('builtInPromptTitle', { ns: 'tools' })}</div>
-              <div className="h-[396px] overflow-y-auto whitespace-pre-line px-4 text-sm font-normal leading-5 text-text-secondary">
+              <div className="flex h-8 items-center px-4 text-sm leading-6 font-semibold text-text-secondary">{t('builtInPromptTitle', { ns: 'tools' })}</div>
+              <div className="h-[396px] overflow-y-auto px-4 text-sm leading-5 font-normal whitespace-pre-line text-text-secondary">
                 {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
               </div>
               <div className="px-4">
-                <div className="inline-flex h-5 items-center rounded-md bg-components-input-bg-normal px-1 text-xs font-medium leading-[18px] text-text-tertiary">{(isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion).length}</div>
+                <div className="inline-flex h-5 items-center rounded-md bg-components-input-bg-normal px-1 text-xs leading-[18px] font-medium text-text-tertiary">{(isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion).length}</div>
               </div>
             </div>
           )}

@@ -1,13 +1,12 @@
-/* eslint-disable next/no-img-element */
 import type { FC } from 'react'
 import type { ImageFile } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import Tooltip from '@/app/components/base/tooltip'
 import { TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type ImageListProps = {
   list: ImageFile[]
@@ -61,7 +60,7 @@ const ImageList: FC<ImageListProps> = ({
                 )}
               </div>
               {item.progress > -1 && (
-                <span className="absolute left-[50%] top-[50%] z-1 translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten">
+                <span className="absolute top-[50%] left-[50%] z-1 translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten">
                   {item.progress}
                   %
                 </span>
@@ -113,7 +112,7 @@ const ImageList: FC<ImageListProps> = ({
             <button
               type="button"
               className={cn(
-                'absolute -right-[9px] -top-[9px] z-10 h-[18px] w-[18px] items-center justify-center',
+                'absolute -top-[9px] -right-[9px] z-10 h-[18px] w-[18px] items-center justify-center',
                 'rounded-2xl shadow-lg hover:bg-state-base-hover',
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}

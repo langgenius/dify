@@ -2,6 +2,8 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
@@ -11,7 +13,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import {
   PortalToFollowElem,
@@ -21,7 +22,6 @@ import {
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'
 import { variableTransformer } from '@/app/components/workflow/utils'
-import { cn } from '@/utils/classnames'
 import VariableTag from '../../_base/components/variable-tag'
 import { VarType as NumberVarType } from '../../tool/types'
 
@@ -147,7 +147,7 @@ const ConditionNumberInput = ({
         }
         {
           numberVarType === NumberVarType.constant && (
-            <div className=" relative">
+            <div className="relative">
               <input
                 className={cn('block w-full appearance-none bg-transparent px-2 text-[13px] text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder', unit && 'pr-6')}
                 type="number"
@@ -157,7 +157,7 @@ const ConditionNumberInput = ({
                 onFocus={setFocus}
                 onBlur={setBlur}
               />
-              {!isFocus && unit && <div className="system-sm-regular absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary">{unit}</div>}
+              {!isFocus && unit && <div className="absolute top-[50%] right-2 translate-y-[-50%] system-sm-regular text-text-tertiary">{unit}</div>}
             </div>
           )
         }

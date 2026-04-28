@@ -87,7 +87,7 @@ class RetrievalModel(BaseModel):
 
 class MetaDataConfig(BaseModel):
     doc_type: str
-    doc_metadata: dict
+    doc_metadata: dict[str, Any]
 
 
 class KnowledgeConfig(BaseModel):

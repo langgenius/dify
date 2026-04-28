@@ -72,6 +72,7 @@ import * as React from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
 import { temporal } from 'zundo'
 import { create } from 'zustand'
+import { seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { WorkflowContext } from '../context'
 import { HooksStoreContext } from '../hooks-store/provider'
 import { createHooksStore } from '../hooks-store/store'
@@ -134,6 +135,7 @@ type WorkflowProviderOptions = {
   initialStoreState?: Partial<Shape>
   hooksStoreProps?: Partial<HooksStoreShape>
   historyStore?: HistoryStoreConfig
+  queryClient?: QueryClient
 }
 
 type StoreInstances = {
@@ -152,17 +154,20 @@ function createStoresFromOptions(options: WorkflowProviderOptions): StoreInstanc
 function createWorkflowWrapper(
   stores: StoreInstances,
   historyConfig?: HistoryStoreConfig,
+  externalQueryClient?: QueryClient,
 ) {
   const historyCtxValue = historyConfig
     ? createTestHistoryStoreContext(historyConfig)
     : undefined
-  const queryClient = new QueryClient({
+  const queryClient = externalQueryClient ?? new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
       },
     },
   })
+  if (!externalQueryClient)
+    seedSystemFeatures(queryClient)
 
   return ({ children }: { children: React.ReactNode }) => {
     let inner: React.ReactNode = children
@@ -215,10 +220,10 @@ export function renderWorkflowHook<R, P = undefined>(
   hook: (props: P) => R,
   options?: WorkflowHookTestOptions<P>,
 ): WorkflowHookTestResult<R, P> {
-  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, ...rest } = options ?? {}
+  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, queryClient, ...rest } = options ?? {}
 
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
-  const wrapper = createWorkflowWrapper(stores, historyConfig)
+  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient)
 
   const renderResult = renderHook(hook, { wrapper, ...rest })
   return { ...renderResult, ...stores }
@@ -244,10 +249,10 @@ export function renderWorkflowComponent(
   ui: React.ReactElement,
   options?: WorkflowComponentTestOptions,
 ): WorkflowComponentTestResult {
-  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, ...renderOptions } = options ?? {}
+  const { initialStoreState, hooksStoreProps, historyStore: historyConfig, queryClient, ...renderOptions } = options ?? {}
 
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
-  const wrapper = createWorkflowWrapper(stores, historyConfig)
+  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient)
 
   const renderResult = render(ui, { wrapper, ...renderOptions })
   return { ...renderResult, ...stores }

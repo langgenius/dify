@@ -93,7 +93,7 @@ const AppNav = () => {
       const newNavItems = produce(navItems, (draft: NavItem[]) => {
         navItems.forEach((app, index) => {
           if (app.id === appDetail.id)
-            draft[index].name = appDetail.name
+            draft[index]!.name = appDetail.name
         })
       })
       setNavItems(newNavItems)

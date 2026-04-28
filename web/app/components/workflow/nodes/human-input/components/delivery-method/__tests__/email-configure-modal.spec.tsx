@@ -5,7 +5,7 @@ import EmailConfigureModal from '../email-configure-modal'
 const mockToastError = vi.hoisted(() => vi.fn())
 const mockUseAppContextSelector = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (message: string) => mockToastError(message),
   },

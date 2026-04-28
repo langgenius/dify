@@ -8,8 +8,12 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
+from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.workflow.file_reference import parse_file_reference
 from graphon.entities import GraphInitParams
-from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowNodeExecutionMetadataKey,
@@ -26,12 +30,6 @@ from graphon.variables import (
     StringSegment,
 )
 from graphon.variables.segments import ArrayObjectSegment
-
-from core.app.app_config.entities import DatasetRetrieveConfigEntity
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from core.workflow.file_reference import parse_file_reference
 
 from .entities import (
     Condition,
@@ -51,6 +49,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _normalize_metadata_filter_scalar(value: object) -> str | int | float | None:
+    if value is None or isinstance(value, (str, float)):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return str(value)
+
+
+def _normalize_metadata_filter_sequence_item(value: object) -> str:
+    return value if isinstance(value, str) else str(value)
+
+
 class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeData]):
     node_type = BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL
 
@@ -60,13 +70,14 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
 
     def __init__(
         self,
-        id: str,
-        config: NodeConfigDict,
+        node_id: str,
+        config: KnowledgeRetrievalNodeData,
+        *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-    ):
+    ) -> None:
         super().__init__(
-            id=id,
+            node_id=node_id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
@@ -283,18 +294,21 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         resolved_conditions: list[Condition] = []
         for cond in conditions.conditions or []:
             value = cond.value
+            resolved_value: str | Sequence[str] | int | float | None
             if isinstance(value, str):
                 segment_group = variable_pool.convert_template(value)
                 if len(segment_group.value) == 1:
-                    resolved_value = segment_group.value[0].to_object()
+                    resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
                 else:
                     resolved_value = segment_group.text
             elif isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
-                resolved_values = []
-                for v in value:  # type: ignore
+                resolved_values: list[str] = []
+                for v in value:
                     segment_group = variable_pool.convert_template(v)
                     if len(segment_group.value) == 1:
-                        resolved_values.append(segment_group.value[0].to_object())
+                        resolved_values.append(
+                            _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())
+                        )
                     else:
                         resolved_values.append(segment_group.text)
                 resolved_value = resolved_values

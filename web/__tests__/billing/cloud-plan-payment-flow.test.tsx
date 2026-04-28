@@ -8,10 +8,10 @@
  * and workspace manager permission enforcement.
  */
 import type { BasicPlan } from '@/app/components/billing/type'
+import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { toast, ToastHost } from '@/app/components/base/ui/toast'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import { PlanRange } from '@/app/components/billing/pricing/plan-switcher/plan-range-switcher'
 import CloudPlanItem from '@/app/components/billing/pricing/plans/cloud-plan-item'

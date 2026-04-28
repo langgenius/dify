@@ -1,4 +1,3 @@
-from graphon.model_runtime.entities.llm_entities import LLMUsage
 from sqlalchemy import update
 from sqlalchemy.orm import sessionmaker
 
@@ -8,6 +7,7 @@ from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
 from extensions.ext_database import db
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from libs.datetime_utils import naive_utc_now
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID

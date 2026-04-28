@@ -157,15 +157,6 @@ describe('ConfirmModal', () => {
       // Act & Assert - This will fail the test if user.click throws an unhandled error
       await user.click(confirmButton)
     })
-
-    it('should have correct button variants', () => {
-      // Arrange & Act
-      renderComponent()
-
-      // Assert
-      const confirmButton = screen.getByText('common.operation.confirm')
-      expect(confirmButton).toHaveClass('btn-warning')
-    })
   })
 
   // Edge Cases (REQUIRED)

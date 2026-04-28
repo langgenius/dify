@@ -1,12 +1,12 @@
 import type { FormData, InputFieldFormProps } from './types'
 import type { MoreInfo } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { useAppForm } from '@/app/components/base/form'
-import { toast } from '@/app/components/base/ui/toast'
 import { ChangeType } from '@/app/components/workflow/types'
 import { useFileUploadConfig } from '@/service/use-common'
 import HiddenFields from './hidden-fields'
@@ -28,7 +28,7 @@ const InputFieldForm = ({ initialData, supportFile = false, onCancel, onSubmit, 
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
+          const errorMessage = `"${firstIssue!.path.join('.')}" ${firstIssue!.message}`
           toast.error(errorMessage)
           return errorMessage
         }

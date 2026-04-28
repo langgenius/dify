@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -57,7 +58,7 @@ _T1 = datetime(2024, 1, 10, 12, 0, 5, tzinfo=UTC)
 
 
 def make_workflow_info(**overrides) -> WorkflowTraceInfo:
-    defaults: dict = {
+    defaults: dict[str, Any] = {
         "workflow_id": "wf-001",
         "tenant_id": "tenant-abc",
         "workflow_run_id": "run-001",
@@ -86,7 +87,7 @@ def make_workflow_info(**overrides) -> WorkflowTraceInfo:
 
 
 def make_node_info(**overrides) -> WorkflowNodeTraceInfo:
-    defaults: dict = {
+    defaults: dict[str, Any] = {
         "workflow_id": "wf-001",
         "workflow_run_id": "run-001",
         "tenant_id": "tenant-abc",
@@ -115,7 +116,7 @@ def make_node_info(**overrides) -> WorkflowNodeTraceInfo:
 
 
 def make_draft_node_info(**overrides) -> DraftNodeExecutionTrace:
-    defaults: dict = {
+    defaults: dict[str, Any] = {
         "workflow_id": "wf-001",
         "workflow_run_id": "run-draft-001",
         "tenant_id": "tenant-abc",
@@ -136,7 +137,7 @@ def make_draft_node_info(**overrides) -> DraftNodeExecutionTrace:
 
 
 def make_message_info(**overrides) -> MessageTraceInfo:
-    defaults: dict = {
+    defaults: dict[str, Any] = {
         "message_id": "msg-001",
         "conversation_model": "gpt-4",
         "message_tokens": 40,
@@ -161,7 +162,7 @@ def make_message_info(**overrides) -> MessageTraceInfo:
 
 
 def make_tool_info(**overrides) -> ToolTraceInfo:
-    defaults: dict = {
+    defaults: dict[str, Any] = {
         "message_id": "msg-001",
         "tool_name": "web_search",
         "tool_inputs": {"query": "test"},
@@ -176,7 +177,7 @@ def make_tool_info(**overrides) -> ToolTraceInfo:
 
 
 def make_moderation_info(**overrides) -> ModerationTraceInfo:
-    defaults: dict = {
+    defaults: dict[str, Any] = {
         "message_id": "msg-001",
         "flagged": False,
         "action": "pass",
@@ -189,7 +190,7 @@ def make_moderation_info(**overrides) -> ModerationTraceInfo:
 
 
 def make_suggested_question_info(**overrides) -> SuggestedQuestionTraceInfo:
-    defaults: dict = {
+    defaults: dict[str, Any] = {
         "message_id": "msg-001",
         "total_tokens": 30,
         "suggested_question": ["Question A?", "Question B?"],
@@ -206,7 +207,7 @@ def make_suggested_question_info(**overrides) -> SuggestedQuestionTraceInfo:
 
 
 def make_dataset_retrieval_info(**overrides) -> DatasetRetrievalTraceInfo:
-    defaults: dict = {
+    defaults: dict[str, Any] = {
         "message_id": "msg-001",
         "documents": [
             {
@@ -236,7 +237,7 @@ def make_dataset_retrieval_info(**overrides) -> DatasetRetrievalTraceInfo:
 
 
 def make_generate_name_info(**overrides) -> GenerateNameTraceInfo:
-    defaults: dict = {
+    defaults: dict[str, Any] = {
         "message_id": "msg-001",
         "tenant_id": "tenant-abc",
         "conversation_id": "conv-001",
@@ -251,7 +252,7 @@ def make_generate_name_info(**overrides) -> GenerateNameTraceInfo:
 
 
 def make_prompt_generation_info(**overrides) -> PromptGenerationTraceInfo:
-    defaults: dict = {
+    defaults: dict[str, Any] = {
         "tenant_id": "tenant-abc",
         "user_id": "user-001",
         "app_id": "app-001",

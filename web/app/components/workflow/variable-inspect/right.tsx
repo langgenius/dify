@@ -1,5 +1,6 @@
 import type { currentVarType } from './panel'
 import type { GenRes } from '@/service/debug'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowGoBackLine,
   RiCloseLine,
@@ -22,7 +23,6 @@ import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/com
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { AppModeEnum } from '@/types/app'
 import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 import GetCodeGeneratorResModal from '../../app/configuration/config/code-generator/get-code-generator-res'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../../base/prompt-editor/plugins/update-block'
 import { useNodesInteractions, useToolIcon } from '../hooks'
@@ -192,12 +192,12 @@ const Right = ({
                       size="xs"
                       toolIcon={toolIcon}
                     />
-                    <div className="system-sm-regular shrink-0 text-text-secondary">{currentNodeVar.title}</div>
-                    <div className="system-sm-regular shrink-0 text-text-quaternary">/</div>
+                    <div className="shrink-0 system-sm-regular text-text-secondary">{currentNodeVar.title}</div>
+                    <div className="shrink-0 system-sm-regular text-text-quaternary">/</div>
                   </>
                 )}
-              <div title={currentNodeVar.var.name} className="system-sm-semibold truncate text-text-secondary">{currentNodeVar.var.name}</div>
-              <div className="system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary">
+              <div title={currentNodeVar.var.name} className="truncate system-sm-semibold text-text-secondary">{currentNodeVar.var.name}</div>
+              <div className="ml-1 shrink-0 space-x-2 system-xs-medium text-text-tertiary">
                 <span>{`${currentNodeVar.var.value_type}${displaySchemaType}`}</span>
                 {isTruncated && (
                   <>
@@ -240,7 +240,7 @@ const Right = ({
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
-                  <span className="ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded-sm bg-text-accent-secondary"></span>
+                  <span className="mr-[4.5px] ml-[2.5px] h-[3px] w-[3px] rounded-sm bg-text-accent-secondary"></span>
                   <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
                 </Badge>
               )}

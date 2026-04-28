@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -215,17 +216,23 @@ class TestDatasetDocumentListApi:
         method = unwrap(api.post)
 
         payload = {"indexing_technique": "economy"}
+        created_dataset = SimpleNamespace(id="ds-1", name="Dataset", indexing_technique="economy")
+        created_document = SimpleNamespace(id="doc-1", name="Document", doc_metadata_details=None)
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=created_dataset,
+            ),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.document_create_args_validate",
                 return_value=None,
             ),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.save_document_with_dataset_id",
-                return_value=([MagicMock()], "batch-1"),
+                return_value=([created_document], "batch-1"),
             ),
         ):
             response = method(api, "ds-1")

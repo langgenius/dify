@@ -30,7 +30,7 @@ vi.mock('@/service/tag', () => ({
   deleteTag: tagMocks.deleteTag,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: tagMocks.api,
 }))
 

@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from libs.pyrefly_type_coverage import (
     CoverageSummary,
@@ -8,11 +9,11 @@ from libs.pyrefly_type_coverage import (
 )
 
 
-def _make_report(summary: dict) -> str:
+def _make_report(summary: dict[str, Any]) -> str:
     return json.dumps({"module_reports": [], "summary": summary})
 
 
-_SAMPLE_SUMMARY: dict = {
+_SAMPLE_SUMMARY: dict[str, Any] = {
     "n_modules": 100,
     "n_typable": 1000,
     "n_typed": 400,

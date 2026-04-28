@@ -4,9 +4,9 @@ import type { Param, ParameterExtractorNodeType } from '../types'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { PanelProps } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -39,7 +39,7 @@ let mockWorkflowTools: MockToolCollection[] = []
 let mockSelectedToolInfo: ToolDefaultValue | undefined
 let mockBlockSelectorOpen = false
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),

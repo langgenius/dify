@@ -4,13 +4,13 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from graphon.file import File, FileTransferMethod, FileType
 from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
 from extensions.ext_database import db
 from extensions.storage.storage_type import StorageType
 from factories.file_factory import StorageKeyLoader
+from graphon.file import File, FileTransferMethod, FileType
 from models import ToolFile, UploadFile
 from models.enums import CreatorUserRole
 
@@ -123,9 +123,9 @@ class TestStorageKeyLoader(unittest.TestCase):
             file_related_id = related_id
 
         return File(
-            id=str(uuid4()),  # Generate new UUID for File.id
+            file_id=str(uuid4()),  # Generate new UUID for File.id
             tenant_id=tenant_id,
-            type=FileType.DOCUMENT,
+            file_type=FileType.DOCUMENT,
             transfer_method=transfer_method,
             related_id=file_related_id,
             remote_url=remote_url,

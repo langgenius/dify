@@ -70,7 +70,11 @@ const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> => ({
   promise: Promise.resolve(data),
 } as UseQueryResult<T, Error>)
 
-const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boolean) => void) =>
+const renderComponent = (
+  showHelpLink: boolean = true,
+  onOpenChange?: (open: boolean) => void,
+  offset?: { mainAxis: number, crossAxis: number } | number,
+) =>
   renderWorkflowFlowComponent(
     <PanelOperator
       id="node-1"
@@ -80,6 +84,7 @@ const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boo
         type: BlockEnum.Code,
       }}
       triggerClassName="panel-operator-trigger"
+      offset={offset}
       onOpenChange={onOpenChange}
       showHelpLink={showHelpLink}
     />,
@@ -156,6 +161,16 @@ describe('PanelOperator', () => {
       await user.click(container.querySelector('.panel-operator-trigger') as HTMLElement)
 
       expect(screen.queryByText('workflow.panel.helpLink')).not.toBeInTheDocument()
+      expect(screen.getByText('Node description')).toBeInTheDocument()
+    })
+
+    it('should still open the popup when using a numeric offset and no open-change callback', async () => {
+      const user = userEvent.setup()
+      const { container } = renderComponent(true, undefined, 0)
+
+      await user.click(container.querySelector('.panel-operator-trigger') as HTMLElement)
+
+      expect(screen.getByText('workflow.panel.runThisStep')).toBeInTheDocument()
       expect(screen.getByText('Node description')).toBeInTheDocument()
     })
   })

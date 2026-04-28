@@ -494,6 +494,7 @@
   "operation.downloadSuccess": "ดาวน์โหลดเสร็จสิ้นแล้ว.",
   "operation.duplicate": "สำเนา",
   "operation.edit": "แก้ไข",
+  "operation.exporting": "กำลังส่งออก",
   "operation.format": "รูปแบบ",
   "operation.getForFree": "รับฟรี",
   "operation.imageCopied": "ภาพที่คัดลอก",

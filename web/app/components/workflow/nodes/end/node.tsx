@@ -38,7 +38,7 @@ const Node: FC<NodeProps<EndNodeType>> = ({
   return (
     <div className="mb-1 space-y-0.5 px-3 py-1">
       {filteredOutputs.map(({ value_selector }, index) => {
-        const node = getNode(value_selector[0])
+        const node = getNode(value_selector[0]!)
         const varType = getCurrentVariableType({
           valueSelector: value_selector,
           availableNodes,

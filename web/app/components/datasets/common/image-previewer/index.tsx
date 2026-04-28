@@ -1,8 +1,8 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { formatFileSize } from '@/utils/format'
 
@@ -137,7 +137,7 @@ const ImagePreviewer = ({
       return {
         ...prev,
         [image.url]: {
-          ...prev[image.url],
+          ...prev[image.url]!,
           status: 'loading',
         },
       }
@@ -155,11 +155,11 @@ const ImagePreviewer = ({
       onClick={e => e.stopPropagation()}
       tabIndex={-1}
     >
-      <div className="absolute right-6 top-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
+      <div className="absolute top-6 right-6 z-10 flex cursor-pointer flex-col items-center gap-y-1">
         <Button
           variant="tertiary"
           onClick={onClose}
-          className="size-9 radius-lg p-0"
+          className="size-9 rounded-[10px] p-0"
           size="large"
         >
           <RiCloseLine className="size-5" />
@@ -168,15 +168,15 @@ const ImagePreviewer = ({
           Esc
         </span>
       </div>
-      {cachedImages[currentImage.url].status === 'loading' && (
+      {cachedImages[currentImage!.url]!.status === 'loading' && (
         <Loading type="app" />
       )}
-      {cachedImages[currentImage.url].status === 'error' && (
-        <div className="system-sm-regular flex max-w-sm flex-col items-center gap-y-2 text-text-tertiary">
-          <span>{`Failed to load image: ${currentImage.url}. Please try again.`}</span>
+      {cachedImages[currentImage!.url]!.status === 'error' && (
+        <div className="flex max-w-sm flex-col items-center gap-y-2 system-sm-regular text-text-tertiary">
+          <span>{`Failed to load image: ${currentImage!.url}. Please try again.`}</span>
           <Button
             variant="secondary"
-            onClick={() => retryImage(currentImage)}
+            onClick={() => retryImage(currentImage!)}
             className="size-9 rounded-full p-0"
             size="large"
           >
@@ -184,26 +184,26 @@ const ImagePreviewer = ({
           </Button>
         </div>
       )}
-      {cachedImages[currentImage.url].status === 'loaded' && (
+      {cachedImages[currentImage!.url]!.status === 'loaded' && (
         <div className="flex size-full flex-col items-center justify-center gap-y-2">
           <img
-            alt={currentImage.name}
-            src={cachedImages[currentImage.url].blobUrl}
+            alt={currentImage!.name}
+            src={cachedImages[currentImage!.url]!.blobUrl}
             className="max-h-[calc(100%-2.5rem)] max-w-full object-contain shadow-lg ring-8 ring-effects-image-frame backdrop-blur-[5px]"
           />
-          <div className="system-sm-regular flex shrink-0 gap-x-2 pb-1 pt-3 text-text-tertiary">
-            <span>{currentImage.name}</span>
+          <div className="flex shrink-0 gap-x-2 pt-3 pb-1 system-sm-regular text-text-tertiary">
+            <span>{currentImage!.name}</span>
             <span>·</span>
-            <span>{`${cachedImages[currentImage.url].width} ×  ${cachedImages[currentImage.url].height}`}</span>
+            <span>{`${cachedImages[currentImage!.url]!.width} ×  ${cachedImages[currentImage!.url]!.height}`}</span>
             <span>·</span>
-            <span>{formatFileSize(currentImage.size)}</span>
+            <span>{formatFileSize(currentImage!.size)}</span>
           </div>
         </div>
       )}
       <Button
         variant="secondary"
         onClick={prevImage}
-        className="absolute left-8 top-1/2 z-10 size-9 -translate-y-1/2 rounded-full p-0"
+        className="absolute top-1/2 left-8 z-10 size-9 -translate-y-1/2 rounded-full p-0"
         disabled={currentIndex === 0}
         size="large"
       >
@@ -212,7 +212,7 @@ const ImagePreviewer = ({
       <Button
         variant="secondary"
         onClick={nextImage}
-        className="absolute right-8 top-1/2 z-10 size-9 -translate-y-1/2 rounded-full p-0"
+        className="absolute top-1/2 right-8 z-10 size-9 -translate-y-1/2 rounded-full p-0"
         disabled={currentIndex === images.length - 1}
         size="large"
       >

@@ -31,6 +31,9 @@ const mocks = vi.hoisted(() => {
       registerNodeTransform: vi.fn(() => vi.fn()),
       dispatchCommand: vi.fn(),
       getRootElement: vi.fn(() => rootElement),
+      getEditorState: vi.fn(() => ({
+        read: (fn: () => boolean) => fn(),
+      })),
       parseEditorState: vi.fn(() => ({ state: 'parsed' })),
       setEditorState: vi.fn(),
       focus: vi.fn(),
@@ -66,6 +69,7 @@ vi.mock('lexical', async (importOriginal) => {
       getChildren: () => mocks.rootLines.map(line => ({
         getTextContent: () => line,
       })),
+      getAllTextNodes: () => [],
     }),
     TextNode: class TextNode {
       __text: string

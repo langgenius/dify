@@ -4,9 +4,6 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Union
 
-from graphon.entities import WorkflowStartReason
-from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -45,12 +42,15 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
+    HumanInputRequiredPauseReasonPayload,
+    HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
     StreamResponse,
     TextChunkStreamResponse,
     WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
     WorkflowAppStreamResponse,
     WorkflowFinishStreamResponse,
     WorkflowPauseStreamResponse,
@@ -61,6 +61,9 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus
+from graphon.runtime import GraphRuntimeState
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
@@ -118,7 +121,11 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
 
-    def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
+    def process(
+        self,
+    ) -> Union[
+        WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]
+    ]:
         """
         Process generate task pipeline.
         :return:
@@ -129,19 +136,24 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         else:
             return self._to_blocking_response(generator)
 
-    def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) -> WorkflowAppBlockingResponse:
+    def _to_blocking_response(
+        self, generator: Generator[StreamResponse, None, None]
+    ) -> Union[WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse]:
         """
         To blocking response.
         :return:
         """
+        human_input_responses: list[HumanInputRequiredResponse] = []
         for stream_response in generator:
             if isinstance(stream_response, ErrorStreamResponse):
                 raise stream_response.err
+            elif isinstance(stream_response, HumanInputRequiredResponse):
+                human_input_responses.append(stream_response)
             elif isinstance(stream_response, WorkflowPauseStreamResponse):
-                response = WorkflowAppBlockingResponse(
+                return WorkflowAppPausedBlockingResponse(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run_id=stream_response.data.workflow_run_id,
-                    data=WorkflowAppBlockingResponse.Data(
+                    data=WorkflowAppPausedBlockingResponse.Data(
                         id=stream_response.data.workflow_run_id,
                         workflow_id=self._workflow.id,
                         status=stream_response.data.status,
@@ -152,12 +164,13 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                         total_steps=stream_response.data.total_steps,
                         created_at=stream_response.data.created_at,
                         finished_at=None,
+                        paused_nodes=stream_response.data.paused_nodes,
+                        reasons=stream_response.data.reasons,
                     ),
                 )
 
-                return response
             elif isinstance(stream_response, WorkflowFinishStreamResponse):
-                response = WorkflowAppBlockingResponse(
+                return WorkflowAppBlockingResponse(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run_id=stream_response.data.id,
                     data=WorkflowAppBlockingResponse.Data(
@@ -174,11 +187,43 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     ),
                 )
 
-                return response
             else:
                 continue
 
+        if human_input_responses:
+            return self._build_paused_blocking_response_from_human_input(human_input_responses)
+
         raise ValueError("queue listening stopped unexpectedly.")
+
+    def _build_paused_blocking_response_from_human_input(
+        self, human_input_responses: list[HumanInputRequiredResponse]
+    ) -> WorkflowAppPausedBlockingResponse:
+        runtime_state = self._resolve_graph_runtime_state()
+        paused_nodes = list(dict.fromkeys(response.data.node_id for response in human_input_responses))
+        created_at = int(runtime_state.start_at)
+        reasons = [
+            HumanInputRequiredPauseReasonPayload.from_response_data(response.data).model_dump(mode="json")
+            for response in human_input_responses
+        ]
+
+        return WorkflowAppPausedBlockingResponse(
+            task_id=self._application_generate_entity.task_id,
+            workflow_run_id=human_input_responses[-1].workflow_run_id,
+            data=WorkflowAppPausedBlockingResponse.Data(
+                id=human_input_responses[-1].workflow_run_id,
+                workflow_id=self._workflow.id,
+                status=WorkflowExecutionStatus.PAUSED,
+                outputs={},
+                error=None,
+                elapsed_time=time.perf_counter() - self._base_task_pipeline.start_at,
+                total_tokens=runtime_state.total_tokens,
+                total_steps=runtime_state.node_run_steps,
+                created_at=created_at,
+                finished_at=None,
+                paused_nodes=paused_nodes,
+                reasons=reasons,
+            ),
+        )
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]
@@ -682,15 +727,16 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _save_workflow_app_log(self, *, session: Session, workflow_run_id: str | None):
         invoke_from = self._application_generate_entity.invoke_from
-        if invoke_from == InvokeFrom.SERVICE_API:
-            created_from = WorkflowAppLogCreatedFrom.SERVICE_API
-        elif invoke_from == InvokeFrom.EXPLORE:
-            created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
-        elif invoke_from == InvokeFrom.WEB_APP:
-            created_from = WorkflowAppLogCreatedFrom.WEB_APP
-        else:
-            # not save log for debugging
-            return
+        match invoke_from:
+            case InvokeFrom.SERVICE_API:
+                created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+            case InvokeFrom.EXPLORE:
+                created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
+            case InvokeFrom.WEB_APP:
+                created_from = WorkflowAppLogCreatedFrom.WEB_APP
+            case InvokeFrom.DEBUGGER | InvokeFrom.TRIGGER | InvokeFrom.PUBLISHED_PIPELINE | InvokeFrom.VALIDATION:
+                # not save log for debugging
+                return
 
         if not workflow_run_id:
             return

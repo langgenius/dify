@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { Tag } from './constant'
+import { ToastHost } from '@langgenius/dify-ui/toast'
 import { useEffect, useRef } from 'react'
-import { ToastHost } from '@/app/components/base/ui/toast'
 import TagManagementModal from '.'
 import { useStore as useTagStore } from './store'
 

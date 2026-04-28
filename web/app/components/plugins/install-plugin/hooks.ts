@@ -1,5 +1,5 @@
 import type { GitHubRepoReleaseResponse } from '../types'
-import { toast } from '@/app/components/base/ui/toast'
+import { toast } from '@langgenius/dify-ui/toast'
 import { uploadGitHub } from '@/service/plugins'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
 
@@ -52,7 +52,7 @@ export const checkForUpdates = (fetchedReleases: GitHubRepoReleaseResponse[], cu
   const versions = fetchedReleases.map(release => release.tag_name)
   const latestVersion = getLatestVersion(versions)
   try {
-    needUpdate = compareVersion(latestVersion, currentVersion) === 1
+    needUpdate = compareVersion(latestVersion!, currentVersion) === 1
     if (needUpdate)
       toastProps.message = `New version available: ${latestVersion}`
   }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SetURL from '../setURL'
 
@@ -52,6 +52,15 @@ describe('SetURL', () => {
 
       const input = screen.getByLabelText('plugin.installFromGitHub.gitHubRepo')
       expect(input).toBeInTheDocument()
+    })
+
+    it('should auto-focus the input on mount', async () => {
+      render(<SetURL {...defaultProps} />)
+
+      const input = screen.getByRole('textbox')
+      await waitFor(() => {
+        expect(input).toHaveFocus()
+      })
     })
   })
 

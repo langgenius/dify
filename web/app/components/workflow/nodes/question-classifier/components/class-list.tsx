@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDraggable } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -10,7 +11,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { cn } from '@/utils/classnames'
 import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
@@ -65,7 +65,7 @@ const ClassList: FC<Props> = ({
 
   const handleRemoveClass = useCallback((index: number) => {
     return () => {
-      handleEdgeDeleteByDeleteBranch(nodeId, list[index].id)
+      handleEdgeDeleteByDeleteBranch(nodeId, list[index]!.id)
       const newList = produce(list, (draft) => {
         draft.splice(index, 1)
       })
@@ -89,7 +89,7 @@ const ClassList: FC<Props> = ({
   return (
     <>
       <div className="mb-2 flex items-center justify-between" onClick={handleCollapse}>
-        <div className="flex cursor-pointer items-center text-xs font-semibold uppercase text-text-secondary">
+        <div className="flex cursor-pointer items-center text-xs font-semibold text-text-secondary uppercase">
           {t(`${i18nPrefix}.class`, { ns: 'workflow' })}
           {' '}
           <span className="text-text-destructive">*</span>
@@ -130,7 +130,7 @@ const ClassList: FC<Props> = ({
                   <div
                     key={item.id}
                     className={cn(
-                      'group relative radius-lg bg-components-panel-bg',
+                      'group relative rounded-[10px] bg-components-panel-bg',
                       `-ml-${HANDLE_SIDE_WIDTH} min-h-[40px] px-0 py-0`,
                     )}
                     style={{
@@ -141,7 +141,7 @@ const ClassList: FC<Props> = ({
                     <div>
                       {canDrag && (
                         <RiDraggable className={cn(
-                          'handle absolute left-2 top-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+                          'handle absolute top-3 left-2 hidden h-3 w-3 cursor-pointer text-text-tertiary',
                           'group-hover:block',
                         )}
                         />
@@ -150,7 +150,7 @@ const ClassList: FC<Props> = ({
                         className={cn(canDrag && 'handle')}
                         headerClassName={cn(canDrag && 'cursor-grab group-hover:pl-5')}
                         nodeId={nodeId}
-                        key={list[index].id}
+                        key={list[index]!.id}
                         payload={item}
                         onChange={handleClassChange(index)}
                         onRemove={handleRemoveClass(index)}

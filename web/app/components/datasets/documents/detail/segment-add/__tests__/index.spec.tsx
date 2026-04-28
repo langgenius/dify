@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Plan } from '@/app/components/billing/type'
@@ -30,18 +29,6 @@ vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
   ),
 }))
 
-// Mock Popover
-vi.mock('@/app/components/base/popover', () => ({
-  default: ({ htmlContent, btnElement, disabled }: { htmlContent: ReactNode, btnElement: ReactNode, disabled?: boolean }) => (
-    <div data-testid="popover">
-      <button data-testid="popover-btn" disabled={disabled}>
-        {btnElement}
-      </button>
-      <div data-testid="popover-content">{htmlContent}</div>
-    </div>
-  ),
-}))
-
 describe('SegmentAdd', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -70,10 +57,10 @@ describe('SegmentAdd', () => {
       expect(screen.getByText(/list\.action\.addButton/i)).toBeInTheDocument()
     })
 
-    it('should render popover for batch add', () => {
+    it('should render dropdown trigger for batch add', () => {
       render(<SegmentAdd {...defaultProps} />)
 
-      expect(screen.getByTestId('popover')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /list\.action\.batchAdd/i })).toBeInTheDocument()
     })
   })
 
@@ -152,17 +139,20 @@ describe('SegmentAdd', () => {
       expect(mockClearProcessStatus).toHaveBeenCalledTimes(1)
     })
 
-    it('should render batch add option in popover', () => {
+    it('should render batch add option in dropdown', async () => {
       render(<SegmentAdd {...defaultProps} />)
 
-      expect(screen.getByText(/list\.action\.batchAdd/i)).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: /list\.action\.batchAdd/i }))
+
+      expect(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i })).toBeInTheDocument()
     })
 
-    it('should call showBatchModal when batch add is clicked', () => {
+    it('should call showBatchModal when batch add is clicked', async () => {
       const mockShowBatchModal = vi.fn()
       render(<SegmentAdd {...defaultProps} showBatchModal={mockShowBatchModal} />)
 
-      fireEvent.click(screen.getByText(/list\.action\.batchAdd/i))
+      fireEvent.click(screen.getByRole('button', { name: /list\.action\.batchAdd/i }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i }))
 
       expect(mockShowBatchModal).toHaveBeenCalledTimes(1)
     })
@@ -177,10 +167,10 @@ describe('SegmentAdd', () => {
       expect(addButton).toBeDisabled()
     })
 
-    it('should disable popover button when embedding is true', () => {
+    it('should disable batch menu trigger when embedding is true', () => {
       render(<SegmentAdd {...defaultProps} embedding={true} />)
 
-      expect(screen.getByTestId('popover-btn')).toBeDisabled()
+      expect(screen.getByRole('button', { name: /list\.action\.batchAdd/i })).toBeDisabled()
     })
 
     it('should apply disabled styling when embedding is true', () => {

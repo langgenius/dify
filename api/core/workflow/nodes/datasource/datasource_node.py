@@ -1,7 +1,12 @@
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from graphon.entities.graph_config import NodeConfigDict
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.datasource.datasource_manager import DatasourceManager
+from core.datasource.entities.datasource_entities import DatasourceProviderType
+from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.system_variables import SystemVariableKey, get_system_segment
 from graphon.enums import (
     BuiltinNodeTypes,
     NodeExecutionType,
@@ -11,13 +16,6 @@ from graphon.enums import (
 from graphon.node_events import NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
-
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.datasource.datasource_manager import DatasourceManager
-from core.datasource.entities.datasource_entities import DatasourceProviderType
-from core.plugin.impl.exc import PluginDaemonClientSideError
-from core.workflow.file_reference import resolve_file_record_id
-from core.workflow.system_variables import SystemVariableKey, get_system_segment
 
 from .entities import DatasourceNodeData, DatasourceParameter, OnlineDriveDownloadFileParam
 from .exc import DatasourceNodeError
@@ -37,13 +35,14 @@ class DatasourceNode(Node[DatasourceNodeData]):
 
     def __init__(
         self,
-        id: str,
-        config: NodeConfigDict,
+        node_id: str,
+        config: DatasourceNodeData,
+        *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-    ):
+    ) -> None:
         super().__init__(
-            id=id,
+            node_id=node_id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,

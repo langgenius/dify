@@ -1,10 +1,10 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { ChangeEventHandler, CSSProperties, FocusEventHandler } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import { CopyFeedbackNew } from '../copy-feedback'
 
 export const inputVariants = cva(
@@ -12,8 +12,8 @@ export const inputVariants = cva(
   {
     variants: {
       size: {
-        regular: 'px-3 system-sm-regular radius-md',
-        large: 'px-4 system-md-regular radius-lg',
+        regular: 'rounded-lg px-3 system-sm-regular',
+        large: 'rounded-[10px] px-4 system-md-regular',
       },
     },
     defaultVariants: {
@@ -82,7 +82,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   }
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
-      {showLeftIcon && <span className={cn('i-ri-search-line absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
+      {showLeftIcon && <span className={cn('absolute top-1/2 left-2 i-ri-search-line h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
       <input
         ref={ref}
         style={styleCss}
@@ -110,7 +110,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       />
       {!!(showClearIcon && value && !disabled && !destructive) && (
         <div
-          className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-px')}
+          className={cn('group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer p-px')}
           onClick={onClear}
           data-testid="input-clear"
         >
@@ -118,10 +118,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         </div>
       )}
       {destructive && (
-        <span className="i-ri-error-warning-line absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
+        <span className="absolute top-1/2 right-2 i-ri-error-warning-line h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
       )}
       {showCopyIcon && (
-        <div className={cn('group absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer')}>
+        <div className={cn('group absolute top-1/2 right-0 -translate-y-1/2 cursor-pointer')}>
           <CopyFeedbackNew
             content={String(value ?? '')}
             className="h-7! w-7! hover:bg-transparent"
@@ -130,7 +130,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       )}
       {
         unit && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary system-sm-regular">
+          <div className="absolute top-1/2 right-2 -translate-y-1/2 system-sm-regular text-text-tertiary">
             {unit}
           </div>
         )

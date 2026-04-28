@@ -110,7 +110,7 @@ export const useGotoAnythingResults = (
     if (!acc[result.type])
       acc[result.type] = []
 
-    acc[result.type].push(result)
+    acc[result.type]!.push(result)
     return acc
   }, {} as Record<string, SearchResult[]>), [dedupedResults])
 
@@ -125,7 +125,7 @@ export const useGotoAnythingResults = (
     const currentValueExists = dedupedResults.some(result => `${result.type}-${result.id}` === cmdVal)
 
     if (!currentValueExists)
-      setCmdVal(`${dedupedResults[0].type}-${dedupedResults[0].id}`)
+      setCmdVal(`${dedupedResults[0]!.type}-${dedupedResults[0]!.id}`)
   }, [isCommandsMode, dedupedResults, cmdVal, setCmdVal])
 
   return {

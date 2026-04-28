@@ -521,6 +521,126 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     await waitFor(() => expect(readEditorText(editor)).not.toContain('{'))
   })
 
+  it('filters workflow variables from slash input and matches child paths', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+    const user = userEvent.setup()
+
+    const workflowVariableBlock = makeWorkflowVariableBlock({}, [
+      makeWorkflowVarNode('node-1', 'Node 1', [
+        makeWorkflowNodeVar('payload', VarType.object, [makeWorkflowNodeVar('child_name', VarType.string)]),
+        makeWorkflowNodeVar('other_value', VarType.string),
+      ]),
+    ])
+
+    render((
+      <MinimalEditor
+        triggerString="/"
+        contextBlock={makeContextBlock()}
+        workflowVariableBlock={workflowVariableBlock}
+        captures={captures}
+      />
+    ))
+
+    const editor = await waitForEditor(captures)
+    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+
+    await setEditorText(editor, '/child', true)
+    await flushNextTick()
+
+    expect(screen.queryByPlaceholderText('workflow.common.searchVar')).not.toBeInTheDocument()
+    expect(await screen.findByText('payload')).toBeInTheDocument()
+    expect(screen.queryByText('other_value')).not.toBeInTheDocument()
+
+    const label = document.querySelector('[title="payload"]')
+    expect(label).not.toBeNull()
+    const row = (label as HTMLElement).parentElement?.parentElement
+    expect(row).not.toBeNull()
+
+    await user.hover(row as HTMLElement)
+    const childField = await screen.findByText('child_name')
+    fireEvent.mouseDown(childField)
+    await user.unhover(row as HTMLElement)
+
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, ['node-1', 'payload', 'child_name'])
+    await waitFor(() => expect(readEditorText(editor)).not.toContain('/child'))
+  })
+
+  it('filters workflow variables on the first character after slash and does not highlight context by default', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+
+    const workflowVariableBlock = makeWorkflowVariableBlock({}, [
+      makeWorkflowVarNode('node-1', 'Node 1', [
+        makeWorkflowNodeVar('child_value', VarType.string),
+        makeWorkflowNodeVar('other_value', VarType.string),
+      ]),
+    ])
+
+    render((
+      <MinimalEditor
+        triggerString="/"
+        contextBlock={makeContextBlock()}
+        workflowVariableBlock={workflowVariableBlock}
+        captures={captures}
+      />
+    ))
+
+    const editor = await waitForEditor(captures)
+    await setEditorText(editor, '/c', true)
+    await flushNextTick()
+
+    expect(await screen.findByText('child_value')).toBeInTheDocument()
+    expect(screen.queryByText('other_value')).not.toBeInTheDocument()
+
+    const contextTitle = screen.getByText('common.promptEditor.context.item.title')
+    expect(contextTitle.closest('[tabindex="-1"]')).not.toHaveClass('bg-state-base-hover!')
+
+    await waitFor(() => {
+      expect(readEditorText(editor)).toContain('/c')
+    })
+  })
+
+  it('defaults to the first workflow variable and removes the full slash query when selecting by keyboard', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+
+    const workflowVariableBlock = makeWorkflowVariableBlock({}, [
+      makeWorkflowVarNode('node-1', 'Node 1', [
+        makeWorkflowNodeVar('first_value', VarType.string),
+        makeWorkflowNodeVar('second_value', VarType.string),
+      ]),
+    ])
+
+    render((
+      <MinimalEditor
+        triggerString="/"
+        contextBlock={makeContextBlock()}
+        workflowVariableBlock={workflowVariableBlock}
+        captures={captures}
+      />
+    ))
+
+    const editor = await waitForEditor(captures)
+    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+
+    await setEditorText(editor, '/e', true)
+    await flushNextTick()
+
+    const firstItem = screen.getByText('first_value').closest('[data-selected]')
+    const secondItem = screen.getByText('second_value').closest('[data-selected]')
+
+    expect(firstItem).toHaveAttribute('data-selected', 'true')
+    expect(secondItem).toHaveAttribute('data-selected', 'false')
+
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+
+    expect(firstItem).toHaveAttribute('data-selected', 'false')
+    expect(secondItem).toHaveAttribute('data-selected', 'true')
+
+    fireEvent.keyDown(document, { key: 'Enter' })
+
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, ['node-1', 'second_value'])
+    await waitFor(() => expect(readEditorText(editor)).not.toContain('/e'))
+  })
+
   it('skips removing the trigger when selection is null (needRemove is null) and still dispatches', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 

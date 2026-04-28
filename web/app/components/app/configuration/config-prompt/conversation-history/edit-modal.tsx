@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { ConversationHistoriesRole } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 
 type Props = {
@@ -30,7 +30,7 @@ const EditModal: FC<Props> = ({
       isShow={isShow}
       onClose={onClose}
     >
-      <div className="mt-6 text-sm font-medium leading-[21px] text-text-primary">{t('feature.conversationHistory.editModal.userPrefix', { ns: 'appDebug' })}</div>
+      <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t('feature.conversationHistory.editModal.userPrefix', { ns: 'appDebug' })}</div>
       <input
         className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm leading-10"
         value={tempData.user_prefix}
@@ -40,7 +40,7 @@ const EditModal: FC<Props> = ({
         })}
       />
 
-      <div className="mt-6 text-sm font-medium leading-[21px] text-text-primary">{t('feature.conversationHistory.editModal.assistantPrefix', { ns: 'appDebug' })}</div>
+      <div className="mt-6 text-sm leading-[21px] font-medium text-text-primary">{t('feature.conversationHistory.editModal.assistantPrefix', { ns: 'appDebug' })}</div>
       <input
         className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm leading-10"
         value={tempData.assistant_prefix}

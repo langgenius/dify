@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { CodeLanguage } from '../../code/types'
 import type { GenRes } from '@/service/debug'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -9,7 +10,6 @@ import { GetCodeGeneratorResModal } from '@/app/components/app/configuration/con
 import { ActionButton } from '@/app/components/base/action-button'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { useHooksStore } from '../../../hooks-store'
 
 type Props = {

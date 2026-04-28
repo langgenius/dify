@@ -2,6 +2,7 @@ import base64
 import secrets
 
 import click
+from sqlalchemy.orm import Session
 
 from constants.languages import languages
 from extensions.ext_database import db
@@ -43,10 +44,11 @@ def reset_password(email, new_password, password_confirm):
     # encrypt password with salt
     password_hashed = hash_password(new_password, salt)
     base64_password_hashed = base64.b64encode(password_hashed).decode()
-    account = db.session.merge(account)
-    account.password = base64_password_hashed
-    account.password_salt = base64_salt
-    db.session.commit()
+    with Session(db.engine) as session:
+        account = session.merge(account)
+        account.password = base64_password_hashed
+        account.password_salt = base64_salt
+        session.commit()
     AccountService.reset_login_error_rate_limit(normalized_email)
     click.echo(click.style("Password reset successfully.", fg="green"))
 
@@ -77,9 +79,10 @@ def reset_email(email, new_email, email_confirm):
         click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
         return
 
-    account = db.session.merge(account)
-    account.email = normalized_new_email
-    db.session.commit()
+    with Session(db.engine) as session:
+        account = session.merge(account)
+        account.email = normalized_new_email
+        session.commit()
     click.echo(click.style("Email updated successfully.", fg="green"))
 
 

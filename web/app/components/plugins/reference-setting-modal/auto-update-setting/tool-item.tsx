@@ -26,12 +26,12 @@ const ToolItem: FC<Props> = ({
   return (
     <div className="p-1">
       <div
-        className="flex w-full select-none items-center rounded-lg pr-2 hover:bg-state-base-hover"
+        className="flex w-full items-center rounded-lg pr-2 select-none hover:bg-state-base-hover"
       >
-        <div className="flex h-8 grow items-center space-x-2 pl-3 pr-2">
+        <div className="flex h-8 grow items-center space-x-2 pr-2 pl-3">
           <Icon size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin_id}/icon`} />
-          <div className="system-sm-medium max-w-[150px] shrink-0 truncate text-text-primary">{renderI18nObject(label, language)}</div>
-          <div className="system-xs-regular max-w-[150px] shrink-0  truncate text-text-quaternary">{org}</div>
+          <div className="max-w-[150px] shrink-0 truncate system-sm-medium text-text-primary">{renderI18nObject(label, language)}</div>
+          <div className="max-w-[150px] shrink-0 truncate system-xs-regular text-text-quaternary">{org}</div>
         </div>
         <Checkbox
           checked={isChecked}

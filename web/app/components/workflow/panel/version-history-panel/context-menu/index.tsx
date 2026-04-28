@@ -1,14 +1,13 @@
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback } from 'react'
-import Button from '@/app/components/base/button'
-import Divider from '@/app/components/base/divider'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 import MenuItem from './menu-item'
 import useContextMenu from './use-context-menu'
@@ -28,58 +27,44 @@ const ContextMenu: FC<ContextMenuProps> = (props: ContextMenuProps) => {
     options,
   } = useContextMenu(props)
 
-  const handleClickTrigger = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation()
-    setOpen(v => !v)
-  }, [setOpen])
-
   return (
-    <PortalToFollowElem
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 0,
-      }}
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger>
-        <Button size="small" className="px-1" onClick={handleClickTrigger}>
-          <RiMoreFill className="h-4 w-4" />
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-10">
-        <div className="flex w-[184px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
-          <div className="flex flex-col p-1">
-            {
-              options.map((option) => {
-                return (
-                  <MenuItem
-                    key={option.key}
-                    item={option}
-                    onClick={handleClickMenuItem.bind(null, option.key)}
-                  />
-                )
-              })
-            }
-          </div>
-          {
-            isShowDelete && (
-              <>
-                <Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />
-                <div className="p-1">
-                  <MenuItem
-                    item={deleteOperation}
-                    isDestructive
-                    onClick={handleClickMenuItem.bind(null, VersionHistoryContextMenuOptions.delete)}
-                  />
-                </div>
-              </>
-            )
-          }
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      <DropdownMenuTrigger
+        render={<Button size="small" className="px-1" onClick={e => e.stopPropagation()} />}
+      >
+        <RiMoreFill className="h-4 w-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="w-[184px] shadow-shadow-shadow-5"
+      >
+        {
+          options.map(option => (
+            <MenuItem
+              key={option.key}
+              item={option}
+              onClick={handleClickMenuItem.bind(null, option.key)}
+            />
+          ))
+        }
+        {
+          isShowDelete && (
+            <>
+              <DropdownMenuSeparator className="my-0" />
+              <MenuItem
+                item={deleteOperation}
+                isDestructive
+                onClick={handleClickMenuItem.bind(null, VersionHistoryContextMenuOptions.delete)}
+              />
+            </>
+          )
+        }
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

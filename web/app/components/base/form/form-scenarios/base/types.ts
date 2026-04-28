@@ -33,7 +33,7 @@ export type SelectConfiguration = {
   }
 }
 
-export type FileConfiguration = {
+type FileConfiguration = {
   allowedFileTypes: string[]
   allowedFileExtensions: string[]
   allowedFileUploadMethods: TransferMethod[]

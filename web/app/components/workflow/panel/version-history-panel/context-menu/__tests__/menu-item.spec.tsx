@@ -1,3 +1,4 @@
+import { DropdownMenu, DropdownMenuContent } from '@langgenius/dify-ui/dropdown-menu'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { VersionHistoryContextMenuOptions } from '../../../../types'
@@ -9,14 +10,18 @@ describe('MenuItem', () => {
     const onClick = vi.fn()
 
     render(
-      <MenuItem
-        item={{
-          key: VersionHistoryContextMenuOptions.delete,
-          name: 'Delete',
-        }}
-        isDestructive
-        onClick={onClick}
-      />,
+      <DropdownMenu open onOpenChange={vi.fn()}>
+        <DropdownMenuContent>
+          <MenuItem
+            item={{
+              key: VersionHistoryContextMenuOptions.delete,
+              name: 'Delete',
+            }}
+            isDestructive
+            onClick={onClick}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>,
     )
 
     await user.click(screen.getByText('Delete'))

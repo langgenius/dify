@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
 from redis import Redis, RedisCluster
 
@@ -32,12 +33,13 @@ class Topic:
     def __init__(self, redis_client: Redis | RedisCluster, topic: str):
         self._client = redis_client
         self._topic = topic
+        self._redis_topic = serialize_redis_name(topic)
 
     def as_producer(self) -> Producer:
         return self
 
     def publish(self, payload: bytes) -> None:
-        self._client.publish(self._topic, payload)
+        self._client.publish(self._redis_topic, payload)
 
     def as_subscriber(self) -> Subscriber:
         return self
@@ -46,7 +48,7 @@ class Topic:
         return _RedisSubscription(
             client=self._client,
             pubsub=self._client.pubsub(),
-            topic=self._topic,
+            topic=self._redis_topic,
         )
 
 

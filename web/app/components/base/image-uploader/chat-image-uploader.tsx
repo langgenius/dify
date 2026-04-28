@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import type { ImageFile, VisionSettings } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { TransferMethod } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import ImageLinkInput from './image-link-input'
 import Uploader from './uploader'
 
@@ -63,29 +63,31 @@ const UploaderButton: FC<UploaderButtonProps> = ({
 
   const closePopover = () => setOpen(false)
 
-  const handleToggle = () => {
-    if (disabled)
-      return
-
-    setOpen(v => !v)
-  }
-
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement="top-start"
+      onOpenChange={(nextOpen) => {
+        if (disabled)
+          return
+        setOpen(nextOpen)
+      }}
     >
-      <PortalToFollowElemTrigger onClick={handleToggle}>
-        <button
-          type="button"
-          disabled={disabled}
-          className="relative flex h-8 w-8 items-center justify-center rounded-lg enabled:hover:bg-gray-100 disabled:cursor-not-allowed"
-        >
-          <span className="i-custom-vender-line-images-image-plus h-4 w-4 text-gray-500" />
-        </button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-50">
+      <PopoverTrigger
+        render={(
+          <button
+            type="button"
+            disabled={disabled}
+            className="relative flex h-8 w-8 items-center justify-center rounded-lg enabled:hover:bg-gray-100 disabled:cursor-not-allowed"
+          >
+            <span className="i-custom-vender-line-images-image-plus h-4 w-4 text-gray-500" />
+          </button>
+        )}
+      />
+      <PopoverContent
+        placement="top-start"
+        sideOffset={0}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="w-[260px] rounded-lg border-[0.5px] border-gray-200 bg-white p-2 shadow-lg">
           <ImageLinkInput onUpload={handleUpload} disabled={disabled} />
           {!!hasUploadFromLocal && (
@@ -107,7 +109,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                       hovering && 'bg-primary-50',
                     )}
                   >
-                    <span className="i-custom-vender-line-general-upload-03 mr-1 h-4 w-4" />
+                    <span className="mr-1 i-custom-vender-line-general-upload-03 h-4 w-4" />
                     {t('imageUploader.uploadFromComputer', { ns: 'common' })}
                   </div>
                 )}
@@ -115,8 +117,8 @@ const UploaderButton: FC<UploaderButtonProps> = ({
             </>
           )}
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

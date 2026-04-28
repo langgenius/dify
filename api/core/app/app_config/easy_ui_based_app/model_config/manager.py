@@ -1,10 +1,9 @@
 from collections.abc import Mapping
 from typing import Any
 
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-
 from core.app.app_config.entities import ModelConfigEntity
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from models.model import AppModelConfigDict
 from models.provider_ids import ModelProviderID
 
@@ -41,7 +40,7 @@ class ModelConfigManager:
         )
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, config: Mapping[str, Any]) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, config: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for model config
 

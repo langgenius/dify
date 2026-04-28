@@ -1,12 +1,12 @@
 import type { FileEntity } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
 import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
 import PdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
 import VideoPreview from '@/app/components/base/file-uploader/video-preview'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import { formatFileSize } from '@/utils/format'
 import FileTypeIcon from '../file-type-icon'
@@ -36,6 +36,7 @@ const FileItem = ({
   const [previewUrl, setPreviewUrl] = useState('')
   const ext = getFileExtension(name, type, isRemote)
   const uploadError = progress === -1
+  const [typeCategory = '', typeSubtype = ''] = type?.split('/') ?? []
 
   let tmp_preview_url = url || base64Url
   if (!tmp_preview_url && file?.originalFile)
@@ -55,7 +56,7 @@ const FileItem = ({
         {
           showDeleteAction && (
             <Button
-              className="absolute -right-1.5 -top-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-item:flex"
+              className="absolute -top-1.5 -right-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-item:flex"
               onClick={() => onRemove?.(id)}
               data-testid="delete-button"
             >
@@ -64,14 +65,14 @@ const FileItem = ({
           )
         }
         <div
-          className="mb-1 line-clamp-2 h-8 cursor-pointer break-all text-text-tertiary system-xs-medium"
+          className="mb-1 line-clamp-2 h-8 cursor-pointer system-xs-medium break-all text-text-tertiary"
           title={name}
           onClick={() => canPreview && setPreviewUrl(tmp_preview_url || '')}
         >
           {name}
         </div>
         <div className="relative flex items-center justify-between">
-          <div className="flex items-center text-text-tertiary system-2xs-medium-uppercase">
+          <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
             <FileTypeIcon
               size="sm"
               type={getFileAppearanceType(name, type)}
@@ -93,7 +94,7 @@ const FileItem = ({
             showDownloadAction && download_url && (
               <ActionButton
                 size="m"
-                className="absolute -right-1 -top-1 hidden group-hover/file-item:flex"
+                className="absolute -top-1 -right-1 hidden group-hover/file-item:flex"
                 onClick={(e) => {
                   e.stopPropagation()
                   downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
@@ -121,7 +122,7 @@ const FileItem = ({
         </div>
       </div>
       {
-        type.split('/')[0] === 'audio' && canPreview && previewUrl && (
+        typeCategory === 'audio' && canPreview && previewUrl && (
           <AudioPreview
             title={name}
             url={previewUrl}
@@ -130,7 +131,7 @@ const FileItem = ({
         )
       }
       {
-        type.split('/')[0] === 'video' && canPreview && previewUrl && (
+        typeCategory === 'video' && canPreview && previewUrl && (
           <VideoPreview
             title={name}
             url={previewUrl}
@@ -139,7 +140,7 @@ const FileItem = ({
         )
       }
       {
-        type.split('/')[1] === 'pdf' && canPreview && previewUrl && (
+        typeSubtype === 'pdf' && canPreview && previewUrl && (
           <PdfPreview url={previewUrl} onCancel={() => { setPreviewUrl('') }} />
         )
       }

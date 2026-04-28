@@ -40,7 +40,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
   const handleSelectModel = ({ modelId, provider }: { modelId: string, provider: string }) => {
     const newModelConfigs = [...multipleModelConfigs]
     newModelConfigs[index] = {
-      ...newModelConfigs[index],
+      ...newModelConfigs[index]!,
       model: modelId,
       provider,
     }
@@ -49,7 +49,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
   const handleParamsChange = (params: FormValue) => {
     const newModelConfigs = [...multipleModelConfigs]
     newModelConfigs[index] = {
-      ...newModelConfigs[index],
+      ...newModelConfigs[index]!,
       parameters: params,
     }
     onMultipleModelConfigsChange(true, newModelConfigs)

@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
-import { toast } from '@/app/components/base/ui/toast'
-import Button from '../../base/button'
 import Input from '../../base/input'
 import Textarea from '../../base/textarea'
 
@@ -67,17 +67,17 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
 
   return (
     <Modal className="p-0" isShow={isOpen} onClose={onClose}>
-      <div className="relative w-full p-6 pb-4 pr-14">
+      <div className="relative w-full p-6 pr-14 pb-4">
         <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
           {versionInfo?.marked_name ? t('versionHistory.editVersionInfo', { ns: 'workflow' }) : t('versionHistory.nameThisVersion', { ns: 'workflow' })}
         </div>
-        <div className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onClose}>
+        <div className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onClose}>
           <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
         </div>
       </div>
       <div className="flex flex-col gap-y-4 px-6 py-3">
         <div className="flex flex-col gap-y-1">
-          <div className="system-sm-semibold flex h-6 items-center text-text-secondary">
+          <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
             {t('versionHistory.editField.title', { ns: 'workflow' })}
           </div>
           <Input
@@ -88,7 +88,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           />
         </div>
         <div className="flex flex-col gap-y-1">
-          <div className="system-sm-semibold flex h-6 items-center text-text-secondary">
+          <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
             {t('versionHistory.editField.releaseNotes', { ns: 'workflow' })}
           </div>
           <Textarea

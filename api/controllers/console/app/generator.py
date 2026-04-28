@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 
 from flask_restx import Resource
-from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field
 
 from controllers.console import console_ns
@@ -20,6 +19,7 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from services.workflow_service import WorkflowService

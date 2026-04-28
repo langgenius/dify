@@ -2,17 +2,17 @@ import type { OperationName } from '../types'
 import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator'
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDisplayStatus } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import Indicator from '@/app/components/header/indicator'
 import { useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
-import { cn } from '@/utils/classnames'
 import s from '../style.module.css'
 import { useIndexStatus } from './hooks'
 
@@ -85,7 +85,7 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
       {scene === 'detail' && (
         <div className="ml-1.5 flex items-center justify-between">
           <Tooltip popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })} popupClassName="text-text-secondary system-xs-medium" disabled={!archived}>
-            <Switch value={archived ? false : enabled} onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')} disabled={embedding || archived} size="md" />
+            <Switch checked={archived ? false : enabled} onCheckedChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')} disabled={embedding || archived} size="md" />
           </Tooltip>
         </div>
       )}

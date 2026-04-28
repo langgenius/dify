@@ -19,7 +19,10 @@ const prefixEmbedded = 'overview.appInfo.embedded'
 
 const CopyFeedback = ({ content }: Props) => {
   const { t } = useTranslation()
-  const { copied, copy, reset } = useClipboard()
+  // Rely on useClipboard's own timer to flip `copied` back to false so the
+  // "Copied" tooltip stays visible long enough to be read, matching the
+  // KeyValueItem pattern. Do NOT reset on mouse leave.
+  const { copied, copy } = useClipboard({ timeout: 2000 })
 
   const tooltipText = copied
     ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
@@ -36,10 +39,7 @@ const CopyFeedback = ({ content }: Props) => {
       popupContent={safeText}
     >
       <ActionButton>
-        <div
-          onClick={handleCopy}
-          onMouseLeave={reset}
-        >
+        <div onClick={handleCopy}>
           {copied && <RiClipboardFill className="h-4 w-4" />}
           {!copied && <RiClipboardLine className="h-4 w-4" />}
         </div>
@@ -52,7 +52,7 @@ export default CopyFeedback
 
 export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' | 'content'>) => {
   const { t } = useTranslation()
-  const { copied, copy, reset } = useClipboard()
+  const { copied, copy } = useClipboard({ timeout: 2000 })
 
   const tooltipText = copied
     ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
@@ -73,7 +73,6 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
       >
         <div
           onClick={handleCopy}
-          onMouseLeave={reset}
           className={`h-full w-full ${copyStyle.copyIcon} ${copied ? copyStyle.copied : ''}`}
         >
         </div>

@@ -1,13 +1,12 @@
 from collections.abc import Mapping
 
-from graphon.entities import GraphInitParams
-from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState
-
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
+from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 from core.workflow.system_variables import build_system_variables
+from graphon.entities import GraphInitParams
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
@@ -28,29 +27,24 @@ def _build_context(graph_config: Mapping[str, object]) -> tuple[GraphInitParams,
     return init_params, runtime_state
 
 
-def _build_node_config() -> NodeConfigDict:
-    return NodeConfigDictAdapter.validate_python(
-        {
-            "id": "node-1",
-            "data": {
-                "type": TRIGGER_PLUGIN_NODE_TYPE,
-                "title": "Trigger Event",
-                "plugin_id": "plugin-id",
-                "provider_id": "provider-id",
-                "event_name": "event-name",
-                "subscription_id": "subscription-id",
-                "plugin_unique_identifier": "plugin-unique-identifier",
-                "event_parameters": {},
-            },
-        }
+def _build_node_data() -> TriggerEventNodeData:
+    return TriggerEventNodeData(
+        type=TRIGGER_PLUGIN_NODE_TYPE,
+        title="Trigger Event",
+        plugin_id="plugin-id",
+        provider_id="provider-id",
+        event_name="event-name",
+        subscription_id="subscription-id",
+        plugin_unique_identifier="plugin-unique-identifier",
+        event_parameters={},
     )
 
 
 def test_trigger_event_node_run_populates_trigger_info_metadata() -> None:
     init_params, runtime_state = _build_context(graph_config={})
     node = TriggerEventNode(
-        id="node-1",
-        config=_build_node_config(),
+        node_id="node-1",
+        config=_build_node_data(),
         graph_init_params=init_params,
         graph_runtime_state=runtime_state,
     )

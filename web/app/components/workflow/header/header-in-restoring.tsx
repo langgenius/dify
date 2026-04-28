@@ -1,15 +1,17 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiHistoryLine } from '@remixicon/react'
 import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { toast } from '@/app/components/base/ui/toast'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 import useTheme from '@/hooks/use-theme'
-import { useInvalidAllLastRun, useRestoreWorkflow } from '@/service/use-workflow'
-import { getFlowPrefix } from '@/service/utils'
-import { cn } from '@/utils/classnames'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
 import {
+  useLeaderRestore,
   useWorkflowRefreshDraft,
   useWorkflowRun,
 } from '../hooks'
@@ -32,6 +34,8 @@ const HeaderInRestoring = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const workflowStore = useWorkflowStore()
+  const userProfile = useAppContextSelector(s => s.userProfile)
+  const featuresStore = useFeaturesStore()
   const configsMap = useHooksStore(s => s.configsMap)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
@@ -43,8 +47,8 @@ const HeaderInRestoring = ({
   const {
     handleLoadBackupDraft,
   } = useWorkflowRun()
+  const { requestRestore } = useLeaderRestore()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
   const canRestore = !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
 
   const handleCancelRestore = useCallback(() => {
@@ -53,36 +57,54 @@ const HeaderInRestoring = ({
     setShowWorkflowVersionHistoryPanel(false)
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
-  const handleRestore = useCallback(async () => {
-    if (!canRestore)
+  const handleRestore = useCallback(() => {
+    if (!canRestore || !currentVersion)
       return
 
     setShowWorkflowVersionHistoryPanel(false)
-    const restoreUrl = `/${getFlowPrefix(configsMap.flowType)}/${configsMap.flowId}/workflows/${currentVersion.id}/restore`
+    workflowStore.setState({ isRestoring: false })
+    workflowStore.setState({ backupDraft: undefined })
 
-    try {
-      await restoreWorkflow(restoreUrl)
-      workflowStore.setState({ isRestoring: false })
-      workflowStore.setState({ backupDraft: undefined })
-      handleRefreshWorkflowDraft()
-      toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
-      deleteAllInspectVars()
-      invalidAllLastRun()
-    }
-    catch {
-      toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
-    }
-    finally {
-      onRestoreSettled?.()
-    }
-  }, [canRestore, currentVersion?.id, configsMap, setShowWorkflowVersionHistoryPanel, workflowStore, restoreWorkflow, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+    const { graph } = currentVersion
+    const features = featuresStore?.getState().features
+    const environmentVariables = currentVersion.environment_variables || []
+    const conversationVariables = currentVersion.conversation_variables || []
+
+    requestRestore({
+      versionId: currentVersion.id,
+      versionName: currentVersion.marked_name,
+      initiatorUserId: userProfile.id,
+      initiatorName: userProfile.name,
+      graphData: {
+        nodes: graph.nodes,
+        edges: graph.edges,
+        viewport: graph.viewport,
+      },
+      features,
+      environmentVariables,
+      conversationVariables,
+    }, {
+      onSuccess: () => {
+        handleRefreshWorkflowDraft()
+        toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
+        deleteAllInspectVars()
+        invalidAllLastRun()
+      },
+      onError: () => {
+        toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
+      },
+      onSettled: () => {
+        onRestoreSettled?.()
+      },
+    })
+  }, [canRestore, currentVersion, setShowWorkflowVersionHistoryPanel, workflowStore, featuresStore, requestRestore, userProfile, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>
       <div>
         <RestoringTitle />
       </div>
-      <div className=" flex items-center justify-end gap-x-2">
+      <div className="flex items-center justify-end gap-x-2">
         <Button
           onClick={handleRestore}
           disabled={!canRestore}

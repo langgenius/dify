@@ -1,17 +1,17 @@
-"""
-Mock node factory for testing workflows with third-party service dependencies.
+"""Mock node factory for third-party-service workflow tests.
 
-This module provides a MockNodeFactory that automatically detects and mocks nodes
-requiring external services (LLM, Agent, Tool, Knowledge Retrieval, HTTP Request).
+The factory follows the same config adaptation path as production
+`DifyNodeFactory.create_node()`, but swaps selected node classes for mock
+implementations before instantiation.
 """
 
 from typing import TYPE_CHECKING, Any
 
+from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.node_factory import DifyNodeFactory
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.base.node import Node
-
-from core.workflow.node_factory import DifyNodeFactory
 
 from .test_mock_nodes import (
     MockAgentNode,
@@ -83,20 +83,20 @@ class MockNodeFactory(DifyNodeFactory):
         :param node_config: Node configuration dictionary
         :return: Node instance (real or mocked)
         """
-        typed_node_config = NodeConfigDictAdapter.validate_python(node_config)
+        typed_node_config = NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph(node_config))
+        node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
         node_type = node_data.type
 
         # Check if this node type should be mocked
         if node_type in self._mock_node_types:
-            node_id = typed_node_config["id"]
-
             # Create mock node instance
             mock_class = self._mock_node_types[node_type]
+            resolved_node_data = self._validate_resolved_node_data(mock_class, node_data)
             if node_type == BuiltinNodeTypes.CODE:
                 mock_instance = mock_class(
-                    id=node_id,
-                    config=typed_node_config,
+                    node_id=node_id,
+                    config=resolved_node_data,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -105,8 +105,8 @@ class MockNodeFactory(DifyNodeFactory):
                 )
             elif node_type == BuiltinNodeTypes.HTTP_REQUEST:
                 mock_instance = mock_class(
-                    id=node_id,
-                    config=typed_node_config,
+                    node_id=node_id,
+                    config=resolved_node_data,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -121,8 +121,8 @@ class MockNodeFactory(DifyNodeFactory):
                 BuiltinNodeTypes.PARAMETER_EXTRACTOR,
             }:
                 mock_instance = mock_class(
-                    id=node_id,
-                    config=typed_node_config,
+                    node_id=node_id,
+                    config=resolved_node_data,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -131,8 +131,8 @@ class MockNodeFactory(DifyNodeFactory):
                 )
             else:
                 mock_instance = mock_class(
-                    id=node_id,
-                    config=typed_node_config,
+                    node_id=node_id,
+                    config=resolved_node_data,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -141,7 +141,7 @@ class MockNodeFactory(DifyNodeFactory):
             return mock_instance
 
         # For non-mocked node types, use parent implementation
-        return super().create_node(typed_node_config)
+        return super().create_node(node_config)
 
     def should_mock_node(self, node_type: NodeType) -> bool:
         """

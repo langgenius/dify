@@ -27,7 +27,7 @@ vi.mock('use-context-selector', () => ({
   useContextSelector: (context: unknown, selector: (state: unknown) => unknown) => selector({}),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMocks.api,
 }))
 

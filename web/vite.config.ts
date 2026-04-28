@@ -19,9 +19,6 @@ export default defineConfig(({ mode }) => {
     || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
 
   return {
-    staged: {
-      '*': 'eslint --fix --pass-on-unpruned-suppressions',
-    },
     plugins: isTest
       ? [
           nextStaticImageTestPlugin({ projectRoot }),
@@ -60,6 +57,10 @@ export default defineConfig(({ mode }) => {
           ],
     resolve: {
       tsconfigPaths: true,
+      alias: [
+        // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
+        { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
+      ],
     },
 
     // vinext related config

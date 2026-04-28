@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -317,7 +318,7 @@ class TestDuplicateDocumentIndexingTasks:
         # Verify documents were updated to parsing status
         # Re-query documents from database since _duplicate_document_indexing_task uses a different session
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
@@ -362,14 +363,14 @@ class TestDuplicateDocumentIndexingTasks:
         # Verify segments were deleted from database
         # Re-query segments from database using captured IDs to avoid stale ORM instances
         for seg_id in segment_ids:
-            deleted_segment = (
-                db_session_with_containers.query(DocumentSegment).where(DocumentSegment.id == seg_id).first()
+            deleted_segment = db_session_with_containers.scalar(
+                select(DocumentSegment).where(DocumentSegment.id == seg_id).limit(1)
             )
             assert deleted_segment is None
 
         # Verify documents were updated to parsing status
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
@@ -438,7 +439,7 @@ class TestDuplicateDocumentIndexingTasks:
         # Verify only existing documents were updated
         # Re-query documents from database since _duplicate_document_indexing_task uses a different session
         for doc_id in existing_document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
@@ -485,7 +486,7 @@ class TestDuplicateDocumentIndexingTasks:
         # Verify documents were still updated to parsing status before the exception
         # Re-query documents from database since _duplicate_document_indexing_task close the session
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
@@ -543,7 +544,7 @@ class TestDuplicateDocumentIndexingTasks:
         # Assert: Verify error handling
         # Re-query documents from database since _duplicate_document_indexing_task uses a different session
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document.indexing_status == IndexingStatus.ERROR
             assert updated_document.error is not None
             assert "batch upload" in updated_document.error.lower()
@@ -585,7 +586,7 @@ class TestDuplicateDocumentIndexingTasks:
         # Assert: Verify error handling
         # Re-query documents from database since _duplicate_document_indexing_task uses a different session
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document.indexing_status == IndexingStatus.ERROR
             assert updated_document.error is not None
             assert "limit" in updated_document.error.lower()
@@ -649,7 +650,7 @@ class TestDuplicateDocumentIndexingTasks:
 
         # Verify documents were processed
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document.indexing_status == IndexingStatus.PARSING
 
     @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
@@ -692,7 +693,7 @@ class TestDuplicateDocumentIndexingTasks:
 
         # Verify documents were processed
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document.indexing_status == IndexingStatus.PARSING
 
     @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
@@ -736,7 +737,7 @@ class TestDuplicateDocumentIndexingTasks:
 
         # Verify documents were processed
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document.indexing_status == IndexingStatus.PARSING
 
     @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
@@ -851,7 +852,7 @@ class TestDuplicateDocumentIndexingTasks:
 
         # Assert
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.query(Document).where(Document.id == doc_id).first()
+            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document.is_paused is True
             assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.display_status == "paused"

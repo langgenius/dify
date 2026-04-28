@@ -46,7 +46,7 @@ vi.mock('../../hooks/use-dynamic-test-run-options', () => ({
   useDynamicTestRunOptions: () => mockDynamicOptions,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -85,7 +85,7 @@ vi.mock('../test-run-menu', async (importOriginal) => {
       }))
       return (
         <div>
-          <button data-testid="trigger-option" onClick={() => onSelect(options[0])}>
+          <button data-testid="trigger-option" onClick={() => onSelect(options[0]!)}>
             Trigger option
           </button>
           {children}
@@ -109,7 +109,7 @@ describe('RunMode', () => {
   it('should render the run trigger and start the workflow when a valid trigger is selected', () => {
     render(<RunMode />)
 
-    expect(screen.getByText(/run/i)).toBeInTheDocument()
+    expect(screen.getByText(/run/i))!.toBeInTheDocument()
     fireEvent.click(screen.getByTestId('trigger-option'))
 
     expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledTimes(1)
@@ -137,7 +137,7 @@ describe('RunMode', () => {
 
     render(<RunMode />)
 
-    expect(screen.getByText(/running/i)).toBeInTheDocument()
+    expect(screen.getByText(/running/i))!.toBeInTheDocument()
     fireEvent.click(screen.getByTestId('stop-circle').closest('button') as HTMLButtonElement)
 
     expect(mockHandleStopRun).toHaveBeenCalledWith('task-1')
@@ -148,6 +148,6 @@ describe('RunMode', () => {
 
     render(<RunMode />)
 
-    expect(screen.getByText(/listening/i)).toBeInTheDocument()
+    expect(screen.getByText(/listening/i))!.toBeInTheDocument()
   })
 })

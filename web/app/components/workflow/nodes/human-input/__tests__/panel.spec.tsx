@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 import type useConfig from '../hooks/use-config'
 import type { HumanInputNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import { toast } from '@/app/components/base/ui/toast'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import Panel from '../panel'
 import { DeliveryMethodType, UserActionButtonType } from '../types'
@@ -24,7 +24,7 @@ vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
   },

@@ -25,7 +25,7 @@ const Statistics = ({
 
   return (
     <div className="flex items-center gap-x-0.5 p-2 pb-0">
-      <div className="flex grow flex-col px-2 pb-1.5 pt-1">
+      <div className="flex grow flex-col px-2 pt-1 pb-1.5">
         <div className="system-md-semibold-uppercase text-text-secondary">
           {documentCount ?? '--'}
         </div>
@@ -33,10 +33,10 @@ const Statistics = ({
           {t('datasetMenus.documents', { ns: 'common' })}
         </div>
       </div>
-      <div className="py-2 pl-0.5 pr-1.5">
+      <div className="py-2 pr-1.5 pl-0.5">
         <Divider className="text-test-divider-regular h-full w-fit" />
       </div>
-      <div className="flex grow flex-col px-2 pb-1.5 pt-1">
+      <div className="flex grow flex-col px-2 pt-1 pb-1.5">
         <div className="system-md-semibold-uppercase text-text-secondary">
           {relatedAppsTotal ?? '--'}
         </div>
@@ -55,7 +55,7 @@ const Statistics = ({
               : <NoLinkedAppsPanel />
           }
         >
-          <div className="system-2xs-medium-uppercase flex cursor-pointer items-center gap-x-0.5 text-text-tertiary">
+          <div className="flex cursor-pointer items-center gap-x-0.5 system-2xs-medium-uppercase text-text-tertiary">
             <span>{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
             <RiInformation2Line className="size-3" />
           </div>

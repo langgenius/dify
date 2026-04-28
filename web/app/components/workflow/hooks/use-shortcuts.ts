@@ -10,6 +10,7 @@ import {
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '.'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useWorkflowStore } from '../store'
 import {
   getKeyboardKeyCodeBySystem,
@@ -35,6 +36,8 @@ export const useShortcuts = (): void => {
   const {
     handleModeHand,
     handleModePointer,
+    handleModeComment,
+    isCommentModeAvailable,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
@@ -43,6 +46,7 @@ export const useShortcuts = (): void => {
     zoomTo,
     getZoom,
     fitView,
+    getNodes,
   } = useReactFlow()
 
   // Zoom out to a minimum of 0.25 for shortcut
@@ -64,9 +68,14 @@ export const useShortcuts = (): void => {
   }, [])
 
   const shouldHandleCopy = useCallback(() => {
+    // Box selection can leave incidental DOM text selection behind while the
+    // workflow selection itself lives on node.data._isBundled.
+    if (getNodes().some(node => node.data._isBundled))
+      return true
+
     const selection = document.getSelection()
-    return !selection || selection.isCollapsed
-  }, [])
+    return !selection || selection.isCollapsed || !selection.rangeCount
+  }, [getNodes])
 
   useKeyPress(['delete', 'backspace'], (e) => {
     if (shouldHandleShortcut(e)) {
@@ -151,6 +160,16 @@ export const useShortcuts = (): void => {
     useCapture: true,
   })
 
+  useKeyPress('c', (e) => {
+    if (shouldHandleShortcut(e) && isCommentModeAvailable) {
+      e.preventDefault()
+      handleModeComment()
+    }
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
+
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.o`, (e) => {
     if (shouldHandleShortcut(e)) {
       e.preventDefault()
@@ -222,6 +241,13 @@ export const useShortcuts = (): void => {
     exactMatch: true,
     useCapture: true,
   })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.l`, (e) => {
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      collaborationManager.downloadGraphImportLog()
+    }
+  }, { exactMatch: true, useCapture: true })
 
   // Shift ↓
   useKeyPress(

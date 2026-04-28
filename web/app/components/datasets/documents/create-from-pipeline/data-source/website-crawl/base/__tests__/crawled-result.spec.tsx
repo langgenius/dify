@@ -49,9 +49,9 @@ const createItem = (url: string): CrawlResultItem => ({
 })
 
 const defaultList: CrawlResultItem[] = [
-  createItem('https://example.com/a'),
-  createItem('https://example.com/b'),
-  createItem('https://example.com/c'),
+  createItem('https://example.com/a')!,
+  createItem('https://example.com/b')!,
+  createItem('https://example.com/c')!,
 ]
 
 describe('CrawledResult', () => {
@@ -70,19 +70,18 @@ describe('CrawledResult', () => {
     it('should render scrap time info with correct total and time', () => {
       render(<CrawledResult {...defaultProps} />)
 
-      expect(
-        screen.getByText(/scrapTimeInfo/),
-      ).toBeInTheDocument()
+      expect(screen.getByText(/scrapTimeInfo/))!.toBeInTheDocument()
       // The global i18n mock serialises params, so verify total and time appear
-      expect(screen.getByText(/"total":3/)).toBeInTheDocument()
-      expect(screen.getByText(/"time":"12.3"/)).toBeInTheDocument()
+      // The global i18n mock serialises params, so verify total and time appear
+      expect(screen.getByText(/"total":3/))!.toBeInTheDocument()
+      expect(screen.getByText(/"time":"12.3"/))!.toBeInTheDocument()
     })
 
     it('should render all items from list', () => {
       render(<CrawledResult {...defaultProps} />)
 
       for (const item of defaultList) {
-        expect(screen.getByTestId(`crawled-item-${item.source_url}`)).toBeInTheDocument()
+        expect(screen.getByTestId(`crawled-item-${item.source_url}`))!.toBeInTheDocument()
       }
     })
 
@@ -91,7 +90,7 @@ describe('CrawledResult', () => {
         <CrawledResult {...defaultProps} className="my-custom-class" />,
       )
 
-      expect(container.firstChild).toHaveClass('my-custom-class')
+      expect(container.firstChild)!.toHaveClass('my-custom-class')
     })
   })
 
@@ -100,7 +99,7 @@ describe('CrawledResult', () => {
     it('should show check-all checkbox in multiple choice mode', () => {
       render(<CrawledResult {...defaultProps} isMultipleChoice={true} />)
 
-      expect(screen.getByTestId('check-all-checkbox')).toBeInTheDocument()
+      expect(screen.getByTestId('check-all-checkbox'))!.toBeInTheDocument()
     })
 
     it('should hide check-all checkbox in single choice mode', () => {
@@ -117,7 +116,7 @@ describe('CrawledResult', () => {
       render(
         <CrawledResult
           {...defaultProps}
-          checkedList={[defaultList[0]]}
+          checkedList={[defaultList[0]!]}
           onSelectedChange={onSelectedChange}
         />,
       )
@@ -150,13 +149,13 @@ describe('CrawledResult', () => {
       render(
         <CrawledResult
           {...defaultProps}
-          checkedList={[defaultList[0]]}
+          checkedList={[defaultList[0]!]}
           onSelectedChange={onSelectedChange}
           isMultipleChoice={true}
         />,
       )
 
-      fireEvent.click(screen.getByTestId(`check-${defaultList[1].source_url}`))
+      fireEvent.click(screen.getByTestId(`check-${defaultList[1]!.source_url}`))
 
       expect(onSelectedChange).toHaveBeenCalledWith([defaultList[0], defaultList[1]])
     })
@@ -166,13 +165,13 @@ describe('CrawledResult', () => {
       render(
         <CrawledResult
           {...defaultProps}
-          checkedList={[defaultList[0]]}
+          checkedList={[defaultList[0]!]}
           onSelectedChange={onSelectedChange}
           isMultipleChoice={false}
         />,
       )
 
-      fireEvent.click(screen.getByTestId(`check-${defaultList[1].source_url}`))
+      fireEvent.click(screen.getByTestId(`check-${defaultList[1]!.source_url}`))
 
       expect(onSelectedChange).toHaveBeenCalledWith([defaultList[1]])
     })
@@ -182,13 +181,13 @@ describe('CrawledResult', () => {
       render(
         <CrawledResult
           {...defaultProps}
-          checkedList={[defaultList[0], defaultList[1]]}
+          checkedList={[defaultList[0]!, defaultList[1]!]}
           onSelectedChange={onSelectedChange}
           isMultipleChoice={true}
         />,
       )
 
-      fireEvent.click(screen.getByTestId(`check-${defaultList[0].source_url}`))
+      fireEvent.click(screen.getByTestId(`check-${defaultList[0]!.source_url}`))
 
       expect(onSelectedChange).toHaveBeenCalledWith([defaultList[1]])
     })
@@ -206,7 +205,7 @@ describe('CrawledResult', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId(`preview-${defaultList[1].source_url}`))
+      fireEvent.click(screen.getByTestId(`preview-${defaultList[1]!.source_url}`))
 
       expect(onPreview).toHaveBeenCalledWith(defaultList[1], 1)
     })

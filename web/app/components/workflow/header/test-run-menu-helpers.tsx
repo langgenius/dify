@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
 import type { TriggerOption } from './test-run-menu'
+import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
 import {
   cloneElement,
   isValidElement,
@@ -27,9 +28,8 @@ export const OptionRow = ({
   onSelect: (option: TriggerOption) => void
 }) => {
   return (
-    <div
-      key={option.id}
-      className="flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover"
+    <DropdownMenuItem
+      className="h-auto px-3 py-1.5 system-md-regular"
       onClick={() => onSelect(option)}
     >
       <div className="flex min-w-0 flex-1 items-center">
@@ -41,7 +41,7 @@ export const OptionRow = ({
       {shortcutKey && (
         <ShortcutsName keys={[shortcutKey]} className="ml-2" textColor="secondary" />
       )}
-    </div>
+    </DropdownMenuItem>
   )
 }
 

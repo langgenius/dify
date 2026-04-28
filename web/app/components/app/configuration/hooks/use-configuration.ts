@@ -21,6 +21,7 @@ import type {
   TextToSpeechConfig,
 } from '@/models/debug'
 import type { VisionSettings } from '@/types/app'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
@@ -480,34 +481,40 @@ export const useConfiguration = (): ConfigurationViewModel => {
     resolvedModelModeType,
   ])
 
-  const onPublish = useCallback(async (modelAndParameter?: ModelAndParameter, features?: FeaturesData) => createPublishHandler({
-    appId,
-    chatPromptConfig,
-    citationConfig,
-    completionParamsState,
-    completionPromptConfig,
-    contextVar,
-    contextVarEmpty,
-    dataSets,
-    datasetConfigs,
-    externalDataToolsConfig,
-    hasSetBlockStatus,
-    introduction,
-    isAdvancedMode,
-    isFunctionCall,
-    mode,
-    modelConfig,
-    moreLikeThisConfig,
-    promptEmpty,
-    promptMode,
-    resolvedModelModeType,
-    setCanReturnToSimpleMode,
-    setPublishedConfig,
-    speechToTextConfig,
-    suggestedQuestionsAfterAnswerConfig,
-    t,
-    textToSpeechConfig,
-  })(updateAppModelConfig, modelAndParameter, features), [
+  const onPublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams, features?: FeaturesData) => {
+    const modelAndParameter = params && 'model' in params && 'provider' in params && 'parameters' in params
+      ? params
+      : undefined
+
+    return createPublishHandler({
+      appId,
+      chatPromptConfig,
+      citationConfig,
+      completionParamsState,
+      completionPromptConfig,
+      contextVar,
+      contextVarEmpty,
+      dataSets,
+      datasetConfigs,
+      externalDataToolsConfig,
+      hasSetBlockStatus,
+      introduction,
+      isAdvancedMode,
+      isFunctionCall,
+      mode,
+      modelConfig,
+      moreLikeThisConfig,
+      promptEmpty,
+      promptMode,
+      resolvedModelModeType,
+      setCanReturnToSimpleMode,
+      setPublishedConfig,
+      speechToTextConfig,
+      suggestedQuestionsAfterAnswerConfig,
+      t,
+      textToSpeechConfig,
+    })(updateAppModelConfig, modelAndParameter, features)
+  }, [
     appId,
     chatPromptConfig,
     citationConfig,

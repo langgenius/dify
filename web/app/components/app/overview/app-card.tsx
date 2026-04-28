@@ -2,22 +2,23 @@
 import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import Indicator from '@/app/components/header/indicator'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -73,7 +74,7 @@ function AppCard({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showAccessControl, setShowAccessControl] = useState(false)
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appAccessSubjects } = useAppWhiteListSubjects(
     appDetail?.id,
     systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
@@ -180,7 +181,7 @@ function AppCard({
 
   return (
     <div
-      className={`${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${cardState.isMinimalState ? 'h-12' : ''}`}
+      className={`${isInPanel ? 'border-t border-l-[0.5px]' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${cardState.isMinimalState ? 'h-12' : ''}`}
     >
       <div className={`${customBgColor ?? 'bg-background-default'} relative rounded-xl ${triggerModeDisabled ? 'opacity-60' : ''}`}>
         {triggerModeDisabled && (
@@ -247,7 +248,7 @@ function AppCard({
               offset={24}
             >
               <div>
-                <Switch value={cardState.runningStatus} onChange={onChangeStatus} disabled={cardState.toggleDisabled} />
+                <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
               </div>
             </Tooltip>
           </div>

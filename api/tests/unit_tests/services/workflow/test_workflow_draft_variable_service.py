@@ -4,10 +4,6 @@ import uuid
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from graphon.enums import BuiltinNodeTypes
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables.segments import StringSegment
-from graphon.variables.types import SegmentType
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
@@ -17,6 +13,10 @@ from core.workflow.variable_prefixes import (
     ENVIRONMENT_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from graphon.enums import BuiltinNodeTypes
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
 from libs.uuid_utils import uuidv7
 from models.account import Account
 from models.enums import DraftVariableType
@@ -145,8 +145,8 @@ class TestDraftVariableSaver:
             user=mock_user,
         )
         rebuilt_file = File(
-            id="file-1",
-            type=FileType.DOCUMENT,
+            file_id="file-1",
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             reference="upload-1",
             filename="test.txt",

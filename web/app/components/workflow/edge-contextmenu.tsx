@@ -1,14 +1,14 @@
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+} from '@langgenius/dify-ui/context-menu'
+import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-} from '@/app/components/base/ui/context-menu'
 import { useEdgesInteractions, usePanelInteractions } from './hooks'
 import ShortcutsName from './shortcuts-name'
 import { useStore } from './store'
@@ -48,7 +48,8 @@ const EdgeContextmenu = () => {
         popupClassName="rounded-lg"
       >
         <ContextMenuItem
-          className="justify-between gap-4 px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
+          variant="destructive"
+          className="justify-between gap-4 px-3"
           onClick={() => handleEdgeDeleteById(edgeMenu.edgeId)}
         >
           <span>{t('common:operation.delete')}</span>

@@ -1,6 +1,8 @@
 from unittest import mock
 
 import pytest
+
+from core.model_manager import ModelInstance
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import (
     ImagePromptMessageContent,
@@ -32,8 +34,6 @@ from graphon.nodes.llm.exc import (
 )
 from graphon.runtime import VariablePool
 from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
-
-from core.model_manager import ModelInstance
 
 
 def _build_model_schema(
@@ -71,8 +71,8 @@ def _build_image_file(
     mime_type: str = "image/png",
 ) -> File:
     return File(
-        id=file_id,
-        type=FileType.IMAGE,
+        file_id=file_id,
+        file_type=FileType.IMAGE,
         filename=f"{file_id}{extension}",
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url=remote_url,
@@ -95,6 +95,8 @@ def variable_pool() -> VariablePool:
 def _fetch_prompt_messages_with_mocked_content(content):
     variable_pool = VariablePool.empty()
     model_instance = mock.MagicMock(spec=ModelInstance)
+    model_schema = mock.MagicMock()
+    model_schema.supports_prompt_content_type.side_effect = lambda content_type: content_type == "text"
     prompt_template = [
         LLMNodeChatModelMessage(
             text="You are a classifier.",
@@ -106,7 +108,7 @@ def _fetch_prompt_messages_with_mocked_content(content):
     with (
         mock.patch(
             "graphon.nodes.llm.llm_utils.fetch_model_schema",
-            return_value=mock.MagicMock(features=[]),
+            return_value=model_schema,
         ),
         mock.patch(
             "graphon.nodes.llm.llm_utils.handle_list_messages",

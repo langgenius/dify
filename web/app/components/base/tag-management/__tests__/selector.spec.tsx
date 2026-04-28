@@ -1,7 +1,6 @@
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { act } from 'react'
 import TagSelector from '../selector'
 import { useStore as useTagStore } from '../store'
@@ -19,7 +18,7 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
@@ -38,54 +37,6 @@ vi.mock('@/service/tag', () => ({
   unBindTag,
 }))
 
-// Mock popover for deterministic open/close behavior in unit tests.
-vi.mock('@/app/components/base/popover', () => {
-  type PopoverContentProps = {
-    open?: boolean
-    onClose?: () => void
-  }
-  type MockPopoverProps = {
-    htmlContent: React.ReactNode
-    btnElement?: React.ReactNode
-    btnClassName?: string | ((open: boolean) => string)
-  }
-
-  const MockPopover = ({ htmlContent, btnElement, btnClassName }: MockPopoverProps) => {
-    const [isOpen, setIsOpen] = React.useState(false)
-    const computedClassName = typeof btnClassName === 'function'
-      ? btnClassName(isOpen)
-      : btnClassName
-
-    const content = React.isValidElement(htmlContent)
-      // eslint-disable-next-line react/no-clone-element
-      ? React.cloneElement(htmlContent as React.ReactElement<PopoverContentProps>, {
-          open: isOpen,
-          onClose: () => setIsOpen(false),
-        })
-      : htmlContent
-
-    return (
-      <div data-testid="custom-popover">
-        <button
-          type="button"
-          aria-expanded={isOpen}
-          className={computedClassName}
-          onClick={() => setIsOpen(prev => !prev)}
-        >
-          {btnElement}
-        </button>
-        {isOpen && (
-          <div data-testid="popover-content">
-            {content}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return { __esModule: true, default: MockPopover }
-})
-
 // i18n keys rendered in "ns.key" format
 const i18n = {
   addTag: 'common.tag.addTag',
@@ -102,13 +53,19 @@ const appTags: Tag[] = [
 const defaultProps = {
   targetID: 'target-1',
   type: 'app' as const,
-  value: ['tag-1'],
-  selectedTags: [appTags[0]],
+  value: ['tag-1'!],
+  selectedTags: [appTags[0]!],
   onCacheUpdate: vi.fn(),
   onChange: vi.fn(),
 }
 
 describe('TagSelector', () => {
+  const getPanelTagRow = (tagName: string) => {
+    const row = screen.getAllByTestId('tag-row').find(tagRow => within(tagRow).queryByText(tagName))
+    expect(row).toBeDefined()
+    return row as HTMLElement
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(fetchTagList).mockResolvedValue(appTags)
@@ -123,29 +80,31 @@ describe('TagSelector', () => {
   describe('Rendering', () => {
     it('should render TagSelector trigger with selected tag names from defaultProps when isPopover defaults to true', () => {
       render(<TagSelector {...defaultProps} />)
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
+      expect(screen.getByText('Frontend'))!.toBeInTheDocument()
     })
 
     it('should render TagSelector add-tag placeholder when defaultProps are overridden with empty selectedTags and value', () => {
       render(<TagSelector {...defaultProps} selectedTags={[]} value={[]} />)
-      expect(screen.getByText(i18n.addTag)).toBeInTheDocument()
+      expect(screen.getByText(i18n.addTag))!.toBeInTheDocument()
     })
 
     it('should render nothing when isPopover is false', () => {
       const { container } = render(<TagSelector {...defaultProps} isPopover={false} />)
       // Only the empty fragment wrapper
-      expect(container).toBeEmptyDOMElement()
+      // Only the empty fragment wrapper
+      expect(container)!.toBeEmptyDOMElement()
     })
 
     it('should render the popover trigger button', () => {
       render(<TagSelector {...defaultProps} />)
       // The trigger is wrapped in a PopoverButton
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      // The trigger is wrapped in a PopoverButton
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
     it('should render when minWidth is provided', () => {
       render(<TagSelector {...defaultProps} minWidth="320px" />)
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
   })
 
@@ -155,12 +114,13 @@ describe('TagSelector', () => {
       render(
         <TagSelector
           {...defaultProps}
-          selectedTags={[appTags[0], unknownTag]}
+          selectedTags={[appTags[0]!, unknownTag]}
           value={['tag-1', 'unknown']}
         />,
       )
       // 'Frontend' is in tagList, 'Unknown' is not
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
+      // 'Frontend' is in tagList, 'Unknown' is not
+      expect(screen.getByText('Frontend'))!.toBeInTheDocument()
       expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
     })
 
@@ -172,8 +132,8 @@ describe('TagSelector', () => {
           value={['tag-1', 'tag-2']}
         />,
       )
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-      expect(screen.getByText('Backend')).toBeInTheDocument()
+      expect(screen.getByText('Frontend'))!.toBeInTheDocument()
+      expect(screen.getByText('Backend'))!.toBeInTheDocument()
     })
   })
 
@@ -186,8 +146,8 @@ describe('TagSelector', () => {
 
       // Panel renders the search input and manage tags
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(i18n.selectorPlaceholder)).toBeInTheDocument()
-        expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
+        expect(screen.getByPlaceholderText(i18n.selectorPlaceholder))!.toBeInTheDocument()
+        expect(screen.getByText(i18n.manageTags))!.toBeInTheDocument()
       })
     })
 
@@ -198,7 +158,7 @@ describe('TagSelector', () => {
       await user.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        expect(screen.getByText('Backend')).toBeInTheDocument()
+        expect(screen.getByText('Backend'))!.toBeInTheDocument()
       })
     })
 
@@ -212,7 +172,7 @@ describe('TagSelector', () => {
       await user.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
+        expect(screen.getByText(i18n.noTag))!.toBeInTheDocument()
       })
     })
 
@@ -223,8 +183,8 @@ describe('TagSelector', () => {
       const triggerButton = screen.getByRole('button', { name: /Frontend/i })
       await user.click(triggerButton)
 
-      const popoverContent = await screen.findByTestId('popover-content')
-      await user.click(within(popoverContent).getByText('Backend'))
+      await screen.findByPlaceholderText(i18n.selectorPlaceholder)
+      await user.click(getPanelTagRow('Backend'))
 
       // Close panel to trigger unmount side effects.
       await user.click(triggerButton)
@@ -244,8 +204,8 @@ describe('TagSelector', () => {
       const triggerButton = screen.getByRole('button', { name: /Frontend/i })
       await user.click(triggerButton)
 
-      const popoverContent = await screen.findByTestId('popover-content')
-      await user.click(within(popoverContent).getByText('Frontend'))
+      await screen.findByPlaceholderText(i18n.selectorPlaceholder)
+      await user.click(getPanelTagRow('Frontend'))
 
       // Close panel to trigger unmount side effects.
       await user.click(triggerButton)
@@ -274,7 +234,7 @@ describe('TagSelector', () => {
       await user.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(i18n.selectorPlaceholder)).toBeInTheDocument()
+        expect(screen.getByPlaceholderText(i18n.selectorPlaceholder))!.toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
@@ -310,8 +270,39 @@ describe('TagSelector', () => {
         />,
       )
       // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
+      // Orphan tag is not in store tagList, so tags memo returns []
       expect(screen.queryByText('Orphan')).not.toBeInTheDocument()
-      expect(screen.getByText(i18n.addTag)).toBeInTheDocument()
+      expect(screen.getByText(i18n.addTag))!.toBeInTheDocument()
     })
 
     it('should handle knowledge type', async () => {
@@ -333,13 +324,13 @@ describe('TagSelector', () => {
         />,
       )
 
-      expect(screen.getByText('KnowledgeDB')).toBeInTheDocument()
+      expect(screen.getByText('KnowledgeDB'))!.toBeInTheDocument()
 
       // Open popover and verify panel uses knowledge type
       await user.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(i18n.selectorPlaceholder)).toBeInTheDocument()
+        expect(screen.getByPlaceholderText(i18n.selectorPlaceholder))!.toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)

@@ -4,12 +4,11 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol
 
-from graphon.runtime import VariablePool
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -18,6 +17,7 @@ from core.workflow.human_input_compat import (
 )
 from extensions.ext_database import db
 from extensions.ext_mail import mail
+from graphon.runtime import VariablePool
 from libs.email_template_renderer import render_email_template
 from models import Account, TenantAccountJoin
 from services.feature_service import FeatureService

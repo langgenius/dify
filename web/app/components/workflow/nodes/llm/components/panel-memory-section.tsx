@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { LLMNodeType } from '../types'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import MemoryConfig from '@/app/components/workflow/nodes/_base/components/memory-config'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 
@@ -52,7 +52,6 @@ const PanelMemorySection: FC<Props> = ({
               <div className="text-xs font-semibold text-text-secondary uppercase">{t('nodes.common.memories.title', { ns: 'workflow' })}</div>
               <Tooltip>
                 <TooltipTrigger
-                  delay={0}
                   render={(
                     <span className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center">
                       <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
@@ -75,7 +74,6 @@ const PanelMemorySection: FC<Props> = ({
                   <div className="text-xs font-semibold text-text-secondary uppercase">user</div>
                   <Tooltip>
                     <TooltipTrigger
-                      delay={0}
                       render={(
                         <span className="ml-1 flex h-4 w-4 shrink-0 items-center justify-center">
                           <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />

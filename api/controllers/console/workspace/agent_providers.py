@@ -1,8 +1,8 @@
 from flask_restx import Resource, fields
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
 from services.agent_service import AgentService
 

@@ -1,6 +1,6 @@
 import type { DataSourceNotionPage } from '@/models/common'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiFileTextLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
 
 type IconTypes = 'workspace' | 'page'
 type NotionIconProps = {
@@ -31,7 +31,7 @@ const NotionIcon = ({
       )
     }
     return (
-      <div className={cn('flex h-5 w-5 items-center justify-center rounded-sm bg-gray-200 text-xs font-medium text-gray-500', className)}>{name?.[0].toLocaleUpperCase()}</div>
+      <div className={cn('flex h-5 w-5 items-center justify-center rounded-sm bg-gray-200 text-xs font-medium text-gray-500', className)}>{name?.[0]!.toLocaleUpperCase()}</div>
     )
   }
 

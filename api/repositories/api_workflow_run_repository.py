@@ -38,11 +38,11 @@ from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Protocol, TypedDict
 
-from graphon.entities.pause_reason import PauseReason
-from graphon.enums import WorkflowType
 from sqlalchemy.orm import Session
 
 from core.repositories.factory import WorkflowExecutionRepository
+from graphon.entities.pause_reason import PauseReason
+from graphon.enums import WorkflowType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLog, WorkflowArchiveLog, WorkflowPause, WorkflowPauseReason, WorkflowRun

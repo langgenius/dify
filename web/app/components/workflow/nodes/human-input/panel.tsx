@@ -1,6 +1,9 @@
 import type { FC } from 'react'
 import type { HumanInputNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAddLine,
   RiClipboardLine,
@@ -14,16 +17,13 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { useStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import DeliveryMethod from './components/delivery-method'
 import FormContent from './components/form-content'
 import FormContentPreview from './components/form-content-preview'
@@ -100,7 +100,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       </div>
       {/* form content */}
       <div
-        className={cn('px-4 py-2', isExpandFormContent && 'fixed bottom-[8px] right-[4px] top-[244px] z-10 flex flex-col rounded-b-2xl bg-components-panel-bg')}
+        className={cn('px-4 py-2', isExpandFormContent && 'fixed top-[244px] right-[4px] bottom-[8px] z-10 flex flex-col rounded-b-2xl bg-components-panel-bg')}
         style={{
           width: isExpandFormContent ? nodePanelWidth : '100%',
         }}
@@ -113,7 +113,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
             />
           </div>
           {!readOnly && (
-            <div className="flex items-center ">
+            <div className="flex items-center">
               <Button
                 variant="ghost"
                 size="small"
@@ -179,7 +179,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           )}
         </div>
         {!inputs.user_actions.length && (
-          <div className="system-xs-regular flex items-center justify-center radius-lg bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
+          <div className="flex items-center justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
         )}
         {inputs.user_actions.length > 0 && (
           <div className="space-y-2">

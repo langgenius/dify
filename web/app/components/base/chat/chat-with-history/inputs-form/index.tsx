@@ -1,10 +1,10 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 import Divider from '@/app/components/base/divider'
 import { Message3Fill } from '@/app/components/base/icons/src/public/other'
-import { cn } from '@/utils/classnames'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = {
@@ -43,12 +43,12 @@ const InputsFormNode = ({
         )}
         >
           <Message3Fill className="h-6 w-6 shrink-0" />
-          <div className="system-xl-semibold grow text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+          <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
           {collapsed && (
-            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('operation.edit', { ns: 'common' })}</Button>
+            <Button className="text-text-tertiary uppercase" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('operation.edit', { ns: 'common' })}</Button>
           )}
           {!collapsed && currentConversationId && (
-            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(true)}>{t('operation.close', { ns: 'common' })}</Button>
+            <Button className="text-text-tertiary uppercase" size="small" variant="ghost" onClick={() => setCollapsed(true)}>{t('operation.close', { ns: 'common' })}</Button>
           )}
         </div>
         {!collapsed && (

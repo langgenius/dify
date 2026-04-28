@@ -9,9 +9,9 @@ from collections.abc import Generator
 from uuid import uuid4
 
 import pytest
-from graphon.enums import WorkflowExecutionStatus
 from sqlalchemy.orm import Session
 
+from graphon.enums import WorkflowExecutionStatus
 from models.enums import ConversationFromSource, InvokeFrom
 from models.model import App, AppMode, Conversation, Message, Site
 from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType

@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
 
 import pytest
+
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.list_operator.entities import (
@@ -16,7 +18,14 @@ from graphon.nodes.list_operator.exc import InvalidKeyError
 from graphon.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
 from graphon.variables import ArrayFileSegment
 
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
+
+def _build_list_operator_node(node_data: ListOperatorNodeData, graph_init_params) -> ListOperatorNode:
+    return ListOperatorNode(
+        node_id="test_node_id",
+        config=node_data,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=MagicMock(),
+    )
 
 
 @pytest.fixture
@@ -35,10 +44,6 @@ def list_operator_node():
         "title": "Test Title",
     }
     node_data = ListOperatorNodeData.model_validate(config)
-    node_config = {
-        "id": "test_node_id",
-        "data": node_data.model_dump(),
-    }
     # Create properly configured mock for graph_init_params
     graph_init_params = MagicMock()
     graph_init_params.workflow_id = "test_workflow"
@@ -54,12 +59,7 @@ def list_operator_node():
         }
     }
 
-    node = ListOperatorNode(
-        id="test_node_id",
-        config=node_config,
-        graph_init_params=graph_init_params,
-        graph_runtime_state=MagicMock(),
-    )
+    node = _build_list_operator_node(node_data, graph_init_params)
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.variable_pool = MagicMock()
     return node
@@ -70,28 +70,28 @@ def test_filter_files_by_type(list_operator_node):
     files = [
         File(
             filename="image1.jpg",
-            type=FileType.IMAGE,
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related1",
             storage_key="",
         ),
         File(
             filename="document1.pdf",
-            type=FileType.DOCUMENT,
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related2",
             storage_key="",
         ),
         File(
             filename="image2.png",
-            type=FileType.IMAGE,
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related3",
             storage_key="",
         ),
         File(
             filename="audio1.mp3",
-            type=FileType.AUDIO,
+            file_type=FileType.AUDIO,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related4",
             storage_key="",
@@ -136,7 +136,7 @@ def test_filter_files_by_type(list_operator_node):
 def test_get_file_extract_string_func():
     # Create a File object
     file = File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         filename="test_file.txt",
         extension=".txt",
@@ -156,7 +156,7 @@ def test_get_file_extract_string_func():
 
     # Test with empty values
     empty_file = File(
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         filename=None,
         extension=None,

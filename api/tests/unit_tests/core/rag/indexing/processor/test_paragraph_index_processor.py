@@ -1,15 +1,16 @@
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
-from graphon.model_runtime.entities.model_entities import ModelFeature
 
 from core.entities.knowledge_entities import PreviewDetail
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, ImagePromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelFeature
 
 
 class TestParagraphIndexProcessor:
@@ -71,7 +72,9 @@ class TestParagraphIndexProcessor:
         with pytest.raises(ValueError, match="No rules found in process rule"):
             processor.transform([Document(page_content="text", metadata={})], process_rule={"mode": "custom"})
 
-    def test_transform_validates_segmentation(self, processor: ParagraphIndexProcessor, process_rule: dict) -> None:
+    def test_transform_validates_segmentation(
+        self, processor: ParagraphIndexProcessor, process_rule: dict[str, Any]
+    ) -> None:
         rules_without_segmentation = SimpleNamespace(segmentation=None)
 
         with patch(
@@ -84,7 +87,9 @@ class TestParagraphIndexProcessor:
                     process_rule={"mode": "custom", "rules": {"enabled": True}},
                 )
 
-    def test_transform_builds_split_documents(self, processor: ParagraphIndexProcessor, process_rule: dict) -> None:
+    def test_transform_builds_split_documents(
+        self, processor: ParagraphIndexProcessor, process_rule: dict[str, Any]
+    ) -> None:
         source_document = Document(page_content="source", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
         splitter = Mock()
         splitter.split_documents.return_value = [

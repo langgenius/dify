@@ -2,11 +2,11 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 
 from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.errors.error import QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
 
 

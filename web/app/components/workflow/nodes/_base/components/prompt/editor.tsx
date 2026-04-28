@@ -6,6 +6,8 @@ import type {
   NodeOutPutVar,
   Variable,
 } from '../../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -13,9 +15,9 @@ import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
+
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-
 import {
   Copy,
   CopyCheck,
@@ -24,7 +26,6 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
@@ -32,7 +33,6 @@ import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/to
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import { useStore } from '@/app/components/workflow/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
 import { BlockEnum, EditionType } from '../../../../types'
 import { CodeLanguage } from '../../../code/types'
 import PromptGeneratorBtn from '../../../llm/components/prompt-generator-btn'
@@ -158,9 +158,9 @@ const Editor: FC<Props> = ({
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
       <div ref={ref} className={cn(isFocus ? (gradientBorder && 'bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2') : 'bg-transparent', isExpand && 'h-full', 'rounded-[9px]! p-0.5', containerClassName)}>
         <div className={cn(isFocus ? 'bg-background-default' : 'bg-components-input-bg-normal', isExpand && 'flex h-full flex-col', 'rounded-lg', containerClassName)}>
-          <div className={cn('flex items-center justify-between pl-3 pr-2 pt-1', headerClassName)}>
+          <div className={cn('flex items-center justify-between pt-1 pr-2 pl-3', headerClassName)}>
             <div className="flex gap-2">
-              <div className={cn('text-xs font-semibold uppercase leading-4 text-text-secondary', titleClassName)}>
+              <div className={cn('text-xs leading-4 font-semibold text-text-secondary uppercase', titleClassName)}>
                 {title}
                 {' '}
                 {required && <span className="text-text-destructive">*</span>}
@@ -168,7 +168,7 @@ const Editor: FC<Props> = ({
               {!!titleTooltip && <Tooltip popupContent={titleTooltip} />}
             </div>
             <div className="flex items-center">
-              <div className="text-xs font-medium leading-[18px] text-text-tertiary">{value?.length || 0}</div>
+              <div className="text-xs leading-[18px] font-medium text-text-tertiary">{value?.length || 0}</div>
               {isSupportPromptGenerator && (
                 <PromptGeneratorBtn
                   nodeId={nodeId!}
@@ -180,7 +180,7 @@ const Editor: FC<Props> = ({
                 />
               )}
 
-              <div className="ml-2 mr-2 h-3 w-px bg-divider-regular"></div>
+              <div className="mr-2 ml-2 h-3 w-px bg-divider-regular"></div>
               {/* Operations */}
               <div className="flex items-center space-x-[2px]">
                 {isSupportJinja && (
@@ -196,8 +196,8 @@ const Editor: FC<Props> = ({
                       <Jinja className="h-3 w-6 text-text-quaternary" />
                       <Switch
                         size="sm"
-                        value={editionType === EditionType.jinja2}
-                        onChange={(checked) => {
+                        checked={editionType === EditionType.jinja2}
+                        onCheckedChange={(checked) => {
                           onEditionTypeChange?.(checked ? EditionType.jinja2 : EditionType.basic)
                         }}
                       />
