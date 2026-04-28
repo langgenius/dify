@@ -1128,7 +1128,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         return self._load_full_content(session, offload.file_id, storage)
 
 
-class WorkflowNodeExecutionOffload(Base):
+class WorkflowNodeExecutionOffload(TypeBase):
     __tablename__ = "workflow_node_execution_offload"
     __table_args__ = (
         # PostgreSQL 14 treats NULL values as distinct in unique constraints by default,
@@ -1150,11 +1150,12 @@ class WorkflowNodeExecutionOffload(Base):
     id: Mapped[str] = mapped_column(
         StringUUID,
         primary_key=True,
-        default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=naive_utc_now, server_default=func.current_timestamp()
+        DateTime, default_factory=naive_utc_now, server_default=func.current_timestamp()
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID)
