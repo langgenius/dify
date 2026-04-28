@@ -251,6 +251,7 @@
       "@lexical/code": "npm:lexical-code-no-prism@0.41.0",
       "@monaco-editor/loader": "1.7.0",
       "@nolyfill/safe-buffer": "npm:safe-buffer@^5.2.1",
+      "@xmldom/xmldom": "0.8.13",
       "array-includes": "npm:@nolyfill/array-includes@^1.0.44",
       "array.prototype.findlast": "npm:@nolyfill/array.prototype.findlast@^1.0.44",
       "array.prototype.findlastindex": "npm:@nolyfill/array.prototype.findlastindex@^1.0.44",
@@ -304,6 +305,7 @@
       "vite": "npm:@voidzero-dev/vite-plus-core@0.1.13",
       "vitest": "npm:@voidzero-dev/vite-plus-test@0.1.13",
       "which-typed-array": "npm:@nolyfill/which-typed-array@^1.0.44",
+      "xmldom": "npm:@xmldom/xmldom@0.8.13",
       "yauzl@<3.2.1": "3.2.1"
     },
     "ignoredBuiltDependencies": [
