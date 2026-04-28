@@ -138,10 +138,6 @@ const Popup: FC<PopupProps> = ({
 
   const filteredModelList = useMemo(() => {
     const filtered = installedModelList.map((model) => {
-      const matchesProviderSearch = !searchText
-        || model.provider.toLowerCase().includes(searchText.toLowerCase())
-        || Object.values(model.label).some(label => label.toLowerCase().includes(searchText.toLowerCase()))
-
       const filteredModels = model.models
         .filter((modelItem) => {
           if (modelItem.label[language] !== undefined)
@@ -159,8 +155,12 @@ const Popup: FC<PopupProps> = ({
             return modelItem.features?.includes(feature) ?? false
           })
         })
-      if (!matchesProviderSearch || (filteredModels.length === 0 && !aiCreditVisibleProviders.has(model.provider)))
+      if (
+        (searchText && filteredModels.length === 0)
+        || (!searchText && filteredModels.length === 0 && !aiCreditVisibleProviders.has(model.provider))
+      ) {
         return null
+      }
 
       return { ...model, models: filteredModels }
     }).filter((model): model is Model => model !== null)

@@ -55,7 +55,14 @@ vi.mock('../../hooks', async () => {
 })
 
 vi.mock('../popup-item', () => ({
-  default: ({ model }: { model: Model }) => <div>{model.provider}</div>,
+  default: ({ model }: { model: Model }) => (
+    <div>
+      <span>{model.provider}</span>
+      {model.models.map(modelItem => (
+        <span key={modelItem.model}>{modelItem.model}</span>
+      ))}
+    </div>
+  ),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -205,6 +212,62 @@ describe('Popup', () => {
     expect(clearIcon)!.toBeInTheDocument()
     fireEvent.click(clearIcon!)
     expect((input as HTMLInputElement).value).toBe('')
+  })
+
+  it('should show matching models when searching by model name', () => {
+    renderPopup(
+      <Popup
+        modelList={[
+          makeModel({
+            models: [makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } })],
+          }),
+          makeModel({
+            provider: 'anthropic',
+            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
+            models: [makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } })],
+          }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'claude' } },
+    )
+
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.getByText('anthropic')).toBeInTheDocument()
+    expect(screen.getByText('claude-3')).toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.queryByText('No model found for \u201Cclaude\u201D')).not.toBeInTheDocument()
+  })
+
+  it('should show empty search placeholder when no model name matches', () => {
+    renderPopup(
+      <Popup
+        modelList={[
+          makeModel({
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('No model found for \u201Copenai\u201D'))!.toBeInTheDocument()
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
   })
 
   it('should not show compatible-only helper text when no scope features are applied', () => {
