@@ -852,11 +852,10 @@ class DocumentSegment(TypeBase):
 
     # indexing fields
     keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True)
-    index_node_id: Mapped[str] = mapped_column(String(255), nullable=True)
-    index_node_hash: Mapped[str] = mapped_column(String(255), nullable=True)
+    index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # basic fields
-    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -871,6 +870,7 @@ class DocumentSegment(TypeBase):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error: Mapped[str | None] = mapped_column(LongText, nullable=True)
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
     @property
     def dataset(self):
@@ -897,7 +897,7 @@ class DocumentSegment(TypeBase):
         )
 
     @property
-    def child_chunks(self) -> Sequence[Any]:
+    def child_chunks(self):
         if not self.document:
             return []
         process_rule = self.document.dataset_process_rule
@@ -912,7 +912,7 @@ class DocumentSegment(TypeBase):
                     return child_chunks or []
         return []
 
-    def get_child_chunks(self) -> Sequence[Any]:
+    def get_child_chunks(self):
         if not self.document:
             return []
         process_rule = self.document.dataset_process_rule
