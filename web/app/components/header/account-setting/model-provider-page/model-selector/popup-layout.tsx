@@ -75,7 +75,7 @@ export const ModelSelectorScrollBody: FC<ModelSelectorScrollBodyProps> = ({
   label,
 }) => {
   return (
-    <ScrollAreaRoot className="min-h-0 overflow-hidden overscroll-contain">
+    <ScrollAreaRoot className="relative min-h-0 overflow-hidden overscroll-contain">
       <ScrollAreaViewport
         aria-label={label}
         className="max-h-[calc(min(624px,var(--available-height,624px))-84px)] overscroll-contain"
@@ -85,7 +85,8 @@ export const ModelSelectorScrollBody: FC<ModelSelectorScrollBodyProps> = ({
           {children}
         </ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+      {/* Keep the overlay scrollbar above sticky provider headers inside this scroll area. */}
+      <ScrollAreaScrollbar className="z-2 data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollAreaRoot>
