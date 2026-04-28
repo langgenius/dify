@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { TimeOptionsProps } from '../types'
 import * as React from 'react'
+import OptionList from '../common/option-list'
 import OptionListItem from '../common/option-list-item'
 import { useTimeOptions } from '../hooks'
 
@@ -16,7 +17,7 @@ const Options: FC<TimeOptionsProps> = ({
   return (
     <div className="grid grid-cols-3 gap-x-1 p-2">
       {/* Hour */}
-      <ul className="scrollbar-none flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]">
+      <OptionList>
         {
           hourOptions.map((hour) => {
             const isSelected = selectedTime?.format('hh') === hour
@@ -31,9 +32,9 @@ const Options: FC<TimeOptionsProps> = ({
             )
           })
         }
-      </ul>
+      </OptionList>
       {/* Minute */}
-      <ul className="scrollbar-none flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]">
+      <OptionList>
         {
           (minuteFilter ? minuteFilter(minuteOptions) : minuteOptions).map((minute) => {
             const isSelected = selectedTime?.format('mm') === minute
@@ -48,9 +49,9 @@ const Options: FC<TimeOptionsProps> = ({
             )
           })
         }
-      </ul>
+      </OptionList>
       {/* Period */}
-      <ul className="scrollbar-none flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]">
+      <OptionList>
         {
           periodOptions.map((period) => {
             const isSelected = selectedTime?.format('A') === period
@@ -66,7 +67,7 @@ const Options: FC<TimeOptionsProps> = ({
             )
           })
         }
-      </ul>
+      </OptionList>
     </div>
   )
 }
