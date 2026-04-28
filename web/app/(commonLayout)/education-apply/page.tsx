@@ -11,7 +11,11 @@ import {
 
 export default function EducationApply() {
   const router = useRouter()
-  const { enableEducationPlan, isFetchedPlanInfo } = useProviderContext()
+  const {
+    enableEducationPlan,
+    isFetchedPlanInfo,
+    isLoadingEducationAccountInfo,
+  } = useProviderContext()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
 
@@ -23,7 +27,7 @@ export default function EducationApply() {
       router.replace('/')
   }, [enableEducationPlan, isFetchedPlanInfo, router, token])
 
-  if (!isFetchedPlanInfo || !enableEducationPlan || !token)
+  if (!isFetchedPlanInfo || !enableEducationPlan || !token || isLoadingEducationAccountInfo)
     return <RootLoading />
 
   return <EducationApplyPage />
