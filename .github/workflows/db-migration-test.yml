@@ -110,6 +110,20 @@ jobs:
           sed -i 's/DB_PORT=5432/DB_PORT=3306/' .env
           sed -i 's/DB_USERNAME=postgres/DB_USERNAME=root/' .env
 
+      - name: Diagnose MySQL container before migration
+        if: always()
+        run: |
+          set +e
+          echo "=== docker ps ==="
+          docker ps -a
+          echo "=== mysql container logs ==="
+          docker compose -f docker/docker-compose.middleware.yaml --profile mysql logs --tail=300 db_mysql
+          echo "=== probe from runner host (mapped 3306) ==="
+          docker run --rm --network host mysql:8.0 \
+            mysql -h 127.0.0.1 -P 3306 -uroot -pdifyai123456 \
+            -e 'SELECT VERSION(), @@hostname, @@datadir; SHOW DATABASES; SHOW VARIABLES LIKE "wait_timeout";'
+          echo "=== exit ${?} ==="
+
       - name: Run DB Migration
         env:
           DEBUG: true
