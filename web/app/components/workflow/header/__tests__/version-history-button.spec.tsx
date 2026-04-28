@@ -63,6 +63,6 @@ describe('VersionHistoryButton', () => {
     mockTheme = 'dark'
     render(<VersionHistoryButton onClick={vi.fn()} />)
 
-    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-sm')
+    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-xs')
   })
 })

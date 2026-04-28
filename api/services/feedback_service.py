@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 from flask import Response
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 
 from extensions.ext_database import db
 from models.enums import FeedbackRating
@@ -41,8 +41,8 @@ class FeedbackService:
             raise ValueError(f"Unsupported format: {format_type}")
 
         # Build base query
-        query = (
-            db.session.query(MessageFeedback, Message, Conversation, App, Account)
+        stmt = (
+            select(MessageFeedback, Message, Conversation, App, Account)
             .join(Message, MessageFeedback.message_id == Message.id)
             .join(Conversation, MessageFeedback.conversation_id == Conversation.id)
             .join(App, MessageFeedback.app_id == App.id)
@@ -52,36 +52,36 @@ class FeedbackService:
 
         # Apply filters
         if from_source:
-            query = query.filter(MessageFeedback.from_source == from_source)
+            stmt = stmt.where(MessageFeedback.from_source == from_source)
 
         if rating:
-            query = query.filter(MessageFeedback.rating == rating)
+            stmt = stmt.where(MessageFeedback.rating == rating)
 
         if has_comment is not None:
             if has_comment:
-                query = query.filter(MessageFeedback.content.isnot(None), MessageFeedback.content != "")
+                stmt = stmt.where(MessageFeedback.content.isnot(None), MessageFeedback.content != "")
             else:
-                query = query.filter(or_(MessageFeedback.content.is_(None), MessageFeedback.content == ""))
+                stmt = stmt.where(or_(MessageFeedback.content.is_(None), MessageFeedback.content == ""))
 
         if start_date:
             try:
                 start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-                query = query.filter(MessageFeedback.created_at >= start_dt)
+                stmt = stmt.where(MessageFeedback.created_at >= start_dt)
             except ValueError:
                 raise ValueError(f"Invalid start_date format: {start_date}. Use YYYY-MM-DD")
 
         if end_date:
             try:
                 end_dt = datetime.strptime(end_date, "%Y-%m-%d")
-                query = query.filter(MessageFeedback.created_at <= end_dt)
+                stmt = stmt.where(MessageFeedback.created_at <= end_dt)
             except ValueError:
                 raise ValueError(f"Invalid end_date format: {end_date}. Use YYYY-MM-DD")
 
         # Order by creation date (newest first)
-        query = query.order_by(MessageFeedback.created_at.desc())
+        stmt = stmt.order_by(MessageFeedback.created_at.desc())
 
         # Execute query
-        results = query.all()
+        results = db.session.execute(stmt).all()
 
         # Prepare data for export
         export_data = []

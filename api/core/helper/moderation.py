@@ -8,7 +8,7 @@ from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_
 from extensions.ext_hosting_provider import hosting_configuration
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
-from graphon.model_runtime.model_providers.__base.moderation_model import ModerationModel
+from graphon.model_runtime.model_providers.base.moderation_model import ModerationModel
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)

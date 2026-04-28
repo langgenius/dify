@@ -1,5 +1,5 @@
 import re
-from typing import cast
+from typing import Any, cast
 
 from core.app.app_config.entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory
@@ -81,7 +81,7 @@ class BasicVariablesConfigManager:
         return variable_entities, external_data_variables
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for user input form
 
@@ -98,7 +98,7 @@ class BasicVariablesConfigManager:
         return config, related_config_keys
 
     @classmethod
-    def validate_variables_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
+    def validate_variables_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for user input form
 
@@ -163,7 +163,9 @@ class BasicVariablesConfigManager:
         return config, ["user_input_form"]
 
     @classmethod
-    def validate_external_data_tools_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
+    def validate_external_data_tools_and_set_defaults(
+        cls, tenant_id: str, config: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for external data fetch feature
 

@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
 import Inspect from 'vite-plugin-inspect'
@@ -45,6 +46,7 @@ export default defineConfig(({ mode }) => {
               injectTarget: rootClientInjectTarget,
               projectRoot,
             }),
+            tailwindcss(),
             react(),
             vinext({ react: false }),
             customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
@@ -55,6 +57,10 @@ export default defineConfig(({ mode }) => {
           ],
     resolve: {
       tsconfigPaths: true,
+      alias: [
+        // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
+        { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
+      ],
     },
 
     // vinext related config
@@ -75,7 +81,8 @@ export default defineConfig(({ mode }) => {
 
     // Vitest config
     test: {
-      environment: 'jsdom',
+      pool: 'threads',
+      environment: 'happy-dom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],
       coverage: {

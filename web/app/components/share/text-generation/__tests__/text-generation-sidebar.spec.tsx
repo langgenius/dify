@@ -202,7 +202,7 @@ describe('TextGenerationSidebar', () => {
     const body = root.children[1] as HTMLElement
 
     expect(root).toHaveClass('rounded-l-2xl')
-    expect(root).not.toHaveClass('h-[calc(100%_-_64px)]')
+    expect(root).not.toHaveClass('h-[calc(100%-64px)]')
     expect(header).toHaveClass('p-4', 'pb-0')
     expect(body).toHaveClass('px-4')
     expect(screen.queryByText('Share description')).not.toBeInTheDocument()
@@ -221,7 +221,7 @@ describe('TextGenerationSidebar', () => {
     const body = root.children[1] as HTMLElement
     const footer = root.children[2] as HTMLElement
 
-    expect(root).toHaveClass('h-[calc(100%_-_64px)]')
+    expect(root).toHaveClass('h-[calc(100%-64px)]')
     expect(body).toHaveClass('px-4')
     expect(footer).toHaveClass('px-4', 'rounded-b-2xl')
     expect(savedItemsPropsSpy).toHaveBeenCalledWith(expect.objectContaining({

@@ -361,7 +361,7 @@ const TaskListExampleDemo = () => {
         {tasks.map(task => (
           <div
             key={task.id}
-            className="flex items-center gap-3 rounded p-2 hover:bg-gray-50"
+            className="flex items-center gap-3 rounded-sm p-2 hover:bg-gray-50"
           >
             <Checkbox
               id={task.id}

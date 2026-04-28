@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-hologres"
+version = "0.0.1"
+
+dependencies = [
+    "holo-search-sdk>=0.4.2",
+]
+description = "Dify vector store backend (dify-vdb-hologres)."
+
+[project.entry-points."dify.vector_backends"]
+hologres = "dify_vdb_hologres.hologres_vector:HologresVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

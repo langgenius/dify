@@ -14,8 +14,7 @@ from core.workflow.variable_prefixes import (
     SYSTEM_VARIABLE_NODE_ID,
 )
 from graphon.enums import BuiltinNodeTypes
-from graphon.file.enums import FileTransferMethod, FileType
-from graphon.file.models import File
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
 from libs.uuid_utils import uuidv7
@@ -146,8 +145,8 @@ class TestDraftVariableSaver:
             user=mock_user,
         )
         rebuilt_file = File(
-            id="file-1",
-            type=FileType.DOCUMENT,
+            file_id="file-1",
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             reference="upload-1",
             filename="test.txt",

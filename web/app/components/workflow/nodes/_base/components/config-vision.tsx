@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import type { ValueSelector, Var, VisionSetting } from '@/app/components/workflow/types'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ResolutionPicker from '@/app/components/workflow/nodes/llm/components/resolution-picker'
@@ -65,7 +65,7 @@ const ConfigVision: FC<Props> = ({
           popupContent={t('vision.onlySupportVisionModelTip', { ns: 'appDebug' })!}
           disabled={isVisionModel}
         >
-          <Switch disabled={readOnly || !isVisionModel} size="md" value={!isVisionModel ? false : enabled} onChange={onEnabledChange} />
+          <Switch disabled={readOnly || !isVisionModel} size="md" checked={!isVisionModel ? false : enabled} onCheckedChange={onEnabledChange} />
         </Tooltip>
       )}
     >

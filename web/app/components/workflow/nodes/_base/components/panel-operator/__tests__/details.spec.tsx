@@ -222,6 +222,33 @@ describe('panel-operator details', () => {
       expect(screen.getByRole('link', { name: 'workflow.panel.helpLink' })).toHaveAttribute('href', 'https://docs.example.com/node')
     })
 
+    it('should hide change action when node is undeletable', () => {
+      mockUseNodeMetaData.mockReturnValueOnce({
+        isTypeFixed: false,
+        isSingleton: true,
+        isUndeletable: true,
+        description: 'Undeletable node',
+        author: 'Dify',
+      } as ReturnType<typeof useNodeMetaData>)
+
+      renderWorkflowFlowComponent(
+        <PanelOperatorPopup
+          id="node-4"
+          data={{ type: BlockEnum.Code, title: 'Undeletable node', desc: '' } as any}
+          onClosePopup={vi.fn()}
+          showHelpLink={false}
+        />,
+        {
+          nodes: [],
+          edges: [],
+        },
+      )
+
+      expect(screen.getByText('workflow.panel.runThisStep')).toBeInTheDocument()
+      expect(screen.queryByText('workflow.panel.change')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+    })
+
     it('should render workflow-tool and readonly popup variants', () => {
       mockUseAllWorkflowTools.mockReturnValueOnce({
         data: [{ id: 'workflow-tool', workflow_app_id: 'app-123' }],

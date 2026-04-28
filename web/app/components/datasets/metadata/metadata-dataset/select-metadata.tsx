@@ -34,7 +34,7 @@ const SelectMetadata: FC<Props> = ({
     })
   }, [query, notFilteredList])
   return (
-    <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-0 pt-2 shadow-lg backdrop-blur-[5px]">
+    <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-2 pb-0 shadow-lg backdrop-blur-[5px]">
       <SearchInput
         className="mx-2"
         value={query}
@@ -47,7 +47,7 @@ const SelectMetadata: FC<Props> = ({
           return (
             <div
               key={item.id}
-              className="mx-1 flex h-6 cursor-pointer  items-center justify-between rounded-md px-3 hover:bg-state-base-hover"
+              className="mx-1 flex h-6 cursor-pointer items-center justify-between rounded-md px-3 hover:bg-state-base-hover"
               onClick={() => onSelect({
                 id: item.id,
                 name: item.name,
@@ -56,9 +56,9 @@ const SelectMetadata: FC<Props> = ({
             >
               <div className="flex h-full w-0 grow items-center text-text-secondary">
                 <Icon className="mr-[5px] size-3.5 shrink-0" />
-                <div className="system-sm-medium w-0 grow truncate">{item.name}</div>
+                <div className="w-0 grow truncate system-sm-medium">{item.name}</div>
               </div>
-              <div className="system-xs-regular ml-1 shrink-0 text-text-tertiary">
+              <div className="ml-1 shrink-0 system-xs-regular text-text-tertiary">
                 {item.type}
               </div>
             </div>
@@ -70,10 +70,10 @@ const SelectMetadata: FC<Props> = ({
           <RiAddLine className="size-3.5" />
           <div className="system-sm-medium">{t(`${i18nPrefix}.newAction`, { ns: 'dataset' })}</div>
         </div>
-        <div className="flex h-6 items-center text-text-secondary ">
+        <div className="flex h-6 items-center text-text-secondary">
           <div className="mr-[3px] h-3 w-px bg-divider-regular"></div>
           <div className="flex h-full cursor-pointer items-center rounded-md px-1.5 hover:bg-state-base-hover" onClick={onManage}>
-            <div className="system-sm-medium mr-1">{t(`${i18nPrefix}.manageAction`, { ns: 'dataset' })}</div>
+            <div className="mr-1 system-sm-medium">{t(`${i18nPrefix}.manageAction`, { ns: 'dataset' })}</div>
             <RiArrowRightUpLine className="size-3.5" />
           </div>
         </div>

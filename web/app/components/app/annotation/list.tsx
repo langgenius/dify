@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { AnnotationItem } from './type'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
@@ -8,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Checkbox from '@/app/components/base/checkbox'
 import useTimestamp from '@/hooks/use-timestamp'
-import { cn } from '@/utils/classnames'
 import BatchAction from './batch-action'
 import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
 
@@ -60,7 +60,7 @@ const List: FC<Props> = ({
         <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
           <thead className="system-xs-medium-uppercase text-text-tertiary">
             <tr>
-              <td className="w-12 whitespace-nowrap rounded-l-lg bg-background-section-burn px-2">
+              <td className="w-12 rounded-l-lg bg-background-section-burn px-2 whitespace-nowrap">
                 <Checkbox
                   className="mr-2"
                   checked={isAllSelected}
@@ -68,11 +68,11 @@ const List: FC<Props> = ({
                   onCheck={handleSelectAll}
                 />
               </td>
-              <td className="w-5 whitespace-nowrap bg-background-section-burn pl-2 pr-1">{t('table.header.question', { ns: 'appAnnotation' })}</td>
-              <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.answer', { ns: 'appAnnotation' })}</td>
-              <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.createdAt', { ns: 'appAnnotation' })}</td>
-              <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.hits', { ns: 'appAnnotation' })}</td>
-              <td className="w-[96px] whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.actions', { ns: 'appAnnotation' })}</td>
+              <td className="w-5 bg-background-section-burn pr-1 pl-2 whitespace-nowrap">{t('table.header.question', { ns: 'appAnnotation' })}</td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.answer', { ns: 'appAnnotation' })}</td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.createdAt', { ns: 'appAnnotation' })}</td>
+              <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.hits', { ns: 'appAnnotation' })}</td>
+              <td className="w-[96px] rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.actions', { ns: 'appAnnotation' })}</td>
             </tr>
           </thead>
           <tbody className="system-sm-regular text-text-secondary">
@@ -99,13 +99,13 @@ const List: FC<Props> = ({
                   />
                 </td>
                 <td
-                  className="max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2"
+                  className="max-w-[250px] overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
                   title={item.question}
                 >
                   {item.question}
                 </td>
                 <td
-                  className="max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2"
+                  className="max-w-[250px] overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
                   title={item.answer}
                 >
                   {item.answer}

@@ -39,7 +39,7 @@ const renderOnBlurBlock = (props?: {
 }
 
 const createBlurEvent = (relatedTarget?: HTMLElement): FocusEvent => {
-  return new FocusEvent('blur', { relatedTarget: relatedTarget ?? null })
+  return new FocusEvent('blur-sm', { relatedTarget: relatedTarget ?? null })
 }
 
 const createFocusEvent = (): FocusEvent => {
@@ -51,7 +51,7 @@ describe('OnBlurBlock', () => {
     vi.clearAllMocks()
   })
 
-  describe('Focus and blur handling', () => {
+  describe('Focus and blur-sm handling', () => {
     it('should call onFocus when focus command is dispatched', async () => {
       const onFocus = vi.fn()
       const { getEditor } = renderOnBlurBlock({ onFocus })
@@ -72,7 +72,7 @@ describe('OnBlurBlock', () => {
       expect(onFocus).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onBlur when blur target is not var-search-input', async () => {
+    it('should call onBlur when blur-sm target is not var-search-input', async () => {
       const onBlur = vi.fn()
       const { getEditor } = renderOnBlurBlock({ onBlur })
 
@@ -92,7 +92,7 @@ describe('OnBlurBlock', () => {
       expect(onBlur).toHaveBeenCalledTimes(1)
     })
 
-    it('should handle blur when onBlur callback is not provided', async () => {
+    it('should handle blur-sm when onBlur callback is not provided', async () => {
       const { getEditor } = renderOnBlurBlock()
 
       await waitFor(() => {
@@ -110,7 +110,7 @@ describe('OnBlurBlock', () => {
       expect(handled).toBe(true)
     })
 
-    it('should skip onBlur when blur target is var-search-input', async () => {
+    it('should skip onBlur when blur-sm target is var-search-input', async () => {
       const onBlur = vi.fn()
       const { getEditor } = renderOnBlurBlock({ onBlur })
 

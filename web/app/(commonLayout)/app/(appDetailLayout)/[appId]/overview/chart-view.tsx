@@ -27,7 +27,7 @@ const TIME_PERIOD_MAPPING: { value: number, name: TimePeriodName }[] = [
 
 const queryDateFormat = 'YYYY-MM-DD HH:mm'
 
-export type IChartViewProps = {
+type IChartViewProps = {
   appId: string
   headerRight: React.ReactNode
 }
@@ -48,7 +48,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   return (
     <div>
       <div className="mb-4">
-        <div className="system-xl-semibold mb-2 text-text-primary">{t('appMenus.overview', { ns: 'common' })}</div>
+        <div className="mb-2 system-xl-semibold text-text-primary">{t('appMenus.overview', { ns: 'common' })}</div>
         <div className="flex items-center justify-between">
           {IS_CLOUD_EDITION
             ? (

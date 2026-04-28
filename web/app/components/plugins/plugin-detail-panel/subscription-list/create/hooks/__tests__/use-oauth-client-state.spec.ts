@@ -77,7 +77,7 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
     (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
     {
@@ -194,8 +194,8 @@ describe('useOAuthClientState', () => {
       }))
 
       expect(result.current.oauthClientSchema).toHaveLength(2)
-      expect(result.current.oauthClientSchema[0].default).toBe('my-client-id')
-      expect(result.current.oauthClientSchema[1].default).toBe('my-secret')
+      expect(result.current.oauthClientSchema[0]!.default).toBe('my-client-id')
+      expect(result.current.oauthClientSchema[1]!.default).toBe('my-secret')
     })
 
     it('should return empty array when oauth_client_schema is empty', () => {
@@ -239,9 +239,9 @@ describe('useOAuthClientState', () => {
       }))
 
       // client_id should be overridden
-      expect(result.current.oauthClientSchema[0].default).toBe('only-client-id')
+      expect(result.current.oauthClientSchema[0]!.default).toBe('only-client-id')
       // extra_field should keep original default since key not in params
-      expect(result.current.oauthClientSchema[1].default).toBe('extra-default')
+      expect(result.current.oauthClientSchema[1]!.default).toBe('extra-default')
     })
   })
 

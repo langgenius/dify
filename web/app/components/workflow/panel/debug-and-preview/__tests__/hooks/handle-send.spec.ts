@@ -26,7 +26,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -83,7 +83,7 @@ describe('useChat – handleSend', () => {
     })
 
     expect(mockHandleRun).toHaveBeenCalledTimes(1)
-    const [bodyParams] = mockHandleRun.mock.calls[0]
+    const [bodyParams] = (mockHandleRun.mock.calls[0] ?? []) as [any]
     expect(bodyParams.query).toBe('hello')
   })
 
@@ -166,7 +166,7 @@ describe('useChat – handleSend', () => {
     })
 
     expect(mockHandleRun).toHaveBeenCalledTimes(1)
-    const [bodyParams] = mockHandleRun.mock.calls[0]
+    const [bodyParams] = (mockHandleRun.mock.calls[0] ?? []) as [any]
     const localFile = bodyParams.files.find((f: any) => f.transfer_method === 'local_file')
     const remoteFile = bodyParams.files.find((f: any) => f.transfer_method === 'remote_url')
     expect(localFile.url).toBe('')

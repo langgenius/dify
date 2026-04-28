@@ -21,7 +21,6 @@ import {
 import { consoleClient, consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { get, post } from './base'
-import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'apps'
 
@@ -103,17 +102,6 @@ export const useAppList = (params: AppListParams, options?: { enabled?: boolean 
     queryFn: () => get<AppListResponse>('/apps', { params: normalizedParams }),
     ...options,
   })
-}
-
-export const useAppFullList = () => {
-  return useQuery<AppListResponse>({
-    queryKey: useAppFullListKey,
-    queryFn: () => get<AppListResponse>('/apps', { params: { page: 1, limit: 100, name: '' } }),
-  })
-}
-
-export const useInvalidateAppFullList = () => {
-  return useInvalid(useAppFullListKey)
 }
 
 export const useInfiniteAppList = (params: AppListParams, options?: { enabled?: boolean }) => {

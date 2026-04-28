@@ -48,12 +48,12 @@ const PdfPreview: FC<PdfPreviewProps> = ({
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 ${!isMobile && 'p-8'}`}
+      className={`fixed inset-0 z-1000 flex items-center justify-center bg-black/80 ${!isMobile && 'p-8'}`}
       onClick={e => e.stopPropagation()}
       tabIndex={-1}
     >
       <div
-        className="h-[95vh] max-h-full w-[100vw] max-w-full overflow-hidden"
+        className="h-[95vh] max-h-full w-screen max-w-full overflow-hidden"
         style={{ transform: `scale(${scale})`, transformOrigin: 'center', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <PdfLoader
@@ -78,7 +78,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
       </div>
       <Tooltip popupContent={t('operation.zoomOut', { ns: 'common' })}>
         <div
-          className="absolute right-24 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+          className="absolute top-6 right-24 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={zoomOut}
         >
           <RiZoomOutLine className="h-4 w-4 text-gray-500" />
@@ -86,7 +86,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
       </Tooltip>
       <Tooltip popupContent={t('operation.zoomIn', { ns: 'common' })}>
         <div
-          className="absolute right-16 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+          className="absolute top-6 right-16 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={zoomIn}
         >
           <RiZoomInLine className="h-4 w-4 text-gray-500" />
@@ -94,7 +94,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
       </Tooltip>
       <Tooltip popupContent={t('operation.cancel', { ns: 'common' })}>
         <div
-          className="absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
+          className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
           onClick={onCancel}
         >
           <RiCloseLine className="h-4 w-4 text-gray-500" />

@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 
 type DeleteConfirmModalProps = {
@@ -22,7 +22,7 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
 
   return (
     <Modal className="p-0" isShow={isOpen} onClose={onClose}>
-      <div className="flex flex-col gap-y-2 p-6 pb-4 ">
+      <div className="flex flex-col gap-y-2 p-6 pb-4">
         <div className="title-2xl-semi-bold text-text-primary">
           {`${t('operation.delete', { ns: 'common' })} ${versionInfo.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}`}
         </div>
@@ -34,7 +34,7 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
         <Button onClick={onClose}>
           {t('operation.cancel', { ns: 'common' })}
         </Button>
-        <Button variant="warning" onClick={onDelete.bind(null, versionInfo.id)}>
+        <Button variant="primary" tone="destructive" onClick={onDelete.bind(null, versionInfo.id)}>
           {t('operation.delete', { ns: 'common' })}
         </Button>
       </div>

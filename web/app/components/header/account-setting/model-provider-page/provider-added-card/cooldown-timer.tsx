@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import Tooltip from '@/app/components/base/tooltip'
 
-export type CooldownTimerProps = {
+type CooldownTimerProps = {
   secondsRemaining?: number
   onFinish?: () => void
 }

@@ -60,8 +60,8 @@ describe('FileUploaderField', () => {
       />,
     )
 
-    expect(screen.getByText('Attachments')).toBeInTheDocument()
-    expect(screen.getByText('report.pdf')).toBeInTheDocument()
+    expect(screen.getByText('Attachments'))!.toBeInTheDocument()
+    expect(screen.getByText('report.pdf'))!.toBeInTheDocument()
   })
 
   it('should update field value when users remove a file', () => {
@@ -76,7 +76,7 @@ describe('FileUploaderField', () => {
     )
 
     const deleteButtons = screen.getAllByRole('button')
-    fireEvent.click(deleteButtons[1])
+    fireEvent.click(deleteButtons[1]!)
     expect(mockField.handleChange).toHaveBeenCalledWith([])
   })
 })

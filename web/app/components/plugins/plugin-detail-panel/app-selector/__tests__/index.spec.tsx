@@ -76,7 +76,7 @@ afterAll(() => {
 
 // Mock portal components for controlled positioning in tests
 // Use React context to properly scope open state per portal instance (for nested portals)
-vi.mock('@/app/components/base/portal-to-follow-elem', () => {
+vi.mock('@langgenius/dify-ui/popover', () => {
   // Context reference shared across mock components
   let sharedContext: React.Context<boolean> | null = null
 
@@ -90,7 +90,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => {
   }
 
   return {
-    PortalToFollowElem: ({
+    Popover: ({
       children,
       open,
     }: {
@@ -104,20 +104,22 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => {
         React.createElement('div', { 'data-testid': 'portal-to-follow-elem', 'data-open': open }, children),
       )
     },
-    PortalToFollowElemTrigger: ({
+    PopoverTrigger: ({
       children,
+      render,
       onClick,
       className,
     }: {
       children: ReactNode
+      render?: ReactNode
       onClick?: () => void
       className?: string
     }) => (
       <div data-testid="portal-trigger" onClick={onClick} className={className}>
-        {children}
+        {render ?? children}
       </div>
     ),
-    PortalToFollowElemContent: ({ children, className }: { children: ReactNode, className?: string }) => {
+    PopoverContent: ({ children, className }: { children: ReactNode, className?: string }) => {
       const Context = getContext()
       const isOpen = React.useContext(Context)
       if (!isOpen)
@@ -242,28 +244,42 @@ vi.mock('@/app/components/base/file-uploader', () => ({
   ),
 }))
 
-// Mock PortalSelect for testing select field interactions
-vi.mock('@/app/components/base/select', () => ({
-  PortalSelect: ({ onSelect, value, placeholder, items }: {
-    onSelect: (item: { value: string }) => void
-    value: string
-    placeholder: string
-    items: Array<{ value: string, name: string }>
-  }) => (
-    <div data-testid="portal-select">
-      <span data-testid="select-value">{value || placeholder}</span>
-      {items?.map((item: { value: string, name: string }) => (
+// Mock Select for testing select field interactions
+vi.mock('@langgenius/dify-ui/select', async () => {
+  const React = await import('react')
+  const SelectContext = React.createContext<{
+    onValueChange?: (value: string) => void
+  }>({})
+
+  return {
+    Select: ({ children, onValueChange }: {
+      children: React.ReactNode
+      onValueChange?: (value: string) => void
+    }) => (
+      <SelectContext.Provider value={{ onValueChange }}>
+        <div data-testid="portal-select">{children}</div>
+      </SelectContext.Provider>
+    ),
+    SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+      <span data-testid="select-value">{children}</span>
+    ),
+    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+      const context = React.useContext(SelectContext)
+      return (
         <button
-          key={item.value}
-          data-testid={`select-option-${item.value}`}
-          onClick={() => onSelect(item)}
+          key={value}
+          data-testid={`select-option-${value}`}
+          onClick={() => context.onValueChange?.(value)}
         >
-          {item.name}
+          {children}
         </button>
-      ))}
-    </div>
-  ),
-}))
+      )
+    },
+    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    SelectItemIndicator: () => null,
+  }
+})
 
 // Mock Input component with onClear support
 vi.mock('@/app/components/base/input', () => ({
@@ -393,19 +409,20 @@ describe('AppTrigger', () => {
     it('should render placeholder when no app is selected', () => {
       render(<AppTrigger open={false} />)
       // i18n mock returns key with namespace in dot format
-      expect(screen.getByText('app.appSelector.placeholder')).toBeInTheDocument()
+      // i18n mock returns key with namespace in dot format
+      expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
     })
 
     it('should render app details when app is selected', () => {
       const app = createMockApp({ name: 'My Test App' })
       render(<AppTrigger open={false} appDetail={app} />)
-      expect(screen.getByText('My Test App')).toBeInTheDocument()
+      expect(screen.getByText('My Test App'))!.toBeInTheDocument()
     })
 
     it('should apply open state styling', () => {
       const { container } = render(<AppTrigger open={true} />)
       const trigger = container.querySelector('.bg-state-base-hover-alt')
-      expect(trigger).toBeInTheDocument()
+      expect(trigger)!.toBeInTheDocument()
     })
 
     it('should render AppIcon when app is provided', () => {
@@ -413,21 +430,21 @@ describe('AppTrigger', () => {
       const { container } = render(<AppTrigger open={false} appDetail={app} />)
       // AppIcon renders with a specific class when app is provided
       const iconContainer = container.querySelector('.mr-2')
-      expect(iconContainer).toBeInTheDocument()
+      expect(iconContainer)!.toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
     it('should handle undefined appDetail gracefully', () => {
       render(<AppTrigger open={false} appDetail={undefined} />)
-      expect(screen.getByText('app.appSelector.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
     })
 
     it('should display app name with title attribute', () => {
       const app = createMockApp({ name: 'Long App Name For Testing' })
       render(<AppTrigger open={false} appDetail={app} />)
       const nameElement = screen.getByTitle('Long App Name For Testing')
-      expect(nameElement).toBeInTheDocument()
+      expect(nameElement)!.toBeInTheDocument()
     })
   })
 
@@ -435,14 +452,14 @@ describe('AppTrigger', () => {
     it('should have correct base classes', () => {
       const { container } = render(<AppTrigger open={false} />)
       const trigger = container.firstChild as HTMLElement
-      expect(trigger).toHaveClass('group', 'flex', 'cursor-pointer')
+      expect(trigger)!.toHaveClass('group', 'flex', 'cursor-pointer')
     })
 
     it('should apply different padding when app is provided', () => {
       const app = createMockApp()
       const { container } = render(<AppTrigger open={false} appDetail={app} />)
       const trigger = container.firstChild as HTMLElement
-      expect(trigger).toHaveClass('py-1.5', 'pl-1.5')
+      expect(trigger)!.toHaveClass('py-1.5', 'pl-1.5')
     })
   })
 })
@@ -479,18 +496,18 @@ describe('AppPicker', () => {
   describe('Rendering', () => {
     it('should render trigger element', () => {
       render(<AppPicker {...defaultProps} />)
-      expect(screen.getByText('Select App')).toBeInTheDocument()
+      expect(screen.getByText('Select App'))!.toBeInTheDocument()
     })
 
     it('should render app list when open', () => {
       render(<AppPicker {...defaultProps} isShow={true} />)
-      expect(screen.getByText('App 1')).toBeInTheDocument()
-      expect(screen.getByText('App 2')).toBeInTheDocument()
+      expect(screen.getByText('App 1'))!.toBeInTheDocument()
+      expect(screen.getByText('App 2'))!.toBeInTheDocument()
     })
 
     it('should show loading indicator when isLoading is true', () => {
       render(<AppPicker {...defaultProps} isShow={true} isLoading={true} />)
-      expect(screen.getByText('common.loading')).toBeInTheDocument()
+      expect(screen.getByText('common.loading'))!.toBeInTheDocument()
     })
 
     it('should not render content when isShow is false', () => {
@@ -538,31 +555,31 @@ describe('AppPicker', () => {
     it('should display correct app type for CHAT', () => {
       const apps = [createMockApp({ id: 'chat-app', name: 'Chat App', mode: AppModeEnum.CHAT })]
       render(<AppPicker {...defaultProps} isShow={true} apps={apps} />)
-      expect(screen.getByText('chat')).toBeInTheDocument()
+      expect(screen.getByText('chat'))!.toBeInTheDocument()
     })
 
     it('should display correct app type for WORKFLOW', () => {
       const apps = [createMockApp({ id: 'workflow-app', name: 'Workflow App', mode: AppModeEnum.WORKFLOW })]
       render(<AppPicker {...defaultProps} isShow={true} apps={apps} />)
-      expect(screen.getByText('workflow')).toBeInTheDocument()
+      expect(screen.getByText('workflow'))!.toBeInTheDocument()
     })
 
     it('should display correct app type for ADVANCED_CHAT', () => {
       const apps = [createMockApp({ id: 'chatflow-app', name: 'Chatflow App', mode: AppModeEnum.ADVANCED_CHAT })]
       render(<AppPicker {...defaultProps} isShow={true} apps={apps} />)
-      expect(screen.getByText('chatflow')).toBeInTheDocument()
+      expect(screen.getByText('chatflow'))!.toBeInTheDocument()
     })
 
     it('should display correct app type for AGENT_CHAT', () => {
       const apps = [createMockApp({ id: 'agent-app', name: 'Agent App', mode: AppModeEnum.AGENT_CHAT })]
       render(<AppPicker {...defaultProps} isShow={true} apps={apps} />)
-      expect(screen.getByText('agent')).toBeInTheDocument()
+      expect(screen.getByText('agent'))!.toBeInTheDocument()
     })
 
     it('should display correct app type for COMPLETION', () => {
       const apps = [createMockApp({ id: 'completion-app', name: 'Completion App', mode: AppModeEnum.COMPLETION })]
       render(<AppPicker {...defaultProps} isShow={true} apps={apps} />)
-      expect(screen.getByText('completion')).toBeInTheDocument()
+      expect(screen.getByText('completion'))!.toBeInTheDocument()
     })
   })
 
@@ -575,7 +592,7 @@ describe('AppPicker', () => {
     it('should handle search text with value', () => {
       render(<AppPicker {...defaultProps} isShow={true} searchText="test search" />)
       const input = screen.getByTestId('input')
-      expect(input).toHaveValue('test search')
+      expect(input)!.toHaveValue('test search')
     })
   })
 
@@ -641,7 +658,8 @@ describe('AppPicker', () => {
       render(<AppPicker {...defaultProps} isShow={true} hasMore={true} />)
 
       // The component should render without errors
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      // The component should render without errors
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle isShow toggle correctly', () => {
@@ -654,7 +672,8 @@ describe('AppPicker', () => {
       rerender(<AppPicker {...defaultProps} isShow={false} />)
 
       // Should not crash
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      // Should not crash
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should setup intersection observer when isShow is true', () => {
@@ -674,7 +693,8 @@ describe('AppPicker', () => {
       rerender(<AppPicker {...defaultProps} isShow={false} />)
 
       // Component should render without errors
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      // Component should render without errors
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should cleanup observer on component unmount', () => {
@@ -691,7 +711,8 @@ describe('AppPicker', () => {
       triggerMutationObserver()
 
       // Component should still work correctly
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      // Component should still work correctly
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should not setup IntersectionObserver when observerTarget is null', () => {
@@ -699,7 +720,8 @@ describe('AppPicker', () => {
       render(<AppPicker {...defaultProps} isShow={false} />)
 
       // The guard at line 84 should prevent setup
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      // The guard at line 84 should prevent setup
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should debounce onLoadMore calls using loadingRef', () => {
@@ -798,8 +820,8 @@ describe('AppInputsForm', () => {
         { type: InputVarType.textInput, label: 'Name', variable: 'name', required: false },
       ]
       render(<AppInputsForm {...defaultProps} inputsForms={forms} />)
-      expect(screen.getByText('Name')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Name')).toBeInTheDocument()
+      expect(screen.getByText('Name'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Name'))!.toBeInTheDocument()
     })
 
     it('should render number input field', () => {
@@ -807,7 +829,7 @@ describe('AppInputsForm', () => {
         { type: InputVarType.number, label: 'Count', variable: 'count', required: false },
       ]
       render(<AppInputsForm {...defaultProps} inputsForms={forms} />)
-      expect(screen.getByText('Count')).toBeInTheDocument()
+      expect(screen.getByText('Count'))!.toBeInTheDocument()
     })
 
     it('should render paragraph (textarea) field', () => {
@@ -815,7 +837,7 @@ describe('AppInputsForm', () => {
         { type: InputVarType.paragraph, label: 'Description', variable: 'desc', required: false },
       ]
       render(<AppInputsForm {...defaultProps} inputsForms={forms} />)
-      expect(screen.getByText('Description')).toBeInTheDocument()
+      expect(screen.getByText('Description'))!.toBeInTheDocument()
     })
 
     it('should render select field', () => {
@@ -840,8 +862,8 @@ describe('AppInputsForm', () => {
         },
       ]
       render(<AppInputsForm {...defaultProps} inputsForms={forms} />)
-      expect(screen.getByText('Single File Upload')).toBeInTheDocument()
-      expect(screen.getByTestId('file-uploader')).toBeInTheDocument()
+      expect(screen.getByText('Single File Upload'))!.toBeInTheDocument()
+      expect(screen.getByTestId('file-uploader'))!.toBeInTheDocument()
     })
 
     it('should render file uploader for single file with existing value', () => {
@@ -859,7 +881,8 @@ describe('AppInputsForm', () => {
       ]
       render(<AppInputsForm {...defaultProps} inputsForms={forms} inputs={{ singleFile: existingFile }} />)
       // The file uploader should receive the existing file as an array
-      expect(screen.getByTestId('file-value')).toHaveTextContent(JSON.stringify([existingFile]))
+      // The file uploader should receive the existing file as an array
+      expect(screen.getByTestId('file-value'))!.toHaveTextContent(JSON.stringify([existingFile]))
     })
 
     it('should render file uploader for multi files', () => {
@@ -876,7 +899,7 @@ describe('AppInputsForm', () => {
         },
       ]
       render(<AppInputsForm {...defaultProps} inputsForms={forms} />)
-      expect(screen.getByText('Attachments')).toBeInTheDocument()
+      expect(screen.getByText('Attachments'))!.toBeInTheDocument()
     })
 
     it('should show optional label for non-required fields', () => {
@@ -884,7 +907,7 @@ describe('AppInputsForm', () => {
         { type: InputVarType.textInput, label: 'Name', variable: 'name', required: false },
       ]
       render(<AppInputsForm {...defaultProps} inputsForms={forms} />)
-      expect(screen.getByText('workflow.panel.optional')).toBeInTheDocument()
+      expect(screen.getByText('workflow.panel.optional'))!.toBeInTheDocument()
     })
 
     it('should not show optional label for required fields', () => {
@@ -1026,7 +1049,7 @@ describe('AppInputsForm', () => {
       render(<AppInputsForm {...defaultProps} inputsForms={forms} inputs={{ name: 'existing' }} />)
 
       const input = screen.getByPlaceholderText('Name')
-      expect(input).toHaveValue('existing')
+      expect(input)!.toHaveValue('existing')
     })
 
     it('should handle empty string value', () => {
@@ -1036,7 +1059,7 @@ describe('AppInputsForm', () => {
       render(<AppInputsForm {...defaultProps} inputsForms={forms} inputs={{ name: '' }} />)
 
       const input = screen.getByPlaceholderText('Name')
-      expect(input).toHaveValue('')
+      expect(input)!.toHaveValue('')
     })
 
     it('should handle undefined variable value', () => {
@@ -1046,7 +1069,7 @@ describe('AppInputsForm', () => {
       render(<AppInputsForm {...defaultProps} inputsForms={forms} inputs={{}} />)
 
       const input = screen.getByPlaceholderText('Name')
-      expect(input).toHaveValue('')
+      expect(input)!.toHaveValue('')
     })
 
     it('should handle multiple form fields', () => {
@@ -1057,9 +1080,9 @@ describe('AppInputsForm', () => {
       ]
       render(<AppInputsForm {...defaultProps} inputsForms={forms} />)
 
-      expect(screen.getByText('Name')).toBeInTheDocument()
-      expect(screen.getByText('Age')).toBeInTheDocument()
-      expect(screen.getByText('Bio')).toBeInTheDocument()
+      expect(screen.getByText('Name'))!.toBeInTheDocument()
+      expect(screen.getByText('Age'))!.toBeInTheDocument()
+      expect(screen.getByText('Bio'))!.toBeInTheDocument()
     })
 
     it('should handle unknown form type gracefully', () => {
@@ -1068,7 +1091,7 @@ describe('AppInputsForm', () => {
       ]
       // Should not throw error, just not render the field
       render(<AppInputsForm {...defaultProps} inputsForms={forms} />)
-      expect(screen.getByText('Unknown')).toBeInTheDocument()
+      expect(screen.getByText('Unknown'))!.toBeInTheDocument()
     })
   })
 })
@@ -1093,17 +1116,48 @@ describe('AppInputsPanel', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should show no params message when form schema is empty', () => {
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.noParams')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.noParams'))!.toBeInTheDocument()
     })
 
     it('should show loading state when app is loading', () => {
       mockAppDetailLoading = true
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
+      // Loading component should be rendered
       // Loading component should be rendered
       expect(screen.queryByText('app.appSelector.params')).not.toBeInTheDocument()
     })
@@ -1119,19 +1173,19 @@ describe('AppInputsPanel', () => {
   describe('Props', () => {
     it('should handle undefined value', () => {
       renderWithQueryClient(<AppInputsPanel {...defaultProps} value={undefined} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should handle different app modes', () => {
       const workflowApp = createMockApp({ mode: AppModeEnum.WORKFLOW })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} appDetail={workflowApp} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should handle advanced chat mode', () => {
       const advancedChatApp = createMockApp({ mode: AppModeEnum.ADVANCED_CHAT })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} appDetail={advancedChatApp} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
   })
 
@@ -1147,7 +1201,7 @@ describe('AppInputsPanel', () => {
         },
       })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should generate schema for number input', () => {
@@ -1161,7 +1215,7 @@ describe('AppInputsPanel', () => {
         },
       })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should generate schema for checkbox input', () => {
@@ -1175,7 +1229,7 @@ describe('AppInputsPanel', () => {
         },
       })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should generate schema for select input', () => {
@@ -1189,7 +1243,7 @@ describe('AppInputsPanel', () => {
         },
       })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should generate schema for file-list input', () => {
@@ -1203,7 +1257,7 @@ describe('AppInputsPanel', () => {
         },
       })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should generate schema for file input', () => {
@@ -1217,7 +1271,7 @@ describe('AppInputsPanel', () => {
         },
       })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should generate schema for json_object input', () => {
@@ -1231,7 +1285,7 @@ describe('AppInputsPanel', () => {
         },
       })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should generate schema for text-input (default)', () => {
@@ -1245,7 +1299,7 @@ describe('AppInputsPanel', () => {
         },
       })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should filter external_data_tool items', () => {
@@ -1260,7 +1314,7 @@ describe('AppInputsPanel', () => {
         },
       })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
   })
 
@@ -1283,7 +1337,7 @@ describe('AppInputsPanel', () => {
       }
       const workflowApp = createMockApp({ mode: AppModeEnum.WORKFLOW })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} appDetail={workflowApp} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should generate schema for workflow with singleFile variable', () => {
@@ -1304,7 +1358,7 @@ describe('AppInputsPanel', () => {
       }
       const workflowApp = createMockApp({ mode: AppModeEnum.WORKFLOW })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} appDetail={workflowApp} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should generate schema for workflow with regular variable', () => {
@@ -1325,7 +1379,7 @@ describe('AppInputsPanel', () => {
       }
       const workflowApp = createMockApp({ mode: AppModeEnum.WORKFLOW })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} appDetail={workflowApp} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
   })
 
@@ -1344,7 +1398,7 @@ describe('AppInputsPanel', () => {
       })
       const completionApp = createMockApp({ mode: AppModeEnum.COMPLETION })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} appDetail={completionApp} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should add image upload schema for WORKFLOW mode with file upload enabled', () => {
@@ -1364,7 +1418,7 @@ describe('AppInputsPanel', () => {
       }
       const workflowApp = createMockApp({ mode: AppModeEnum.WORKFLOW })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} appDetail={workflowApp} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
   })
 
@@ -1372,7 +1426,7 @@ describe('AppInputsPanel', () => {
     it('should call onFormChange when form is updated', () => {
       const onFormChange = vi.fn()
       renderWithQueryClient(<AppInputsPanel {...defaultProps} onFormChange={onFormChange} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
 
     it('should call onFormChange with updated values when text input changes', () => {
@@ -1424,7 +1478,7 @@ describe('AppInputsPanel', () => {
           <AppInputsPanel {...defaultProps} />
         </QueryClientProvider>,
       )
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
   })
 
@@ -1432,7 +1486,7 @@ describe('AppInputsPanel', () => {
     it('should return empty schema when currentApp is null', () => {
       mockAppDetailData = null
       renderWithQueryClient(<AppInputsPanel {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.noParams')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.noParams'))!.toBeInTheDocument()
     })
 
     it('should handle workflow without start node', () => {
@@ -1442,7 +1496,7 @@ describe('AppInputsPanel', () => {
       }
       const workflowApp = createMockApp({ mode: AppModeEnum.WORKFLOW })
       renderWithQueryClient(<AppInputsPanel {...defaultProps} appDetail={workflowApp} />)
-      expect(screen.getByText('app.appSelector.params')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.params'))!.toBeInTheDocument()
     })
   })
 })
@@ -1477,12 +1531,12 @@ describe('AppSelector', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should render trigger component', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByText('app.appSelector.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
     })
 
     it('should show selected app info when value is provided', () => {
@@ -1493,19 +1547,20 @@ describe('AppSelector', () => {
         />,
       )
       // Should show the app trigger with app info
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      // Should show the app trigger with app info
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
     it('should handle different placement values', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} placement="top" />)
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle different offset values', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} offset={10} />)
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle disabled state', () => {
@@ -1513,12 +1568,13 @@ describe('AppSelector', () => {
       const trigger = screen.getByTestId('portal-trigger')
       fireEvent.click(trigger)
       // Portal should remain closed when disabled
-      expect(screen.getByTestId('portal-to-follow-elem')).toHaveAttribute('data-open', 'false')
+      // Portal should remain closed when disabled
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toHaveAttribute('data-open', 'false')
     })
 
     it('should handle scope prop', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} scope="workflow" />)
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle value with inputs', () => {
@@ -1528,7 +1584,7 @@ describe('AppSelector', () => {
           value={{ app_id: 'app-1', inputs: { name: 'test' }, files: [] }}
         />,
       )
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle value with files', () => {
@@ -1538,7 +1594,7 @@ describe('AppSelector', () => {
           value={{ app_id: 'app-1', inputs: {}, files: [{ id: 'file-1' }] }}
         />,
       )
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
   })
 
@@ -1547,10 +1603,11 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       const trigger = screen.getAllByTestId('portal-trigger')[0]
-      fireEvent.click(trigger)
+      fireEvent.click(trigger!)
 
       // The portal state should update synchronously - get the first one (outer portal)
-      expect(screen.getAllByTestId('portal-to-follow-elem')[0]).toHaveAttribute('data-open', 'true')
+      // The portal state should update synchronously - get the first one (outer portal)
+      expect(screen.getAllByTestId('portal-to-follow-elem')[0])!.toHaveAttribute('data-open', 'true')
     })
 
     it('should not toggle isShow when disabled', () => {
@@ -1559,7 +1616,7 @@ describe('AppSelector', () => {
       const trigger = screen.getByTestId('portal-trigger')
       fireEvent.click(trigger)
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toHaveAttribute('data-open', 'false')
     })
 
     it('should manage search text state', () => {
@@ -1569,7 +1626,8 @@ describe('AppSelector', () => {
       fireEvent.click(trigger)
 
       // Portal content should be visible after click
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      // Portal content should be visible after click
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should render correctly during load more setup', () => {
@@ -1579,7 +1637,8 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Trigger should be rendered
-      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      // Trigger should be rendered
+      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -1592,7 +1651,7 @@ describe('AppSelector', () => {
       // Open the portal
       fireEvent.click(screen.getByTestId('portal-trigger'))
 
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should call onSelect with correct value structure', () => {
@@ -1606,7 +1665,8 @@ describe('AppSelector', () => {
       )
 
       // The component should maintain the correct value structure
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      // The component should maintain the correct value structure
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should clear inputs when selecting different app', () => {
@@ -1620,7 +1680,8 @@ describe('AppSelector', () => {
       )
 
       // Component renders with existing value
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      // Component renders with existing value
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should preserve inputs when selecting same app', () => {
@@ -1633,7 +1694,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
   })
 
@@ -1647,7 +1708,7 @@ describe('AppSelector', () => {
       }
 
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should memoize currentAppInfo correctly', () => {
@@ -1662,7 +1723,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should memoize formattedValue correctly', () => {
@@ -1673,7 +1734,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should be wrapped with React.memo', () => {
@@ -1690,7 +1751,7 @@ describe('AppSelector', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
   })
 
@@ -1698,7 +1759,7 @@ describe('AppSelector', () => {
     it('should handle load more when hasMore is true', async () => {
       mockHasNextPage = true
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should not trigger load more when already loading', async () => {
@@ -1724,7 +1785,7 @@ describe('AppSelector', () => {
         vi.advanceTimersByTime(500)
       })
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should render load more area when hasMore is true', () => {
@@ -1735,10 +1796,11 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Open the portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // Should render without errors
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      // Should render without errors
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should handle fetchNextPage rejection gracefully in handleLoadMore', async () => {
@@ -1748,7 +1810,8 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Should not crash even if fetchNextPage rejects
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      // Should not crash even if fetchNextPage rejects
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should call fetchNextPage when intersection observer triggers handleLoadMore', async () => {
@@ -1759,11 +1822,11 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // Open the inner app picker portal
       const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[1])
+      fireEvent.click(triggers[1]!)
 
       // Simulate intersection to trigger handleLoadMore
       triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
@@ -1780,9 +1843,9 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Open portals
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
       const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[1])
+      fireEvent.click(triggers[1]!)
 
       // Trigger first intersection
       triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
@@ -1806,9 +1869,9 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Open portals
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
       const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[1])
+      fireEvent.click(triggers[1]!)
 
       // Trigger intersection
       triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
@@ -1825,9 +1888,9 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Open portals
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
       const triggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(triggers[1])
+      fireEvent.click(triggers[1]!)
 
       // Trigger intersection
       triggerIntersection([{ isIntersecting: true } as IntersectionObserverEntry])
@@ -1847,7 +1910,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle form change without image file', () => {
@@ -1860,7 +1923,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should extract #image# from inputs and add to files array', () => {
@@ -1874,7 +1937,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should preserve existing files when no #image# in inputs', () => {
@@ -1887,7 +1950,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
   })
 
@@ -1907,9 +1970,9 @@ describe('AppSelector', () => {
       )
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should preserve inputs when selecting the same app', () => {
@@ -1926,7 +1989,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle app selection with empty value', () => {
@@ -1944,34 +2007,34 @@ describe('AppSelector', () => {
       )
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
   })
 
   describe('Edge Cases', () => {
     it('should handle undefined value', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} value={undefined} />)
-      expect(screen.getByText('app.appSelector.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
     })
 
     it('should handle empty pages array', () => {
       mockAppListData = { pages: [] }
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle undefined data', () => {
       mockAppListData = undefined
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle loading state', () => {
       mockIsLoading = true
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle app not found in displayedApps', () => {
@@ -1986,7 +2049,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle value with empty inputs and files', () => {
@@ -1997,7 +2060,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
   })
 
@@ -2009,7 +2072,8 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Should not crash
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      // Should not crash
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
   })
 })
@@ -2043,10 +2107,11 @@ describe('AppSelector Integration', () => {
       renderWithQueryClient(<AppSelector onSelect={onSelect} />)
 
       // 1. Click trigger to open picker - get first trigger (outer portal)
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // Get the first portal element (outer portal)
-      expect(screen.getAllByTestId('portal-to-follow-elem')[0]).toHaveAttribute('data-open', 'true')
+      // Get the first portal element (outer portal)
+      expect(screen.getAllByTestId('portal-to-follow-elem')[0])!.toHaveAttribute('data-open', 'true')
     })
 
     it('should handle app change with input preservation logic', () => {
@@ -2058,7 +2123,7 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
   })
 
@@ -2067,7 +2132,8 @@ describe('AppSelector Integration', () => {
       renderWithQueryClient(<AppSelector onSelect={vi.fn()} />)
 
       // AppTrigger should show placeholder when no app selected
-      expect(screen.getByText('app.appSelector.placeholder')).toBeInTheDocument()
+      // AppTrigger should show placeholder when no app selected
+      expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
     })
 
     it('should pass correct props to AppPicker', () => {
@@ -2075,7 +2141,7 @@ describe('AppSelector Integration', () => {
 
       fireEvent.click(screen.getByTestId('portal-trigger'))
 
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
   })
 
@@ -2088,7 +2154,7 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
     })
 
     it('should handle search filtering through app list', () => {
@@ -2096,7 +2162,7 @@ describe('AppSelector Integration', () => {
 
       fireEvent.click(screen.getByTestId('portal-trigger'))
 
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
   })
 
@@ -2115,13 +2181,13 @@ describe('AppSelector Integration', () => {
       )
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // The inner AppPicker portal is closed by default (isShowChooseApp = false)
       // We need to click on the inner trigger to open it
       const innerTriggers = screen.getAllByTestId('portal-trigger')
       // The second trigger is the inner AppPicker trigger
-      fireEvent.click(innerTriggers[1])
+      fireEvent.click(innerTriggers[1]!)
 
       // Now the inner portal should be open and show the app list
       // Find and click on app-2
@@ -2150,16 +2216,16 @@ describe('AppSelector Integration', () => {
       )
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // Click on the inner trigger to open app picker
       const innerTriggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(innerTriggers[1])
+      fireEvent.click(innerTriggers[1]!)
 
       // Click on the same app - need to get the one in the app list, not the trigger
       const appItems = screen.getAllByText('App 1')
       // The last one should be in the dropdown list
-      fireEvent.click(appItems[appItems.length - 1])
+      fireEvent.click(appItems[appItems.length - 1]!)
 
       // onSelect should be called with preserved inputs since it's the same app
       expect(onSelect).toHaveBeenCalledWith({
@@ -2183,15 +2249,15 @@ describe('AppSelector Integration', () => {
       )
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // Click on inner trigger to open app picker
       const innerTriggers = screen.getAllByTestId('portal-trigger')
-      fireEvent.click(innerTriggers[1])
+      fireEvent.click(innerTriggers[1]!)
 
       // Click on an app from the dropdown
       const app1Elements = screen.getAllByText('App 1')
-      fireEvent.click(app1Elements[app1Elements.length - 1])
+      fireEvent.click(app1Elements[app1Elements.length - 1]!)
 
       // onSelect should be called with new app and empty inputs/files
       expect(onSelect).toHaveBeenCalledWith({
@@ -2211,9 +2277,9 @@ describe('AppSelector Integration', () => {
       renderWithQueryClient(<AppSelector onSelect={vi.fn()} />)
 
       // Open the portal to render the app picker
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should stay stable after fetchNextPage completes', async () => {
@@ -2223,9 +2289,9 @@ describe('AppSelector Integration', () => {
 
       renderWithQueryClient(<AppSelector onSelect={vi.fn()} />)
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
     })
 
     it('should not call fetchNextPage when conditions prevent it', () => {
@@ -2234,7 +2300,7 @@ describe('AppSelector Integration', () => {
 
       renderWithQueryClient(<AppSelector onSelect={vi.fn()} />)
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // fetchNextPage should not be called
       expect(mockFetchNextPage).not.toHaveBeenCalled()
@@ -2256,7 +2322,7 @@ describe('AppSelector Integration', () => {
       )
 
       // Open portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // formattedValue should include #image# from files
       expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
@@ -2275,7 +2341,7 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
     })
@@ -2293,7 +2359,7 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
     })
@@ -2324,12 +2390,12 @@ describe('AppSelector Integration', () => {
       )
 
       // Open portal to render AppInputsPanel
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // Find and interact with the form input (may not exist if schema is empty)
       const formInputs = screen.queryAllByPlaceholderText('FormInputField')
       if (formInputs.length > 0) {
-        fireEvent.change(formInputs[0], { target: { value: 'test value' } })
+        fireEvent.change(formInputs[0]!, { target: { value: 'test value' } })
 
         // handleFormChange in index.tsx should have been called
         expect(onSelect).toHaveBeenCalledWith({
@@ -2376,12 +2442,12 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // Find file uploader and trigger upload - the #image# field will be extracted
       const uploadBtns = screen.queryAllByTestId('upload-file-btn')
       if (uploadBtns.length > 0) {
-        fireEvent.click(uploadBtns[0])
+        fireEvent.click(uploadBtns[0]!)
         // handleFormChange should extract #image# and convert to files
         expect(onSelect).toHaveBeenCalled()
       }
@@ -2414,12 +2480,12 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // Find form input (may not exist if schema is empty)
       const inputs = screen.queryAllByPlaceholderText('PreserveField')
       if (inputs.length > 0) {
-        fireEvent.change(inputs[0], { target: { value: 'updated name' } })
+        fireEvent.change(inputs[0]!, { target: { value: 'updated name' } })
 
         // onSelect should be called preserving existing files (no #image# in inputs)
         expect(onSelect).toHaveBeenCalledWith({
@@ -2465,7 +2531,7 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       // Try to find and click the upload button which triggers #image# form change
       const uploadBtn = screen.queryByTestId('upload-file-btn')
@@ -2499,11 +2565,11 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0])
+      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
 
       const inputs = screen.queryAllByPlaceholderText('SimpleInput')
       if (inputs.length > 0) {
-        fireEvent.change(inputs[0], { target: { value: 'changed' } })
+        fireEvent.change(inputs[0]!, { target: { value: 'changed' } })
         // handleFormChange should preserve existing files when no #image# in inputs
         expect(onSelect).toHaveBeenCalledWith({
           app_id: 'app-1',

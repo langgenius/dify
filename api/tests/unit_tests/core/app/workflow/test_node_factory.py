@@ -8,8 +8,8 @@ from graphon.enums import BuiltinNodeTypes
 
 
 class DummyNode:
-    def __init__(self, *, id, config, graph_init_params, graph_runtime_state, **kwargs):
-        self.id = id
+    def __init__(self, *, node_id, config, graph_init_params, graph_runtime_state, **kwargs):
+        self.id = node_id
         self.config = config
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state

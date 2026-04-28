@@ -3,12 +3,12 @@ import logging
 import random
 import time
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import sqlalchemy as sa
 from sqlalchemy import delete, select, tuple_
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from extensions.ext_database import db
@@ -158,6 +158,13 @@ class MessagesCleanupMetrics:
         self._record(self._job_duration_seconds, job_duration_seconds, attributes)
 
 
+class MessagesCleanStatsDict(TypedDict):
+    batches: int
+    total_messages: int
+    filtered_messages: int
+    total_deleted: int
+
+
 class MessagesCleanService:
     """
     Service for cleaning expired messages based on retention policies.
@@ -299,7 +306,7 @@ class MessagesCleanService:
             task_label=task_label,
         )
 
-    def run(self) -> dict[str, int]:
+    def run(self) -> MessagesCleanStatsDict:
         """
         Execute the message cleanup operation.
 
@@ -319,7 +326,7 @@ class MessagesCleanService:
                 job_duration_seconds=time.monotonic() - run_start,
             )
 
-    def _clean_messages_by_time_range(self) -> dict[str, int]:
+    def _clean_messages_by_time_range(self) -> MessagesCleanStatsDict:
         """
         Clean messages within a time range using cursor-based pagination.
 
@@ -334,7 +341,7 @@ class MessagesCleanService:
         Returns:
             Dict with statistics: batches, filtered_messages, total_deleted
         """
-        stats = {
+        stats: MessagesCleanStatsDict = {
             "batches": 0,
             "total_messages": 0,
             "filtered_messages": 0,
@@ -362,7 +369,7 @@ class MessagesCleanService:
             batch_deleted_messages = 0
 
             # Step 1: Fetch a batch of messages using cursor
-            with Session(db.engine, expire_on_commit=False) as session:
+            with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
                 fetch_messages_start = time.monotonic()
                 msg_stmt = (
                     select(Message.id, Message.app_id, Message.created_at)
@@ -470,7 +477,7 @@ class MessagesCleanService:
 
             # Step 4: Batch delete messages and their relations
             if not self._dry_run:
-                with Session(db.engine, expire_on_commit=False) as session:
+                with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
                     delete_relations_start = time.monotonic()
                     # Delete related records first
                     self._batch_delete_message_relations(session, message_ids_to_delete)
@@ -482,9 +489,7 @@ class MessagesCleanService:
                     delete_result = cast(CursorResult, session.execute(delete_stmt))
                     messages_deleted = delete_result.rowcount
                     delete_messages_ms = int((time.monotonic() - delete_messages_start) * 1000)
-                    commit_start = time.monotonic()
-                    session.commit()
-                    commit_ms = int((time.monotonic() - commit_start) * 1000)
+                    commit_ms = 0
 
                     stats["total_deleted"] += messages_deleted
                     batch_deleted_messages = messages_deleted

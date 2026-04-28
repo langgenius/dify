@@ -1,18 +1,18 @@
 import type { ComparisonOperator } from '../../types'
 import type { VarType } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { getOperators, isComparisonOperatorNeedTranslate } from '../../utils'
 
 const i18nPrefix = 'nodes.ifElse'
@@ -70,7 +70,7 @@ const ConditionOperator = ({
           <RiArrowDownSLine className="ml-1 h-3.5 w-3.5" />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-[11]">
+      <PortalToFollowElemContent className="z-11">
         <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {
             options.map(option => (

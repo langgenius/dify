@@ -11,18 +11,19 @@ import os
 import time
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Union
+from typing import Any
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier
 from graphon.entities import WorkflowNodeExecution
-from graphon.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
@@ -48,10 +49,10 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
     """
     logger.debug("_dict_to_workflow_node_execution: data keys=%s", list(data.keys())[:5])
     # Parse JSON fields
-    inputs = json.loads(data.get("inputs", "{}"))
-    process_data = json.loads(data.get("process_data", "{}"))
-    outputs = json.loads(data.get("outputs", "{}"))
-    metadata = json.loads(data.get("execution_metadata", "{}"))
+    inputs = JSON_DICT_ADAPTER.validate_json(data.get("inputs") or "{}")
+    process_data = JSON_DICT_ADAPTER.validate_json(data.get("process_data") or "{}")
+    outputs = JSON_DICT_ADAPTER.validate_json(data.get("outputs") or "{}")
+    metadata = JSON_DICT_ADAPTER.validate_json(data.get("execution_metadata") or "{}")
 
     # Convert metadata to domain enum keys
     domain_metadata = {}
@@ -108,7 +109,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):

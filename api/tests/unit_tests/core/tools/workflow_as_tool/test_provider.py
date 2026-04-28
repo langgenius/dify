@@ -43,7 +43,7 @@ def test_get_db_provider_tool_builds_entity():
     controller = _controller()
     session = Mock()
     workflow = SimpleNamespace(graph_dict={"nodes": []}, features_dict={})
-    session.query.return_value.where.return_value.first.return_value = workflow
+    session.scalar.return_value = workflow
     app = SimpleNamespace(id="app-1")
     db_provider = SimpleNamespace(
         id="provider-1",
@@ -136,7 +136,7 @@ def test_from_db_builds_controller():
         parameter_configurations=[],
     )
     session = _mock_session_with_begin()
-    session.query.return_value.where.return_value.first.return_value = db_provider
+    session.scalar.return_value = db_provider
     session.get.side_effect = [app, user]
     fake_cm = MagicMock()
     fake_cm.__enter__.return_value = session
@@ -163,7 +163,7 @@ def test_get_tools_returns_empty_when_provider_missing():
         mock_db.engine = object()
         with patch("core.tools.workflow_as_tool.provider.Session") as session_cls:
             session = _mock_session_with_begin()
-            session.query.return_value.where.return_value.first.return_value = None
+            session.scalar.return_value = None
             session_cls.return_value.__enter__.return_value = session
 
             assert controller.get_tools("tenant-1") == []
@@ -189,7 +189,7 @@ def test_get_tools_raises_when_app_missing():
         mock_db.engine = object()
         with patch("core.tools.workflow_as_tool.provider.Session") as session_cls:
             session = _mock_session_with_begin()
-            session.query.return_value.where.return_value.first.return_value = db_provider
+            session.scalar.return_value = db_provider
             session.get.return_value = None
             session_cls.return_value.__enter__.return_value = session
             with pytest.raises(ValueError, match="app not found"):

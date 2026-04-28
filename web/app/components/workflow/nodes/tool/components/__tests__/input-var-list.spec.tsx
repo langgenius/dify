@@ -1,10 +1,11 @@
 import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { App } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   ConfigurationMethodEnum,
   FormTypeEnum,
@@ -211,14 +212,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
   ),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({
-    data: {
-      trial_models: [],
-    },
-  }),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/provider-added-card/use-trial-credits', () => ({
   useTrialCredits: () => ({
     isExhausted: false,
@@ -341,7 +334,7 @@ const renderInputVarList = (ui: React.ReactElement) => {
     }] as ReturnType<typeof createMockProviderContextValue>['modelProviders'],
   })
 
-  return render(
+  return renderWithSystemFeatures(
     <ProviderContext.Provider value={providerContextValue}>
       {ui}
     </ProviderContext.Provider>,

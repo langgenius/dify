@@ -122,7 +122,7 @@ vi.mock('@/utils/urlValidation', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign((params: unknown) => mockToastNotify(params), {
     success: (message: unknown) => mockToastNotify({ type: 'success', message }),
     error: (message: unknown) => mockToastNotify({ type: 'error', message }),

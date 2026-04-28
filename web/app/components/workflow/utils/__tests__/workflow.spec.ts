@@ -403,10 +403,10 @@ describe('changeNodesAndEdgesId', () => {
 
     const [newNodes, newEdges] = changeNodesAndEdgesId(nodes, edges)
 
-    expect(newNodes[0].id).not.toBe('old-1')
-    expect(newNodes[1].id).not.toBe('old-2')
-    expect(newEdges[0].source).toBe(newNodes[0].id)
-    expect(newEdges[0].target).toBe(newNodes[1].id)
+    expect(newNodes[0]!.id).not.toBe('old-1')
+    expect(newNodes[1]!.id).not.toBe('old-2')
+    expect(newEdges[0]!.source).toBe(newNodes[0]!.id)
+    expect(newEdges[0]!.target).toBe(newNodes[1]!.id)
   })
 
   it('should generate unique ids for all nodes', () => {

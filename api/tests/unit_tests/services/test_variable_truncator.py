@@ -17,8 +17,7 @@ from uuid import uuid4
 
 import pytest
 
-from graphon.file.enums import FileTransferMethod, FileType
-from graphon.file.models import File
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import (
     ArrayFileSegment,
     ArrayNumberSegment,
@@ -42,9 +41,9 @@ from services.variable_truncator import (
 @pytest.fixture
 def file() -> File:
     return File(
-        id=str(uuid4()),  # Generate new UUID for File.id
+        file_id=str(uuid4()),  # Generate new UUID for File.id
         tenant_id=str(uuid.uuid4()),
-        type=FileType.DOCUMENT,
+        file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id=str(uuid.uuid4()),
         filename="test_file.txt",
@@ -200,14 +199,14 @@ class TestArrayTruncation:
 
     def test_small_array_no_truncation(self, small_truncator: VariableTruncator):
         """Test that small arrays are not truncated."""
-        small_array = [1, 2]
+        small_array: list[object] = [1, 2]
         result = small_truncator._truncate_array(small_array, 1000)
         assert result.value == small_array
         assert result.truncated is False
 
     def test_array_element_limit_truncation(self, small_truncator: VariableTruncator):
         """Test that arrays over element limit are truncated."""
-        large_array = [1, 2, 3, 4, 5, 6]  # Exceeds limit of 3
+        large_array: list[object] = [1, 2, 3, 4, 5, 6]  # Exceeds limit of 3
         result = small_truncator._truncate_array(large_array, 1000)
 
         assert result.truncated is True
@@ -216,7 +215,7 @@ class TestArrayTruncation:
     def test_array_size_budget_truncation(self, small_truncator: VariableTruncator):
         """Test array truncation due to size budget constraints."""
         # Create array with strings that will exceed size budget
-        large_strings = ["very long string " * 5, "another long string " * 5]
+        large_strings: list[object] = ["very long string " * 5, "another long string " * 5]
         result = small_truncator._truncate_array(large_strings, 50)
 
         assert result.truncated is True
@@ -277,10 +276,10 @@ class TestObjectTruncation:
 
         # Values should be truncated if they exist
         for key, value in result.value.items():
-            if isinstance(value, str):
-                original_value = obj_with_long_values[key]
-                # Value should be same or smaller
-                assert len(value) <= len(original_value)
+            assert isinstance(value, str)
+            original_value = obj_with_long_values[key]
+            # Value should be same or smaller
+            assert len(value) <= len(original_value)
 
     def test_object_key_dropping(self, small_truncator):
         """Test object truncation where keys are dropped due to size constraints."""
@@ -507,10 +506,9 @@ class TestEdgeCases:
         truncator = VariableTruncator(string_length_limit=10)
 
         # Unicode characters
-        unicode_text = "🌍🚀🌍🚀🌍🚀🌍🚀🌍🚀"  # Each emoji counts as 1 character
+        unicode_text = "你好世界你好世界你好世界"  # Multi-byte UTF-8 characters
         result = truncator.truncate(StringSegment(value=unicode_text))
-        if len(unicode_text) > 10:
-            assert result.truncated is True
+        assert result.truncated is True
 
         # Special JSON characters
         special_chars = '{"key": "value with \\"quotes\\" and \\n newlines"}'
@@ -632,13 +630,12 @@ class TestIntegrationScenarios:
         result = truncator.truncate(segment)
 
         assert isinstance(result, TruncationResult)
-        # Should handle all data types appropriately
-        if result.truncated:
-            # Verify the result is smaller or equal than original
-            original_size = truncator.calculate_json_size(mixed_data)
-            if isinstance(result.result, ObjectSegment):
-                result_size = truncator.calculate_json_size(result.result.value)
-                assert result_size <= original_size
+        assert result.truncated is True
+        assert isinstance(result.result, ObjectSegment)
+        # Verify the result is smaller or equal than original
+        original_size = truncator.calculate_json_size(mixed_data)
+        result_size = truncator.calculate_json_size(result.result.value)
+        assert result_size <= original_size
 
     def test_file_and_array_file_variable_mapping(self, file):
         truncator = VariableTruncator(string_length_limit=30, array_element_limit=3, max_size_bytes=300)

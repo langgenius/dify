@@ -287,12 +287,10 @@ class ModelProviderModelCredentialApi(Resource):
                 provider=provider,
             )
         else:
-            # Normalize model_type to the origin value stored in DB (e.g., "text-generation" for LLM)
-            normalized_model_type = args.model_type.to_origin_model_type()
             available_credentials = model_provider_service.get_provider_model_available_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                model_type=normalized_model_type,
+                model_type=args.model_type,
                 model=args.model,
             )
 
@@ -467,7 +465,7 @@ class ModelProviderModelDisableApi(Resource):
 class ParserValidate(BaseModel):
     model: str
     model_type: ModelType
-    credentials: dict
+    credentials: dict[str, Any]
 
 
 console_ns.schema_model(

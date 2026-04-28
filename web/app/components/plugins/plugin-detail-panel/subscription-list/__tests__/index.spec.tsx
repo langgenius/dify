@@ -3,8 +3,16 @@ import type { TriggerSubscription } from '@/app/components/workflow/block-select
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import { SubscriptionList } from '../index'
 import { SubscriptionListMode } from '../types'
+
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'errorBoundary.title': 'Something went wrong',
+  'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
+  'errorBoundary.tryAgain': 'Try Again',
+  'errorBoundary.reloadPage': 'Reload Page',
+}))
 
 const mockRefetch = vi.fn()
 let mockSubscriptionListError: Error | null = null
@@ -92,8 +100,8 @@ describe('SubscriptionList', () => {
     it('should render list view by default', () => {
       render(<SubscriptionList />)
 
-      expect(screen.getByText(/pluginTrigger\.subscription\.listNum/)).toBeInTheDocument()
-      expect(screen.getByText('Subscription One')).toBeInTheDocument()
+      expect(screen.getByText(/pluginTrigger\.subscription\.listNum/))!.toBeInTheDocument()
+      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
     })
 
     it('should render loading state when subscriptions are loading', () => {
@@ -104,7 +112,7 @@ describe('SubscriptionList', () => {
 
       render(<SubscriptionList />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('status'))!.toBeInTheDocument()
       expect(screen.queryByText('Subscription One')).not.toBeInTheDocument()
     })
 
@@ -113,7 +121,7 @@ describe('SubscriptionList', () => {
 
       render(<SubscriptionList pluginDetail={pluginDetail} />)
 
-      expect(screen.getByText('Subscription One')).toBeInTheDocument()
+      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
     })
 
     it('should render without list entries when subscriptions are empty', () => {
@@ -133,7 +141,7 @@ describe('SubscriptionList', () => {
     it('should render selector view when mode is selector', () => {
       render(<SubscriptionList mode={SubscriptionListMode.SELECTOR} />)
 
-      expect(screen.getByText('Subscription One')).toBeInTheDocument()
+      expect(screen.getByText('Subscription One'))!.toBeInTheDocument()
     })
 
     it('should visually distinguish selected subscription from unselected', () => {
@@ -174,7 +182,7 @@ describe('SubscriptionList', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
 
       expect(onSelect).toHaveBeenCalledTimes(1)
-      const [selectedSubscription, callback] = onSelect.mock.calls[0]
+      const [selectedSubscription, callback] = (onSelect.mock.calls[0] ?? []) as [any, any]
       expect(selectedSubscription).toMatchObject({ id: 'sub-1', name: 'Subscription One' })
       expect(typeof callback).toBe('function')
 
@@ -204,17 +212,17 @@ describe('SubscriptionList', () => {
       fireEvent.click(deleteButton)
 
       expect(onSelect).not.toHaveBeenCalled()
-      expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/)).toBeInTheDocument()
+      expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/))!.toBeInTheDocument()
     })
   })
 
   describe('Edge Cases', () => {
-    it('should render error boundary fallback when an error occurs', () => {
+    it('should render error boundary fallback when an error occurs', async () => {
       mockSubscriptionListError = new Error('boom')
 
       render(<SubscriptionList />)
 
-      expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+      expect(await screen.findByText('Something went wrong'))!.toBeInTheDocument()
     })
   })
 })

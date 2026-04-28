@@ -24,7 +24,7 @@ describe('WorkflowPreview', () => {
 
     expect(container.querySelector('#workflow-container')).toHaveClass('preview-shell')
     expect(container.querySelector('.react-flow__background')).toBeInTheDocument()
-    expect(container.querySelector('.react-flow__minimap')).toHaveClass('!left-4')
+    expect(container.querySelector('.react-flow__minimap')).toHaveClass('left-4!')
   })
 
   it('should move the minimap to the right when requested', async () => {
@@ -41,7 +41,7 @@ describe('WorkflowPreview', () => {
 
     await waitFor(() => expect(container.querySelector('.react-flow__minimap')).toBeInTheDocument())
 
-    expect(container.querySelector('.react-flow__minimap')).toHaveClass('!right-4')
-    expect(container.querySelector('.react-flow__minimap')).not.toHaveClass('!left-4')
+    expect(container.querySelector('.react-flow__minimap')).toHaveClass('right-4!')
+    expect(container.querySelector('.react-flow__minimap')).not.toHaveClass('left-4!')
   })
 })

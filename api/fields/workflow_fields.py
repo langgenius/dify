@@ -26,7 +26,7 @@ class EnvironmentVariableField(fields.Raw):
                 "id": value.id,
                 "name": value.name,
                 "value": value.value,
-                "value_type": value.value_type.exposed_type().value,
+                "value_type": str(value.value_type.exposed_type()),
                 "description": value.description,
             }
         if isinstance(value, dict):

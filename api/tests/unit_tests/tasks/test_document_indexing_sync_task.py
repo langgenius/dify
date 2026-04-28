@@ -80,7 +80,7 @@ def mock_db_session(mock_document, mock_dataset):
     with patch("tasks.document_indexing_sync_task.session_factory", autospec=True) as mock_session_factory:
         session = MagicMock()
         session.scalars.return_value.all.return_value = []
-        session.query.return_value.where.return_value.first.side_effect = [mock_document, mock_dataset]
+        session.scalar.side_effect = [mock_document, mock_dataset]
 
         begin_cm = MagicMock()
         begin_cm.__enter__.return_value = session
@@ -242,14 +242,13 @@ class TestDataSourceInfoSerialization:
             # DB session mock — shared across all ``session_factory.create_session()`` calls
             session = MagicMock()
             session.scalars.return_value.all.return_value = []
-            # .where() path: session 1 reads document + dataset, session 2 reads dataset
-            session.query.return_value.where.return_value.first.side_effect = [
+            # All .first() calls are now session.scalar() — ordered by call sequence:
+            # session 1: document + dataset, session 2: dataset (clean), session 3: document (update),
+            # session 4: document (indexing)
+            session.scalar.side_effect = [
                 mock_document,
                 mock_dataset,
                 mock_dataset,
-            ]
-            # .filter_by() path: session 3 (update), session 4 (indexing)
-            session.query.return_value.filter_by.return_value.first.side_effect = [
                 mock_document,
                 mock_document,
             ]

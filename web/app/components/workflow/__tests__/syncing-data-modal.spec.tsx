@@ -17,6 +17,6 @@ describe('SyncingDataModal', () => {
 
     const overlay = container.firstElementChild
     expect(overlay).toHaveClass('absolute', 'inset-0')
-    expect(overlay).toHaveClass('z-[9999]')
+    expect(overlay).toHaveClass('z-9999')
   })
 })

@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import Button from '../button'
 
 type Props = {
   title: string
@@ -27,10 +27,10 @@ const ModalLikeWrap: FC<Props> = ({
   const { t } = useTranslation()
 
   return (
-    <div className={cn('w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-3 pb-4 pt-3.5 shadow-xl', className)}>
+    <div className={cn('w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-3 pt-3.5 pb-4 shadow-xl', className)}>
       {beforeHeader || null}
       <div className="mb-1 flex h-6 items-center justify-between">
-        <div className="text-text-primary system-xl-semibold">{title}</div>
+        <div className="system-xl-semibold text-text-primary">{title}</div>
         {!hideCloseBtn && (
           <div
             className="cursor-pointer p-1.5 text-text-tertiary"

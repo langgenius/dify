@@ -287,9 +287,7 @@ class TestDatasourceFileManager:
         mock_upload_file.key = "some_key"
         mock_upload_file.mime_type = "image/png"
 
-        mock_query = mock_db.session.query.return_value
-        mock_where = mock_query.where.return_value
-        mock_where.first.return_value = mock_upload_file
+        mock_db.session.get.return_value = mock_upload_file
 
         mock_storage.load_once.return_value = b"file content"
 
@@ -300,7 +298,7 @@ class TestDatasourceFileManager:
         assert result == (b"file content", "image/png")
 
         # Case: Not found
-        mock_where.first.return_value = None
+        mock_db.session.get.return_value = None
         assert DatasourceFileManager.get_file_binary("unknown") is None
 
     @patch("core.datasource.datasource_file_manager.db")
@@ -314,16 +312,14 @@ class TestDatasourceFileManager:
         mock_tool_file.file_key = "tool_key"
         mock_tool_file.mimetype = "image/png"
 
-        # Mock query sequence
-        def mock_query(model):
-            m = MagicMock()
+        def mock_get(model, id):
             if model == MessageFile:
-                m.where.return_value.first.return_value = mock_message_file
+                return mock_message_file
             elif model == ToolFile:
-                m.where.return_value.first.return_value = mock_tool_file
-            return m
+                return mock_tool_file
+            return None
 
-        mock_db.session.query.side_effect = mock_query
+        mock_db.session.get.side_effect = mock_get
         mock_storage.load_once.return_value = b"tool content"
 
         # Execute
@@ -344,15 +340,12 @@ class TestDatasourceFileManager:
         mock_tool_file.file_key = "tk"
         mock_tool_file.mimetype = "image/png"
 
-        def mock_query(model):
-            m = MagicMock()
+        def mock_get(model, id):
             if model == MessageFile:
-                m.where.return_value.first.return_value = mock_message_file
-            else:
-                m.where.return_value.first.return_value = mock_tool_file
-            return m
+                return mock_message_file
+            return mock_tool_file
 
-        mock_db.session.query.side_effect = mock_query
+        mock_db.session.get.side_effect = mock_get
         mock_storage.load_once.return_value = b"bits"
 
         result = DatasourceFileManager.get_file_binary_by_message_file_id("m")
@@ -361,27 +354,20 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")
     def test_get_file_binary_by_message_file_id_failures(self, mock_storage, mock_db):
-        # Setup common mock
-        mock_query_obj = MagicMock()
-        mock_db.session.query.return_value = mock_query_obj
-        mock_query_obj.where.return_value.first.return_value = None
-
         # Case 1: Message file not found
+        mock_db.session.get.return_value = None
         assert DatasourceFileManager.get_file_binary_by_message_file_id("none") is None
 
         # Case 2: Message file found but tool file not found
         mock_message_file = MagicMock(spec=MessageFile)
         mock_message_file.url = None
 
-        def mock_query_v2(model):
-            m = MagicMock()
+        def mock_get_v2(model, id):
             if model == MessageFile:
-                m.where.return_value.first.return_value = mock_message_file
-            else:
-                m.where.return_value.first.return_value = None
-            return m
+                return mock_message_file
+            return None
 
-        mock_db.session.query.side_effect = mock_query_v2
+        mock_db.session.get.side_effect = mock_get_v2
         assert DatasourceFileManager.get_file_binary_by_message_file_id("msg_id") is None
 
     @patch("core.datasource.datasource_file_manager.db")
@@ -392,7 +378,7 @@ class TestDatasourceFileManager:
         mock_upload_file.key = "upload_key"
         mock_upload_file.mime_type = "text/plain"
 
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_upload_file
+        mock_db.session.get.return_value = mock_upload_file
 
         mock_storage.load_stream.return_value = iter([b"chunk1", b"chunk2"])
 
@@ -404,7 +390,7 @@ class TestDatasourceFileManager:
         assert list(stream) == [b"chunk1", b"chunk2"]
 
         # Case: Not found
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.get.return_value = None
         stream, mimetype = DatasourceFileManager.get_file_generator_by_upload_file_id("none")
         assert stream is None
         assert mimetype is None

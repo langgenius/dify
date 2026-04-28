@@ -64,7 +64,7 @@ const ShareQRCode = ({ content }: Props) => {
         {isShow && (
           <div
             ref={qrCodeRef}
-            className="absolute -right-8 top-8 z-10 flex w-[232px] flex-col items-center rounded-lg bg-components-panel-bg p-4 shadow-xs"
+            className="absolute top-8 -right-8 z-10 flex w-[232px] flex-col items-center rounded-lg bg-components-panel-bg p-4 shadow-xs"
             onClick={handlePanelClick}
           >
             <QRCode size={160} value={content} className="mb-2" />

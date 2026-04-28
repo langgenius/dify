@@ -1,5 +1,5 @@
 from collections.abc import Generator, Sequence
-from typing import Union
+from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.app.llm import deduct_llm_quota
@@ -138,7 +138,7 @@ class ReactMultiDatasetRouter:
 
     def _invoke_llm(
         self,
-        completion_param: dict,
+        completion_param: dict[str, Any],
         model_instance: ModelInstance,
         prompt_messages: list[PromptMessage],
         stop: list[str],

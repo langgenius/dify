@@ -5,25 +5,62 @@ import { act } from 'react'
 import * as React from 'react'
 import TestRunMenu, { TriggerType } from '../test-run-menu'
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({
-    children,
-  }: {
-    children: React.ReactNode
-  }) => <div>{children}</div>,
-  PortalToFollowElemTrigger: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => <div onClick={onClick}>{children}</div>,
-  PortalToFollowElemContent: ({
-    children,
-  }: {
-    children: React.ReactNode
-  }) => <div>{children}</div>,
-}))
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
+  const React = await import('react')
+  const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
+
+  const useDropdownMenuContext = () => {
+    const context = React.use(DropdownMenuContext)
+    if (!context)
+      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    return context
+  }
+
+  return {
+    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+      <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
+        <div>{children}</div>
+      </DropdownMenuContext>
+    ),
+    DropdownMenuTrigger: ({
+      children,
+      render,
+    }: {
+      children: React.ReactNode
+      render?: React.ReactElement
+    }) => {
+      const { open, setOpen } = useDropdownMenuContext()
+
+      if (render)
+        return React.cloneElement(render, { onClick: () => setOpen(!open) } as Record<string, unknown>, children)
+
+      return <button type="button" onClick={() => setOpen(!open)}>{children}</button>
+    },
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => {
+      const { open } = useDropdownMenuContext()
+      return open ? <div>{children}</div> : null
+    },
+    DropdownMenuGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    DropdownMenuLabel: ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={className}>{children}</div>,
+    DropdownMenuGroupLabel: ({ children, className }: { children: React.ReactNode, className?: string }) => <div className={className}>{children}</div>,
+    DropdownMenuSeparator: ({ className }: { className?: string }) => <div className={className} data-testid="dropdown-separator" />,
+    DropdownMenuItem: ({ children, onClick, className }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement>, className?: string }) => {
+      const { setOpen } = useDropdownMenuContext()
+      return (
+        <button
+          type="button"
+          className={className}
+          onClick={(event) => {
+            onClick?.(event)
+            setOpen(false)
+          }}
+        >
+          {children}
+        </button>
+      )
+    },
+  }
+})
 
 vi.mock('../shortcuts-name', () => ({
   default: ({ keys }: { keys: string[] }) => <span>{keys.join('+')}</span>,
@@ -95,10 +132,11 @@ describe('TestRunMenu', () => {
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Toggle via ref' }))
     })
+    expect(screen.getByText('~')).toBeInTheDocument()
+
     fireEvent.keyDown(window, { key: '0' })
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'run-all' }))
-    expect(screen.getByText('~')).toBeInTheDocument()
   })
 
   it('should ignore disabled options in the rendered menu', async () => {

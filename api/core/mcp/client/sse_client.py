@@ -3,7 +3,7 @@ import queue
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from typing import Any, TypeAlias, final
+from typing import Any, final
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -33,9 +33,9 @@ class _StatusError:
 
 
 # Type aliases for better readability
-ReadQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
-WriteQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
-StatusQueue: TypeAlias = queue.Queue[_StatusReady | _StatusError]
+type ReadQueue = queue.Queue[SessionMessage | Exception | None]
+type WriteQueue = queue.Queue[SessionMessage | Exception | None]
+type StatusQueue = queue.Queue[_StatusReady | _StatusError]
 
 
 class SSETransport:

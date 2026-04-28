@@ -2,7 +2,13 @@ import json
 
 import httpx
 
+from core.helper.http_client_pooling import get_pooled_http_client
 from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
+
+_http_client: httpx.Client = get_pooled_http_client(
+    "auth:jina",
+    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+)
 
 
 class JinaAuth(ApiKeyAuthBase):
@@ -31,7 +37,7 @@ class JinaAuth(ApiKeyAuthBase):
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
     def _post_request(self, url, data, headers):
-        return httpx.post(url, headers=headers, json=data)
+        return _http_client.post(url, headers=headers, json=data)
 
     def _handle_error(self, response):
         if response.status_code in {402, 409, 500}:

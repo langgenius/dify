@@ -16,7 +16,7 @@ vi.mock('../../hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/popover', () => ({
+vi.mock('@langgenius/dify-ui/popover', () => ({
   Popover: ({ children, onOpenChange }: PopoverProps) => {
     latestOnOpenChange = onOpenChange
     return <div>{children}</div>

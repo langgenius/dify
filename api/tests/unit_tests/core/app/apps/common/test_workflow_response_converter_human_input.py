@@ -5,7 +5,7 @@ from core.app.apps.common.workflow_response_converter import WorkflowResponseCon
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent, QueueHumanInputFormTimeoutEvent
 from core.workflow.system_variables import build_system_variables
-from graphon.entities.workflow_start_reason import WorkflowStartReason
+from graphon.entities import WorkflowStartReason
 from graphon.runtime import GraphRuntimeState, VariablePool
 
 

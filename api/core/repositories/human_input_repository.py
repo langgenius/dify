@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from core.db.session_factory import session_factory
-from core.workflow.human_input_compat import (
+from core.workflow.human_input_adapter import (
     BoundRecipient,
     DeliveryChannelConfig,
     EmailDeliveryMethod,

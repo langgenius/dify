@@ -30,7 +30,7 @@ const StartNodeOption: FC<StartNodeOptionProps> = ({
           <h3 className="text-text-primary">
             {title}
             {subtitle && (
-              <span className="text-text-quaternary system-md-regular">
+              <span className="system-md-regular text-text-quaternary">
                 {' '}
                 {subtitle}
               </span>
@@ -39,7 +39,7 @@ const StartNodeOption: FC<StartNodeOptionProps> = ({
         </div>
 
         <div className="h-12 leading-4">
-          <p className="text-text-tertiary system-xs-regular">
+          <p className="system-xs-regular text-text-tertiary">
             {description}
           </p>
         </div>

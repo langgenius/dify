@@ -21,7 +21,7 @@ from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import MessageStatus
 from models.execution_extra_content import HumanInputContent
-from models.model import EndUser
+from models.model import AppMode, EndUser
 
 
 def _build_pipeline() -> pipeline_module.AdvancedChatAppGenerateTaskPipeline:
@@ -159,8 +159,8 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
         task_id="task-1",
     )
     queue_manager = SimpleNamespace(graph_runtime_state=None)
-    conversation = SimpleNamespace(id="conversation-1", mode="advanced-chat")
-    message = SimpleNamespace(
+    conversation = pipeline_module.ConversationSnapshot(id="conversation-1", mode=AppMode.ADVANCED_CHAT)
+    message = pipeline_module.MessageSnapshot(
         id="message-1",
         created_at=datetime(2024, 1, 1),
         query="hello",
@@ -170,7 +170,7 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
     user = EndUser()
     user.id = "user-1"
     user.session_id = "session-1"
-    workflow = SimpleNamespace(id="workflow-1", tenant_id="tenant-1", features_dict={})
+    workflow = pipeline_module.WorkflowSnapshot(id="workflow-1", tenant_id="tenant-1", features_dict={})
 
     pipeline = pipeline_module.AdvancedChatAppGenerateTaskPipeline(
         application_generate_entity=application_generate_entity,
@@ -184,14 +184,33 @@ def test_resume_appends_chunks_to_paused_answer() -> None:
         draft_var_saver_factory=SimpleNamespace(),
     )
 
-    pipeline._get_message = mock.Mock(return_value=message)
+    stored_message = SimpleNamespace(
+        id="message-1",
+        answer="before",
+        status=MessageStatus.PAUSED,
+        updated_at=None,
+        provider_response_latency=0,
+        message_tokens=0,
+        message_unit_price=0,
+        message_price_unit=0,
+        answer_tokens=0,
+        answer_unit_price=0,
+        answer_price_unit=0,
+        total_price=0,
+        currency="USD",
+        message_metadata=None,
+        invoke_from=InvokeFrom.WEB_APP,
+        from_account_id=None,
+        from_end_user_id="user-1",
+    )
+    pipeline._get_message = mock.Mock(return_value=stored_message)
     pipeline._recorded_files = []
 
     list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="after")))
     pipeline._save_message(session=mock.Mock())
 
-    assert message.answer == "beforeafter"
-    assert message.status == MessageStatus.NORMAL
+    assert stored_message.answer == "beforeafter"
+    assert stored_message.status == MessageStatus.NORMAL
 
 
 def test_workflow_succeeded_emits_message_end_before_workflow_finished() -> None:

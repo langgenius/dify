@@ -113,6 +113,7 @@ class DataSourceType(StrEnum):
     WEBSITE_CRAWL = "website_crawl"
     LOCAL_FILE = "local_file"
     ONLINE_DOCUMENT = "online_document"
+    ONLINE_DRIVE = "online_drive"
 
 
 class ProcessRuleMode(StrEnum):
@@ -156,6 +157,15 @@ class FeedbackFromSource(StrEnum):
 
     USER = "user"
     ADMIN = "admin"
+
+
+class CustomizeTokenStrategy(StrEnum):
+    """Site token customization strategy"""
+
+    MUST = "must"
+    ALLOW = "allow"
+    NOT_ALLOW = "not_allow"
+    UUID = "uuid"
 
 
 class FeedbackRating(StrEnum):
@@ -312,6 +322,13 @@ class MessageChainType(StrEnum):
     """Message chain type"""
 
     SYSTEM = "system"
+
+
+class PromptType(StrEnum):
+    """Prompt configuration type"""
+
+    SIMPLE = "simple"
+    ADVANCED = "advanced"
 
 
 class ProviderQuotaType(StrEnum):

@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -131,7 +131,7 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    trace_manager: Optional["TraceQueueManager"] = Field(default=None, exclude=True, repr=False)
+    trace_manager: "TraceQueueManager | None" = Field(default=None, exclude=True, repr=False)
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):

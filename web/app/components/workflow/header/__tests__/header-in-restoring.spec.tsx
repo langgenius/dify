@@ -9,6 +9,7 @@ const mockRestoreWorkflow = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
+const mockRequestRestore = vi.fn()
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({
@@ -41,6 +42,9 @@ vi.mock('../../hooks', () => ({
   }),
   useWorkflowRefreshDraft: () => ({
     handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft,
+  }),
+  useLeaderRestore: () => ({
+    requestRestore: mockRequestRestore,
   }),
 }))
 

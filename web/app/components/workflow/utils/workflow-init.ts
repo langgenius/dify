@@ -40,14 +40,14 @@ const isCyclicUtil = (nodeId: string, color: Record<string, string>, adjList: Re
   color[nodeId] = GRAY
   stack.push(nodeId)
 
-  for (let i = 0; i < adjList[nodeId].length; ++i) {
-    const childId = adjList[nodeId][i]
+  for (let i = 0; i < adjList[nodeId]!.length; ++i) {
+    const childId = adjList[nodeId]![i]
 
-    if (color[childId] === GRAY) {
-      stack.push(childId)
+    if (color[childId!] === GRAY) {
+      stack.push(childId!)
       return true
     }
-    if (color[childId] === WHITE && isCyclicUtil(childId, color, adjList, stack))
+    if (color[childId!] === WHITE && isCyclicUtil(childId!, color, adjList, stack))
       return true
   }
   color[nodeId] = BLACK
@@ -70,8 +70,8 @@ const getCycleEdges = (nodes: Node[], edges: Edge[]) => {
     adjList[edge.source]?.push(edge.target)
 
   for (let i = 0; i < nodes.length; i++) {
-    if (color[nodes[i].id] === WHITE)
-      isCyclicUtil(nodes[i].id, color, adjList, stack)
+    if (color[nodes[i]!.id] === WHITE)
+      isCyclicUtil(nodes[i]!.id, color, adjList, stack)
   }
 
   const cycleEdges = []
@@ -151,12 +151,12 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     const isIteration = nodeItem.data.type === BlockEnum.Iteration
     const newNode = (isIteration ? newIterationStartNodesMap : newLoopStartNodesMap)[nodeItem.id]
     const startNode = nodesMap[nodeItem.data.start_node_id]
-    const source = newNode.id
+    const source = newNode!.id
     const sourceHandle = 'source'
-    const target = startNode.id
+    const target = startNode!.id
     const targetHandle = 'target'
 
-    const parentNode = nodes.find(node => node.id === startNode.parentId) || null
+    const parentNode = nodes.find(node => node.id === startNode!.parentId) || null
     const isInIteration = !!parentNode && parentNode.data.type === BlockEnum.Iteration
     const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
 
@@ -168,12 +168,12 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
       target,
       targetHandle,
       data: {
-        sourceType: newNode.data.type,
-        targetType: startNode.data.type,
+        sourceType: newNode!.data.type,
+        targetType: startNode!.data.type,
         isInIteration,
-        iteration_id: isInIteration ? startNode.parentId : undefined,
+        iteration_id: isInIteration ? startNode!.parentId : undefined,
         isInLoop,
-        loop_id: isInLoop ? startNode.parentId : undefined,
+        loop_id: isInLoop ? startNode!.parentId : undefined,
         _connectedNodeIsSelected: true,
       },
       zIndex: isIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX,
@@ -181,10 +181,10 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
   })
   nodes.forEach((node) => {
     if (node.data.type === BlockEnum.Iteration && newIterationStartNodesMap[node.id])
-      (node.data as IterationNodeType).start_node_id = newIterationStartNodesMap[node.id].id
+      (node.data as IterationNodeType).start_node_id = newIterationStartNodesMap[node.id]!.id
 
     if (node.data.type === BlockEnum.Loop && newLoopStartNodesMap[node.id])
-      (node.data as LoopNodeType).start_node_id = newLoopStartNodesMap[node.id].id
+      (node.data as LoopNodeType).start_node_id = newLoopStartNodesMap[node.id]!.id
   })
 
   return {
@@ -209,7 +209,7 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
   const iterationOrLoopNodeMap = nodes.reduce((acc, node) => {
     if (node.parentId) {
       if (acc[node.parentId])
-        acc[node.parentId].push({ nodeId: node.id, nodeType: node.data.type })
+        acc[node.parentId]!.push({ nodeId: node.id, nodeType: node.data.type })
       else
         acc[node.parentId] = [{ nodeId: node.id, nodeType: node.data.type }]
     }
@@ -338,14 +338,14 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
     if (!edge.data?.sourceType && edge.source && nodesMap[edge.source]) {
       edge.data = {
         ...edge.data,
-        sourceType: nodesMap[edge.source].data.type!,
+        sourceType: nodesMap[edge.source]!.data.type!,
       } as any
     }
 
     if (!edge.data?.targetType && edge.target && nodesMap[edge.target]) {
       edge.data = {
         ...edge.data,
-        targetType: nodesMap[edge.target].data.type!,
+        targetType: nodesMap[edge.target]!.data.type!,
       } as any
     }
 

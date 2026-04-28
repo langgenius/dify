@@ -9,7 +9,7 @@ from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.graph_engine.entities.commands import CommandType
-from graphon.graph_events.node import NodeRunSucceededEvent
+from graphon.graph_events import NodeRunSucceededEvent
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 

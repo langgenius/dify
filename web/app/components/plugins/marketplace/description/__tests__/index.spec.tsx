@@ -145,7 +145,7 @@ describe('Description', () => {
     it('should render category spans with styled underline effect', () => {
       const { container } = render(<Description />)
 
-      const styledSpans = container.querySelectorAll('.body-md-medium.relative.z-\\[1\\]')
+      const styledSpans = container.querySelectorAll('.body-md-medium.relative.z-1')
       // 7 category spans (models, tools, datasources, triggers, agents, extensions, bundles)
       expect(styledSpans.length).toBe(7)
     })
@@ -366,7 +366,7 @@ describe('Description', () => {
     it('should have z-index 1 on category spans', () => {
       const { container } = render(<Description />)
 
-      const categorySpans = container.querySelectorAll('.z-\\[1\\]')
+      const categorySpans = container.querySelectorAll('.z-1')
       expect(categorySpans.length).toBe(7)
     })
 

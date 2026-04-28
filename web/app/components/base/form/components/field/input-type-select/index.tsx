@@ -1,8 +1,8 @@
 import type { CustomSelectProps } from '../../../../select/custom'
 import type { LabelProps } from '../../label'
 import type { FileTypeSelectOption, InputType } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback } from 'react'
-import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../../..'
 import CustomSelect from '../../../../select/custom'
 import Label from '../../label'
@@ -50,7 +50,7 @@ const InputTypeSelectField = ({
         }}
         popupProps={{
           className: 'w-[368px]',
-          wrapperClassName: 'z-[9999999]',
+          wrapperClassName: 'z-9999999',
           itemClassName: 'gap-x-1',
         }}
         CustomTrigger={renderTrigger}

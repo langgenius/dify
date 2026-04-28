@@ -3,14 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginSource } from '../../../../types'
 import PluginSourceBadge from '../plugin-source-badge'
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (
-    <div data-testid="tooltip" data-content={popupContent}>
-      {children}
-    </div>
-  ),
-}))
-
 describe('PluginSourceBadge', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -20,33 +12,25 @@ describe('PluginSourceBadge', () => {
     it('should render marketplace source badge', () => {
       render(<PluginSourceBadge source={PluginSource.marketplace} />)
 
-      const tooltip = screen.getByTestId('tooltip')
-      expect(tooltip).toBeInTheDocument()
-      expect(tooltip).toHaveAttribute('data-content', 'plugin.detailPanel.categoryTip.marketplace')
+      expect(screen.getByLabelText('plugin.detailPanel.categoryTip.marketplace')).toBeInTheDocument()
     })
 
     it('should render github source badge', () => {
       render(<PluginSourceBadge source={PluginSource.github} />)
 
-      const tooltip = screen.getByTestId('tooltip')
-      expect(tooltip).toBeInTheDocument()
-      expect(tooltip).toHaveAttribute('data-content', 'plugin.detailPanel.categoryTip.github')
+      expect(screen.getByLabelText('plugin.detailPanel.categoryTip.github')).toBeInTheDocument()
     })
 
     it('should render local source badge', () => {
       render(<PluginSourceBadge source={PluginSource.local} />)
 
-      const tooltip = screen.getByTestId('tooltip')
-      expect(tooltip).toBeInTheDocument()
-      expect(tooltip).toHaveAttribute('data-content', 'plugin.detailPanel.categoryTip.local')
+      expect(screen.getByLabelText('plugin.detailPanel.categoryTip.local')).toBeInTheDocument()
     })
 
     it('should render debugging source badge', () => {
       render(<PluginSourceBadge source={PluginSource.debugging} />)
 
-      const tooltip = screen.getByTestId('tooltip')
-      expect(tooltip).toBeInTheDocument()
-      expect(tooltip).toHaveAttribute('data-content', 'plugin.detailPanel.categoryTip.debugging')
+      expect(screen.getByLabelText('plugin.detailPanel.categoryTip.debugging')).toBeInTheDocument()
     })
   })
 
@@ -86,71 +70,47 @@ describe('PluginSourceBadge', () => {
     it('should show marketplace tooltip', () => {
       render(<PluginSourceBadge source={PluginSource.marketplace} />)
 
-      expect(screen.getByTestId('tooltip')).toHaveAttribute(
-        'data-content',
-        'plugin.detailPanel.categoryTip.marketplace',
-      )
+      expect(screen.getByLabelText('plugin.detailPanel.categoryTip.marketplace')).toBeInTheDocument()
     })
 
     it('should show github tooltip', () => {
       render(<PluginSourceBadge source={PluginSource.github} />)
 
-      expect(screen.getByTestId('tooltip')).toHaveAttribute(
-        'data-content',
-        'plugin.detailPanel.categoryTip.github',
-      )
+      expect(screen.getByLabelText('plugin.detailPanel.categoryTip.github')).toBeInTheDocument()
     })
 
     it('should show local tooltip', () => {
       render(<PluginSourceBadge source={PluginSource.local} />)
 
-      expect(screen.getByTestId('tooltip')).toHaveAttribute(
-        'data-content',
-        'plugin.detailPanel.categoryTip.local',
-      )
+      expect(screen.getByLabelText('plugin.detailPanel.categoryTip.local')).toBeInTheDocument()
     })
 
     it('should show debugging tooltip', () => {
       render(<PluginSourceBadge source={PluginSource.debugging} />)
 
-      expect(screen.getByTestId('tooltip')).toHaveAttribute(
-        'data-content',
-        'plugin.detailPanel.categoryTip.debugging',
-      )
+      expect(screen.getByLabelText('plugin.detailPanel.categoryTip.debugging')).toBeInTheDocument()
     })
   })
 
   describe('Icon Element Structure', () => {
     it('should render icon inside tooltip for marketplace', () => {
-      render(<PluginSourceBadge source={PluginSource.marketplace} />)
-
-      const tooltip = screen.getByTestId('tooltip')
-      const iconWrapper = tooltip.querySelector('div')
-      expect(iconWrapper).toBeInTheDocument()
+      const { container } = render(<PluginSourceBadge source={PluginSource.marketplace} />)
+      expect(container.querySelector('[aria-label="plugin.detailPanel.categoryTip.marketplace"]')).toBeInTheDocument()
     })
 
     it('should render icon inside tooltip for github', () => {
-      render(<PluginSourceBadge source={PluginSource.github} />)
-
-      const tooltip = screen.getByTestId('tooltip')
-      const iconWrapper = tooltip.querySelector('div')
-      expect(iconWrapper).toBeInTheDocument()
+      const { container } = render(<PluginSourceBadge source={PluginSource.github} />)
+      expect(container.querySelector('[aria-label="plugin.detailPanel.categoryTip.github"]')).toBeInTheDocument()
     })
 
     it('should render icon inside tooltip for local', () => {
-      render(<PluginSourceBadge source={PluginSource.local} />)
-
-      const tooltip = screen.getByTestId('tooltip')
-      const iconWrapper = tooltip.querySelector('div')
-      expect(iconWrapper).toBeInTheDocument()
+      const { container } = render(<PluginSourceBadge source={PluginSource.local} />)
+      expect(container.querySelector('[aria-label="plugin.detailPanel.categoryTip.local"]')).toBeInTheDocument()
     })
 
     it('should render icon inside tooltip for debugging', () => {
-      render(<PluginSourceBadge source={PluginSource.debugging} />)
-
-      const tooltip = screen.getByTestId('tooltip')
-      const iconWrapper = tooltip.querySelector('div')
-      expect(iconWrapper).toBeInTheDocument()
+      const { container } = render(<PluginSourceBadge source={PluginSource.debugging} />)
+      expect(container.querySelector('[aria-label="plugin.detailPanel.categoryTip.debugging"]')).toBeInTheDocument()
     })
   })
 
@@ -188,7 +148,7 @@ describe('PluginSourceBadge', () => {
       const invalidSource = '' as PluginSource
       render(<PluginSourceBadge source={invalidSource} />)
 
-      expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/^plugin\.detailPanel\.categoryTip\./)).not.toBeInTheDocument()
     })
   })
 })

@@ -8,7 +8,7 @@ import {
 
 const TooltipCard = ({ title, description }: { title: string, description: string }) => (
   <div className="w-[220px] rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-sm text-text-secondary shadow-lg">
-    <div className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-text-tertiary">
+    <div className="mb-1 text-xs font-semibold tracking-[0.14em] text-text-tertiary uppercase">
       {title}
     </div>
     <p className="leading-5">{description}</p>

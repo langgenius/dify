@@ -472,21 +472,23 @@ describe('Conversion', () => {
       const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
       fireEvent.click(convertButton)
 
-      // Real Confirm renders title and content via portal
+      // AlertDialog renders title and content via portal.
       expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
       expect(screen.getByText('datasetPipeline.conversion.confirm.content')).toBeInTheDocument()
     })
 
-    it('should hide confirm modal when cancel is clicked', () => {
+    it('should hide confirm modal when cancel is clicked', async () => {
       render(<Conversion />)
 
       const convertButton = screen.getByRole('button', { name: /datasetPipeline\.operations\.convert/i })
       fireEvent.click(convertButton)
       expect(screen.getByText('datasetPipeline.conversion.confirm.title')).toBeInTheDocument()
 
-      // Real Confirm renders cancel button with i18n text
+      // AlertDialog close is async because it unmounts after state updates.
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-      expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByText('datasetPipeline.conversion.confirm.title')).not.toBeInTheDocument()
+      })
     })
   })
 

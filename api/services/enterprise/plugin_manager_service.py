@@ -1,21 +1,13 @@
-import enum
 import logging
 
 from pydantic import BaseModel
 
 from configs import dify_config
+from core.entities import PluginCredentialType
 from services.enterprise.base import EnterprisePluginManagerRequest
 from services.errors.base import BaseServiceError
 
 logger = logging.getLogger(__name__)
-
-
-class PluginCredentialType(enum.Enum):
-    MODEL = 0  # must be 0 for API contract compatibility
-    TOOL = 1  # must be 1 for API contract compatibility
-
-    def to_number(self):
-        return self.value
 
 
 class CheckCredentialPolicyComplianceRequest(BaseModel):

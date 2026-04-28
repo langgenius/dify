@@ -1,13 +1,13 @@
 import type { PluginPayload } from '../types'
 import type { AddApiKeyButtonProps } from './add-api-key-button'
 import type { AddOAuthButtonProps } from './add-oauth-button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 import AddApiKeyButton from './add-api-key-button'
 import AddOAuthButton from './add-oauth-button'
 
@@ -68,7 +68,7 @@ const Authorize = ({
 
   const OAuthButton = useMemo(() => {
     const Item = (
-      <div className={cn('min-w-0 flex-[1]', notAllowCustomCredential && 'opacity-50')}>
+      <div className={cn('min-w-0 flex-1', notAllowCustomCredential && 'opacity-50')}>
         <AddOAuthButton
           {...oAuthButtonProps}
           disabled={disabled || notAllowCustomCredential}
@@ -89,7 +89,7 @@ const Authorize = ({
 
   const ApiKeyButton = useMemo(() => {
     const Item = (
-      <div className={cn('min-w-0 flex-[1]', notAllowCustomCredential && 'opacity-50')}>
+      <div className={cn('min-w-0 flex-1', notAllowCustomCredential && 'opacity-50')}>
         <AddApiKeyButton
           {...apiKeyButtonProps}
           disabled={disabled || notAllowCustomCredential}
@@ -118,10 +118,10 @@ const Authorize = ({
         }
         {
           showDivider && canOAuth && canApiKey && (
-            <div className="system-2xs-medium-uppercase flex shrink-0 flex-col items-center justify-between text-text-tertiary">
-              <div className="h-2 w-[1px] bg-divider-subtle"></div>
+            <div className="flex shrink-0 flex-col items-center justify-between system-2xs-medium-uppercase text-text-tertiary">
+              <div className="h-2 w-px bg-divider-subtle"></div>
               or
-              <div className="h-2 w-[1px] bg-divider-subtle"></div>
+              <div className="h-2 w-px bg-divider-subtle"></div>
             </div>
           )
         }

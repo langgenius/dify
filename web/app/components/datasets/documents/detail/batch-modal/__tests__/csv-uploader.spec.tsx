@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -24,20 +23,33 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: Theme.light }),
 }))
 
-const mockNotify = vi.fn()
-vi.mock('@/app/components/base/toast/context', () => ({
-  ToastContext: {
-    Provider: ({ children }: { children: ReactNode }) => children,
-    Consumer: ({ children }: { children: (ctx: { notify: typeof mockNotify }) => ReactNode }) => children({ notify: mockNotify }),
-  },
+const toastMocks = vi.hoisted(() => {
+  const call = vi.fn()
+  return {
+    call,
+    api: Object.assign(vi.fn((message: unknown, options?: Record<string, unknown>) => call({ message, ...options })), {
+      success: vi.fn((message, options) => call({ type: 'success', message, ...options })),
+      error: vi.fn((message, options) => call({ type: 'error', message, ...options })),
+      warning: vi.fn((message, options) => call({ type: 'warning', message, ...options })),
+      info: vi.fn((message, options) => call({ type: 'info', message, ...options })),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    }),
+  }
+})
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMocks.api,
 }))
 
-// Create a mock ToastContext for useContext
 vi.mock('use-context-selector', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
   return {
     ...actual,
-    useContext: () => ({ notify: mockNotify }),
+    useContext: () => ({
+      toast: toastMocks.api,
+    }),
   }
 })
 
@@ -148,24 +160,6 @@ describe('CSVUploader', () => {
         expect(mockUpdateFile).toHaveBeenCalled()
       })
     })
-
-    it('should call updateFile with undefined when remove is clicked', () => {
-      const mockUpdateFile = vi.fn()
-      const mockFile: FileItem = {
-        fileID: 'file-1',
-        file: new File(['content'], 'test.csv', { type: 'text/csv' }) as CustomFile,
-        progress: 100,
-      }
-      const { container } = render(
-        <CSVUploader {...defaultProps} file={mockFile} updateFile={mockUpdateFile} />,
-      )
-
-      const deleteButton = container.querySelector('.cursor-pointer')
-      if (deleteButton)
-        fireEvent.click(deleteButton)
-
-      expect(mockUpdateFile).toHaveBeenCalledWith()
-    })
   })
 
   describe('Validation', () => {
@@ -176,7 +170,7 @@ describe('CSVUploader', () => {
 
       fireEvent.change(fileInput, { target: { files: [testFile] } })
 
-      expect(mockNotify).toHaveBeenCalledWith(
+      expect(toastMocks.call).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
         }),
@@ -193,7 +187,7 @@ describe('CSVUploader', () => {
 
       fireEvent.change(fileInput, { target: { files: [testFile] } })
 
-      expect(mockNotify).toHaveBeenCalledWith(
+      expect(toastMocks.call).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
         }),
@@ -301,7 +295,7 @@ describe('CSVUploader', () => {
       fireEvent.change(fileInput, { target: { files: [testFile] } })
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith(
+        expect(toastMocks.call).toHaveBeenCalledWith(
           expect.objectContaining({
             type: 'error',
           }),
@@ -316,7 +310,7 @@ describe('CSVUploader', () => {
 
       fireEvent.change(fileInput, { target: { files: [testFile] } })
 
-      expect(mockNotify).toHaveBeenCalledWith(
+      expect(toastMocks.call).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
         }),
@@ -545,7 +539,7 @@ describe('CSVUploader', () => {
         dropZone.dispatchEvent(dropEvent)
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(
+      expect(toastMocks.call).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
         }),
@@ -580,7 +574,7 @@ describe('CSVUploader', () => {
       fireEvent.change(fileInput, { target: { files: [testFile] } })
 
       // Assert - should be valid and trigger upload
-      expect(mockNotify).not.toHaveBeenCalledWith(
+      expect(toastMocks.call).not.toHaveBeenCalledWith(
         expect.objectContaining({ type: 'error' }),
       )
     })

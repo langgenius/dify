@@ -1,11 +1,11 @@
 import type { FC } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
-import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import { downloadUrl } from '@/utils/download'
 
@@ -51,10 +51,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       win?.document.write(`<img src="${url}" alt="${title}" />`)
     }
     else {
-      Toast.notify({
-        type: 'error',
-        message: `Unable to open image: ${url}`,
-      })
+      toast.error(`Unable to open image: ${url}`)
     }
   }
 
@@ -64,10 +61,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       downloadUrl({ url, fileName: title, target: '_blank' })
       return
     }
-    Toast.notify({
-      type: 'error',
-      message: `Unable to open image: ${url}`,
-    })
+    toast.error(`Unable to open image: ${url}`)
   }
 
   const zoomIn = () => {
@@ -105,7 +99,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     const shareImage = async () => {
       try {
         const base64Data = url.split(',')[1]
-        const blob = imageBase64ToBlob(base64Data, 'image/png')
+        const blob = imageBase64ToBlob(base64Data!, 'image/png')
 
         await navigator.clipboard.write([
           new ClipboardItem({
@@ -114,20 +108,14 @@ const ImagePreview: FC<ImagePreviewProps> = ({
         ])
         setIsCopied(true)
 
-        Toast.notify({
-          type: 'success',
-          message: t('operation.imageCopied', { ns: 'common' }),
-        })
+        toast.success(t('operation.imageCopied', { ns: 'common' }))
       }
       catch (err) {
         console.error('Failed to copy image:', err)
 
         downloadUrl({ url, fileName: `${title}.png` })
 
-        Toast.notify({
-          type: 'info',
-          message: t('operation.imageDownloaded', { ns: 'common' }),
-        })
+        toast.info(t('operation.imageDownloaded', { ns: 'common' }))
       }
     }
     shareImage()
@@ -187,7 +175,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
 
   return createPortal(
     <div
-      className="image-preview-container fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-8"
+      className="image-preview-container fixed inset-0 z-1000 flex items-center justify-center bg-black/80 p-8"
       onClick={e => e.stopPropagation()}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
@@ -198,7 +186,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       data-testid="image-preview-container"
     >
       { }
-      {/* eslint-disable-next-line next/no-img-element */}
+      { }
       <img
         ref={imgRef}
         alt={title}
@@ -212,7 +200,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       />
       <Tooltip popupContent={t('operation.copyImage', { ns: 'common' })}>
         <div
-          className="absolute right-48 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+          className="absolute top-6 right-48 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={imageCopy}
         >
           {isCopied
@@ -222,7 +210,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       </Tooltip>
       <Tooltip popupContent={t('operation.zoomOut', { ns: 'common' })}>
         <div
-          className="absolute right-40 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+          className="absolute top-6 right-40 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={zoomOut}
         >
           <span className="i-ri-zoom-out-line h-4 w-4 text-gray-500" data-testid="image-preview-zoom-out-button" />
@@ -230,7 +218,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       </Tooltip>
       <Tooltip popupContent={t('operation.zoomIn', { ns: 'common' })}>
         <div
-          className="absolute right-32 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+          className="absolute top-6 right-32 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={zoomIn}
         >
           <span className="i-ri-zoom-in-line h-4 w-4 text-gray-500" data-testid="image-preview-zoom-in-button" />
@@ -238,7 +226,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       </Tooltip>
       <Tooltip popupContent={t('operation.download', { ns: 'common' })}>
         <div
-          className="absolute right-24 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+          className="absolute top-6 right-24 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={downloadImage}
         >
           <span className="i-ri-download-cloud-2-line h-4 w-4 text-gray-500" data-testid="image-preview-download-button" />
@@ -246,7 +234,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       </Tooltip>
       <Tooltip popupContent={t('operation.openInNewTab', { ns: 'common' })}>
         <div
-          className="absolute right-16 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+          className="absolute top-6 right-16 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={openInNewTab}
         >
           <span className="i-ri-add-box-line h-4 w-4 text-gray-500" data-testid="image-preview-open-in-tab-button" />
@@ -254,7 +242,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       </Tooltip>
       <Tooltip popupContent={t('operation.cancel', { ns: 'common' })}>
         <div
-          className="absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
+          className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
           onClick={onCancel}
         >
           <span className="i-ri-close-line h-4 w-4 text-gray-500" data-testid="image-preview-close-button" />

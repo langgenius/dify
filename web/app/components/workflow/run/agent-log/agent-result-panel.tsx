@@ -16,7 +16,7 @@ const AgentResultPanel = ({
 }: AgentResultPanelProps) => {
   const { t } = useTranslation()
   const top = agentOrToolLogItemStack[agentOrToolLogItemStack.length - 1]
-  const list = agentOrToolLogListMap[top.message_id]
+  const list = agentOrToolLogListMap[top!.message_id]
 
   return (
     <div className="overflow-y-auto bg-background-section">
@@ -26,7 +26,7 @@ const AgentResultPanel = ({
       />
       <div className="space-y-1 p-2">
         {
-          list.map(item => (
+          list!.map(item => (
             <AgentLogItem
               key={item.message_id}
               item={item}
@@ -36,7 +36,7 @@ const AgentResultPanel = ({
         }
       </div>
       {
-        top.hasCircle && (
+        top!.hasCircle && (
           <div className="mt-1 flex items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur px-3 pr-2 shadow-md">
             <div
               className="absolute inset-0 rounded-xl opacity-[0.4]"

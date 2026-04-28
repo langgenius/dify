@@ -15,12 +15,12 @@ const CustomPage = () => {
   return (
     <div className="flex flex-col">
       {showBillingTip && (
-        <div className="mb-1 flex justify-between rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-sm">
+        <div className="mb-1 flex justify-between rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs">
           <div className="space-y-1 text-text-primary-on-surface">
             <div className="title-xl-semi-bold">{t('upgradeTip.title', { ns: 'custom' })}</div>
             <div className="system-sm-regular">{t('upgradeTip.des', { ns: 'custom' })}</div>
           </div>
-          <div className="system-md-semibold flex h-10 w-[120px] cursor-pointer items-center justify-center rounded-3xl bg-white text-text-accent shadow-xs hover:opacity-95" onClick={() => setShowPricingModal()}>{t('upgradeBtn.encourageShort', { ns: 'billing' })}</div>
+          <div className="flex h-10 w-[120px] cursor-pointer items-center justify-center rounded-3xl bg-white system-md-semibold text-text-accent shadow-xs hover:opacity-95" onClick={() => setShowPricingModal()}>{t('upgradeBtn.encourageShort', { ns: 'billing' })}</div>
         </div>
       )}
       <CustomWebAppBrand />
