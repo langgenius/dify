@@ -33,7 +33,6 @@ for module_name in RESOURCE_MODULES:
 # Ensure resource modules are imported so route decorators are evaluated.
 # Import other controllers
 from . import (
-    admin,
     apikey,
     extension,
     feature,
@@ -142,7 +141,6 @@ api.add_namespace(console_ns)
 __all__ = [
     "account",
     "activate",
-    "admin",
     "advanced_prompt_template",
     "agent",
     "agent_providers",

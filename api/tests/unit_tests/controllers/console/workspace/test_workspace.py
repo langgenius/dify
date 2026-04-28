@@ -22,7 +22,6 @@ from controllers.console.workspace.workspace import (
     TenantListApi,
     WebappLogoWorkspaceApi,
     WorkspaceInfoApi,
-    WorkspaceListApi,
     WorkspacePermissionApi,
 )
 from enums.cloud_plan import CloudPlan
@@ -299,59 +298,6 @@ class TestTenantListApi:
         assert status == 200
         assert result["workspaces"] == []
         get_features_mock.assert_not_called()
-
-
-class TestWorkspaceListApi:
-    def test_get_success(self, app):
-        api = WorkspaceListApi()
-        method = unwrap(api.get)
-
-        tenant = MagicMock(id="t1", name="T", status="active", created_at=naive_utc_now())
-
-        paginate_result = MagicMock(
-            items=[tenant],
-            has_next=False,
-            total=1,
-        )
-
-        with (
-            app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 20}),
-            patch("controllers.console.workspace.workspace.db.paginate", return_value=paginate_result),
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["total"] == 1
-        assert result["has_more"] is False
-
-    def test_get_has_next_true(self, app):
-        api = WorkspaceListApi()
-        method = unwrap(api.get)
-
-        tenant = MagicMock(
-            id="t1",
-            name="T",
-            status="active",
-            created_at=naive_utc_now(),
-        )
-
-        paginate_result = MagicMock(
-            items=[tenant],
-            has_next=True,
-            total=10,
-        )
-
-        with (
-            app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 1}),
-            patch(
-                "controllers.console.workspace.workspace.db.paginate",
-                return_value=paginate_result,
-            ),
-        ):
-            result, status = method(api)
-
-        assert status == 200
-        assert result["has_more"] is True
 
 
 class TestTenantApi:

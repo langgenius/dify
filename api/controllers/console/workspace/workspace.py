@@ -3,8 +3,7 @@ from datetime import datetime
 
 from flask import request
 from flask_restx import Resource, fields, marshal
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from pydantic import BaseModel, field_validator
 from werkzeug.exceptions import Unauthorized
 
 import services
@@ -17,7 +16,6 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.console import console_ns
-from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
     account_initialization_required,
@@ -40,11 +38,6 @@ from services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
-class WorkspaceListQuery(BaseModel):
-    page: int = Field(default=1, ge=1, le=99999)
-    limit: int = Field(default=20, ge=1, le=100)
 
 
 class SwitchWorkspacePayload(BaseModel):
@@ -95,7 +88,6 @@ def reg(cls: type[BaseModel]):
     console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
-reg(WorkspaceListQuery)
 reg(SwitchWorkspacePayload)
 reg(WorkspaceCustomConfigPayload)
 reg(WorkspaceInfoPayload)
@@ -131,8 +123,6 @@ tenants_fields = {
     "created_at": TimestampField,
     "current": fields.Boolean,
 }
-
-workspace_fields = {"id": fields.String, "name": fields.String, "status": fields.String, "created_at": TimestampField}
 
 
 @console_ns.route("/workspaces")
@@ -181,31 +171,6 @@ class TenantListApi(Resource):
             tenant_dicts.append(tenant_dict)
 
         return {"workspaces": marshal(tenant_dicts, tenants_fields)}, 200
-
-
-@console_ns.route("/all-workspaces")
-class WorkspaceListApi(Resource):
-    @console_ns.expect(console_ns.models[WorkspaceListQuery.__name__])
-    @setup_required
-    @admin_required
-    def get(self):
-        payload = request.args.to_dict(flat=True)
-        args = WorkspaceListQuery.model_validate(payload)
-
-        stmt = select(Tenant).order_by(Tenant.created_at.desc())
-        tenants = db.paginate(select=stmt, page=args.page, per_page=args.limit, error_out=False)
-        has_more = False
-
-        if tenants.has_next:
-            has_more = True
-
-        return {
-            "data": marshal(tenants.items, workspace_fields),
-            "has_more": has_more,
-            "limit": args.limit,
-            "page": args.page,
-            "total": tenants.total,
-        }, 200
 
 
 @console_ns.route("/workspaces/current", endpoint="workspaces_current")
