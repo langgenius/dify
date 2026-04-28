@@ -40,6 +40,11 @@ class TestCSVSanitizer:
         assert CSVSanitizer.sanitize_value("\r=1+1") == "'\r=1+1"
         assert CSVSanitizer.sanitize_value("\rcmd") == "'\rcmd"
 
+    def test_sanitize_formula_line_feed(self):
+        """Test sanitizing values starting with line feed."""
+        assert CSVSanitizer.sanitize_value("\n=1+1") == "'\n=1+1"
+        assert CSVSanitizer.sanitize_value("\ncmd") == "'\ncmd"
+
     def test_sanitize_safe_values(self):
         """Test that safe values are not modified."""
         assert CSVSanitizer.sanitize_value("Hello World") == "Hello World"
@@ -146,6 +151,6 @@ class TestCSVSanitizer:
     def test_whitespace_only_strings(self):
         """Test handling of whitespace-only strings."""
         assert CSVSanitizer.sanitize_value("   ") == "   "
-        assert CSVSanitizer.sanitize_value("\n\n") == "\n\n"
+        assert CSVSanitizer.sanitize_value("\n\n") == "'\n\n"
         # Tab at start should be escaped
         assert CSVSanitizer.sanitize_value("\t  ") == "'\t  "

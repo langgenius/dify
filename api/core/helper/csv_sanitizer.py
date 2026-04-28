@@ -12,12 +12,12 @@ class CSVSanitizer:
     (Excel, LibreOffice, Google Sheets).
 
     Formula injection occurs when user-controlled data starting with special
-    characters (=, +, -, @, tab, carriage return) is exported to CSV and opened
+    characters (=, +, -, @, tab, carriage return, line feed) is exported to CSV and opened
     in a spreadsheet application, potentially executing malicious commands.
     """
 
     # Characters that can start a formula in Excel/LibreOffice/Google Sheets
-    FORMULA_CHARS = frozenset(("=", "+", "-", "@", "\t", "\r"))
+    FORMULA_CHARS = frozenset(("=", "+", "-", "@", "\t", "\r", "\n"))
 
     @classmethod
     def sanitize_value(cls, value: Any) -> str:
