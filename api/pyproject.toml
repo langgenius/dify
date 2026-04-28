@@ -65,6 +65,7 @@ dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }
 dify-vdb-chroma = { workspace = true }
 dify-vdb-clickzetta = { workspace = true }
+dify-vdb-cos-vectors = { workspace = true }
 dify-vdb-couchbase = { workspace = true }
 dify-vdb-elasticsearch = { workspace = true }
 dify-vdb-hologres = { workspace = true }
@@ -210,6 +211,7 @@ vdb-all = [
     "dify-vdb-baidu",
     "dify-vdb-chroma",
     "dify-vdb-clickzetta",
+    "dify-vdb-cos-vectors",
     "dify-vdb-couchbase",
     "dify-vdb-elasticsearch",
     "dify-vdb-hologres",
@@ -241,6 +243,7 @@ vdb-analyticdb = ["dify-vdb-analyticdb"]
 vdb-baidu = ["dify-vdb-baidu"]
 vdb-chroma = ["dify-vdb-chroma"]
 vdb-clickzetta = ["dify-vdb-clickzetta"]
+vdb-cos-vectors = ["dify-vdb-cos-vectors"]
 vdb-couchbase = ["dify-vdb-couchbase"]
 vdb-elasticsearch = ["dify-vdb-elasticsearch"]
 vdb-hologres = ["dify-vdb-hologres"]

@@ -35,3 +35,4 @@ class VectorType(StrEnum):
     CLICKZETTA = "clickzetta"
     IRIS = "iris"
     HOLOGRES = "hologres"
+    COS_VECTORS = "cos_vectors"

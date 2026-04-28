@@ -235,6 +235,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.PGVECTO_RS,
         VectorType.VIKINGDB,
         VectorType.UPSTASH,
+        VectorType.COS_VECTORS,
     }
 
     # Define vector database types that support all retrieval methods

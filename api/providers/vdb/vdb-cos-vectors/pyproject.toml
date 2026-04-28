@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-cos-vectors"
+version = "0.0.1"
+
+dependencies = [
+    "cos-python-sdk-v5>=1.9.41",
+]
+description = "Dify vector store backend (dify-vdb-cos-vectors)."
+
+[project.entry-points."dify.vector_backends"]
+cos_vectors = "dify_vdb_cos_vectors.cos_vectors_vector:COSVectorsFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -24,6 +24,7 @@ members = [
     "dify-vdb-baidu",
     "dify-vdb-chroma",
     "dify-vdb-clickzetta",
+    "dify-vdb-cos-vectors",
     "dify-vdb-couchbase",
     "dify-vdb-elasticsearch",
     "dify-vdb-hologres",
@@ -1456,6 +1457,7 @@ vdb-all = [
     { name = "dify-vdb-baidu" },
     { name = "dify-vdb-chroma" },
     { name = "dify-vdb-clickzetta" },
+    { name = "dify-vdb-cos-vectors" },
     { name = "dify-vdb-couchbase" },
     { name = "dify-vdb-elasticsearch" },
     { name = "dify-vdb-hologres" },
@@ -1493,6 +1495,9 @@ vdb-chroma = [
 ]
 vdb-clickzetta = [
     { name = "dify-vdb-clickzetta" },
+]
+vdb-cos-vectors = [
+    { name = "dify-vdb-cos-vectors" },
 ]
 vdb-couchbase = [
     { name = "dify-vdb-couchbase" },
@@ -1721,6 +1726,7 @@ vdb-all = [
     { name = "dify-vdb-baidu", editable = "providers/vdb/vdb-baidu" },
     { name = "dify-vdb-chroma", editable = "providers/vdb/vdb-chroma" },
     { name = "dify-vdb-clickzetta", editable = "providers/vdb/vdb-clickzetta" },
+    { name = "dify-vdb-cos-vectors", editable = "providers/vdb/vdb-cos-vectors" },
     { name = "dify-vdb-couchbase", editable = "providers/vdb/vdb-couchbase" },
     { name = "dify-vdb-elasticsearch", editable = "providers/vdb/vdb-elasticsearch" },
     { name = "dify-vdb-hologres", editable = "providers/vdb/vdb-hologres" },
@@ -1751,6 +1757,7 @@ vdb-analyticdb = [{ name = "dify-vdb-analyticdb", editable = "providers/vdb/vdb-
 vdb-baidu = [{ name = "dify-vdb-baidu", editable = "providers/vdb/vdb-baidu" }]
 vdb-chroma = [{ name = "dify-vdb-chroma", editable = "providers/vdb/vdb-chroma" }]
 vdb-clickzetta = [{ name = "dify-vdb-clickzetta", editable = "providers/vdb/vdb-clickzetta" }]
+vdb-cos-vectors = [{ name = "dify-vdb-cos-vectors", editable = "providers/vdb/vdb-cos-vectors" }]
 vdb-couchbase = [{ name = "dify-vdb-couchbase", editable = "providers/vdb/vdb-couchbase" }]
 vdb-elasticsearch = [{ name = "dify-vdb-elasticsearch", editable = "providers/vdb/vdb-elasticsearch" }]
 vdb-hologres = [{ name = "dify-vdb-hologres", editable = "providers/vdb/vdb-hologres" }]
@@ -1942,6 +1949,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "clickzetta-connector-python", specifier = ">=0.8.102" }]
+
+[[package]]
+name = "dify-vdb-cos-vectors"
+version = "0.0.1"
+source = { editable = "providers/vdb/vdb-cos-vectors" }
+dependencies = [
+    { name = "cos-python-sdk-v5" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "cos-python-sdk-v5", specifier = ">=1.9.41" }]
 
 [[package]]
 name = "dify-vdb-couchbase"
