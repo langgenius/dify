@@ -137,6 +137,7 @@ class Example:
   - documented invariants, error mapping, and output/input shape guarantees
 - When asserting dependency interactions, assert only the parts of the request or response that are part of the real boundary contract. Do not over-specify incidental details that callers or dependencies do not rely on.
 - It is acceptable to mock dependencies in unit tests, but only when the mock represents a real contract, schema, documented behavior, or known regression.
+- Tests may use line-scoped type-ignore comments when intentionally exercising runtime validation paths that static typing would normally reject. Keep the ignore on the exact invalid call.
 - Do not use unit tests to prove real integration, network wiring, serialization, framework configuration, or third-party runtime behavior; cover those in higher-level tests.
 - Meaningless unit tests include:
   - tests that only mirror the current implementation or must be updated whenever internal code changes even though the contract did not change
