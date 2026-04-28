@@ -8,6 +8,7 @@ Tests the retrieval of document segments with pagination and filtering:
 - Ordering by position and id (to avoid duplicate data)
 """
 
+from models.enums import SegmentStatus
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
@@ -103,7 +104,7 @@ class SegmentServiceTestDataFactory:
         created_by: str,
         position: int = 1,
         content: str = "Test content",
-        status: str = "completed",
+        status: SegmentStatus = SegmentStatus.COMPLETED,
         word_count: int = 10,
         tokens: int = 15,
     ) -> DocumentSegment:

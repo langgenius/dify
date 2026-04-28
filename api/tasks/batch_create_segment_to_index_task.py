@@ -1,3 +1,4 @@
+from models.enums import SegmentStatus
 import logging
 import tempfile
 import time
@@ -156,7 +157,7 @@ def batch_create_segment_to_index_task(
                 tokens=tokens,
                 created_by=user_id,
                 indexing_at=naive_utc_now(),
-                status="completed",
+                status=SegmentStatus.COMPLETED,
                 completed_at=naive_utc_now(),
             )
             if document_config["doc_form"] == IndexStructureType.QA_INDEX:

@@ -132,7 +132,7 @@ class TestCleanNotionDocumentTask:
             db_session_with_containers.add(document)
             db_session_with_containers.flush()
             document_ids.append(document.id)
-
+            assert tenant
             # Create segments for each document
             for j in range(2):
                 segment = DocumentSegment(
@@ -297,7 +297,7 @@ class TestCleanNotionDocumentTask:
             )
             db_session_with_containers.add(document)
             db_session_with_containers.flush()
-
+            assert tenant
             # Create test segment
             segment = DocumentSegment(
                 id=str(uuid.uuid4()),
@@ -379,7 +379,7 @@ class TestCleanNotionDocumentTask:
         )
         db_session_with_containers.add(document)
         db_session_with_containers.flush()
-
+        assert tenant
         # Create segments without index_node_ids
         segments = []
         for i in range(3):
@@ -468,7 +468,7 @@ class TestCleanNotionDocumentTask:
             db_session_with_containers.add(document)
             db_session_with_containers.flush()
             documents.append(document)
-
+            assert tenant
             # Create segments for each document
             for j in range(2):
                 segment = DocumentSegment(
@@ -569,7 +569,7 @@ class TestCleanNotionDocumentTask:
         segment_statuses = [SegmentStatus.WAITING, SegmentStatus.INDEXING, SegmentStatus.COMPLETED, SegmentStatus.ERROR]
         segments = []
         index_node_ids = []
-
+        assert tenant
         for i, status in enumerate(segment_statuses):
             segment = DocumentSegment(
                 id=str(uuid.uuid4()),
@@ -665,7 +665,7 @@ class TestCleanNotionDocumentTask:
         )
         db_session_with_containers.add(document)
         db_session_with_containers.flush()
-
+        assert tenant
         # Create segment
         segment = DocumentSegment(
             id=str(uuid.uuid4()),
@@ -765,7 +765,7 @@ class TestCleanNotionDocumentTask:
             db_session_with_containers.add(document)
             db_session_with_containers.flush()
             documents.append(document)
-
+            assert tenant
             # Create multiple segments for each document
             num_segments_per_doc = 5
             for j in range(num_segments_per_doc):
@@ -984,7 +984,7 @@ class TestCleanNotionDocumentTask:
             db_session_with_containers.add(document)
             db_session_with_containers.flush()
             documents.append(document)
-
+            assert tenant
             # Create segments for each document
             for j in range(2):
                 segment = DocumentSegment(
@@ -1093,7 +1093,7 @@ class TestCleanNotionDocumentTask:
         # Create segments with metadata
         segments = []
         index_node_ids = []
-
+        assert tenant
         for i in range(3):
             segment = DocumentSegment(
                 id=str(uuid.uuid4()),
