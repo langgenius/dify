@@ -114,7 +114,7 @@ export type ModerationConfig = MoreLikeThisConfig & {
   } & Partial<Record<string, any>>
 }
 
-export type RetrieverResourceConfig = MoreLikeThisConfig
+type RetrieverResourceConfig = MoreLikeThisConfig
 export type AgentConfig = {
   enabled: boolean
   strategy: AgentStrategy

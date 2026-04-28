@@ -55,7 +55,14 @@ vi.mock('../../hooks', async () => {
 })
 
 vi.mock('../popup-item', () => ({
-  default: ({ model }: { model: Model }) => <div>{model.provider}</div>,
+  default: ({ model }: { model: Model }) => (
+    <div>
+      <span>{model.provider}</span>
+      {model.models.map(modelItem => (
+        <span key={modelItem.model}>{modelItem.model}</span>
+      ))}
+    </div>
+  ),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -207,6 +214,156 @@ describe('Popup', () => {
     expect((input as HTMLInputElement).value).toBe('')
   })
 
+  it('should show matching models when searching by model name', () => {
+    renderPopup(
+      <Popup
+        modelList={[
+          makeModel({
+            models: [makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } })],
+          }),
+          makeModel({
+            provider: 'anthropic',
+            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
+            models: [makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } })],
+          }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'claude' } },
+    )
+
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.getByText('anthropic')).toBeInTheDocument()
+    expect(screen.getByText('claude-3')).toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.queryByText('No model found for \u201Cclaude\u201D')).not.toBeInTheDocument()
+  })
+
+  it('should show empty search placeholder when no provider or model name matches', () => {
+    renderPopup(
+      <Popup
+        modelList={[
+          makeModel({
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'mistral' } },
+    )
+
+    expect(screen.getByText('No model found for \u201Cmistral\u201D'))!.toBeInTheDocument()
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+  })
+
+  it('should show all models of a provider when searching by provider label', () => {
+    renderPopup(
+      <Popup
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+              makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
+            ],
+          }),
+          makeModel({
+            provider: 'anthropic',
+            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
+            models: [
+              makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } }),
+            ],
+          }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('openai'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4o'))!.toBeInTheDocument()
+    expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
+    expect(screen.queryByText('claude-3')).not.toBeInTheDocument()
+  })
+
+  it('should match by model provider key when model label does not contain the search text', () => {
+    renderPopup(
+      <Popup
+        modelList={[
+          makeModel({
+            provider: 'azure_openai',
+            label: { en_US: 'Azure', zh_Hans: 'Azure' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('azure_openai'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
+  })
+
+  it('should still apply scope features when matching by provider label', () => {
+    mockSupportFunctionCall.mockReturnValue(false)
+
+    renderPopup(
+      <Popup
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', features: [ModelFeatureEnum.vision] }),
+              makeModelItem({ model: 'gpt-4-tool', features: [ModelFeatureEnum.toolCall] }),
+            ],
+          }),
+        ]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+        scopeFeatures={[ModelFeatureEnum.toolCall]}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('No model found for \u201Copenai\u201D'))!.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
+  })
+
   it('should not show compatible-only helper text when no scope features are applied', () => {
     renderPopup(
       <Popup
@@ -219,8 +376,8 @@ describe('Popup', () => {
     expect(screen.queryByText('common.modelProvider.selector.onlyCompatibleModelsShown')).not.toBeInTheDocument()
   })
 
-  it('should show compatible-only helper banner when scope features are applied', () => {
-    const { container } = renderPopup(
+  it('should show compatible-only helper text when scope features are applied', () => {
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -231,7 +388,26 @@ describe('Popup', () => {
 
     expect(screen.getByTestId('compatible-models-banner'))!.toBeInTheDocument()
     expect(screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'))!.toBeInTheDocument()
-    expect(container.querySelector('.i-ri-information-2-fill'))!.toBeInTheDocument()
+  })
+
+  it('should keep search and footer outside the scrollable model list', () => {
+    renderPopup(
+      <Popup
+        modelList={[makeModel()]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+        scopeFeatures={[ModelFeatureEnum.vision]}
+      />,
+    )
+
+    const scrollRegion = screen.getByRole('region', { name: 'common.modelProvider.models' })
+    const searchInput = screen.getByPlaceholderText('datasetSettings.form.searchModel')
+    const settingsButton = screen.getByRole('button', { name: /common\.modelProvider\.selector\.modelProviderSettings/ })
+
+    expect(scrollRegion)!.toBeInTheDocument()
+    expect(scrollRegion).not.toContainElement(searchInput)
+    expect(scrollRegion).not.toContainElement(settingsButton)
+    expect(scrollRegion).toContainElement(screen.getByTestId('compatible-models-banner'))
   })
 
   it('should filter by scope features including toolCall and non-toolCall checks', () => {

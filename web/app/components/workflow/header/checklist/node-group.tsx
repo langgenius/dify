@@ -49,17 +49,17 @@ export const ChecklistNodeGroup = memo(({
           <div
             key={sub.key}
             className={cn(
-              'group/item flex items-center gap-2 rounded-lg px-1',
+              'group/item flex items-start gap-2 rounded-lg px-1',
               goToEnabled && 'cursor-pointer hover:bg-state-base-hover',
             )}
             onClick={() => goToEnabled && onItemClick(item)}
           >
             <ItemIndicator />
-            <span className="min-w-0 grow truncate text-xs leading-4 text-text-warning">
+            <span className="min-w-0 grow py-1 text-xs leading-4 text-text-warning">
               {sub.message}
             </span>
             {goToEnabled && (
-              <div className="flex shrink-0 items-center gap-0.5 pr-0.5 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
+              <div className="flex shrink-0 items-center gap-0.5 pt-1 pr-0.5 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
                 <span className="text-xs leading-4 font-medium whitespace-nowrap text-text-accent">
                   {t('panel.goToFix', { ns: 'workflow' })}
                 </span>

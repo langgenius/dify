@@ -2,6 +2,7 @@ import type { AutoUpdateConfig } from '../types'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -803,165 +804,103 @@ describe('auto-update-setting', () => {
   })
 
   describe('StrategyPicker (strategy-picker.tsx)', () => {
-    const defaultProps = {
-      value: AUTO_UPDATE_STRATEGY.disabled,
-      onChange: vi.fn(),
+    const i18nKeyByStrategy: Record<AUTO_UPDATE_STRATEGY, 'disabled' | 'fixOnly' | 'latest'> = {
+      [AUTO_UPDATE_STRATEGY.disabled]: 'disabled',
+      [AUTO_UPDATE_STRATEGY.fixOnly]: 'fixOnly',
+      [AUTO_UPDATE_STRATEGY.latest]: 'latest',
+    }
+
+    const triggerName = (strategy: AUTO_UPDATE_STRATEGY) =>
+      new RegExp(`plugin\\.autoUpdate\\.strategy\\.${i18nKeyByStrategy[strategy]}\\.name`, 'i')
+
+    const findOption = async (key: 'disabled' | 'fixOnly' | 'latest') => {
+      const options = await screen.findAllByRole('menuitemradio')
+      const option = options.find(item =>
+        item.textContent?.includes(`plugin.autoUpdate.strategy.${key}.name`),
+      )
+      if (!option)
+        throw new Error(`Strategy option "${key}" not found`)
+      return option
     }
 
     describe('Rendering', () => {
       it('should render trigger button with current strategy label', () => {
-        // Act
-        render(<StrategyPicker {...defaultProps} value={AUTO_UPDATE_STRATEGY.disabled} />)
+        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
 
-        // Assert
-        expect(screen.getByRole('button', { name: /plugin\.autoUpdate\.strategy\.disabled\.name/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) })).toBeInTheDocument()
       })
 
       it('should not render dropdown content when closed', () => {
-        // Act
-        render(<StrategyPicker {...defaultProps} />)
+        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
 
-        // Assert
-        expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
       })
 
-      it('should render all strategy options when open', () => {
-        // Arrange
-        mockPortalOpen = true
+      it('should render all strategy options when open', async () => {
+        const user = userEvent.setup()
+        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
 
-        // Act
-        render(<StrategyPicker {...defaultProps} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        await user.click(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) }))
 
-        // Wait for portal to open
-        if (mockPortalOpen) {
-          // Assert all options visible (use getAllByText for strategy name as it appears in both trigger and dropdown)
-          expect(screen.getAllByText('plugin.autoUpdate.strategy.disabled.name').length).toBeGreaterThanOrEqual(1)
-          expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
-          expect(screen.getByText('plugin.autoUpdate.strategy.latest.name')).toBeInTheDocument()
-        }
+        const options = await screen.findAllByRole('menuitemradio')
+        expect(options).toHaveLength(3)
+        expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.disabled.name'))).toBe(true)
+        expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.fixOnly.name'))).toBe(true)
+        expect(options.some(o => o.textContent?.includes('plugin.autoUpdate.strategy.latest.name'))).toBe(true)
       })
     })
 
     describe('User Interactions', () => {
-      it('should toggle dropdown when trigger is clicked', () => {
-        // Act
-        render(<StrategyPicker {...defaultProps} />)
-
-        // Assert - initially closed
-        expect(mockPortalOpen).toBe(false)
-
-        // Act - click trigger
-        fireEvent.click(screen.getByTestId('portal-trigger'))
-
-        // Assert - portal trigger element should still be in document
-        expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
-      })
-
-      it('should call onChange with fixOnly when Bug Fixes Only option is clicked', () => {
-        // Arrange - force portal content to be visible for testing option selection
-        forcePortalContentVisible = true
-        const onChange = vi.fn()
-
-        // Act
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={onChange} />)
-
-        // Find and click the "Bug Fixes Only" option
-        const fixOnlyOption = screen.getByText('plugin.autoUpdate.strategy.fixOnly.name').closest('div[class*="cursor-pointer"]')
-        expect(fixOnlyOption).toBeInTheDocument()
-        fireEvent.click(fixOnlyOption!)
-
-        // Assert
-        expect(onChange).toHaveBeenCalledWith(AUTO_UPDATE_STRATEGY.fixOnly)
-      })
-
-      it('should call onChange with latest when Latest Version option is clicked', () => {
-        // Arrange - force portal content to be visible for testing option selection
-        forcePortalContentVisible = true
-        const onChange = vi.fn()
-
-        // Act
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={onChange} />)
-
-        // Find and click the "Latest Version" option
-        const latestOption = screen.getByText('plugin.autoUpdate.strategy.latest.name').closest('div[class*="cursor-pointer"]')
-        expect(latestOption).toBeInTheDocument()
-        fireEvent.click(latestOption!)
-
-        // Assert
-        expect(onChange).toHaveBeenCalledWith(AUTO_UPDATE_STRATEGY.latest)
-      })
-
-      it('should call onChange with disabled when Disabled option is clicked', () => {
-        // Arrange - force portal content to be visible for testing option selection
-        forcePortalContentVisible = true
-        const onChange = vi.fn()
-
-        // Act
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={onChange} />)
-
-        // Find and click the "Disabled" option - need to find the one in the dropdown, not the button
-        const disabledOptions = screen.getAllByText('plugin.autoUpdate.strategy.disabled.name')
-        // The second one should be in the dropdown
-        const dropdownOption = disabledOptions.find(el => el.closest('div[class*="cursor-pointer"]'))
-        expect(dropdownOption).toBeInTheDocument()
-        fireEvent.click(dropdownOption!.closest('div[class*="cursor-pointer"]')!)
-
-        // Assert
-        expect(onChange).toHaveBeenCalledWith(AUTO_UPDATE_STRATEGY.disabled)
-      })
-
-      it('should stop event propagation when option is clicked', () => {
-        // Arrange - force portal content to be visible
-        forcePortalContentVisible = true
-        const onChange = vi.fn()
-        const parentClickHandler = vi.fn()
-
-        // Act
-        render(
-          <div onClick={parentClickHandler}>
-            <StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={onChange} />
-          </div>,
-        )
-
-        // Click an option
-        const fixOnlyOption = screen.getByText('plugin.autoUpdate.strategy.fixOnly.name').closest('div[class*="cursor-pointer"]')
-        fireEvent.click(fixOnlyOption!)
-
-        // Assert - onChange is called but parent click handler should not propagate
-        expect(onChange).toHaveBeenCalledWith(AUTO_UPDATE_STRATEGY.fixOnly)
-      })
-
-      it('should render check icon for currently selected option', () => {
-        // Arrange - force portal content to be visible
-        forcePortalContentVisible = true
-
-        // Act - render with fixOnly selected
-        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={vi.fn()} />)
-
-        // Assert - RiCheckLine should be rendered (check icon)
-        // Find all "Bug Fixes Only" texts and get the one in the dropdown (has cursor-pointer parent)
-        const allFixOnlyTexts = screen.getAllByText('plugin.autoUpdate.strategy.fixOnly.name')
-        const dropdownOption = allFixOnlyTexts.find(el => el.closest('div[class*="cursor-pointer"]'))
-        const optionContainer = dropdownOption?.closest('div[class*="cursor-pointer"]')
-        expect(optionContainer).toBeInTheDocument()
-        // The check icon SVG should exist within the option
-        expect(optionContainer?.querySelector('svg')).toBeInTheDocument()
-      })
-
-      it('should not render check icon for non-selected options', () => {
-        // Arrange - force portal content to be visible
-        forcePortalContentVisible = true
-
-        // Act - render with disabled selected
+      it('should open and close the menu when the trigger is clicked', async () => {
+        const user = userEvent.setup()
         render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.disabled} onChange={vi.fn()} />)
 
-        // Assert - check the Latest Version option should not have check icon
-        const latestOption = screen.getByText('plugin.autoUpdate.strategy.latest.name').closest('div[class*="cursor-pointer"]')
-        // The svg should only be in selected option, not in non-selected
-        const checkIconContainer = latestOption?.querySelector('div.mr-1')
-        // Non-selected option should have empty check icon container
-        expect(checkIconContainer?.querySelector('svg')).toBeNull()
+        const trigger = screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.disabled) })
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+
+        await user.click(trigger)
+        expect(await screen.findByRole('menu')).toBeInTheDocument()
+      })
+
+      it.each<[AUTO_UPDATE_STRATEGY, 'disabled' | 'fixOnly' | 'latest', AUTO_UPDATE_STRATEGY]>([
+        [AUTO_UPDATE_STRATEGY.disabled, 'fixOnly', AUTO_UPDATE_STRATEGY.fixOnly],
+        [AUTO_UPDATE_STRATEGY.disabled, 'latest', AUTO_UPDATE_STRATEGY.latest],
+        [AUTO_UPDATE_STRATEGY.fixOnly, 'disabled', AUTO_UPDATE_STRATEGY.disabled],
+      ])('should call onChange with %s -> %s when option is selected', async (initial, optionKey, expected) => {
+        const user = userEvent.setup()
+        const onChange = vi.fn()
+        render(<StrategyPicker value={initial} onChange={onChange} />)
+
+        await user.click(screen.getByRole('button', { name: triggerName(initial) }))
+        await user.click(await findOption(optionKey))
+
+        expect(onChange).toHaveBeenCalledWith(expected)
+      })
+
+      it('should mark only the currently selected option with aria-checked', async () => {
+        const user = userEvent.setup()
+        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={vi.fn()} />)
+
+        await user.click(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.fixOnly) }))
+
+        const options = await screen.findAllByRole('menuitemradio')
+        const checked = options.filter(o => o.getAttribute('aria-checked') === 'true')
+
+        expect(checked).toHaveLength(1)
+        expect(checked[0]).toHaveTextContent('plugin.autoUpdate.strategy.fixOnly.name')
+      })
+
+      it('should render the check indicator inside the selected option only', async () => {
+        const user = userEvent.setup()
+        render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={vi.fn()} />)
+
+        await user.click(screen.getByRole('button', { name: triggerName(AUTO_UPDATE_STRATEGY.fixOnly) }))
+
+        const fixOnlyOption = await findOption('fixOnly')
+        const latestOption = await findOption('latest')
+
+        expect(fixOnlyOption.querySelector('.i-ri-check-line')).toBeInTheDocument()
+        expect(latestOption.querySelector('.i-ri-check-line')).toBeNull()
       })
     })
   })
@@ -1280,7 +1219,9 @@ describe('auto-update-setting', () => {
         render(<AutoUpdateSetting {...defaultProps} />)
 
         // Assert
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        expect(
+          screen.getByRole('button', { name: /plugin\.autoUpdate\.strategy\.fixOnly\.name/i }),
+        ).toBeInTheDocument()
       })
 
       it('should show time picker when strategy is not disabled', () => {
@@ -1407,16 +1348,27 @@ describe('auto-update-setting', () => {
     })
 
     describe('User Interactions', () => {
-      it('should call onChange with updated strategy when strategy changes', () => {
+      it('should call onChange with updated strategy when strategy changes', async () => {
         // Arrange
+        const user = userEvent.setup()
         const onChange = vi.fn()
-        const payload = createMockAutoUpdateConfig()
+        const payload = createMockAutoUpdateConfig({ strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly })
 
         // Act
         render(<AutoUpdateSetting payload={payload} onChange={onChange} />)
 
-        // Assert - component renders with strategy picker
-        expect(screen.getByTestId('portal-elem')).toBeInTheDocument()
+        await user.click(
+          screen.getByRole('button', { name: /plugin\.autoUpdate\.strategy\.fixOnly\.name/i }),
+        )
+        const latestOption = (await screen.findAllByRole('menuitemradio')).find(item =>
+          item.textContent?.includes('plugin.autoUpdate.strategy.latest.name'),
+        )!
+        await user.click(latestOption)
+
+        // Assert
+        expect(onChange).toHaveBeenCalledWith(
+          expect.objectContaining({ strategy_setting: AUTO_UPDATE_STRATEGY.latest }),
+        )
       })
 
       it('should call onChange with updated time when time changes', () => {

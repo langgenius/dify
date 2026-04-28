@@ -6,11 +6,11 @@ import type {
   TtsAutoPlay,
 } from '@/types/app'
 
-export type EnabledOrDisabled = {
+type EnabledOrDisabled = {
   enabled?: boolean
 }
 
-export type MoreLikeThis = EnabledOrDisabled
+type MoreLikeThis = EnabledOrDisabled
 
 export type OpeningStatement = EnabledOrDisabled & {
   opening_statement?: string
@@ -75,7 +75,7 @@ export type FileUpload = {
   }
 } & EnabledOrDisabled
 
-export type AnnotationReplyConfig = {
+type AnnotationReplyConfig = {
   enabled: boolean
   id?: string
   score_threshold?: number

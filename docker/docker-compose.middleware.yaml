@@ -59,19 +59,25 @@ services:
       - ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}:/var/lib/mysql
     ports:
       - "${EXPOSE_MYSQL_PORT:-3306}:3306"
+    # mysqladmin ping passes during mysql:8.0's TCP-listening stage even while
+    # the server is still finalising init, leading to "Lost connection during
+    # query" on the first real query. Verify with a real SELECT instead.
     healthcheck:
       test:
         [
           "CMD",
-          "mysqladmin",
-          "ping",
-          "-u",
-          "root",
+          "mysql",
+          "-h",
+          "127.0.0.1",
+          "-uroot",
           "-p${DB_PASSWORD:-difyai123456}",
+          "-e",
+          "SELECT 1",
         ]
       interval: 1s
       timeout: 3s
       retries: 30
+      start_period: 20s
 
   # The redis cache.
   redis:

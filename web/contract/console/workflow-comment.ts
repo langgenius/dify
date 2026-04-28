@@ -27,7 +27,7 @@ export type WorkflowCommentList = {
   participants: UserProfile[]
 }
 
-export type WorkflowCommentDetailMention = {
+type WorkflowCommentDetailMention = {
   mentioned_user_id: string
   mentioned_user_account?: UserProfile | null
   reply_id: string | null

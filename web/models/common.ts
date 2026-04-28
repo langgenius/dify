@@ -56,7 +56,7 @@ export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_l
   role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
 }
 
-export enum ProviderName {
+enum ProviderName {
   OPENAI = 'openai',
   AZURE_OPENAI = 'azure_openai',
   ANTHROPIC = 'anthropic',
