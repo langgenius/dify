@@ -59,12 +59,17 @@ services:
       - ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}:/var/lib/mysql
     ports:
       - "${EXPOSE_MYSQL_PORT:-3306}:3306"
+    # mysql:8.0's bootstrap runs a first-stage mysqld with --skip-networking
+    # whose unix-socket ping succeeds before TCP is open; force TCP and add
+    # start_period so compose --wait does not return on the false positive.
     healthcheck:
       test:
         [
           "CMD",
           "mysqladmin",
           "ping",
+          "-h",
+          "127.0.0.1",
           "-u",
           "root",
           "-p${DB_PASSWORD:-difyai123456}",
@@ -72,6 +77,7 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
+      start_period: 20s
 
   # The redis cache.
   redis:
