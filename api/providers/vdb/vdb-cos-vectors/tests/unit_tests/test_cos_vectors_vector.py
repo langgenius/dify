@@ -322,10 +322,12 @@ def test_get_ids_and_delete_by_metadata_field(cos_vectors_module):
     vector._client.list_vectors.side_effect = [
         (
             {},
-            {"vectors": [
-                {"key": "k1", "metadata": {"document_id": "d1"}},
-                {"key": "k3", "metadata": {"document_id": "d1"}},
-            ]},
+            {
+                "vectors": [
+                    {"key": "k1", "metadata": {"document_id": "d1"}},
+                    {"key": "k3", "metadata": {"document_id": "d1"}},
+                ]
+            },
         ),
     ]
     vector.delete_by_metadata_field("document_id", "d1")

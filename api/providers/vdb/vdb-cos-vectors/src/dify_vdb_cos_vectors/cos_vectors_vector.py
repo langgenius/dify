@@ -43,7 +43,7 @@ def _normalize_index_name(raw: str) -> str:
     if len(name) <= _INDEX_NAME_MAX_LEN:
         return name or "idx"
     suffix = "-" + hashlib.md5(raw.encode("utf-8")).hexdigest()[:8]
-    return (name[: _INDEX_NAME_MAX_LEN - len(suffix)].rstrip("-.") + suffix)
+    return name[: _INDEX_NAME_MAX_LEN - len(suffix)].rstrip("-.") + suffix
 
 
 class COSVectorsConfig(BaseModel):
@@ -180,9 +180,7 @@ class COSVectorsVector(BaseVector):
             if batch:
                 self._client.put_vectors(Bucket=self._bucket, Index=self._index, Vectors=batch)
 
-    def _build_put_batch(
-        self, documents: list[Document], embeddings: list[list[float]]
-    ) -> list[dict[str, Any]]:
+    def _build_put_batch(self, documents: list[Document], embeddings: list[list[float]]) -> list[dict[str, Any]]:
         vectors: list[dict[str, Any]] = []
         for doc, embedding in zip(documents, embeddings):
             metadata = doc.metadata or {}
