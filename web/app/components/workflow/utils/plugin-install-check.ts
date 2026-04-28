@@ -51,7 +51,7 @@ export function matchDataSource(
   )
 }
 
-export type PluginInstallCheckContext = {
+type PluginInstallCheckContext = {
   builtInTools?: ToolWithProvider[]
   customTools?: ToolWithProvider[]
   workflowTools?: ToolWithProvider[]
