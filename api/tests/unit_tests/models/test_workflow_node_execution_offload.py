@@ -57,13 +57,9 @@ class TestWorkflowNodeExecutionModel:
         execution = WorkflowNodeExecutionModel()
 
         # Create real offload instances for inputs and outputs but not process_data
-        inputs_offload = WorkflowNodeExecutionOffload()
-        inputs_offload.type_ = ExecutionOffLoadType.INPUTS
-        inputs_offload.file_id = "inputs-file"
+        inputs_offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS, file_id="inputs-file")
 
-        outputs_offload = WorkflowNodeExecutionOffload()
-        outputs_offload.type_ = ExecutionOffLoadType.OUTPUTS
-        outputs_offload.file_id = "outputs-file"
+        outputs_offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS, file_id="outputs-file")
 
         execution.offload_data = [inputs_offload, outputs_offload]
 
@@ -76,9 +72,9 @@ class TestWorkflowNodeExecutionModel:
         execution = WorkflowNodeExecutionModel()
 
         # Create a real offload instance for process_data
-        process_data_offload = WorkflowNodeExecutionOffload()
-        process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
-        process_data_offload.file_id = "process-data-file-id"
+        process_data_offload = WorkflowNodeExecutionOffload(
+            type_=ExecutionOffLoadType.PROCESS_DATA, file_id="process-data-file-id"
+        )
         execution.offload_data = [process_data_offload]
 
         assert execution.process_data_truncated is True
@@ -104,9 +100,7 @@ class TestWorkflowNodeExecutionModel:
         execution = WorkflowNodeExecutionModel()
 
         # Create offload data for inputs only, not process_data
-        inputs_offload = WorkflowNodeExecutionOffload()
-        inputs_offload.type_ = ExecutionOffLoadType.INPUTS
-        inputs_offload.file_id = "inputs-file"
+        inputs_offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS, file_id="inputs-file")
 
         execution.offload_data = [inputs_offload]
         execution.process_data = '{"test": "data"}'
@@ -126,9 +120,7 @@ class TestWorkflowNodeExecutionModel:
         execution = WorkflowNodeExecutionModel()
 
         # Create process_data offload
-        process_data_offload = WorkflowNodeExecutionOffload()
-        process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
-        process_data_offload.file_id = "file-id"
+        process_data_offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.PROCESS_DATA, file_id="file-id")
 
         execution.offload_data = [process_data_offload]
         execution.process_data = '{"truncated": "data"}'
@@ -161,17 +153,13 @@ class TestWorkflowNodeExecutionModel:
         execution = WorkflowNodeExecutionModel()
 
         # Create offload data for all three types
-        inputs_offload = WorkflowNodeExecutionOffload()
-        inputs_offload.type_ = ExecutionOffLoadType.INPUTS
-        inputs_offload.file_id = "inputs-file"
+        inputs_offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS, file_id="inputs-file")
 
-        outputs_offload = WorkflowNodeExecutionOffload()
-        outputs_offload.type_ = ExecutionOffLoadType.OUTPUTS
-        outputs_offload.file_id = "outputs-file"
+        outputs_offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS, file_id="outputs-file")
 
-        process_data_offload = WorkflowNodeExecutionOffload()
-        process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
-        process_data_offload.file_id = "process-data-file"
+        process_data_offload = WorkflowNodeExecutionOffload(
+            type_=ExecutionOffLoadType.PROCESS_DATA, file_id="process-data-file"
+        )
 
         execution.offload_data = [inputs_offload, outputs_offload, process_data_offload]
 
@@ -187,9 +175,9 @@ class TestWorkflowNodeExecutionModel:
         execution = WorkflowNodeExecutionModel()
 
         # Only process_data is truncated
-        process_data_offload = WorkflowNodeExecutionOffload()
-        process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
-        process_data_offload.file_id = "process-data-file"
+        process_data_offload = WorkflowNodeExecutionOffload(
+            type_=ExecutionOffLoadType.PROCESS_DATA, file_id="process-data-file"
+        )
 
         execution.offload_data = [process_data_offload]
 

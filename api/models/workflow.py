@@ -1147,7 +1147,7 @@ class WorkflowNodeExecutionOffload(TypeBase):
     )
     _HASH_COL_SIZE = 64
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default_factory=naive_utc_now, server_default=func.current_timestamp()
