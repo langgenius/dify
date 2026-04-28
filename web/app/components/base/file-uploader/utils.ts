@@ -208,8 +208,17 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
 }
 
 export const getFileNameFromUrl = (url: string) => {
-  const urlParts = url.split('/')
-  return urlParts[urlParts.length - 1] || ''
+  const urlWithoutHash = url.split('#')[0] || ''
+  const urlWithoutQuery = urlWithoutHash.split('?')[0] || ''
+  const urlParts = urlWithoutQuery.split('/')
+  const fileName = urlParts[urlParts.length - 1] || ''
+
+  try {
+    return decodeURIComponent(fileName)
+  }
+  catch {
+    return fileName
+  }
 }
 
 export const getSupportFileExtensionList = (allowFileTypes: string[], allowFileExtensions: string[]) => {

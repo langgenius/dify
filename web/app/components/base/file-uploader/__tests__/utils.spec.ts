@@ -637,6 +637,16 @@ describe('file-uploader utils', () => {
       expect(getFileNameFromUrl('http://example.com/path/'))
         .toBe('')
     })
+
+    it('should strip query parameters and hash fragments from URL filenames', () => {
+      expect(getFileNameFromUrl('http://example.com/path/report.pdf?signature=abc#page=1'))
+        .toBe('report.pdf')
+    })
+
+    it('should decode encoded URL filenames', () => {
+      expect(getFileNameFromUrl('http://example.com/path/report%20final.pdf'))
+        .toBe('report final.pdf')
+    })
   })
 
   describe('getSupportFileExtensionList', () => {
