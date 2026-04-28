@@ -13,41 +13,91 @@ vi.mock('@langgenius/dify-ui/button', () => ({
   }) => <span data-testid="picker-button">{children}</span>,
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const _React = await import('react')
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
+  const React = await import('react')
+  const DropdownMenuContext = React.createContext<{
+    open: boolean
+    onOpenChange?: (open: boolean) => void
+    value?: string
+    itemValue?: string
+    onValueChange?: (value: string) => void
+  }>({ open: false })
+
   return {
-    PortalToFollowElem: ({
+    DropdownMenu: ({
       open,
+      onOpenChange,
       children,
     }: {
       open: boolean
+      onOpenChange: (open: boolean) => void
       children: React.ReactNode
     }) => {
       portalOpen = open
-      return <div>{children}</div>
+      return (
+        <DropdownMenuContext.Provider value={{ open, onOpenChange }}>
+          <div>{children}</div>
+        </DropdownMenuContext.Provider>
+      )
     },
-    PortalToFollowElemTrigger: ({
+    DropdownMenuTrigger: ({
       children,
-      onClick,
     }: {
       children: React.ReactNode
-      onClick: (event: { stopPropagation: () => void, nativeEvent: { stopImmediatePropagation: () => void } }) => void
-    }) => (
-      <button
-        data-testid="trigger"
-        onClick={() => onClick({
-          stopPropagation: vi.fn(),
-          nativeEvent: { stopImmediatePropagation: vi.fn() },
-        })}
-      >
-        {children}
-      </button>
-    ),
-    PortalToFollowElemContent: ({
+    }) => {
+      const { open, onOpenChange } = React.useContext(DropdownMenuContext)
+      return (
+        <button
+          data-testid="trigger"
+          onClick={() => onOpenChange?.(!open)}
+        >
+          {children}
+        </button>
+      )
+    },
+    DropdownMenuContent: ({
       children,
     }: {
       children: React.ReactNode
     }) => portalOpen ? <div data-testid="portal-content">{children}</div> : null,
+    DropdownMenuRadioGroup: ({
+      children,
+      value,
+      onValueChange,
+    }: {
+      children: React.ReactNode
+      value: string
+      onValueChange: (value: string) => void
+    }) => (
+      <DropdownMenuContext.Provider value={{ open: portalOpen, value, onValueChange }}>
+        <div role="radiogroup">{children}</div>
+      </DropdownMenuContext.Provider>
+    ),
+    DropdownMenuRadioItem: ({
+      children,
+      value,
+    }: {
+      children: React.ReactNode
+      value: string
+    }) => {
+      const { value: selectedValue, onValueChange } = React.useContext(DropdownMenuContext)
+      return (
+        <DropdownMenuContext.Provider value={{ open: portalOpen, value: selectedValue, itemValue: value, onValueChange }}>
+          <button
+            role="radio"
+            aria-checked={selectedValue === value}
+            data-testid={`strategy-option-${value}`}
+            onClick={() => onValueChange?.(value)}
+          >
+            {children}
+          </button>
+        </DropdownMenuContext.Provider>
+      )
+    },
+    DropdownMenuRadioItemIndicator: () => {
+      const { value, itemValue } = React.useContext(DropdownMenuContext)
+      return value === itemValue ? <span data-testid="strategy-indicator">✓</span> : null
+    },
   }
 })
 
@@ -79,7 +129,6 @@ describe('StrategyPicker', () => {
     fireEvent.click(screen.getByTestId('trigger'))
 
     expect(screen.getByTestId('portal-content')).toBeInTheDocument()
-    expect(screen.getByTestId('portal-content').querySelectorAll('svg')).toHaveLength(1)
     expect(screen.getByText('plugin.autoUpdate.strategy.latest.description')).toBeInTheDocument()
   })
 

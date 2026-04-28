@@ -106,6 +106,99 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
   },
 }))
 
+vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
+  const React = await import('react')
+  const DropdownMenuContext = React.createContext<{
+    open: boolean
+    onOpenChange?: (open: boolean) => void
+    value?: string
+    itemValue?: string
+    onValueChange?: (value: string) => void
+  }>({ open: false })
+
+  return {
+    DropdownMenu: ({ children, open = false, onOpenChange }: {
+      children: React.ReactNode
+      open?: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => {
+      mockPortalOpen = open
+      mockPortalOnOpenChange = onOpenChange
+      return (
+        <DropdownMenuContext.Provider value={{ open, onOpenChange }}>
+          <div data-testid="portal-elem" data-open={open}>{children}</div>
+        </DropdownMenuContext.Provider>
+      )
+    },
+    DropdownMenuTrigger: ({ children, onClick, className }: {
+      children?: React.ReactNode
+      onClick?: (e: React.MouseEvent) => void
+      className?: string
+    }) => {
+      const { open, onOpenChange } = React.useContext(DropdownMenuContext)
+      const handleClick = (e: React.MouseEvent) => {
+        onClick?.(e)
+        if (!onClick)
+          onOpenChange?.(!open)
+      }
+
+      return (
+        <button
+          data-testid="portal-trigger"
+          onClick={handleClick}
+          className={className}
+        >
+          {children}
+        </button>
+      )
+    },
+    DropdownMenuContent: ({ children, className, popupClassName }: {
+      children: React.ReactNode
+      className?: string
+      popupClassName?: string
+    }) => {
+      if (!mockPortalOpen && !forcePortalContentVisible)
+        return null
+      return <div data-testid="portal-content" className={[className, popupClassName].filter(Boolean).join(' ')}>{children}</div>
+    },
+    DropdownMenuRadioGroup: ({ children, value, onValueChange }: {
+      children: React.ReactNode
+      value: string
+      onValueChange: (value: string) => void
+    }) => (
+      <DropdownMenuContext.Provider value={{ open: mockPortalOpen, value, onValueChange }}>
+        <div role="radiogroup">{children}</div>
+      </DropdownMenuContext.Provider>
+    ),
+    DropdownMenuRadioItem: ({ children, value, className }: {
+      children: React.ReactNode
+      value: string
+      className?: string
+    }) => {
+      const { value: selectedValue, onValueChange } = React.useContext(DropdownMenuContext)
+      return (
+        <DropdownMenuContext.Provider value={{ open: mockPortalOpen, value: selectedValue, itemValue: value, onValueChange }}>
+          <div
+            role="radio"
+            aria-checked={selectedValue === value}
+            className={[className, 'cursor-pointer'].filter(Boolean).join(' ')}
+            onClick={(e) => {
+              e.stopPropagation()
+              onValueChange?.(value)
+            }}
+          >
+            {children}
+          </div>
+        </DropdownMenuContext.Provider>
+      )
+    },
+    DropdownMenuRadioItemIndicator: () => {
+      const { value, itemValue } = React.useContext(DropdownMenuContext)
+      return value === itemValue ? <span data-testid="strategy-indicator">✓</span> : null
+    },
+  }
+})
+
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children, open = false, onOpenChange }: {
     children: React.ReactNode
@@ -939,14 +1032,13 @@ describe('auto-update-setting', () => {
         // Act - render with fixOnly selected
         render(<StrategyPicker value={AUTO_UPDATE_STRATEGY.fixOnly} onChange={vi.fn()} />)
 
-        // Assert - RiCheckLine should be rendered (check icon)
+        // Assert - selected indicator should be rendered.
         // Find all "Bug Fixes Only" texts and get the one in the dropdown (has cursor-pointer parent)
         const allFixOnlyTexts = screen.getAllByText('plugin.autoUpdate.strategy.fixOnly.name')
         const dropdownOption = allFixOnlyTexts.find(el => el.closest('div[class*="cursor-pointer"]'))
         const optionContainer = dropdownOption?.closest('div[class*="cursor-pointer"]')
         expect(optionContainer).toBeInTheDocument()
-        // The check icon SVG should exist within the option
-        expect(optionContainer?.querySelector('svg')).toBeInTheDocument()
+        expect(optionContainer?.querySelector('[data-testid="strategy-indicator"]')).toBeInTheDocument()
       })
 
       it('should not render check icon for non-selected options', () => {
@@ -958,10 +1050,8 @@ describe('auto-update-setting', () => {
 
         // Assert - check the Latest Version option should not have check icon
         const latestOption = screen.getByText('plugin.autoUpdate.strategy.latest.name').closest('div[class*="cursor-pointer"]')
-        // The svg should only be in selected option, not in non-selected
         const checkIconContainer = latestOption?.querySelector('div.mr-1')
-        // Non-selected option should have empty check icon container
-        expect(checkIconContainer?.querySelector('svg')).toBeNull()
+        expect(checkIconContainer?.querySelector('[data-testid="strategy-indicator"]')).toBeNull()
       })
     })
   })
