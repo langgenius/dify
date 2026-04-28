@@ -10,6 +10,8 @@ from tests.unit_tests.oss.__mock.base import (
     get_example_bucket,
 )
 
+pytest_plugins = ("tests.unit_tests.oss.__mock.baidu_obs",)
+
 
 class TestBaiduObs(BaseStorageTest):
     @pytest.fixture(autouse=True)
