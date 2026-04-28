@@ -1,8 +1,7 @@
 import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { BlockEnum } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '../../block-icon'
 import { ItemIndicator } from './item-indicator'
@@ -11,39 +10,6 @@ type ChecklistSubItem = {
   key: string
   message: string
 }
-
-const TruncatedSubItemMessage = memo(({ message }: { message: string }) => {
-  const messageRef = useRef<HTMLSpanElement>(null)
-  const [isTooltipOpen, setIsTooltipOpen] = useState(false)
-
-  const handleTooltipOpenChange = useCallback((open: boolean) => {
-    if (open) {
-      const el = messageRef.current
-      if (!el || el.scrollWidth <= el.clientWidth)
-        return
-    }
-    setIsTooltipOpen(open)
-  }, [])
-
-  return (
-    <Tooltip open={isTooltipOpen} onOpenChange={handleTooltipOpenChange}>
-      <TooltipTrigger
-        render={(
-          <span
-            ref={messageRef}
-            className="min-w-0 grow truncate text-xs leading-4 text-text-warning"
-          >
-            {message}
-          </span>
-        )}
-      />
-      <TooltipContent>
-        {message}
-      </TooltipContent>
-    </Tooltip>
-  )
-})
-TruncatedSubItemMessage.displayName = 'TruncatedSubItemMessage'
 
 export const ChecklistNodeGroup = memo(({
   item,
@@ -83,15 +49,17 @@ export const ChecklistNodeGroup = memo(({
           <div
             key={sub.key}
             className={cn(
-              'group/item flex items-center gap-2 rounded-lg px-1',
+              'group/item flex items-start gap-2 rounded-lg px-1',
               goToEnabled && 'cursor-pointer hover:bg-state-base-hover',
             )}
             onClick={() => goToEnabled && onItemClick(item)}
           >
             <ItemIndicator />
-            <TruncatedSubItemMessage message={sub.message} />
+            <span className="min-w-0 grow py-1 text-xs leading-4 text-text-warning">
+              {sub.message}
+            </span>
             {goToEnabled && (
-              <div className="flex shrink-0 items-center gap-0.5 pr-0.5 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
+              <div className="flex shrink-0 items-center gap-0.5 pt-1 pr-0.5 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100">
                 <span className="text-xs leading-4 font-medium whitespace-nowrap text-text-accent">
                   {t('panel.goToFix', { ns: 'workflow' })}
                 </span>
