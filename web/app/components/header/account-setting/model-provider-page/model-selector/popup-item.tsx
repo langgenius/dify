@@ -107,7 +107,7 @@ const PopupItem: FC<PopupItemProps> = ({
 
   return (
     <div className="mb-1">
-      <div className="sticky top-12 z-2 flex h-[22px] items-center justify-between bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
+      <div className="sticky top-0 z-2 flex h-[22px] items-center justify-between bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
         <div
           className="flex cursor-pointer items-center"
           onClick={() => setCollapsed(prev => !prev)}

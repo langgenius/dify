@@ -219,8 +219,8 @@ describe('Popup', () => {
     expect(screen.queryByText('common.modelProvider.selector.onlyCompatibleModelsShown')).not.toBeInTheDocument()
   })
 
-  it('should show compatible-only helper banner when scope features are applied', () => {
-    const { container } = renderPopup(
+  it('should show compatible-only helper text when scope features are applied', () => {
+    renderPopup(
       <Popup
         modelList={[makeModel()]}
         onSelect={vi.fn()}
@@ -231,7 +231,26 @@ describe('Popup', () => {
 
     expect(screen.getByTestId('compatible-models-banner'))!.toBeInTheDocument()
     expect(screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'))!.toBeInTheDocument()
-    expect(container.querySelector('.i-ri-information-2-fill'))!.toBeInTheDocument()
+  })
+
+  it('should keep search and footer outside the scrollable model list', () => {
+    renderPopup(
+      <Popup
+        modelList={[makeModel()]}
+        onSelect={vi.fn()}
+        onHide={vi.fn()}
+        scopeFeatures={[ModelFeatureEnum.vision]}
+      />,
+    )
+
+    const scrollRegion = screen.getByRole('region', { name: 'common.modelProvider.models' })
+    const searchInput = screen.getByPlaceholderText('datasetSettings.form.searchModel')
+    const settingsButton = screen.getByRole('button', { name: /common\.modelProvider\.selector\.modelProviderSettings/ })
+
+    expect(scrollRegion)!.toBeInTheDocument()
+    expect(scrollRegion).not.toContainElement(searchInput)
+    expect(scrollRegion).not.toContainElement(settingsButton)
+    expect(scrollRegion).toContainElement(screen.getByTestId('compatible-models-banner'))
   })
 
   it('should filter by scope features including toolCall and non-toolCall checks', () => {
