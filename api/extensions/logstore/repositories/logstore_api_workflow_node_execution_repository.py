@@ -40,15 +40,16 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
     """
     logger.debug("_dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
     # Create model instance without session
-    model = WorkflowNodeExecutionModel()
-
-    # Map all required fields with validation
-    # Critical fields - must not be None
-    model.id = data.get("id") or ""
-    model.tenant_id = data.get("tenant_id") or ""
-    model.app_id = data.get("app_id") or ""
-    model.workflow_id = data.get("workflow_id") or ""
+    model = WorkflowNodeExecutionModel(
+        # Map all required fields with validation
+        # Critical fields - must not be None
+        id=data.get("id") or "",
+        tenant_id=data.get("tenant_id") or "",
+        app_id=data.get("app_id") or "",
+        workflow_id=data.get("workflow_id") or "",
+    )
     triggered_from_val = data.get("triggered_from")
+
     try:
         model.triggered_from = (
             WorkflowNodeExecutionTriggeredFrom(str(triggered_from_val))

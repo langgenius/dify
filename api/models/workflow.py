@@ -879,7 +879,7 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     RAG_PIPELINE_RUN = "rag-pipeline-run"
 
 
-class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offload_data` preloaded in most cases.
+class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `offload_data` preloaded in most cases.
     """
     Workflow Node Execution
 
@@ -960,7 +960,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         ),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default_factory=lambda: str(uuid4()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)

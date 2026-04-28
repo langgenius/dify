@@ -166,8 +166,10 @@ def test_normalize_environment_variable_mappings_keeps_hidden_value():
 
 class TestWorkflowNodeExecution:
     def test_execution_metadata_dict(self):
-        node_exec = WorkflowNodeExecutionModel()
-        node_exec.execution_metadata = None
+        node_exec = WorkflowNodeExecutionModel(
+
+        execution_metadata = None
+        )
         assert node_exec.execution_metadata_dict == {}
 
         original = {"a": 1, "b": ["2"]}
