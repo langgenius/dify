@@ -1,7 +1,5 @@
 {
-  "applied.activeSubscription.description": "You have an active subscription. You can use the education discount after your subscription expires. Confirm your subscription in",
-  "applied.activeSubscription.descriptionSuffix": ".",
-  "applied.activeSubscription.stripeLink": "Stripe",
+  "applied.activeSubscription.description": "You have an active subscription. You can use the education discount after your subscription expires. Confirm your subscription in <stripeLink>Stripe</stripeLink>.",
   "applied.description": "Congratulations! You've successfully applied for the education discount.",
   "applied.noPaymentPermission.description": "You don't have payment permission in this workspace. Please switch to a workspace where you can manage billing to use the education discount.",
   "applied.noPaymentPermission.returnHome": "Back to Dify",

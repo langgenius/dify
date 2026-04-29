@@ -1,7 +1,5 @@
 {
-  "applied.activeSubscription.description": "你当前有生效中的订阅。订阅到期后即可使用教育优惠。请前往",
-  "applied.activeSubscription.descriptionSuffix": "确认你的订阅。",
-  "applied.activeSubscription.stripeLink": "Stripe",
+  "applied.activeSubscription.description": "你当前有生效中的订阅。订阅到期后即可使用教育优惠。请前往 <stripeLink>Stripe</stripeLink> 确认你的订阅。",
   "applied.description": "您已成功申请教育优惠。",
   "applied.noPaymentPermission.description": "你没有此工作空间的付款权限。请切换到你可以管理账单的工作空间，以使用教育优惠。",
   "applied.noPaymentPermission.returnHome": "返回 Dify",

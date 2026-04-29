@@ -8,7 +8,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
@@ -163,19 +163,20 @@ const EducationApplyAgeContent = () => {
           <div className="flex items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
             <span className="mt-0.5 mr-2 i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning-secondary" />
             <div className="system-md-regular text-text-warning">
-              <span>
-                {t('applied.activeSubscription.description', { ns: 'education' })}
-              </span>
-              {' '}
-              <button
-                type="button"
-                className="text-text-accent hover:underline disabled:cursor-not-allowed disabled:text-text-disabled"
-                onClick={handleOpenBillingPortal}
-                disabled={isOpeningBillingPortal}
-              >
-                {t('applied.activeSubscription.stripeLink', { ns: 'education' })}
-              </button>
-              {t('applied.activeSubscription.descriptionSuffix', { ns: 'education' })}
+              <Trans
+                i18nKey="applied.activeSubscription.description"
+                ns="education"
+                components={{
+                  stripeLink: (
+                    <button
+                      type="button"
+                      className="text-text-accent hover:underline disabled:cursor-not-allowed disabled:text-text-disabled"
+                      onClick={handleOpenBillingPortal}
+                      disabled={isOpeningBillingPortal}
+                    />
+                  ),
+                }}
+              />
             </div>
           </div>
           {renderBackToDifyButton()}
