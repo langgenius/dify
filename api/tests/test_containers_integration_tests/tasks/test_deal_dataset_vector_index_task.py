@@ -199,7 +199,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -301,7 +300,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -538,7 +536,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -615,7 +612,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -692,7 +688,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -893,7 +888,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments
         segment = DocumentSegment(
-            
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -1011,7 +1005,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments for enabled document only
         segment = DocumentSegment(
-            
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=enabled_document.id,
@@ -1133,7 +1126,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments for active document only
         segment = DocumentSegment(
-            
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=active_document.id,
@@ -1255,7 +1247,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create segments for completed document only
         segment = DocumentSegment(
-            
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=completed_document.id,

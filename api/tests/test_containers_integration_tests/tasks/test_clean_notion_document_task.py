@@ -299,7 +299,6 @@ class TestCleanNotionDocumentTask:
             assert tenant
             # Create test segment
             segment = DocumentSegment(
-                
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -383,7 +382,6 @@ class TestCleanNotionDocumentTask:
         segments = []
         for i in range(3):
             segment = DocumentSegment(
-                
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -570,7 +568,6 @@ class TestCleanNotionDocumentTask:
         assert tenant
         for i, status in enumerate(segment_statuses):
             segment = DocumentSegment(
-                
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -666,7 +663,6 @@ class TestCleanNotionDocumentTask:
         assert tenant
         # Create segment
         segment = DocumentSegment(
-        
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -1091,7 +1087,6 @@ class TestCleanNotionDocumentTask:
         assert tenant
         for i in range(3):
             segment = DocumentSegment(
-                
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 document_id=document.id,
