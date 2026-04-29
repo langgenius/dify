@@ -41,8 +41,8 @@ const AppliedEducationContent = ({
     <div className="flex w-full flex-col gap-4">
       <div className="rounded-lg border border-effects-highlight bg-background-default-subtle px-3">
         <div className="flex items-center gap-2">
-          <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-components-icon-bg-blue-solid system-xs-semibold text-text-primary-on-surface">
-            1
+          <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-state-success-solid text-text-primary-on-surface">
+            <span className="i-ri-check-line h-3.5 w-3.5" />
           </div>
           <div>
             <div className="system-lg-semibold text-text-secondary">
