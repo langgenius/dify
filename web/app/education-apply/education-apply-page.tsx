@@ -8,6 +8,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiExternalLinkLine,
 } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +27,7 @@ import {
 } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { switchWorkspace } from '@/service/common'
+import { commonQueryKeys } from '@/service/use-common'
 import {
   useEducationAdd,
   useInvalidateEducationStatus,
@@ -62,6 +64,7 @@ const EducationApplyAgeContent = () => {
   const { handleEducationDiscount } = useEducationDiscount()
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
+  const queryClient = useQueryClient()
 
   const handleSuccessConfirm = async () => {
     setModalShow(undefined)
@@ -131,7 +134,12 @@ const EducationApplyAgeContent = () => {
 
     try {
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id: tenantId } })
-      location.reload()
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: commonQueryKeys.currentWorkspace }),
+        queryClient.invalidateQueries({ queryKey: commonQueryKeys.workspaces }),
+      ])
+      onPlanInfoChanged()
+      updateEducationStatus()
     }
     catch {
       toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
