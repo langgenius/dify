@@ -560,6 +560,14 @@ export const useMutationClearTaskPlugin = () => {
   })
 }
 
+export const useMutationStopAllTaskPlugins = () => {
+  return useMutation({
+    mutationFn: () => {
+      return post<{ success: boolean }>('/workspaces/current/plugin/tasks/delete_all')
+    },
+  })
+}
+
 export const usePluginManifestInfo = (pluginUID: string) => {
   return useQuery({
     enabled: !!pluginUID,

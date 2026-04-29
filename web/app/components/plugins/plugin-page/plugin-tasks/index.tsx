@@ -31,6 +31,7 @@ const PluginTasks = () => {
     isSuccess,
     isFailed,
     handleClearErrorPlugin,
+    handleStopAllPlugins,
   } = usePluginTaskStatus()
   const { getIconUrl } = useGetIcon()
   const canOpenMenu = isFailed || isInstalling || isInstallingWithSuccess || isInstallingWithError || isSuccess
@@ -81,6 +82,12 @@ const PluginTasks = () => {
     [clearPluginsAndClose, errorPlugins],
   )
 
+  
+  const handleStopAll = useCallback(async () => {
+    await handleStopAllPlugins()
+    setOpen(false)
+  }, [handleStopAllPlugins])
+
   const handleClearSingle = useCallback(
     (taskId: string, pluginId: string) => clearPluginsAndClose([{ taskId, plugin_unique_identifier: pluginId }]),
     [clearPluginsAndClose],
@@ -127,6 +134,7 @@ const PluginTasks = () => {
             onClearAll={handleClearAll}
             onClearErrors={handleClearErrors}
             onClearSingle={handleClearSingle}
+            onStopAll={handleStopAll}
           />
         </DropdownMenuContent>
       </DropdownMenu>

@@ -248,6 +248,7 @@
   "task.installingWithError": "Installing {{installingLength}} plugins, {{successLength}} success, {{errorLength}} failed",
   "task.installingWithSuccess": "Installing {{installingLength}} plugins, {{successLength}} success.",
   "task.runningPlugins": "Installing Plugins",
+  "task.stopAll": "Stop all",
   "task.successPlugins": "Successfully Installed Plugins",
   "upgrade.close": "Close",
   "upgrade.description": "About to install the following plugin",

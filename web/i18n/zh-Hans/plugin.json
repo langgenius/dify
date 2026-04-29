@@ -248,6 +248,7 @@
   "task.installingWithError": "{{installingLength}} 个插件安装中，{{successLength}} 安装成功，{{errorLength}} 安装失败",
   "task.installingWithSuccess": "{{installingLength}} 个插件安装中，{{successLength}} 安装成功",
   "task.runningPlugins": "正在安装的插件",
+  "task.stopAll": "停止所有",
   "task.successPlugins": "安装成功的插件",
   "upgrade.close": "关闭",
   "upgrade.description": "即将安装以下插件",

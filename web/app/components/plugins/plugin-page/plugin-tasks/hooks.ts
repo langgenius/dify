@@ -5,6 +5,7 @@ import {
 import { TaskStatus } from '@/app/components/plugins/types'
 import {
   useMutationClearTaskPlugin,
+  useMutationStopAllTaskPlugins,
   usePluginTaskList,
 } from '@/service/use-plugins'
 
@@ -14,6 +15,7 @@ export const usePluginTaskStatus = () => {
     handleRefetch,
   } = usePluginTaskList()
   const { mutateAsync } = useMutationClearTaskPlugin()
+  const { mutateAsync: mutateStopAllAsync } = useMutationStopAllTaskPlugins()
   const allPlugins = pluginTasks.map(task => task.plugins.map((plugin) => {
     return {
       ...plugin,
@@ -40,6 +42,11 @@ export const usePluginTaskStatus = () => {
     })
     handleRefetch()
   }, [mutateAsync, handleRefetch])
+  
+  const handleStopAllPlugins = useCallback(async () => {
+    await mutateStopAllAsync()
+    handleRefetch()
+  }, [mutateStopAllAsync, handleRefetch])
   const totalPluginsLength = allPlugins.length
   const runningPluginsLength = runningPlugins.length
   const errorPluginsLength = errorPlugins.length
@@ -65,5 +72,6 @@ export const usePluginTaskStatus = () => {
     isSuccess,
     isFailed,
     handleClearErrorPlugin,
+    handleStopAllPlugins,
   }
 }

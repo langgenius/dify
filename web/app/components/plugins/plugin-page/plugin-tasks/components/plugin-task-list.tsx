@@ -15,6 +15,7 @@ type PluginTaskListProps = {
   onClearAll: () => void
   onClearErrors: () => void
   onClearSingle: (taskId: string, pluginId: string) => void
+  onStopAll: () => void
 }
 
 const PluginTaskList: FC<PluginTaskListProps> = ({
@@ -25,6 +26,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
   onClearAll,
   onClearErrors,
   onClearSingle,
+  onStopAll,
 }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -43,6 +45,16 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
             <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />
           }
           defaultStatusText={t('task.installingHint', { ns: 'plugin' })}
+          headerAction={(
+            <Button
+              className="shrink-0"
+              size="small"
+              variant="ghost"
+              onClick={onStopAll}
+            >
+              {t('task.stopAll', { ns: 'plugin' })}
+            </Button>
+          )}
         />
       )}
 
