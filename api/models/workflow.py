@@ -1149,9 +1149,6 @@ class WorkflowNodeExecutionOffload(TypeBase):
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default_factory=naive_utc_now, server_default=func.current_timestamp()
-    )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
@@ -1179,12 +1176,15 @@ class WorkflowNodeExecutionOffload(TypeBase):
 
     # `file_id` references to the offloaded storage object containing the data.
     file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default_factory=naive_utc_now, server_default=func.current_timestamp()
+    )
 
     execution: Mapped[WorkflowNodeExecutionModel] = orm.relationship(
         foreign_keys=[node_execution_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowNodeExecutionOffload.node_execution_id == WorkflowNodeExecutionModel.id",
+        primaryjoin=lambda: orm.foreign(WorkflowNodeExecutionOffload.node_execution_id) == WorkflowNodeExecutionModel.id,
         back_populates="offload_data",
     )
 
