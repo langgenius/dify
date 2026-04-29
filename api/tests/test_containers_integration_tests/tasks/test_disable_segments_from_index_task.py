@@ -185,7 +185,6 @@ class TestDisableSegmentsFromIndexTask:
         for i in range(count):
             id = fake.uuid4()
             segment = DocumentSegment(
-                id=id,
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,

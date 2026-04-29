@@ -136,7 +136,6 @@ class TestCleanNotionDocumentTask:
             # Create segments for each document
             for j in range(2):
                 segment = DocumentSegment(
-                    id=str(uuid.uuid4()),
                     tenant_id=tenant.id,
                     dataset_id=dataset.id,
                     document_id=document.id,
@@ -300,7 +299,7 @@ class TestCleanNotionDocumentTask:
             assert tenant
             # Create test segment
             segment = DocumentSegment(
-                id=str(uuid.uuid4()),
+                
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -384,7 +383,7 @@ class TestCleanNotionDocumentTask:
         segments = []
         for i in range(3):
             segment = DocumentSegment(
-                id=str(uuid.uuid4()),
+                
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -472,7 +471,6 @@ class TestCleanNotionDocumentTask:
             # Create segments for each document
             for j in range(2):
                 segment = DocumentSegment(
-                    id=str(uuid.uuid4()),
                     tenant_id=tenant.id,
                     dataset_id=dataset.id,
                     document_id=document.id,
@@ -572,7 +570,7 @@ class TestCleanNotionDocumentTask:
         assert tenant
         for i, status in enumerate(segment_statuses):
             segment = DocumentSegment(
-                id=str(uuid.uuid4()),
+                
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -668,7 +666,7 @@ class TestCleanNotionDocumentTask:
         assert tenant
         # Create segment
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
+        
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -770,7 +768,6 @@ class TestCleanNotionDocumentTask:
             num_segments_per_doc = 5
             for j in range(num_segments_per_doc):
                 segment = DocumentSegment(
-                    id=str(uuid.uuid4()),
                     tenant_id=tenant.id,
                     dataset_id=dataset.id,
                     document_id=document.id,
@@ -875,7 +872,6 @@ class TestCleanNotionDocumentTask:
             # Create segments for each document
             for j in range(3):
                 segment = DocumentSegment(
-                    id=str(uuid.uuid4()),
                     tenant_id=account.current_tenant.id,
                     dataset_id=dataset.id,
                     document_id=document.id,
@@ -988,7 +984,6 @@ class TestCleanNotionDocumentTask:
             # Create segments for each document
             for j in range(2):
                 segment = DocumentSegment(
-                    id=str(uuid.uuid4()),
                     tenant_id=tenant.id,
                     dataset_id=dataset.id,
                     document_id=document.id,
@@ -1096,7 +1091,7 @@ class TestCleanNotionDocumentTask:
         assert tenant
         for i in range(3):
             segment = DocumentSegment(
-                id=str(uuid.uuid4()),
+                
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 document_id=document.id,

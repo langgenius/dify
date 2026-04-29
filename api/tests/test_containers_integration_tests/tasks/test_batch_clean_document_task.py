@@ -177,7 +177,6 @@ class TestBatchCleanDocumentTask:
         fake = Faker()
 
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=account.current_tenant.id,
             dataset_id=document.dataset_id,
             document_id=document.id,
@@ -293,7 +292,6 @@ class TestBatchCleanDocumentTask:
         assert account.current_tenant
         # Create segment with simple content (no image references)
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=account.current_tenant.id,
             dataset_id=document.dataset_id,
             document_id=document.id,
@@ -695,7 +693,6 @@ class TestBatchCleanDocumentTask:
         assert account.current_tenant
         for i in range(3):
             segment = DocumentSegment(
-                id=str(uuid.uuid4()),
                 tenant_id=account.current_tenant.id,
                 dataset_id=document.dataset_id,
                 document_id=document.id,

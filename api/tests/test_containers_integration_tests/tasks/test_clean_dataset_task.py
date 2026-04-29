@@ -220,7 +220,6 @@ class TestCleanDatasetTask:
             DocumentSegment: Created document segment instance
         """
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -614,7 +613,6 @@ class TestCleanDatasetTask:
         """
 
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,
@@ -946,7 +944,6 @@ class TestCleanDatasetTask:
         long_content = "Very long content " * 100  # Long content within reasonable limits
         segment_content = f"Segment with special chars: {special_content}\n{long_content}"
         segment = DocumentSegment(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             document_id=document.id,

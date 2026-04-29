@@ -128,7 +128,6 @@ class TestAddDocumentToIndexTask:
 
         for i in range(3):
             segment = DocumentSegment(
-                id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -451,7 +450,6 @@ class TestAddDocumentToIndexTask:
         segments = []
         for i in range(3):
             segment = DocumentSegment(
-                id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
