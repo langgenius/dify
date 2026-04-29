@@ -1,0 +1,13 @@
+# 忽略包含真實憑證的環境變數檔
+.env
+
+# 忽略執行時產生的資料目錄
+volumes/
+
+# 忽略 nginx 執行期產生的設定檔
+nginx/conf.d/default.conf
+
+# 忽略 SSL 憑證（如有放置）
+nginx/ssl/*.crt
+nginx/ssl/*.key
+nginx/ssl/*.pem

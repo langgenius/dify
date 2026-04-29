@@ -1,13 +1,14 @@
-# docker-compose.custom.yaml
+# docker-compose.yml
 #
-# 精簡版 Dify 啟動組合，僅包含實際需要的服務：
+# Dify 精簡部署套件
 #   外部依賴：PostgreSQL + Redis（sacahan-network）
-#   向量資料庫：pgvector（使用現有 PostgreSQL）
-#   檔案儲存：本地（容器內）
-#   包含：api、worker、worker_beat、web、nginx、sandbox、ssrf_proxy、plugin_daemon
+#   向量資料庫：Weaviate（容器內）
+#   檔案儲存：本地（volumes/app/storage）
+#   包含：api、worker、worker_beat、web、nginx、sandbox、ssrf_proxy、plugin_daemon、weaviate
 #
-# 啟動方式（在 docker/ 目錄下執行）：
-#   docker compose -f docker-compose.custom.yaml --env-file .env.custom up -d
+# 啟動方式（在本目錄下執行）：
+#   cp .env.example .env    # 填入真實憑證
+#   docker compose up -d
 
 name: dify
 
@@ -43,7 +44,7 @@ services:
   api:
     image: langgenius/dify-api:1.13.3
     restart: always
-    env_file: .env.custom
+    env_file: .env
     environment:
       MODE: api
       PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
@@ -68,7 +69,7 @@ services:
   worker:
     image: langgenius/dify-api:1.13.3
     restart: always
-    env_file: .env.custom
+    env_file: .env
     environment:
       MODE: worker
     volumes:
@@ -85,7 +86,7 @@ services:
   worker_beat:
     image: langgenius/dify-api:1.13.3
     restart: always
-    env_file: .env.custom
+    env_file: .env
     environment:
       MODE: beat
     depends_on:
@@ -100,7 +101,7 @@ services:
   web:
     image: langgenius/dify-web:1.13.3
     restart: always
-    env_file: .env.custom
+    env_file: .env
 
   # Nginx 反向代理（對外入口）
   nginx:
@@ -117,12 +118,12 @@ services:
       - sh
       - -c
       - "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"
-    env_file: .env.custom
+    env_file: .env
     depends_on:
       - api
       - web
     ports:
-      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
+      - "${EXPOSE_NGINX_PORT:-8160}:${NGINX_PORT:-80}"
 
   # Sandbox（程式碼執行節點）
   sandbox:
@@ -172,7 +173,7 @@ services:
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.5.3-local
     restart: always
-    env_file: .env.custom
+    env_file: .env
     environment:
       DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
       DB_SSL_MODE: ${DB_SSL_MODE:-disable}
@@ -199,3 +200,30 @@ services:
     networks:
       - default
       - sacahan-network
+
+  # Weaviate 向量資料庫
+  weaviate:
+    image: semitechnologies/weaviate:1.27.0
+    restart: always
+    volumes:
+      - ./volumes/weaviate:/var/lib/weaviate
+    environment:
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "false"
+      DEFAULT_VECTORIZER_MODULE: none
+      CLUSTER_HOSTNAME: node1
+      AUTHENTICATION_APIKEY_ENABLED: "true"
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+      AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+      AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+      DISABLE_TELEMETRY: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - default

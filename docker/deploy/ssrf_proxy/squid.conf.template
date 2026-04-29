@@ -1,0 +1,106 @@
+acl localnet src 0.0.0.1-0.255.255.255	# RFC 1122 "this" network (LAN)
+acl localnet src 10.0.0.0/8		# RFC 1918 local private network (LAN)
+acl localnet src 100.64.0.0/10		# RFC 6598 shared address space (CGN)
+acl localnet src 169.254.0.0/16 	# RFC 3927 link-local (directly plugged) machines
+acl localnet src 172.16.0.0/12		# RFC 1918 local private network (LAN)
+acl localnet src 192.168.0.0/16		# RFC 1918 local private network (LAN)
+acl localnet src fc00::/7       	# RFC 4193 local private network range
+acl localnet src fe80::/10      	# RFC 4291 link-local (directly plugged) machines
+acl SSL_ports port 443
+# acl SSL_ports port 1025-65535   # Enable the configuration to resolve this issue: https://github.com/langgenius/dify/issues/12792
+acl Safe_ports port 80		# http
+acl Safe_ports port 21		# ftp
+acl Safe_ports port 443		# https
+acl Safe_ports port 70		# gopher
+acl Safe_ports port 210		# wais
+acl Safe_ports port 1025-65535	# unregistered ports
+acl Safe_ports port 280		# http-mgmt
+acl Safe_ports port 488		# gss-http
+acl Safe_ports port 591		# filemaker
+acl Safe_ports port 777		# multiling http
+acl CONNECT method CONNECT
+acl allowed_domains dstdomain .marketplace.dify.ai
+http_access allow allowed_domains
+http_access deny !Safe_ports
+http_access deny CONNECT !SSL_ports
+http_access allow localhost manager
+http_access deny manager
+http_access allow localhost
+include /etc/squid/conf.d/*.conf
+http_access deny all
+tcp_outgoing_address 0.0.0.0
+
+################################## Proxy Server ################################
+http_port ${HTTP_PORT}
+coredump_dir ${COREDUMP_DIR}
+refresh_pattern ^ftp:		1440	20%	10080
+refresh_pattern ^gopher:	1440	0%	1440
+refresh_pattern -i (/cgi-bin/|\?) 0	0%	0
+refresh_pattern \/(Packages|Sources)(|\.bz2|\.gz|\.xz)$ 0 0% 0 refresh-ims
+refresh_pattern \/Release(|\.gpg)$ 0 0% 0 refresh-ims
+refresh_pattern \/InRelease$ 0 0% 0 refresh-ims
+refresh_pattern \/(Translation-.*)(|\.bz2|\.gz|\.xz)$ 0 0% 0 refresh-ims
+refresh_pattern .		0	20%	4320
+
+
+# cache_dir ufs /var/spool/squid 100 16 256
+# upstream proxy, set to your own upstream proxy IP to avoid SSRF attacks
+# cache_peer 172.1.1.1 parent 3128 0 no-query no-digest no-netdb-exchange default
+
+################################## Reverse Proxy To Sandbox ################################
+http_port ${REVERSE_PROXY_PORT} accel vhost
+cache_peer ${SANDBOX_HOST} parent ${SANDBOX_PORT} 0 no-query originserver
+acl src_all src all
+http_access allow src_all
+
+# Unless the option's size is increased, an error will occur when uploading more than two files.
+client_request_buffer_max_size 100 MB
+
+################################## Performance & Concurrency ###############################
+# Increase file descriptor limit for high concurrency
+max_filedescriptors 65536
+
+# Timeout configurations for image requests
+connect_timeout 30 seconds
+request_timeout 2 minutes
+read_timeout 2 minutes
+client_lifetime 5 minutes
+shutdown_lifetime 30 seconds
+
+# Persistent connections - improve performance for multiple requests
+server_persistent_connections on
+client_persistent_connections on
+persistent_request_timeout 30 seconds
+pconn_timeout 1 minute
+
+# Connection pool and concurrency limits
+client_db on
+server_idle_pconn_timeout 2 minutes
+client_idle_pconn_timeout 2 minutes
+
+# Quick abort settings - don't abort requests that are mostly done
+quick_abort_min 16 KB
+quick_abort_max 16 MB
+quick_abort_pct 95
+
+# Memory and cache optimization
+memory_cache_mode disk
+cache_mem 256 MB
+maximum_object_size_in_memory 512 KB
+
+# DNS resolver settings for better performance
+dns_timeout 30 seconds
+dns_retransmit_interval 5 seconds
+# By default, Squid uses the system's configured DNS resolvers.
+# If you need to override them, set dns_nameservers to appropriate servers
+# for your environment (for example, internal/corporate DNS). The following
+# is an example using public DNS and SHOULD be customized before use:
+# dns_nameservers 8.8.8.8 8.8.4.4
+
+# Logging format for better debugging
+logformat dify_log %ts.%03tu %6tr %>a %Ss/%03>Hs %<st %rm %ru %[un %Sh/%<a %mt
+access_log daemon:/var/log/squid/access.log dify_log
+
+# Access log to track concurrent requests and timeouts
+logfile_rotate 10
+
