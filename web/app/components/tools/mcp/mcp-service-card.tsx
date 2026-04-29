@@ -338,6 +338,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                     <Popover>
                       <PopoverTrigger
                         openOnHover
+                        nativeButton={false}
                         render={(
                           <div>
                             <Switch checked={activated} onCheckedChange={onChangeStatus} disabled={toggleDisabled} />

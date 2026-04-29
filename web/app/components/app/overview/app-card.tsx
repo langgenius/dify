@@ -255,6 +255,7 @@ function AppCard({
                   <Popover>
                     <PopoverTrigger
                       openOnHover
+                      nativeButton={false}
                       render={(
                         <div>
                           <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
