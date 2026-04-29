@@ -845,30 +845,31 @@ class DocumentSegment(TypeBase):
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int]
     content: Mapped[str] = mapped_column(LongText, nullable=False)
-    answer: Mapped[str | None] = mapped_column(LongText, nullable=True)
     word_count: Mapped[int]
     tokens: Mapped[int]
 
     # indexing fields
-    keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True)
     index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # basic fields
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    answer: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True, default=None)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     status: Mapped[SegmentStatus] = mapped_column(
         EnumText(SegmentStatus, length=255), server_default=sa.text("'waiting'")
+        ,default=SegmentStatus.WAITING
     )
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    error: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
     @property
