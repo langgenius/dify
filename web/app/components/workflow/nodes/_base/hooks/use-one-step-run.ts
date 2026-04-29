@@ -178,12 +178,14 @@ const useOneStepRun = <T>({
     }
 
     const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables, [], allPluginInfoList, schemaTypeDefinitions)
-    const targetVar = allOutputVars.find(item => isSystem ? !!item.isStartNode : item.nodeId === valueSelector[0])
+    if (isSystem) {
+      const selectorKey = valueSelector.join('.')
+      return allOutputVars.flatMap(item => item.vars).find(item => item.variable === selectorKey)
+    }
+
+    const targetVar = allOutputVars.find(item => item.nodeId === valueSelector[0])
     if (!targetVar)
       return undefined
-
-    if (isSystem)
-      return targetVar.vars.find(item => item.variable.split('.')[1] === valueSelector[1])
 
     let curr: any = targetVar.vars
     for (let i = 1; i < valueSelector.length; i++) {
