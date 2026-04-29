@@ -28,6 +28,7 @@ from sqlalchemy.orm import make_transient
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from factories import file_factory
 from graphon.file.models import File
 from models import Account
@@ -78,7 +79,51 @@ class SnippetGenerateService:
     """
 
     # Specific ID for the injected virtual Start node so it can be recognised
-    _VIRTUAL_START_NODE_ID = "__snippet_virtual_start__"
+    _VIRTUAL_START_NODE_ID = SNIPPET_VIRTUAL_START_NODE_ID
+
+    @classmethod
+    def _is_virtual_start_event(cls, message: Mapping[str, Any] | str) -> bool:
+        """
+        Return True when *message* is a snippet-only virtual Start node event.
+
+        The virtual Start node is injected purely for snippet execution and is
+        not part of the persisted draft graph. Filter its node lifecycle events
+        out of the SSE stream so the frontend only receives nodes that exist on
+        the canvas.
+        """
+        if not isinstance(message, Mapping):
+            return False
+
+        if message.get("event") not in {"node_started", "node_finished"}:
+            return False
+
+        data = message.get("data")
+        if not isinstance(data, Mapping):
+            return False
+
+        return data.get("node_id") == cls._VIRTUAL_START_NODE_ID
+
+    @classmethod
+    def _filter_virtual_start_events(
+        cls,
+        response: Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None],
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
+        """
+        Drop snippet virtual Start node lifecycle events from stream responses.
+
+        Blocking responses are returned unchanged because they never expose the
+        injected node as a standalone event payload.
+        """
+        if isinstance(response, Mapping):
+            return response
+
+        def _stream() -> Generator[Mapping[str, Any] | str, None, None]:
+            for message in response:
+                if cls._is_virtual_start_event(message):
+                    continue
+                yield message
+
+        return _stream()
 
     @classmethod
     def _is_virtual_start_event(cls, message: Mapping[str, Any] | str) -> bool:

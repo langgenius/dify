@@ -11,6 +11,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from core.workflow.system_variables import default_system_variables
 from models.workflow import Workflow
 
@@ -163,3 +164,68 @@ def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
         )
 
     assert seen_configs == [workflow.graph_dict["nodes"][0]]
+
+
+def test_run_adds_legacy_start_alias_for_snippet_virtual_start() -> None:
+    app_config = MagicMock()
+    app_config.app_id = "app"
+    app_config.tenant_id = "tenant"
+    app_config.workflow_id = "workflow"
+
+    app_generate_entity = MagicMock(spec=WorkflowAppGenerateEntity)
+    app_generate_entity.app_config = app_config
+    app_generate_entity.inputs = {"query": "123"}
+    app_generate_entity.files = []
+    app_generate_entity.user_id = "user"
+    app_generate_entity.invoke_from = InvokeFrom.DEBUGGER
+    app_generate_entity.workflow_execution_id = "execution-id"
+    app_generate_entity.task_id = "task-id"
+    app_generate_entity.call_depth = 0
+    app_generate_entity.trace_manager = None
+    app_generate_entity.single_iteration_run = None
+    app_generate_entity.single_loop_run = None
+
+    workflow = MagicMock(spec=Workflow)
+    workflow.tenant_id = "tenant"
+    workflow.app_id = "app"
+    workflow.id = "workflow"
+    workflow.type = "workflow"
+    workflow.version = "draft"
+    workflow.graph_dict = {"nodes": [], "edges": []}
+    workflow.environment_variables = []
+    workflow.kind_or_standard = "snippet"
+
+    runner = WorkflowAppRunner(
+        application_generate_entity=app_generate_entity,
+        queue_manager=MagicMock(spec=AppQueueManager),
+        variable_loader=MagicMock(),
+        workflow=workflow,
+        system_user_id="system-user",
+        workflow_execution_repository=MagicMock(),
+        workflow_node_execution_repository=MagicMock(),
+    )
+
+    mock_workflow_entry = MagicMock()
+    mock_workflow_entry.graph_engine = MagicMock()
+    mock_workflow_entry.graph_engine.layer = MagicMock()
+    mock_workflow_entry.run.return_value = iter([])
+
+    def _init_graph(**kwargs):
+        variable_pool = kwargs["graph_runtime_state"].variable_pool
+        virtual_start_query = variable_pool.get((SNIPPET_VIRTUAL_START_NODE_ID, "query"))
+        legacy_start_query = variable_pool.get(("start", "query"))
+
+        assert virtual_start_query is not None
+        assert virtual_start_query.value == "123"
+        assert legacy_start_query is not None
+        assert legacy_start_query.value == "123"
+        return MagicMock()
+
+    with (
+        patch("core.app.apps.workflow.app_runner.RedisChannel"),
+        patch("core.app.apps.workflow.app_runner.redis_client"),
+        patch("core.app.apps.workflow.app_runner.WorkflowEntry", return_value=mock_workflow_entry),
+        patch("core.app.apps.workflow.app_runner.get_default_root_node_id", return_value=SNIPPET_VIRTUAL_START_NODE_ID),
+        patch.object(runner, "_init_graph", side_effect=_init_graph),
+    ):
+        runner.run()

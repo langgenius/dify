@@ -30,6 +30,7 @@ from models.evaluation import (
     EvaluationRun,
     EvaluationRunItem,
     EvaluationRunStatus,
+    EvaluationTargetType,
 )
 from models.model import App, AppMode
 from models.snippet import CustomizedSnippet
@@ -70,18 +71,18 @@ class EvaluationService:
         The first column is index, followed by input parameter columns.
 
         :param target: App or CustomizedSnippet instance
-        :param target_type: Target type string ("app" or "snippet")
+        :param target_type: Target type string ("apps" or "snippets")
         :return: Tuple of (xlsx_content_bytes, filename)
         :raises ValueError: If target type is not supported or app mode is excluded
         """
         # Validate target type
-        if target_type == "app":
+        if target_type == EvaluationTargetType.APPS.value:
             if not isinstance(target, App):
                 raise ValueError("Invalid target: expected App instance")
             if AppMode.value_of(target.mode) in cls.EXCLUDED_APP_MODES:
                 raise ValueError(f"App mode '{target.mode}' does not support evaluation templates")
             input_fields = cls._get_app_input_fields(target)
-        elif target_type == "snippet":
+        elif target_type == EvaluationTargetType.SNIPPETS.value:
             if not isinstance(target, CustomizedSnippet):
                 raise ValueError("Invalid target: expected CustomizedSnippet instance")
             input_fields = cls._get_snippet_input_fields(target)
@@ -581,7 +582,7 @@ class EvaluationService:
         """Return node info grouped by metric (or all nodes when *metrics* is empty).
 
         :param target: App or CustomizedSnippet instance.
-        :param target_type: ``"app"`` or ``"snippets"``.
+        :param target_type: ``"apps"`` or ``"snippets"``.
         :param metrics: Optional list of metric names to filter by.
             When *None* or empty, returns ``{"all": [<every node>]}``.
         :returns: ``{metric_name: [NodeInfo dict, ...]}`` or
@@ -607,9 +608,9 @@ class EvaluationService:
         target_type: str,
     ) -> Workflow | None:
         """Resolve only the published workflow for the target (no draft fallback)."""
-        if target_type == "snippets" and isinstance(target, CustomizedSnippet):
+        if target_type == EvaluationTargetType.SNIPPETS.value and isinstance(target, CustomizedSnippet):
             return SnippetService().get_published_workflow(snippet=target)
-        if target_type == "app" and isinstance(target, App):
+        if target_type == EvaluationTargetType.APPS.value and isinstance(target, App):
             return WorkflowService().get_published_workflow(app_model=target)
         return None
 
@@ -620,13 +621,13 @@ class EvaluationService:
         target_type: str,
     ) -> Workflow | None:
         """Resolve the *published* (preferred) or *draft* workflow for the target."""
-        if target_type == "snippets" and isinstance(target, CustomizedSnippet):
+        if target_type == EvaluationTargetType.SNIPPETS.value and isinstance(target, CustomizedSnippet):
             snippet_service = SnippetService()
             workflow = snippet_service.get_published_workflow(snippet=target)
             if not workflow:
                 workflow = snippet_service.get_draft_workflow(snippet=target)
             return workflow
-        elif target_type == "app" and isinstance(target, App):
+        elif target_type == EvaluationTargetType.APPS.value and isinstance(target, App):
             workflow_service = WorkflowService()
             workflow = workflow_service.get_published_workflow(app_model=target)
             if not workflow:
@@ -663,7 +664,7 @@ class EvaluationService:
         """Execute the evaluation target for every test-data item in parallel.
 
         :param tenant_id: Workspace / tenant ID.
-        :param target_type: ``"app"`` or ``"snippet"``.
+        :param target_type: ``"apps"`` or ``"snippets"``.
         :param target_id: ID of the App or CustomizedSnippet.
         :param input_list: All test-data items parsed from the dataset.
         :param max_workers: Maximum number of parallel worker threads.
@@ -745,8 +746,8 @@ class EvaluationService:
         Dispatches to the appropriate execution service based on
         ``target_type``:
 
-        * ``"snippet"`` → :meth:`SnippetGenerateService.run_published`
-        * ``"app"`` → :meth:`WorkflowAppGenerator().generate` (blocking mode)
+        * ``"snippets"`` → :meth:`SnippetGenerateService.run_published`
+        * ``"apps"`` → :meth:`WorkflowAppGenerator().generate` (blocking mode)
 
         :returns: The blocking response mapping from the workflow engine.
         :raises ValueError: If the target is not found or not published.
@@ -755,7 +756,7 @@ class EvaluationService:
         from core.app.entities.app_invoke_entities import InvokeFrom
         from core.evaluation.runners import get_service_account_for_app, get_service_account_for_snippet
 
-        if target_type == "snippet":
+        if target_type == EvaluationTargetType.SNIPPETS.value:
             from services.snippet_generate_service import SnippetGenerateService
 
             snippet = session.query(CustomizedSnippet).filter_by(id=target_id).first()
@@ -771,7 +772,7 @@ class EvaluationService:
                 invoke_from=InvokeFrom.SERVICE_API,
             )
         else:
-            # target_type == "app"
+            # target_type == "apps"
             app = session.query(App).filter_by(id=target_id).first()
             if not app:
                 raise ValueError(f"App {target_id} not found")
