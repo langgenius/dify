@@ -15,7 +15,6 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import DynamicTreeSelectField from '@/app/components/workflow/nodes/_base/components/variable/dynamic-tree-select-field'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
@@ -24,6 +23,7 @@ import { useFetchDynamicOptions, useFetchDynamicTreeOptions } from '@/service/us
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import { VarKindType } from '../types'
 import FormInputBoolean from './form-input-boolean'
+import FormInputDynamicTreeSelect from './form-input-dynamic-tree-select'
 import {
   filterVisibleOptions,
   getCheckboxListOptions,
@@ -224,6 +224,8 @@ const FormInputItem: FC<Props> = ({
   }, [
     isDynamicSelect,
     isDynamicTreeSelect,
+    currentTool,
+    currentProvider,
     currentTool?.name,
     currentProvider?.name,
     variable,
@@ -450,14 +452,14 @@ const FormInputItem: FC<Props> = ({
         />
       )}
       {isDynamicTreeSelect && isConstant && (
-        <DynamicTreeSelectField
+        <FormInputDynamicTreeSelect
           disabled={readOnly}
           isLoading={isLoadingOptions}
           multiple={isMultipleSelect}
           value={normalizeDynamicTreeSelectValue(varInput?.value)}
           options={visibleDynamicTreeOptions}
           onChange={handleValueChange}
-          placeholder={placeholder?.[language] || placeholder?.en_US || t('dynamicTreeSelect.placeholder', { ns: 'common' })}
+          placeholder={placeholder?.[language] || placeholder?.en_US || t('placeholder.select', { ns: 'common' })}
           language={language}
         />
       )}

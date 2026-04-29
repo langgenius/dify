@@ -1,7 +1,7 @@
 import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
-import DynamicTreeSelectField from '../dynamic-tree-select-field'
+import FormInputDynamicTreeSelect from '../form-input-dynamic-tree-select'
 
 const treeOptions = [
   {
@@ -33,7 +33,7 @@ const StatefulTreeSelect = ({
 }) => {
   const [value, setValue] = useState<string[]>(initialValue)
   return (
-    <DynamicTreeSelectField
+    <FormInputDynamicTreeSelect
       language="en_US"
       options={treeOptions}
       value={value}
@@ -44,10 +44,10 @@ const StatefulTreeSelect = ({
   )
 }
 
-describe('DynamicTreeSelectField', () => {
+describe('FormInputDynamicTreeSelect', () => {
   it('should render placeholder when no value is selected', () => {
     render(
-      <DynamicTreeSelectField
+      <FormInputDynamicTreeSelect
         language="en_US"
         options={treeOptions}
         value={[]}
@@ -56,30 +56,45 @@ describe('DynamicTreeSelectField', () => {
       />,
     )
 
-    expect(screen.getByText('Pick one')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pick one' })).toBeInTheDocument()
   })
 
-  it('should update single selection and close popover when multiple is false', () => {
+  it('should update single selection and close popover when multiple is false', async () => {
     render(<StatefulTreeSelect />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Pick one' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Child A1' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Child A1' }))
 
     expect(screen.getByRole('button', { name: 'Child A1' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Child A2' })).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByRole('option', { name: 'Child A2' })).not.toBeInTheDocument()
+    })
   })
 
   it('should toggle multiple values when multiple is true', () => {
     render(<StatefulTreeSelect multiple />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Pick one' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Parent A' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Parent A' }))
     expect(screen.getByRole('button', { name: 'Parent A' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Parent B' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Parent B' }))
     expect(screen.getByRole('button', { name: 'Parent A, Parent B' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Parent A' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Parent A' }))
     expect(screen.getByRole('button', { name: 'Parent B' })).toBeInTheDocument()
+  })
+
+  it('should collapse and expand a parent via the dedicated toggle button', () => {
+    render(<StatefulTreeSelect />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pick one' }))
+    expect(screen.getByRole('option', { name: 'Child A1' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse' }))
+    expect(screen.queryByRole('option', { name: 'Child A1' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand' }))
+    expect(screen.getByRole('option', { name: 'Child A1' })).toBeInTheDocument()
   })
 })

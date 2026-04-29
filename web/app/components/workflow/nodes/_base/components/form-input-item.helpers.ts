@@ -13,7 +13,7 @@ import { VarKindType } from '../types'
 
 type FormInputSchema = CredentialFormSchema & Partial<{
   _type: FormTypeEnum
-  multiple: boolean
+  multiple: boolean | string | number
   options: FormOption[]
   placeholder: TypeWithI18N
   scope: string
@@ -80,6 +80,18 @@ const getOptionLabel = (option: SelectableOption, language: string) => {
   return option.label[language] || option.label.en_US || option.value
 }
 
+const normalizeMultipleFlag = (multiple: FormInputSchema['multiple']) => {
+  if (typeof multiple === 'string') {
+    const normalized = multiple.trim().toLowerCase()
+    if (normalized === 'true')
+      return true
+    if (normalized === 'false')
+      return false
+  }
+
+  return multiple === true || multiple === 1
+}
+
 export const getFormInputState = (
   schema: FormInputSchema,
   varInput: FormInputValue,
@@ -112,7 +124,7 @@ export const getFormInputState = (
   const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
-  const isMultipleSelect = multiple && (isSelect || isDynamicSelect || isDynamicTreeSelect)
+  const isMultipleSelect = normalizeMultipleFlag(multiple) && (isSelect || isDynamicSelect || isDynamicTreeSelect)
 
   return {
     defaultValue,

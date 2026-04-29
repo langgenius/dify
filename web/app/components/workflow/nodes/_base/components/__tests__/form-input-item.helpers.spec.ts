@@ -163,4 +163,24 @@ describe('form-input-item helpers', () => {
     expect(getSelectedLabels(undefined, [], 'en_US')).toBe('')
     expect(getCheckboxListValue('alpha', [], [createOption('alpha')])).toEqual(['alpha'])
   })
+
+  it('should normalize string multiple flags for dynamic tree select', () => {
+    const falseMultipleState = getFormInputState(
+      createSchema({
+        multiple: 'false' as unknown as boolean,
+        type: FormTypeEnum.dynamicTreeSelect,
+      }),
+      { type: VarKindType.constant, value: ['node-a'] },
+    )
+    const trueMultipleState = getFormInputState(
+      createSchema({
+        multiple: 'true' as unknown as boolean,
+        type: FormTypeEnum.dynamicTreeSelect,
+      }),
+      { type: VarKindType.constant, value: ['node-a'] },
+    )
+
+    expect(falseMultipleState.isMultipleSelect).toBe(false)
+    expect(trueMultipleState.isMultipleSelect).toBe(true)
+  })
 })
