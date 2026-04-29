@@ -256,6 +256,7 @@ function AppCard({
                     <PopoverTrigger
                       openOnHover
                       nativeButton={false}
+                      aria-label={typeof statusPopoverContent === 'string' ? statusPopoverContent : t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
                       render={(
                         <div>
                           <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />

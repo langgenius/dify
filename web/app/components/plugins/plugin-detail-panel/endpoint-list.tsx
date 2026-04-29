@@ -102,7 +102,10 @@ const EndpointList = ({ detail }: Props) => {
             </PopoverContent>
           </Popover>
         </div>
-        <ActionButton onClick={showEndpointModal}>
+        <ActionButton
+          aria-label={t('detailPanel.endpointModalTitle', { ns: 'plugin' })}
+          onClick={showEndpointModal}
+        >
           <RiAddLine className="h-4 w-4" />
         </ActionButton>
       </div>

@@ -339,6 +339,7 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                       <PopoverTrigger
                         openOnHover
                         nativeButton={false}
+                        aria-label={typeof tooltipContent === 'string' ? tooltipContent : t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
                         render={(
                           <div>
                             <Switch checked={activated} onCheckedChange={onChangeStatus} disabled={toggleDisabled} />
