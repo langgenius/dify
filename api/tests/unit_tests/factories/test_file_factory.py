@@ -276,9 +276,11 @@ class TestExtractFilename:
 
     def test_malformed_percent_encoding_safe_fallback(self):
         """Test that malformed percent-encoding is handled safely."""
-        result = extract_filename("http://example.com/path/file%20name%GG.txt?x=1", None)
-        # %GG is invalid, should be replaced with replacement character
-        assert "file" in result and ".txt" in result
+       result = extract_filename("http://example.com/path/file%20name%GG.txt?x=1", None)
+# %GG is invalid, should be replaced with replacement character
+
+assert "file" in result
+assert ".txt" in result
 
     def test_empty_path_with_query_returns_none(self):
         """Test that empty path with query string returns None."""
