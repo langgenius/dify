@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 import copy
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -115,7 +116,7 @@ class WorkflowType(StrEnum):
     RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
-    def value_of(cls, value: str) -> "WorkflowType":
+    def value_of(cls, value: str) -> WorkflowType:
         """
         Get value of given mode.
 
@@ -128,7 +129,7 @@ class WorkflowType(StrEnum):
         raise ValueError(f"invalid workflow type value {value}")
 
     @classmethod
-    def from_app_mode(cls, app_mode: "str | AppMode") -> "WorkflowType":
+    def from_app_mode(cls, app_mode: str | AppMode) -> WorkflowType:
         """
         Get workflow type from app mode.
 
@@ -229,7 +230,7 @@ class Workflow(Base):  # bug
         rag_pipeline_variables: list[dict],
         marked_name: str = "",
         marked_comment: str = "",
-    ) -> "Workflow":
+    ) -> Workflow:
         workflow = Workflow()
         workflow.id = str(uuid4())
         workflow.tenant_id = tenant_id
@@ -667,7 +668,7 @@ class Workflow(Base):  # bug
             ensure_ascii=False,
         )
 
-    def copy_serialized_variable_storage_from(self, source_workflow: "Workflow") -> None:
+    def copy_serialized_variable_storage_from(self, source_workflow: Workflow) -> None:
         """Copy stored variable JSON directly for same-tenant restore flows."""
         self._environment_variables = source_workflow._environment_variables
         self._conversation_variables = source_workflow._conversation_variables
@@ -771,7 +772,7 @@ class WorkflowRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
 
-    pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
+    pause: Mapped[WorkflowPause | None] = orm.relationship(
         lambda: WorkflowPause,
         primaryjoin=lambda: WorkflowRun.id == orm.foreign(WorkflowPause.workflow_run_id),
         uselist=False,
@@ -845,7 +846,7 @@ class WorkflowRun(Base):
         )
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "WorkflowRun":
+    def from_dict(cls, data: dict[str, Any]) -> WorkflowRun:
         return cls(
             id=data.get("id"),
             tenant_id=data.get("tenant_id"),
@@ -987,9 +988,11 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     created_by: Mapped[str] = mapped_column(StringUUID)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
 
-    offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
+    offload_data: Mapped[list[WorkflowNodeExecutionOffload]] = orm.relationship(
         "WorkflowNodeExecutionOffload",
-        primaryjoin=lambda: WorkflowNodeExecutionModel.id == orm.foreign(WorkflowNodeExecutionOffload.node_execution_id),
+        primaryjoin=lambda: (
+            WorkflowNodeExecutionModel.id == orm.foreign(WorkflowNodeExecutionOffload.node_execution_id)
+        ),
         uselist=True,
         lazy="raise",
         back_populates="execution",
@@ -997,13 +1000,13 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
 
     @staticmethod
     def preload_offload_data(
-        query: Select[tuple["WorkflowNodeExecutionModel"]] | orm.Query["WorkflowNodeExecutionModel"],
+        query: Select[tuple[WorkflowNodeExecutionModel]] | orm.Query[WorkflowNodeExecutionModel],
     ):
         return query.options(orm.selectinload(WorkflowNodeExecutionModel.offload_data))
 
     @staticmethod
     def preload_offload_data_and_files(
-        query: Select[tuple["WorkflowNodeExecutionModel"]] | orm.Query["WorkflowNodeExecutionModel"],
+        query: Select[tuple[WorkflowNodeExecutionModel]] | orm.Query[WorkflowNodeExecutionModel],
     ):
         return query.options(
             orm.selectinload(WorkflowNodeExecutionModel.offload_data).options(
@@ -1081,7 +1084,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
                     )
         return extras
 
-    def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> "WorkflowNodeExecutionOffload | None":
+    def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> WorkflowNodeExecutionOffload | None:
         return next(iter([i for i in self.offload_data if i.type_ == type_]), None)
 
     @property
@@ -1189,11 +1192,13 @@ class WorkflowNodeExecutionOffload(Base):
         foreign_keys=[node_execution_id],
         lazy="raise",
         uselist=False,
-        primaryjoin=lambda: WorkflowNodeExecutionOffload.node_execution_id ==  orm.foreign(WorkflowNodeExecutionModel.id),
+        primaryjoin=lambda: (
+            WorkflowNodeExecutionOffload.node_execution_id == orm.foreign(WorkflowNodeExecutionModel.id)
+        ),
         back_populates="offload_data",
     )
 
-    file: Mapped[Optional[UploadFile]] = orm.relationship(
+    file: Mapped[UploadFile | None] = orm.relationship(
         UploadFile,
         foreign_keys=[file_id],
         lazy="raise",
@@ -1212,7 +1217,7 @@ class WorkflowAppLogCreatedFrom(StrEnum):
     INSTALLED_APP = "installed-app"
 
     @classmethod
-    def value_of(cls, value: str) -> "WorkflowAppLogCreatedFrom":
+    def value_of(cls, value: str) -> WorkflowAppLogCreatedFrom:
         """
         Get value of given mode.
 
@@ -1413,7 +1418,7 @@ class ConversationVariable(TypeBase):
     )
 
     @classmethod
-    def from_variable(cls, *, app_id: str, conversation_id: str, variable: VariableBase) -> "ConversationVariable":
+    def from_variable(cls, *, app_id: str, conversation_id: str, variable: VariableBase) -> ConversationVariable:
         obj = cls(
             id=variable.id,
             app_id=app_id,
@@ -1803,7 +1808,7 @@ class WorkflowDraftVariable(Base):
         node_execution_id: str | None,
         description: str = "",
         file_id: str | None = None,
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = WorkflowDraftVariable()
         variable.id = str(uuid4())
         variable.created_at = naive_utc_now()
@@ -1828,7 +1833,7 @@ class WorkflowDraftVariable(Base):
         name: str,
         value: Segment,
         description: str = "",
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = cls._new(
             app_id=app_id,
             user_id=user_id,
@@ -1851,7 +1856,7 @@ class WorkflowDraftVariable(Base):
         value: Segment,
         node_execution_id: str,
         editable: bool = False,
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = cls._new(
             app_id=app_id,
             user_id=user_id,
@@ -1876,7 +1881,7 @@ class WorkflowDraftVariable(Base):
         visible: bool = True,
         editable: bool = True,
         file_id: str | None = None,
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = cls._new(
             app_id=app_id,
             user_id=user_id,
@@ -2039,7 +2044,7 @@ class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
     )
 
     # Relationship to WorkflowRun (uses lambda to resolve across Base/TypeBase registries)
-    workflow_run: Mapped["WorkflowRun"] = orm.relationship(
+    workflow_run: Mapped[WorkflowRun] = orm.relationship(
         lambda: WorkflowRun,
         foreign_keys=[workflow_run_id],
         # require explicit preloading.
@@ -2098,7 +2103,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     )
 
     @classmethod
-    def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
+    def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> WorkflowPauseReason:
         if isinstance(pause_reason, HumanInputRequired):
             return cls(
                 pause_id=pause_id,
