@@ -7,6 +7,7 @@ import type { Locale } from '@/i18n-config/language'
 import { useLocale, useTranslation } from '#i18n'
 import { RiArrowRightSLine } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
+import { renderI18nObject } from '@/i18n-config'
 import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
 import { useMarketplaceMoreClick } from '../atoms'
@@ -72,14 +73,15 @@ export function CollectionHeader<TCollection extends BaseCollection>({
     && !!collection.search_params
     && itemsLength > GRID_DISPLAY_LIMIT
 
-  // The API only ships translations for a subset of locales (typically en_US
-  // and zh_Hans). For any other locale (e.g. ja_JP, pt_BR) the keyed lookup
-  // returns undefined and the title/description render as empty divs. Fall
-  // back to the en_US translation, then to whatever value is available, so
-  // the header always shows something meaningful.
+  // The API only ships translations for a subset of locales (e.g. en_US and
+  // zh_Hans). For any other locale (e.g. ja_JP, pt_BR, zh_Hant before fix)
+  // the keyed lookup returns undefined and the title/description render as
+  // empty divs. `renderI18nObject` from `@/i18n-config` handles the fallback
+  // chain (locale → en_US → first available value) consistently across the
+  // codebase.
   const lang = getLanguage(locale)
-  const label = collection.label[lang] || collection.label.en_US || Object.values(collection.label)[0] || ''
-  const description = collection.description[lang] || collection.description.en_US || Object.values(collection.description)[0] || ''
+  const label = renderI18nObject(collection.label, lang)
+  const description = renderI18nObject(collection.description, lang)
 
   return (
     <div className="mb-2 flex items-end justify-between">

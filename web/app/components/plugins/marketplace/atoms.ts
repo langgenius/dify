@@ -46,7 +46,10 @@ export function useActivePluginCategory() {
   const validatedCategory = getValidatedPluginCategory(categoryFromPath)
   const handleChange = useCallback(
     (newCategory: string) => {
-      router.push(`/plugins/${newCategory}`)
+      // Preserve the current query string (e.g. ?languages=en) so manual
+      // filters survive a category change.
+      const search = typeof window !== 'undefined' ? window.location.search : ''
+      router.push(`/plugins/${newCategory}${search}`)
     },
     [router],
   )
@@ -69,7 +72,10 @@ export function useActiveTemplateCategory() {
   const validatedCategory = getValidatedTemplateCategory(categoryFromPath)
   const handleChange = useCallback(
     (newCategory: string) => {
-      router.push(`/${CREATION_TYPE.templates}/${newCategory}`)
+      // Preserve the current query string (e.g. ?languages=en) so manual
+      // filters survive a category change.
+      const search = typeof window !== 'undefined' ? window.location.search : ''
+      router.push(`/${CREATION_TYPE.templates}/${newCategory}${search}`)
     },
     [router],
   )

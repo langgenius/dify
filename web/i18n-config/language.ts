@@ -17,7 +17,7 @@ export type Locale = 'ja_JP' | 'zh_Hans' | 'en_US' | (typeof languages[number])[
 export const LanguagesSupported: Locale[] = languages.filter(item => item.supported).map(item => item.value)
 
 export const getLanguage = (locale: Locale): Locale => {
-  if (['zh-Hans', 'ja-JP'].includes(locale))
+  if (['zh-Hans', 'zh-Hant', 'ja-JP'].includes(locale))
     return locale.replace('-', '_') as Locale
 
   return LanguagesSupported[0].replace('-', '_') as Locale

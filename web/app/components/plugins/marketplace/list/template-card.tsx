@@ -6,7 +6,6 @@ import Link from 'next/link'
 import * as React from 'react'
 import { useMemo } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
-import CornerMark from '@/app/components/plugins/card/base/corner-mark'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import useTheme from '@/hooks/use-theme'
 import { cn } from '@/utils/classnames'
@@ -32,8 +31,8 @@ const TemplateCardComponent = ({
   const locale = useLocale()
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const { id, template_name, overview, icon, publisher_handle, publisher_type, usage_count, icon_background, deps_plugins, kind } = template
-  const isSandbox = kind === 'sandboxed'
+  const { id, template_name, overview, icon, publisher_handle, publisher_type, usage_count, icon_background, deps_plugins } = template
+  // const isSandbox = kind === 'sandboxed'
   const iconUrl = getTemplateIconUrl(template)
 
   const href = useMemo(() => {
@@ -63,7 +62,7 @@ const TemplateCardComponent = ({
         className,
       )}
     >
-      {isSandbox && <CornerMark text="Sandbox" />}
+      {/* {isSandbox && <CornerMark text="Sandbox" />} */}
       {/* Header */}
       <div className="flex shrink-0 items-center gap-3 px-4 pb-2 pt-4">
         {/* Avatar */}
@@ -78,11 +77,11 @@ const TemplateCardComponent = ({
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <a
             href={href}
-            className="system-md-medium truncate text-text-primary after:absolute after:inset-0"
+            className="truncate text-text-primary system-md-medium after:absolute after:inset-0"
           >
             {template_name}
           </a>
-          <div className="system-xs-regular flex items-center gap-2 text-text-tertiary">
+          <div className="flex items-center gap-2 text-text-tertiary system-xs-regular">
             <span className="relative z-[1] flex shrink-0 items-center gap-1">
               <span className="shrink-0">{t('marketplace.templateCard.by', { ns: 'plugin' })}</span>
               <Link
@@ -105,7 +104,7 @@ const TemplateCardComponent = ({
       {/* Description */}
       <div className="shrink-0 px-4 pb-2 pt-1">
         <p
-          className="system-xs-regular line-clamp-2 min-h-[32px] text-text-secondary"
+          className="line-clamp-2 min-h-[32px] text-text-secondary system-xs-regular"
           title={overview}
         >
           {overview}
@@ -131,7 +130,7 @@ const TemplateCardComponent = ({
             ))}
             {remainingDepsPluginsCount > 0 && (
               <div className="flex items-center justify-center p-0.5">
-                <span className="system-xs-regular text-text-tertiary">
+                <span className="text-text-tertiary system-xs-regular">
                   +
                   {remainingDepsPluginsCount}
                 </span>
