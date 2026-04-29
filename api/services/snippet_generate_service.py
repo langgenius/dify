@@ -28,6 +28,7 @@ from sqlalchemy.orm import make_transient
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from factories import file_factory
 from graphon.file.models import File
 from models import Account
@@ -78,7 +79,7 @@ class SnippetGenerateService:
     """
 
     # Specific ID for the injected virtual Start node so it can be recognised
-    _VIRTUAL_START_NODE_ID = "__snippet_virtual_start__"
+    _VIRTUAL_START_NODE_ID = SNIPPET_VIRTUAL_START_NODE_ID
 
     @classmethod
     def _is_virtual_start_event(cls, message: Mapping[str, Any] | str) -> bool:

@@ -24,7 +24,7 @@ class EvaluationRunStatus(StrEnum):
 
 
 class EvaluationTargetType(StrEnum):
-    APP = "app"
+    APPS = "apps"
     SNIPPETS = "snippets"
     KNOWLEDGE_BASE = "knowledge_base"
 

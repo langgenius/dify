@@ -29,6 +29,7 @@ from graphon.file import helpers as file_helpers
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import App, Dataset
+from models.evaluation import EvaluationTargetType
 from models.model import UploadFile
 from models.snippet import CustomizedSnippet
 from services.errors.evaluation import (
@@ -48,8 +49,10 @@ logger = logging.getLogger(__name__)
 P = ParamSpec("P")
 R = TypeVar("R")
 
-# Valid evaluation target types
-EVALUATE_TARGET_TYPES = {"app", "snippets"}
+EVALUATE_TARGET_TYPES = {
+    EvaluationTargetType.APPS.value,
+    EvaluationTargetType.SNIPPETS.value,
+}
 
 
 class VersionQuery(BaseModel):
@@ -187,7 +190,7 @@ evaluation_default_metrics_response_model = console_ns.model(
 
 def get_evaluation_target(view_func: Callable[P, R]):
     """
-    Decorator to resolve polymorphic evaluation target (app or snippet).
+    Decorator to resolve polymorphic evaluation target (apps or snippets).
 
     Validates the target_type parameter and fetches the corresponding
     model (App or CustomizedSnippet) with tenant isolation.
@@ -209,20 +212,16 @@ def get_evaluation_target(view_func: Callable[P, R]):
         del kwargs["evaluate_target_type"]
         del kwargs["evaluate_target_id"]
 
-        target: Union[App, CustomizedSnippet, Dataset] | None = None
+        target: Union[App, CustomizedSnippet] | None = None
 
-        if target_type == "app":
+        if target_type == EvaluationTargetType.APPS.value:
             target = db.session.query(App).where(App.id == target_id, App.tenant_id == current_tenant_id).first()
-        elif target_type == "snippets":
+        elif target_type == EvaluationTargetType.SNIPPETS.value:
             target = (
                 db.session.query(CustomizedSnippet)
                 .where(CustomizedSnippet.id == target_id, CustomizedSnippet.tenant_id == current_tenant_id)
                 .first()
             )
-        elif target_type == "knowledge":
-            target = (db.session.query(Dataset)
-                      .where(Dataset.id == target_id, Dataset.tenant_id == current_tenant_id)
-                      .first())
 
         if not target:
             raise NotFound(f"{str(target_type)} not found")
@@ -681,7 +680,7 @@ class EvaluationVersionApi(Resource):
             return {"message": "version parameter is required"}, 400
 
         graph = {}
-        if target_type == "snippets" and isinstance(target, CustomizedSnippet):
+        if target_type == EvaluationTargetType.SNIPPETS.value and isinstance(target, CustomizedSnippet):
             graph = target.graph_dict
 
         return {
@@ -791,8 +790,10 @@ class EvaluationWorkflowAssociatedTargetsApi(Resource):
                 target_ids_by_type.setdefault(cfg.target_type, []).append(cfg.target_id)
 
             app_names: dict[str, str] = {}
-            if "app" in target_ids_by_type:
-                apps = session.scalars(select(App).where(App.id.in_(target_ids_by_type["app"]))).all()
+            if EvaluationTargetType.APPS.value in target_ids_by_type:
+                apps = session.scalars(
+                    select(App).where(App.id.in_(target_ids_by_type[EvaluationTargetType.APPS.value]))
+                ).all()
                 app_names = {a.id: a.name for a in apps}
 
             snippet_names: dict[str, str] = {}
@@ -812,9 +813,9 @@ class EvaluationWorkflowAssociatedTargetsApi(Resource):
         items = []
         for cfg in configs:
             name = ""
-            if cfg.target_type == "app":
+            if cfg.target_type == EvaluationTargetType.APPS.value:
                 name = app_names.get(cfg.target_id, "")
-            elif cfg.target_type == "snippets":
+            elif cfg.target_type == EvaluationTargetType.SNIPPETS.value:
                 name = snippet_names.get(cfg.target_id, "")
             elif cfg.target_type == "knowledge_base":
                 name = dataset_names.get(cfg.target_id, "")
