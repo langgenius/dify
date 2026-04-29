@@ -860,12 +860,15 @@ class DocumentSegment(TypeBase):
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     status: Mapped[SegmentStatus] = mapped_column(
-        EnumText(SegmentStatus, length=255), server_default=sa.text("'waiting'")
-        ,default=SegmentStatus.WAITING
+        EnumText(SegmentStatus, length=255), server_default=sa.text("'waiting'"), default=SegmentStatus.WAITING
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
