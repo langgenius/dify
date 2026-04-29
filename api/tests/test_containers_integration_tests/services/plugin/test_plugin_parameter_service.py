@@ -59,9 +59,7 @@ class TestGetDynamicSelectOptionsTool:
 
     @patch("services.plugin.plugin_parameter_service.BuiltinToolManageService")
     def test_raises_when_tool_provider_not_found(self, mock_builtin_tool_service):
-        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.side_effect = ValueError(
-            "not found"
-        )
+        mock_builtin_tool_service.get_builtin_tool_provider_runtime_credentials.side_effect = ValueError("not found")
 
         with pytest.raises(ValueError, match="not found"):
             PluginParameterService.get_dynamic_select_options(
