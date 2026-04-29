@@ -8,7 +8,6 @@ This test suite covers:
 - Annotation model relationships
 """
 
-from models.enums import CustomizeTokenStrategy
 import json
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -20,7 +19,7 @@ import pytest
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, CustomizeTokenStrategy
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -1102,6 +1101,7 @@ class TestSiteModel:
         assert site.title == "Test Site"
         assert site.default_language == "en-US"
         assert site.customize_token_strategy == CustomizeTokenStrategy.UUID
+
     def test_site_creation_with_optional_fields(self):
         """Test creating a site with optional fields."""
         # Arrange & Act

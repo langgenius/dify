@@ -2,7 +2,6 @@
 Testcontainers integration tests for Service API Site controller.
 """
 
-from models.enums import CustomizeTokenStrategy
 from __future__ import annotations
 
 import pytest
@@ -12,6 +11,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.service_api.app.site import AppSiteApi
 from models.account import Tenant, TenantStatus
+from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, Site
 
 
