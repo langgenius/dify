@@ -693,9 +693,17 @@ class BuiltinToolManageService:
         if db_provider is None:
             raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
 
-        encrypter, _ = create_tool_provider_encrypter(
+        encrypter, _ = create_provider_encrypter(
             tenant_id=tenant_id,
-            controller=provider_controller,
+            config=[
+                x.to_basic_provider_config()
+                for x in provider_controller.get_credentials_schema_by_type(db_provider.credential_type)
+            ],
+            cache=ToolProviderCredentialsCache(
+                tenant_id=tenant_id,
+                provider=provider,
+                credential_id=db_provider.id,
+            ),
         )
 
         return encrypter.decrypt(db_provider.credentials), db_provider.credential_type
