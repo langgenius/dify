@@ -7,6 +7,7 @@
     "node": "^22.22.1"
   },
   "scripts": {
+    "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
     "prepare": "vp config",
     "type-check": "vp run -r type-check",
     "lint": "eslint --cache --concurrency=auto",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",
+    "concurrently": "catalog:",
     "eslint": "catalog:",
     "eslint-markdown": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
