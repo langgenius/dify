@@ -103,87 +103,8 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/__tests__/svg-attribute-error-reproduction.spec.tsx": {
-    "no-console": {
-      "count": 19
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/config-popup.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-panel.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/(humanInputLayout)/form/[token]/form.tsx": {
     "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/(shareLayout)/components/splash.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/(shareLayout)/webapp-reset-password/layout.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/(shareLayout)/webapp-signin/components/mail-and-password-auth.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/account/(commonLayout)/account-page/email-change-modal.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
-  "web/app/account/(commonLayout)/account-page/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/account/(commonLayout)/delete-account/components/feed-back.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/account/(commonLayout)/delete-account/components/verify-email.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/account/(commonLayout)/delete-account/index.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -5653,11 +5574,6 @@
       "count": 1
     }
   },
-  "web/app/reset-password/layout.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/signin/_header.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -5668,17 +5584,7 @@
       "count": 1
     }
   },
-  "web/app/signin/layout.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/signin/one-more-step.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/signup/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
