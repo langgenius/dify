@@ -1,5 +1,3 @@
-from models.enums import AppStatus
-from models.enums import CustomizeTokenStrategy
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -8,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from constants.model_template import default_app_templates
 from models import Account
+from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, IconType, Site
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -1078,13 +1077,12 @@ class TestAppService:
 
         # Create a site for the app
         site = Site(
-      app_id = app.id
-      ,code = fake.postalcode()
-      ,title = fake.company()
-      ,status = AppStatus.NORMAL
-      ,default_language = "en-US"
-      ,customize_token_strategy = CustomizeTokenStrategy.UUID
-
+            app_id=app.id,
+            code=fake.postalcode(),
+            title=fake.company(),
+            status=AppStatus.NORMAL,
+            default_language="en-US",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
 
         db_session_with_containers.add(site)
