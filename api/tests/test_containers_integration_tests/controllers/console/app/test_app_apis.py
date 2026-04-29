@@ -1,7 +1,5 @@
 """Testcontainers integration tests for controllers/console/app endpoints."""
 
-from models.enums import CustomizeTokenStrategy
-from models import Site
 from __future__ import annotations
 
 import uuid
@@ -58,6 +56,8 @@ from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
 from controllers.console.app.workflow_draft_variable import WorkflowDraftVariableUpdatePayload
 from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
+from models import Site
+from models.enums import CustomizeTokenStrategy
 
 
 def _unwrap(func):
@@ -344,22 +344,21 @@ class TestSiteEndpoints:
         method = _unwrap(api.post)
 
         site = Site(
-
-    app_id = "app-1"
-    ,code = "test-code"
-    ,title = "My Site"
-    ,icon = None
-    ,icon_background = None
-    ,description = "Test site"
-    ,default_language = "en-US"
-    ,customize_domain = None
-    ,copyright = None
-    ,privacy_policy = None
-    ,custom_disclaimer = ""
-    ,customize_token_strategy = CustomizeTokenStrategy.NOT_ALLOW
-    ,prompt_public = False
-    ,show_workflow_steps = True
-    ,use_icon_as_answer_icon = False
+            app_id="app-1",
+            code="test-code",
+            title="My Site",
+            icon=None,
+            icon_background=None,
+            description="Test site",
+            default_language="en-US",
+            customize_domain=None,
+            copyright=None,
+            privacy_policy=None,
+            custom_disclaimer="",
+            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            prompt_public=False,
+            show_workflow_steps=True,
+            use_icon_as_answer_icon=False,
         )
         monkeypatch.setattr(
             site_module.db,
@@ -384,22 +383,21 @@ class TestSiteEndpoints:
         method = _unwrap(api.post)
 
         site = Site(
-
-   app_id = "app-1"
-   ,code = "old-code"
-   ,title = "My Site"
-   ,icon = None
-   ,icon_background = None
-   ,description = None
-   ,default_language = "en-US"
-   ,customize_domain = None
-   ,copyright = None
-   ,privacy_policy = None
-   ,custom_disclaimer = ""
-   ,customize_token_strategy = CustomizeTokenStrategy.NOT_ALLOW
-   ,prompt_public = False
-   ,show_workflow_steps = True
-   ,use_icon_as_answer_icon = False
+            app_id="app-1",
+            code="old-code",
+            title="My Site",
+            icon=None,
+            icon_background=None,
+            description=None,
+            default_language="en-US",
+            customize_domain=None,
+            copyright=None,
+            privacy_policy=None,
+            custom_disclaimer="",
+            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+            prompt_public=False,
+            show_workflow_steps=True,
+            use_icon_as_answer_icon=False,
         )
         monkeypatch.setattr(
             site_module.db,
