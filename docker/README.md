@@ -7,28 +7,28 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 - **Certbot Container**: `docker-compose.yaml` now contains `certbot` for managing SSL certificates. This container automatically renews certificates and ensures secure HTTPS connections.\
   For more information, refer `docker/certbot/README.md`.
 
-- **Persistent Environment Variables**: Environment variables are now managed through a `.env` file, ensuring that your configurations persist across deployments.
+- **Persistent Environment Variables**: Default environment variables are managed through `.env.default`, while local overrides are stored in `.env`, ensuring that your configurations persist across deployments.
 
   > What is `.env`? </br> </br>
-  > The `.env` file is a crucial component in Docker and Docker Compose environments, serving as a centralized configuration file where you can define environment variables that are accessible to the containers at runtime. This file simplifies the management of environment settings across different stages of development, testing, and production, providing consistency and ease of configuration to deployments.
+  > The `.env` file is a local override file. Keep it small by adding only the values that differ from `.env.default`. Use `.env.example` as the full reference when you need advanced configuration.
 
 - **Unified Vector Database Services**: All vector database services are now managed from a single Docker Compose file `docker-compose.yaml`. You can switch between different vector databases by setting the `VECTOR_STORE` environment variable in your `.env` file.
 
-- **Mandatory .env File**: A `.env` file is now required to run `docker compose up`. This file is crucial for configuring your deployment and for any custom settings to persist through upgrades.
+- **Local .env Overrides**: The `dify-compose` and `dify-compose.ps1` wrappers create `.env` if it is missing and generate a persistent `SECRET_KEY` for this deployment.
 
 ### How to Deploy Dify with `docker-compose.yaml`
 
 1. **Prerequisites**: Ensure Docker and Docker Compose are installed on your system.
 1. **Environment Setup**:
    - Navigate to the `docker` directory.
-   - Copy the `.env.example` file to a new file named `.env` by running `cp .env.example .env`.
-   - Customize the `.env` file as needed. Refer to the `.env.example` file for detailed configuration options.
-   - **Optional (Recommended for upgrades)**:
-     You may use the environment synchronization tool to help keep your `.env` file aligned with the latest `.env.example` updates, while preserving your custom settings.
-     This is especially useful when upgrading Dify or managing a large, customized `.env` file.
+   - No copy step is required. The `dify-compose` wrappers create `.env` if it is missing and write a generated `SECRET_KEY` to it.
+   - When prompted on first run, press Enter to use the default deployment, or answer `y` to stop and edit `.env` first.
+   - Customize `.env` only when you need to override defaults from `.env.default`. Refer to `.env.example` for the full list of available variables.
+   - **Optional (for advanced deployments)**:
+     If you maintain a full `.env` file copied from `.env.example`, you may use the environment synchronization tool to keep it aligned with the latest `.env.example` updates while preserving your custom settings.
      See the [Environment Variables Synchronization](#environment-variables-synchronization) section below.
 1. **Running the Services**:
-   - Execute `docker compose up` from the `docker` directory to start the services.
+   - Execute `./dify-compose up -d` from the `docker` directory to start the services. On Windows PowerShell, run `.\dify-compose.ps1 up -d`.
    - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`.
 1. **SSL Certificate Setup**:
    - Refer `docker/certbot/README.md` to set up SSL certificates using Certbot.
@@ -58,7 +58,13 @@ For users migrating from the `docker-legacy` setup:
 1. **Data Migration**:
    - Ensure that data from services like databases and caches is backed up and migrated appropriately to the new structure if necessary.
 
-### Overview of `.env`
+### Overview of `.env.default`, `.env`, and `.env.example`
+
+- `.env.default` contains the minimal default configuration for Docker Compose deployments.
+- `.env` contains the generated `SECRET_KEY` plus any local overrides.
+- `.env.example` is the full reference for advanced configuration.
+
+The `dify-compose` wrappers merge `.env.default` and `.env` into a temporary environment file, append paired internal service keys when needed, and remove the temporary file after Docker Compose starts.
 
 #### Key Modules and Customization
 
@@ -118,9 +124,11 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 
 ### Environment Variables Synchronization
 
-When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.example`.
+When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.default` or `.env.example`.
 
-To help keep your existing `.env` file up to date **without losing your custom values**, an optional environment variables synchronization tool is provided.
+If you use the default override-only workflow, review `.env.default` and add only the values you need to override to `.env`.
+
+If you maintain a full `.env` file copied from `.env.example`, an optional environment variables synchronization tool is provided.
 
 > This tool performs a **one-way synchronization** from `.env.example` to `.env`.
 > Existing values in `.env` are never overwritten automatically.
@@ -143,9 +151,9 @@ Before synchronization, the current `.env` file is saved to the `env-backup/` di
 
 **When to use**
 
-- After upgrading Dify to a newer version
+- After upgrading Dify to a newer version with a full `.env` file
 - When `.env.example` has been updated with new environment variables
-- When managing a large or heavily customized `.env` file
+- When managing a large or heavily customized `.env` file copied from `.env.example`
 
 **Usage**
 
