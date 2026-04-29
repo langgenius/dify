@@ -175,6 +175,7 @@ const EducationApplyAgeContent = () => {
               >
                 {t('applied.activeSubscription.stripeLink', { ns: 'education' })}
               </button>
+              {t('applied.activeSubscription.descriptionSuffix', { ns: 'education' })}
             </div>
           </div>
           {renderBackToDifyButton()}
