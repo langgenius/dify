@@ -2299,11 +2299,9 @@ class Site(TypeBase):
     icon_background: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(LongText)
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)
-    chat_color_theme: Mapped[str] = mapped_column(String(255))
     copyright: Mapped[str] = mapped_column(String(255))
     privacy_policy: Mapped[str] = mapped_column(String(255))
     input_placeholder: Mapped[str] = mapped_column(String(255))
-    customize_domain: Mapped[str] = mapped_column(String(255))
     customize_token_strategy: Mapped[CustomizeTokenStrategy] = mapped_column(
         EnumText(CustomizeTokenStrategy, length=255), nullable=False
     )
@@ -2320,6 +2318,9 @@ class Site(TypeBase):
         init=False,
     )
     code: Mapped[str] = mapped_column(String(255))
+
+    customize_domain: Mapped[str|None] = mapped_column(String(255),default=None)
+    chat_color_theme: Mapped[str|None] = mapped_column(String(255),default=None)
     prompt_public: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
     )
