@@ -1184,7 +1184,7 @@ class WorkflowNodeExecutionOffload(TypeBase):
             orm.foreign(WorkflowNodeExecutionOffload.node_execution_id) == WorkflowNodeExecutionModel.id
         ),
         back_populates="offload_data",
-        init=False
+        init=False,
     )
 
     file: Mapped[Optional["UploadFile"]] = orm.relationship(
@@ -1193,7 +1193,7 @@ class WorkflowNodeExecutionOffload(TypeBase):
         lazy="raise",
         uselist=False,
         primaryjoin=lambda: orm.foreign(WorkflowNodeExecutionOffload.file_id) == UploadFile.id,
-        init=False
+        init=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default_factory=naive_utc_now, server_default=func.current_timestamp()
