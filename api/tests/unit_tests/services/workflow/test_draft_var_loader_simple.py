@@ -39,11 +39,7 @@ class TestDraftVarLoaderSimple:
         upload_file = Mock(spec=UploadFile)
         upload_file.key = "storage/key/test.txt"
 
-        variable_file = WorkflowDraftVariableFile(
-      value_type = SegmentType.STRING
-      ,upload_file = upload_file
-
-        )
+        variable_file = WorkflowDraftVariableFile(value_type=SegmentType.STRING, upload_file=upload_file)
 
         draft_var = Mock(spec=WorkflowDraftVariable)
         draft_var.id = "draft-var-id"
@@ -147,11 +143,7 @@ class TestDraftVarLoaderSimple:
         upload_file = Mock(spec=UploadFile)
         upload_file.key = "storage/key/test_number.json"
 
-        variable_file = WorkflowDraftVariableFile(
-
-    value_type = SegmentType.NUMBER
-    ,upload_file = upload_file
-        )
+        variable_file = WorkflowDraftVariableFile(value_type=SegmentType.NUMBER, upload_file=upload_file)
 
         draft_var = Mock(spec=WorkflowDraftVariable)
         draft_var.id = "draft-var-id"
@@ -234,12 +226,11 @@ class TestDraftVarLoaderSimple:
         variable_file.upload_file = upload_file
 
         draft_var = WorkflowDraftVariable(
-
-    id = "draft-var-id"
-    ,app_id = "app-1"
-    ,node_id = "test-node-id"
-    ,name = "test_file"
-    ,description = "test file description"
+            id="draft-var-id",
+            app_id="app-1",
+            node_id="test-node-id",
+            name="test_file",
+            description="test file description",
         )
         draft_var._set_selector(["test-node-id", "test_file"])
         draft_var.variable_file = variable_file

@@ -1,7 +1,7 @@
 import uuid
 from collections import OrderedDict
 from typing import Any, NamedTuple
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask_restx import marshal
@@ -30,15 +30,10 @@ class TestWorkflowDraftVariableFields:
         """Test that _serialize_full_content uses pre-loaded relationships."""
         # Create mock objects with relationships pre-loaded
         mock_variable = WorkflowDraftVariable(
-
-       file_id = "test-file-id"
-       ,variable_file = WorkflowDraftVariableFile(
-
-    size = 100000
-    ,length = 50
-    ,value_type = SegmentType.OBJECT
-    ,upload_file_id = "test-upload-file-id"
-        )
+            file_id="test-file-id",
+            variable_file=WorkflowDraftVariableFile(
+                size=100000, length=50, value_type=SegmentType.OBJECT, upload_file_id="test-upload-file-id"
+            ),
         )
 
         # Mock the file helpers
