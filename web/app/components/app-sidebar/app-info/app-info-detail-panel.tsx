@@ -13,7 +13,7 @@ import {
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
+import CardView from '@/app/(console)/app/(appDetailLayout)/[appId]/overview/card-view'
 import ContentDialog from '@/app/components/base/content-dialog'
 import { AppModeEnum } from '@/types/app'
 import AppIcon from '../../base/app-icon'

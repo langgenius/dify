@@ -19,7 +19,7 @@ import { activateMember } from '@/service/common'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvitationCheck } from '@/service/use-common'
 import { timezones } from '@/utils/timezone'
-import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
+import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 
 type SelectOption = {
   value: string

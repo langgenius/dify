@@ -1,4 +1,4 @@
-import { buildSigninUrlWithRedirect } from '../base'
+import { buildSigninUrlWithRedirect, jumpTo } from '../base'
 
 vi.mock('@/utils/var', () => ({
   basePath: '/app',
@@ -64,5 +64,41 @@ describe('buildSigninUrlWithRedirect', () => {
 
     const url = buildSigninUrlWithRedirect()
     expect(url).toBe('https://example.com/app/signin')
+  })
+
+  it('should not navigate when target URL fully matches current URL', () => {
+    Object.defineProperty(globalThis, 'location', {
+      value: {
+        origin: 'https://example.com',
+        pathname: '/app/signin',
+        search: '',
+        hash: '',
+        href: 'https://example.com/app/signin',
+      },
+      writable: true,
+      configurable: true,
+    })
+
+    jumpTo('https://example.com/app/signin')
+
+    expect(globalThis.location.href).toBe('https://example.com/app/signin')
+  })
+
+  it('should normalize signin query variants by navigating to the plain signin URL', () => {
+    Object.defineProperty(globalThis, 'location', {
+      value: {
+        origin: 'https://example.com',
+        pathname: '/app/signin',
+        search: '?step=next',
+        hash: '',
+        href: 'https://example.com/app/signin?step=next',
+      },
+      writable: true,
+      configurable: true,
+    })
+
+    jumpTo('https://example.com/app/signin')
+
+    expect(globalThis.location.href).toBe('https://example.com/app/signin')
   })
 })

@@ -4,7 +4,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 
 import useDocumentTitle from '@/hooks/use-document-title'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import Header from './_header'
+import Header from '@/app/signin/_header'
 
 export default function SignInLayout({ children }: any) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

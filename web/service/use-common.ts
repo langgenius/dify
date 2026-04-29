@@ -88,7 +88,7 @@ type UserProfileWithMeta = {
  * express the `x-version` / `x-env` response headers we post-process.
  *
  * Bindings:
- *   commonLayout -> `useSuspenseQuery(userProfileQueryOptions())`
+ *   console layout -> `useSuspenseQuery(userProfileQueryOptions())`
  *   signin/oauth -> `useQuery({ ...userProfileQueryOptions(), throwOnError: err => !isLegacyBase401(err) })`
  *
  * `silent: true` + `retry: !isLegacyBase401` makes 401 a synchronous *state* (no toast,
@@ -236,7 +236,7 @@ export const useLogout = () => {
     onSuccess: () => {
       // Drop all cached queries so the post-logout /signin probe doesn't read
       // the previous user's profile (the userProfile queryKey is shared with
-      // the (commonLayout) tree, which keeps observing it during React's
+      // the (console) tree, which keeps observing it during React's
       // concurrent transition — gcTime: 0 is not enough on its own).
       // Nuclear over targeted: every new user-scoped query would otherwise
       // need to be remembered here. systemFeatures (user-agnostic) just

@@ -131,16 +131,24 @@ export type IOtherOptions = {
   onDataSourceNodeError?: IOnDataSourceNodeError
 }
 
-function jumpTo(url: string) {
+export function jumpTo(url: string) {
   if (!url)
     return
-  const targetPath = new URL(url, globalThis.location.origin).pathname
-  if (targetPath === globalThis.location.pathname)
+  const targetUrl = new URL(url, globalThis.location.origin)
+  const currentUrl = new URL(globalThis.location.href)
+  const targetPath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`
+  const currentPath = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
+  if (targetPath === currentPath)
     return
   globalThis.location.href = url
 }
 
 const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
+
+const isCurrentPlainSigninUrl = () => {
+  const currentUrl = new URL(globalThis.location.href)
+  return currentUrl.pathname === `${basePath}/signin` && !currentUrl.search && !currentUrl.hash
+}
 
 export const buildSigninUrlWithRedirect = (): string => {
   const loginUrl = `${globalThis.location.origin}${basePath}/signin`
@@ -808,7 +816,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
-      if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
+      if (!isCurrentPlainSigninUrl() || !IS_CE_EDITION) {
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }

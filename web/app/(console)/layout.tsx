@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import * as React from 'react'
-import { AppInitializer } from '@/app/components/app-initializer'
 import InSiteMessageNotification from '@/app/components/app/in-site-message/notification'
 import GA, { GaType } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
+import { ConsoleRouteGuard } from '@/app/components/console-route-guard'
 import { GotoAnything } from '@/app/components/goto-anything'
 import Header from '@/app/components/header'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
@@ -19,7 +19,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
   return (
     <>
       <GA gaType={GaType.admin} />
-      <AppInitializer>
+      <ConsoleRouteGuard>
         <AppContextProvider>
           <EventEmitterContextProvider>
             <ProviderContextProvider>
@@ -39,7 +39,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
           </EventEmitterContextProvider>
         </AppContextProvider>
         <Zendesk />
-      </AppInitializer>
+      </ConsoleRouteGuard>
     </>
   )
 }

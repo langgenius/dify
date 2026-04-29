@@ -12,7 +12,8 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode } from '@/service/common'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../components/signin/countdown'
+import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -38,7 +39,7 @@ export default function CheckCode() {
       const res = await sendResetPasswordCode(email, locale)
       if (res.result === 'success') {
         localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
-        const params = new URLSearchParams(searchParams)
+        const params = createAuthSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
         params.set('email', encodeURIComponent(email))
         router.push(`/reset-password/check-code?${params.toString()}`)

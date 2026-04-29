@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 
-import CheckCode from '@/app/(shareLayout)/webapp-signin/check-code/page'
-import MailAndPasswordAuth from '@/app/(shareLayout)/webapp-signin/components/mail-and-password-auth'
+import CheckCode from '@/app/(share)/webapp-signin/check-code/page'
+import MailAndPasswordAuth from '@/app/(share)/webapp-signin/components/mail-and-password-auth'
 
 const replaceMock = vi.fn()
 const backMock = vi.fn()

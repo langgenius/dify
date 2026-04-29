@@ -1,16 +1,15 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IS_CE_EDITION } from '@/config'
 import Link from '@/next/link'
-import { useRouter, useSearchParams } from '@/next/navigation'
+import { useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
 import { LicenseStatus } from '@/types/feature'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -18,25 +17,14 @@ import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import Split from './split'
-import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 
 const NormalForm = () => {
   const { t } = useTranslation()
-  const router = useRouter()
   const searchParams = useSearchParams()
-  // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
-  // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
-  // prevents the redirect loop on 401.
-  const { isPending: isCheckLoading, data: userResp, error: probeError } = useQuery({
-    ...userProfileQueryOptions(),
-    throwOnError: err => !isLegacyBase401(err),
-  })
-  const isLoggedIn = !!userResp && !probeError
   const message = decodeURIComponent(searchParams.get('message') || '')
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isInitCheckLoading, setInitCheckLoading] = useState(true)
-  const [isRedirecting, setIsRedirecting] = useState(false)
-  const isLoading = isCheckLoading || isInitCheckLoading || isRedirecting
+  const isLoading = isInitCheckLoading
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
@@ -47,13 +35,6 @@ const NormalForm = () => {
 
   const init = useCallback(async () => {
     try {
-      if (isLoggedIn) {
-        setIsRedirecting(true)
-        const redirectUrl = resolvePostLoginRedirect(searchParams)
-        router.replace(redirectUrl || '/apps')
-        return
-      }
-
       if (message) {
         toast.error(message)
       }
@@ -75,7 +56,7 @@ const NormalForm = () => {
       setAllMethodsAreDisabled(true)
     }
     finally { setInitCheckLoading(false) }
-  }, [isLoggedIn, message, router, invite_token, isInviteLink, systemFeatures])
+  }, [message, invite_token, isInviteLink, systemFeatures])
   useEffect(() => {
     init()
   }, [init])

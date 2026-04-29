@@ -10,7 +10,7 @@ import type {
   TencentConfig,
   TracingProvider,
   WeaveConfig,
-} from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
+} from '@/app/(console)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type { Dependency } from '@/app/components/plugins/types'
 import type { App, AppModeEnum, SiteConfig } from '@/types/app'
 

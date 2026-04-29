@@ -9,6 +9,7 @@ import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 import { useMailValidity, useSendMail } from '@/service/use-common'
 
 export default function CheckCode() {
@@ -36,7 +37,7 @@ export default function CheckCode() {
       setIsLoading(true)
       const res = await verifyCode({ email, code, token })
       if ((res as MailValidityResponse).is_valid) {
-        const params = new URLSearchParams(searchParams)
+        const params = createAuthSearchParams(searchParams)
         params.set('token', encodeURIComponent((res as MailValidityResponse).token))
         router.push(`/signup/set-password?${params.toString()}`)
       }
@@ -54,7 +55,7 @@ export default function CheckCode() {
     try {
       const res = await submitMail({ email, language: locale })
       if ((res as MailSendResponse).result === 'success') {
-        const params = new URLSearchParams(searchParams)
+        const params = createAuthSearchParams(searchParams)
         const newToken = (res as MailSendResponse)?.data
         params.set('token', encodeURIComponent(newToken))
         setToken(newToken)

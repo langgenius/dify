@@ -9,6 +9,7 @@ import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendEMailLoginCode } from '@/service/common'
+import { createAuthSearchParams } from '../utils/post-login-redirect'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean
@@ -38,7 +39,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
       const ret = await sendEMailLoginCode(email, locale)
       if (ret.result === 'success') {
         localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
-        const params = new URLSearchParams(searchParams)
+        const params = createAuthSearchParams(searchParams)
         params.set('email', encodeURIComponent(email))
         params.set('token', encodeURIComponent(ret.data))
         router.push(`/signin/check-code?${params.toString()}`)

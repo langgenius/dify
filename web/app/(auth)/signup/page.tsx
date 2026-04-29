@@ -2,7 +2,8 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import MailForm from './components/input-mail'
+import MailForm from '@/app/signup/components/input-mail'
+import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 
 const Signup = () => {
   const router = useRouter()
@@ -10,7 +11,7 @@ const Signup = () => {
   const { t } = useTranslation()
 
   const handleInputMailSubmitted = useCallback((email: string, result: string) => {
-    const params = new URLSearchParams(searchParams)
+    const params = createAuthSearchParams(searchParams)
     params.set('token', encodeURIComponent(result))
     params.set('email', encodeURIComponent(email))
     router.push(`/signup/check-code?${params.toString()}`)

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import * as React from 'react'
-import { AppInitializer } from '@/app/components/app-initializer'
 import GA, { GaType } from '@/app/components/base/ga'
+import { ConsoleRouteGuard } from '@/app/components/console-route-guard'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
 import { AppContextProvider } from '@/context/app-context-provider'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
@@ -13,7 +13,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
   return (
     <>
       <GA gaType={GaType.admin} />
-      <AppInitializer>
+      <ConsoleRouteGuard>
         <AppContextProvider>
           <EventEmitterContextProvider>
             <ProviderContextProvider>
@@ -28,7 +28,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
             </ProviderContextProvider>
           </EventEmitterContextProvider>
         </AppContextProvider>
-      </AppInitializer>
+      </ConsoleRouteGuard>
     </>
   )
 }

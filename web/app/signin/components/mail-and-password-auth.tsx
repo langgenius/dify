@@ -13,7 +13,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { login } from '@/service/common'
 import { setWebAppAccessToken } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
-import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
+import { createAuthSearchParams, resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -72,7 +72,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         })
 
         if (isInvite) {
-          router.replace(`/signin/invite-settings?${searchParams.toString()}`)
+          router.replace(`/signin/invite-settings?${createAuthSearchParams(searchParams).toString()}`)
         }
         else {
           const redirectUrl = resolvePostLoginRedirect(searchParams)

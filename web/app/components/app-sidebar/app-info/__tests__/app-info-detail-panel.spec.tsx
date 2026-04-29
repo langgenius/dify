@@ -29,7 +29,7 @@ vi.mock('@/app/components/base/content-dialog', () => ({
   ),
 }))
 
-vi.mock('@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view', () => ({
+vi.mock('@/app/(console)/app/(appDetailLayout)/[appId]/overview/card-view', () => ({
   default: ({ appId }: { appId: string }) => (
     <div data-testid="card-view" data-app-id={appId} />
   ),

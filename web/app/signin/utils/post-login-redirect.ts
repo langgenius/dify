@@ -2,6 +2,20 @@ import type { ReadonlyURLSearchParams } from '@/next/navigation'
 
 const OAUTH_AUTHORIZE_PENDING_KEY = 'oauth_authorize_pending_redirect'
 const REDIRECT_URL_KEY = 'redirect_url'
+const AUTH_FLOW_SEARCH_PARAM_KEYS = [
+  'email',
+  'token',
+  'invite_token',
+  'invitation_code',
+  'message',
+  REDIRECT_URL_KEY,
+] as const
+const POST_LOGIN_REDIRECT_DENY_PATHS = [
+  '/signin',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+] as const
 
 type OAuthPendingRedirect = {
   value?: string
@@ -45,19 +59,56 @@ export function setOAuthPendingRedirect(url: string, ttlSeconds: number = 300) {
   catch {}
 }
 
+const getCurrentOrigin = () => {
+  if (typeof globalThis.location !== 'undefined')
+    return globalThis.location.origin
+  if (typeof window !== 'undefined')
+    return window.location.origin
+  return 'http://localhost'
+}
+
+export const sanitizePostLoginRedirect = (redirectUrl?: string | null) => {
+  if (!redirectUrl)
+    return null
+
+  try {
+    const url = new URL(redirectUrl, getCurrentOrigin())
+    if (url.origin !== getCurrentOrigin())
+      return null
+    if (POST_LOGIN_REDIRECT_DENY_PATHS.some(path => url.pathname === path || url.pathname.startsWith(`${path}/`)))
+      return null
+    return `${url.pathname}${url.search}${url.hash}`
+  }
+  catch {
+    return null
+  }
+}
+
+export const createAuthSearchParams = (searchParams?: URLSearchParams | ReadonlyURLSearchParams | null) => {
+  const params = new URLSearchParams()
+  if (!searchParams)
+    return params
+
+  AUTH_FLOW_SEARCH_PARAM_KEYS.forEach((key) => {
+    const values = searchParams.getAll(key)
+    values.forEach(value => params.append(key, value))
+  })
+  return params
+}
+
 export const resolvePostLoginRedirect = (searchParams?: ReadonlyURLSearchParams) => {
   if (searchParams) {
     const redirectUrl = searchParams.get(REDIRECT_URL_KEY)
     if (redirectUrl) {
       try {
         removeOAuthPendingRedirect()
-        return decodeURIComponent(redirectUrl)
+        return sanitizePostLoginRedirect(decodeURIComponent(redirectUrl))
       }
       catch {
         removeOAuthPendingRedirect()
-        return redirectUrl
+        return sanitizePostLoginRedirect(redirectUrl)
       }
     }
   }
-  return getOAuthPendingRedirect()
+  return sanitizePostLoginRedirect(getOAuthPendingRedirect())
 }

@@ -39,7 +39,7 @@
     - `t('form.retrievalSetting.title')`
 - server: i18n/server.ts
   - ns = filename (kebab-case) mapped to camelCase namespace
-  - ex: `app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/settings/page.tsx`
+  - ex: `app/(console)/datasets/(datasetDetailLayout)/[datasetId]/settings/page.tsx`
     - `const { t } = await getTranslation(locale, 'dataset-settings')`
     - `t('form.retrievalSetting.title')`
 

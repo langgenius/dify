@@ -8,6 +8,7 @@ import Loading from '@/app/components/base/loading'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useInvitationCheck } from '@/service/use-common'
+import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 
 const ActivateForm = () => {
   useDocumentTitle('')
@@ -33,7 +34,7 @@ const ActivateForm = () => {
 
   useEffect(() => {
     if (checkRes?.is_valid) {
-      const params = new URLSearchParams(searchParams)
+      const params = createAuthSearchParams(searchParams)
       const { email, workspace_id } = checkRes.data
       params.set('email', encodeURIComponent(email))
       params.set('workspace_id', encodeURIComponent(workspace_id))
