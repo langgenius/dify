@@ -13,7 +13,7 @@ from typing_extensions import override
 
 from agenton.layers.base import LayerDeps
 from agenton.layers.types import PydanticAILayer, PydanticAIPrompt, PydanticAITool
-from agenton_collections.plain.basic import ObjectLayer
+from agenton_collections.layers.plain.basic import ObjectLayer
 
 type PydanticAIPrompts[ObjectT] = PydanticAIPrompt[ObjectT] | Sequence[PydanticAIPrompt[ObjectT]]
 

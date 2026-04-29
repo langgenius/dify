@@ -1,7 +1,7 @@
 """Reusable collection layers for the plain layer family."""
 
-from agenton_collections.plain.basic import ObjectLayer, PromptLayer, ToolsLayer
-from agenton_collections.plain.dynamic_tools import (
+from agenton_collections.layers.plain.basic import ObjectLayer, PromptLayer, ToolsLayer
+from agenton_collections.layers.plain.dynamic_tools import (
     DynamicToolsLayer,
     DynamicToolsLayerDeps,
     with_object,

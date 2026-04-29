@@ -23,7 +23,7 @@ from typing import (
 
 from agenton.layers.base import LayerDeps
 from agenton.layers.types import PlainLayer
-from agenton_collections.plain.basic import ObjectLayer
+from agenton_collections.layers.plain.basic import ObjectLayer
 
 type _ObjectToolCallable[ObjectT] = Callable[Concatenate[ObjectT, ...], Any]
 

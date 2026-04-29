@@ -1,6 +1,6 @@
 """Reusable collection layers for the pydantic-ai layer family."""
 
-from agenton_collections.pydantic_ai.bridge import (
+from agenton_collections.layers.pydantic_ai.bridge import (
     PydanticAIBridgeLayer,
     PydanticAIBridgeLayerDeps,
     PydanticAIPrompts,

@@ -14,12 +14,12 @@ from agenton.layers.types import (
     PydanticAIPrompt,
     PydanticAITool,
 )
-from agenton_collections.pydantic_ai import (
+from agenton_collections.layers.pydantic_ai import (
     PydanticAIBridgeLayer,
     PydanticAIBridgeLayerDeps,
     PydanticAIPrompts,
 )
-from agenton_collections.plain import (
+from agenton_collections.layers.plain import (
     DynamicToolsLayer,
     DynamicToolsLayerDeps,
     ObjectLayer,
