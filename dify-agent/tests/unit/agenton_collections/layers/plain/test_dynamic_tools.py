@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from pydantic_ai import Tool
 
-from agenton_collections.plain import DynamicToolsLayer, ObjectLayer, with_object
+from agenton_collections.layers.plain import DynamicToolsLayer, ObjectLayer, with_object
 
 
 class Profile:
