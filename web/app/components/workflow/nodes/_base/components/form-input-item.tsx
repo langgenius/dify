@@ -61,6 +61,16 @@ type Props = {
 
 type FormInputValue = string | number | boolean | string[] | Record<string, unknown> | null | undefined
 
+const normalizeDynamicTreeSelectValue = (rawValue: unknown): string[] => {
+  if (Array.isArray(rawValue))
+    return rawValue.filter(item => typeof item === 'string')
+
+  if (typeof rawValue === 'string' && rawValue)
+    return [rawValue]
+
+  return []
+}
+
 const filterVisibleTreeOptions = (options: FormOption[], values: ResourceVarInputs): FormOption[] => {
   return options.reduce<FormOption[]>((acc, option) => {
     const isVisible = !option.show_on?.length || option.show_on.every(
@@ -443,7 +453,8 @@ const FormInputItem: FC<Props> = ({
         <DynamicTreeSelectField
           disabled={readOnly}
           isLoading={isLoadingOptions}
-          value={typeof varInput?.value === 'string' ? varInput.value : undefined}
+          multiple={isMultipleSelect}
+          value={normalizeDynamicTreeSelectValue(varInput?.value)}
           options={visibleDynamicTreeOptions}
           onChange={handleValueChange}
           placeholder={placeholder?.[language] || placeholder?.en_US || t('dynamicTreeSelect.placeholder', { ns: 'common' })}

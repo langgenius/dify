@@ -16,10 +16,11 @@ type Props = {
   disabled?: boolean
   isLoading?: boolean
   language: string
-  onChange: (value: string) => void
+  multiple?: boolean
+  onChange: (value: string[]) => void
   options: FormOption[]
   placeholder?: string
-  value?: string
+  value?: string[]
 }
 
 type TreeOption = FormOption & {
@@ -30,9 +31,7 @@ const getOptionLabel = (option: TreeOption, language: string) => {
   return option.label?.[language] || option.label?.en_US || option.value
 }
 
-const findNodeByValue = (options: TreeOption[], value?: string): TreeOption | undefined => {
-  if (!value)
-    return undefined
+const findNodeByValue = (options: TreeOption[], value: string): TreeOption | undefined => {
   for (const option of options) {
     if (option.value === value)
       return option
@@ -56,13 +55,36 @@ const collectExpandableValues = (options: TreeOption[]): string[] => {
   return values
 }
 
+const normalizeValues = (value?: string[]) => {
+  if (!value?.length)
+    return []
+  return [...new Set(value.filter(item => typeof item === 'string' && item))]
+}
+
+const getTriggerText = (values: string[], options: TreeOption[], language: string, placeholder?: string) => {
+  if (!values.length)
+    return placeholder
+
+  const selectedNodes = values
+    .map(value => findNodeByValue(options, value))
+    .filter((node): node is TreeOption => !!node)
+
+  if (!selectedNodes.length)
+    return placeholder
+
+  if (selectedNodes.length <= 2)
+    return selectedNodes.map(option => getOptionLabel(option, language)).join(', ')
+
+  return `${selectedNodes.length} selected`
+}
+
 type TreeNodeProps = {
   expandedValues: Set<string>
   language: string
   level: number
   onSelect: (value: string) => void
   option: TreeOption
-  selectedValue?: string
+  selectedValues: Set<string>
   toggleExpand: (value: string) => void
 }
 
@@ -72,12 +94,12 @@ const TreeNode: FC<TreeNodeProps> = ({
   level,
   onSelect,
   option,
-  selectedValue,
+  selectedValues,
   toggleExpand,
 }) => {
   const hasChildren = !!option.children?.length
   const isExpanded = expandedValues.has(option.value)
-  const isSelected = selectedValue === option.value
+  const isSelected = selectedValues.has(option.value)
   const label = getOptionLabel(option, language)
 
   return (
@@ -117,7 +139,7 @@ const TreeNode: FC<TreeNodeProps> = ({
           level={level + 1}
           onSelect={onSelect}
           option={child}
-          selectedValue={selectedValue}
+          selectedValues={selectedValues}
           toggleExpand={toggleExpand}
         />
       ))}
@@ -129,6 +151,7 @@ const DynamicTreeSelectField: FC<Props> = ({
   disabled = false,
   isLoading = false,
   language,
+  multiple = false,
   onChange,
   options,
   placeholder,
@@ -139,14 +162,14 @@ const DynamicTreeSelectField: FC<Props> = ({
   const [expandedValues, setExpandedValues] = useState<Set<string>>(
     () => new Set(collectExpandableValues(options)),
   )
+  const selectedValues = useMemo(() => normalizeValues(value), [value])
+  const selectedValueSet = useMemo(() => new Set(selectedValues), [selectedValues])
+  const triggerText = useMemo(() => {
+    if (isLoading)
+      return t('dynamicTreeSelect.loading', { ns: 'common' })
 
-  const selectedNode = useMemo(
-    () => findNodeByValue(options, value),
-    [options, value],
-  )
-  const triggerText = selectedNode
-    ? getOptionLabel(selectedNode, language)
-    : (isLoading ? t('dynamicTreeSelect.loading', { ns: 'common' }) : placeholder)
+    return getTriggerText(selectedValues, options, language, placeholder)
+  }, [isLoading, language, options, placeholder, selectedValues, t])
 
   const toggleExpand = (optionValue: string) => {
     setExpandedValues((prev) => {
@@ -160,7 +183,15 @@ const DynamicTreeSelectField: FC<Props> = ({
   }
 
   const handleSelect = (nextValue: string) => {
-    onChange(nextValue)
+    if (multiple) {
+      if (selectedValueSet.has(nextValue))
+        onChange(selectedValues.filter(item => item !== nextValue))
+      else
+        onChange([...selectedValues, nextValue])
+      return
+    }
+
+    onChange([nextValue])
     setIsOpen(false)
   }
 
@@ -172,7 +203,7 @@ const DynamicTreeSelectField: FC<Props> = ({
           className={cn(
             'h-8 grow rounded-lg bg-components-input-bg-normal px-3 text-left system-sm-regular',
             'text-components-input-text-placeholder hover:bg-state-base-hover-alt',
-            selectedNode && 'text-components-input-text-filled',
+            selectedValues.length > 0 && 'text-components-input-text-filled',
           )}
           disabled={disabled || isLoading}
         >
@@ -197,7 +228,7 @@ const DynamicTreeSelectField: FC<Props> = ({
             level={0}
             onSelect={handleSelect}
             option={option}
-            selectedValue={value}
+            selectedValues={selectedValueSet}
             toggleExpand={toggleExpand}
           />
         ))}

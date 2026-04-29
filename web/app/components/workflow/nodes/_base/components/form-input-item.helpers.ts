@@ -112,7 +112,7 @@ export const getFormInputState = (
   const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
-  const isMultipleSelect = multiple && (isSelect || isDynamicSelect)
+  const isMultipleSelect = multiple && (isSelect || isDynamicSelect || isDynamicTreeSelect)
 
   return {
     defaultValue,
