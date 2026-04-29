@@ -277,7 +277,7 @@ class TestExtractFilename:
     def test_malformed_percent_encoding_safe_fallback(self):
         """Test that malformed percent-encoding is handled safely."""
         result = extract_filename("http://example.com/path/file%20name%GG.txt?x=1", None)
-# %GG is invalid, should be replaced with replacement character
+        # %GG is invalid, should be replaced with replacement character
 
         assert "file" in result
         assert ".txt" in result
