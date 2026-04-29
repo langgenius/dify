@@ -123,23 +123,23 @@ class Example:
 
 - Work in TDD style: write or update a failing test first when changing behavior, then make the implementation pass, then refactor while keeping tests and typecheck green.
 - Use `make test` to run the agent pytest suite.
-- Keep unit tests under `dify-agent/tests/unit/`.
-- Mirror the `dify-agent/src/` package structure inside `dify-agent/tests/unit/` so test locations stay predictable.
+- Keep local tests under `dify-agent/tests/local/`.
+- Mirror the `dify-agent/src/` package structure inside `dify-agent/tests/local/` so test locations stay predictable.
 
-#### Unit Tests
+#### Local Tests
 
-- Write unit tests only for stable, externally observable behavior.
-- In this repo, code, comments, docs, and tests are expected to change together. Because of that, a unit test is only useful if it would still be correct after an internal refactor that does not change the intended contract.
-- Unit tests should verify:
+- Write local tests for stable, externally observable behavior that can run quickly without real external services.
+- In this repo, code, comments, docs, and tests are expected to change together. Because of that, a local test is only useful if it would still be correct after an internal refactor that does not change the intended contract.
+- Local tests should verify:
   - what callers and downstream code can observe and rely on
   - how the unit is expected to use its dependencies at the boundary
   - how the unit handles dependency success, failure, empty responses, malformed responses, and documented error cases
   - documented invariants, error mapping, and output/input shape guarantees
 - When asserting dependency interactions, assert only the parts of the request or response that are part of the real boundary contract. Do not over-specify incidental details that callers or dependencies do not rely on.
-- It is acceptable to mock dependencies in unit tests, but only when the mock represents a real contract, schema, documented behavior, or known regression.
+- It is acceptable to mock dependencies in local tests, but only when the mock represents a real contract, schema, documented behavior, or known regression.
 - Tests may use line-scoped type-ignore comments when intentionally exercising runtime validation paths that static typing would normally reject. Keep the ignore on the exact invalid call.
-- Do not use unit tests to prove real integration, network wiring, serialization, framework configuration, or third-party runtime behavior; cover those in higher-level tests.
-- Meaningless unit tests include:
+- Do not use local tests to prove real integration, network wiring, serialization, framework configuration, or third-party runtime behavior; cover those in higher-level tests.
+- Meaningless local tests include:
   - tests that only mirror the current implementation or must be updated whenever internal code changes even though the contract did not change
   - tests of private helpers, local variables, temporary state, internal branching, or exact internal call order unless those details are part of the published contract
   - tests with mocked dependency behavior that is invented only to make the current implementation pass
