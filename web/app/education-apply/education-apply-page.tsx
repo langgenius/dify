@@ -160,19 +160,22 @@ const EducationApplyAgeContent = () => {
     if (appliedEducationCase === AppliedEducationCase.activeSubscription) {
       return (
         <div className="flex flex-col items-start gap-3">
-          <div className="system-md-regular text-text-secondary">
-            <span>
-              {t('applied.activeSubscription.description', { ns: 'education' })}
-            </span>
-            {' '}
-            <button
-              type="button"
-              className="text-text-accent hover:underline disabled:cursor-not-allowed disabled:text-text-disabled"
-              onClick={handleOpenBillingPortal}
-              disabled={isOpeningBillingPortal}
-            >
-              {t('applied.activeSubscription.stripeLink', { ns: 'education' })}
-            </button>
+          <div className="flex items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
+            <span className="mt-0.5 mr-2 i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning-secondary" />
+            <div className="system-md-regular text-text-warning">
+              <span>
+                {t('applied.activeSubscription.description', { ns: 'education' })}
+              </span>
+              {' '}
+              <button
+                type="button"
+                className="text-text-accent hover:underline disabled:cursor-not-allowed disabled:text-text-disabled"
+                onClick={handleOpenBillingPortal}
+                disabled={isOpeningBillingPortal}
+              >
+                {t('applied.activeSubscription.stripeLink', { ns: 'education' })}
+              </button>
+            </div>
           </div>
           {renderBackToDifyButton()}
         </div>
