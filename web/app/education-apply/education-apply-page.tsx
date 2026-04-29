@@ -1,5 +1,8 @@
 'use client'
 
+import type { ReactNode } from 'react'
+import type { Plan as PlanType } from '@/app/components/billing/type'
+import type { ICurrentWorkspace } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
@@ -15,6 +18,7 @@ import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
+import { WorkspaceProvider } from '@/context/workspace-context-provider'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import {
   useRouter,
@@ -39,7 +43,7 @@ const AppliedEducationCase = {
   noPaymentPermission: 'noPaymentPermission',
 } as const
 
-const EducationApplyAge = () => {
+const EducationApplyAgeContent = () => {
   const { t } = useTranslation()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState('Student')
@@ -53,7 +57,6 @@ const EducationApplyAge = () => {
   const [modalShow, setModalShow] = useState<undefined | { title: string, desc: string, confirmText?: string, onConfirm?: () => void }>(undefined)
   const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
   const { currentWorkspace } = useAppContext()
-  const { workspaces } = useWorkspacesContext()
   const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
@@ -210,8 +213,7 @@ const EducationApplyAge = () => {
           {isEducationAccount
             ? (
                 <div className="flex">
-                  <AppliedEducationContent
-                    workspaces={workspaces}
+                  <AppliedEducationWorkspaceBlock
                     currentWorkspace={currentWorkspace}
                     plan={plan.type}
                     action={renderAppliedEducationAction()}
@@ -305,6 +307,42 @@ const EducationApplyAge = () => {
     </div>
   )
 }
+
+type AppliedEducationWorkspaceBlockProps = {
+  currentWorkspace: ICurrentWorkspace
+  plan: PlanType
+  action: ReactNode
+  onSwitchWorkspace: (tenantId: string) => void
+}
+
+function AppliedEducationWorkspaceContent({
+  currentWorkspace,
+  plan,
+  action,
+  onSwitchWorkspace,
+}: AppliedEducationWorkspaceBlockProps) {
+  const { workspaces } = useWorkspacesContext()
+
+  return (
+    <AppliedEducationContent
+      workspaces={workspaces}
+      currentWorkspace={currentWorkspace}
+      plan={plan}
+      action={action}
+      onSwitchWorkspace={onSwitchWorkspace}
+    />
+  )
+}
+
+function AppliedEducationWorkspaceBlock(props: AppliedEducationWorkspaceBlockProps) {
+  return (
+    <WorkspaceProvider>
+      <AppliedEducationWorkspaceContent {...props} />
+    </WorkspaceProvider>
+  )
+}
+
+const EducationApplyAge = () => <EducationApplyAgeContent />
 
 export default EducationApplyAge
 
