@@ -1149,7 +1149,6 @@ class WorkflowNodeExecutionOffload(TypeBase):
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
-
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
 
@@ -1184,7 +1183,9 @@ class WorkflowNodeExecutionOffload(TypeBase):
         foreign_keys=[node_execution_id],
         lazy="raise",
         uselist=False,
-        primaryjoin=lambda: orm.foreign(WorkflowNodeExecutionOffload.node_execution_id) == WorkflowNodeExecutionModel.id,
+        primaryjoin=lambda: (
+            orm.foreign(WorkflowNodeExecutionOffload.node_execution_id) == WorkflowNodeExecutionModel.id
+        ),
         back_populates="offload_data",
     )
 
