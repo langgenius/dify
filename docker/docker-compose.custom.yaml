@@ -1,0 +1,201 @@
+# docker-compose.custom.yaml
+#
+# 精簡版 Dify 啟動組合，僅包含實際需要的服務：
+#   外部依賴：PostgreSQL + Redis（sacahan-network）
+#   向量資料庫：pgvector（使用現有 PostgreSQL）
+#   檔案儲存：本地（容器內）
+#   包含：api、worker、worker_beat、web、nginx、sandbox、ssrf_proxy、plugin_daemon
+#
+# 啟動方式（在 docker/ 目錄下執行）：
+#   docker compose -f docker-compose.custom.yaml --env-file .env.custom up -d
+
+name: dify
+
+networks:
+  default:
+  ssrf_proxy_network:
+    internal: true
+  sacahan-network:
+    external: true
+    name: sacahan-network
+
+services:
+
+  # 一次性初始化：設定 storage 目錄的檔案權限
+  init_permissions:
+    image: busybox:latest
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - |
+        FLAG_FILE="/app/api/storage/.init_permissions"
+        if [ -f "$${FLAG_FILE}" ]; then
+          echo "已初始化，略過。"
+          exit 0
+        fi
+        chown -R 1001:1001 /app/api/storage && touch "$${FLAG_FILE}"
+        echo "初始化完成。"
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+
+  # API 服務
+  api:
+    image: langgenius/dify-api:1.13.3
+    restart: always
+    env_file: .env.custom
+    environment:
+      MODE: api
+      PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+      PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+    depends_on:
+      init_permissions:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - default
+      - ssrf_proxy_network
+      - sacahan-network
+
+  # Celery Worker（處理所有任務佇列）
+  worker:
+    image: langgenius/dify-api:1.13.3
+    restart: always
+    env_file: .env.custom
+    environment:
+      MODE: worker
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+    depends_on:
+      init_permissions:
+        condition: service_completed_successfully
+    networks:
+      - default
+      - ssrf_proxy_network
+      - sacahan-network
+
+  # Celery Beat（排程週期性任務）
+  worker_beat:
+    image: langgenius/dify-api:1.13.3
+    restart: always
+    env_file: .env.custom
+    environment:
+      MODE: beat
+    depends_on:
+      init_permissions:
+        condition: service_completed_successfully
+    networks:
+      - default
+      - ssrf_proxy_network
+      - sacahan-network
+
+  # 前端 Web 應用
+  web:
+    image: langgenius/dify-web:1.13.3
+    restart: always
+    env_file: .env.custom
+
+  # Nginx 反向代理（對外入口）
+  nginx:
+    image: nginx:latest
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
+      - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
+      - ./nginx/https.conf.template:/etc/nginx/https.conf.template
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+      - ./nginx/ssl:/etc/ssl
+    entrypoint:
+      - sh
+      - -c
+      - "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"
+    env_file: .env.custom
+    depends_on:
+      - api
+      - web
+    ports:
+      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
+
+  # Sandbox（程式碼執行節點）
+  sandbox:
+    image: langgenius/dify-sandbox:0.2.14
+    restart: always
+    environment:
+      API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
+      GIN_MODE: ${SANDBOX_GIN_MODE:-release}
+      WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
+      ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-true}
+      HTTP_PROXY: http://ssrf_proxy:3128
+      HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+    volumes:
+      - ./volumes/sandbox/dependencies:/dependencies
+      - ./volumes/sandbox/conf:/conf
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8194/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - ssrf_proxy_network
+
+  # SSRF Proxy（防止 SSRF 攻擊的安全代理）
+  ssrf_proxy:
+    image: ubuntu/squid:latest
+    restart: always
+    volumes:
+      - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
+      - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+    entrypoint:
+      - sh
+      - -c
+      - "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"
+    environment:
+      HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
+      COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+      REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
+      SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
+      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+    networks:
+      - ssrf_proxy_network
+      - default
+
+  # Plugin Daemon（外掛執行環境）
+  plugin_daemon:
+    image: langgenius/dify-plugin-daemon:0.5.3-local
+    restart: always
+    env_file: .env.custom
+    environment:
+      DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
+      DB_SSL_MODE: ${DB_SSL_MODE:-disable}
+      SERVER_PORT: ${PLUGIN_DAEMON_PORT:-5002}
+      SERVER_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
+      MAX_PLUGIN_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+      DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+      DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+      PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
+      PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
+      PLUGIN_WORKING_PATH: ${PLUGIN_WORKING_PATH:-/app/storage/cwd}
+      FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
+      PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
+      PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
+      PLUGIN_STORAGE_TYPE: ${PLUGIN_STORAGE_TYPE:-local}
+      PLUGIN_STORAGE_LOCAL_ROOT: ${PLUGIN_STORAGE_LOCAL_ROOT:-/app/storage}
+      PLUGIN_INSTALLED_PATH: ${PLUGIN_INSTALLED_PATH:-plugin}
+      PLUGIN_PACKAGE_CACHE_PATH: ${PLUGIN_PACKAGE_CACHE_PATH:-plugin_packages}
+      PLUGIN_MEDIA_CACHE_PATH: ${PLUGIN_MEDIA_CACHE_PATH:-assets}
+    ports:
+      - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
+    volumes:
+      - ./volumes/plugin_daemon:/app/storage
+    networks:
+      - default
+      - sacahan-network
