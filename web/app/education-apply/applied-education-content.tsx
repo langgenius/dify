@@ -82,7 +82,7 @@ const AppliedEducationContent = ({
           </SelectTrigger>
           <WorkplaceSelectorContent workspaces={workspaces} />
         </Select>
-        <div className="mt-2 border-t border-divider-subtle">
+        <div className="mt-2">
           {action}
         </div>
       </div>
