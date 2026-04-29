@@ -83,12 +83,11 @@ vi.mock('@/app/components/base/drawer-plus', () => ({
   },
 }))
 
-// Mock EmojiPicker - simplified for testing
-vi.mock('@/app/components/base/emoji-picker', () => ({
-  default: ({ onSelect, onClose }: { onSelect: (icon: string, background: string) => void, onClose: () => void }) => (
+// Mock EmojiPickerInner - simplified for testing
+vi.mock('@/app/components/base/emoji-picker/Inner', () => ({
+  default: ({ onSelect }: { onSelect: (icon: string, background: string) => void }) => (
     <div data-testid="emoji-picker">
       <button data-testid="select-emoji" onClick={() => onSelect('🚀', '#f0f0f0')}>Select Emoji</button>
-      <button data-testid="close-emoji-picker" onClick={onClose}>Close</button>
     </div>
   ),
 }))
@@ -978,6 +977,7 @@ describe('WorkflowToolAsModal', () => {
 
       // Select emoji
       await user.click(screen.getByTestId('select-emoji'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
 
       // Assert
       const updatedIcon = screen.getByTestId('app-icon')
@@ -1002,7 +1002,7 @@ describe('WorkflowToolAsModal', () => {
 
       expect(screen.getByTestId('emoji-picker'))!.toBeInTheDocument()
 
-      await user.click(screen.getByTestId('close-emoji-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
 
       // Assert
       // Assert

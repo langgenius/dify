@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MethodSelector from '../method-selector'
 
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
+
 // Test utilities
 const defaultProps: ComponentProps<typeof MethodSelector> = {
   value: 'llm',
@@ -137,6 +139,24 @@ describe('MethodSelector', () => {
       await user.click(formOption!)
 
       expect(onChange).toHaveBeenCalledWith('form')
+    })
+
+    it('should close dropdown after an option is clicked', async () => {
+      const user = userEvent.setup()
+      renderComponent({ value: 'llm' })
+
+      const trigger = screen.getByText('tools.createTool.toolInput.methodParameter')
+      await user.click(trigger)
+
+      await waitFor(() => {
+        expect(screen.getByText('tools.createTool.toolInput.methodSettingTip'))!.toBeInTheDocument()
+      })
+
+      await user.click(screen.getByText('tools.createTool.toolInput.methodSettingTip'))
+
+      await waitFor(() => {
+        expect(screen.queryByText('tools.createTool.toolInput.methodSettingTip')).not.toBeInTheDocument()
+      })
     })
 
     it('should toggle dropdown open state', async () => {
