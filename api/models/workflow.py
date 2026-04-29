@@ -1,3 +1,4 @@
+from __future__ import annotations
 import copy
 import json
 import logging
@@ -988,7 +989,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
 
     offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
         "WorkflowNodeExecutionOffload",
-        primaryjoin="WorkflowNodeExecutionModel.id == foreign(WorkflowNodeExecutionOffload.node_execution_id)",
+        primaryjoin=lambda: WorkflowNodeExecutionModel.id == orm.foreign(WorkflowNodeExecutionOffload.node_execution_id),
         uselist=True,
         lazy="raise",
         back_populates="execution",
@@ -1188,11 +1189,11 @@ class WorkflowNodeExecutionOffload(Base):
         foreign_keys=[node_execution_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowNodeExecutionOffload.node_execution_id == WorkflowNodeExecutionModel.id",
+        primaryjoin=lambda: WorkflowNodeExecutionOffload.node_execution_id ==  orm.foreign(WorkflowNodeExecutionModel.id),
         back_populates="offload_data",
     )
 
-    file: Mapped[Optional["UploadFile"]] = orm.relationship(
+    file: Mapped[Optional[UploadFile]] = orm.relationship(
         UploadFile,
         foreign_keys=[file_id],
         lazy="raise",
