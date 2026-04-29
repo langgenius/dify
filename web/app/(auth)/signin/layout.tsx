@@ -1,12 +1,18 @@
 'use client'
+import type { ReactNode } from 'react'
+
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 
+import Header from '@/app/signin/_header'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import Header from '@/app/signin/_header'
 
-export default function SignInLayout({ children }: any) {
+type SignInLayoutProps = {
+  children: ReactNode
+}
+
+export default function SignInLayout({ children }: SignInLayoutProps) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   useDocumentTitle('')
   return (

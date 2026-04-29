@@ -10,6 +10,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
+import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { LICENSE_LINK } from '@/constants/link'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
@@ -19,7 +20,6 @@ import { activateMember } from '@/service/common'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvitationCheck } from '@/service/use-common'
 import { timezones } from '@/utils/timezone'
-import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 
 type SelectOption = {
   value: string

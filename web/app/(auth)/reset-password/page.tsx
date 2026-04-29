@@ -6,14 +6,14 @@ import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
+import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode } from '@/service/common'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
-import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 
 export default function CheckCode() {
   const { t } = useTranslation()

@@ -1,9 +1,9 @@
 'use client'
 import { useEffect } from 'react'
 import RootLoading from '@/app/loading'
-import { useRouter, useSearchParams } from '@/next/navigation'
 import NormalForm from '@/app/signin/normal-form'
 import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
+import { useRouter, useSearchParams } from '@/next/navigation'
 
 const SignIn = () => {
   const router = useRouter()

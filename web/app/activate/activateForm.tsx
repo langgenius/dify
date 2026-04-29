@@ -5,10 +5,10 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 
+import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useInvitationCheck } from '@/service/use-common'
-import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 
 const ActivateForm = () => {
   useDocumentTitle('')

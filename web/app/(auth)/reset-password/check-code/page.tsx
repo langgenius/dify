@@ -6,10 +6,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
+import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode, verifyResetPasswordCode } from '@/service/common'
-import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 
 export default function CheckCode() {
   const { t } = useTranslation()

@@ -3,11 +3,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
+import ForgotPasswordForm from '@/app/forgot-password/ForgotPasswordForm'
+import Header from '@/app/signin/_header'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import Header from '@/app/signin/_header'
-import ForgotPasswordForm from '@/app/forgot-password/ForgotPasswordForm'
 
 const ForgotPassword = () => {
   useDocumentTitle('')

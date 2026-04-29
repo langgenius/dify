@@ -8,12 +8,12 @@ import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
-import { useLocale } from '@/context/i18n'
+import { createAuthSearchParams, resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 
+import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
-import { createAuthSearchParams, resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 
 export default function CheckCode() {
   const { t, i18n } = useTranslation()

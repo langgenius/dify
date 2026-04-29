@@ -15,6 +15,11 @@ export default antfu(
       '!package.json',
       '!pnpm-workspace.yaml',
       '!vite.config.ts',
+      'e2e/.auth/**',
+      'e2e/cucumber-report/**',
+      'packages/dify-ui/storybook-static/**',
+      'web/next-env.d.ts',
+      'web/storybook-static/**',
       ...original,
     ],
     typescript: {
