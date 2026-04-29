@@ -149,7 +149,7 @@ class TestWorkflowDraftVariableFields:
 
         expected_without_value: OrderedDict[str, Any] = OrderedDict(
             {
-                "id": str(node_var.id),
+                "id": node_var.id,
                 "type": node_var.get_variable_type().value,
                 "name": "node_var",
                 "description": "",
@@ -180,19 +180,19 @@ class TestWorkflowDraftVariableFields:
         node_var.id = str(uuid.uuid4())
         node_var.last_edited_at = naive_utc_now()
         variable_file = WorkflowDraftVariableFile(
-            id=str(uuidv7()),
             upload_file_id=str(uuid.uuid4()),
             size=1024,
             length=10,
             value_type=SegmentType.ARRAY_STRING,
         )
+        variable_file.id = str(uuidv7())
         node_var.variable_file = variable_file
         node_var.file_id = variable_file.id
 
         expected_without_value: OrderedDict[str, Any] = OrderedDict(
             {
-                "id": str(node_var.id),
-                "type": node_var.get_variable_type().value,
+                "id": node_var.id,
+                "type": node_var.get_variable_type(),
                 "name": "node_var",
                 "description": "",
                 "selector": ["test_node", "node_var"],
@@ -235,7 +235,7 @@ class TestWorkflowDraftVariableList:
         node_var.id = str(uuid.uuid4())
         node_var_dict = OrderedDict(
             {
-                "id": str(node_var.id),
+                "id": node_var.id,
                 "type": node_var.get_variable_type().value,
                 "name": "test_var",
                 "description": "",
