@@ -2,8 +2,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 
+import Header from '@/app/(auth)/_components/header'
 import Loading from '@/app/components/base/loading'
-import Header from '@/app/signin/_header'
 import { AppContextProvider } from '@/context/app-context-provider'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { systemFeaturesQueryOptions } from '@/service/system-features'

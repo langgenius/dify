@@ -2,7 +2,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 
 import { useSuspenseQuery } from '@tanstack/react-query'
-import Header from '@/app/signin/_header'
+import Header from '@/app/(auth)/_components/header'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 export default function SignInLayout({ children }: any) {

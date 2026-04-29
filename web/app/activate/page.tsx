@@ -2,8 +2,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
+import Header from '@/app/(auth)/_components/header'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import Header from '../signin/_header'
 import ActivateForm from './activateForm'
 
 const Activate = () => {

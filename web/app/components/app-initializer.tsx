@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import Cookies from 'js-cookie'
 import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useState } from 'react'
+import { resolvePostLoginRedirect } from '@/app/(auth)/_utils/post-login-redirect'
 import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
@@ -12,7 +13,6 @@ import RootLoading from '@/app/loading'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { sendGAEvent } from '@/utils/gtag'
 import { fetchSetupStatusWithCache } from '@/utils/setup-status'
-import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
 import { trackEvent } from './base/amplitude'
 
 type AppInitializerProps = {

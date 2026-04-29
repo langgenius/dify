@@ -7,13 +7,13 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import { toast } from '@langgenius/dify-ui/toast'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
 import { LICENSE_LINK } from '@/constants/link'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useOneMoreStep } from '@/service/use-common'
 import { timezones } from '@/utils/timezone'
-import Input from '../components/base/input'
 
 type IState = {
   invitation_code: string

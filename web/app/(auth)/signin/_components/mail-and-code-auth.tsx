@@ -3,13 +3,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { createAuthSearchParams } from '@/app/(auth)/_utils/post-login-redirect'
 import Input from '@/app/components/base/input'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendEMailLoginCode } from '@/service/common'
-import { createAuthSearchParams } from '../utils/post-login-redirect'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean

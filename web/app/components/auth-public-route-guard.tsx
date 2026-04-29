@@ -3,10 +3,10 @@
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
+import { resolvePostLoginRedirect } from '@/app/(auth)/_utils/post-login-redirect'
 import RootLoading from '@/app/loading'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
-import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
 
 type AuthPublicRouteGuardProps = {
   children: ReactNode

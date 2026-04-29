@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { API_PREFIX } from '@/config'
 import { useSearchParams } from '@/next/navigation'
 import { getPurifyHref } from '@/utils'
-import style from '../page.module.css'
+import style from './page.module.css'
 
 type SocialAuthProps = {
   disabled?: boolean

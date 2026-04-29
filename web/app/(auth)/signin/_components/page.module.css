@@ -1,0 +1,11 @@
+.githubIcon {
+  background: center/contain url('../_assets/github.svg') no-repeat;
+}
+
+html[data-theme="dark"] .githubIcon {
+  background: center/contain url('../_assets/github-dark.svg') no-repeat;
+}
+
+.googleIcon {
+  background: center/contain url('../_assets/google.svg') no-repeat;
+}

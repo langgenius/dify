@@ -1,11 +1,11 @@
 import { screen, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { resolvePostLoginRedirect } from '@/app/(auth)/_utils/post-login-redirect'
 import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
-import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { fetchSetupStatusWithCache } from '@/utils/setup-status'
@@ -26,7 +26,7 @@ vi.mock('@/utils/setup-status', () => ({
   fetchSetupStatusWithCache: vi.fn(),
 }))
 
-vi.mock('@/app/signin/utils/post-login-redirect', () => ({
+vi.mock('@/app/(auth)/_utils/post-login-redirect', () => ({
   resolvePostLoginRedirect: vi.fn(),
 }))
 

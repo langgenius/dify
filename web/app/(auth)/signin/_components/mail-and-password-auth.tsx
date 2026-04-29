@@ -4,6 +4,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { createAuthSearchParams, resolvePostLoginRedirect } from '@/app/(auth)/_utils/post-login-redirect'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Input from '@/app/components/base/input'
 import { emailRegex } from '@/config'
@@ -13,7 +14,6 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { login } from '@/service/common'
 import { setWebAppAccessToken } from '@/service/webapp-auth'
 import { encryptPassword } from '@/utils/encryption'
-import { createAuthSearchParams, resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean

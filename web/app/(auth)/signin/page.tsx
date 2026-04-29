@@ -1,8 +1,8 @@
 'use client'
 import { useEffect } from 'react'
+import { createAuthSearchParams } from '@/app/(auth)/_utils/post-login-redirect'
+import NormalForm from '@/app/(auth)/signin/_components/normal-form'
 import RootLoading from '@/app/loading'
-import NormalForm from '@/app/signin/normal-form'
-import { createAuthSearchParams } from '@/app/signin/utils/post-login-redirect'
 import { useRouter, useSearchParams } from '@/next/navigation'
 
 const SignIn = () => {
