@@ -3182,22 +3182,9 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/plugin-auth/authorize/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-auth/authorize/oauth-client-settings.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/plugins/plugin-auth/authorized-in-node.tsx": {
