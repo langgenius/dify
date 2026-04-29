@@ -51,7 +51,6 @@ const MethodSelector: FC<MethodSelectorProps> = ({
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          className="z-1040"
           positionerProps={{ style: { zIndex: 1040 } }}
         >
           <div className="relative w-[320px]">
