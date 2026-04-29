@@ -1,5 +1,7 @@
 """Testcontainers integration tests for controllers/console/app endpoints."""
 
+from models.enums import CustomizeTokenStrategy
+from models import Site
 from __future__ import annotations
 
 import uuid
@@ -341,22 +343,24 @@ class TestSiteEndpoints:
         api = site_module.AppSite()
         method = _unwrap(api.post)
 
-        site = MagicMock()
-        site.app_id = "app-1"
-        site.code = "test-code"
-        site.title = "My Site"
-        site.icon = None
-        site.icon_background = None
-        site.description = "Test site"
-        site.default_language = "en-US"
-        site.customize_domain = None
-        site.copyright = None
-        site.privacy_policy = None
-        site.custom_disclaimer = ""
-        site.customize_token_strategy = "not_allow"
-        site.prompt_public = False
-        site.show_workflow_steps = True
-        site.use_icon_as_answer_icon = False
+        site = Site(
+
+    app_id = "app-1"
+    ,code = "test-code"
+    ,title = "My Site"
+    ,icon = None
+    ,icon_background = None
+    ,description = "Test site"
+    ,default_language = "en-US"
+    ,customize_domain = None
+    ,copyright = None
+    ,privacy_policy = None
+    ,custom_disclaimer = ""
+    ,customize_token_strategy = CustomizeTokenStrategy.NOT_ALLOW
+    ,prompt_public = False
+    ,show_workflow_steps = True
+    ,use_icon_as_answer_icon = False
+        )
         monkeypatch.setattr(
             site_module.db,
             "session",
@@ -379,22 +383,24 @@ class TestSiteEndpoints:
         api = site_module.AppSiteAccessTokenReset()
         method = _unwrap(api.post)
 
-        site = MagicMock()
-        site.app_id = "app-1"
-        site.code = "old-code"
-        site.title = "My Site"
-        site.icon = None
-        site.icon_background = None
-        site.description = None
-        site.default_language = "en-US"
-        site.customize_domain = None
-        site.copyright = None
-        site.privacy_policy = None
-        site.custom_disclaimer = ""
-        site.customize_token_strategy = "not_allow"
-        site.prompt_public = False
-        site.show_workflow_steps = True
-        site.use_icon_as_answer_icon = False
+        site = Site(
+
+   app_id = "app-1"
+   ,code = "old-code"
+   ,title = "My Site"
+   ,icon = None
+   ,icon_background = None
+   ,description = None
+   ,default_language = "en-US"
+   ,customize_domain = None
+   ,copyright = None
+   ,privacy_policy = None
+   ,custom_disclaimer = ""
+   ,customize_token_strategy = CustomizeTokenStrategy.NOT_ALLOW
+   ,prompt_public = False
+   ,show_workflow_steps = True
+   ,use_icon_as_answer_icon = False
+        )
         monkeypatch.setattr(
             site_module.db,
             "session",

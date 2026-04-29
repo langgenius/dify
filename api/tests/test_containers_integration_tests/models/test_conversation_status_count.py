@@ -5,6 +5,7 @@ Migrated from unit_tests/models/test_app_models.py TestConversationStatusCount a
 test_site_generate_code, replacing db.session.scalars mocks with real PostgreSQL queries.
 """
 
+from models.enums import CustomizeTokenStrategy
 from collections.abc import Generator
 from uuid import uuid4
 
@@ -300,7 +301,7 @@ class TestSiteGenerateCode:
             app_id=app.id,
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="not_allow",
+            customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         )
         # Set an explicit code so generate_code must avoid it
         site.code = "AAAAAAAA"
