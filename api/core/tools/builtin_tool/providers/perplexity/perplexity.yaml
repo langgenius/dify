@@ -1,0 +1,31 @@
+identity:
+  author: Perplexity
+  name: perplexity
+  label:
+    en_US: Perplexity Search
+    zh_Hans: Perplexity 搜索
+    pt_BR: Perplexity Search
+  description:
+    en_US: Search the web for up-to-date information using the Perplexity Search API. Returns ranked results with snippets, titles, URLs, and dates.
+    zh_Hans: 使用 Perplexity Search API 搜索最新的网络信息，返回包含摘要、标题、链接和日期的排序结果。
+    pt_BR: Search the web for up-to-date information using the Perplexity Search API. Returns ranked results with snippets, titles, URLs, and dates.
+  icon: icon.svg
+  tags:
+    - search
+credentials_for_provider:
+  perplexity_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Perplexity API key
+      zh_Hans: Perplexity API key
+      pt_BR: Perplexity API key
+    placeholder:
+      en_US: Please input your Perplexity API key
+      zh_Hans: 请输入你的 Perplexity API key
+      pt_BR: Please input your Perplexity API key
+    help:
+      en_US: Get your Perplexity API key from the Perplexity dashboard.
+      zh_Hans: 在 Perplexity 控制台获取你的 API key。
+      pt_BR: Get your Perplexity API key from the Perplexity dashboard.
+    url: https://www.perplexity.ai/account/api/keys

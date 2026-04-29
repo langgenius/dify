@@ -1,0 +1,116 @@
+identity:
+  name: perplexity_search
+  author: Perplexity
+  label:
+    en_US: Perplexity Search
+    zh_Hans: Perplexity 搜索
+    pt_BR: Perplexity Search
+description:
+  human:
+    en_US: Search the web for up-to-date information using the Perplexity Search API. Returns ranked results with snippets, titles, URLs, and dates.
+    zh_Hans: 使用 Perplexity Search API 搜索最新的网络信息，返回包含摘要、标题、链接和日期的排序结果。
+    pt_BR: Search the web for up-to-date information using the Perplexity Search API. Returns ranked results with snippets, titles, URLs, and dates.
+  llm: A search engine that returns ranked web results (title, url, snippet, date) for the given query. Use it to fetch current information from the web.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 查询
+      pt_BR: Query
+    human_description:
+      en_US: The search query string.
+      zh_Hans: 搜索查询字符串。
+      pt_BR: The search query string.
+    llm_description: The search query to send to Perplexity.
+    form: llm
+  - name: max_results
+    type: number
+    required: false
+    label:
+      en_US: Max Results
+      zh_Hans: 最大结果数
+      pt_BR: Max Results
+    human_description:
+      en_US: Maximum number of search results to return (1-20).
+      zh_Hans: 返回的最大搜索结果数（1-20）。
+      pt_BR: Maximum number of search results to return (1-20).
+    form: form
+    default: 5
+    min: 1
+    max: 20
+  - name: search_domain_filter
+    type: string
+    required: false
+    label:
+      en_US: Search Domain Filter
+      zh_Hans: 搜索域过滤
+      pt_BR: Search Domain Filter
+    human_description:
+      en_US: Comma-separated list of domains. Use a leading "-" to deny a domain (e.g. "-pinterest.com"). Do not mix allow and deny entries.
+      zh_Hans: 用逗号分隔的域名列表。使用前缀 "-" 进行拒绝（如 "-pinterest.com"）。不要混合允许和拒绝条目。
+      pt_BR: Comma-separated list of domains. Use a leading "-" to deny a domain (e.g. "-pinterest.com"). Do not mix allow and deny entries.
+    form: form
+  - name: search_recency_filter
+    type: select
+    required: false
+    label:
+      en_US: Search Recency Filter
+      zh_Hans: 时间范围
+      pt_BR: Search Recency Filter
+    human_description:
+      en_US: Restrict results to a recent time window.
+      zh_Hans: 将结果限制在最近的时间范围。
+      pt_BR: Restrict results to a recent time window.
+    form: form
+    options:
+      - value: hour
+        label:
+          en_US: Past hour
+          zh_Hans: 过去一小时
+          pt_BR: Past hour
+      - value: day
+        label:
+          en_US: Past day
+          zh_Hans: 过去一天
+          pt_BR: Past day
+      - value: week
+        label:
+          en_US: Past week
+          zh_Hans: 过去一周
+          pt_BR: Past week
+      - value: month
+        label:
+          en_US: Past month
+          zh_Hans: 过去一月
+          pt_BR: Past month
+      - value: year
+        label:
+          en_US: Past year
+          zh_Hans: 过去一年
+          pt_BR: Past year
+  - name: search_after_date_filter
+    type: string
+    required: false
+    label:
+      en_US: After Date
+      zh_Hans: 起始日期
+      pt_BR: After Date
+    human_description:
+      en_US: Only return results published on or after this date. Format m/d/yyyy (e.g. 1/1/2025).
+      zh_Hans: 只返回在该日期之后发布的结果。格式为 m/d/yyyy（例如 1/1/2025）。
+      pt_BR: Only return results published on or after this date. Format m/d/yyyy (e.g. 1/1/2025).
+    form: form
+  - name: search_before_date_filter
+    type: string
+    required: false
+    label:
+      en_US: Before Date
+      zh_Hans: 截止日期
+      pt_BR: Before Date
+    human_description:
+      en_US: Only return results published on or before this date. Format m/d/yyyy (e.g. 12/31/2025).
+      zh_Hans: 只返回在该日期之前发布的结果。格式为 m/d/yyyy（例如 12/31/2025）。
+      pt_BR: Only return results published on or before this date. Format m/d/yyyy (e.g. 12/31/2025).
+    form: form
