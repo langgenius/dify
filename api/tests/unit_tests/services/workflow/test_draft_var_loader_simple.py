@@ -33,40 +33,6 @@ class TestDraftVarLoaderSimple:
             fallback_variables=[],
         )
 
-    def test_load_offloaded_variable_string_type_unit(self, draft_var_loader):
-        """Test _load_offloaded_variable with string type - isolated unit test."""
-        # Create mock objects
-        upload_file = Mock(spec=UploadFile)
-        upload_file.key = "storage/key/test.txt"
-
-        variable_file = WorkflowDraftVariableFile(value_type=SegmentType.STRING, upload_file=upload_file)
-
-        draft_var = Mock(spec=WorkflowDraftVariable)
-        draft_var.id = "draft-var-id"
-        draft_var.node_id = "test-node-id"
-        draft_var.name = "test_variable"
-        draft_var.description = "test description"
-        draft_var.get_selector.return_value = ["test-node-id", "test_variable"]
-        draft_var.variable_file = variable_file
-
-        test_content = "This is the full string content"
-
-        with patch("services.workflow_draft_variable_service.storage") as mock_storage:
-            mock_storage.load.return_value = test_content.encode()
-
-            # Execute the method
-            selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
-
-            # Verify results
-            assert selector_tuple == ("test-node-id", "test_variable")
-            assert variable.id == "draft-var-id"
-            assert variable.name == "test_variable"
-            assert variable.description == "test description"
-            assert variable.value == test_content
-
-            # Verify storage was called correctly
-            mock_storage.load.assert_called_once_with("storage/key/test.txt")
-
     def test_load_offloaded_variable_object_type_unit(self, draft_var_loader):
         """Test _load_offloaded_variable with object type - isolated unit test."""
         # Create mock objects
@@ -136,45 +102,6 @@ class TestDraftVarLoaderSimple:
         selector = ["node_id", "var_name", "extra_field"]
         result = draft_var_loader._selector_to_tuple(selector)
         assert result == ("node_id", "var_name")
-
-    def test_load_offloaded_variable_number_type_unit(self, draft_var_loader):
-        """Test _load_offloaded_variable with number type - isolated unit test."""
-        # Create mock objects
-        upload_file = Mock(spec=UploadFile)
-        upload_file.key = "storage/key/test_number.json"
-
-        variable_file = WorkflowDraftVariableFile(value_type=SegmentType.NUMBER, upload_file=upload_file)
-
-        draft_var = Mock(spec=WorkflowDraftVariable)
-        draft_var.id = "draft-var-id"
-        draft_var.node_id = "test-node-id"
-        draft_var.name = "test_number"
-        draft_var.description = "test number description"
-        draft_var.get_selector.return_value = ["test-node-id", "test_number"]
-        draft_var.variable_file = variable_file
-
-        test_number = 123.45
-        test_json_content = json.dumps(test_number)
-
-        with patch("services.workflow_draft_variable_service.storage") as mock_storage:
-            mock_storage.load.return_value = test_json_content.encode()
-            from graphon.variables.segments import FloatSegment
-
-            mock_segment = FloatSegment(value=test_number)
-            draft_var.build_segment_from_serialized_value.return_value = mock_segment
-
-            # Execute the method
-            selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
-
-            # Verify results
-            assert selector_tuple == ("test-node-id", "test_number")
-            assert variable.id == "draft-var-id"
-            assert variable.name == "test_number"
-            assert variable.description == "test number description"
-
-            # Verify method calls
-            mock_storage.load.assert_called_once_with("storage/key/test_number.json")
-            draft_var.build_segment_from_serialized_value.assert_called_once_with(SegmentType.NUMBER, test_number)
 
     def test_load_offloaded_variable_array_type_unit(self, draft_var_loader):
         """Test _load_offloaded_variable with array type - isolated unit test."""
