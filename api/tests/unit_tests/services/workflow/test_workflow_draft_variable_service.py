@@ -200,7 +200,7 @@ class TestDraftVariableSaver:
             user=mock_user,
         )
 
-    def test_draft_saver_with_small_variables(self, draft_saver:DraftVariableSaver, mock_session):
+    def test_draft_saver_with_small_variables(self, draft_saver: DraftVariableSaver, mock_session):
         with patch(
             "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
@@ -212,7 +212,7 @@ class TestDraftVariableSaver:
             assert draft_var.file_id is None
             _mock_try_offload.return_value = None
 
-    def test_draft_saver_with_large_variables(self, draft_saver:DraftVariableSaver, mock_session):
+    def test_draft_saver_with_large_variables(self, draft_saver: DraftVariableSaver, mock_session):
         with patch(
             "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
