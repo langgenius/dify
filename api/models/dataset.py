@@ -852,9 +852,9 @@ class DocumentSegment(TypeBase):
     index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # basic fields
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     answer: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True, default=None)
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
