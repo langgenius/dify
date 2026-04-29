@@ -2300,28 +2300,28 @@ class Site(TypeBase):
     description: Mapped[str] = mapped_column(LongText)
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)
     chat_color_theme: Mapped[str] = mapped_column(String(255))
-    chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     copyright: Mapped[str] = mapped_column(String(255))
     privacy_policy: Mapped[str] = mapped_column(String(255))
     input_placeholder: Mapped[str] = mapped_column(String(255))
-    show_workflow_steps: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")
     customize_domain: Mapped[str] = mapped_column(String(255))
     customize_token_strategy: Mapped[CustomizeTokenStrategy] = mapped_column(
         EnumText(CustomizeTokenStrategy, length=255), nullable=False
     )
-    prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"),default=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[str] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    updated_by: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    updated_at: Mapped[str] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(),init=False
+    )
+    code: Mapped[str] = mapped_column(String(255))
+    chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"),default=False)
+    show_workflow_steps: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"),default=False)
+    _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")
     status: Mapped[AppStatus] = mapped_column(
         EnumText(AppStatus, length=255), nullable=False, server_default=sa.text("'normal'"), default=AppStatus.NORMAL
     )
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[str] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by: Mapped[str] = mapped_column(StringUUID, nullable=True)
-    updated_at: Mapped[str] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
-    )
-    code: Mapped[str] = mapped_column(String(255))
 
     @property
     def custom_disclaimer(self):

@@ -1,3 +1,4 @@
+from models.enums import CustomizeTokenStrategy
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -30,7 +31,7 @@ def _create_site(db_session: Session, *, app_id: str) -> Site:
         app_id=app_id,
         title=f"site-{uuid4()}",
         default_language="en-US",
-        customize_token_strategy="not_allow",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         description="desc",
         copyright="copy",
         privacy_policy="pp",
