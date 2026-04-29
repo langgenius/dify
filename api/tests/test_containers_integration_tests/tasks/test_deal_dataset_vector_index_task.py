@@ -89,7 +89,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -149,7 +148,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -252,7 +250,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset with parent-child index
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -370,7 +367,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset without documents
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -402,7 +398,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -460,7 +455,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset without documents
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -493,7 +487,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -591,7 +584,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset with custom index type
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -669,7 +661,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset without doc_form (should use default)
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -747,7 +738,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -852,7 +842,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -951,7 +940,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -1074,7 +1062,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -1197,7 +1184,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create dataset
         dataset = Dataset(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
