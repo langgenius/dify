@@ -1,4 +1,4 @@
-"""Run with: uv run --project dify-agent python examples/agenton_basics.py."""
+"""Run with: uv run --project dify-agent python examples/agenton/basics.py."""
 
 from __future__ import annotations
 

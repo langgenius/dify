@@ -1,12 +1,13 @@
-"""Run with: uv run --project dify-agent python examples/agenton_pydantic_ai.py."""
+"""Run with: uv run --project dify-agent python examples/agenton/pydantic_ai_bridge.py."""
 
 from __future__ import annotations
 
+import asyncio
+import json
 from dataclasses import dataclass
-from typing import cast
 
-from pydantic_ai import Agent, RunContext, Tool
-from pydantic_ai.messages import ToolCallPart, BuiltinToolCallPart
+from pydantic_ai import Agent, RunContext
+from pydantic_ai.messages import BuiltinToolCallPart, ModelMessage, ToolCallPart
 from pydantic_ai.models.test import TestModel
 
 from agenton.compositor import Compositor, CompositorLayerConfig
@@ -16,7 +17,6 @@ from agenton_collections.layers.pydantic_ai import PydanticAIBridgeLayer
 from agenton_collections.transformers import PYDANTIC_AI_TRANSFORMERS
 
 
-import json
 @dataclass(frozen=True, slots=True)
 class AgentProfile:
     name: str
@@ -49,8 +49,8 @@ async def main() -> None:
         tone="precise and friendly",
     )
     pydantic_ai_bridge = PydanticAIBridgeLayer[AgentProfile](
-        prefix=(profile_prompt, tone_prompt),
-        tool_entries=(Tool(write_tagline),),
+        prefix=("Prefer concrete details.", profile_prompt, tone_prompt),
+        tool_entries=(write_tagline,),
     )
 
     compositor = Compositor[
@@ -96,18 +96,28 @@ async def main() -> None:
             tools=compositor.tools,
         )
         for prompt in compositor.prompts:
-            agent.system_prompt(prompt)
+            _ = agent.system_prompt(prompt)
 
         result = await agent.run(
             "Use the tools for 'layer composition'.",
             deps=pydantic_ai_bridge.run_deps,
         )
 
-    for message in result.all_messages():
+    for line in _format_messages(result.all_messages()):
+        print(line)
+
+
+def _format_messages(messages: list[ModelMessage]) -> list[str]:
+    lines: list[str] = []
+    for message in messages:
         for part in message.parts:
-            print(f"{type(part).__name__}: {part.content if not isinstance(part, (ToolCallPart, BuiltinToolCallPart)) else part.tool_name + '(' + json.dumps(part.args, ensure_ascii=False) + ')'}")
+            if isinstance(part, ToolCallPart | BuiltinToolCallPart):
+                args = json.dumps(part.args, ensure_ascii=False)
+                lines.append(f"{type(part).__name__}: {part.tool_name}({args})")
+            else:
+                lines.append(f"{type(part).__name__}: {part.content}")
+    return lines
 
 
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())
