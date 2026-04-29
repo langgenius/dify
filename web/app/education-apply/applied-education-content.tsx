@@ -5,15 +5,11 @@ import type { Plan as PlanType } from '@/app/components/billing/type'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
 import {
   Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectItemText,
-  SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
+import { WorkplaceSelectorContent } from '@/app/components/header/account-dropdown/workplace-selector'
 import PlanBadge from '@/app/components/header/plan-badge'
 
 type AppliedEducationContentProps = {
@@ -84,28 +80,7 @@ const AppliedEducationContent = ({
               <PlanBadge plan={workspacePlan} />
             </span>
           </SelectTrigger>
-          <SelectContent popupClassName="w-[360px]">
-            <SelectGroup>
-              <SelectLabel>
-                {t('userProfile.workspace', { ns: 'common' })}
-              </SelectLabel>
-              {workspaces.map(workspace => (
-                <SelectItem key={workspace.id} value={workspace.id} className="h-12 gap-3 py-2 pr-3 pl-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-blue-solid text-[16px]">
-                    <span className="h-8 bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text align-middle leading-8 font-semibold text-shadow-shadow-1 uppercase opacity-90">
-                      {workspace.name[0]?.toLocaleUpperCase()}
-                    </span>
-                  </div>
-                  <SelectItemText className="min-w-0 flex-1 truncate system-md-regular">
-                    {workspace.name}
-                  </SelectItemText>
-                  <span className="ml-auto shrink-0">
-                    <PlanBadge plan={workspace.plan as Plan} />
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
+          <WorkplaceSelectorContent workspaces={workspaces} />
         </Select>
         <div className="mt-2 border-t border-divider-subtle">
           {action}

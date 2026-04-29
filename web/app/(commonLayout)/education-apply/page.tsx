@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import EducationApplyPage from '@/app/education-apply/education-apply-page'
 import RootLoading from '@/app/loading'
 import { useProviderContext } from '@/context/provider-context'
+import { WorkspaceProvider } from '@/context/workspace-context-provider'
 import {
   useRouter,
   useSearchParams,
@@ -30,5 +31,9 @@ export default function EducationApply() {
   if (!isFetchedPlanInfo || !enableEducationPlan || !token || isLoadingEducationAccountInfo)
     return <RootLoading />
 
-  return <EducationApplyPage />
+  return (
+    <WorkspaceProvider>
+      <EducationApplyPage />
+    </WorkspaceProvider>
+  )
 }
