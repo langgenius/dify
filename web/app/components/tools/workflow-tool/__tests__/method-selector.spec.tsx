@@ -255,10 +255,9 @@ describe('MethodSelector', () => {
       await user.click(trigger)
 
       await waitFor(() => {
+        expect(screen.getByTestId('popover-content')).toBeInTheDocument()
         const dropdown = document.querySelector('.w-\\[320px\\]')
         expect(dropdown)!.toBeInTheDocument()
-        expect(dropdown)!.toHaveClass('rounded-lg')
-        expect(dropdown)!.toHaveClass('shadow-lg')
       })
     })
 

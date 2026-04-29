@@ -23,7 +23,6 @@ type PopoverContentProps = React.HTMLAttributes<HTMLDivElement> & {
   placement?: string
   sideOffset?: number
   alignOffset?: number
-  popupClassName?: string
   positionerProps?: React.HTMLAttributes<HTMLDivElement>
   popupProps?: React.HTMLAttributes<HTMLDivElement>
 }
@@ -124,7 +123,6 @@ export const PopoverContent = ({
   placement,
   sideOffset,
   alignOffset,
-  popupClassName,
   positionerProps,
   popupProps,
   ...props
@@ -141,7 +139,7 @@ export const PopoverContent = ({
       data-placement={placement}
       data-side-offset={sideOffset}
       data-align-offset={alignOffset}
-      className={[className, popupClassName].filter(Boolean).join(' ') || undefined}
+      className={className}
       {...positionerProps}
       {...popupProps}
       {...props}

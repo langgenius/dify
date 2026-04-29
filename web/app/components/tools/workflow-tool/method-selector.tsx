@@ -51,10 +51,10 @@ const MethodSelector: FC<MethodSelectorProps> = ({
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          popupClassName="border-none bg-transparent shadow-none"
+          className="z-1040"
           positionerProps={{ style: { zIndex: 1040 } }}
         >
-          <div className="relative w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+          <div className="relative w-[320px]">
             <div className="p-1">
               <div className="cursor-pointer rounded-lg py-2.5 pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover" onClick={() => handleSelect('llm')}>
                 <div className="flex items-center gap-1">
