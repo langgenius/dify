@@ -2,7 +2,7 @@
   "applied.activeSubscription.description": "只有订阅到期后才能使用教育优惠。请前往 Stripe 确认并取消自动续费。",
   "applied.activeSubscription.stripeLink": "打开 Stripe",
   "applied.description": "您已成功申请教育优惠。",
-  "applied.noPaymentPermission.description": "当前 Workspace 没有付款权限。请切换到你的 Workspace 使用教育优惠。",
+  "applied.noPaymentPermission.description": "你没有此工作空间的付款权限。请切换到你可以管理账单的工作空间，以使用教育优惠。",
   "applied.noPaymentPermission.returnHome": "返回 Dify",
   "applied.step1.description": "您已成功申请教育优惠。",
   "applied.step1.title": "第一步",

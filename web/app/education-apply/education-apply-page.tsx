@@ -5,9 +5,6 @@ import type { Plan as PlanType } from '@/app/components/billing/type'
 import type { ICurrentWorkspace } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiExternalLinkLine,
-} from '@remixicon/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
@@ -128,6 +125,11 @@ const EducationApplyAgeContent = () => {
   const handleReturnHome = () => {
     router.push('/')
   }
+  const renderBackToDifyButton = () => (
+    <Button variant="primary" onClick={handleReturnHome}>
+      {t('applied.noPaymentPermission.returnHome', { ns: 'education' })}
+    </Button>
+  )
   const handleSwitchWorkspace = async (tenantId: string) => {
     if (tenantId === currentWorkspace?.id)
       return
@@ -157,36 +159,32 @@ const EducationApplyAgeContent = () => {
 
     if (appliedEducationCase === AppliedEducationCase.activeSubscription) {
       return (
-        <div className="system-md-regular text-text-secondary">
-          <span>
-            {t('applied.activeSubscription.description', { ns: 'education' })}
-          </span>
-          {' '}
-          <button
-            type="button"
-            className="text-text-accent hover:underline disabled:cursor-not-allowed disabled:text-text-disabled"
-            onClick={handleOpenBillingPortal}
-            disabled={isOpeningBillingPortal}
-          >
-            {t('applied.activeSubscription.stripeLink', { ns: 'education' })}
-          </button>
+        <div className="flex flex-col items-start gap-3 pt-3">
+          <div className="system-md-regular text-text-secondary">
+            <span>
+              {t('applied.activeSubscription.description', { ns: 'education' })}
+            </span>
+            {' '}
+            <button
+              type="button"
+              className="text-text-accent hover:underline disabled:cursor-not-allowed disabled:text-text-disabled"
+              onClick={handleOpenBillingPortal}
+              disabled={isOpeningBillingPortal}
+            >
+              {t('applied.activeSubscription.stripeLink', { ns: 'education' })}
+            </button>
+          </div>
+          {renderBackToDifyButton()}
         </div>
       )
     }
 
     return (
-      <div className="system-md-regular text-text-secondary">
-        <span>
+      <div className="flex flex-col items-start gap-3 pt-3">
+        <div className="system-md-regular text-text-secondary">
           {t('applied.noPaymentPermission.description', { ns: 'education' })}
-        </span>
-        {' '}
-        <button
-          type="button"
-          className="text-text-accent hover:underline"
-          onClick={handleReturnHome}
-        >
-          {t('applied.noPaymentPermission.returnHome', { ns: 'education' })}
-        </button>
+        </div>
+        {renderBackToDifyButton()}
       </div>
     )
   }
@@ -298,7 +296,7 @@ const EducationApplyAgeContent = () => {
                     target="_blank"
                   >
                     {t('learn', { ns: 'education' })}
-                    <RiExternalLinkLine className="ml-1 h-3 w-3" />
+                    <span className="ml-1 i-ri-external-link-line h-3 w-3" />
                   </a>
                 </>
               )}
