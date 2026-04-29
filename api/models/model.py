@@ -2319,8 +2319,8 @@ class Site(TypeBase):
     )
     code: Mapped[str] = mapped_column(String(255))
 
-    customize_domain: Mapped[str|None] = mapped_column(String(255),default=None)
-    chat_color_theme: Mapped[str|None] = mapped_column(String(255),default=None)
+    customize_domain: Mapped[str | None] = mapped_column(String(255), default=None)
+    chat_color_theme: Mapped[str | None] = mapped_column(String(255), default=None)
     prompt_public: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
     )

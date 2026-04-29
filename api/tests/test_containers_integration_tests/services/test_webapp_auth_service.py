@@ -1,6 +1,3 @@
-from models import TenantStatus
-from models.enums import AppStatus
-from models.enums import CustomizeTokenStrategy
 import time
 import uuid
 from unittest.mock import ANY, patch
@@ -11,7 +8,8 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from libs.password import hash_password
-from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, Site
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
