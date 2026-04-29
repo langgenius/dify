@@ -3813,11 +3813,14 @@ class TestDatasetRetrievalAdditionalHelpers:
             prompt_messages, stop = retrieval._get_prompt_template(
                 model_config=model_config_chat,
                 mode="chat",
-                metadata_fields=["author"],
+                metadata_fields=[{"name": "author", "type": "string"}],
                 query="python",
             )
             assert prompt_messages == ["prompt"]
             assert stop == ["x"]
+            prompt_template = mock_prompt_transform.return_value.get_prompt.call_args.kwargs["prompt_template"]
+            assert '"name": "author"' in prompt_template[-1].text
+            assert '"type": "string"' in prompt_template[-1].text
 
             with patch(
                 "core.rag.retrieval.dataset_retrieval.METADATA_FILTER_COMPLETION_PROMPT",
@@ -3826,11 +3829,15 @@ class TestDatasetRetrievalAdditionalHelpers:
                 prompt_messages_completion, stop_completion = retrieval._get_prompt_template(
                     model_config=model_config_completion,
                     mode="completion",
-                    metadata_fields=["author"],
+                    metadata_fields=[{"name": "author", "type": "string"}],
                     query="python",
                 )
                 assert prompt_messages_completion == ["prompt"]
                 assert stop_completion == []
+                prompt_template_completion = mock_prompt_transform.return_value.get_prompt.call_args.kwargs[
+                    "prompt_template"
+                ]
+                assert '"name": "author"' in prompt_template_completion.text
 
         with pytest.raises(ValueError):
             retrieval._get_prompt_template(
@@ -3904,7 +3911,7 @@ class TestDatasetRetrievalAdditionalHelpers:
             assert "stop" not in config.parameters
 
     def test_automatic_metadata_filter_func(self, retrieval: DatasetRetrieval) -> None:
-        metadata_field = SimpleNamespace(name="author")
+        metadata_field = SimpleNamespace(name="author", type="string")
         model_instance = Mock()
         model_instance.invoke_llm.return_value = iter([Mock()])
         model_config = ModelConfigWithCredentialsEntity.model_construct(
@@ -3918,13 +3925,18 @@ class TestDatasetRetrievalAdditionalHelpers:
             stop=[],
         )
         usage = LLMUsage.from_metadata({"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2})
-        session_scalars = Mock()
-        session_scalars.all.return_value = [metadata_field]
+        metadata_scalars = Mock()
+        metadata_scalars.all.return_value = [metadata_field]
+        dataset_scalars = Mock()
+        dataset_scalars.all.return_value = [SimpleNamespace(built_in_field_enabled=False)]
 
         with (
-            patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=session_scalars),
+            patch(
+                "core.rag.retrieval.dataset_retrieval.db.session.scalars",
+                side_effect=[metadata_scalars, dataset_scalars],
+            ),
             patch.object(retrieval, "_fetch_model_config", return_value=(model_instance, model_config)),
-            patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])),
+            patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])) as mock_get_prompt_template,
             patch.object(retrieval, "_handle_invoke_result", return_value=('{"metadata_map":[]}', usage)),
             patch("core.rag.retrieval.dataset_retrieval.parse_and_check_json_markdown") as mock_parse,
             patch.object(retrieval, "_record_usage") as mock_record_usage,
@@ -3951,11 +3963,18 @@ class TestDatasetRetrievalAdditionalHelpers:
                 metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
             )
 
+            assert mock_get_prompt_template.call_args.kwargs["metadata_fields"] == [
+                {"name": "author", "type": "string"},
+            ]
+
         assert result == [{"metadata_name": "author", "value": "Alice", "condition": "contains"}]
         mock_record_usage.assert_called_once_with(usage)
 
         with (
-            patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=session_scalars),
+            patch(
+                "core.rag.retrieval.dataset_retrieval.db.session.scalars",
+                side_effect=[metadata_scalars, dataset_scalars],
+            ),
             patch.object(retrieval, "_fetch_model_config", side_effect=RuntimeError("boom")),
         ):
             with pytest.raises(RuntimeError, match="boom"):
@@ -3966,6 +3985,35 @@ class TestDatasetRetrievalAdditionalHelpers:
                     user_id="u1",
                     metadata_model_config=AppModelConfig(provider="openai", name="gpt", mode="chat"),
                 )
+
+    def test_get_metadata_prompt_fields_includes_built_in_fields(self, retrieval: DatasetRetrieval) -> None:
+        custom_metadata_scalars = Mock()
+        custom_metadata_scalars.all.return_value = [
+            SimpleNamespace(name="author", type="string"),
+            SimpleNamespace(name="author", type="string"),
+            SimpleNamespace(name="published_at", type="time"),
+        ]
+        dataset_scalars = Mock()
+        dataset_scalars.all.return_value = [
+            SimpleNamespace(built_in_field_enabled=True),
+            SimpleNamespace(built_in_field_enabled=False),
+        ]
+
+        with patch(
+            "core.rag.retrieval.dataset_retrieval.db.session.scalars",
+            side_effect=[custom_metadata_scalars, dataset_scalars],
+        ):
+            result = retrieval._get_metadata_prompt_fields(["d1", "d2"])
+
+        assert result == [
+            {"name": "author", "type": "string"},
+            {"name": "published_at", "type": "time"},
+            {"name": "document_name", "type": "string"},
+            {"name": "uploader", "type": "string"},
+            {"name": "upload_date", "type": "time"},
+            {"name": "last_update_date", "type": "time"},
+            {"name": "source", "type": "string"},
+        ]
 
     def test_get_metadata_filter_condition(self, retrieval: DatasetRetrieval) -> None:
         scalars_result = Mock()
@@ -5093,10 +5141,15 @@ class TestInternalHooksCoverage:
                     metadata_model_config=None,  # type: ignore[arg-type]
                 )
 
-        session_scalars = Mock()
-        session_scalars.all.return_value = [SimpleNamespace(name="author")]
+        metadata_scalars = Mock()
+        metadata_scalars.all.return_value = [SimpleNamespace(name="author", type="string")]
+        dataset_scalars = Mock()
+        dataset_scalars.all.return_value = [SimpleNamespace(built_in_field_enabled=False)]
         with (
-            patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=session_scalars),
+            patch(
+                "core.rag.retrieval.dataset_retrieval.db.session.scalars",
+                side_effect=[metadata_scalars, dataset_scalars],
+            ),
             patch.object(retrieval, "_fetch_model_config", return_value=(Mock(), Mock())),
             patch.object(retrieval, "_get_prompt_template", return_value=(["prompt"], [])),
             patch.object(retrieval, "_record_usage"),

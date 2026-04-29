@@ -32,6 +32,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor, RerankingModelDict, WeightsDict
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.entities import Condition, DocumentContext, RetrievalSourceMetadata
@@ -96,6 +97,8 @@ default_retrieval_model: DefaultRetrievalModelDict = {
 }
 
 logger = logging.getLogger(__name__)
+
+MetadataPromptField = dict[str, str]
 
 
 class DatasetRetrieval:
@@ -1438,10 +1441,8 @@ class DatasetRetrieval:
     def _automatic_metadata_filter_func(
         self, dataset_ids: list[str], query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
     ) -> list[dict[str, Any]] | None:
-        # get all metadata field
-        metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
-        metadata_fields = db.session.scalars(metadata_stmt).all()
-        all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+        metadata_prompt_fields = self._get_metadata_prompt_fields(dataset_ids)
+        all_metadata_fields = [metadata_field["name"] for metadata_field in metadata_prompt_fields]
         # get metadata model config
         if metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
@@ -1453,7 +1454,7 @@ class DatasetRetrieval:
         prompt_messages, stop = self._get_prompt_template(
             model_config=model_config,
             mode=metadata_model_config.mode,
-            metadata_fields=all_metadata_fields,
+            metadata_fields=metadata_prompt_fields,
             query=query or "",
         )
 
@@ -1490,6 +1491,52 @@ class DatasetRetrieval:
             logger.warning(e, exc_info=True)
             return None
         return automatic_metadata_filters
+
+    def _get_metadata_prompt_fields(self, dataset_ids: list[str]) -> list[MetadataPromptField]:
+        """Build the metadata field list exposed to automatic metadata filtering.
+
+        Automatic filtering previously only exposed custom metadata names. That
+        prevented the LLM from selecting built-in document metadata such as
+        ``document_name`` or ``upload_date`` even when those fields were
+        available for manual filtering in the UI.
+        """
+
+        metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
+        metadata_fields = db.session.scalars(metadata_stmt).all()
+
+        prompt_fields_by_name: dict[str, MetadataPromptField] = {
+            metadata_field.name: {
+                "name": metadata_field.name,
+                "type": str(metadata_field.type),
+            }
+            for metadata_field in metadata_fields
+        }
+
+        dataset_stmt = select(Dataset).where(Dataset.id.in_(dataset_ids))
+        datasets = db.session.scalars(dataset_stmt).all()
+        if any(dataset.built_in_field_enabled for dataset in datasets):
+            prompt_fields_by_name.setdefault(
+                BuiltInField.document_name,
+                {"name": BuiltInField.document_name, "type": "string"},
+            )
+            prompt_fields_by_name.setdefault(
+                BuiltInField.uploader,
+                {"name": BuiltInField.uploader, "type": "string"},
+            )
+            prompt_fields_by_name.setdefault(
+                BuiltInField.upload_date,
+                {"name": BuiltInField.upload_date, "type": "time"},
+            )
+            prompt_fields_by_name.setdefault(
+                BuiltInField.last_update_date,
+                {"name": BuiltInField.last_update_date, "type": "time"},
+            )
+            prompt_fields_by_name.setdefault(
+                BuiltInField.source,
+                {"name": BuiltInField.source, "type": "string"},
+            )
+
+        return list(prompt_fields_by_name.values())
 
     @classmethod
     def process_metadata_filter_func(
@@ -1633,7 +1680,7 @@ class DatasetRetrieval:
         )
 
     def _get_prompt_template(
-        self, model_config: ModelConfigWithCredentialsEntity, mode: str, metadata_fields: list[str], query: str
+        self, model_config: ModelConfigWithCredentialsEntity, mode: str, metadata_fields: list[MetadataPromptField], query: str
     ):
         model_mode = ModelMode(mode)
         input_text = query
