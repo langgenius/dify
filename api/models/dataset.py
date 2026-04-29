@@ -848,12 +848,11 @@ class DocumentSegment(TypeBase):
     word_count: Mapped[int]
     tokens: Mapped[int]
 
-
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # basic fields
     # indexing fields
-    index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True ,default=None)
-    index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True ,default=None)
+    index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
     answer: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True, default=None)
