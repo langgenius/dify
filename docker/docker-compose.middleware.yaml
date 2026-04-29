@@ -103,7 +103,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.14
+    image: langgenius/dify-sandbox:0.2.15
     restart: always
     env_file:
       - ./middleware.env
@@ -129,7 +129,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.3-local
+    image: langgenius/dify-plugin-daemon:0.6.0-local
     restart: always
     env_file:
       - ./middleware.env

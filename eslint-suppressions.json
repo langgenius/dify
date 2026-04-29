@@ -3820,21 +3820,6 @@
       "count": 4
     }
   },
-  "web/app/components/tools/workflow-tool/confirm-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/workflow-tool/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/workflow-tool/method-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow-app/components/workflow-children.tsx": {
     "ts/no-explicit-any": {
       "count": 3
