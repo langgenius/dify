@@ -29,15 +29,17 @@ class TestWorkflowDraftVariableFields:
     def test_serialize_full_content(self):
         """Test that _serialize_full_content uses pre-loaded relationships."""
         # Create mock objects with relationships pre-loaded
-        mock_variable_file = MagicMock(spec=WorkflowDraftVariableFile)
-        mock_variable_file.size = 100000
-        mock_variable_file.length = 50
-        mock_variable_file.value_type = SegmentType.OBJECT
-        mock_variable_file.upload_file_id = "test-upload-file-id"
+        mock_variable = WorkflowDraftVariable(
 
-        mock_variable = MagicMock(spec=WorkflowDraftVariable)
-        mock_variable.file_id = "test-file-id"
-        mock_variable.variable_file = mock_variable_file
+       file_id = "test-file-id"
+       ,variable_file = WorkflowDraftVariableFile(
+
+    size = 100000
+    ,length = 50
+    ,value_type = SegmentType.OBJECT
+    ,upload_file_id = "test-upload-file-id"
+        )
+        )
 
         # Mock the file helpers
         with patch("controllers.console.app.workflow_draft_variable.file_helpers", autospec=True) as mock_file_helpers:
@@ -84,7 +86,7 @@ class TestWorkflowDraftVariableFields:
 
         expected_without_value: OrderedDict[str, Any] = OrderedDict(
             {
-                "id": str(conv_var.id),
+                "id": conv_var.id,
                 "type": conv_var.get_variable_type().value,
                 "name": "conv_var",
                 "description": "",
@@ -117,7 +119,7 @@ class TestWorkflowDraftVariableFields:
 
         expected_without_value = OrderedDict(
             {
-                "id": str(sys_var.id),
+                "id": sys_var.id,
                 "type": sys_var.get_variable_type().value,
                 "name": "sys_var",
                 "description": "",
@@ -184,6 +186,9 @@ class TestWorkflowDraftVariableFields:
             size=1024,
             length=10,
             value_type=SegmentType.ARRAY_STRING,
+            tenant_id=str(uuidv7()),
+            app_id=str(uuidv7()),
+            user_id=str(uuidv7()),
         )
         variable_file.id = str(uuidv7())
         node_var.variable_file = variable_file
