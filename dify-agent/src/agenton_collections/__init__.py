@@ -7,17 +7,22 @@ implementation code in ``__init__``.
 """
 
 from agenton.layers.types import (
+    AllPromptTypes,
+    AllToolTypes,
     PlainLayer,
     PlainPrompt,
+    PlainPromptType,
     PlainTool,
+    PlainToolType,
     PydanticAILayer,
     PydanticAIPrompt,
+    PydanticAIPromptType,
     PydanticAITool,
+    PydanticAIToolType,
 )
 from agenton_collections.layers.pydantic_ai import (
     PydanticAIBridgeLayer,
     PydanticAIBridgeLayerDeps,
-    PydanticAIPrompts,
 )
 from agenton_collections.layers.plain import (
     DynamicToolsLayer,
@@ -29,19 +34,24 @@ from agenton_collections.layers.plain import (
 )
 
 __all__ = [
+    "AllPromptTypes",
+    "AllToolTypes",
     "DynamicToolsLayer",
     "DynamicToolsLayerDeps",
     "ObjectLayer",
     "PlainLayer",
     "PlainPrompt",
+    "PlainPromptType",
     "PlainTool",
+    "PlainToolType",
     "PromptLayer",
     "PydanticAIBridgeLayer",
     "PydanticAIBridgeLayerDeps",
     "PydanticAILayer",
     "PydanticAIPrompt",
-    "PydanticAIPrompts",
+    "PydanticAIPromptType",
     "PydanticAITool",
+    "PydanticAIToolType",
     "ToolsLayer",
     "with_object",
 ]

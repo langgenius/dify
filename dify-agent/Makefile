@@ -8,7 +8,7 @@ help:
 	@echo "  make test      - Run dify-agent pytest suite"
 
 typecheck:
-	@uv run --project . python -m basedpyright src tests
+	@uv run --project . python -m basedpyright --level error src tests
 
 test:
 	@uv run --project . python -m pytest tests

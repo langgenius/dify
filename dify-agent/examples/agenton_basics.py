@@ -10,7 +10,8 @@ from typing_extensions import override
 
 from agenton.compositor import Compositor, CompositorLayerConfig
 from agenton.layers import LayerControl, LayerDeps, NoLayerDeps, PlainLayer
-from agenton_collections.plain import DynamicToolsLayer, ObjectLayer, ToolsLayer, with_object
+from agenton.layers.types import PlainPromptType, PlainToolType
+from agenton_collections.layers.plain import DynamicToolsLayer, ObjectLayer, ToolsLayer, with_object
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,13 +75,13 @@ async def main() -> None:
     )
     trace = TraceLayer()
 
-    compositor = Compositor.from_config(
+    compositor = Compositor[PlainPromptType, PlainToolType].from_config(
         {
             "layers": [
                 {
                     "name": "base_prompt",
                     "layer": {
-                        "import_path": "agenton_collections.plain.basic:PromptLayer",
+                        "import_path": "agenton_collections.layers.plain:PromptLayer",
                         "config": {
                             "prefix": "Use config dicts for serializable layers.",
                             "suffix": "Before finalizing, make the result easy to scan.",
@@ -90,7 +91,7 @@ async def main() -> None:
                 {
                     "name": "extra_prompt",
                     "layer": {
-                        "import_path": "agenton_collections.plain.basic:PromptLayer",
+                        "import_path": "agenton_collections.layers.plain:PromptLayer",
                         "config": {
                             "prefix": "Use constructed instances for objects, local code, and callables.",
                         },
@@ -118,17 +119,17 @@ async def main() -> None:
                 ),
                 CompositorLayerConfig(name="trace", layer=trace),
             ]
-        }
+        },
     )
 
     print("Prompts:")
     for prompt in compositor.prompts:
-        print(f"- {prompt}")
+        print(f"- {prompt.value}")
 
     print("\nTools:")
     for tool in compositor.tools:
-        print(f"- {tool.__name__}{signature(tool)}")
-    print([tool("layer composition") for tool in compositor.tools])
+        print(f"- {tool.value.__name__}{signature(tool.value)}")
+    print([tool.value("layer composition") for tool in compositor.tools])
 
     async with compositor.enter() as lifecycle_control:
         lifecycle_control.tmp_leave = True

@@ -7,23 +7,35 @@ families while keeping concrete reusable layers in ``agenton_collections``.
 
 from agenton.layers.base import Layer, LayerControl, LayerDeps, NoLayerDeps
 from agenton.layers.types import (
+    AllPromptTypes,
+    AllToolTypes,
     PlainLayer,
     PlainPrompt,
+    PlainPromptType,
     PlainTool,
+    PlainToolType,
     PydanticAILayer,
     PydanticAIPrompt,
+    PydanticAIPromptType,
     PydanticAITool,
+    PydanticAIToolType,
 )
 
 __all__ = [
+    "AllPromptTypes",
+    "AllToolTypes",
     "Layer",
     "LayerDeps",
     "LayerControl",
     "NoLayerDeps",
     "PlainLayer",
     "PlainPrompt",
+    "PlainPromptType",
     "PlainTool",
+    "PlainToolType",
     "PydanticAILayer",
     "PydanticAIPrompt",
+    "PydanticAIPromptType",
     "PydanticAITool",
+    "PydanticAIToolType",
 ]

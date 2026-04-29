@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing_extensions import override
 
 from agenton.compositor import Compositor, CompositorControl
-from agenton.layers import LayerControl, NoLayerDeps, PlainLayer
+from agenton.layers import LayerControl, NoLayerDeps, PlainLayer, PlainPromptType, PlainToolType
 
 
 @dataclass(slots=True)
@@ -34,7 +34,7 @@ class TraceLayer(PlainLayer[NoLayerDeps]):
 def test_compositor_enter_creates_control_and_applies_tmp_leave_to_all_layers() -> None:
     first_layer = TraceLayer()
     second_layer = TraceLayer()
-    compositor: Compositor[str, object] = Compositor(
+    compositor: Compositor[PlainPromptType, PlainToolType] = Compositor(
         layers=OrderedDict(
             [
                 ("first", first_layer),
@@ -61,7 +61,7 @@ def test_compositor_enter_creates_control_and_applies_tmp_leave_to_all_layers() 
 
 def test_compositor_enter_does_not_store_tmp_leave_on_layer() -> None:
     layer = TraceLayer()
-    compositor: Compositor[str, object] = Compositor(
+    compositor: Compositor[PlainPromptType, PlainToolType] = Compositor(
         layers=OrderedDict([("trace", layer)])
     )
 
@@ -79,7 +79,7 @@ def test_compositor_enter_does_not_store_tmp_leave_on_layer() -> None:
 
 def test_compositor_enter_rejects_control_with_mismatched_layer_names() -> None:
     layer = TraceLayer()
-    compositor: Compositor[str, object] = Compositor(
+    compositor: Compositor[PlainPromptType, PlainToolType] = Compositor(
         layers=OrderedDict([("trace", layer)])
     )
     compositor_control = CompositorControl(["other"])

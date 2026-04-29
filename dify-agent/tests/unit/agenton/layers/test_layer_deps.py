@@ -1,7 +1,7 @@
 import pytest
 
 from agenton.layers import LayerDeps
-from agenton_collections.plain import ObjectLayer, PromptLayer
+from agenton_collections.layers.plain import ObjectLayer, PromptLayer
 
 
 class ObjectLayerDeps(LayerDeps):

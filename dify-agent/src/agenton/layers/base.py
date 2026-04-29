@@ -16,12 +16,14 @@ exits from temporary exits. The control is also the external lifecycle state:
 reuse a ``tmp_leave`` control to reenter, or pass a fresh control to start from
 create logic.
 
-``Layer`` is framework-neutral over prompt and tool item types. Typed families
-such as ``agenton.layers.types.PlainLayer`` bind those generic slots to a
-specific contract without pushing framework types into this base module.
+``Layer`` is framework-neutral over prompt and tool item types. The native
+``prefix_prompts``, ``suffix_prompts``, and ``tools`` properties are the layer
+authoring surface. ``wrap_prompt`` and ``wrap_tool`` are the compositor
+aggregation surface; typed families such as ``agenton.layers.types.PlainLayer``
+implement them to tag native values without changing layer implementations.
 """
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass
@@ -201,6 +203,16 @@ class Layer[DepsT: LayerDeps, PromptT, ToolT](ABC):
     @property
     def tools(self) -> Sequence[ToolT]:
         return []
+
+    @abstractmethod
+    def wrap_prompt(self, prompt: PromptT) -> object:
+        """Wrap a native prompt item for compositor aggregation."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def wrap_tool(self, tool: ToolT) -> object:
+        """Wrap a native tool item for compositor aggregation."""
+        raise NotImplementedError
 
 
 def _get_dep_specs(deps_type: type[LayerDeps]) -> dict[str, LayerDepSpec]:
