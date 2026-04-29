@@ -383,7 +383,6 @@ def test_close_handles_awaitable_close_result():
         def __await__(self):
             if False:
                 yield
-            return None
 
     close_result = CloseResult()
     extractor = object.__new__(WordExtractor)
