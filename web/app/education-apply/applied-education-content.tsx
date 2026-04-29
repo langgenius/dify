@@ -69,7 +69,7 @@ const AppliedEducationContent = ({
               onSwitchWorkspace(value)
           }}
         >
-          <SelectTrigger className="border-components-input-border h-14! w-full cursor-pointer justify-between rounded-lg border bg-background-default px-3! py-2! hover:bg-state-base-hover">
+          <SelectTrigger className="h-14! w-full cursor-pointer justify-between rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3! py-2! hover:bg-state-base-hover">
             <span className="flex min-w-0 items-center gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-blue-solid text-[18px]">
                 <span className="bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">
