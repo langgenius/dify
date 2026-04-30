@@ -5,6 +5,8 @@ This module provides comprehensive integration testing for WorkflowService using
 TestContainers to ensure realistic database interactions and proper isolation.
 """
 
+from models import TenantStatus
+from models import AccountStatus
 import json
 from unittest.mock import MagicMock
 
@@ -49,7 +51,7 @@ class TestWorkflowService:
             email=fake.email(),
             name=fake.name(),
             avatar=fake.url(),
-            status="active",
+            status=AccountStatus.ACTIVE,
             interface_language="en-US",  # Set interface language for Site creation
         )
         account.created_at = fake.date_time_this_year()
@@ -62,7 +64,7 @@ class TestWorkflowService:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()

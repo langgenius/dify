@@ -54,10 +54,10 @@ class TestDisableSegmentsFromIndexTask:
             status=AccountStatus.ACTIVE,
             interface_language="en-US",
             # monkey-patch attributes for test setup
-            role=TenantAccountRole.OWNER,
             created_at=fake.date_time_this_year(),
             updated_at=fake.date_time_this_year(),
         )
+        account.role = TenantAccountRole.OWNER
         account.id = fake.uuid4()
         account.tenant_id = fake.uuid4()
         account.type = "normal"
