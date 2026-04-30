@@ -315,7 +315,7 @@ describe('CloudPlanItem', () => {
       fireEvent.click(button)
       expect(screen.getByText('education.educationPricingConfirm.title'))!.toBeInTheDocument()
       expect(screen.getByText(/^education\.educationPricingConfirm\.description/))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.close' }))!.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.close' }))!.not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))!.toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.continue' }))
 

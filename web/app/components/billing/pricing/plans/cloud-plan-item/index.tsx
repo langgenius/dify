@@ -33,6 +33,10 @@ const ICON_MAP = {
   [Plan.team]: <Team />,
 }
 
+type ConfirmType = {
+  type: 'info' | 'warning'
+}
+
 type CloudPlanItemProps = {
   currentPlan: BasicPlan
   plan: BasicPlan
@@ -67,6 +71,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const openAsyncWindow = useAsyncWindowOpen()
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const [showEducationPricingConfirm, setShowEducationPricingConfirm] = React.useState(false)
+  const educationPricingConfirmInfo: ConfirmType = { type: 'warning' }
 
   const btnText = useMemo(() => {
     if (isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrent)
@@ -197,25 +202,16 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       >
         {showEducationPricingConfirm && <div className="fixed inset-0 z-1002 bg-background-overlay"></div>}
         <AlertDialogContent>
-          <AlertDialogCancelButton
-            className="absolute top-4 right-4 size-8 p-0!"
-            closeProps={{ 'aria-label': t('operation.close', { ns: 'common' }) }}
-          >
-            <span className="i-ri-close-line size-4" />
-          </AlertDialogCancelButton>
-          <div className="flex flex-col gap-4 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t('educationPricingConfirm.title', { ns: 'education' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="flex w-full gap-2 system-md-regular text-text-tertiary">
-              <span className="mt-0.5 i-ri-error-warning-fill size-4 shrink-0 text-text-warning-secondary" />
-              <span>
-                {t('educationPricingConfirm.description', {
-                  ns: 'education',
-                  planName: selectedPlanName,
-                  billingPeriod: selectedBillingPeriod,
-                })}
-              </span>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('educationPricingConfirm.description', {
+                ns: 'education',
+                planName: selectedPlanName,
+                billingPeriod: selectedBillingPeriod,
+              })}
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
@@ -226,7 +222,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
               {t('educationPricingConfirm.cancel', { ns: 'education' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
-              tone="default"
+              tone={educationPricingConfirmInfo.type !== 'info' ? 'destructive' : 'default'}
               onClick={handleContinueCurrentPlan}
               disabled={loading}
               loading={loading}

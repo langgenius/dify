@@ -126,7 +126,8 @@ const EducationApplyAgeContent = () => {
     router.push('/')
   }
   const renderBackToDifyButton = () => (
-    <Button onClick={handleReturnHome}>
+    <Button variant="ghost-accent" onClick={handleReturnHome}>
+      <span className="mr-1 i-ri-arrow-left-line h-4 w-4" />
       {t('applied.noPaymentPermission.returnHome', { ns: 'education' })}
     </Button>
   )
