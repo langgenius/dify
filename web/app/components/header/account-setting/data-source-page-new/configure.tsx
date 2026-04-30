@@ -39,6 +39,13 @@ const Configure = ({
 }: ConfigureProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen && isOAuthSettingsOpen)
+      return
+
+    setOpen(nextOpen)
+  }, [isOAuthSettingsOpen])
   const canApiKey = item.credential_schema?.length
   const oAuthData = item.oauth_schema || {}
   const canOAuth = oAuthData.client_schema?.length
@@ -65,7 +72,7 @@ const Configure = ({
     <>
       <Popover
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={handleOpenChange}
       >
         <PopoverTrigger
           render={(
@@ -97,6 +104,7 @@ const Configure = ({
                     redirect_uri: oAuthData.redirect_uri,
                   }}
                   disabled={disabled}
+                  onSettingsOpenChange={setIsOAuthSettingsOpen}
                 />
               )
             }

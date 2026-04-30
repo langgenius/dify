@@ -31,6 +31,7 @@ export type AddOAuthButtonProps = {
   dividerClassName?: string
   disabled?: boolean
   onUpdate?: () => void
+  onSettingsOpenChange?: (open: boolean) => void
   oAuthData?: {
     schema?: FormSchema[]
     is_oauth_custom_client_enabled?: boolean
@@ -51,6 +52,7 @@ const AddOAuthButton = ({
   dividerClassName,
   disabled,
   onUpdate,
+  onSettingsOpenChange,
   oAuthData,
 }: AddOAuthButtonProps) => {
   const { t } = useTranslation()
@@ -73,10 +75,14 @@ const AddOAuthButton = ({
     redirect_uri,
   } = mergedOAuthData
   const isConfigured = is_system_oauth_params_exists || is_oauth_custom_client_enabled
+  const handleSettingsOpenChange = useCallback((open: boolean) => {
+    setIsOAuthSettingsOpen(open)
+    onSettingsOpenChange?.(open)
+  }, [onSettingsOpenChange])
   const openOAuthSettings = useCallback(() => {
     setIsOAuthSettingsMounted(true)
-    setIsOAuthSettingsOpen(true)
-  }, [])
+    handleSettingsOpenChange(true)
+  }, [handleSettingsOpenChange])
   const handleOAuth = useCallback(async () => {
     const { authorization_url } = await getPluginOAuthUrl()
 
@@ -259,9 +265,9 @@ const AddOAuthButton = ({
         isOAuthSettingsMounted && (
           <OAuthClientSettings
             open={isOAuthSettingsOpen}
-            onOpenChange={setIsOAuthSettingsOpen}
+            onOpenChange={handleSettingsOpenChange}
             pluginPayload={pluginPayload}
-            onClose={() => setIsOAuthSettingsOpen(false)}
+            onClose={() => handleSettingsOpenChange(false)}
             disabled={disabled || isLoading}
             schemas={memorizedSchemas}
             onAuth={handleOAuth}
