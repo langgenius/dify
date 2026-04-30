@@ -5,11 +5,11 @@ This module provides integration tests for email registration tasks
 using TestContainers to ensure real database and service interactions.
 """
 
-from sqlalchemy.orm import Session
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
 from tasks.mail_register_task import send_email_register_mail_task, send_email_register_mail_task_when_account_exist
@@ -67,7 +67,9 @@ class TestMailRegisterTask:
         mock_mail_dependencies["get_email_service"].assert_not_called()
         mock_mail_dependencies["email_service"].send_email.assert_not_called()
 
-    def test_send_email_register_mail_task_exception_handling(self, db_session_with_containers: Session, mock_mail_dependencies):
+    def test_send_email_register_mail_task_exception_handling(
+        self, db_session_with_containers: Session, mock_mail_dependencies
+    ):
         """Test email registration task exception handling."""
         mock_mail_dependencies["email_service"].send_email.side_effect = Exception("Email service error")
 

@@ -1,8 +1,8 @@
-from sqlalchemy.orm import Session
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole

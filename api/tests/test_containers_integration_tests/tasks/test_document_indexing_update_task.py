@@ -1,9 +1,9 @@
-from sqlalchemy.orm import Session
 from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -154,7 +154,9 @@ class TestDocumentIndexingUpdateTask:
         first = run_docs[0]
         assert getattr(first, "id", None) == document.id
 
-    def test_clean_error_is_logged_and_indexing_continues(self, db_session_with_containers: Session, mock_external_dependencies):
+    def test_clean_error_is_logged_and_indexing_continues(
+        self, db_session_with_containers: Session, mock_external_dependencies
+    ):
         dataset, document, node_ids = self._create_dataset_document_with_segments(db_session_with_containers)
 
         # Force clean to raise; task should continue to indexing

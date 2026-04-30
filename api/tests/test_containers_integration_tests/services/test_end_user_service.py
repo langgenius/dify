@@ -1,10 +1,10 @@
-from sqlalchemy.orm import Session
 from __future__ import annotations
 
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account, Tenant, TenantAccountJoin
@@ -358,7 +358,9 @@ class TestEndUserServiceGetOrCreateEndUserByType:
             InvokeFrom.DEBUGGER,
         ],
     )
-    def test_create_end_user_with_different_invoke_types(self, db_session_with_containers: Session, invoke_type, factory):
+    def test_create_end_user_with_different_invoke_types(
+        self, db_session_with_containers: Session, invoke_type, factory
+    ):
         """Test creating end users with different InvokeFrom types."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)

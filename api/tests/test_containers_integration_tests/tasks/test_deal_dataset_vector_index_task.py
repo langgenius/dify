@@ -6,13 +6,13 @@ containers to ensure proper handling of dataset vector index operations includin
 add, update, and remove actions.
 """
 
-from sqlalchemy.orm import Session
 import uuid
 from unittest.mock import ANY, Mock, patch
 
 import pytest
 from faker import Faker
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment

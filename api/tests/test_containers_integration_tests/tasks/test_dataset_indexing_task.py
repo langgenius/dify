@@ -1,6 +1,5 @@
 """Integration tests for dataset indexing task SQL behaviors using testcontainers."""
 
-from sqlalchemy.orm import Session
 import uuid
 from collections.abc import Sequence
 from unittest.mock import MagicMock, patch
@@ -8,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -213,7 +213,9 @@ class TestDatasetIndexingTaskIntegration:
         assert len(opened) >= 2
         assert opened_ids <= closed_ids
 
-    def test_legacy_document_indexing_task_still_works(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_legacy_document_indexing_task_still_works(
+        self, db_session_with_containers: Session, patched_external_dependencies
+    ):
         """Ensure the legacy task entrypoint still updates parsing status."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
@@ -226,7 +228,9 @@ class TestDatasetIndexingTaskIntegration:
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
-    def test_batch_processing_multiple_documents(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_batch_processing_multiple_documents(
+        self, db_session_with_containers: Session, patched_external_dependencies
+    ):
         """Process multiple documents in one batch."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
@@ -241,7 +245,9 @@ class TestDatasetIndexingTaskIntegration:
         assert len(run_args) == len(document_ids)
         self._assert_documents_parsing(db_session_with_containers, document_ids)
 
-    def test_batch_processing_with_limit_check(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_batch_processing_with_limit_check(
+        self, db_session_with_containers: Session, patched_external_dependencies
+    ):
         """Reject batches larger than configured upload limit.
 
         This test patches config only to force a deterministic limit branch while keeping SQL writes real.
@@ -281,7 +287,9 @@ class TestDatasetIndexingTaskIntegration:
         patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
         self._assert_documents_error_contains(db_session_with_containers, document_ids, "does not support batch upload")
 
-    def test_batch_processing_empty_document_list(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_batch_processing_empty_document_list(
+        self, db_session_with_containers: Session, patched_external_dependencies
+    ):
         """Handle empty list input without failing."""
         # Arrange
         dataset, _ = self._create_test_dataset_and_documents(db_session_with_containers, document_count=0)
@@ -577,7 +585,9 @@ class TestDatasetIndexingTaskIntegration:
             call_kwargs = task_dispatch_spy.apply_async.call_args_list[index].kwargs.get("kwargs", {})
             assert call_kwargs.get("document_ids") == expected_task["document_ids"]
 
-    def test_billing_disabled_skips_limit_checks(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_billing_disabled_skips_limit_checks(
+        self, db_session_with_containers: Session, patched_external_dependencies
+    ):
         """Skip limit checks when billing feature is disabled."""
         # Arrange
         large_document_ids = [str(uuid.uuid4()) for _ in range(100)]
@@ -656,7 +666,9 @@ class TestDatasetIndexingTaskIntegration:
         assert len(run_args) == 1
         self._assert_documents_parsing(db_session_with_containers, [document_id])
 
-    def test_document_with_special_characters_in_id(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_document_with_special_characters_in_id(
+        self, db_session_with_containers: Session, patched_external_dependencies
+    ):
         """Handle standard UUID ids with hyphen characters safely."""
         # Arrange
         special_document_id = str(uuid.uuid4())
@@ -671,7 +683,9 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         self._assert_documents_parsing(db_session_with_containers, [special_document_id])
 
-    def test_zero_vector_space_limit_allows_unlimited(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_zero_vector_space_limit_allows_unlimited(
+        self, db_session_with_containers: Session, patched_external_dependencies
+    ):
         """Treat vector limit 0 as unlimited and continue indexing."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)

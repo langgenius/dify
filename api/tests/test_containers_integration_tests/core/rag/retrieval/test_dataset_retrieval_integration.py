@@ -1,9 +1,9 @@
-from sqlalchemy.orm import Session
 import uuid
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -380,7 +380,9 @@ class TestGetAvailableDatasetsIntegration:
         # Assert
         assert result == []
 
-    def test_returns_only_requested_dataset_ids(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_returns_only_requested_dataset_ids(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         # Arrange
         fake = Faker()
 

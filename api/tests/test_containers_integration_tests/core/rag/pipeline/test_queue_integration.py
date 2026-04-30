@@ -8,7 +8,6 @@ Includes compatibility tests for migrating from legacy string-only queues.
 All tests use generic naming to avoid coupling to specific business implementations.
 """
 
-from sqlalchemy.orm import Session
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -16,6 +15,7 @@ from uuid import uuid4
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.rag.pipeline.queue import TaskWrapper, TenantIsolatedTaskQueue
 from extensions.ext_redis import redis_client

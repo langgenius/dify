@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 import json
 from io import BytesIO
 from unittest.mock import MagicMock, patch
@@ -6,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from models.enums import AppTriggerStatus, AppTriggerType

@@ -7,13 +7,13 @@ This module validates SQL-backed behavior for document sync flows:
 - Credential and indexing error handling
 """
 
-from sqlalchemy.orm import Session
 import json
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import delete, func, select, update
+from sqlalchemy.orm import Session
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -377,7 +377,9 @@ class TestDocumentIndexingSyncTask:
         mock_external_dependencies["index_processor"].clean.assert_not_called()
         mock_external_dependencies["indexing_runner"].run.assert_called_once()
 
-    def test_cleaning_error_continues_to_indexing(self, db_session_with_containers: Session, mock_external_dependencies):
+    def test_cleaning_error_continues_to_indexing(
+        self, db_session_with_containers: Session, mock_external_dependencies
+    ):
         """Test that indexing continues when index cleanup fails."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)
@@ -401,7 +403,9 @@ class TestDocumentIndexingSyncTask:
         assert remaining_segments == 0
         mock_external_dependencies["indexing_runner"].run.assert_called_once()
 
-    def test_indexing_runner_document_paused_error(self, db_session_with_containers: Session, mock_external_dependencies):
+    def test_indexing_runner_document_paused_error(
+        self, db_session_with_containers: Session, mock_external_dependencies
+    ):
         """Test that DocumentIsPausedError does not flip document into error state."""
         # Arrange
         context = self._create_notion_sync_context(db_session_with_containers)

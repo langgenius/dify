@@ -5,7 +5,6 @@ This module provides comprehensive testing for the create_segment_to_index_task
 which handles asynchronous document segment indexing operations.
 """
 
-from sqlalchemy.orm import Session
 import time
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -13,6 +12,7 @@ from uuid import uuid4
 import pytest
 from faker import Faker
 from sqlalchemy import delete
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
@@ -152,7 +152,13 @@ class TestCreateSegmentToIndexTask:
         return dataset, document
 
     def _create_test_segment(
-        self, db_session_with_containers: Session, dataset_id, document_id, tenant_id, account_id, status=SegmentStatus.WAITING
+        self,
+        db_session_with_containers: Session,
+        dataset_id,
+        document_id,
+        tenant_id,
+        account_id,
+        status=SegmentStatus.WAITING,
     ):
         """
         Helper method to create a test document segment for testing.
@@ -190,7 +196,9 @@ class TestCreateSegmentToIndexTask:
 
         return segment
 
-    def test_create_segment_to_index_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_create_segment_to_index_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful creation of segment to index.
 
@@ -278,7 +286,9 @@ class TestCreateSegmentToIndexTask:
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
 
-    def test_create_segment_to_index_no_dataset(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_create_segment_to_index_no_dataset(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test handling of segment without associated dataset.
 
@@ -331,7 +341,9 @@ class TestCreateSegmentToIndexTask:
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
 
-    def test_create_segment_to_index_no_document(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_create_segment_to_index_no_document(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test handling of segment without associated document.
 

@@ -6,12 +6,12 @@ using TestContainers to ensure real email service integration and proper functio
 testing with actual database and service dependencies.
 """
 
-from sqlalchemy.orm import Session
 import logging
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -87,7 +87,9 @@ class TestMailOwnerTransferTask:
 
         return account, tenant
 
-    def test_send_owner_transfer_confirm_task_success(self, db_session_with_containers: Session, mock_mail_dependencies):
+    def test_send_owner_transfer_confirm_task_success(
+        self, db_session_with_containers: Session, mock_mail_dependencies
+    ):
         """
         Test successful owner transfer confirmation email sending.
 

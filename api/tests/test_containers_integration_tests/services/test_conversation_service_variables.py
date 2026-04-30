@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -6,7 +5,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db

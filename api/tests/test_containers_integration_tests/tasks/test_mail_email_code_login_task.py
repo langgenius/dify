@@ -10,12 +10,12 @@ All tests use the testcontainers infrastructure to ensure proper database isolat
 and realistic testing scenarios with actual PostgreSQL and Redis instances.
 """
 
-from sqlalchemy.orm import Session
 from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
 from sqlalchemy import delete
+from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole

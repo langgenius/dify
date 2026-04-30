@@ -1,9 +1,9 @@
-from sqlalchemy.orm import Session
 from dataclasses import asdict
 from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.entities.document_task import DocumentTask
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -222,7 +222,9 @@ class TestDocumentIndexingTasks:
 
         return dataset, documents
 
-    def test_document_indexing_task_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_document_indexing_task_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful document indexing with multiple documents.
 
@@ -598,7 +600,9 @@ class TestDocumentIndexingTasks:
             assert updated_document.processing_started_at is not None
 
     # ==================== NEW TESTS FOR REFACTORED FUNCTIONS ====================
-    def test_old_document_indexing_task_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_old_document_indexing_task_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test document_indexing_task basic functionality.
 

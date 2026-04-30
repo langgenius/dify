@@ -1558,7 +1558,9 @@ class TestWorkflowAppService:
         assert result["total"] >= 0
         assert isinstance(result["data"], list)
 
-    def test_get_paginate_workflow_archive_logs(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_paginate_workflow_archive_logs(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
 

@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from __future__ import annotations
 
 import base64
@@ -11,6 +10,7 @@ from uuid import uuid4
 import pytest
 import yaml
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
@@ -346,7 +346,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert "File size exceeds" in result.error
 
-    def test_import_app_yaml_url_user_attachments_keeps_original_url(self, db_session_with_containers: Session, monkeypatch):
+    def test_import_app_yaml_url_user_attachments_keeps_original_url(
+        self, db_session_with_containers: Session, monkeypatch
+    ):
         yaml_url = "https://github.com/user-attachments/files/24290802/loop-test.yml"
         yaml_bytes = _pending_yaml_content()
 
@@ -635,7 +637,9 @@ class TestAppDslService:
         result = service.check_dependencies(app_model=_app_stub(id=app_id))
         assert len(result.leaked_dependencies) == 1
 
-    def test_check_dependencies_with_real_app(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_check_dependencies_with_real_app(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         mock_dependencies_json = '{"app_id": "' + app.id + '", "dependencies": []}'
@@ -909,7 +913,9 @@ class TestAppDslService:
         assert "model_config" in exported_data
         assert "dependencies" in exported_data
 
-    def test_export_dsl_workflow_app_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_export_dsl_workflow_app_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         app.mode = "workflow"
         db_session_with_containers.commit()
@@ -942,7 +948,9 @@ class TestAppDslService:
         assert "workflow" in exported_data
         assert "dependencies" in exported_data
 
-    def test_export_dsl_with_workflow_id_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_export_dsl_with_workflow_id_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         app.mode = "workflow"
         db_session_with_containers.commit()

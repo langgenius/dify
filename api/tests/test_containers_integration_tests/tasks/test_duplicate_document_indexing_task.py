@@ -1,9 +1,9 @@
-from sqlalchemy.orm import Session
 from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -146,7 +146,11 @@ class TestDuplicateDocumentIndexingTasks:
         return dataset, documents
 
     def _create_test_dataset_with_segments(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, document_count=3, segments_per_doc=2
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        document_count=3,
+        segments_per_doc=2,
     ):
         """
         Helper method to create a test dataset with documents and segments.

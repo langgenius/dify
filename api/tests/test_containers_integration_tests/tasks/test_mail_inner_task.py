@@ -1,8 +1,8 @@
-from sqlalchemy.orm import Session
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from tasks.mail_inner_task import send_inner_email_task
 
@@ -91,7 +91,9 @@ class TestMailInnerTask:
             html_content="<html>Test email content</html>",
         )
 
-    def test_send_inner_email_single_recipient(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_send_inner_email_single_recipient(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test email sending with single recipient.
 
@@ -127,7 +129,9 @@ class TestMailInnerTask:
             html_content="<html>Test email content</html>",
         )
 
-    def test_send_inner_email_empty_substitutions(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_send_inner_email_empty_substitutions(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test email sending with empty substitutions.
 
@@ -223,7 +227,9 @@ class TestMailInnerTask:
         # Verify no email service calls due to exception
         mock_external_service_dependencies["email_service"].send_raw_email.assert_not_called()
 
-    def test_send_inner_email_service_error(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_send_inner_email_service_error(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test email sending when email service fails.
 

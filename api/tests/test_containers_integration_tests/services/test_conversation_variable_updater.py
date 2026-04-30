@@ -1,10 +1,9 @@
 """Testcontainers integration tests for ConversationVariableUpdater."""
 
-from sqlalchemy.orm import Session
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from graphon.variables import StringVariable
@@ -14,7 +13,12 @@ from services.conversation_variable_updater import ConversationVariableNotFoundE
 
 class TestConversationVariableUpdater:
     def _create_conversation_variable(
-        self, db_session_with_containers: Session, *, conversation_id: str, variable: StringVariable, app_id: str | None = None
+        self,
+        db_session_with_containers: Session,
+        *,
+        conversation_id: str,
+        variable: StringVariable,
+        app_id: str | None = None,
     ) -> ConversationVariable:
         row = ConversationVariable(
             id=variable.id,

@@ -10,7 +10,6 @@ All tests use the testcontainers infrastructure to ensure proper database isolat
 and realistic testing scenarios with actual PostgreSQL and Redis instances.
 """
 
-from sqlalchemy.orm import Session
 import json
 import uuid
 from datetime import UTC, datetime
@@ -19,6 +18,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 from extensions.ext_redis import redis_client
 from libs.email_i18n import EmailType
@@ -186,7 +186,9 @@ class TestMailInviteMemberTask:
 
         return account
 
-    def test_send_invite_member_mail_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_send_invite_member_mail_success(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         """
         Test successful invitation email sending with all parameters.
 

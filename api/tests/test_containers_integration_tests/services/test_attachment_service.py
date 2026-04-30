@@ -1,6 +1,5 @@
 """Testcontainers integration tests for AttachmentService."""
 
-from sqlalchemy.orm import Session
 import base64
 from datetime import UTC, datetime
 from unittest.mock import patch
@@ -8,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 import services.attachment_service as attachment_service_module

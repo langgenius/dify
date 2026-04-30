@@ -7,11 +7,11 @@ The task is responsible for removing document segments from the vector index whe
 are deleted from the dataset.
 """
 
-from sqlalchemy.orm import Session
 import logging
 from unittest.mock import MagicMock, patch
 
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models import Account, Dataset, Document, DocumentSegment, Tenant
@@ -173,7 +173,9 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return document
 
-    def _create_test_document_segments(self, db_session_with_containers: Session, document, account, count=3, fake=None):
+    def _create_test_document_segments(
+        self, db_session_with_containers: Session, document, account, count=3, fake=None
+    ):
         """
         Helper method to create test document segments with realistic data.
 

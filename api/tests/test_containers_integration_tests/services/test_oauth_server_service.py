@@ -1,6 +1,5 @@
 """Testcontainers integration tests for OAuthServerService."""
 
-from sqlalchemy.orm import Session
 from __future__ import annotations
 
 import uuid
@@ -9,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
 from models.model import OAuthProviderApp
