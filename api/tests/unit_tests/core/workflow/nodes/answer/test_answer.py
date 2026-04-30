@@ -86,3 +86,80 @@ def test_execute_answer():
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["answer"] == "Today's weather is sunny\nYou are a helpful AI.\n{{img}}\nFin."
+
+
+def test_execute_answer_renders_structured_output_object_as_json() -> None:
+    init_params = build_test_graph_init_params(
+        workflow_id="1",
+        graph_config={"nodes": [], "edges": []},
+        tenant_id="1",
+        app_id="1",
+        user_id="1",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+
+    variable_pool = VariablePool(
+        system_variables=build_system_variables(user_id="aaa", files=[]),
+        user_inputs={},
+        environment_variables=[],
+        conversation_variables=[],
+    )
+    variable_pool.add(["1777539038857", "structured_output"], {"type": "greeting"})
+
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    node = AnswerNode(
+        node_id=str(uuid.uuid4()),
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+        config=AnswerNodeData(
+            title="123",
+            type="answer",
+            answer="{{#1777539038857.structured_output#}}",
+        ),
+    )
+
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["answer"] == '{\n  "type": "greeting"\n}'
+
+
+def test_execute_answer_falls_back_to_plain_selector_text_when_structured_output_missing() -> None:
+    init_params = build_test_graph_init_params(
+        workflow_id="1",
+        graph_config={"nodes": [], "edges": []},
+        tenant_id="1",
+        app_id="1",
+        user_id="1",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+
+    variable_pool = VariablePool(
+        system_variables=build_system_variables(user_id="aaa", files=[]),
+        user_inputs={},
+        environment_variables=[],
+        conversation_variables=[],
+    )
+
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    node = AnswerNode(
+        node_id=str(uuid.uuid4()),
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+        config=AnswerNodeData(
+            title="123",
+            type="answer",
+            answer="{{#1777539038857.structured_output#}}",
+        ),
+    )
+
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["answer"] == "1777539038857.structured_output"
