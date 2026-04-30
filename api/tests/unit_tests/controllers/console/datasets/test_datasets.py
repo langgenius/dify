@@ -13,6 +13,7 @@ from controllers.console.datasets.datasets import (
     DatasetApiDeleteApi,
     DatasetApiKeyApi,
     DatasetAutoDisableLogApi,
+    DatasetEvaluationMetricsApi,
     DatasetEnableApiApi,
     DatasetErrorDocs,
     DatasetIndexingEstimateApi,
@@ -27,11 +28,13 @@ from controllers.console.datasets.datasets import (
 )
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.evaluation.entities.evaluation_entity import EvaluationCategory
 from core.provider_manager import ProviderManager
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import ApiToken, UploadFile
+from services.evaluation_service import EvaluationService
 from services.dataset_service import DatasetPermissionService, DatasetService
 
 
@@ -1959,3 +1962,37 @@ class TestDatasetAutoDisableLogApi:
         ):
             with pytest.raises(NotFound):
                 method(api, "dataset-1")
+
+
+class TestDatasetEvaluationMetricsApi:
+    def test_get_uses_retrieval_metrics_category(self, app):
+        api = DatasetEvaluationMetricsApi()
+        method = unwrap(api.get)
+
+        dataset = MagicMock()
+        current_user = MagicMock()
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.datasets.current_account_with_tenant",
+                return_value=(current_user, "tenant-1"),
+            ),
+            patch(
+                "controllers.console.datasets.datasets.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+            patch.object(
+                EvaluationService,
+                "get_supported_metrics",
+                return_value=["context_precision", "context_recall"],
+            ) as get_supported_metrics_mock,
+        ):
+            response = method(api, "dataset-1")
+
+        get_supported_metrics_mock.assert_called_once_with(EvaluationCategory.RETRIEVAL)
+        assert response["metrics"] == ["context_precision", "context_recall"]

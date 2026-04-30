@@ -259,6 +259,57 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
     assert exc.value.description == "invalid workflow graph"
 
 
+def test_publish_evaluation_workflow_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(created_at=datetime(2024, 1, 1), id="wf-1")
+    user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1")
+
+    class _FakeSession:
+        def __enter__(self) -> "_FakeSession":
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def get(self, model, app_id):
+            assert model is workflow_module.App
+            assert app_id == "app-1"
+            return SimpleNamespace(
+                workflow_id=None,
+                updated_by=None,
+                updated_at=None,
+            )
+
+        def commit(self) -> None:
+            return None
+
+    class _FakeSessionFactory:
+        def __call__(self, _engine) -> _FakeSession:
+            return _FakeSession()
+
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "tenant-1"))
+    monkeypatch.setattr(workflow_module, "Session", _FakeSessionFactory())
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(publish_evaluation_workflow=lambda **_kwargs: workflow),
+    )
+
+    api = workflow_module.EvaluationPublishedWorkflowApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/publish/evaluation",
+        method="POST",
+        json={"marked_name": "v1", "marked_comment": "publish"},
+    ):
+        response = handler(api, app_model=app_model)
+
+    assert response["result"] == "success"
+    assert response["created_at"] is not None
+
+
 def test_get_published_workflows_marshals_items_before_session_closes(app, monkeypatch: pytest.MonkeyPatch) -> None:
     api = workflow_module.PublishedAllWorkflowApi()
     handler = _unwrap(api.get)

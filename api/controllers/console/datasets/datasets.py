@@ -1377,7 +1377,7 @@ class DatasetEvaluationMetricsApi(Resource):
             raise Forbidden(str(e))
 
         return {
-            "metrics": EvaluationService.get_supported_metrics(EvaluationCategory.KNOWLEDGE_BASE)
+            "metrics": EvaluationService.get_supported_metrics(EvaluationCategory.RETRIEVAL)
         }
 
 
