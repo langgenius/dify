@@ -1,3 +1,7 @@
+from sqlalchemy.orm import Session
+from models import TenantStatus
+from models import AccountStatus
+from sqlalchemy.orm import Session
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -42,12 +46,12 @@ class TestDocumentIndexingUpdateTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
-        tenant = Tenant(name=fake.company(), status="normal")
+        tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
 
