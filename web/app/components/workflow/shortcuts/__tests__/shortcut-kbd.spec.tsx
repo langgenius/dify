@@ -24,7 +24,10 @@ describe('ShortcutKbd', () => {
       'h-4',
       'min-w-4',
       'rounded-sm',
+      'font-sans',
+      'not-italic',
       'system-kbd',
+      'capitalize',
       'bg-components-kbd-bg-white',
       'text-text-tertiary',
     )

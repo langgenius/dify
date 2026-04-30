@@ -55,7 +55,7 @@ export const ShortcutKbd = ({
           <kbd
             key={`${key}-${index}`}
             className={cn(
-              'flex h-4 min-w-4 items-center justify-center rounded-sm px-1 system-kbd',
+              'flex h-4 min-w-4 items-center justify-center rounded-sm px-1 font-sans system-kbd capitalize not-italic',
               bgColor === 'gray' && 'bg-components-kbd-bg-gray',
               bgColor === 'white' && 'bg-components-kbd-bg-white text-text-primary-on-surface',
               textColor === 'secondary' && 'text-text-tertiary',
