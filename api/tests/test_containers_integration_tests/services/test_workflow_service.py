@@ -5,8 +5,6 @@ This module provides comprehensive integration testing for WorkflowService using
 TestContainers to ensure realistic database interactions and proper isolation.
 """
 
-from models import TenantStatus
-from models import AccountStatus
 import json
 from unittest.mock import MagicMock
 
@@ -14,7 +12,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models import Account, App, Workflow
+from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.model import AppMode
 from models.workflow import WorkflowType
 from services.workflow_service import WorkflowService
