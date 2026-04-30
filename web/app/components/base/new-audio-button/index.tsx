@@ -81,17 +81,19 @@ const AudioBtn = ({
     <Tooltip>
       <TooltipTrigger
         render={(
-          <ActionButton
-            state={
-              audioState === 'loading' || audioState === 'playing'
-                ? ActionButtonState.Active
-                : ActionButtonState.Default
-            }
-            onClick={handleToggle}
-            disabled={audioState === 'loading'}
-          >
-            <RiVolumeUpLine className="h-4 w-4" />
-          </ActionButton>
+          <span className="inline-flex">
+            <ActionButton
+              state={
+                audioState === 'loading' || audioState === 'playing'
+                  ? ActionButtonState.Active
+                  : ActionButtonState.Default
+              }
+              onClick={handleToggle}
+              disabled={audioState === 'loading'}
+            >
+              <RiVolumeUpLine className="h-4 w-4" />
+            </ActionButton>
+          </span>
         )}
       />
       <TooltipContent>

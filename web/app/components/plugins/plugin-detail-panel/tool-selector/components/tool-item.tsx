@@ -170,7 +170,7 @@ const ToolItem = ({
         <Tooltip>
           <TooltipTrigger
             render={(
-              <div>
+              <div aria-label={typeof errorTip === 'string' ? errorTip : undefined}>
                 <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
               </div>
             )}

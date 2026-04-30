@@ -85,24 +85,26 @@ const AudioBtn = ({
       <Tooltip>
         <TooltipTrigger
           render={(
-            <button
-              type="button"
-              disabled={audioState === 'loading'}
-              className={`box-border flex h-6 w-6 cursor-pointer items-center justify-center ${isAudition ? 'p-0.5' : 'rounded-md bg-white p-0'}`}
-              onClick={handleToggle}
-            >
-              {audioState === 'loading'
-                ? (
-                    <div className="flex h-full w-full items-center justify-center rounded-md">
-                      <Loading />
-                    </div>
-                  )
-                : (
-                    <div className="flex h-full w-full items-center justify-center rounded-md hover:bg-gray-50">
-                      <div className={`h-4 w-4 ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
-                    </div>
-                  )}
-            </button>
+            <span className="inline-flex">
+              <button
+                type="button"
+                disabled={audioState === 'loading'}
+                className={`box-border flex h-6 w-6 cursor-pointer items-center justify-center ${isAudition ? 'p-0.5' : 'rounded-md bg-white p-0'}`}
+                onClick={handleToggle}
+              >
+                {audioState === 'loading'
+                  ? (
+                      <div className="flex h-full w-full items-center justify-center rounded-md">
+                        <Loading />
+                      </div>
+                    )
+                  : (
+                      <div className="flex h-full w-full items-center justify-center rounded-md hover:bg-gray-50">
+                        <div className={`h-4 w-4 ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
+                      </div>
+                    )}
+              </button>
+            </span>
           )}
         />
         <TooltipContent>

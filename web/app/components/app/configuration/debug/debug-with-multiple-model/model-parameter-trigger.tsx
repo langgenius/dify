@@ -134,7 +134,12 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
               !isEmpty && !isActive && statusLabelKey && (
                 <Tooltip>
                   <TooltipTrigger
-                    render={<span className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]" />}
+                    render={(
+                      <span
+                        aria-label={t((statusTooltipKey || statusLabelKey) as 'modelProvider.selector.incompatible', { ns: 'common' })}
+                        className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]"
+                      />
+                    )}
                   />
                   <TooltipContent>
                     {t((statusTooltipKey || statusLabelKey) as 'modelProvider.selector.incompatible', { ns: 'common' })}
