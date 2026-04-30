@@ -13,7 +13,7 @@ import {
   useNodesReadOnly,
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
+import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   canRunBySingle,
@@ -67,9 +67,10 @@ const PanelOperatorPopup = ({
             <div className="p-1">
               {
                 canRunBySingle(data.type, isChildNode) && (
-                  <div
+                  <button
+                    type="button"
                     className={`
-                      flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary
+                      flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary
                       hover:bg-state-base-hover
                     `}
                     onClick={() => {
@@ -80,7 +81,7 @@ const PanelOperatorPopup = ({
                     }}
                   >
                     {t('panel.runThisStep', { ns: 'workflow' })}
-                  </div>
+                  </button>
                 )
               }
               {
@@ -104,26 +105,28 @@ const PanelOperatorPopup = ({
               !nodeMetaData.isSingleton && (
                 <>
                   <div className="p-1">
-                    <div
-                      className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                    <button
+                      type="button"
+                      className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
                       onClick={() => {
                         onClosePopup()
                         handleNodesCopy(id)
                       }}
                     >
                       {t('common.copy', { ns: 'workflow' })}
-                      <ShortcutsName keys={['ctrl', 'c']} />
-                    </div>
-                    <div
-                      className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                      <ShortcutKbd shortcut="workflow.copy" />
+                    </button>
+                    <button
+                      type="button"
+                      className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
                       onClick={() => {
                         onClosePopup()
                         handleNodesDuplicate(id)
                       }}
                     >
                       {t('common.duplicate', { ns: 'workflow' })}
-                      <ShortcutsName keys={['ctrl', 'd']} />
-                    </div>
+                      <ShortcutKbd shortcut="workflow.duplicate" />
+                    </button>
                   </div>
                   <div className="h-px bg-divider-regular"></div>
                 </>
@@ -133,16 +136,17 @@ const PanelOperatorPopup = ({
               !nodeMetaData.isUndeletable && (
                 <>
                   <div className="p-1">
-                    <div
+                    <button
+                      type="button"
                       className={`
-                      flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary
+                      flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary
                       hover:bg-state-destructive-hover hover:text-text-destructive
                       `}
                       onClick={() => handleNodeDelete(id)}
                     >
                       {t('operation.delete', { ns: 'common' })}
-                      <ShortcutsName keys={['del']} />
-                    </div>
+                      <ShortcutKbd shortcut="workflow.delete" />
+                    </button>
                   </div>
                   <div className="h-px bg-divider-regular"></div>
                 </>

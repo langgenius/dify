@@ -42,6 +42,7 @@ import {
   workflowDraftUpdateFeaturesContract,
 } from './console/workflow'
 import { workflowCommentContracts } from './console/workflow-comment'
+import { contract as enterpriseContract } from './generated/enterprise/orpc.gen'
 import { collectionPluginsContract, collectionsContract, searchAdvancedContract, templateDetailContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -54,6 +55,7 @@ export const marketplaceRouterContract = {
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
 export const consoleRouterContract = {
+  enterprise: enterpriseContract,
   account: {
     avatar: accountAvatarContract,
   },

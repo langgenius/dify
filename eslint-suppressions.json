@@ -3764,11 +3764,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/header/version-history-button.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/hooks-store/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -3791,7 +3786,7 @@
   },
   "web/app/components/workflow/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 27
+      "count": 26
     }
   },
   "web/app/components/workflow/hooks/use-checklist.ts": {
@@ -4989,11 +4984,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/operator/tip-popup.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/operator/zoom-in-out.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -5331,11 +5321,6 @@
     },
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/app/components/workflow/workflow-history-store.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 2
     }
   },
   "web/app/components/workflow/workflow-preview/components/nodes/base.tsx": {
