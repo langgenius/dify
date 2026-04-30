@@ -109,6 +109,7 @@ catalog:
   '@tanstack/react-devtools': 0.10.2
   '@tanstack/react-form': 1.29.1
   '@tanstack/react-form-devtools': 0.2.22
+  '@tanstack/react-hotkeys': 0.10.0
   '@tanstack/react-query': 5.100.6
   '@tanstack/react-query-devtools': 5.100.6
   '@tanstack/react-virtual': 3.13.24

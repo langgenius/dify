@@ -75,6 +75,7 @@
     "@t3-oss/env-nextjs": "catalog:",
     "@tailwindcss/typography": "catalog:",
     "@tanstack/react-form": "catalog:",
+    "@tanstack/react-hotkeys": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "abcjs": "catalog:",

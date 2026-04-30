@@ -47,7 +47,7 @@ const Control = () => {
   } = useNodesReadOnly()
   const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
 
-  const addNote = (e: MouseEvent<HTMLDivElement>) => {
+  const addNote = (e: MouseEvent<HTMLButtonElement>) => {
     if (getNodesReadOnly())
       return
 
@@ -59,19 +59,25 @@ const Control = () => {
     <div className="pointer-events-auto flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg">
       <AddBlock />
       <TipPopup title={t('nodes.note.addNote', { ns: 'workflow' })}>
-        <div
+        <button
+          type="button"
+          aria-label={t('nodes.note.addNote', { ns: 'workflow' })}
+          disabled={nodesReadOnly}
           className={cn(
             'ml-px flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
             `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           )}
           onClick={addNote}
         >
-          <RiStickyNoteAddLine className="h-4 w-4" />
-        </div>
+          <RiStickyNoteAddLine aria-hidden className="h-4 w-4" />
+        </button>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
-      <TipPopup title={t('common.pointerMode', { ns: 'workflow' })} shortcuts={['v']}>
-        <div
+      <TipPopup title={t('common.pointerMode', { ns: 'workflow' })} shortcut="workflow.pointer-mode">
+        <button
+          type="button"
+          aria-label={t('common.pointerMode', { ns: 'workflow' })}
+          disabled={nodesReadOnly}
           className={cn(
             'mr-px flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
             controlMode === ControlMode.Pointer ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
@@ -79,11 +85,14 @@ const Control = () => {
           )}
           onClick={handleModePointer}
         >
-          <RiCursorLine className="h-4 w-4" />
-        </div>
+          <RiCursorLine aria-hidden className="h-4 w-4" />
+        </button>
       </TipPopup>
-      <TipPopup title={t('common.handMode', { ns: 'workflow' })} shortcuts={['h']}>
-        <div
+      <TipPopup title={t('common.handMode', { ns: 'workflow' })} shortcut="workflow.hand-mode">
+        <button
+          type="button"
+          aria-label={t('common.handMode', { ns: 'workflow' })}
+          disabled={nodesReadOnly}
           className={cn(
             'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
             controlMode === ControlMode.Hand ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
@@ -91,12 +100,15 @@ const Control = () => {
           )}
           onClick={handleModeHand}
         >
-          <RiHand className="h-4 w-4" />
-        </div>
+          <RiHand aria-hidden className="h-4 w-4" />
+        </button>
       </TipPopup>
       {isCommentModeAvailable && (
-        <TipPopup title={t('common.commentMode', { ns: 'workflow' })} shortcuts={['c']}>
-          <div
+        <TipPopup title={t('common.commentMode', { ns: 'workflow' })} shortcut="workflow.comment-mode">
+          <button
+            type="button"
+            aria-label={t('common.commentMode', { ns: 'workflow' })}
+            disabled={nodesReadOnly}
             className={cn(
               'ml-[1px] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
               controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
@@ -104,24 +116,30 @@ const Control = () => {
             )}
             onClick={handleModeComment}
           >
-            <Comment className="h-4 w-4" />
-          </div>
+            <Comment aria-hidden className="h-4 w-4" />
+          </button>
         </TipPopup>
       )}
       <Divider className="my-1 w-3.5" />
-      <TipPopup title={t('panel.organizeBlocks', { ns: 'workflow' })} shortcuts={['ctrl', 'o']}>
-        <div
+      <TipPopup title={t('panel.organizeBlocks', { ns: 'workflow' })} shortcut="workflow.organize">
+        <button
+          type="button"
+          aria-label={t('panel.organizeBlocks', { ns: 'workflow' })}
+          disabled={nodesReadOnly}
           className={cn(
             'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
             `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           )}
           onClick={handleLayout}
         >
-          <RiFunctionAddLine className="h-4 w-4" />
-        </div>
+          <RiFunctionAddLine aria-hidden className="h-4 w-4" />
+        </button>
       </TipPopup>
-      <TipPopup title={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })} shortcuts={['f']}>
-        <div
+      <TipPopup title={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })} shortcut="workflow.toggle-maximize">
+        <button
+          type="button"
+          aria-label={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })}
+          disabled={nodesReadOnly}
           className={cn(
             'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
             maximizeCanvas ? 'bg-state-accent-active text-text-accent hover:text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
@@ -129,9 +147,9 @@ const Control = () => {
           )}
           onClick={handleToggleMaximizeCanvas}
         >
-          {maximizeCanvas && <RiAspectRatioFill className="h-4 w-4" />}
-          {!maximizeCanvas && <RiAspectRatioLine className="h-4 w-4" />}
-        </div>
+          {maximizeCanvas && <RiAspectRatioFill aria-hidden className="h-4 w-4" />}
+          {!maximizeCanvas && <RiAspectRatioLine aria-hidden className="h-4 w-4" />}
+        </button>
       </TipPopup>
       <MoreActions />
     </div>
