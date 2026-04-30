@@ -3,6 +3,6 @@
   "compilerOptions": {
     "types": ["vite-plus/test/globals"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts", "tailwind.config.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
   "exclude": ["node_modules", "dist", "storybook-static", "coverage"]
 }

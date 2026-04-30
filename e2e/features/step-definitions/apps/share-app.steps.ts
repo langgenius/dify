@@ -37,3 +37,15 @@ Then('the shared app page should be accessible', async function (this: DifyWorld
   await expect(this.getPage()).toHaveURL(/\/(workflow|chat)\/[a-zA-Z0-9]+/, { timeout: 15_000 })
   await expect(this.getPage().locator('body')).toBeVisible({ timeout: 10_000 })
 })
+
+When('I run the shared workflow app', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const runButton = page.getByTestId('run-button')
+
+  await expect(runButton).toBeEnabled({ timeout: 15_000 })
+  await runButton.click()
+})
+
+Then('the shared workflow run should succeed', async function (this: DifyWorld) {
+  await expect(this.getPage().getByTestId('status-icon-success')).toBeVisible({ timeout: 55_000 })
+})

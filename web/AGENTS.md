@@ -5,9 +5,9 @@
 ## Overlay Components (Mandatory)
 
 - `../packages/dify-ui/README.md` is the permanent contract for overlay primitives, portals, root `isolation: isolate`, and the `z-1002` / `z-1003` layering.
-- `./docs/overlay-migration.md` is the source of truth for the ongoing migration (deprecated import paths, allowlist, coexistence rules).
+- `./docs/overlay-migration.md` is the source of truth for the ongoing migration (deprecated import paths and coexistence rules).
 - In new or modified code, use only overlay primitives from `@langgenius/dify-ui/*`.
-- Do not introduce deprecated overlay imports from `@/app/components/base/*`; when touching legacy callers, prefer migrating them and keep the allowlist shrinking (never expanding).
+- Do not introduce deprecated overlay imports from `@/app/components/base/*`; when touching legacy callers, prefer migrating them.
 
 ## Query & Mutation (Mandatory)
 

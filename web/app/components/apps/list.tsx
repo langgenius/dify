@@ -1,9 +1,9 @@
 'use client'
 
 import type { FC } from 'react'
-import type { WorkflowOnlineUser } from '@/models/app'
+import type { AppListQuery } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -11,25 +11,24 @@ import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
-import TagFilter from '@/app/components/base/tag-management/filter'
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
-import { fetchWorkflowOnlineUsers } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum, AppModes } from '@/types/app'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import Empty from './empty'
 import Footer from './footer'
-import useAppsQueryState from './hooks/use-apps-query-state'
+import useAppsQueryStateHook from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
+import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 import NewAppCard from './new-app-card'
 
-const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
+const TagManagementModal = dynamic(() => import('@/features/tag-management/components/tag-management-modal').then(mod => mod.TagManagementModal), {
   ssr: false,
 })
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
@@ -57,21 +56,22 @@ const List: FC<Props> = ({
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
-  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
     'category',
     parseAsAppListCategory,
   )
 
-  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
+  // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
+  const appsQuery = useAppsQueryStateHook()
+  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = appsQuery
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
   const [searchKeywords, setSearchKeywords] = useState(keywords)
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
-  const [workflowOnlineUsersMap, setWorkflowOnlineUsersMap] = useState<Record<string, WorkflowOnlineUser[]>>({})
   const setKeywords = useCallback((keywords: string) => {
     setQuery(prev => ({ ...prev, keywords }))
   }, [setQuery])
@@ -90,14 +90,14 @@ const List: FC<Props> = ({
     enabled: isCurrentWorkspaceEditor,
   })
 
-  const appListQueryParams = {
+  const appListQuery = useMemo<AppListQuery>(() => ({
     page: 1,
     limit: 30,
     name: searchKeywords,
-    tag_ids: tagIDs,
-    is_created_by_me: isCreatedByMe,
+    ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
+    ...(isCreatedByMe ? { is_created_by_me: isCreatedByMe } : {}),
     ...(activeTab !== 'all' ? { mode: activeTab } : {}),
-  }
+  }), [activeTab, isCreatedByMe, searchKeywords, tagIDs])
 
   const {
     data,
@@ -108,14 +108,27 @@ const List: FC<Props> = ({
     hasNextPage,
     error,
     refetch,
-  } = useInfiniteAppList(appListQueryParams, { enabled: !isCurrentWorkspaceDatasetOperator })
+  } = useInfiniteQuery({
+    ...consoleQuery.apps.list.infiniteOptions({
+      input: pageParam => ({
+        query: {
+          ...appListQuery,
+          page: Number(pageParam),
+        },
+      }),
+      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+      initialPageParam: 1,
+      placeholderData: keepPreviousData,
+    }),
+    enabled: !isCurrentWorkspaceDatasetOperator,
+    refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
+  })
 
   useEffect(() => {
     if (controlRefreshList > 0) {
       refetch()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controlRefreshList])
+  }, [controlRefreshList, refetch])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
@@ -187,52 +200,23 @@ const List: FC<Props> = ({
   }, [isCreatedByMe, setQuery])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
-  const appIds = useMemo(() => {
-    const ids = new Set<string>()
-    pages.forEach((page) => {
-      page.data?.forEach((app) => {
-        if (app.id)
-          ids.add(app.id)
-      })
+  const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
+
+  const workflowOnlineUserAppIds = useMemo(() => {
+    const appIds = new Set<string>()
+    apps.forEach((app) => {
+      if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
+        appIds.add(app.id)
     })
-    return Array.from(ids)
-  }, [pages])
+    return Array.from(appIds)
+  }, [apps])
 
-  const refreshWorkflowOnlineUsers = useCallback(async () => {
-    if (!systemFeatures.enable_collaboration_mode) {
-      setWorkflowOnlineUsersMap({})
-      return
-    }
-
-    if (!appIds.length) {
-      setWorkflowOnlineUsersMap({})
-      return
-    }
-
-    try {
-      const onlineUsersMap = await fetchWorkflowOnlineUsers({ appIds })
-      setWorkflowOnlineUsersMap(onlineUsersMap)
-    }
-    catch {
-      setWorkflowOnlineUsersMap({})
-    }
-  }, [appIds, systemFeatures.enable_collaboration_mode])
-
-  useEffect(() => {
-    void refreshWorkflowOnlineUsers()
-  }, [refreshWorkflowOnlineUsers])
-
-  useEffect(() => {
-    if (!systemFeatures.enable_collaboration_mode)
-      return
-
-    const timer = window.setInterval(() => {
-      void refetch()
-      void refreshWorkflowOnlineUsers()
-    }, 10000)
-
-    return () => window.clearInterval(timer)
-  }, [refetch, refreshWorkflowOnlineUsers, systemFeatures.enable_collaboration_mode])
+  const {
+    onlineUsersMap: workflowOnlineUsersMap,
+  } = useWorkflowOnlineUsers({
+    appIds: workflowOnlineUserAppIds,
+    enabled: systemFeatures.enable_collaboration_mode,
+  })
 
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
   // Show skeleton during initial load or when refetching with no previous data
@@ -262,7 +246,7 @@ const List: FC<Props> = ({
                 {t('showMyCreatedAppsOnly', { ns: 'app' })}
               </div>
             </label>
-            <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} />
+            <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} onOpenTagManagement={() => setShowTagManagementModal(true)} />
             <Input
               showLeftIcon
               showClearIcon
@@ -287,24 +271,19 @@ const List: FC<Props> = ({
               className={cn(!hasAnyApp && 'z-10')}
             />
           )}
-          {(() => {
-            if (showSkeleton)
-              return <AppCardSkeleton count={6} />
-
-            if (hasAnyApp) {
-              return pages.flatMap(({ data: apps }) => apps).map(app => (
-                <AppCard
-                  key={app.id}
-                  app={app}
-                  onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
-                  onRefresh={refetch}
-                />
-              ))
-            }
-
-            // No apps - show empty state
-            return <Empty />
-          })()}
+          {showSkeleton
+            ? <AppCardSkeleton count={6} />
+            : hasAnyApp
+              ? apps.map(app => (
+                  <AppCard
+                    key={app.id}
+                    app={app}
+                    onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
+                    onRefresh={refetch}
+                    onOpenTagManagement={() => setShowTagManagementModal(true)}
+                  />
+                ))
+              : <Empty />}
           {isFetchingNextPage && (
             <AppCardSkeleton count={3} />
           )}
@@ -325,9 +304,12 @@ const List: FC<Props> = ({
         )}
         <CheckModal />
         <div ref={anchorRef} className="h-0"> </div>
-        {showTagManagementModal && (
-          <TagManagementModal type="app" show={showTagManagementModal} />
-        )}
+        <TagManagementModal
+          type="app"
+          show={showTagManagementModal}
+          onClose={() => setShowTagManagementModal(false)}
+          onTagsChange={refetch}
+        />
       </div>
 
       {showCreateFromDSLModal && (

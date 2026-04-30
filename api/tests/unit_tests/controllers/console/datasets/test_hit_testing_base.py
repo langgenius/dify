@@ -134,6 +134,42 @@ class TestPerformHitTesting:
         assert result["query"] == "hello"
         assert result["records"] == []
 
+    def test_success_normalizes_legacy_query_and_nullable_list_fields(self, dataset):
+        response = {
+            "query": {"content": "hello"},
+            "records": [
+                {
+                    "segment": {"id": "segment-1", "keywords": None},
+                    "child_chunks": None,
+                    "files": None,
+                    "score": 0.8,
+                }
+            ],
+        }
+
+        with (
+            patch.object(
+                HitTestingService,
+                "retrieve",
+                return_value=response,
+            ),
+            patch(
+                "controllers.console.datasets.hit_testing_base.marshal",
+                return_value=response["records"],
+            ),
+        ):
+            result = DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+
+        assert result["query"] == "hello"
+        assert result["records"] == [
+            {
+                "segment": {"id": "segment-1", "keywords": []},
+                "child_chunks": [],
+                "files": [],
+                "score": 0.8,
+            }
+        ]
+
     def test_index_not_initialized(self, dataset):
         with patch.object(
             HitTestingService,

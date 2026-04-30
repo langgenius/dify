@@ -80,7 +80,7 @@ const FileImageItem = ({
         }
         {
           showDownloadAction && (
-            <div className="bg-opacity-[0.3] absolute inset-0.5 z-10 hidden bg-background-overlay-alt group-hover/file-image:block">
+            <div className="absolute inset-0.5 z-10 hidden bg-background-overlay-alt group-hover/file-image:block">
               <div
                 className="absolute right-0.5 bottom-0.5 flex h-6 w-6 items-center justify-center rounded-lg bg-components-actionbar-bg shadow-md"
                 onClick={(e) => {

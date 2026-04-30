@@ -21,6 +21,12 @@ describe('StatusIndicators', () => {
     installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
   })
 
+  const getTooltipTrigger = (container: HTMLElement) => {
+    const trigger = container.querySelector('[role="button"][aria-haspopup="dialog"]')
+    expect(trigger).toBeInTheDocument()
+    return trigger as HTMLElement
+  }
+
   it('should render nothing when model is available and enabled', () => {
     const { container } = render(
       <StatusIndicators
@@ -48,9 +54,7 @@ describe('StatusIndicators', () => {
       />,
     )
 
-    const trigger = container.querySelector('[data-state]')
-    expect(trigger).toBeInTheDocument()
-    await user.hover(trigger as HTMLElement)
+    await user.hover(getTooltipTrigger(container))
 
     expect(await screen.findByText('nodes.agent.modelSelectorTooltips.deprecated')).toBeInTheDocument()
   })
@@ -68,9 +72,7 @@ describe('StatusIndicators', () => {
       />,
     )
 
-    const trigger = container.querySelector('[data-state]')
-    expect(trigger).toBeInTheDocument()
-    await user.hover(trigger as HTMLElement)
+    await user.hover(getTooltipTrigger(container))
 
     expect(await screen.findByText('nodes.agent.modelNotSupport.title')).toBeInTheDocument()
   })
@@ -134,9 +136,7 @@ describe('StatusIndicators', () => {
       />,
     )
 
-    const trigger = container.querySelector('[data-state]')
-    expect(trigger).toBeInTheDocument()
-    await user.hover(trigger as HTMLElement)
+    await user.hover(getTooltipTrigger(container))
 
     expect(await screen.findByText('nodes.agent.modelNotInMarketplace.title')).toBeInTheDocument()
   })

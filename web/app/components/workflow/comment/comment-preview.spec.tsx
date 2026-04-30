@@ -1,9 +1,9 @@
-import type { WorkflowCommentList } from '@/service/workflow-comment'
+import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CommentPreview from './comment-preview'
 
-type UserProfile = WorkflowCommentList['created_by_account']
+type UserProfile = NonNullable<WorkflowCommentList['created_by_account']>
 
 const mockSetHovering = vi.fn()
 let capturedUsers: UserProfile[] = []

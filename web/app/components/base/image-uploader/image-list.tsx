@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { ImageFile } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import Tooltip from '@/app/components/base/tooltip'
 import { TransferMethod } from '@/types/app'
 
 type ImageListProps = {
@@ -82,10 +82,15 @@ const ImageList: FC<ImageListProps> = ({
                 <span className="i-ri-loader-2-line h-5 w-5 animate-spin text-white" data-testid="image-loader" />
               )}
               {item.progress === -1 && (
-                <Tooltip
-                  popupContent={t('imageUploader.pasteImageLinkInvalid', { ns: 'common' })}
-                >
-                  <AlertTriangle className="h-4 w-4 text-[#DC6803]" />
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <AlertTriangle className="h-4 w-4 text-[#DC6803]" />
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('imageUploader.pasteImageLinkInvalid', { ns: 'common' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
             </div>

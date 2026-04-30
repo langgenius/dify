@@ -1,4 +1,5 @@
 'use client'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiClipboardFill,
   RiClipboardLine,
@@ -6,7 +7,6 @@ import {
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import { useClipboard } from '@/hooks/use-clipboard'
 import copyStyle from './style.module.css'
 
@@ -35,15 +35,20 @@ const CopyFeedback = ({ content }: Props) => {
   }, [copy, content])
 
   return (
-    <Tooltip
-      popupContent={safeText}
-    >
-      <ActionButton>
-        <div onClick={handleCopy}>
-          {copied && <RiClipboardFill className="h-4 w-4" />}
-          {!copied && <RiClipboardLine className="h-4 w-4" />}
-        </div>
-      </ActionButton>
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <ActionButton>
+            <div onClick={handleCopy}>
+              {copied && <RiClipboardFill className="h-4 w-4" />}
+              {!copied && <RiClipboardLine className="h-4 w-4" />}
+            </div>
+          </ActionButton>
+        )}
+      />
+      <TooltipContent>
+        {safeText}
+      </TooltipContent>
     </Tooltip>
   )
 }
@@ -65,18 +70,23 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
   }, [copy, content])
 
   return (
-    <Tooltip
-      popupContent={safeText}
-    >
-      <div
-        className={`h-8 w-8 cursor-pointer rounded-lg hover:bg-components-button-ghost-bg-hover ${className ?? ''}`}
-      >
-        <div
-          onClick={handleCopy}
-          className={`h-full w-full ${copyStyle.copyIcon} ${copied ? copyStyle.copied : ''}`}
-        >
-        </div>
-      </div>
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <div
+            className={`h-8 w-8 cursor-pointer rounded-lg hover:bg-components-button-ghost-bg-hover ${className ?? ''}`}
+          >
+            <div
+              onClick={handleCopy}
+              className={`h-full w-full ${copyStyle.copyIcon} ${copied ? copyStyle.copied : ''}`}
+            >
+            </div>
+          </div>
+        )}
+      />
+      <TooltipContent>
+        {safeText}
+      </TooltipContent>
     </Tooltip>
   )
 }

@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { ValueSelector, Var, VisionSetting } from '@/app/components/workflow/types'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ResolutionPicker from '@/app/components/workflow/nodes/llm/components/resolution-picker'
 import { VarType } from '@/app/components/workflow/types'
@@ -61,11 +61,16 @@ const ConfigVision: FC<Props> = ({
       title={t(`${i18nPrefix}.vision`, { ns: 'workflow' })}
       tooltip={t('vision.description', { ns: 'appDebug' })!}
       operations={(
-        <Tooltip
-          popupContent={t('vision.onlySupportVisionModelTip', { ns: 'appDebug' })!}
-          disabled={isVisionModel}
-        >
-          <Switch disabled={readOnly || !isVisionModel} size="md" checked={!isVisionModel ? false : enabled} onCheckedChange={onEnabledChange} />
+        <Tooltip>
+          <TooltipTrigger
+            disabled={isVisionModel}
+            render={(
+              <Switch disabled={readOnly || !isVisionModel} size="md" checked={!isVisionModel ? false : enabled} onCheckedChange={onEnabledChange} />
+            )}
+          />
+          <TooltipContent>
+            {t('vision.onlySupportVisionModelTip', { ns: 'appDebug' })!}
+          </TooltipContent>
         </Tooltip>
       )}
     >

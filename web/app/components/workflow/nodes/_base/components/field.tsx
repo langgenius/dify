@@ -6,7 +6,7 @@ import {
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 
 type Props = {
   className?: string
@@ -19,6 +19,17 @@ type Props = {
   inline?: boolean
   required?: boolean
   warningDot?: boolean
+}
+
+const getTextFromNode = (node: ReactNode): string | undefined => {
+  if (typeof node === 'string' || typeof node === 'number')
+    return `${node}`
+
+  if (Array.isArray(node))
+    return node.map(getTextFromNode).filter(Boolean).join(' ')
+
+  if (React.isValidElement<{ children?: ReactNode }>(node))
+    return getTextFromNode(node.props.children)
 }
 
 const Field: FC<Props> = ({
@@ -36,6 +47,8 @@ const Field: FC<Props> = ({
   const [fold, {
     toggle: toggleFold,
   }] = useBoolean(true)
+  const tooltipLabel = tooltip ? getTextFromNode(tooltip) || getTextFromNode(title) || 'Help' : undefined
+
   return (
     <div className={cn(className, inline && 'flex w-full items-center justify-between')}>
       <div
@@ -51,12 +64,10 @@ const Field: FC<Props> = ({
             {' '}
             {required && <span className="text-text-destructive">*</span>}
           </div>
-          {!!tooltip && (
-            <Tooltip
-              popupContent={tooltip}
-              popupClassName="ml-1"
-              triggerClassName="w-4 h-4 ml-1"
-            />
+          {!!tooltip && !!tooltipLabel && (
+            <Infotip aria-label={tooltipLabel} className="ml-1">
+              {tooltip}
+            </Infotip>
           )}
         </div>
         <div className="flex">

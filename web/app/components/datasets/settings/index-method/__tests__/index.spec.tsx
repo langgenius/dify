@@ -134,6 +134,16 @@ describe('IndexMethod', () => {
       expect(input)!.toHaveValue('25')
     })
 
+    it('should keep keyword number input visible next to steppers', () => {
+      render(<IndexMethod {...defaultProps} value={IndexingType.ECONOMICAL} keywordNumber={25} />)
+
+      const input = screen.getByRole('textbox')
+
+      expect(input)!.toHaveClass('w-12')
+      expect(input)!.toHaveClass('flex-none')
+      expect(input)!.toHaveClass('text-center')
+    })
+
     it('should call onKeywordNumberChange when KeywordNumber changes', () => {
       const handleKeywordChange = vi.fn()
       render(<IndexMethod {...defaultProps} onKeywordNumberChange={handleKeywordChange} />)
@@ -147,7 +157,7 @@ describe('IndexMethod', () => {
 
   describe('Tooltip', () => {
     it('should show tooltip when hovering over disabled Economy option', () => {
-      // The tooltip is shown via PortalToFollowElem when hovering
+      // The tooltip is shown via Popover when hovering
       // This is controlled by useHover hook
       render(<IndexMethod {...defaultProps} currentValue={IndexingType.QUALIFIED} />)
       // The tooltip content should exist in DOM but may not be visible
