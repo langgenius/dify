@@ -309,7 +309,7 @@ export type AppExportResponse = {
 export type MessageFeedbackPayload = {
   content?: string | null
   message_id: string
-  rating?: 'like' | 'dislike'
+  rating?: 'like' | 'dislike' | null
 }
 
 export type AppIconPayload = {
@@ -415,7 +415,7 @@ export type AppSiteUpdatePayload = {
   copyright?: string | null
   custom_disclaimer?: string | null
   customize_domain?: string | null
-  customize_token_strategy?: 'must' | 'allow' | 'not_allow'
+  customize_token_strategy?: 'must' | 'allow' | 'not_allow' | null
   default_language?: string | null
   description?: string | null
   icon?: string | null
@@ -1327,8 +1327,8 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsData = {
     app_id: string
   }
   query?: {
-    triggered_from?: 'debugging' | 'app-run'
-    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
+    triggered_from?: 'debugging' | 'app-run' | null
+    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded' | null
     last_id?: string | null
     limit?: number
   }
@@ -1348,9 +1348,9 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsCountData = {
     app_id: string
   }
   query?: {
-    triggered_from?: 'debugging' | 'app-run'
+    triggered_from?: 'debugging' | 'app-run' | null
     time_range?: string | null
-    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
+    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded' | null
   }
   url: '/apps/{app_id}/advanced-chat/workflow-runs/count'
 }
@@ -1816,8 +1816,8 @@ export type GetAppsByAppIdAnnotationsExportResponse
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdData = {
   body?: never
   path: {
-    app_id: string
     annotation_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/annotations/{annotation_id}'
@@ -2388,9 +2388,9 @@ export type GetAppsByAppIdFeedbacksExportData = {
   query?: {
     end_date?: string | null
     format?: 'csv' | 'json'
-    from_source?: 'user' | 'admin'
+    from_source?: 'user' | 'admin' | null
     has_comment?: boolean | null
-    rating?: 'like' | 'dislike'
+    rating?: 'like' | 'dislike' | null
     start_date?: string | null
   }
   url: '/apps/{app_id}/feedbacks/export'
@@ -3149,8 +3149,8 @@ export type GetAppsByAppIdWorkflowRunsData = {
     app_id: string
   }
   query?: {
-    triggered_from?: 'debugging' | 'app-run'
-    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
+    triggered_from?: 'debugging' | 'app-run' | null
+    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded' | null
     last_id?: string | null
     limit?: number
   }
@@ -3170,9 +3170,9 @@ export type GetAppsByAppIdWorkflowRunsCountData = {
     app_id: string
   }
   query?: {
-    triggered_from?: 'debugging' | 'app-run'
+    triggered_from?: 'debugging' | 'app-run' | null
     time_range?: string | null
-    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
+    status?: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded' | null
   }
   url: '/apps/{app_id}/workflow-runs/count'
 }
@@ -3980,8 +3980,8 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse
 export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
   path: {
-    app_id: string
     node_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/variables'
@@ -4328,8 +4328,8 @@ export type GetAppsByAppIdWorkflowsTriggersWebhookResponse
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
   body?: never
   path: {
-    app_id: string
     workflow_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/workflows/{workflow_id}'

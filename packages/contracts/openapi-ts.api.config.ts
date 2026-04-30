@@ -12,6 +12,7 @@ type SwaggerSchema = JsonObject & {
   'x-nullable'?: boolean
   'additionalProperties'?: unknown
   'anyOf'?: SwaggerSchema[]
+  'const'?: unknown
   'default'?: unknown
   'definitions'?: Record<string, SwaggerSchema>
   'description'?: string
@@ -291,6 +292,22 @@ const withoutNullableWrapper = (schema: SwaggerSchema | undefined): SwaggerSchem
   }
 }
 
+const isNullEnumItem = (item: unknown) => {
+  return isObject(item) && (item.type === 'null' || item.const === null)
+}
+
+const markNullableEnumSchema = (ctx: { schema: JsonObject }): undefined => {
+  const items = ctx.schema.items
+
+  if (ctx.schema['x-nullable'] !== true || !Array.isArray(items) || items.some(isNullEnumItem))
+    return undefined
+
+  // Hey API's enum visitors infer nullable from a null enum item, not x-nullable.
+  ctx.schema.items = [...items, { const: null, type: 'null' }]
+
+  return undefined
+}
+
 const queryParameterFromSchema = (
   name: string,
   schema: SwaggerSchema | undefined,
@@ -559,10 +576,18 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
   },
   plugins: [
     {
-      comments: false,
-      name: '@hey-api/typescript',
+      'comments': false,
+      'name': '@hey-api/typescript',
+      '~resolvers': {
+        enum: markNullableEnumSchema,
+      },
     },
-    'zod',
+    {
+      'name': 'zod',
+      '~resolvers': {
+        enum: markNullableEnumSchema,
+      },
+    },
     {
       contracts: {
         contractName: {

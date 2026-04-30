@@ -23,7 +23,7 @@ export const zCompletionMessageExplorePayload = z.object({
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
-  response_mode: z.enum(['blocking', 'streaming']).optional(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('explore_app'),
 })
 
@@ -41,7 +41,7 @@ export const zConversationRenamePayload = z.object({
 export const zMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
   message_id: z.string(),
-  rating: z.enum(['like', 'dislike']).optional(),
+  rating: z.enum(['like', 'dislike']).nullish(),
 })
 
 /**

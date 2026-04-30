@@ -21,7 +21,7 @@ export type CompletionRequest = {
     [key: string]: unknown
   }
   query?: string
-  response_mode?: 'blocking' | 'streaming'
+  response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
 }
 

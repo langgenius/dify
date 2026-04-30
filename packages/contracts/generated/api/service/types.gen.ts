@@ -41,7 +41,7 @@ export type ChatRequestPayload = {
     [key: string]: unknown
   }
   query: string
-  response_mode?: 'blocking' | 'streaming'
+  response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
   workflow_id?: string | null
 }
@@ -68,7 +68,7 @@ export type CompletionRequestPayload = {
     [key: string]: unknown
   }
   query?: string
-  response_mode?: 'blocking' | 'streaming'
+  response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
 }
 
@@ -115,7 +115,7 @@ export type DatasetCreatePayload = {
   embedding_model_provider?: string | null
   external_knowledge_api_id?: string | null
   external_knowledge_id?: string | null
-  indexing_technique?: 'high_quality' | 'economy'
+  indexing_technique?: 'high_quality' | 'economy' | null
   name: string
   permission?: DatasetPermissionEnum
   provider?: string
@@ -134,7 +134,7 @@ export type DatasetUpdatePayload = {
   external_retrieval_model?: {
     [key: string]: unknown
   } | null
-  indexing_technique?: 'high_quality' | 'economy'
+  indexing_technique?: 'high_quality' | 'economy' | null
   name?: string | null
   partial_member_list?: Array<{
     [key: string]: string
@@ -213,7 +213,7 @@ export type HumanInputFormSubmitPayload = {
 
 export type MessageFeedbackPayload = {
   content?: string | null
-  rating?: 'like' | 'dislike'
+  rating?: 'like' | 'dislike' | null
 }
 
 export type MessageListQuery = {
@@ -296,7 +296,7 @@ export type WorkflowLogQuery = {
   keyword?: string | null
   limit?: number
   page?: number
-  status?: 'succeeded' | 'failed' | 'stopped'
+  status?: 'succeeded' | 'failed' | 'stopped' | null
 }
 
 export type WorkflowRunPayload = {
@@ -306,7 +306,7 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
-  response_mode?: 'blocking' | 'streaming'
+  response_mode?: 'blocking' | 'streaming' | null
 }
 
 export type WorkflowRunResponse = {
@@ -356,7 +356,7 @@ export type WeightKeywordSetting = {
 export type WeightModel = {
   keyword_setting?: WeightKeywordSetting
   vector_setting?: WeightVectorSetting
-  weight_type?: 'semantic_first' | 'keyword_first' | 'customized'
+  weight_type?: 'semantic_first' | 'keyword_first' | 'customized' | null
 }
 
 export type WeightVectorSetting = {
@@ -376,7 +376,7 @@ export type ProcessRule = {
 }
 
 export type Rule = {
-  parent_mode?: 'full-doc' | 'paragraph'
+  parent_mode?: 'full-doc' | 'paragraph' | null
   pre_processing_rules?: Array<PreProcessingRule> | null
   segmentation?: Segmentation
   subchunk_segmentation?: Segmentation
@@ -1832,9 +1832,9 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdRes
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body?: never
   path: {
-    document_id: string
-    dataset_id: string
     segment_id: string
+    dataset_id: string
+    document_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
@@ -2946,7 +2946,7 @@ export type GetWorkflowsLogsData = {
     keyword?: string | null
     limit?: number
     page?: number
-    status?: 'succeeded' | 'failed' | 'stopped'
+    status?: 'succeeded' | 'failed' | 'stopped' | null
   }
   url: '/workflows/logs'
 }

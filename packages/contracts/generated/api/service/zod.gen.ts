@@ -50,7 +50,7 @@ export const zChatRequestPayload = z.object({
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string(),
-  response_mode: z.enum(['blocking', 'streaming']).optional(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('dev'),
   workflow_id: z.string().nullish(),
 })
@@ -85,7 +85,7 @@ export const zCompletionRequestPayload = z.object({
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
-  response_mode: z.enum(['blocking', 'streaming']).optional(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('dev'),
 })
 
@@ -196,7 +196,7 @@ export const zFileResponse = z.object({
  */
 export const zMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
-  rating: z.enum(['like', 'dislike']).optional(),
+  rating: z.enum(['like', 'dislike']).nullish(),
 })
 
 /**
@@ -297,7 +297,7 @@ export const zWorkflowLogQuery = z.object({
   keyword: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  status: z.enum(['succeeded', 'failed', 'stopped']).optional(),
+  status: z.enum(['succeeded', 'failed', 'stopped']).nullish(),
 })
 
 /**
@@ -306,7 +306,7 @@ export const zWorkflowLogQuery = z.object({
 export const zWorkflowRunPayload = z.object({
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
-  response_mode: z.enum(['blocking', 'streaming']).optional(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
 })
 
 /**
@@ -371,7 +371,7 @@ export const zWeightVectorSetting = z.object({
 export const zWeightModel = z.object({
   keyword_setting: zWeightKeywordSetting.optional(),
   vector_setting: zWeightVectorSetting.optional(),
-  weight_type: z.enum(['semantic_first', 'keyword_first', 'customized']).optional(),
+  weight_type: z.enum(['semantic_first', 'keyword_first', 'customized']).nullish(),
 })
 
 /**
@@ -397,7 +397,7 @@ export const zDatasetCreatePayload = z.object({
   embedding_model_provider: z.string().nullish(),
   external_knowledge_api_id: z.string().nullish(),
   external_knowledge_id: z.string().nullish(),
-  indexing_technique: z.enum(['high_quality', 'economy']).optional(),
+  indexing_technique: z.enum(['high_quality', 'economy']).nullish(),
   name: z.string().min(1).max(40),
   permission: zDatasetPermissionEnum.optional(),
   provider: z.string().optional().default('vendor'),
@@ -415,7 +415,7 @@ export const zDatasetUpdatePayload = z.object({
   external_knowledge_api_id: z.string().nullish(),
   external_knowledge_id: z.string().nullish(),
   external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
-  indexing_technique: z.enum(['high_quality', 'economy']).optional(),
+  indexing_technique: z.enum(['high_quality', 'economy']).nullish(),
   name: z.string().min(1).max(40).nullish(),
   partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
   permission: zDatasetPermissionEnum.optional(),
@@ -453,7 +453,7 @@ export const zSegmentation = z.object({
  * Rule
  */
 export const zRule = z.object({
-  parent_mode: z.enum(['full-doc', 'paragraph']).optional(),
+  parent_mode: z.enum(['full-doc', 'paragraph']).nullish(),
   pre_processing_rules: z.array(zPreProcessingRule).nullish(),
   segmentation: zSegmentation.optional(),
   subchunk_segmentation: zSegmentation.optional(),
@@ -1081,9 +1081,9 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdR
 )
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
-  document_id: z.string(),
-  dataset_id: z.string(),
   segment_id: z.string(),
+  dataset_id: z.string(),
+  document_id: z.string(),
 })
 
 /**
@@ -1501,7 +1501,7 @@ export const zGetWorkflowsLogsQuery = z.object({
   keyword: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  status: z.enum(['succeeded', 'failed', 'stopped']).optional(),
+  status: z.enum(['succeeded', 'failed', 'stopped']).nullish(),
 })
 
 /**

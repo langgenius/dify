@@ -378,7 +378,7 @@ export const zSegmentation = z.object({
  * Rule
  */
 export const zRule = z.object({
-  parent_mode: z.enum(['full-doc', 'paragraph']).optional(),
+  parent_mode: z.enum(['full-doc', 'paragraph']).nullish(),
   pre_processing_rules: z.array(zPreProcessingRule).nullish(),
   segmentation: zSegmentation.optional(),
   subchunk_segmentation: zSegmentation.optional(),
@@ -414,7 +414,7 @@ export const zWeightVectorSetting = z.object({
 export const zWeightModel = z.object({
   keyword_setting: zWeightKeywordSetting.optional(),
   vector_setting: zWeightVectorSetting.optional(),
-  weight_type: z.enum(['semantic_first', 'keyword_first', 'customized']).optional(),
+  weight_type: z.enum(['semantic_first', 'keyword_first', 'customized']).nullish(),
 })
 
 /**
@@ -925,8 +925,8 @@ export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse = z.r
 )
 
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
-  document_id: z.string(),
   dataset_id: z.string(),
+  document_id: z.string(),
 })
 
 /**

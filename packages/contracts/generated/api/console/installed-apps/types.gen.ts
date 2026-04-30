@@ -31,7 +31,7 @@ export type CompletionMessageExplorePayload = {
     [key: string]: unknown
   }
   query?: string
-  response_mode?: 'blocking' | 'streaming'
+  response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
 }
 
@@ -43,7 +43,7 @@ export type ConversationRenamePayload = {
 export type MessageFeedbackPayload = {
   content?: string | null
   message_id: string
-  rating?: 'like' | 'dislike'
+  rating?: 'like' | 'dislike' | null
 }
 
 export type SavedMessageCreatePayload = {

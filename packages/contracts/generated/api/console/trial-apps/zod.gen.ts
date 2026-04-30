@@ -21,7 +21,7 @@ export const zCompletionRequest = z.object({
   files: z.array(z.unknown()).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
-  response_mode: z.enum(['blocking', 'streaming']).optional(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('explore_app'),
 })
 

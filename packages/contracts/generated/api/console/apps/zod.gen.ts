@@ -180,7 +180,7 @@ export const zAppExportResponse = z.object({
 export const zMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
   message_id: z.string(),
-  rating: z.enum(['like', 'dislike']).optional(),
+  rating: z.enum(['like', 'dislike']).nullish(),
 })
 
 /**
@@ -235,7 +235,7 @@ export const zAppSiteUpdatePayload = z.object({
   copyright: z.string().nullish(),
   custom_disclaimer: z.string().nullish(),
   customize_domain: z.string().nullish(),
-  customize_token_strategy: z.enum(['must', 'allow', 'not_allow']).optional(),
+  customize_token_strategy: z.enum(['must', 'allow', 'not_allow']).nullish(),
   default_language: z.string().nullish(),
   description: z.string().nullish(),
   icon: z.string().nullish(),
@@ -1474,8 +1474,8 @@ export const zGetAppsByAppIdAdvancedChatWorkflowRunsPath = z.object({
 })
 
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsQuery = z.object({
-  triggered_from: z.enum(['debugging', 'app-run']).optional(),
-  status: z.enum(['running', 'succeeded', 'failed', 'stopped', 'partial-succeeded']).optional(),
+  triggered_from: z.enum(['debugging', 'app-run']).nullish(),
+  status: z.enum(['running', 'succeeded', 'failed', 'stopped', 'partial-succeeded']).nullish(),
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
@@ -1490,9 +1490,9 @@ export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountPath = z.object({
 })
 
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountQuery = z.object({
-  triggered_from: z.enum(['debugging', 'app-run']).optional(),
+  triggered_from: z.enum(['debugging', 'app-run']).nullish(),
   time_range: z.string().nullish(),
-  status: z.enum(['running', 'succeeded', 'failed', 'stopped', 'partial-succeeded']).optional(),
+  status: z.enum(['running', 'succeeded', 'failed', 'stopped', 'partial-succeeded']).nullish(),
 })
 
 /**
@@ -1717,8 +1717,8 @@ export const zGetAppsByAppIdAnnotationsExportPath = z.object({
 export const zGetAppsByAppIdAnnotationsExportResponse = zAnnotationExportList
 
 export const zDeleteAppsByAppIdAnnotationsByAnnotationIdPath = z.object({
-  app_id: z.string(),
   annotation_id: z.string(),
+  app_id: z.string(),
 })
 
 /**
@@ -1988,9 +1988,9 @@ export const zGetAppsByAppIdFeedbacksExportPath = z.object({
 export const zGetAppsByAppIdFeedbacksExportQuery = z.object({
   end_date: z.string().nullish(),
   format: z.enum(['csv', 'json']).optional().default('csv'),
-  from_source: z.enum(['user', 'admin']).optional(),
+  from_source: z.enum(['user', 'admin']).nullish(),
   has_comment: z.boolean().nullish(),
-  rating: z.enum(['like', 'dislike']).optional(),
+  rating: z.enum(['like', 'dislike']).nullish(),
   start_date: z.string().nullish(),
 })
 
@@ -2398,8 +2398,8 @@ export const zGetAppsByAppIdWorkflowRunsPath = z.object({
 })
 
 export const zGetAppsByAppIdWorkflowRunsQuery = z.object({
-  triggered_from: z.enum(['debugging', 'app-run']).optional(),
-  status: z.enum(['running', 'succeeded', 'failed', 'stopped', 'partial-succeeded']).optional(),
+  triggered_from: z.enum(['debugging', 'app-run']).nullish(),
+  status: z.enum(['running', 'succeeded', 'failed', 'stopped', 'partial-succeeded']).nullish(),
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
@@ -2414,9 +2414,9 @@ export const zGetAppsByAppIdWorkflowRunsCountPath = z.object({
 })
 
 export const zGetAppsByAppIdWorkflowRunsCountQuery = z.object({
-  triggered_from: z.enum(['debugging', 'app-run']).optional(),
+  triggered_from: z.enum(['debugging', 'app-run']).nullish(),
   time_range: z.string().nullish(),
-  status: z.enum(['running', 'succeeded', 'failed', 'stopped', 'partial-succeeded']).optional(),
+  status: z.enum(['running', 'succeeded', 'failed', 'stopped', 'partial-succeeded']).nullish(),
 })
 
 /**
@@ -2891,8 +2891,8 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse = z.r
 )
 
 export const zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
-  app_id: z.string(),
   node_id: z.string(),
+  app_id: z.string(),
 })
 
 /**
@@ -3061,8 +3061,8 @@ export const zGetAppsByAppIdWorkflowsTriggersWebhookQuery = z.object({
 export const zGetAppsByAppIdWorkflowsTriggersWebhookResponse = zWebhookTriggerResponse
 
 export const zDeleteAppsByAppIdWorkflowsByWorkflowIdPath = z.object({
-  app_id: z.string(),
   workflow_id: z.string(),
+  app_id: z.string(),
 })
 
 /**

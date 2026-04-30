@@ -306,7 +306,7 @@ export type InfoList = {
 }
 
 export type Rule = {
-  parent_mode?: 'full-doc' | 'paragraph'
+  parent_mode?: 'full-doc' | 'paragraph' | null
   pre_processing_rules?: Array<PreProcessingRule> | null
   segmentation?: Segmentation
   subchunk_segmentation?: Segmentation
@@ -326,7 +326,7 @@ export type RetrievalMethod
 export type WeightModel = {
   keyword_setting?: WeightKeywordSetting
   vector_setting?: WeightVectorSetting
-  weight_type?: 'semantic_first' | 'keyword_first' | 'customized'
+  weight_type?: 'semantic_first' | 'keyword_first' | 'customized' | null
 }
 
 export type MetadataDetail = {
@@ -1174,8 +1174,8 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
   path: {
-    document_id: string
     dataset_id: string
+    document_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/documents/{document_id}'

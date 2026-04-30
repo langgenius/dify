@@ -14,7 +14,7 @@ export type ChatMessagePayload = {
   }
   parent_message_id?: string | null
   query: string
-  response_mode?: 'blocking' | 'streaming'
+  response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
 }
 
@@ -26,7 +26,7 @@ export type CompletionMessagePayload = {
     [key: string]: unknown
   }
   query?: string
-  response_mode?: 'blocking' | 'streaming'
+  response_mode?: 'blocking' | 'streaming' | null
   retriever_from?: string
 }
 

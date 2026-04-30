@@ -11,7 +11,7 @@ export const zChatMessagePayload = z.object({
   inputs: z.record(z.string(), z.unknown()),
   parent_message_id: z.string().nullish(),
   query: z.string(),
-  response_mode: z.enum(['blocking', 'streaming']).optional(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
 })
 
@@ -22,7 +22,7 @@ export const zCompletionMessagePayload = z.object({
   files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
-  response_mode: z.enum(['blocking', 'streaming']).optional(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('web_app'),
 })
 
