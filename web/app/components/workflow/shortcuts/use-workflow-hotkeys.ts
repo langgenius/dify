@@ -4,8 +4,8 @@ import type {
   UseHotkeyOptions,
 } from '@tanstack/react-hotkeys'
 import type { WorkflowHotkeyMeta, WorkflowShortcutDefinition, WorkflowShortcutId } from './definitions'
-import { useHotkeys } from '@tanstack/react-hotkeys'
-import { useCallback, useEffect, useMemo } from 'react'
+import { useHotkeys, useKeyHold } from '@tanstack/react-hotkeys'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useEdgesInteractions } from '../hooks/use-edges-interactions'
@@ -15,6 +15,7 @@ import { useWorkflowCanvasMaximize } from '../hooks/use-workflow-canvas-maximize
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
 import { useStore } from '../store/workflow'
+import { isEventTargetInputArea } from '../utils'
 import {
   subscribeWorkflowCommand,
   WorkflowCommand,
@@ -90,6 +91,10 @@ export const useWorkflowHotkeys = (): void => {
     fitView,
     getNodes,
   } = useReactFlow()
+  const isShiftHeld = useKeyHold('Shift')
+  const shiftDimmedRef = useRef(false)
+  const undimAllNodesRef = useRef(undimAllNodes)
+  undimAllNodesRef.current = undimAllNodes
 
   const constrainedZoomOut = useCallback(() => {
     const currentZoom = getZoom()
@@ -192,20 +197,9 @@ export const useWorkflowHotkeys = (): void => {
     ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.download-import-log'], () => {
       collaborationManager.downloadGraphImportLog()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.dim-other-nodes'], () => {
-      dimOtherNodes()
-    }, {
-      eventType: 'keydown',
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.dim-other-nodes'], () => {
-      undimAllNodes()
-    }, {
-      eventType: 'keyup',
-    }),
   ], [
     constrainedZoomIn,
     constrainedZoomOut,
-    dimOtherNodes,
     fitView,
     handleCopy,
     handleEdgeDelete,
@@ -223,11 +217,37 @@ export const useWorkflowHotkeys = (): void => {
     historyShortcutsEnabled,
     isCommentModeAvailable,
     showDebugAndPreviewPanel,
-    undimAllNodes,
     zoomTo,
   ])
 
   useHotkeys(hotkeys, workflowHotkeyOptions)
+
+  useEffect(() => {
+    if (isShiftHeld) {
+      if (shiftDimmedRef.current)
+        return
+
+      if (isEventTargetInputArea(document.activeElement as HTMLElement))
+        return
+
+      shiftDimmedRef.current = true
+      dimOtherNodes()
+      return
+    }
+
+    if (!shiftDimmedRef.current)
+      return
+
+    shiftDimmedRef.current = false
+    undimAllNodes()
+  }, [dimOtherNodes, isShiftHeld, undimAllNodes])
+
+  useEffect(() => {
+    return () => {
+      if (shiftDimmedRef.current)
+        undimAllNodesRef.current()
+    }
+  }, [])
 
   useEffect(() => {
     return subscribeWorkflowCommand(WorkflowCommand.ToggleCanvasMaximize, handleZenToggle)

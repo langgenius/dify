@@ -48,6 +48,7 @@ const mockHandleModePointer = vi.hoisted(() => vi.fn())
 const mockHandleModeComment = vi.hoisted(() => vi.fn())
 const mockHandleLayout = vi.hoisted(() => vi.fn())
 const mockHandleToggleMaximizeCanvas = vi.hoisted(() => vi.fn())
+const mockUseKeyHold = vi.hoisted(() => vi.fn(() => false))
 
 vi.mock('@tanstack/react-hotkeys', () => {
   const useHotkeys = (
@@ -69,6 +70,7 @@ vi.mock('@tanstack/react-hotkeys', () => {
 
   return {
     useHotkeys,
+    useKeyHold: mockUseKeyHold,
   }
 })
 
@@ -177,6 +179,7 @@ describe('useShortcuts', () => {
   beforeEach(() => {
     keyPressRegistrations.length = 0
     vi.clearAllMocks()
+    mockUseKeyHold.mockReturnValue(false)
     mockGetNodes.mockReturnValue([])
   })
 
@@ -251,14 +254,14 @@ describe('useShortcuts', () => {
     getSelectionSpy.mockRestore()
   })
 
-  it('dims on shift down, undims on shift up, and responds to zen toggle events', () => {
-    const { unmount } = renderWorkflowHook(() => useWorkflowHotkeys())
+  it('dims while shift is held, undims when released, and responds to zen toggle events', () => {
+    const { rerender, unmount } = renderWorkflowHook(() => useWorkflowHotkeys())
 
-    const shiftDownShortcut = findRegistration(registration => (registration.keyFilter as { key?: string })?.key === 'Shift' && registration.options?.events?.[0] === 'keydown')
-    const shiftUpShortcut = findRegistration(registration => (registration.keyFilter as { key?: string })?.key === 'Shift' && registration.options?.events?.[0] === 'keyup')
+    mockUseKeyHold.mockReturnValue(true)
+    rerender()
 
-    triggerShortcut(shiftDownShortcut)
-    triggerShortcut(shiftUpShortcut, { ...createKeyboardEvent(), key: 'Shift' } as KeyboardEvent)
+    mockUseKeyHold.mockReturnValue(false)
+    rerender()
 
     expect(mockDimOtherNodes).toHaveBeenCalledTimes(1)
     expect(mockUndimAllNodes).toHaveBeenCalledTimes(1)
@@ -274,5 +277,21 @@ describe('useShortcuts', () => {
       emitWorkflowCommand(WorkflowCommand.ToggleCanvasMaximize)
     })
     expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not dim when shift is held inside editable inputs', () => {
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+
+    const { rerender } = renderWorkflowHook(() => useWorkflowHotkeys())
+
+    mockUseKeyHold.mockReturnValue(true)
+    rerender()
+
+    expect(mockDimOtherNodes).not.toHaveBeenCalled()
+    expect(mockUndimAllNodes).not.toHaveBeenCalled()
+
+    input.remove()
   })
 })

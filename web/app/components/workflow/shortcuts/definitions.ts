@@ -152,7 +152,7 @@ export const WORKFLOW_SHORTCUTS: Record<WorkflowShortcutId, WorkflowShortcutDefi
   },
   'workflow.dim-other-nodes': {
     id: 'workflow.dim-other-nodes',
-    hotkeys: [{ key: 'Shift' }],
+    hotkeys: [{ key: 'Shift', shift: true }],
     displayHotkey: 'Shift',
     name: 'Dim other nodes',
     description: 'Dim nodes outside the current workflow selection',
