@@ -14,6 +14,8 @@
     "noImplicitOverride": true,
 
     "module": "preserve",
-    "noEmit": true
+    "noEmit": true,
+
+    "allowImportingTsExtensions": true
   }
 }

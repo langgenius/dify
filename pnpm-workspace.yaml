@@ -68,6 +68,7 @@ catalog:
   '@formatjs/intl-localematcher': 0.8.4
   '@headlessui/react': 2.2.10
   '@heroicons/react': 2.2.0
+  '@hey-api/openapi-ts': 0.97.0
   '@hono/node-server': 2.0.0
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/ri': 1.2.10
