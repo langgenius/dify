@@ -38,14 +38,14 @@ const AppliedEducationContent = ({
   const workspaceId = currentWorkspaceInList?.id || currentWorkspace?.id
 
   return (
-    <div className="flex w-full flex-col gap-5">
-      <div className="rounded-lg border border-effects-highlight bg-background-default-subtle px-3 py-3">
+    <div className="flex w-full flex-col gap-4">
+      <div className="rounded-lg border border-effects-highlight bg-background-default-subtle px-3">
         <div className="flex items-center gap-2">
           <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-state-success-solid text-text-primary-on-surface">
             <span className="i-ri-check-line h-3.5 w-3.5" />
           </div>
           <div>
-            <div className="system-lg-semibold text-text-secondary">
+            <div className="text-text-secondary">
               {t('applied.step1.description', { ns: 'education' })}
             </div>
           </div>
@@ -57,7 +57,7 @@ const AppliedEducationContent = ({
             2
           </div>
           <div>
-            <div className="system-lg-semibold text-text-secondary">
+            <div className="system-xl-medium text-text-secondary">
               {t('applied.step2.description', { ns: 'education' })}
             </div>
           </div>
