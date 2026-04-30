@@ -304,11 +304,23 @@ class TestHitTestingService:
             "search_method": "hybrid_search",
             "top_k": 10,
             "reranking_enable": True,
-            "reranking_model": {"provider": "test"},
+            "reranking_model": {
+                "reranking_provider_name": "test-provider",
+                "reranking_model_name": "test-reranker",
+            },
             "reranking_mode": "weighted_sum",
             "score_threshold_enabled": True,
             "score_threshold": 0.5,
-            "weights": {"vector": 0.5, "keyword": 0.5},
+            "weights": {
+                "vector_setting": {
+                    "vector_weight": 0.5,
+                    "embedding_provider_name": "openai",
+                    "embedding_model_name": "text-embedding-3-small",
+                },
+                "keyword_setting": {
+                    "keyword_weight": 0.5,
+                },
+            },
         }
         mock_retrieve.return_value = []
 
@@ -323,6 +335,18 @@ class TestHitTestingService:
         mock_retrieve.assert_called_once()
         kwargs = mock_retrieve.call_args.kwargs
         assert kwargs["score_threshold"] == 0.5
-        assert kwargs["reranking_model"] == {"provider": "test"}
+        assert kwargs["reranking_model"] == {
+            "reranking_provider_name": "test-provider",
+            "reranking_model_name": "test-reranker",
+        }
         assert kwargs["reranking_mode"] == "weighted_sum"
-        assert kwargs["weights"] == {"vector": 0.5, "keyword": 0.5}
+        assert kwargs["weights"] == {
+            "vector_setting": {
+                "vector_weight": 0.5,
+                "embedding_provider_name": "openai",
+                "embedding_model_name": "text-embedding-3-small",
+            },
+            "keyword_setting": {
+                "keyword_weight": 0.5,
+            },
+        }
