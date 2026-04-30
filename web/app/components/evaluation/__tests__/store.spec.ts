@@ -258,6 +258,7 @@ describe('evaluation store', () => {
     ])
     expect(hydratedState.metrics[1].kind).toBe('custom-workflow')
     expect(hydratedState.metrics[1].customConfig?.workflowId).toBe('workflow-precision-review')
+    expect(hydratedState.metrics[1].customConfig?.workflowAppId).toBe('workflow-precision-review')
     expect(hydratedState.metrics[1].customConfig?.mappings[0].inputVariableId).toBe('query')
     expect(hydratedState.metrics[1].customConfig?.mappings[0].outputVariableId).toBe('answer')
     expect(hydratedState.metrics[1].customConfig?.outputs).toEqual([{ id: 'reason', valueType: 'string' }])

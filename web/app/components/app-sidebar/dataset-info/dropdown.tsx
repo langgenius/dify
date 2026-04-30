@@ -34,6 +34,25 @@ type DropDownProps = {
   expand: boolean
 }
 
+type JsonErrorResponse = {
+  json: () => Promise<{ message?: string }>
+}
+
+const isJsonErrorResponse = (error: unknown): error is JsonErrorResponse => {
+  return typeof error === 'object'
+    && error !== null
+    && 'json' in error
+    && typeof error.json === 'function'
+}
+
+const getErrorMessage = async (error: unknown) => {
+  if (!isJsonErrorResponse(error))
+    return 'Unknown error'
+
+  const res = await error.json()
+  return res?.message || 'Unknown error'
+}
+
 const DropDown = ({
   expand,
 }: DropDownProps) => {
@@ -78,7 +97,7 @@ const DropDown = ({
       downloadBlob({ data: file, fileName: `${name}.pipeline` })
     }
     catch {
-      toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
   }, [dataset, exportPipelineConfig, t])
 
@@ -89,9 +108,8 @@ const DropDown = ({
       setConfirmMessage(isUsedByApp ? t('datasetUsedByApp', { ns: 'dataset' })! : t('deleteDatasetConfirmContent', { ns: 'dataset' })!)
       setShowConfirmDelete(true)
     }
-    catch (e: any) {
-      const res = await e.json()
-      toast(res?.message || 'Unknown error', { type: 'error' })
+    catch (e: unknown) {
+      toast.error(await getErrorMessage(e))
     }
   }, [dataset.id, t])
 
@@ -112,10 +130,15 @@ const DropDown = ({
       open={open}
       onOpenChange={setOpen}
     >
-      <DropdownMenuTrigger render={<div />}>
-        <ActionButton className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md', open && 'bg-state-base-hover')}>
-          <span aria-hidden className="i-ri-more-fill size-4" />
-        </ActionButton>
+      <DropdownMenuTrigger
+        render={(
+          <ActionButton
+            aria-label={t('operation.more', { ns: 'common' })}
+            className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md', open && 'bg-state-base-hover')}
+          />
+        )}
+      >
+        <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement={expand ? 'bottom-end' : 'right-start'}

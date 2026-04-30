@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import LocaleSigninSelect from '../locale-signin'
+import LocaleMenu from '../_locale-menu'
 
 const localeItems = [
   { value: 'en-US', name: 'English (US)' },
@@ -8,16 +8,15 @@ const localeItems = [
   { value: 'ja-JP', name: '日本語' },
 ]
 
-describe('LocaleSigninSelect', () => {
+describe('LocaleMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  // Rendering behavior for selected value and fallback state.
   describe('Rendering', () => {
     it('should render selected locale name when value matches an item', () => {
       render(
-        <LocaleSigninSelect
+        <LocaleMenu
           items={localeItems}
           value="en-US"
           onChange={vi.fn()}
@@ -29,7 +28,7 @@ describe('LocaleSigninSelect', () => {
 
     it('should render trigger without selected label when value is not found', () => {
       render(
-        <LocaleSigninSelect
+        <LocaleMenu
           items={localeItems}
           value="missing"
           onChange={vi.fn()}
@@ -42,14 +41,13 @@ describe('LocaleSigninSelect', () => {
     })
   })
 
-  // Menu interactions and callback behavior.
   describe('User Interactions', () => {
     it('should call onChange with selected locale value when clicking an option', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
 
       render(
-        <LocaleSigninSelect
+        <LocaleMenu
           items={localeItems}
           value="en-US"
           onChange={onChange}
@@ -57,7 +55,7 @@ describe('LocaleSigninSelect', () => {
       )
 
       await user.click(screen.getByRole('button', { name: /english \(us\)/i }))
-      await user.click(screen.getByRole('menuitem', { name: '日本語' }))
+      await user.click(screen.getByRole('menuitemradio', { name: '日本語' }))
 
       expect(onChange).toHaveBeenCalledWith('ja-JP')
     })
@@ -66,7 +64,7 @@ describe('LocaleSigninSelect', () => {
       const user = userEvent.setup()
 
       render(
-        <LocaleSigninSelect
+        <LocaleMenu
           items={localeItems}
           value="en-US"
           onChange={vi.fn()}
@@ -75,34 +73,34 @@ describe('LocaleSigninSelect', () => {
 
       await user.click(screen.getByRole('button', { name: /english \(us\)/i }))
 
-      expect(screen.getByRole('menuitem', { name: 'English (US)' })).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: '简体中文' })).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: '日本語' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitemradio', { name: 'English (US)' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitemradio', { name: '简体中文' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitemradio', { name: '日本語' })).toBeInTheDocument()
     })
   })
 
-  // Edge behavior for missing callback and empty data.
   describe('Edge Cases', () => {
     it('should not throw when onChange is undefined and option is selected', async () => {
       const user = userEvent.setup()
 
       render(
-        <LocaleSigninSelect
+        <LocaleMenu
           items={localeItems}
           value="en-US"
         />,
       )
 
       await user.click(screen.getByRole('button', { name: /english \(us\)/i }))
-      await user.click(screen.getByRole('menuitem', { name: '简体中文' }))
-      // No assertion needed — test verifies no exception is thrown during selection without onChange.
+      await user.click(screen.getByRole('menuitemradio', { name: '简体中文' }))
+
+      expect(screen.queryByRole('menuitemradio', { name: '简体中文' })).not.toBeInTheDocument()
     })
 
     it('should render no options when items are empty', async () => {
       const user = userEvent.setup()
 
       render(
-        <LocaleSigninSelect
+        <LocaleMenu
           items={[]}
           value="en-US"
           onChange={vi.fn()}
@@ -110,7 +108,8 @@ describe('LocaleSigninSelect', () => {
       )
 
       await user.click(screen.getByRole('button'))
-      expect(screen.queryAllByRole('menuitem')).toHaveLength(0)
+
+      expect(screen.queryAllByRole('menuitemradio')).toHaveLength(0)
     })
   })
 })

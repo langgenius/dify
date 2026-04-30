@@ -20,6 +20,7 @@ const mockOpenAsyncWindow = vi.fn()
 const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
 const mockToastError = vi.fn()
+const mockToastSuccess = vi.fn()
 const mockConvertWorkflowType = vi.fn()
 const mockRefetchEvaluationWorkflowAssociatedTargets = vi.fn()
 const mockWindowOpen = vi.fn()
@@ -121,6 +122,7 @@ vi.mock('@/service/use-workflow', () => ({
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
+    success: (...args: unknown[]) => mockToastSuccess(...args),
   },
 }))
 
@@ -642,6 +644,10 @@ describe('AppPublisher', () => {
   })
 
   it('should switch workflow type, refresh app detail, and close the popover for published apps', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       id: 'app-1',
       workflow_kind: AppTypeEnum.EVALUATION,
@@ -666,6 +672,7 @@ describe('AppPublisher', () => {
         id: 'app-1',
         workflow_kind: AppTypeEnum.EVALUATION,
       })
+      expect(mockToastSuccess).toHaveBeenCalledWith('api.actionSuccess')
     })
     await waitFor(() => {
       expect(screen.queryByText('publisher-summary-publish')).not.toBeInTheDocument()
@@ -673,6 +680,10 @@ describe('AppPublisher', () => {
   })
 
   it('should publish an unpublished workflow as evaluation workflow through the evaluation publish endpoint', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
     mockOnPublish.mockResolvedValue(undefined)
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       id: 'app-1',
@@ -700,12 +711,14 @@ describe('AppPublisher', () => {
         id: 'app-1',
         workflow_kind: AppTypeEnum.EVALUATION,
       })
+      expect(mockToastSuccess).toHaveBeenCalledWith('api.actionSuccess')
     })
   })
 
   it('should hide access and actions sections for evaluation workflow apps', () => {
     mockAppDetail = {
       ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
       workflow_kind: AppTypeEnum.EVALUATION,
     }
 
@@ -731,6 +744,7 @@ describe('AppPublisher', () => {
   it('should confirm before switching an evaluation workflow with associated targets to a standard workflow', async () => {
     mockAppDetail = {
       ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
       workflow_kind: AppTypeEnum.EVALUATION,
     }
     mockEvaluationWorkflowAssociatedTargets = {
@@ -775,12 +789,14 @@ describe('AppPublisher', () => {
         params: { appId: 'app-1' },
         query: { target_type: AppTypeEnum.WORKFLOW },
       })
+      expect(mockToastSuccess).toHaveBeenCalledWith('api.actionSuccess')
     })
   })
 
   it('should switch an evaluation workflow directly when there are no associated targets', async () => {
     mockAppDetail = {
       ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
       workflow_kind: AppTypeEnum.EVALUATION,
     }
 
@@ -799,6 +815,7 @@ describe('AppPublisher', () => {
         params: { appId: 'app-1' },
         query: { target_type: AppTypeEnum.WORKFLOW },
       })
+      expect(mockToastSuccess).toHaveBeenCalledWith('api.actionSuccess')
     })
     expect(screen.queryByText('common.switchToStandardWorkflowConfirm.title')).not.toBeInTheDocument()
   })
@@ -806,6 +823,7 @@ describe('AppPublisher', () => {
   it('should block switching an evaluation workflow when associated targets fail to load', async () => {
     mockAppDetail = {
       ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
       workflow_kind: AppTypeEnum.EVALUATION,
     }
     mockRefetchEvaluationWorkflowAssociatedTargets.mockResolvedValueOnce({
@@ -829,6 +847,11 @@ describe('AppPublisher', () => {
   })
 
   it('should block switching to evaluation workflow when restricted nodes exist', async () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+
     render(
       <AppPublisher
         publishedAt={Date.now()}
@@ -850,6 +873,10 @@ describe('AppPublisher', () => {
 
   it('should keep the evaluation workflow switch visible but disabled when the current plan cannot access it', () => {
     mockCanAccessSnippetsAndEvaluation = false
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
 
     render(
       <AppPublisher
@@ -867,5 +894,26 @@ describe('AppPublisher', () => {
     })
     expect(sectionProps.summary?.workflowTypeSwitchDisabled).toBe(true)
     expect(sectionProps.summary?.workflowTypeSwitchDisabledReason).toBe('compliance.sandboxUpgradeTooltip')
+  })
+
+  it('should not expose workflow type switching for non-workflow app modes', async () => {
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+
+    expect(sectionProps.summary?.workflowTypeSwitchConfig).toBeUndefined()
+
+    fireEvent.click(screen.getByText('publisher-switch-workflow-type'))
+
+    await waitFor(() => {
+      expect(mockConvertWorkflowType).not.toHaveBeenCalled()
+    })
+    expect(mockOnPublish).not.toHaveBeenCalled()
+    expect(mockFetchAppDetailDirect).not.toHaveBeenCalled()
+    expect(mockToastSuccess).not.toHaveBeenCalled()
   })
 })

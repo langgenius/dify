@@ -130,7 +130,7 @@ const normalizeCustomMetricMappings = (
 const normalizeCustomMetricOutputs = (
   value: EvaluationCustomizedMetric['output_fields'],
 ) => {
-  if (!value)
+  if (!Array.isArray(value))
     return []
 
   return value
@@ -165,6 +165,7 @@ const normalizeCustomMetric = (
       ? {
           ...customMetric.customConfig,
           workflowId,
+          workflowAppId: workflowId,
           mappings: normalizeCustomMetricMappings(value.input_fields),
           outputs: normalizeCustomMetricOutputs(value.output_fields),
         }

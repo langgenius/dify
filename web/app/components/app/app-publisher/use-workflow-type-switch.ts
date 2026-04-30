@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { useConvertWorkflowTypeMutation } from '@/service/use-apps'
 import { useEvaluationWorkflowAssociatedTargets } from '@/service/use-evaluation'
-import { AppTypeEnum } from '@/types/app'
+import { AppModeEnum, AppTypeEnum } from '@/types/app'
 
 type WorkflowTypeSwitchLabelKey = I18nKeysWithPrefix<'workflow', 'common.'>
 
@@ -78,8 +78,11 @@ export const useWorkflowTypeSwitch = ({
   } = useEvaluationWorkflowAssociatedTargets(appDetail?.id, { enabled: false })
 
   const workflowTypeSwitchConfig = useMemo(() => {
+    if (appDetail?.mode !== AppModeEnum.WORKFLOW)
+      return undefined
+
     return getWorkflowTypeSwitchConfig(appDetail?.workflow_kind)
-  }, [appDetail?.workflow_kind])
+  }, [appDetail?.mode, appDetail?.workflow_kind])
 
   const workflowTypeSwitchDisabledReason = useMemo(() => {
     if (workflowTypeSwitchConfig?.targetType !== AppTypeEnum.EVALUATION)
@@ -131,6 +134,7 @@ export const useWorkflowTypeSwitch = ({
         })
         setAppDetail(latestAppDetail)
         resetEvaluationWorkflowSwitchConfirm()
+        toast.success(t('api.actionSuccess', { ns: 'common' }))
         return true
       }
 
@@ -150,6 +154,7 @@ export const useWorkflowTypeSwitch = ({
       setAppDetail(latestAppDetail)
       onPublishedSwitch()
       resetEvaluationWorkflowSwitchConfirm()
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
       return true
     }
     catch {
@@ -164,6 +169,7 @@ export const useWorkflowTypeSwitch = ({
     publishedAt,
     resetEvaluationWorkflowSwitchConfirm,
     setAppDetail,
+    t,
     workflowTypeSwitchConfig,
   ])
 

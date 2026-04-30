@@ -34,6 +34,11 @@ const getWorkflowName = (workflow: AvailableEvaluationWorkflow) => {
   return workflow.marked_name || workflow.app_name || workflow.id
 }
 
+const isSelectedWorkflow = (
+  workflow: AvailableEvaluationWorkflow,
+  value: string | null,
+) => workflow.app_id === value
+
 const WorkflowSelector = ({
   value,
   selectedWorkflowName,
@@ -71,7 +76,7 @@ const WorkflowSelector = ({
     if (!value)
       return null
 
-    const selectedWorkflow = workflows.find(workflow => workflow.id === value)
+    const selectedWorkflow = workflows.find(workflow => isSelectedWorkflow(workflow, value))
     if (selectedWorkflow)
       return getWorkflowName(selectedWorkflow)
 
@@ -171,7 +176,7 @@ const WorkflowSelector = ({
                               key={workflow.id}
                               type="button"
                               role="option"
-                              aria-selected={workflow.id === value}
+                              aria-selected={isSelectedWorkflow(workflow, value)}
                               className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-state-base-hover"
                               onClick={() => {
                                 onSelect(workflow)
@@ -187,7 +192,7 @@ const WorkflowSelector = ({
                               <div className="min-w-0 flex-1 truncate px-1 py-1 system-sm-medium text-text-secondary">
                                 {getWorkflowName(workflow)}
                               </div>
-                              {workflow.id === value && (
+                              {isSelectedWorkflow(workflow, value) && (
                                 <span aria-hidden="true" className="i-ri-check-line h-4 w-4 shrink-0 text-text-accent" />
                               )}
                             </button>

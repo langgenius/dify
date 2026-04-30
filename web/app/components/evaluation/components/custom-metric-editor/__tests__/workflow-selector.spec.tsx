@@ -98,11 +98,21 @@ describe('WorkflowSelector', () => {
       setupWorkflowQueryMock({ workflows: [] })
 
       renderWorkflowSelector({
-        value: 'workflow-1',
+        value: 'app-1',
         selectedWorkflowName: 'Saved Review Workflow',
       })
 
       expect(screen.getByText('Saved Review Workflow')).toBeInTheDocument()
+    })
+
+    it('should resolve the selected workflow from app id', () => {
+      setupWorkflowQueryMock()
+
+      renderWorkflowSelector({
+        value: 'app-1',
+      })
+
+      expect(screen.getByText('Review Workflow')).toBeInTheDocument()
     })
   })
 
@@ -119,6 +129,14 @@ describe('WorkflowSelector', () => {
       fireEvent.click(option)
 
       expect(onSelect).toHaveBeenCalledWith(createWorkflow())
+    })
+
+    it('should mark the option selected when its app id matches the value', async () => {
+      renderWorkflowSelector({ value: 'app-1' })
+
+      fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.custom.workflowLabel' }))
+
+      expect(await screen.findByRole('option', { name: 'Review Workflow', selected: true })).toBeInTheDocument()
     })
   })
 

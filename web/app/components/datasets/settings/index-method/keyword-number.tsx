@@ -7,10 +7,10 @@ import {
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
 import { Slider } from '@langgenius/dify-ui/slider'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 
 const MIN_KEYWORD_NUMBER = 0
 const MAX_KEYWORD_NUMBER = 50
@@ -36,10 +36,15 @@ const KeyWordNumber = ({
         <div className="truncate text-text-secondary system-xs-medium">
           {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         </div>
-        <Tooltip
-          popupContent={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
-        >
-          <span className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <span className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
+            )}
+          />
+          <TooltipContent>
+            {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+          </TooltipContent>
         </Tooltip>
       </div>
       <Slider
