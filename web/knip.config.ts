@@ -8,11 +8,9 @@ const config: KnipConfig = {
     'scripts/**/*.{js,ts,mjs}',
     'bin/**/*.{js,ts,mjs}',
     'tsslint.config.ts',
-    'openapi-ts.*.config.ts',
   ],
   ignore: [
     'public/**',
-    'contract/generated/**',
   ],
   ignoreBinaries: [
     'only-allow',

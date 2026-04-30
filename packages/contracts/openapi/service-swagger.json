@@ -1,0 +1,6867 @@
+{
+  "basePath": "/v1",
+  "consumes": [
+    "application/json"
+  ],
+  "definitions": {
+    "Annotation": {
+      "properties": {
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content"
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created At"
+        },
+        "hit_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hit Count"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "question": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Question"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Annotation",
+      "type": "object"
+    },
+    "AnnotationCreatePayload": {
+      "properties": {
+        "answer": {
+          "description": "Annotation answer",
+          "title": "Answer",
+          "type": "string"
+        },
+        "question": {
+          "description": "Annotation question",
+          "title": "Question",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question",
+        "answer"
+      ],
+      "title": "AnnotationCreatePayload",
+      "type": "object"
+    },
+    "AnnotationList": {
+      "$defs": {
+        "Annotation": {
+          "properties": {
+            "content": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Content"
+            },
+            "created_at": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Created At"
+            },
+            "hit_count": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Hit Count"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "question": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Question"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "Annotation",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/Annotation"
+          },
+          "title": "Data",
+          "type": "array"
+        },
+        "has_more": {
+          "title": "Has More",
+          "type": "boolean"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "page": {
+          "title": "Page",
+          "type": "integer"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "data",
+        "has_more",
+        "limit",
+        "total",
+        "page"
+      ],
+      "title": "AnnotationList",
+      "type": "object"
+    },
+    "AnnotationReplyActionPayload": {
+      "properties": {
+        "embedding_model_name": {
+          "description": "Embedding model name",
+          "title": "Embedding Model Name",
+          "type": "string"
+        },
+        "embedding_provider_name": {
+          "description": "Embedding provider name",
+          "title": "Embedding Provider Name",
+          "type": "string"
+        },
+        "score_threshold": {
+          "description": "Score threshold for annotation matching",
+          "title": "Score Threshold",
+          "type": "number"
+        }
+      },
+      "required": [
+        "score_threshold",
+        "embedding_provider_name",
+        "embedding_model_name"
+      ],
+      "title": "AnnotationReplyActionPayload",
+      "type": "object"
+    },
+    "ChatRequestPayload": {
+      "properties": {
+        "auto_generate_name": {
+          "default": true,
+          "description": "Auto generate conversation name",
+          "title": "Auto Generate Name",
+          "type": "boolean"
+        },
+        "conversation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Conversation UUID",
+          "title": "Conversation Id"
+        },
+        "files": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Files"
+        },
+        "inputs": {
+          "additionalProperties": true,
+          "title": "Inputs",
+          "type": "object"
+        },
+        "query": {
+          "title": "Query",
+          "type": "string"
+        },
+        "response_mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "blocking",
+                "streaming"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Response Mode"
+        },
+        "retriever_from": {
+          "default": "dev",
+          "title": "Retriever From",
+          "type": "string"
+        },
+        "workflow_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Workflow ID for advanced chat",
+          "title": "Workflow Id"
+        }
+      },
+      "required": [
+        "inputs",
+        "query"
+      ],
+      "title": "ChatRequestPayload",
+      "type": "object"
+    },
+    "ChildChunkCreatePayload": {
+      "properties": {
+        "content": {
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "title": "ChildChunkCreatePayload",
+      "type": "object"
+    },
+    "ChildChunkListQuery": {
+      "properties": {
+        "keyword": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Keyword"
+        },
+        "limit": {
+          "default": 20,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "page": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        }
+      },
+      "title": "ChildChunkListQuery",
+      "type": "object"
+    },
+    "ChildChunkUpdatePayload": {
+      "properties": {
+        "content": {
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "title": "ChildChunkUpdatePayload",
+      "type": "object"
+    },
+    "CompletionRequestPayload": {
+      "properties": {
+        "files": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Files"
+        },
+        "inputs": {
+          "additionalProperties": true,
+          "title": "Inputs",
+          "type": "object"
+        },
+        "query": {
+          "default": "",
+          "title": "Query",
+          "type": "string"
+        },
+        "response_mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "blocking",
+                "streaming"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Response Mode"
+        },
+        "retriever_from": {
+          "default": "dev",
+          "title": "Retriever From",
+          "type": "string"
+        }
+      },
+      "required": [
+        "inputs"
+      ],
+      "title": "CompletionRequestPayload",
+      "type": "object"
+    },
+    "ConversationListQuery": {
+      "properties": {
+        "last_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Last conversation ID for pagination",
+          "title": "Last Id"
+        },
+        "limit": {
+          "default": 20,
+          "description": "Number of conversations to return",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "sort_by": {
+          "default": "-updated_at",
+          "description": "Sort order for conversations",
+          "enum": [
+            "created_at",
+            "-created_at",
+            "updated_at",
+            "-updated_at"
+          ],
+          "title": "Sort By",
+          "type": "string"
+        }
+      },
+      "title": "ConversationListQuery",
+      "type": "object"
+    },
+    "ConversationRenamePayload": {
+      "properties": {
+        "auto_generate": {
+          "default": false,
+          "title": "Auto Generate",
+          "type": "boolean"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        }
+      },
+      "title": "ConversationRenamePayload",
+      "type": "object"
+    },
+    "ConversationVariableInfiniteScrollPaginationResponse": {
+      "$defs": {
+        "ConversationVariableResponse": {
+          "properties": {
+            "created_at": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Created At"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Description"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "updated_at": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Updated At"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Value"
+            },
+            "value_type": {
+              "title": "Value Type",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "value_type"
+          ],
+          "title": "ConversationVariableResponse",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/ConversationVariableResponse"
+          },
+          "title": "Data",
+          "type": "array"
+        },
+        "has_more": {
+          "title": "Has More",
+          "type": "boolean"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "limit",
+        "has_more",
+        "data"
+      ],
+      "title": "ConversationVariableInfiniteScrollPaginationResponse",
+      "type": "object"
+    },
+    "ConversationVariableResponse": {
+      "properties": {
+        "created_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created At"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "value_type": {
+          "title": "Value Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "value_type"
+      ],
+      "title": "ConversationVariableResponse",
+      "type": "object"
+    },
+    "ConversationVariableUpdatePayload": {
+      "properties": {
+        "value": {
+          "title": "Value"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "ConversationVariableUpdatePayload",
+      "type": "object"
+    },
+    "ConversationVariablesQuery": {
+      "properties": {
+        "last_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Last variable ID for pagination",
+          "title": "Last Id"
+        },
+        "limit": {
+          "default": 20,
+          "description": "Number of variables to return",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "variable_name": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Filter variables by name",
+          "title": "Variable Name"
+        }
+      },
+      "title": "ConversationVariablesQuery",
+      "type": "object"
+    },
+    "DatasetCreatePayload": {
+      "$defs": {
+        "DatasetPermissionEnum": {
+          "enum": [
+            "only_me",
+            "all_team_members",
+            "partial_members"
+          ],
+          "title": "DatasetPermissionEnum",
+          "type": "string"
+        },
+        "RerankingModel": {
+          "properties": {
+            "reranking_model_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Model Name"
+            },
+            "reranking_provider_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Provider Name"
+            }
+          },
+          "title": "RerankingModel",
+          "type": "object"
+        },
+        "RetrievalMethod": {
+          "enum": [
+            "semantic_search",
+            "full_text_search",
+            "hybrid_search",
+            "keyword_search"
+          ],
+          "title": "RetrievalMethod",
+          "type": "string"
+        },
+        "RetrievalModel": {
+          "properties": {
+            "reranking_enable": {
+              "title": "Reranking Enable",
+              "type": "boolean"
+            },
+            "reranking_mode": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Mode"
+            },
+            "reranking_model": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/RerankingModel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "score_threshold": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Score Threshold"
+            },
+            "score_threshold_enabled": {
+              "title": "Score Threshold Enabled",
+              "type": "boolean"
+            },
+            "search_method": {
+              "$ref": "#/definitions/RetrievalMethod"
+            },
+            "top_k": {
+              "title": "Top K",
+              "type": "integer"
+            },
+            "weights": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightModel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "search_method",
+            "reranking_enable",
+            "top_k",
+            "score_threshold_enabled"
+          ],
+          "title": "RetrievalModel",
+          "type": "object"
+        },
+        "WeightKeywordSetting": {
+          "properties": {
+            "keyword_weight": {
+              "title": "Keyword Weight",
+              "type": "number"
+            }
+          },
+          "required": [
+            "keyword_weight"
+          ],
+          "title": "WeightKeywordSetting",
+          "type": "object"
+        },
+        "WeightModel": {
+          "properties": {
+            "keyword_setting": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightKeywordSetting"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "vector_setting": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightVectorSetting"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "weight_type": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "semantic_first",
+                    "keyword_first",
+                    "customized"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weight Type"
+            }
+          },
+          "title": "WeightModel",
+          "type": "object"
+        },
+        "WeightVectorSetting": {
+          "properties": {
+            "embedding_model_name": {
+              "title": "Embedding Model Name",
+              "type": "string"
+            },
+            "embedding_provider_name": {
+              "title": "Embedding Provider Name",
+              "type": "string"
+            },
+            "vector_weight": {
+              "title": "Vector Weight",
+              "type": "number"
+            }
+          },
+          "required": [
+            "vector_weight",
+            "embedding_provider_name",
+            "embedding_model_name"
+          ],
+          "title": "WeightVectorSetting",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "description": {
+          "default": "",
+          "description": "Dataset description (max 400 chars)",
+          "maxLength": 400,
+          "title": "Description",
+          "type": "string"
+        },
+        "embedding_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Embedding Model"
+        },
+        "embedding_model_provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Embedding Model Provider"
+        },
+        "external_knowledge_api_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Knowledge Api Id"
+        },
+        "external_knowledge_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Knowledge Id"
+        },
+        "indexing_technique": {
+          "anyOf": [
+            {
+              "enum": [
+                "high_quality",
+                "economy"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Indexing Technique"
+        },
+        "name": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "permission": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DatasetPermissionEnum"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "only_me"
+        },
+        "provider": {
+          "default": "vendor",
+          "title": "Provider",
+          "type": "string"
+        },
+        "retrieval_model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RetrievalModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "summary_index_setting": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary Index Setting"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "DatasetCreatePayload",
+      "type": "object"
+    },
+    "DatasetUpdatePayload": {
+      "$defs": {
+        "DatasetPermissionEnum": {
+          "enum": [
+            "only_me",
+            "all_team_members",
+            "partial_members"
+          ],
+          "title": "DatasetPermissionEnum",
+          "type": "string"
+        },
+        "RerankingModel": {
+          "properties": {
+            "reranking_model_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Model Name"
+            },
+            "reranking_provider_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Provider Name"
+            }
+          },
+          "title": "RerankingModel",
+          "type": "object"
+        },
+        "RetrievalMethod": {
+          "enum": [
+            "semantic_search",
+            "full_text_search",
+            "hybrid_search",
+            "keyword_search"
+          ],
+          "title": "RetrievalMethod",
+          "type": "string"
+        },
+        "RetrievalModel": {
+          "properties": {
+            "reranking_enable": {
+              "title": "Reranking Enable",
+              "type": "boolean"
+            },
+            "reranking_mode": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Mode"
+            },
+            "reranking_model": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/RerankingModel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "score_threshold": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Score Threshold"
+            },
+            "score_threshold_enabled": {
+              "title": "Score Threshold Enabled",
+              "type": "boolean"
+            },
+            "search_method": {
+              "$ref": "#/definitions/RetrievalMethod"
+            },
+            "top_k": {
+              "title": "Top K",
+              "type": "integer"
+            },
+            "weights": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightModel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "search_method",
+            "reranking_enable",
+            "top_k",
+            "score_threshold_enabled"
+          ],
+          "title": "RetrievalModel",
+          "type": "object"
+        },
+        "WeightKeywordSetting": {
+          "properties": {
+            "keyword_weight": {
+              "title": "Keyword Weight",
+              "type": "number"
+            }
+          },
+          "required": [
+            "keyword_weight"
+          ],
+          "title": "WeightKeywordSetting",
+          "type": "object"
+        },
+        "WeightModel": {
+          "properties": {
+            "keyword_setting": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightKeywordSetting"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "vector_setting": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightVectorSetting"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "weight_type": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "semantic_first",
+                    "keyword_first",
+                    "customized"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weight Type"
+            }
+          },
+          "title": "WeightModel",
+          "type": "object"
+        },
+        "WeightVectorSetting": {
+          "properties": {
+            "embedding_model_name": {
+              "title": "Embedding Model Name",
+              "type": "string"
+            },
+            "embedding_provider_name": {
+              "title": "Embedding Provider Name",
+              "type": "string"
+            },
+            "vector_weight": {
+              "title": "Vector Weight",
+              "type": "number"
+            }
+          },
+          "required": [
+            "vector_weight",
+            "embedding_provider_name",
+            "embedding_model_name"
+          ],
+          "title": "WeightVectorSetting",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 400,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dataset description (max 400 chars)",
+          "title": "Description"
+        },
+        "embedding_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Embedding Model"
+        },
+        "embedding_model_provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Embedding Model Provider"
+        },
+        "external_knowledge_api_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Knowledge Api Id"
+        },
+        "external_knowledge_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Knowledge Id"
+        },
+        "external_retrieval_model": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Retrieval Model"
+        },
+        "indexing_technique": {
+          "anyOf": [
+            {
+              "enum": [
+                "high_quality",
+                "economy"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Indexing Technique"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "partial_member_list": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Partial Member List"
+        },
+        "permission": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/DatasetPermissionEnum"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retrieval_model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RetrievalModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "DatasetUpdatePayload",
+      "type": "object"
+    },
+    "DocumentBatchDownloadZipPayload": {
+      "description": "Request payload for bulk downloading documents as a zip archive.",
+      "properties": {
+        "document_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Document Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "document_ids"
+      ],
+      "title": "DocumentBatchDownloadZipPayload",
+      "type": "object"
+    },
+    "DocumentTextCreatePayload": {
+      "$defs": {
+        "PreProcessingRule": {
+          "properties": {
+            "enabled": {
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "enabled"
+          ],
+          "title": "PreProcessingRule",
+          "type": "object"
+        },
+        "ProcessRule": {
+          "properties": {
+            "mode": {
+              "enum": [
+                "automatic",
+                "custom",
+                "hierarchical"
+              ],
+              "title": "Mode",
+              "type": "string"
+            },
+            "rules": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Rule"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "title": "ProcessRule",
+          "type": "object"
+        },
+        "RerankingModel": {
+          "properties": {
+            "reranking_model_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Model Name"
+            },
+            "reranking_provider_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Provider Name"
+            }
+          },
+          "title": "RerankingModel",
+          "type": "object"
+        },
+        "RetrievalMethod": {
+          "enum": [
+            "semantic_search",
+            "full_text_search",
+            "hybrid_search",
+            "keyword_search"
+          ],
+          "title": "RetrievalMethod",
+          "type": "string"
+        },
+        "RetrievalModel": {
+          "properties": {
+            "reranking_enable": {
+              "title": "Reranking Enable",
+              "type": "boolean"
+            },
+            "reranking_mode": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Mode"
+            },
+            "reranking_model": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/RerankingModel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "score_threshold": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Score Threshold"
+            },
+            "score_threshold_enabled": {
+              "title": "Score Threshold Enabled",
+              "type": "boolean"
+            },
+            "search_method": {
+              "$ref": "#/definitions/RetrievalMethod"
+            },
+            "top_k": {
+              "title": "Top K",
+              "type": "integer"
+            },
+            "weights": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightModel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "search_method",
+            "reranking_enable",
+            "top_k",
+            "score_threshold_enabled"
+          ],
+          "title": "RetrievalModel",
+          "type": "object"
+        },
+        "Rule": {
+          "properties": {
+            "parent_mode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "full-doc",
+                    "paragraph"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Parent Mode"
+            },
+            "pre_processing_rules": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/definitions/PreProcessingRule"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pre Processing Rules"
+            },
+            "segmentation": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Segmentation"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "subchunk_segmentation": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Segmentation"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "title": "Rule",
+          "type": "object"
+        },
+        "Segmentation": {
+          "properties": {
+            "chunk_overlap": {
+              "default": 0,
+              "title": "Chunk Overlap",
+              "type": "integer"
+            },
+            "max_tokens": {
+              "title": "Max Tokens",
+              "type": "integer"
+            },
+            "separator": {
+              "default": "\n",
+              "title": "Separator",
+              "type": "string"
+            }
+          },
+          "required": [
+            "max_tokens"
+          ],
+          "title": "Segmentation",
+          "type": "object"
+        },
+        "WeightKeywordSetting": {
+          "properties": {
+            "keyword_weight": {
+              "title": "Keyword Weight",
+              "type": "number"
+            }
+          },
+          "required": [
+            "keyword_weight"
+          ],
+          "title": "WeightKeywordSetting",
+          "type": "object"
+        },
+        "WeightModel": {
+          "properties": {
+            "keyword_setting": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightKeywordSetting"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "vector_setting": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightVectorSetting"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "weight_type": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "semantic_first",
+                    "keyword_first",
+                    "customized"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weight Type"
+            }
+          },
+          "title": "WeightModel",
+          "type": "object"
+        },
+        "WeightVectorSetting": {
+          "properties": {
+            "embedding_model_name": {
+              "title": "Embedding Model Name",
+              "type": "string"
+            },
+            "embedding_provider_name": {
+              "title": "Embedding Provider Name",
+              "type": "string"
+            },
+            "vector_weight": {
+              "title": "Vector Weight",
+              "type": "number"
+            }
+          },
+          "required": [
+            "vector_weight",
+            "embedding_provider_name",
+            "embedding_model_name"
+          ],
+          "title": "WeightVectorSetting",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "doc_form": {
+          "default": "text_model",
+          "title": "Doc Form",
+          "type": "string"
+        },
+        "doc_language": {
+          "default": "English",
+          "title": "Doc Language",
+          "type": "string"
+        },
+        "embedding_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Embedding Model"
+        },
+        "embedding_model_provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Embedding Model Provider"
+        },
+        "indexing_technique": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Indexing Technique"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "original_document_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Original Document Id"
+        },
+        "process_rule": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ProcessRule"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retrieval_model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RetrievalModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "text"
+      ],
+      "title": "DocumentTextCreatePayload",
+      "type": "object"
+    },
+    "DocumentTextUpdate": {
+      "$defs": {
+        "PreProcessingRule": {
+          "properties": {
+            "enabled": {
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "enabled"
+          ],
+          "title": "PreProcessingRule",
+          "type": "object"
+        },
+        "ProcessRule": {
+          "properties": {
+            "mode": {
+              "enum": [
+                "automatic",
+                "custom",
+                "hierarchical"
+              ],
+              "title": "Mode",
+              "type": "string"
+            },
+            "rules": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Rule"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "title": "ProcessRule",
+          "type": "object"
+        },
+        "RerankingModel": {
+          "properties": {
+            "reranking_model_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Model Name"
+            },
+            "reranking_provider_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Provider Name"
+            }
+          },
+          "title": "RerankingModel",
+          "type": "object"
+        },
+        "RetrievalMethod": {
+          "enum": [
+            "semantic_search",
+            "full_text_search",
+            "hybrid_search",
+            "keyword_search"
+          ],
+          "title": "RetrievalMethod",
+          "type": "string"
+        },
+        "RetrievalModel": {
+          "properties": {
+            "reranking_enable": {
+              "title": "Reranking Enable",
+              "type": "boolean"
+            },
+            "reranking_mode": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Mode"
+            },
+            "reranking_model": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/RerankingModel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "score_threshold": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Score Threshold"
+            },
+            "score_threshold_enabled": {
+              "title": "Score Threshold Enabled",
+              "type": "boolean"
+            },
+            "search_method": {
+              "$ref": "#/definitions/RetrievalMethod"
+            },
+            "top_k": {
+              "title": "Top K",
+              "type": "integer"
+            },
+            "weights": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightModel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "search_method",
+            "reranking_enable",
+            "top_k",
+            "score_threshold_enabled"
+          ],
+          "title": "RetrievalModel",
+          "type": "object"
+        },
+        "Rule": {
+          "properties": {
+            "parent_mode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "full-doc",
+                    "paragraph"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Parent Mode"
+            },
+            "pre_processing_rules": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/definitions/PreProcessingRule"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Pre Processing Rules"
+            },
+            "segmentation": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Segmentation"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "subchunk_segmentation": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Segmentation"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "title": "Rule",
+          "type": "object"
+        },
+        "Segmentation": {
+          "properties": {
+            "chunk_overlap": {
+              "default": 0,
+              "title": "Chunk Overlap",
+              "type": "integer"
+            },
+            "max_tokens": {
+              "title": "Max Tokens",
+              "type": "integer"
+            },
+            "separator": {
+              "default": "\n",
+              "title": "Separator",
+              "type": "string"
+            }
+          },
+          "required": [
+            "max_tokens"
+          ],
+          "title": "Segmentation",
+          "type": "object"
+        },
+        "WeightKeywordSetting": {
+          "properties": {
+            "keyword_weight": {
+              "title": "Keyword Weight",
+              "type": "number"
+            }
+          },
+          "required": [
+            "keyword_weight"
+          ],
+          "title": "WeightKeywordSetting",
+          "type": "object"
+        },
+        "WeightModel": {
+          "properties": {
+            "keyword_setting": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightKeywordSetting"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "vector_setting": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightVectorSetting"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "weight_type": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "semantic_first",
+                    "keyword_first",
+                    "customized"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weight Type"
+            }
+          },
+          "title": "WeightModel",
+          "type": "object"
+        },
+        "WeightVectorSetting": {
+          "properties": {
+            "embedding_model_name": {
+              "title": "Embedding Model Name",
+              "type": "string"
+            },
+            "embedding_provider_name": {
+              "title": "Embedding Provider Name",
+              "type": "string"
+            },
+            "vector_weight": {
+              "title": "Vector Weight",
+              "type": "number"
+            }
+          },
+          "required": [
+            "vector_weight",
+            "embedding_provider_name",
+            "embedding_model_name"
+          ],
+          "title": "WeightVectorSetting",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "doc_form": {
+          "default": "text_model",
+          "title": "Doc Form",
+          "type": "string"
+        },
+        "doc_language": {
+          "default": "English",
+          "title": "Doc Language",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "process_rule": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ProcessRule"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "retrieval_model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RetrievalModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        }
+      },
+      "title": "DocumentTextUpdate",
+      "type": "object"
+    },
+    "FeedbackListQuery": {
+      "properties": {
+        "limit": {
+          "default": 20,
+          "description": "Number of feedbacks per page",
+          "maximum": 101,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "page": {
+          "default": 1,
+          "description": "Page number",
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        }
+      },
+      "title": "FeedbackListQuery",
+      "type": "object"
+    },
+    "FilePreviewQuery": {
+      "properties": {
+        "as_attachment": {
+          "default": false,
+          "description": "Download as attachment",
+          "title": "As Attachment",
+          "type": "boolean"
+        }
+      },
+      "title": "FilePreviewQuery",
+      "type": "object"
+    },
+    "FileResponse": {
+      "properties": {
+        "conversation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conversation Id"
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created At"
+        },
+        "created_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created By"
+        },
+        "extension": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Extension"
+        },
+        "file_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "File Key"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "mime_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mime Type"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "original_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Original Url"
+        },
+        "preview_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preview Url"
+        },
+        "size": {
+          "title": "Size",
+          "type": "integer"
+        },
+        "source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Url"
+        },
+        "tenant_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tenant Id"
+        },
+        "user_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Id"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "size"
+      ],
+      "title": "FileResponse",
+      "type": "object"
+    },
+    "HitTestingPayload": {
+      "$defs": {
+        "RerankingModel": {
+          "properties": {
+            "reranking_model_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Model Name"
+            },
+            "reranking_provider_name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Provider Name"
+            }
+          },
+          "title": "RerankingModel",
+          "type": "object"
+        },
+        "RetrievalMethod": {
+          "enum": [
+            "semantic_search",
+            "full_text_search",
+            "hybrid_search",
+            "keyword_search"
+          ],
+          "title": "RetrievalMethod",
+          "type": "string"
+        },
+        "RetrievalModel": {
+          "properties": {
+            "reranking_enable": {
+              "title": "Reranking Enable",
+              "type": "boolean"
+            },
+            "reranking_mode": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reranking Mode"
+            },
+            "reranking_model": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/RerankingModel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "score_threshold": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Score Threshold"
+            },
+            "score_threshold_enabled": {
+              "title": "Score Threshold Enabled",
+              "type": "boolean"
+            },
+            "search_method": {
+              "$ref": "#/definitions/RetrievalMethod"
+            },
+            "top_k": {
+              "title": "Top K",
+              "type": "integer"
+            },
+            "weights": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightModel"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "search_method",
+            "reranking_enable",
+            "top_k",
+            "score_threshold_enabled"
+          ],
+          "title": "RetrievalModel",
+          "type": "object"
+        },
+        "WeightKeywordSetting": {
+          "properties": {
+            "keyword_weight": {
+              "title": "Keyword Weight",
+              "type": "number"
+            }
+          },
+          "required": [
+            "keyword_weight"
+          ],
+          "title": "WeightKeywordSetting",
+          "type": "object"
+        },
+        "WeightModel": {
+          "properties": {
+            "keyword_setting": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightKeywordSetting"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "vector_setting": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WeightVectorSetting"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "weight_type": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "semantic_first",
+                    "keyword_first",
+                    "customized"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weight Type"
+            }
+          },
+          "title": "WeightModel",
+          "type": "object"
+        },
+        "WeightVectorSetting": {
+          "properties": {
+            "embedding_model_name": {
+              "title": "Embedding Model Name",
+              "type": "string"
+            },
+            "embedding_provider_name": {
+              "title": "Embedding Provider Name",
+              "type": "string"
+            },
+            "vector_weight": {
+              "title": "Vector Weight",
+              "type": "number"
+            }
+          },
+          "required": [
+            "vector_weight",
+            "embedding_provider_name",
+            "embedding_model_name"
+          ],
+          "title": "WeightVectorSetting",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "attachment_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attachment Ids"
+        },
+        "external_retrieval_model": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Retrieval Model"
+        },
+        "query": {
+          "maxLength": 250,
+          "title": "Query",
+          "type": "string"
+        },
+        "retrieval_model": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/RetrievalModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "HitTestingPayload",
+      "type": "object"
+    },
+    "HumanInputFormSubmitPayload": {
+      "$defs": {
+        "JsonValue": {}
+      },
+      "properties": {
+        "action": {
+          "title": "Action",
+          "type": "string"
+        },
+        "inputs": {
+          "additionalProperties": {
+            "$ref": "#/definitions/JsonValue"
+          },
+          "title": "Inputs",
+          "type": "object"
+        }
+      },
+      "required": [
+        "inputs",
+        "action"
+      ],
+      "title": "HumanInputFormSubmitPayload",
+      "type": "object"
+    },
+    "MessageFeedbackPayload": {
+      "properties": {
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content"
+        },
+        "rating": {
+          "anyOf": [
+            {
+              "enum": [
+                "like",
+                "dislike"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rating"
+        }
+      },
+      "title": "MessageFeedbackPayload",
+      "type": "object"
+    },
+    "MessageListQuery": {
+      "properties": {
+        "conversation_id": {
+          "description": "Conversation UUID",
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "first_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "First message ID for pagination",
+          "title": "First Id"
+        },
+        "limit": {
+          "default": 20,
+          "description": "Number of messages to return (1-100)",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "conversation_id"
+      ],
+      "title": "MessageListQuery",
+      "type": "object"
+    },
+    "MetadataArgs": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "number",
+            "time"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "title": "MetadataArgs",
+      "type": "object"
+    },
+    "MetadataOperationData": {
+      "$defs": {
+        "DocumentMetadataOperation": {
+          "properties": {
+            "document_id": {
+              "title": "Document Id",
+              "type": "string"
+            },
+            "metadata_list": {
+              "items": {
+                "$ref": "#/definitions/MetadataDetail"
+              },
+              "title": "Metadata List",
+              "type": "array"
+            },
+            "partial_update": {
+              "default": false,
+              "title": "Partial Update",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "document_id",
+            "metadata_list"
+          ],
+          "title": "DocumentMetadataOperation",
+          "type": "object"
+        },
+        "MetadataDetail": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Value"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "title": "MetadataDetail",
+          "type": "object"
+        }
+      },
+      "description": "Metadata operation data",
+      "properties": {
+        "operation_data": {
+          "items": {
+            "$ref": "#/definitions/DocumentMetadataOperation"
+          },
+          "title": "Operation Data",
+          "type": "array"
+        }
+      },
+      "required": [
+        "operation_data"
+      ],
+      "title": "MetadataOperationData",
+      "type": "object"
+    },
+    "MetadataUpdatePayload": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "MetadataUpdatePayload",
+      "type": "object"
+    },
+    "SegmentCreatePayload": {
+      "properties": {
+        "segments": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Segments"
+        }
+      },
+      "title": "SegmentCreatePayload",
+      "type": "object"
+    },
+    "SegmentListQuery": {
+      "properties": {
+        "keyword": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Keyword"
+        },
+        "status": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Status",
+          "type": "array"
+        }
+      },
+      "title": "SegmentListQuery",
+      "type": "object"
+    },
+    "SegmentUpdatePayload": {
+      "$defs": {
+        "SegmentUpdateArgs": {
+          "properties": {
+            "answer": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Answer"
+            },
+            "attachment_ids": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Attachment Ids"
+            },
+            "content": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Content"
+            },
+            "enabled": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Enabled"
+            },
+            "keywords": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Keywords"
+            },
+            "regenerate_child_chunks": {
+              "default": false,
+              "title": "Regenerate Child Chunks",
+              "type": "boolean"
+            },
+            "summary": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Summary"
+            }
+          },
+          "title": "SegmentUpdateArgs",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "segment": {
+          "$ref": "#/definitions/SegmentUpdateArgs"
+        }
+      },
+      "required": [
+        "segment"
+      ],
+      "title": "SegmentUpdatePayload",
+      "type": "object"
+    },
+    "TagBindingPayload": {
+      "properties": {
+        "tag_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tag Ids",
+          "type": "array"
+        },
+        "target_id": {
+          "title": "Target Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tag_ids",
+        "target_id"
+      ],
+      "title": "TagBindingPayload",
+      "type": "object"
+    },
+    "TagCreatePayload": {
+      "properties": {
+        "name": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "TagCreatePayload",
+      "type": "object"
+    },
+    "TagDeletePayload": {
+      "properties": {
+        "tag_id": {
+          "title": "Tag Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tag_id"
+      ],
+      "title": "TagDeletePayload",
+      "type": "object"
+    },
+    "TagUnbindingPayload": {
+      "properties": {
+        "tag_id": {
+          "title": "Tag Id",
+          "type": "string"
+        },
+        "target_id": {
+          "title": "Target Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tag_id",
+        "target_id"
+      ],
+      "title": "TagUnbindingPayload",
+      "type": "object"
+    },
+    "TagUpdatePayload": {
+      "properties": {
+        "name": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "tag_id": {
+          "title": "Tag Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "tag_id"
+      ],
+      "title": "TagUpdatePayload",
+      "type": "object"
+    },
+    "TextToAudioPayload": {
+      "properties": {
+        "message_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Message ID",
+          "title": "Message Id"
+        },
+        "streaming": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Enable streaming response",
+          "title": "Streaming"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Text to convert to audio",
+          "title": "Text"
+        },
+        "voice": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Voice to use for TTS",
+          "title": "Voice"
+        }
+      },
+      "title": "TextToAudioPayload",
+      "type": "object"
+    },
+    "WorkflowAppLogPaginationResponse": {
+      "$defs": {
+        "SimpleAccount": {
+          "properties": {
+            "email": {
+              "title": "Email",
+              "type": "string"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "email"
+          ],
+          "title": "SimpleAccount",
+          "type": "object"
+        },
+        "SimpleEndUser": {
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "is_anonymous": {
+              "title": "Is Anonymous",
+              "type": "boolean"
+            },
+            "session_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Session Id"
+            },
+            "type": {
+              "title": "Type",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "is_anonymous"
+          ],
+          "title": "SimpleEndUser",
+          "type": "object"
+        },
+        "WorkflowAppLogPartialResponse": {
+          "properties": {
+            "created_at": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Created At"
+            },
+            "created_by_account": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SimpleAccount"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "created_by_end_user": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SimpleEndUser"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "created_by_role": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Created By Role"
+            },
+            "created_from": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Created From"
+            },
+            "details": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "items": {},
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Details"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "workflow_run": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/WorkflowRunForLogResponse"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "WorkflowAppLogPartialResponse",
+          "type": "object"
+        },
+        "WorkflowRunForLogResponse": {
+          "properties": {
+            "created_at": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Created At"
+            },
+            "elapsed_time": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Elapsed Time"
+            },
+            "error": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Error"
+            },
+            "exceptions_count": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Exceptions Count"
+            },
+            "finished_at": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Finished At"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Status"
+            },
+            "total_steps": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Total Steps"
+            },
+            "total_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Total Tokens"
+            },
+            "triggered_from": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Triggered From"
+            },
+            "version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Version"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "WorkflowRunForLogResponse",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "data": {
+          "items": {
+            "$ref": "#/definitions/WorkflowAppLogPartialResponse"
+          },
+          "title": "Data",
+          "type": "array"
+        },
+        "has_more": {
+          "title": "Has More",
+          "type": "boolean"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "page": {
+          "title": "Page",
+          "type": "integer"
+        },
+        "total": {
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "page",
+        "limit",
+        "total",
+        "has_more",
+        "data"
+      ],
+      "title": "WorkflowAppLogPaginationResponse",
+      "type": "object"
+    },
+    "WorkflowLogQuery": {
+      "properties": {
+        "created_at__after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created At  After"
+        },
+        "created_at__before": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created At  Before"
+        },
+        "created_by_account": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created By Account"
+        },
+        "created_by_end_user_session_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created By End User Session Id"
+        },
+        "keyword": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Keyword"
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "page": {
+          "default": 1,
+          "maximum": 99999,
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "succeeded",
+                "failed",
+                "stopped"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        }
+      },
+      "title": "WorkflowLogQuery",
+      "type": "object"
+    },
+    "WorkflowRunPayload": {
+      "properties": {
+        "files": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Files"
+        },
+        "inputs": {
+          "additionalProperties": true,
+          "title": "Inputs",
+          "type": "object"
+        },
+        "response_mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "blocking",
+                "streaming"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Response Mode"
+        }
+      },
+      "required": [
+        "inputs"
+      ],
+      "title": "WorkflowRunPayload",
+      "type": "object"
+    },
+    "WorkflowRunResponse": {
+      "properties": {
+        "created_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Created At"
+        },
+        "elapsed_time": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Elapsed Time"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "inputs": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "items": {},
+              "type": "array"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inputs"
+        },
+        "outputs": {
+          "additionalProperties": true,
+          "title": "Outputs",
+          "type": "object"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "total_steps": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Steps"
+        },
+        "total_tokens": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Tokens"
+        },
+        "workflow_id": {
+          "title": "Workflow Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "workflow_id",
+        "status"
+      ],
+      "title": "WorkflowRunResponse",
+      "type": "object"
+    }
+  },
+  "info": {
+    "description": "API for application services",
+    "title": "Service API",
+    "version": "1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "get_index_api",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/app/feedbacks": {
+      "get": {
+        "description": "Get all feedbacks for the application\nReturns paginated list of all feedback submitted for messages in this app.",
+        "operationId": "get_app_feedbacks",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/FeedbackListQuery"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Feedbacks retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Get all feedbacks for the application",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/apps/annotation-reply/{action}": {
+      "post": {
+        "description": "Enable or disable annotation reply feature",
+        "operationId": "annotation_reply_action",
+        "parameters": [
+          {
+            "description": "Action to perform: 'enable' or 'disable'",
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AnnotationReplyActionPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action completed successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Enable or disable annotation reply feature",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/apps/annotation-reply/{action}/status/{job_id}": {
+      "get": {
+        "description": "Get the status of an annotation reply action job",
+        "operationId": "get_annotation_reply_action_status",
+        "parameters": [
+          {
+            "description": "Action type",
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Job ID",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Job not found"
+          }
+        },
+        "summary": "Get the status of an annotation reply action job",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/apps/annotations": {
+      "get": {
+        "description": "List annotations for the application",
+        "operationId": "list_annotations",
+        "responses": {
+          "200": {
+            "description": "Annotations retrieved successfully",
+            "schema": {
+              "$ref": "#/definitions/AnnotationList"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "List annotations for the application",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "post": {
+        "description": "Create a new annotation",
+        "operationId": "create_annotation",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AnnotationCreatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Annotation created successfully",
+            "schema": {
+              "$ref": "#/definitions/Annotation"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Create a new annotation",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/apps/annotations/{annotation_id}": {
+      "delete": {
+        "description": "Delete an annotation",
+        "operationId": "delete_annotation",
+        "parameters": [
+          {
+            "description": "Annotation ID",
+            "in": "path",
+            "name": "annotation_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Annotation deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          },
+          "404": {
+            "description": "Annotation not found"
+          }
+        },
+        "summary": "Delete an annotation",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "put": {
+        "description": "Update an existing annotation",
+        "operationId": "update_annotation",
+        "parameters": [
+          {
+            "description": "Annotation ID",
+            "in": "path",
+            "name": "annotation_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AnnotationCreatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Annotation updated successfully",
+            "schema": {
+              "$ref": "#/definitions/Annotation"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          },
+          "404": {
+            "description": "Annotation not found"
+          }
+        },
+        "summary": "Update an existing annotation",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/audio-to-text": {
+      "post": {
+        "description": "Convert audio to text using speech-to-text\nAccepts an audio file upload and returns the transcribed text.",
+        "operationId": "audio_to_text",
+        "responses": {
+          "200": {
+            "description": "Audio successfully transcribed"
+          },
+          "400": {
+            "description": "Bad request - no audio or invalid audio"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "413": {
+            "description": "Audio file too large"
+          },
+          "415": {
+            "description": "Unsupported audio type"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Convert audio to text using speech-to-text",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/chat-messages": {
+      "post": {
+        "description": "Send a message in a chat conversation\nThis endpoint handles chat messages for chat, agent chat, and advanced chat applications.\nSupports conversation management and both blocking and streaming response modes.",
+        "operationId": "create_chat_message",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ChatRequestPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message sent successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid parameters or workflow issues"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Conversation or workflow not found"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Send a message in a chat conversation",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/chat-messages/{task_id}/stop": {
+      "post": {
+        "description": "Stop a running chat message generation",
+        "operationId": "stop_chat_message",
+        "parameters": [
+          {
+            "description": "The ID of the task to stop",
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task stopped successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Task not found"
+          }
+        },
+        "summary": "Stop a running chat message generation",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/completion-messages": {
+      "post": {
+        "description": "Create a completion for the given prompt\nThis endpoint generates a completion based on the provided inputs and query.\nSupports both blocking and streaming response modes.",
+        "operationId": "create_completion",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CompletionRequestPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completion created successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid parameters"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Conversation not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Create a completion for the given prompt",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/completion-messages/{task_id}/stop": {
+      "post": {
+        "description": "Stop a running completion task",
+        "operationId": "stop_completion",
+        "parameters": [
+          {
+            "description": "The ID of the task to stop",
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task stopped successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Task not found"
+          }
+        },
+        "summary": "Stop a running completion task",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/conversations": {
+      "get": {
+        "description": "List all conversations for the current user\nSupports pagination using last_id and limit parameters.",
+        "operationId": "list_conversations",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ConversationListQuery"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversations retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Last conversation not found"
+          }
+        },
+        "summary": "List all conversations for the current user",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/conversations/{c_id}": {
+      "delete": {
+        "description": "Delete a specific conversation",
+        "operationId": "delete_conversation",
+        "parameters": [
+          {
+            "description": "Conversation ID",
+            "in": "path",
+            "name": "c_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Conversation deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Conversation not found"
+          }
+        },
+        "summary": "Delete a specific conversation",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/conversations/{c_id}/name": {
+      "post": {
+        "description": "Rename a conversation or auto-generate a name",
+        "operationId": "rename_conversation",
+        "parameters": [
+          {
+            "description": "Conversation ID",
+            "in": "path",
+            "name": "c_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ConversationRenamePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversation renamed successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Conversation not found"
+          }
+        },
+        "summary": "Rename a conversation or auto-generate a name",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/conversations/{c_id}/variables": {
+      "get": {
+        "description": "List all variables for a conversation\nConversational variables are only available for chat applications.",
+        "operationId": "list_conversation_variables",
+        "parameters": [
+          {
+            "description": "Conversation ID",
+            "in": "path",
+            "name": "c_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ConversationVariablesQuery"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Variables retrieved successfully",
+            "schema": {
+              "$ref": "#/definitions/ConversationVariableInfiniteScrollPaginationResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Conversation not found"
+          }
+        },
+        "summary": "List all variables for a conversation",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/conversations/{c_id}/variables/{variable_id}": {
+      "put": {
+        "description": "Update a conversation variable's value\nAllows updating the value of a specific conversation variable.\nThe value must match the variable's expected type.",
+        "operationId": "update_conversation_variable",
+        "parameters": [
+          {
+            "description": "Conversation ID",
+            "in": "path",
+            "name": "c_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Variable ID",
+            "in": "path",
+            "name": "variable_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ConversationVariableUpdatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Variable updated successfully",
+            "schema": {
+              "$ref": "#/definitions/ConversationVariableResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request - type mismatch"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Conversation or variable not found"
+          }
+        },
+        "summary": "Update a conversation variable's value",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets": {
+      "get": {
+        "description": "List all datasets",
+        "operationId": "list_datasets",
+        "responses": {
+          "200": {
+            "description": "Datasets retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Resource for getting datasets",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "post": {
+        "description": "Create a new dataset",
+        "operationId": "create_dataset",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DatasetCreatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dataset created successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid parameters"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Resource for creating datasets",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/pipeline/file-upload": {
+      "post": {
+        "description": "Upload a file to a knowledgebase pipeline\nAccepts a single file upload via multipart/form-data.",
+        "operationId": "knowledgebase_pipeline_file_upload",
+        "responses": {
+          "201": {
+            "description": "File uploaded successfully"
+          },
+          "400": {
+            "description": "Bad request - no file or invalid file"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "413": {
+            "description": "File too large"
+          },
+          "415": {
+            "description": "Unsupported file type"
+          }
+        },
+        "summary": "Upload a file for use in conversations",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/tags": {
+      "delete": {
+        "description": "Delete a knowledge type tag",
+        "operationId": "delete_dataset_tag",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TagDeletePayload"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Tag deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          }
+        },
+        "summary": "Delete a knowledge type tag",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "get": {
+        "description": "Get all knowledge type tags",
+        "operationId": "list_dataset_tags",
+        "responses": {
+          "200": {
+            "description": "Tags retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Get all knowledge type tags",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "patch": {
+        "description": "Update a knowledge type tag",
+        "operationId": "update_dataset_tag",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TagUpdatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tag updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      },
+      "post": {
+        "description": "Add a knowledge type tag",
+        "operationId": "create_dataset_tag",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TagCreatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tag created successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          }
+        },
+        "summary": "Add a knowledge type tag",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/tags/binding": {
+      "post": {
+        "description": "Bind tags to a dataset",
+        "operationId": "bind_dataset_tags",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TagBindingPayload"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Tags bound successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/tags/unbinding": {
+      "post": {
+        "description": "Unbind a tag from a dataset",
+        "operationId": "unbind_dataset_tag",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TagUnbindingPayload"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Tag unbound successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}": {
+      "delete": {
+        "description": "Delete a dataset\nArgs:\n    _: ignore\n    dataset_id (UUID): The ID of the dataset to be deleted.\n\nReturns:\n    dict: A dictionary with a key 'result' and a value 'success'\n          if the dataset was successfully deleted. Omitted in HTTP response.\n    int: HTTP status code 204 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.",
+        "operationId": "delete_dataset",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Dataset deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset not found"
+          },
+          "409": {
+            "description": "Conflict - dataset is in use"
+          }
+        },
+        "summary": "Deletes a dataset given its ID",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "get": {
+        "description": "Get a specific dataset by ID",
+        "operationId": "get_dataset",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dataset retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          },
+          "404": {
+            "description": "Dataset not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      },
+      "patch": {
+        "description": "Update an existing dataset",
+        "operationId": "update_dataset",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DatasetUpdatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dataset updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          },
+          "404": {
+            "description": "Dataset not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/document/create-by-file": {
+      "post": {
+        "description": "Create a new document by uploading a file",
+        "operationId": "create_document_by_file",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document created successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid file or parameters"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/document/create-by-text": {
+      "post": {
+        "description": "Create a new document by providing text content",
+        "operationId": "create_document_by_text",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DocumentTextCreatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document created successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid parameters"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/document/create_by_file": {
+      "post": {
+        "description": "Create a new document by uploading a file",
+        "operationId": "create_document_by_file",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document created successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid file or parameters"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/document/create_by_text": {
+      "post": {
+        "deprecated": true,
+        "description": "Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.",
+        "operationId": "create_document_by_text_deprecated",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DocumentTextCreatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document created successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid parameters"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents": {
+      "get": {
+        "description": "List all documents in a dataset",
+        "operationId": "list_documents",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documents retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/download-zip": {
+      "post": {
+        "description": "Download selected uploaded documents as a single ZIP archive",
+        "operationId": "download_documents_as_zip",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DocumentBatchDownloadZipPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ZIP archive generated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          },
+          "404": {
+            "description": "Document or dataset not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/metadata": {
+      "post": {
+        "description": "Update metadata for multiple documents",
+        "operationId": "update_documents_metadata",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MetadataOperationData"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documents metadata updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset not found"
+          }
+        },
+        "summary": "Update metadata for multiple documents",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/status/{action}": {
+      "patch": {
+        "description": "Batch update document status\nArgs:\n    tenant_id: tenant id\n    dataset_id: dataset id\n    action: action to perform (Literal[\"enable\", \"disable\", \"archive\", \"un_archive\"])\n\nReturns:\n    dict: A dictionary with a key 'result' and a value 'success'\n    int: HTTP status code 200 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.\n    Forbidden: If the user does not have permission.\n    InvalidActionError: If the action is invalid or cannot be performed.",
+        "operationId": "update_document_status",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Action to perform: 'enable', 'disable', 'archive', or 'un_archive'",
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document status updated successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid action"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          },
+          "404": {
+            "description": "Dataset not found"
+          }
+        },
+        "summary": "Batch update document status",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{batch}/indexing-status": {
+      "get": {
+        "description": "Get indexing status for documents in a batch",
+        "operationId": "get_document_indexing_status",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Batch ID",
+            "in": "path",
+            "name": "batch",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Indexing status retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset or documents not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}": {
+      "delete": {
+        "description": "Delete a document",
+        "operationId": "delete_document",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Document deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - document is archived"
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        },
+        "summary": "Delete document",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "get": {
+        "description": "Get a specific document by ID",
+        "operationId": "get_document",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      },
+      "patch": {
+        "description": "Update an existing document by uploading a file",
+        "operationId": "update_document_by_file",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/download": {
+      "get": {
+        "description": "Get a signed download URL for a document's original uploaded file",
+        "operationId": "get_document_download_url",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download URL generated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions"
+          },
+          "404": {
+            "description": "Document or upload file not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/segments": {
+      "get": {
+        "description": "List segments in a document",
+        "operationId": "list_segments",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SegmentListQuery"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Segments retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset or document not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      },
+      "post": {
+        "description": "Create segments in a document",
+        "operationId": "create_segments",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SegmentCreatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Segments created successfully"
+          },
+          "400": {
+            "description": "Bad request - segments data is missing"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset or document not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}": {
+      "delete": {
+        "description": "Delete a specific segment",
+        "operationId": "delete_segment",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Segment ID to delete",
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Segment deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset, document, or segment not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      },
+      "get": {
+        "description": "Get a specific segment by ID",
+        "operationId": "get_segment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Segment retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset, document, or segment not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      },
+      "post": {
+        "description": "Update a specific segment",
+        "operationId": "update_segment",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Segment ID to update",
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SegmentUpdatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Segment updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset, document, or segment not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks": {
+      "get": {
+        "description": "List child chunks for a segment",
+        "operationId": "list_child_chunks",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Parent segment ID",
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ChildChunkListQuery"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Child chunks retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset, document, or segment not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      },
+      "post": {
+        "description": "Create a new child chunk for a segment",
+        "operationId": "create_child_chunk",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Parent segment ID",
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ChildChunkCreatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Child chunk created successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset, document, or segment not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}": {
+      "delete": {
+        "description": "Delete a specific child chunk",
+        "operationId": "delete_child_chunk",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Parent segment ID",
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Child chunk ID to delete",
+            "in": "path",
+            "name": "child_chunk_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Child chunk deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset, document, segment, or child chunk not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      },
+      "patch": {
+        "description": "Update a specific child chunk",
+        "operationId": "update_child_chunk",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Parent segment ID",
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Child chunk ID to update",
+            "in": "path",
+            "name": "child_chunk_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ChildChunkUpdatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Child chunk updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset, document, segment, or child chunk not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/update-by-file": {
+      "post": {
+        "deprecated": true,
+        "description": "Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.",
+        "operationId": "update_document_by_file_deprecated",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/update-by-text": {
+      "post": {
+        "description": "Update an existing document by providing text content",
+        "operationId": "update_document_by_text",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DocumentTextUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/update_by_file": {
+      "post": {
+        "deprecated": true,
+        "description": "Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.",
+        "operationId": "update_document_by_file_deprecated",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/update_by_text": {
+      "post": {
+        "deprecated": true,
+        "description": "Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.",
+        "operationId": "update_document_by_text_deprecated",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Document ID",
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DocumentTextUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/hit-testing": {
+      "post": {
+        "description": "Perform hit testing on a dataset\nTests retrieval performance for the specified dataset.",
+        "operationId": "dataset_hit_testing",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HitTestingPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hit testing results"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset not found"
+          }
+        },
+        "summary": "Perform hit testing on a dataset",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/metadata": {
+      "get": {
+        "description": "Get all metadata for a dataset",
+        "operationId": "get_dataset_metadata",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metadata retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset not found"
+          }
+        },
+        "summary": "Get all metadata for a dataset",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "post": {
+        "description": "Create metadata for a dataset",
+        "operationId": "create_dataset_metadata",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MetadataArgs"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Metadata created successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset not found"
+          }
+        },
+        "summary": "Create metadata for a dataset",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/metadata/built-in": {
+      "get": {
+        "description": "Get all built-in metadata fields",
+        "operationId": "get_built_in_fields",
+        "responses": {
+          "200": {
+            "description": "Built-in fields retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Get all built-in metadata fields",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "dataset_id",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/datasets/{dataset_id}/metadata/built-in/{action}": {
+      "post": {
+        "description": "Enable or disable built-in metadata field",
+        "operationId": "toggle_built_in_field",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Action to perform: 'enable' or 'disable'",
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action completed successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset not found"
+          }
+        },
+        "summary": "Enable or disable built-in metadata field",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/metadata/{metadata_id}": {
+      "delete": {
+        "description": "Delete metadata",
+        "operationId": "delete_dataset_metadata",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Metadata ID",
+            "in": "path",
+            "name": "metadata_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Metadata deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset or metadata not found"
+          }
+        },
+        "summary": "Delete metadata",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "patch": {
+        "description": "Update metadata name",
+        "operationId": "update_dataset_metadata",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Metadata ID",
+            "in": "path",
+            "name": "metadata_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MetadataUpdatePayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metadata updated successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset or metadata not found"
+          }
+        },
+        "summary": "Update metadata name",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/pipeline/datasource-plugins": {
+      "get": {
+        "description": "List all datasource plugins for a rag pipeline",
+        "operationId": "list_rag_pipeline_datasource_plugins",
+        "parameters": [
+          {
+            "description": "Whether to get published or draft datasource plugins (true for published, false for draft, default: true)",
+            "in": "query",
+            "name": "is_published",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Datasource plugins retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Resource for getting datasource plugins",
+        "tags": [
+          "service_api"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "dataset_id",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    },
+    "/datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "dataset_id",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "in": "path",
+          "name": "node_id",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "post": {
+        "description": "Run a datasource node for a rag pipeline",
+        "operationId": "pipeline_datasource_node_run",
+        "responses": {
+          "200": {
+            "description": "Datasource node run successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Resource for getting datasource plugins",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/pipeline/run": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "dataset_id",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "post": {
+        "description": "Run a datasource node for a rag pipeline",
+        "operationId": "pipeline_datasource_node_run",
+        "responses": {
+          "200": {
+            "description": "Pipeline run successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Resource for running a rag pipeline",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/retrieve": {
+      "post": {
+        "description": "Perform hit testing on a dataset\nTests retrieval performance for the specified dataset.",
+        "operationId": "dataset_hit_testing",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HitTestingPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hit testing results"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Dataset not found"
+          }
+        },
+        "summary": "Perform hit testing on a dataset",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/datasets/{dataset_id}/tags": {
+      "get": {
+        "description": "Get tags bound to a specific dataset",
+        "operationId": "get_dataset_tags_binding_status",
+        "parameters": [
+          {
+            "description": "Dataset ID",
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tags retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Get all knowledge type tags",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/end-users/{end_user_id}": {
+      "get": {
+        "description": "Get an end user by ID\nThis endpoint is scoped to the current app token's tenant/app to prevent\ncross-tenant/app access when an end-user ID is known.",
+        "operationId": "get_end_user",
+        "parameters": [
+          {
+            "description": "End user ID",
+            "in": "path",
+            "name": "end_user_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "End user retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "End user not found"
+          }
+        },
+        "summary": "Get end user detail",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/files/upload": {
+      "post": {
+        "description": "Upload a file for use in conversations\nAccepts a single file upload via multipart/form-data.",
+        "operationId": "upload_file",
+        "responses": {
+          "201": {
+            "description": "File uploaded successfully",
+            "schema": {
+              "$ref": "#/definitions/FileResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request - no file or invalid file"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "413": {
+            "description": "File too large"
+          },
+          "415": {
+            "description": "Unsupported file type"
+          }
+        },
+        "summary": "Upload a file for use in conversations",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/files/{file_id}/preview": {
+      "get": {
+        "description": "Preview or download a file uploaded via Service API\nProvides secure file preview/download functionality.\nFiles can only be accessed if they belong to messages within the requesting app's context.",
+        "operationId": "preview_file",
+        "parameters": [
+          {
+            "description": "UUID of the file to preview",
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/FilePreviewQuery"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - file access denied"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        },
+        "summary": "Preview/Download a file that was uploaded via Service API",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/form/human_input/{form_token}": {
+      "get": {
+        "description": "Get a paused human input form by token",
+        "operationId": "get_human_input_form",
+        "parameters": [
+          {
+            "description": "Human input form token",
+            "in": "path",
+            "name": "form_token",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Form retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Form not found"
+          },
+          "412": {
+            "description": "Form already submitted or expired"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      },
+      "post": {
+        "description": "Submit a paused human input form by token",
+        "operationId": "submit_human_input_form",
+        "parameters": [
+          {
+            "description": "Human input form token",
+            "in": "path",
+            "name": "form_token",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HumanInputFormSubmitPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Form submitted successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid submission data"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Form not found"
+          },
+          "412": {
+            "description": "Form already submitted or expired"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/info": {
+      "get": {
+        "description": "Get basic application information\nReturns basic information about the application including name, description, tags, and mode.",
+        "operationId": "get_app_info",
+        "responses": {
+          "200": {
+            "description": "Application info retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Application not found"
+          }
+        },
+        "summary": "Get app information",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/messages": {
+      "get": {
+        "description": "List messages in a conversation\nRetrieves messages with pagination support using first_id.",
+        "operationId": "list_messages",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MessageListQuery"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Conversation or first message not found"
+          }
+        },
+        "summary": "List messages in a conversation",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/messages/{message_id}/feedbacks": {
+      "post": {
+        "description": "Submit feedback for a message\nAllows users to rate messages as like/dislike and provide optional feedback content.",
+        "operationId": "create_message_feedback",
+        "parameters": [
+          {
+            "description": "Message ID",
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MessageFeedbackPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Feedback submitted successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Message not found"
+          }
+        },
+        "summary": "Submit feedback for a message",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/messages/{message_id}/suggested": {
+      "get": {
+        "description": "Get suggested follow-up questions for a message\nReturns AI-generated follow-up questions based on the message content.",
+        "operationId": "get_suggested_questions",
+        "parameters": [
+          {
+            "description": "Message ID",
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suggested questions retrieved successfully"
+          },
+          "400": {
+            "description": "Suggested questions feature is disabled"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Message not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Get suggested follow-up questions for a message",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/meta": {
+      "get": {
+        "description": "Get application metadata\nReturns metadata about the application including configuration and settings.",
+        "operationId": "get_app_meta",
+        "responses": {
+          "200": {
+            "description": "Metadata retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Application not found"
+          }
+        },
+        "summary": "Get app metadata",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/parameters": {
+      "get": {
+        "description": "Retrieve application input parameters and configuration\nReturns the input form parameters and configuration for the application.",
+        "operationId": "get_app_parameters",
+        "responses": {
+          "200": {
+            "description": "Parameters retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Application not found"
+          }
+        },
+        "summary": "Retrieve app parameters",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/site": {
+      "get": {
+        "description": "Get application site configuration\nReturns the site configuration for the application including theme, icons, and text.",
+        "operationId": "get_app_site",
+        "responses": {
+          "200": {
+            "description": "Site configuration retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "403": {
+            "description": "Forbidden - site not found or tenant archived"
+          }
+        },
+        "summary": "Retrieve app site info",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/text-to-audio": {
+      "post": {
+        "description": "Convert text to audio using text-to-speech\nConverts the provided text to audio using the specified voice.",
+        "operationId": "text_to_audio",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TextToAudioPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Text successfully converted to audio"
+          },
+          "400": {
+            "description": "Bad request - invalid parameters"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Convert text to audio using text-to-speech",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/workflow/{task_id}/events": {
+      "get": {
+        "description": "Get workflow execution events stream after resume",
+        "operationId": "get_workflow_events",
+        "parameters": [
+          {
+            "description": "Workflow run ID",
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "End user identifier (query param)",
+            "in": "query",
+            "name": "user",
+            "type": "string"
+          },
+          {
+            "description": "Whether to replay from persisted state snapshot, specify `\"true\"` to include a status snapshot of executed nodes",
+            "in": "query",
+            "name": "include_state_snapshot",
+            "type": "string"
+          },
+          {
+            "description": "Whether to keep the stream open across workflow_paused events,specify `\"true\"` to keep the stream open for `workflow_paused` events.",
+            "in": "query",
+            "name": "continue_on_pause",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE event stream"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Workflow run not found"
+          }
+        },
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/workflows/logs": {
+      "get": {
+        "description": "Get workflow execution logs\nReturns paginated workflow execution logs with filtering options.",
+        "operationId": "get_workflow_logs",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/WorkflowLogQuery"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logs retrieved successfully",
+            "schema": {
+              "$ref": "#/definitions/WorkflowAppLogPaginationResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Get workflow app logs",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/workflows/run": {
+      "post": {
+        "description": "Execute a workflow\nRuns a workflow with the provided inputs and returns the results.\nSupports both blocking and streaming response modes.",
+        "operationId": "run_workflow",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/WorkflowRunPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workflow executed successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid parameters or workflow issues"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Workflow not found"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Execute a workflow",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/workflows/run/{workflow_run_id}": {
+      "get": {
+        "description": "Get workflow run details\nReturns detailed information about a specific workflow run.",
+        "operationId": "get_workflow_run_detail",
+        "parameters": [
+          {
+            "description": "Workflow run ID",
+            "in": "path",
+            "name": "workflow_run_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workflow run details retrieved successfully",
+            "schema": {
+              "$ref": "#/definitions/WorkflowRunResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Workflow run not found"
+          }
+        },
+        "summary": "Get a workflow task running detail",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/workflows/tasks/{task_id}/stop": {
+      "post": {
+        "description": "Stop a running workflow task",
+        "operationId": "stop_workflow_task",
+        "parameters": [
+          {
+            "description": "Task ID to stop",
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task stopped successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Task not found"
+          }
+        },
+        "summary": "Stop a running workflow task",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/workflows/{workflow_id}/run": {
+      "post": {
+        "description": "Execute a specific workflow by ID\nExecutes a specific workflow version identified by its ID.",
+        "operationId": "run_workflow_by_id",
+        "parameters": [
+          {
+            "description": "Workflow ID to execute",
+            "in": "path",
+            "name": "workflow_id",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "payload",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/WorkflowRunPayload"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workflow executed successfully"
+          },
+          "400": {
+            "description": "Bad request - invalid parameters or workflow issues"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          },
+          "404": {
+            "description": "Workflow not found"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Run specific workflow by ID",
+        "tags": [
+          "service_api"
+        ]
+      }
+    },
+    "/workspaces/current/models/model-types/{model_type}": {
+      "get": {
+        "description": "Get available models by model type\nReturns a list of available models for the specified model type.",
+        "operationId": "get_available_models",
+        "parameters": [
+          {
+            "description": "Type of model to retrieve",
+            "in": "path",
+            "name": "model_type",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Models retrieved successfully"
+          },
+          "401": {
+            "description": "Unauthorized - invalid API token"
+          }
+        },
+        "summary": "Get available models by model type",
+        "tags": [
+          "service_api"
+        ]
+      }
+    }
+  },
+  "produces": [
+    "application/json"
+  ],
+  "responses": {
+    "AppInvokeQuotaExceededError": {},
+    "Exception": {},
+    "HTTPException": {},
+    "MaskError": {
+      "description": "When any error occurs on mask"
+    },
+    "ParseError": {
+      "description": "When a mask can't be parsed"
+    },
+    "ValueError": {}
+  },
+  "security": [
+    {
+      "Bearer": []
+    }
+  ],
+  "securityDefinitions": {
+    "Bearer": {
+      "description": "Type: Bearer {your-api-key}",
+      "in": "header",
+      "name": "Authorization",
+      "type": "apiKey"
+    }
+  },
+  "swagger": "2.0",
+  "tags": [
+    {
+      "description": "Service operations",
+      "name": "service_api"
+    }
+  ]
+}

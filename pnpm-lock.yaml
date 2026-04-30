@@ -647,6 +647,43 @@ importers:
         specifier: 'catalog:'
         version: 0.1.20(@types/node@25.6.0)(@vitest/coverage-v8@4.1.5(@types/node@25.6.0)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.6.0)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.6.1)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.6.0)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.6.1)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
 
+  packages/contracts:
+    dependencies:
+      '@orpc/contract':
+        specifier: 'catalog:'
+        version: 1.14.0
+      zod:
+        specifier: 'catalog:'
+        version: 4.3.6
+    devDependencies:
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@hey-api/openapi-ts':
+        specifier: 'catalog:'
+        version: 0.97.0(magicast@0.5.2)(typescript@6.0.3)
+      '@types/js-yaml':
+        specifier: 'catalog:'
+        version: 4.0.9
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.0
+      '@typescript/native-preview':
+        specifier: 'catalog:'
+        version: 7.0.0-dev.20260428.1
+      eslint:
+        specifier: 'catalog:'
+        version: 10.2.1(jiti@2.6.1)
+      js-yaml:
+        specifier: 'catalog:'
+        version: 4.1.1
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.20(@types/node@25.6.0)(@vitest/coverage-v8@4.1.5(@types/node@25.6.0)(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.6.0)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.6.1)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(@voidzero-dev/vite-plus-core@0.1.20(@types/node@25.6.0)(esbuild@0.27.2)(jiti@2.6.1)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3))(esbuild@0.27.2)(happy-dom@20.9.0)(jiti@2.6.1)(tsx@4.21.0)(typescript@6.0.3)(yaml@2.8.3)
+
   packages/dify-ui:
     dependencies:
       clsx:
@@ -1122,6 +1159,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.1.2(storybook@10.3.5(@testing-library/dom@10.4.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))
+      '@dify/contracts':
+        specifier: workspace:*
+        version: link:../packages/contracts
       '@dify/iconify-collections':
         specifier: workspace:*
         version: link:../packages/iconify-collections
@@ -1134,9 +1174,6 @@ importers:
       '@eslint-react/eslint-plugin':
         specifier: 'catalog:'
         version: 3.0.0(eslint@10.2.1(jiti@2.6.1))(typescript@6.0.3)
-      '@hey-api/openapi-ts':
-        specifier: 'catalog:'
-        version: 0.97.0(magicast@0.5.2)(typescript@6.0.3)
       '@hono/node-server':
         specifier: 'catalog:'
         version: 2.0.0(hono@4.12.15)
@@ -16557,6 +16594,7 @@ time:
   '@lexical/selection@0.44.0': '2026-04-27T14:48:15.054Z'
   '@lexical/text@0.44.0': '2026-04-27T14:48:23.958Z'
   '@lexical/utils@0.44.0': '2026-04-27T14:48:26.689Z'
+  '@orpc/contract@1.14.0': '2026-04-22T14:03:55.170Z'
   '@tanstack/eslint-plugin-query@5.100.6': '2026-04-28T16:39:45.129Z'
   '@tanstack/react-hotkeys@0.10.0': '2026-04-25T12:28:06.989Z'
   '@tanstack/react-query-devtools@5.100.6': '2026-04-28T16:39:51.334Z'
@@ -16564,6 +16602,8 @@ time:
   '@tsslint/cli@3.1.0': '2026-04-29T04:57:38.423Z'
   '@tsslint/compat-eslint@3.1.0': '2026-04-29T04:57:34.593Z'
   '@tsslint/config@3.1.0': '2026-04-29T04:57:36.446Z'
+  '@types/js-yaml@4.0.9': '2023-11-07T20:20:13.264Z'
+  '@types/node@25.6.0': '2026-04-10T03:39:59.421Z'
   '@typescript-eslint/eslint-plugin@8.59.1': '2026-04-27T17:31:50.020Z'
   '@typescript-eslint/parser@8.59.1': '2026-04-27T17:31:29.147Z'
   '@typescript/native-preview@7.0.0-dev.20260428.1': '2026-04-28T08:09:51.266Z'
@@ -16573,9 +16613,13 @@ time:
   copy-to-clipboard@4.0.2: '2026-04-24T22:15:18.933Z'
   eslint-markdown@0.7.0: '2026-04-25T11:31:20.226Z'
   eslint-plugin-better-tailwindcss@4.5.0: '2026-04-28T06:24:47.281Z'
+  eslint@10.2.1: '2026-04-17T20:17:44.852Z'
   i18next@26.0.8: '2026-04-24T19:20:14.685Z'
+  js-yaml@4.1.1: '2025-11-12T15:18:03.524Z'
   lexical@0.44.0: '2026-04-27T14:47:00.970Z'
   tldts@7.0.29: '2026-04-28T12:21:32.710Z'
+  typescript@6.0.3: '2026-04-16T23:38:27.905Z'
   uuid@14.0.0: '2026-04-19T15:15:42.302Z'
   vinext@0.0.45: '2026-04-28T11:43:03.463Z'
   vite-plus@0.1.20: '2026-04-29T03:08:50.317Z'
+  zod@4.3.6: '2026-01-22T19:14:35.382Z'
