@@ -31,18 +31,10 @@ const stripConsoleApiPrefix = (routePath: string) => {
   return routePath
 }
 
-const removeDuplicateSchemaNameSegments = (schemaName: string) => {
-  const segments = schemaName.split('.').filter(Boolean)
-
-  return segments
-    .filter((segment, index) => segment.toLowerCase() !== segments[index + 1]?.toLowerCase())
-    .join('.')
-}
-
 const stripSchemaNamePrefix = (schemaName: string) => {
-  return removeDuplicateSchemaNameSegments(
-    schemaName.replace(/^dify\.enterprise\.api\.enterprise\./, ''),
-  )
+  return schemaName
+    .replace(/^dify\.enterprise\.api\.enterprise\./, '')
+    .replace(/^pagination\.Pagination$/, 'pagination')
 }
 
 const contractNameSegments = (operation: ContractOperation) => {
