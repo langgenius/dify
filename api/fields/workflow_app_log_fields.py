@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from flask_restx import Namespace, fields
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser, simple_end_user_fields
@@ -103,10 +103,28 @@ def _to_timestamp(value: datetime | int | None) -> int | None:
     return value
 
 
+class WorkflowAppLogEvaluationNodeInfoResponse(ResponseModel):
+    node_id: str
+    type: str
+    title: str
+
+
+class WorkflowAppLogEvaluationItemResponse(ResponseModel):
+    name: str
+    value: Any = None
+    details: dict[str, Any] | None = None
+    node_info: WorkflowAppLogEvaluationNodeInfoResponse | None = Field(
+        default=None,
+        validation_alias="node_info",
+        serialization_alias="nodeInfo",
+    )
+
+
 class WorkflowAppLogPartialResponse(ResponseModel):
     id: str
     workflow_run: WorkflowRunForLogResponse | None = None
     details: Any = None
+    evaluation: list[WorkflowAppLogEvaluationItemResponse] = Field(default_factory=list)
     created_from: str | None = None
     created_by_role: str | None = None
     created_by_account: SimpleAccount | None = None
