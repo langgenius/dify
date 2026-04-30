@@ -61,6 +61,20 @@ export type EvaluationRunRequest = EvaluationConfigData & {
 
 export type EvaluationRunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 
+export type EvaluationJudgmentMetricsSummary = {
+  enabled: boolean
+  logical_operator: 'and' | 'or'
+  configured_conditions: number
+  evaluated_items: number
+  passed_items: number
+  failed_items: number
+  pass_rate: number
+}
+
+export type EvaluationMetricsSummary = Record<string, unknown> & {
+  _judgment?: EvaluationJudgmentMetricsSummary
+}
+
 export type EvaluationRun = {
   id: string
   tenant_id: string
@@ -74,7 +88,7 @@ export type EvaluationRun = {
   completed_items: number
   failed_items: number
   progress: number
-  metrics_summary: Record<string, unknown>
+  metrics_summary: EvaluationMetricsSummary
   error: string | null
   created_by: string
   started_at: number | null
@@ -82,21 +96,7 @@ export type EvaluationRun = {
   created_at: number
 }
 
-export type EvaluationLogFile = {
-  id: string
-  name: string
-}
-
-export type EvaluationLog = {
-  id?: string
-  run_id?: string
-  evaluation_run_id?: string
-  created_at: string
-  created_by: string
-  test_file: EvaluationLogFile
-  result_file: EvaluationLogFile | null
-  version: string
-}
+export type EvaluationLog = EvaluationRun
 
 export type EvaluationRunMetric = {
   name?: string

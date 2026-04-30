@@ -13,7 +13,7 @@ import { getEvaluationNodeBlockType } from '@/app/components/evaluation/componen
 import BlockIcon from '@/app/components/workflow/block-icon'
 
 type EvaluationCellProps = {
-  evaluation: EvaluationLogItem[]
+  evaluation?: EvaluationLogItem[] | null
 }
 
 const formatEvaluationValue = (value: EvaluationLogItem['value']) => {
@@ -28,8 +28,9 @@ const EvaluationCell = ({
 }: EvaluationCellProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const evaluationItems = evaluation ?? []
 
-  if (!evaluation.length) {
+  if (!evaluationItems.length) {
     return (
       <div className="flex items-center justify-center px-2 py-3 system-sm-regular text-text-quaternary">
         -
@@ -61,12 +62,12 @@ const EvaluationCell = ({
         popupClassName="w-[320px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border p-0 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]"
       >
         <div data-testid="workflow-log-evaluation-popover" className="max-h-[320px] overflow-y-auto bg-components-panel-bg">
-          {evaluation.map((item, index) => (
+          {evaluationItems.map((item, index) => (
             <div
               key={item.nodeInfo ? `${item.name}-${item.nodeInfo.node_id}` : item.name}
               className={cn(
                 'grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3',
-                index !== evaluation.length - 1 && 'border-b border-divider-subtle',
+                index !== evaluationItems.length - 1 && 'border-b border-divider-subtle',
               )}
             >
               <div className="min-w-0">

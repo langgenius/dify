@@ -10,10 +10,11 @@ import UploadRunPopover from '../batch-test-panel/input-fields/upload-run-popove
 import { useInputFieldsActions } from '../batch-test-panel/input-fields/use-input-fields-actions'
 
 const PIPELINE_INPUT_FIELDS: InputField[] = [
+  { name: 'index', type: 'number' },
   { name: 'query', type: 'string' },
-  { name: 'expected_outputs', type: 'string' },
+  { name: 'expected_output', type: 'string' },
 ]
-const PIPELINE_TEMPLATE_CONTENT = 'query,expected_outputs\n'
+const PIPELINE_TEMPLATE_CONTENT = 'index,query,expected_output\n'
 
 const PipelineBatchActions = ({
   resourceType,

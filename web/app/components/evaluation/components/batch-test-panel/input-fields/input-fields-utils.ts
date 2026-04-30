@@ -10,6 +10,7 @@ export type InputField = {
   type: string
 }
 
+export const INDEX_FIELD_NAME = 'index'
 export const EXPECTED_OUTPUT_FIELD_NAME = 'expected_output'
 
 export const getGraphNodes = (graph?: Record<string, unknown>) => {
@@ -65,10 +66,12 @@ const escapeCsvCell = (value: string) => {
 }
 
 export const buildTemplateCsvContent = (inputFields: InputField[]) => {
-  const fieldNames = inputFields.map(field => field.name)
+  const fieldNames = inputFields
+    .map(field => field.name)
+    .filter(name => name !== INDEX_FIELD_NAME)
   const templateFieldNames = fieldNames.includes(EXPECTED_OUTPUT_FIELD_NAME)
-    ? fieldNames
-    : [...fieldNames, EXPECTED_OUTPUT_FIELD_NAME]
+    ? [INDEX_FIELD_NAME, ...fieldNames]
+    : [INDEX_FIELD_NAME, ...fieldNames, EXPECTED_OUTPUT_FIELD_NAME]
 
   return `${templateFieldNames.map(escapeCsvCell).join(',')}\n`
 }
@@ -79,6 +82,9 @@ export const getFileExtension = (fileName: string) => {
 }
 
 export const getExampleValue = (field: InputField, booleanLabel: string) => {
+  if (field.name === INDEX_FIELD_NAME)
+    return '1'
+
   if (field.type === 'number')
     return '0.7'
 

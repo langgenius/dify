@@ -15,6 +15,20 @@ describe('EvaluationCell', () => {
       expect(screen.queryByRole('button', { name: 'appLog.table.header.evaluation' })).not.toBeInTheDocument()
     })
 
+    it('should render a placeholder when evaluation data is missing', () => {
+      render(<EvaluationCell />)
+
+      expect(screen.getByText('-')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'appLog.table.header.evaluation' })).not.toBeInTheDocument()
+    })
+
+    it('should render a placeholder when evaluation data is null', () => {
+      render(<EvaluationCell evaluation={null} />)
+
+      expect(screen.getByText('-')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'appLog.table.header.evaluation' })).not.toBeInTheDocument()
+    })
+
     it('should render a trigger button when evaluation data is available', () => {
       render(
         <EvaluationCell
@@ -38,6 +52,11 @@ describe('EvaluationCell', () => {
           evaluation={[{
             name: 'Faithfulness',
             value: 0.98,
+            details: {
+              stubbed: true,
+              source: 'console-evaluation-run',
+              value_type: 'number',
+            },
             nodeInfo: {
               node_id: 'node-1',
               title: 'Knowledge Retrieval',
@@ -70,6 +89,31 @@ describe('EvaluationCell', () => {
       await user.click(screen.getByRole('button', { name: 'appLog.table.header.evaluation' }))
 
       expect(await screen.findByText('True')).toBeInTheDocument()
+    })
+
+    it('should render evaluation items with null node info', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <EvaluationCell
+          evaluation={[{
+            name: 'custom_score',
+            value: 0.95,
+            details: {
+              stubbed: true,
+              source: 'console-evaluation-run',
+              value_type: 'number',
+              customized: true,
+            },
+            nodeInfo: null,
+          }]}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'appLog.table.header.evaluation' }))
+
+      expect(await screen.findByText('custom_score')).toBeInTheDocument()
+      expect(screen.getByText('0.95')).toBeInTheDocument()
     })
   })
 })

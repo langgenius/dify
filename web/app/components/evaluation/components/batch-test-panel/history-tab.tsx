@@ -1,5 +1,5 @@
 import type { EvaluationResourceProps } from '../../types'
-import type { EvaluationLog, EvaluationLogFile } from '@/types/evaluation'
+import type { EvaluationLog, EvaluationRunStatus } from '@/types/evaluation'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -11,22 +11,35 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Pagination from '@/app/components/base/pagination'
+import useTimestamp from '@/hooks/use-timestamp'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { useMembers } from '@/service/use-common'
 import { downloadUrl } from '@/utils/download'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
 
 const PAGE_SIZE = 16
 const LOADING_ROW_IDS = ['1', '2', '3', '4', '5', '6']
+const CREATED_AT_FORMAT = 'YYYY-MM-DD'
 
-const formatCreatedAt = (createdAt: string) => {
-  if (!createdAt)
+type FormatTimestamp = (value: number, format: string) => string
+
+const STATUS_ICON_CLASS_NAMES: Record<EvaluationRunStatus, string> = {
+  pending: 'i-ri-time-line text-text-tertiary',
+  running: 'i-ri-loader-4-line animate-spin text-text-accent',
+  completed: 'i-ri-checkbox-circle-fill text-util-colors-green-green-600',
+  failed: 'i-ri-close-circle-fill text-text-destructive',
+  cancelled: 'i-ri-forbid-2-line text-text-tertiary',
+}
+
+const formatCreatedAt = (createdAt: number | null | undefined, formatTime: FormatTimestamp) => {
+  if (createdAt == null)
     return '-'
 
-  return createdAt.includes('T') ? createdAt.slice(0, 10) : createdAt
+  return formatTime(createdAt, CREATED_AT_FORMAT)
 }
 
 const getLogRunId = (record: EvaluationLog) => {
-  return record.run_id ?? record.evaluation_run_id ?? record.id ?? null
+  return record.id
 }
 
 const HistoryTab = ({
@@ -34,6 +47,8 @@ const HistoryTab = ({
   resourceId,
 }: EvaluationResourceProps) => {
   const { t } = useTranslation('evaluation')
+  const { formatTime } = useTimestamp()
+  const { data: membersData } = useMembers()
   const [page, setPage] = useState(0)
   const resource = useEvaluationResource(resourceType, resourceId)
   const setSelectedRunId = useEvaluationStore(state => state.setSelectedRunId)
@@ -54,19 +69,22 @@ const HistoryTab = ({
     placeholderData: keepPreviousData,
   })
   const fileDownloadMutation = useMutation({
-    mutationFn: async (file: EvaluationLogFile) => {
+    mutationFn: async (fileId: string) => {
       const fileInfo = await consoleClient.evaluation.file({
         params: {
           targetType: resourceType,
           targetId: resourceId,
-          fileId: file.id,
+          fileId,
         },
       })
 
-      downloadUrl({ url: fileInfo.download_url, fileName: file.name })
+      downloadUrl({ url: fileInfo.download_url, fileName: fileInfo.name })
     },
   })
   const records = useMemo(() => logsQuery.data?.data ?? [], [logsQuery.data?.data])
+  const memberNameById = useMemo(() => {
+    return new Map((membersData?.accounts ?? []).map(member => [member.id, member.name]))
+  }, [membersData?.accounts])
   const total = logsQuery.data?.total ?? 0
   const isInitialLoading = logsQuery.isLoading && !logsQuery.data
 
@@ -85,8 +103,7 @@ const HistoryTab = ({
         <table className="w-full table-fixed border-collapse overflow-hidden rounded-md">
           <colgroup>
             <col className="w-[120px]" />
-            <col className="w-[95px]" />
-            <col className="w-[80px]" />
+            <col className="w-[120px]" />
             <col className="w-[67px]" />
             <col className="w-[40px]" />
           </colgroup>
@@ -99,7 +116,6 @@ const HistoryTab = ({
                 </span>
               </th>
               <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('history.columns.creator')}</th>
-              <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('history.columns.version')}</th>
               <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('history.columns.status')}</th>
               <th className="h-7 text-center text-text-tertiary">
                 <span aria-hidden="true" className="i-ri-download-2-line inline-block h-3.5 w-3.5" />
@@ -109,14 +125,14 @@ const HistoryTab = ({
           <tbody>
             {isInitialLoading && LOADING_ROW_IDS.map(rowId => (
               <tr key={rowId} className="border-b border-divider-subtle">
-                <td colSpan={5} className="h-10 px-3">
+                <td colSpan={4} className="h-10 px-3">
                   <div className="h-4 animate-pulse rounded bg-background-section" />
                 </td>
               </tr>
             ))}
             {!isInitialLoading && records.map(record => (
               <tr
-                key={`${record.created_at}-${record.test_file.id}`}
+                key={record.id}
                 className={cn(
                   'border-b border-divider-subtle',
                   getLogRunId(record) && 'cursor-pointer hover:bg-state-base-hover',
@@ -128,13 +144,12 @@ const HistoryTab = ({
                     setSelectedRunId(resourceType, resourceId, runId)
                 }}
               >
-                <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{formatCreatedAt(record.created_at)}</td>
-                <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{record.created_by}</td>
-                <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{record.version || '-'}</td>
-                <td className="h-10 px-3 text-center">
-                  {record.result_file
-                    ? <span aria-label={t('history.status.completed')} className="i-ri-checkbox-circle-fill inline-block h-4 w-4 text-util-colors-green-green-600" />
-                    : <span aria-label={t('history.status.running')} className="i-ri-loader-4-line inline-block h-4 w-4 animate-spin text-text-accent" />}
+                <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{formatCreatedAt(record.created_at, formatTime)}</td>
+                <td className="h-10 truncate px-3 system-sm-regular text-text-secondary">{memberNameById.get(record.created_by) ?? record.created_by}</td>
+                <td className="h-10 px-3">
+                  <div className="flex h-10 items-center justify-center">
+                    <span aria-label={t(`history.status.${record.status}`)} className={cn('inline-block h-4 w-4', STATUS_ICON_CLASS_NAMES[record.status])} />
+                  </div>
                 </td>
                 <td className="h-10 text-center">
                   <DropdownMenu>
@@ -153,9 +168,11 @@ const HistoryTab = ({
                     <DropdownMenuContent popupClassName="w-[180px] rounded-lg border-[0.5px] border-components-panel-border py-1 shadow-lg">
                       <DropdownMenuItem
                         className="gap-2"
+                        disabled={!record.dataset_file_id}
                         onClick={(event) => {
                           event.stopPropagation()
-                          fileDownloadMutation.mutate(record.test_file)
+                          if (record.dataset_file_id)
+                            fileDownloadMutation.mutate(record.dataset_file_id)
                         }}
                       >
                         <span aria-hidden="true" className="i-ri-file-download-line h-4 w-4" />
@@ -163,11 +180,11 @@ const HistoryTab = ({
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="gap-2"
-                        disabled={!record.result_file}
+                        disabled={!record.result_file_id}
                         onClick={(event) => {
                           event.stopPropagation()
-                          if (record.result_file)
-                            fileDownloadMutation.mutate(record.result_file)
+                          if (record.result_file_id)
+                            fileDownloadMutation.mutate(record.result_file_id)
                         }}
                       >
                         <span aria-hidden="true" className="i-ri-download-2-line h-4 w-4" />

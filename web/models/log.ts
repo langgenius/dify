@@ -259,11 +259,18 @@ type EndUserInfo = {
 export type EvaluationLogItem = {
   name: string
   value: string | number | boolean
+  details?: {
+    stubbed?: boolean
+    source?: string
+    value_type?: string
+    customized?: boolean
+    [key: string]: unknown
+  } | null
   nodeInfo?: {
     node_id: string
     type: string
     title: string
-  }
+  } | null
 }
 export type WorkflowAppLogDetail = {
   id: string
@@ -275,7 +282,7 @@ export type WorkflowAppLogDetail = {
   created_by_end_user?: EndUserInfo
   created_at: number
   read_at?: number
-  evaluation: EvaluationLogItem[]
+  evaluation?: EvaluationLogItem[] | null
 }
 export type WorkflowLogsResponse = {
   data: Array<WorkflowAppLogDetail>
