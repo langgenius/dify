@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
+import { Plan } from '@/app/components/billing/type'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
@@ -55,7 +56,7 @@ const EducationApplyAgeContent = () => {
   } = useEducationAdd({ onSuccess: noop })
   const [modalShow, setModalShow] = useState<undefined | { title: string, desc: string, confirmText?: string, onConfirm?: () => void }>(undefined)
   const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
-  const { currentWorkspace } = useAppContext()
+  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
@@ -74,12 +75,13 @@ const EducationApplyAgeContent = () => {
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
   const appliedEducationCase = (() => {
-    const value = searchParams.get('case')
-    if (value === '2')
-      return AppliedEducationCase.activeSubscription
-    if (value === '3')
+    if (!isCurrentWorkspaceManager)
       return AppliedEducationCase.noPaymentPermission
-    return AppliedEducationCase.eligible
+
+    if (plan.type === Plan.sandbox)
+      return AppliedEducationCase.eligible
+
+    return AppliedEducationCase.activeSubscription
   })()
   const handleSubmit = () => {
     educationAdd({
