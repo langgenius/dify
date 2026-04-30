@@ -878,6 +878,7 @@ class RecommendedApp(TypeBase):
     copyright: Mapped[str] = mapped_column(String(255), nullable=False)
     privacy_policy: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(255), nullable=False)
+    categories: Mapped[list[str] | None] = mapped_column(sa.JSON, nullable=True, default=None)
     custom_disclaimer: Mapped[str] = mapped_column(LongText, default="")
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
