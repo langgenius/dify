@@ -1,7 +1,3 @@
-from sqlalchemy.orm import Session
-from models import TenantStatus
-from models import AccountStatus
-from sqlalchemy.orm import Session
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.document_indexing_update_task import document_indexing_update_task
