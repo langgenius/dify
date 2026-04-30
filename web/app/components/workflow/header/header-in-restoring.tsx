@@ -6,12 +6,11 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import useTheme from '@/hooks/use-theme'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow } from '@/service/use-workflow'
+import { FlowType } from '@/types/common'
 import {
-  useLeaderRestore,
   useWorkflowRefreshDraft,
   useWorkflowRun,
 } from '../hooks'
@@ -35,7 +34,6 @@ const HeaderInRestoring = ({
   const { theme } = useTheme()
   const workflowStore = useWorkflowStore()
   const userProfile = useAppContextSelector(s => s.userProfile)
-  const featuresStore = useFeaturesStore()
   const configsMap = useHooksStore(s => s.configsMap)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
@@ -47,9 +45,11 @@ const HeaderInRestoring = ({
   const {
     handleLoadBackupDraft,
   } = useWorkflowRun()
-  const { requestRestore } = useLeaderRestore()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
+  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const canRestore = !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
+  const canEmitCollaborationEvents = configsMap?.flowType === FlowType.appFlow
 
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
@@ -57,47 +57,86 @@ const HeaderInRestoring = ({
     setShowWorkflowVersionHistoryPanel(false)
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
-  const handleRestore = useCallback(() => {
+  const restoreVersionUrl = useCallback((versionId: string) => {
+    if (!configsMap?.flowId)
+      return ''
+    if (configsMap.flowType === FlowType.ragPipeline)
+      return `/rag/pipelines/${configsMap.flowId}/workflows/${versionId}/restore`
+    return `/apps/${configsMap.flowId}/workflows/${versionId}/restore`
+  }, [configsMap?.flowId, configsMap?.flowType])
+
+  const emitRestoreIntent = useCallback(async () => {
+    if (!currentVersion || !canEmitCollaborationEvents)
+      return
+    try {
+      const { collaborationManager } = await import('../collaboration/core/collaboration-manager')
+      collaborationManager.emitRestoreIntent({
+        versionId: currentVersion.id,
+        versionName: currentVersion.marked_name,
+        initiatorUserId: userProfile.id,
+        initiatorName: userProfile.name,
+      })
+    }
+    catch (error) {
+      console.error('Failed to emit restore intent:', error)
+    }
+  }, [canEmitCollaborationEvents, currentVersion, userProfile.id, userProfile.name])
+
+  const emitRestoreComplete = useCallback(async (success: boolean, errorMessage?: string) => {
+    if (!currentVersion || !canEmitCollaborationEvents)
+      return
+    try {
+      const { collaborationManager } = await import('../collaboration/core/collaboration-manager')
+      collaborationManager.emitRestoreComplete({
+        versionId: currentVersion.id,
+        success,
+        ...(errorMessage ? { error: errorMessage } : {}),
+      })
+    }
+    catch (error) {
+      console.error('Failed to emit restore complete:', error)
+    }
+  }, [canEmitCollaborationEvents, currentVersion])
+
+  const emitWorkflowUpdate = useCallback(async () => {
+    if (!configsMap?.flowId || !canEmitCollaborationEvents)
+      return
+    try {
+      const { collaborationManager } = await import('../collaboration/core/collaboration-manager')
+      collaborationManager.emitWorkflowUpdate(configsMap.flowId)
+    }
+    catch (error) {
+      console.error('Failed to emit workflow update:', error)
+    }
+  }, [canEmitCollaborationEvents, configsMap?.flowId])
+
+  const handleRestore = useCallback(async () => {
     if (!canRestore || !currentVersion)
       return
 
     setShowWorkflowVersionHistoryPanel(false)
-    workflowStore.setState({ isRestoring: false })
-    workflowStore.setState({ backupDraft: undefined })
+    await emitRestoreIntent()
 
-    const { graph } = currentVersion
-    const features = featuresStore?.getState().features
-    const environmentVariables = currentVersion.environment_variables || []
-    const conversationVariables = currentVersion.conversation_variables || []
-
-    requestRestore({
-      versionId: currentVersion.id,
-      versionName: currentVersion.marked_name,
-      initiatorUserId: userProfile.id,
-      initiatorName: userProfile.name,
-      graphData: {
-        nodes: graph.nodes,
-        edges: graph.edges,
-        viewport: graph.viewport,
-      },
-      features,
-      environmentVariables,
-      conversationVariables,
-    }, {
-      onSuccess: () => {
-        handleRefreshWorkflowDraft()
-        toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
-        deleteAllInspectVars()
-        invalidAllLastRun()
-      },
-      onError: () => {
-        toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
-      },
-      onSettled: () => {
-        onRestoreSettled?.()
-      },
-    })
-  }, [canRestore, currentVersion, setShowWorkflowVersionHistoryPanel, workflowStore, featuresStore, requestRestore, userProfile, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+    try {
+      await restoreWorkflow(restoreVersionUrl(currentVersion.id))
+      workflowStore.setState({ isRestoring: false })
+      workflowStore.setState({ backupDraft: undefined })
+      handleRefreshWorkflowDraft()
+      toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
+      deleteAllInspectVars()
+      invalidAllLastRun()
+      await emitRestoreComplete(true)
+      await emitWorkflowUpdate()
+    }
+    catch {
+      toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
+      await emitRestoreComplete(false, 'restore failed')
+    }
+    finally {
+      resetWorkflowVersionHistory()
+      onRestoreSettled?.()
+    }
+  }, [canRestore, currentVersion, setShowWorkflowVersionHistoryPanel, emitRestoreIntent, restoreWorkflow, restoreVersionUrl, workflowStore, handleRefreshWorkflowDraft, t, deleteAllInspectVars, invalidAllLastRun, emitRestoreComplete, emitWorkflowUpdate, resetWorkflowVersionHistory, onRestoreSettled])
 
   return (
     <>

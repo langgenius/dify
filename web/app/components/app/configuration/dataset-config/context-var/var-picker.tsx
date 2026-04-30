@@ -83,7 +83,6 @@ const VarPicker: FC<Props> = ({
         placement="bottom-end"
         sideOffset={8}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-        positionerProps={{ style: { zIndex: 1000 } }}
       >
         {options.length > 0
           ? (

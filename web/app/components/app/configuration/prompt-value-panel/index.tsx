@@ -5,6 +5,7 @@ import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -19,7 +20,6 @@ import FeatureBar from '@/app/components/base/features/new-feature-panel/feature
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -167,7 +167,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         <SelectTrigger className="w-full bg-gray-50">
                           {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
                         </SelectTrigger>
-                        <SelectContent popupClassName="w-(--anchor-width)">
+                        <SelectContent>
                           {(options || []).map(option => (
                             <SelectItem key={option} value={option}>
                               <SelectItemText>{option}</SelectItemText>
@@ -224,16 +224,23 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
           <div className="flex justify-between border-t border-divider-subtle p-4 pt-3">
             <Button className="w-[72px]" disabled={readonly} onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
             {canNotRun && (
-              <Tooltip popupContent={t('otherError.promptNoBeEmpty', { ns: 'appDebug' })}>
-                <Button
-                  variant="primary"
-                  disabled={canNotRun || readonly}
-                  onClick={() => onSend?.()}
-                  className="w-[96px]"
-                >
-                  <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  {t('inputs.run', { ns: 'appDebug' })}
-                </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <Button
+                      variant="primary"
+                      disabled={canNotRun || readonly}
+                      onClick={() => onSend?.()}
+                      className="w-[96px]"
+                    >
+                      <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                      {t('inputs.run', { ns: 'appDebug' })}
+                    </Button>
+                  )}
+                />
+                <TooltipContent>
+                  {t('otherError.promptNoBeEmpty', { ns: 'appDebug' })}
+                </TooltipContent>
               </Tooltip>
             )}
             {!canNotRun && (

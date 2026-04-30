@@ -170,6 +170,12 @@ describe('Select wrappers', () => {
 
       expect(screen.getByRole('combobox', { name: 'city select' }).element().querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
     })
+
+    it('should include open state feedback classes', async () => {
+      const screen = await renderOpenSelect()
+
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-open:bg-state-base-hover-alt')
+    })
   })
 
   describe('SelectContent', () => {

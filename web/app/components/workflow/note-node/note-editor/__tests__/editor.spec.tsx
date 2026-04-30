@@ -93,17 +93,17 @@ describe('Editor', () => {
   // Focus and blur should toggle workflow shortcuts while editing content.
   describe('Focus Management', () => {
     it('should disable shortcuts on focus and re-enable them on blur-sm', () => {
-      const setShortcutsEnabled = vi.fn()
+      const setHistoryShortcutsEnabled = vi.fn()
 
-      renderEditor({ setShortcutsEnabled })
+      renderEditor({ setHistoryShortcutsEnabled })
 
       const contentEditable = screen.getByRole('textbox')
 
       fireEvent.focus(contentEditable)
       fireEvent.blur(contentEditable)
 
-      expect(setShortcutsEnabled).toHaveBeenNthCalledWith(1, false)
-      expect(setShortcutsEnabled).toHaveBeenNthCalledWith(2, true)
+      expect(setHistoryShortcutsEnabled).toHaveBeenNthCalledWith(1, false)
+      expect(setHistoryShortcutsEnabled).toHaveBeenNthCalledWith(2, true)
     })
   })
 

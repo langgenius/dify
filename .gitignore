@@ -219,6 +219,9 @@ node_modules
 # plugin migrate
 plugins.jsonl
 
+# generated API OpenAPI specs
+packages/contracts/openapi/
+
 # mise
 mise.toml
 

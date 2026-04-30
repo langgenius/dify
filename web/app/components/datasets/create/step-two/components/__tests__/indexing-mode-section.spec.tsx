@@ -165,6 +165,13 @@ describe('IndexingModeSection', () => {
       const economicalText = screen.getByText(`${ns}.stepTwo.economical`)
       const card = economicalText.closest('[class*="rounded-xl"]')
       expect(card)!.toHaveClass('pointer-events-none')
+      expect(screen.getByText(`${ns}.stepTwo.notAvailableForQA`))!.toBeInTheDocument()
+    })
+
+    it('should show parent-child disabled reason inline on economical option', () => {
+      render(<IndexingModeSection {...defaultProps} docForm={ChunkingMode.parentChild} />)
+
+      expect(screen.getByText(`${ns}.stepTwo.notAvailableForParentChild`))!.toBeInTheDocument()
     })
   })
 

@@ -76,6 +76,8 @@ const createPluginDetail = (): PluginDetail => ({
 })
 
 describe('EndpointList', () => {
+  const getAddButton = () => screen.getByRole('button', { name: 'plugin.detailPanel.endpointModalTitle' })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockEndpointListData = { endpoints: mockEndpoints }
@@ -112,7 +114,7 @@ describe('EndpointList', () => {
     it('should render add button', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
-      expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
+      expect(getAddButton()).toBeInTheDocument()
     })
   })
 
@@ -120,8 +122,7 @@ describe('EndpointList', () => {
     it('should show modal when add button clicked', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
-      const addButton = screen.getAllByRole('button')[0]
-      fireEvent.click(addButton!)
+      fireEvent.click(getAddButton())
 
       expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
     })
@@ -129,8 +130,7 @@ describe('EndpointList', () => {
     it('should hide modal when cancel clicked', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
-      const addButton = screen.getAllByRole('button')[0]
-      fireEvent.click(addButton!)
+      fireEvent.click(getAddButton())
       expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('modal-cancel'))
@@ -140,8 +140,7 @@ describe('EndpointList', () => {
     it('should call createEndpoint when save clicked', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
-      const addButton = screen.getAllByRole('button')[0]
-      fireEvent.click(addButton!)
+      fireEvent.click(getAddButton())
       fireEvent.click(screen.getByTestId('modal-save'))
 
       expect(mockCreateEndpoint).toHaveBeenCalled()
@@ -176,8 +175,7 @@ describe('EndpointList', () => {
     it('should invalidate endpoint list after successful create', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
-      const addButton = screen.getAllByRole('button')[0]
-      fireEvent.click(addButton!)
+      fireEvent.click(getAddButton())
       fireEvent.click(screen.getByTestId('modal-save'))
 
       expect(mockInvalidateEndpointList).toHaveBeenCalledWith('test-plugin')
@@ -186,8 +184,7 @@ describe('EndpointList', () => {
     it('should pass correct params to createEndpoint', () => {
       render(<EndpointList detail={createPluginDetail()} />)
 
-      const addButton = screen.getAllByRole('button')[0]
-      fireEvent.click(addButton!)
+      fireEvent.click(getAddButton())
       fireEvent.click(screen.getByTestId('modal-save'))
 
       expect(mockCreateEndpoint).toHaveBeenCalledWith({

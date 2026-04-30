@@ -13,6 +13,7 @@ export const PopoverTrigger = BasePopover.Trigger
 export const PopoverClose = BasePopover.Close
 export const PopoverTitle = BasePopover.Title
 export const PopoverDescription = BasePopover.Description
+export const createPopoverHandle = BasePopover.createHandle
 
 type PopoverContentProps = {
   children: ReactNode

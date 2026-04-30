@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { MetadataItemWithValue } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiDeleteBinLine, RiQuestionLine } from '@remixicon/react'
+import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useRouter } from '@/next/navigation'
 import AddMetadataButton from '../add-metadata-button'
@@ -64,9 +64,9 @@ const InfoGroup: FC<Props> = ({
           <div className="flex items-center space-x-1">
             <div className={cn('text-text-secondary', uppercaseTitle ? 'system-xs-semibold-uppercase' : 'system-md-semibold')}>{title}</div>
             {titleTooltip && (
-              <Tooltip popupContent={<div className="max-w-[240px]">{titleTooltip}</div>}>
-                <div><RiQuestionLine className="size-3.5 text-text-tertiary" /></div>
-              </Tooltip>
+              <Infotip aria-label={titleTooltip} popupClassName="max-w-[240px]">
+                {titleTooltip}
+              </Infotip>
             )}
           </div>
           {headerRight}

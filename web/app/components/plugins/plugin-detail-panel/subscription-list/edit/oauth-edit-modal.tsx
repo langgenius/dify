@@ -2,13 +2,14 @@
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import Modal from '@/app/components/base/modal/modal'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { useUpdateTriggerSubscription } from '@/service/use-triggers'
 import { ReadmeShowType } from '../../../readme-panel/store'
@@ -147,26 +148,63 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
     }),
   ], [t, subscription.name, subscription.endpoint, subscription.parameters, subscription.id, parametersSchema, detail?.plugin_id, detail?.provider])
 
+  const title = t('subscription.list.item.actions.edit.title', { ns: 'pluginTrigger' })
+  const confirmButtonText = isUpdating ? t('operation.saving', { ns: 'common' }) : t('operation.save', { ns: 'common' })
+
   return (
-    <Modal
-      title={t('subscription.list.item.actions.edit.title', { ns: 'pluginTrigger' })}
-      confirmButtonText={isUpdating ? t('operation.saving', { ns: 'common' }) : t('operation.save', { ns: 'common' })}
-      onClose={onClose}
-      onCancel={onClose}
-      onConfirm={handleConfirm}
-      disabled={isUpdating}
-      clickOutsideNotClose
-      wrapperClassName="z-101!"
+    <Dialog
+      open
+      disablePointerDismissal
+      onOpenChange={(open) => {
+        if (!open)
+          onClose()
+      }}
     >
-      {pluginDetail && (
-        <ReadmeEntrance pluginDetail={pluginDetail} showType={ReadmeShowType.modal} />
-      )}
-      <BaseForm
-        formSchemas={formSchemas}
-        ref={formRef}
-        labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-        formClassName="space-y-4"
-      />
-    </Modal>
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="p-0"
+      >
+        <div data-testid="modal" data-title={title} data-disabled={isUpdating} className="flex max-h-[80dvh] flex-col">
+          <div className="relative shrink-0 p-6 pr-14 pb-3">
+            <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
+              {title}
+            </DialogTitle>
+            <DialogCloseButton data-testid="modal-close-button" className="top-5 right-5 h-8 w-8 rounded-lg" />
+          </div>
+          <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+            {pluginDetail && (
+              <ReadmeEntrance pluginDetail={pluginDetail} showType={ReadmeShowType.modal} />
+            )}
+            <BaseForm
+              formSchemas={formSchemas}
+              ref={formRef}
+              labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+              formClassName="space-y-4"
+            />
+          </div>
+          <div className="flex shrink-0 justify-between p-6 pt-5">
+            <div />
+            <div className="flex items-center">
+              <Button
+                data-testid="modal-cancel-button"
+                onClick={onClose}
+                disabled={isUpdating}
+              >
+                {t('operation.cancel', { ns: 'common' })}
+              </Button>
+              <Button
+                data-testid="modal-confirm-button"
+                className="ml-2"
+                variant="primary"
+                onClick={handleConfirm}
+                disabled={isUpdating}
+              >
+                {confirmButtonText}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

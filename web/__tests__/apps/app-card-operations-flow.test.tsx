@@ -53,6 +53,16 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: () => ({
+      data: [],
+    }),
+  }
+})
+
 // Mock headless UI Popover so it renders content without transition
 vi.mock('@headlessui/react', async () => {
   const actual = await vi.importActual<typeof import('@headlessui/react')>('@headlessui/react')

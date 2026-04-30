@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.conversation as conversation_module
@@ -53,7 +54,7 @@ def user():
 
 class TestConversationListApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_success(self, app, chat_app, user):
@@ -108,7 +109,7 @@ class TestConversationListApi:
 
 class TestConversationApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_delete_success(self, app, chat_app, user):
@@ -156,7 +157,7 @@ class TestConversationApi:
 
 class TestConversationRenameApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_rename_success(self, app, chat_app, user):
@@ -197,7 +198,7 @@ class TestConversationRenameApi:
 
 class TestConversationPinApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_pin_success(self, app, chat_app, user):
@@ -219,7 +220,7 @@ class TestConversationPinApi:
 
 class TestConversationUnPinApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_unpin_success(self, app, chat_app, user):

@@ -1700,15 +1700,13 @@ export const useNodesInteractions = () => {
       }
 
       e.preventDefault()
-      const container = document.querySelector('#workflow-container')
-      const { x, y } = container!.getBoundingClientRect()
       workflowStore.setState({
         panelMenu: undefined,
         selectionMenu: undefined,
         edgeMenu: undefined,
         nodeMenu: {
-          top: e.clientY - y,
-          left: e.clientX - x,
+          clientX: e.clientX,
+          clientY: e.clientY,
           nodeId: node.id,
         },
       })
