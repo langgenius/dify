@@ -660,7 +660,7 @@ class TestDuplicateDocumentIndexingTasks:
 
     @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
     def test_normal_duplicate_document_indexing_task_with_tenant_queue(
-        self, mock_queue_class, db_session_with_containers, mock_external_service_dependencies
+        self, mock_queue_class, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test normal_duplicate_document_indexing_task with tenant isolation queue.
@@ -703,7 +703,7 @@ class TestDuplicateDocumentIndexingTasks:
 
     @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
     def test_priority_duplicate_document_indexing_task_with_tenant_queue(
-        self, mock_queue_class, db_session_with_containers, mock_external_service_dependencies
+        self, mock_queue_class, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test priority_duplicate_document_indexing_task with tenant isolation queue.
@@ -747,7 +747,7 @@ class TestDuplicateDocumentIndexingTasks:
 
     @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
     def test_tenant_queue_wrapper_processes_next_tasks(
-        self, mock_queue_class, db_session_with_containers, mock_external_service_dependencies
+        self, mock_queue_class, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test tenant queue wrapper processes next queued tasks.

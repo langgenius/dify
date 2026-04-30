@@ -2,6 +2,7 @@
 API Key Authentication System Integration Tests
 """
 
+from sqlalchemy.orm import Session
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
@@ -114,7 +115,7 @@ class TestAuthIntegration:
         assert result2[0].tenant_id == tenant_id_2
 
     def test_cross_tenant_access_prevention(
-        self, flask_app_with_containers, db_session_with_containers, tenant_id_2, category
+        self, flask_app_with_containers, db_session_with_containers: Session, tenant_id_2, category
     ):
         result = ApiKeyAuthService.get_auth_credentials(tenant_id_2, category, AuthType.FIRECRAWL)
 

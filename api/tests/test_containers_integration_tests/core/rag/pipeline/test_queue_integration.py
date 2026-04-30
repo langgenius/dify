@@ -95,7 +95,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         assert queue._queue == f"tenant_self_test-key_task_queue:{tenant.id}"
         assert queue._task_key == f"tenant_test-key_task:{tenant.id}"
 
-    def test_tenant_isolation(self, test_tenant_and_account, db_session_with_containers, fake: Faker):
+    def test_tenant_isolation(self, test_tenant_and_account, db_session_with_containers: Session, fake: Faker):
         """Test that different tenants have isolated queues."""
         tenant1, _ = test_tenant_and_account
 

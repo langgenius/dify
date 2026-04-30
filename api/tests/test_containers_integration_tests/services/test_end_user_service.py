@@ -210,7 +210,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result.type == InvokeFrom.WEB_APP
 
     @patch("services.end_user_service.logger")
-    def test_upgrade_legacy_end_user_type(self, mock_logger, db_session_with_containers, factory):
+    def test_upgrade_legacy_end_user_type(self, mock_logger, db_session_with_containers: Session, factory):
         """Test upgrading legacy end user with different type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -244,7 +244,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert "Upgrading legacy EndUser" in log_call
 
     @patch("services.end_user_service.logger")
-    def test_get_existing_end_user_matching_type(self, mock_logger, db_session_with_containers, factory):
+    def test_get_existing_end_user_matching_type(self, mock_logger, db_session_with_containers: Session, factory):
         """Test retrieving existing end user with matching type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
