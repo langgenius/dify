@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import type { DocType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import Radio from '@/app/components/base/radio'
-import Tooltip from '@/app/components/base/tooltip'
 import { useMetadataMap } from '@/hooks/use-metadata'
 import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
 import s from '../style.module.css'
@@ -17,13 +17,20 @@ const TypeIcon: FC<{ iconName: string, className?: string }> = ({ iconName, clas
 const IconButton: FC<{ type: DocType, isChecked: boolean }> = ({ type, isChecked = false }) => {
   const metadataMap = useMetadataMap()
   return (
-    <Tooltip popupContent={metadataMap[type].text}>
-      <button type="button" className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
-        <TypeIcon
-          iconName={metadataMap[type].iconName || ''}
-          className={`group-hover:bg-primary-600 ${isChecked ? 'bg-primary-600!' : ''}`}
-        />
-      </button>
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <button type="button" className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
+            <TypeIcon
+              iconName={metadataMap[type].iconName || ''}
+              className={`group-hover:bg-primary-600 ${isChecked ? 'bg-primary-600!' : ''}`}
+            />
+          </button>
+        )}
+      />
+      <TooltipContent>
+        {metadataMap[type].text}
+      </TooltipContent>
     </Tooltip>
   )
 }

@@ -3,12 +3,12 @@ import type { FC, JSX } from 'react'
 import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import ProviderConfigModal from './provider-config-modal'
 import ProviderPanel from './provider-panel'
@@ -338,10 +338,13 @@ const ConfigPopup: FC<PopupProps> = ({
             <>
               {providerAllNotConfigured
                 ? (
-                    <Tooltip
-                      popupContent={t(`${I18N_PREFIX}.disabledTip`, { ns: 'app' })}
-                    >
-                      {switchContent}
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={switchContent}
+                      />
+                      <TooltipContent>
+                        {t(`${I18N_PREFIX}.disabledTip`, { ns: 'app' })}
+                      </TooltipContent>
                     </Tooltip>
                   )
                 : switchContent}
