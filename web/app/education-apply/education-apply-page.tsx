@@ -35,7 +35,6 @@ import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
 import SearchInput from './search-input'
 import UserInfo from './user-info'
-import Confirm from './verify-state-modal'
 
 const AppliedEducationCase = {
   eligible: 'eligible',
@@ -49,12 +48,12 @@ const EducationApplyAgeContent = () => {
   const [role, setRole] = useState('Student')
   const [ageChecked, setAgeChecked] = useState(false)
   const [inSchoolChecked, setInSchoolChecked] = useState(false)
+  const [hasSubmittedEducation, setHasSubmittedEducation] = useState(false)
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false)
   const {
     isPending,
     mutateAsync: educationAdd,
   } = useEducationAdd({ onSuccess: noop })
-  const [modalShow, setModalShow] = useState<undefined | { title: string, desc: string, confirmText?: string, onConfirm?: () => void }>(undefined)
   const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
   const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const updateEducationStatus = useInvalidateEducationStatus()
@@ -63,14 +62,6 @@ const EducationApplyAgeContent = () => {
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
   const queryClient = useQueryClient()
-
-  const handleSuccessConfirm = async () => {
-    setModalShow(undefined)
-    onPlanInfoChanged()
-    updateEducationStatus()
-    localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
-    await handleEducationDiscount()
-  }
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -90,12 +81,10 @@ const EducationApplyAgeContent = () => {
       institution: schoolName,
     }).then((res) => {
       if (res.message === 'success') {
-        setModalShow({
-          title: t('successTitle', { ns: 'education' }),
-          desc: t('successContent', { ns: 'education' }),
-          confirmText: t('useEducationDiscount', { ns: 'education' }),
-          onConfirm: handleSuccessConfirm,
-        })
+        onPlanInfoChanged()
+        updateEducationStatus()
+        localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+        setHasSubmittedEducation(true)
       }
       else {
         toast.error(t('submitError', { ns: 'education' }))
@@ -227,7 +216,7 @@ const EducationApplyAgeContent = () => {
           <div className="mb-7">
             <UserInfo />
           </div>
-          {isEducationAccount
+          {isEducationAccount || hasSubmittedEducation
             ? (
                 <div className="flex">
                   <AppliedEducationWorkspaceBlock
@@ -313,14 +302,6 @@ const EducationApplyAgeContent = () => {
               )}
         </div>
       </div>
-      <Confirm
-        isShow={!!modalShow}
-        title={modalShow?.title || ''}
-        content={modalShow?.desc}
-        confirmText={modalShow?.confirmText}
-        onConfirm={modalShow?.onConfirm || noop}
-        onCancel={modalShow?.onConfirm || noop}
-      />
     </div>
   )
 }
