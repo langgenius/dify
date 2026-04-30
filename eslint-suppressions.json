@@ -1744,11 +1744,6 @@
       "count": 4
     }
   },
-  "web/app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/component-picker-block/menu.tsx": {
     "erasable-syntax-only/parameter-properties": {
       "count": 1
