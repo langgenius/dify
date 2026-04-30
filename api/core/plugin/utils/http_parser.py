@@ -150,6 +150,7 @@ def deserialize_response(raw_data: bytes) -> Response:
     status_code = int(parts[1])
 
     response = Response(response=body, status=status_code)
+    response.headers.clear()
 
     for line in lines[1:]:
         if not line:
@@ -158,6 +159,6 @@ def deserialize_response(raw_data: bytes) -> Response:
         if ":" not in line_str:
             continue
         name, value = line_str.split(":", 1)
-        response.headers[name] = value.strip()
+        response.headers.add(name, value.strip())
 
     return response
