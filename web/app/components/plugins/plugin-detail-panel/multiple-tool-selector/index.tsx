@@ -2,6 +2,7 @@ import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiAddLine,
   RiQuestionLine,
@@ -11,7 +12,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import Tooltip from '@/app/components/base/tooltip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useAllMCPTools } from '@/service/use-tools'
@@ -112,10 +112,15 @@ const MultipleToolSelector = ({
           <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">{label}</div>
           {required && <div className="text-red-500">*</div>}
           {tooltip && (
-            <Tooltip
-              popupContent={tooltip}
-            >
-              <div><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" /></div>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <div><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" /></div>
+                )}
+              />
+              <TooltipContent>
+                {tooltip}
+              </TooltipContent>
             </Tooltip>
           )}
           {supportCollapse && (

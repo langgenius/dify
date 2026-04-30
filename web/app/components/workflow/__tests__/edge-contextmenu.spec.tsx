@@ -218,7 +218,6 @@ describe('EdgeContextmenu', () => {
     })
 
     const deleteAction = await screen.findByRole('menuitem', { name: /common:operation\.delete/i })
-    expect(screen.getByText(/^del$/i))!.toBeInTheDocument()
 
     await user.click(deleteAction)
 

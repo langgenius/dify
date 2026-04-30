@@ -1,5 +1,6 @@
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiClipboardFill,
   RiClipboardLine,
@@ -11,7 +12,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import Modal from '@/app/components/base/modal'
-import Tooltip from '@/app/components/base/tooltip'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { basePath } from '@/utils/var'
@@ -174,21 +174,24 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
           <div className="shrink-0 grow system-sm-medium text-text-secondary">
             {t(`${prefixEmbedded}.${option}`, { ns: 'appOverview' })}
           </div>
-          <Tooltip
-            popupContent={
-              (isCopied[option]
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton>
+                  <div
+                    onClick={onClickCopy}
+                  >
+                    {isCopied[option] && <RiClipboardFill className="h-4 w-4" />}
+                    {!isCopied[option] && <RiClipboardLine className="h-4 w-4" />}
+                  </div>
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>
+              {(isCopied[option]
                 ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-                : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
-            }
-          >
-            <ActionButton>
-              <div
-                onClick={onClickCopy}
-              >
-                {isCopied[option] && <RiClipboardFill className="h-4 w-4" />}
-                {!isCopied[option] && <RiClipboardLine className="h-4 w-4" />}
-              </div>
-            </ActionButton>
+                : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''}
+            </TooltipContent>
           </Tooltip>
         </div>
         <div className="flex w-full items-start justify-start gap-2 overflow-x-auto p-3">
