@@ -234,7 +234,7 @@ def get_evaluation_target(view_func: Callable[P, R]):
     return decorated_view
 
 
-def _load_evaluation_run_request_and_dataset(tenant_id: str) -> tuple[EvaluationRunRequest, bytes]:
+def _load_evaluation_run_request_and_dataset(tenant_id: str) -> tuple[EvaluationRunRequest, bytes, str]:
     """Validate the run payload and load the uploaded dataset bytes."""
     body = request.get_json(force=True)
     if not body:
@@ -257,7 +257,7 @@ def _load_evaluation_run_request_and_dataset(tenant_id: str) -> tuple[Evaluation
     if not dataset_content:
         raise BadRequest("Dataset file is empty.")
 
-    return run_request, dataset_content
+    return run_request, dataset_content, upload_file.name
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/dataset-template/download")
@@ -434,7 +434,7 @@ class EvaluationRunApi(Resource):
         - judgment_config: judgment conditions config (optional)
         """
         current_account, current_tenant_id = current_account_with_tenant()
-        run_request, dataset_content = _load_evaluation_run_request_and_dataset(current_tenant_id)
+        run_request, dataset_content, dataset_filename = _load_evaluation_run_request_and_dataset(current_tenant_id)
 
         try:
             with Session(db.engine, expire_on_commit=False) as session:
@@ -446,6 +446,7 @@ class EvaluationRunApi(Resource):
                         target_id=str(target.id),
                         account_id=str(current_account.id),
                         dataset_file_content=dataset_content,
+                        dataset_filename=dataset_filename,
                         run_request=run_request,
                     )
                 else:
@@ -456,6 +457,7 @@ class EvaluationRunApi(Resource):
                         target_id=str(target.id),
                         account_id=str(current_account.id),
                         dataset_file_content=dataset_content,
+                        dataset_filename=dataset_filename,
                         run_request=run_request,
                     )
                 return _serialize_evaluation_run(evaluation_run), 200
@@ -483,7 +485,7 @@ class EvaluationRunRealApi(Resource):
     def post(self, target: Union[App, CustomizedSnippet, Dataset], target_type: str):
         """Start the real evaluation execution flow on the temporary dev path."""
         current_account, current_tenant_id = current_account_with_tenant()
-        run_request, dataset_content = _load_evaluation_run_request_and_dataset(current_tenant_id)
+        run_request, dataset_content, dataset_filename = _load_evaluation_run_request_and_dataset(current_tenant_id)
 
         try:
             with Session(db.engine, expire_on_commit=False) as session:
@@ -494,6 +496,7 @@ class EvaluationRunRealApi(Resource):
                     target_id=str(target.id),
                     account_id=str(current_account.id),
                     dataset_file_content=dataset_content,
+                    dataset_filename=dataset_filename,
                     run_request=run_request,
                 )
                 return _serialize_evaluation_run(evaluation_run), 200
