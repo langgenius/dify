@@ -62,28 +62,30 @@ const AppliedEducationContent = ({
             </div>
           </div>
         </div>
-        <Select
-          value={workspaceId ?? ''}
-          onValueChange={(value) => {
-            if (value)
-              onSwitchWorkspace(value)
-          }}
-        >
-          <SelectTrigger className="h-12! w-fit max-w-full min-w-[280px] cursor-pointer justify-between rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3! py-1.5! hover:bg-state-base-hover">
-            <span className="flex min-w-0 items-center gap-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-blue-solid text-[14px]">
-                <span className="bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">
-                  {workspaceName?.[0]?.toLocaleUpperCase()}
+        <div className="ml-7">
+          <Select
+            value={workspaceId ?? ''}
+            onValueChange={(value) => {
+              if (value)
+                onSwitchWorkspace(value)
+            }}
+          >
+            <SelectTrigger className="h-12! w-fit max-w-full min-w-[280px] cursor-pointer justify-between rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3! py-1.5! hover:bg-state-base-hover">
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-blue-solid text-[14px]">
+                  <span className="bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">
+                    {workspaceName?.[0]?.toLocaleUpperCase()}
+                  </span>
                 </span>
+                <span className="min-w-0 truncate system-md-semibold text-text-primary">{workspaceName}</span>
+                <PlanBadge plan={workspacePlan} />
               </span>
-              <span className="min-w-0 truncate system-md-semibold text-text-primary">{workspaceName}</span>
-              <PlanBadge plan={workspacePlan} />
-            </span>
-          </SelectTrigger>
-          <WorkplaceSelectorContent workspaces={workspaces} />
-        </Select>
-        <div className="mt-3">
-          {action}
+            </SelectTrigger>
+            <WorkplaceSelectorContent workspaces={workspaces} />
+          </Select>
+          <div className="mt-3">
+            {action}
+          </div>
         </div>
       </div>
     </div>

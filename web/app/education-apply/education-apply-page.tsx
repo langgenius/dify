@@ -126,7 +126,7 @@ const EducationApplyAgeContent = () => {
     router.push('/')
   }
   const renderBackToDifyButton = () => (
-    <Button variant="primary" onClick={handleReturnHome}>
+    <Button onClick={handleReturnHome}>
       {t('applied.noPaymentPermission.returnHome', { ns: 'education' })}
     </Button>
   )
