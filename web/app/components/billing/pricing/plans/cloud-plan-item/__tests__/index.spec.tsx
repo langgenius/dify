@@ -293,6 +293,47 @@ describe('CloudPlanItem', () => {
       })
     })
 
+    it('should show default CTA and hide warning when current user is not workspace manager', () => {
+      mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
+      mockUseProviderContext.mockReturnValue({
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.yearly}
+          canPay={false}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))!.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'education.useEducationDiscount' })).not.toBeInTheDocument()
+      expect(screen.queryByText('education.planNotSupportEducationDiscount')).not.toBeInTheDocument()
+    })
+
+    it('should hide education unsupported warning when current user is not workspace manager', () => {
+      mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
+      mockUseProviderContext.mockReturnValue({
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.monthly}
+          canPay={false}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))!.toBeInTheDocument()
+      expect(screen.queryByText('education.planNotSupportEducationDiscount')).not.toBeInTheDocument()
+    })
+
     it('should show education unsupported warning below the button without changing button text or blocking checkout', async () => {
       mockUseProviderContext.mockReturnValue({
         enableEducationPlan: true,

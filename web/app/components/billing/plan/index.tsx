@@ -40,7 +40,7 @@ const PlanComp: FC<Props> = ({
   const { t } = useTranslation()
   const router = useRouter()
   const path = usePathname()
-  const { userProfile } = useAppContext()
+  const { userProfile, isCurrentWorkspaceManager } = useAppContext()
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } = useProviderContext()
   const isAboutToExpire = allowRefreshEducationVerify
   const {
@@ -118,7 +118,7 @@ const PlanComp: FC<Props> = ({
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
-            {enableEducationPlan && isEducationAccount && (
+            {enableEducationPlan && isEducationAccount && type === Plan.sandbox && isCurrentWorkspaceManager && (
               <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
                 <RiGraduationCapLine className="mr-1 h-4 w-4" />
                 {t('useEducationDiscount', { ns: 'education' })}

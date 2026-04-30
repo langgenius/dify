@@ -206,7 +206,7 @@ describe('PlanComp', () => {
 
   it('shows education discount button and keeps upgrade button for education accounts', async () => {
     providerContextMock.mockReturnValue({
-      plan: planMock,
+      plan: { ...planMock, type: Plan.sandbox },
       enableEducationPlan: true,
       allowRefreshEducationVerify: false,
       isEducationAccount: true,
@@ -220,6 +220,31 @@ describe('PlanComp', () => {
       expect(assignedHref).toBe('https://subscription.example')
     })
     expect(screen.getByTestId('plan-upgrade-btn'))!.toBeInTheDocument()
+  })
+
+  it('does not show education discount button for non-sandbox education accounts', () => {
+    providerContextMock.mockReturnValue({
+      plan: planMock,
+      enableEducationPlan: true,
+      allowRefreshEducationVerify: false,
+      isEducationAccount: true,
+    })
+    render(<PlanComp loc="billing-page" />)
+
+    expect(screen.queryByText('education.useEducationDiscount')).not.toBeInTheDocument()
+  })
+
+  it('does not show education discount button for non-manager sandbox education accounts', () => {
+    isCurrentWorkspaceManager = false
+    providerContextMock.mockReturnValue({
+      plan: { ...planMock, type: Plan.sandbox },
+      enableEducationPlan: true,
+      allowRefreshEducationVerify: false,
+      isEducationAccount: true,
+    })
+    render(<PlanComp loc="billing-page" />)
+
+    expect(screen.queryByText('education.useEducationDiscount')).not.toBeInTheDocument()
   })
 
   it('renders enterprise plan without upgrade button', () => {

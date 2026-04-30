@@ -90,6 +90,23 @@ describe('Pricing', () => {
 
       expect(screen.getByRole('switch')).toBeChecked()
     })
+
+    it('should not default to yearly billing for non-manager education accounts', () => {
+      ;(useAppContext as Mock).mockReturnValue({ isCurrentWorkspaceManager: false })
+      ;(useProviderContext as Mock).mockReturnValue({
+        plan: {
+          type: Plan.sandbox,
+          usage: buildUsage(),
+          total: buildUsage(),
+        },
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(<Pricing onCancel={vi.fn()} />)
+
+      expect(screen.getByRole('switch')).not.toBeChecked()
+    })
   })
 
   describe('Props', () => {

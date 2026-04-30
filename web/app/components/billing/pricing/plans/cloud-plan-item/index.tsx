@@ -48,6 +48,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   plan,
   currentPlan,
   planRange,
+  canPay,
 }) => {
   const { t } = useTranslation()
   const [loading, setLoading] = React.useState(false)
@@ -65,7 +66,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const isEducationDiscountSupportedPlan = plan === Plan.professional && isYear
   const selectedPlanName = t(`${i18nPrefix}.name`, { ns: 'billing' })
   const selectedBillingPeriod = t(`educationPricingConfirm.billingPeriod.${isYear ? 'yearly' : 'monthly'}`, { ns: 'education' })
-  const educationDiscountWarningText = isEducationDiscountMode && !isFreePlan && !isEducationDiscountSupportedPlan
+  const educationDiscountWarningText = canPay && isEducationDiscountMode && !isFreePlan && !isEducationDiscountSupportedPlan
     ? t('planNotSupportEducationDiscount', { ns: 'education' })
     : undefined
   const openAsyncWindow = useAsyncWindowOpen()
@@ -74,7 +75,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const educationPricingConfirmInfo: ConfirmType = { type: 'warning' }
 
   const btnText = useMemo(() => {
-    if (isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrent)
+    if (canPay && isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrent)
       return t('useEducationDiscount', { ns: 'education' })
 
     if (isCurrent)
@@ -85,7 +86,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       [Plan.professional]: t('plansCommon.startBuilding', { ns: 'billing' }),
       [Plan.team]: t('plansCommon.getStarted', { ns: 'billing' }),
     })[plan]
-  }, [isCurrent, isEducationDiscountMode, isEducationDiscountSupportedPlan, plan, t])
+  }, [canPay, isCurrent, isEducationDiscountMode, isEducationDiscountSupportedPlan, plan, t])
 
   const handlePayCurrentPlan = async () => {
     if (loading || isEducationDiscountLoading)
