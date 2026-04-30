@@ -125,6 +125,7 @@ class EvaluationRun(Base):
     total_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     completed_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failed_items: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    metrics_summary: Mapped[str | None] = mapped_column(LongText, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -142,6 +143,12 @@ class EvaluationRun(Base):
         if self.total_items == 0:
             return 0.0
         return (self.completed_items + self.failed_items) / self.total_items
+
+    @property
+    def metrics_summary_dict(self) -> dict[str, Any]:
+        if self.metrics_summary:
+            return json.loads(self.metrics_summary)
+        return {}
 
     def __repr__(self) -> str:
         return f"<EvaluationRun(id={self.id}, status={self.status})>"

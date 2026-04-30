@@ -234,6 +234,32 @@ def get_evaluation_target(view_func: Callable[P, R]):
     return decorated_view
 
 
+def _load_evaluation_run_request_and_dataset(tenant_id: str) -> tuple[EvaluationRunRequest, bytes]:
+    """Validate the run payload and load the uploaded dataset bytes."""
+    body = request.get_json(force=True)
+    if not body:
+        raise BadRequest("Request body is required.")
+
+    try:
+        run_request = EvaluationRunRequest.model_validate(body)
+    except Exception as e:
+        raise BadRequest(f"Invalid request body: {e}")
+
+    upload_file = db.session.query(UploadFile).filter_by(id=run_request.file_id, tenant_id=tenant_id).first()
+    if not upload_file:
+        raise NotFound("Dataset file not found.")
+
+    try:
+        dataset_content = storage.load_once(upload_file.key)
+    except Exception:
+        raise BadRequest("Failed to read dataset file.")
+
+    if not dataset_content:
+        raise BadRequest("Dataset file is empty.")
+
+    return run_request, dataset_content
+
+
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/dataset-template/download")
 class EvaluationDatasetTemplateDownloadApi(Resource):
     @console_ns.doc("download_evaluation_dataset_template")
@@ -408,31 +434,56 @@ class EvaluationRunApi(Resource):
         - judgment_config: judgment conditions config (optional)
         """
         current_account, current_tenant_id = current_account_with_tenant()
-
-        body = request.get_json(force=True)
-        if not body:
-            raise BadRequest("Request body is required.")
-
-        # Validate and parse request body
-        try:
-            run_request = EvaluationRunRequest.model_validate(body)
-        except Exception as e:
-            raise BadRequest(f"Invalid request body: {e}")
-
-        # Load dataset file
-        upload_file = (
-            db.session.query(UploadFile).filter_by(id=run_request.file_id, tenant_id=current_tenant_id).first()
-        )
-        if not upload_file:
-            raise NotFound("Dataset file not found.")
+        run_request, dataset_content = _load_evaluation_run_request_and_dataset(current_tenant_id)
 
         try:
-            dataset_content = storage.load_once(upload_file.key)
-        except Exception:
-            raise BadRequest("Failed to read dataset file.")
+            with Session(db.engine, expire_on_commit=False) as session:
+                if target_type == EvaluationTargetType.APPS.value:
+                    evaluation_run = EvaluationService.start_stub_evaluation_run(
+                        session=session,
+                        tenant_id=current_tenant_id,
+                        target_type=target_type,
+                        target_id=str(target.id),
+                        account_id=str(current_account.id),
+                        dataset_file_content=dataset_content,
+                        run_request=run_request,
+                    )
+                else:
+                    evaluation_run = EvaluationService.start_evaluation_run(
+                        session=session,
+                        tenant_id=current_tenant_id,
+                        target_type=target_type,
+                        target_id=str(target.id),
+                        account_id=str(current_account.id),
+                        dataset_file_content=dataset_content,
+                        run_request=run_request,
+                    )
+                return _serialize_evaluation_run(evaluation_run), 200
+        except EvaluationFrameworkNotConfiguredError as e:
+            return {"message": str(e.description)}, 400
+        except EvaluationNotFoundError as e:
+            return {"message": str(e.description)}, 404
+        except EvaluationMaxConcurrentRunsError as e:
+            return {"message": str(e.description)}, 429
+        except EvaluationDatasetInvalidError as e:
+            return {"message": str(e.description)}, 400
 
-        if not dataset_content:
-            raise BadRequest("Dataset file is empty.")
+
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run1")
+class EvaluationRunRealApi(Resource):
+    @console_ns.doc("start_evaluation_run_real")
+    @console_ns.response(200, "Evaluation run started")
+    @console_ns.response(400, "Invalid request")
+    @console_ns.response(404, "Target not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_evaluation_target
+    @edit_permission_required
+    def post(self, target: Union[App, CustomizedSnippet, Dataset], target_type: str):
+        """Start the real evaluation execution flow on the temporary dev path."""
+        current_account, current_tenant_id = current_account_with_tenant()
+        run_request, dataset_content = _load_evaluation_run_request_and_dataset(current_tenant_id)
 
         try:
             with Session(db.engine, expire_on_commit=False) as session:
