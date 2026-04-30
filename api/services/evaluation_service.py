@@ -495,7 +495,13 @@ class EvaluationService:
         _persist_results(session, evaluation_run.id, results, items)
 
         result_xlsx = _generate_result_xlsx(items, results)
-        result_file_id = _store_result_file(tenant_id, evaluation_run.id, result_xlsx, session)
+        result_file_id = _store_result_file(
+            tenant_id,
+            evaluation_run.id,
+            result_xlsx,
+            session,
+            created_by=account_id,
+        )
         if result_file_id:
             evaluation_run.result_file_id = result_file_id
             session.commit()

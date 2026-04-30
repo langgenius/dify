@@ -123,7 +123,13 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
     result_xlsx = _generate_result_xlsx(run_data.input_list, results)
 
     # Store result file
-    result_file_id = _store_result_file(run_data.tenant_id, run_data.evaluation_run_id, result_xlsx, session)
+    result_file_id = _store_result_file(
+        run_data.tenant_id,
+        run_data.evaluation_run_id,
+        result_xlsx,
+        session,
+        created_by=evaluation_run.created_by,
+    )
 
     # Update run to completed
     evaluation_run = session.query(EvaluationRun).filter_by(id=run_data.evaluation_run_id).first()
@@ -509,6 +515,7 @@ def _store_result_file(
     run_id: str,
     xlsx_content: bytes,
     session: Any,
+    created_by: str,
 ) -> str | None:
     """Store result XLSX file and return the UploadFile ID."""
     try:
@@ -529,7 +536,7 @@ def _store_result_file(
             extension="xlsx",
             mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="system",
+            created_by=created_by,
             created_at=naive_utc_now(),
             used=False,
         )
@@ -537,5 +544,6 @@ def _store_result_file(
         session.commit()
         return upload_file.id
     except Exception:
+        session.rollback()
         logger.exception("Failed to store result file for run %s", run_id)
         return None
