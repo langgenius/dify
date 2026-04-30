@@ -321,7 +321,7 @@ describe('OptionCard', () => {
   })
 
   describe('Callback Stability', () => {
-    it('should maintain stable handleClickCard callback when props dont change', () => {
+    it('should maintain stable handleClickCard callback when props don't change', () => {
       const onClick = vi.fn()
       const nodeData = createNodeData()
 
