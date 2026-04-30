@@ -1,10 +1,10 @@
-from sqlalchemy.orm import Session
 import uuid
 from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
 from sqlalchemy import delete
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -173,7 +173,9 @@ def _create_workflow_pause_state(
     db_session_with_containers.commit()
 
 
-def test_dispatch_human_input_email_task_integration(monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session):
+def test_dispatch_human_input_email_task_integration(
+    monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+):
     tenant, account = _create_workspace_member(db_session_with_containers)
     workflow_run_id = str(uuid.uuid4())
     workflow_id = str(uuid.uuid4())

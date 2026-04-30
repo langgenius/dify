@@ -7,9 +7,6 @@ The task is responsible for removing document segments from the vector index whe
 are deleted from the dataset.
 """
 
-from models import DatasetPermissionEnum
-from models import AccountStatus
-from models import TenantStatus
 import logging
 from unittest.mock import MagicMock, patch
 
@@ -17,7 +14,16 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, Dataset, Document, DocumentSegment, Tenant
+from models import (
+    Account,
+    AccountStatus,
+    Dataset,
+    DatasetPermissionEnum,
+    Document,
+    DocumentSegment,
+    Tenant,
+    TenantStatus,
+)
 from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 
@@ -90,7 +96,9 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return account
 
-    def _create_test_dataset(self, db_session_with_containers: Session, tenant:Tenant, account:Account, fake:Faker|None=None):
+    def _create_test_dataset(
+        self, db_session_with_containers: Session, tenant: Tenant, account: Account, fake: Faker | None = None
+    ):
         """
         Helper method to create a test dataset with realistic data.
 
@@ -177,7 +185,12 @@ class TestDeleteSegmentFromIndexTask:
         return document
 
     def _create_test_document_segments(
-        self, db_session_with_containers: Session, document:Document, account:Account, count:int=3, fake:Faker|None=None
+        self,
+        db_session_with_containers: Session,
+        document: Document,
+        account: Account,
+        count: int = 3,
+        fake: Faker | None = None,
     ):
         """
         Helper method to create test document segments with realistic data.
@@ -224,7 +237,9 @@ class TestDeleteSegmentFromIndexTask:
         return segments
 
     @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_success(self, mock_index_processor_factory, db_session_with_containers: Session):
+    def test_delete_segment_from_index_task_success(
+        self, mock_index_processor_factory, db_session_with_containers: Session
+    ):
         """
         Test successful segment deletion from index with comprehensive verification.
 

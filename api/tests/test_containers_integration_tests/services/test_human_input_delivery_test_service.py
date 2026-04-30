@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -7,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.workflow.human_input_adapter import (

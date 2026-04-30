@@ -1,8 +1,9 @@
-from sqlalchemy.orm import Session
 from __future__ import annotations
 
 from unittest.mock import patch
 from uuid import uuid4
+
+from sqlalchemy.orm import Session
 
 from models.model import App, RecommendedApp, Site
 from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
@@ -112,7 +113,9 @@ class TestFetchRecommendedAppsFromDb:
         assert "assistant" in result["categories"]
         assert "writing" in result["categories"]
 
-    def test_falls_back_to_default_language_when_empty(self, flask_app_with_containers, db_session_with_containers: Session):
+    def test_falls_back_to_default_language_when_empty(
+        self, flask_app_with_containers, db_session_with_containers: Session
+    ):
         tenant_id = str(uuid4())
         app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
         _create_site(db_session_with_containers, app_id=app1.id)

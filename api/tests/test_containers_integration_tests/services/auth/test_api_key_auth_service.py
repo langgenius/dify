@@ -57,7 +57,9 @@ class TestApiKeyAuthService:
         assert len(tenant_results) == 1
         assert tenant_results[0].provider == provider
 
-    def test_get_provider_auth_list_empty(self, flask_app_with_containers, db_session_with_containers: Session, tenant_id):
+    def test_get_provider_auth_list_empty(
+        self, flask_app_with_containers, db_session_with_containers: Session, tenant_id
+    ):
         result = ApiKeyAuthService.get_provider_auth_list(tenant_id)
 
         tenant_results = [r for r in result if r.tenant_id == tenant_id]
@@ -79,7 +81,13 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
     def test_create_provider_auth_success(
-        self, mock_encrypter, mock_factory, flask_app_with_containers, db_session_with_containers: Session, tenant_id, mock_args
+        self,
+        mock_encrypter,
+        mock_factory,
+        flask_app_with_containers,
+        db_session_with_containers: Session,
+        tenant_id,
+        mock_args,
     ):
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
@@ -113,7 +121,13 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
     def test_create_provider_auth_encrypts_api_key(
-        self, mock_encrypter, mock_factory, flask_app_with_containers, db_session_with_containers: Session, tenant_id, mock_args
+        self,
+        mock_encrypter,
+        mock_factory,
+        flask_app_with_containers,
+        db_session_with_containers: Session,
+        tenant_id,
+        mock_args,
     ):
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
@@ -129,7 +143,13 @@ class TestApiKeyAuthService:
         mock_encrypter.encrypt_token.assert_called_once_with(tenant_id, original_key)
 
     def test_get_auth_credentials_success(
-        self, flask_app_with_containers, db_session_with_containers: Session, tenant_id, category, provider, mock_credentials
+        self,
+        flask_app_with_containers,
+        db_session_with_containers: Session,
+        tenant_id,
+        category,
+        provider,
+        mock_credentials,
     ):
         self._create_binding(
             db_session_with_containers,
@@ -184,7 +204,9 @@ class TestApiKeyAuthService:
         remaining = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(id=binding_id).first()
         assert remaining is None
 
-    def test_delete_provider_auth_not_found(self, flask_app_with_containers, db_session_with_containers: Session, tenant_id):
+    def test_delete_provider_auth_not_found(
+        self, flask_app_with_containers, db_session_with_containers: Session, tenant_id
+    ):
         # Should not raise when binding not found
         ApiKeyAuthService.delete_provider_auth(tenant_id, str(uuid4()))
 

@@ -1,9 +1,9 @@
-from sqlalchemy.orm import Session
 import uuid
 from unittest.mock import ANY, call, patch
 
 import pytest
 from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
 from extensions.storage.storage_type import StorageType

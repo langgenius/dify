@@ -5,10 +5,10 @@ This module exercises persisted DatasetPermission rows and dataset permission
 checks with testcontainers-backed infrastructure instead of database-chain mocks.
 """
 
-from sqlalchemy.orm import Session
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
@@ -461,7 +461,9 @@ class TestDatasetServiceCheckDatasetPermission:
 
         DatasetService.check_dataset_permission(dataset, member)
 
-    def test_check_dataset_permission_partial_members_with_permission_success(self, db_session_with_containers: Session):
+    def test_check_dataset_permission_partial_members_with_permission_success(
+        self, db_session_with_containers: Session
+    ):
         """
         Test that user with explicit permission can access partial_members dataset.
         """
@@ -486,7 +488,9 @@ class TestDatasetServiceCheckDatasetPermission:
         permissions = DatasetPermissionService.get_dataset_partial_member_list(dataset.id)
         assert user.id in permissions
 
-    def test_check_dataset_permission_partial_members_without_permission_error(self, db_session_with_containers: Session):
+    def test_check_dataset_permission_partial_members_without_permission_error(
+        self, db_session_with_containers: Session
+    ):
         """
         Test error when user without permission tries to access partial_members dataset.
         """

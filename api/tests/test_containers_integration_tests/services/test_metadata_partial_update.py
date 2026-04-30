@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from __future__ import annotations
 
 from unittest.mock import Mock, patch
@@ -6,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from models.dataset import Dataset, DatasetMetadataBinding, Document
 from models.enums import DataSourceType, DocumentCreatedFrom

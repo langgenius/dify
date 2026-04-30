@@ -2,7 +2,6 @@
 API Key Authentication System Integration Tests
 """
 
-from sqlalchemy.orm import Session
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
@@ -11,6 +10,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from sqlalchemy.orm import Session
 
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory

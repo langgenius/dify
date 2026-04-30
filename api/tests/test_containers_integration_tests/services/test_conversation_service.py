@@ -1,5 +1,4 @@
 from __future__ import annotations
-from sqlalchemy.orm import Session
 
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -8,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account, Tenant, TenantAccountJoin
@@ -400,7 +400,9 @@ class TestConversationServiceMessageCreation:
         assert len(result.data) == 2  # Only 2 messages returned after first_id
         assert result.has_more is False  # No more messages available (2 < limit of 10)
 
-    def test_pagination_by_first_id_raises_error_when_first_message_not_found(self, db_session_with_containers: Session):
+    def test_pagination_by_first_id_raises_error_when_first_message_not_found(
+        self, db_session_with_containers: Session
+    ):
         """
         Test that FirstMessageNotExistsError is raised when first_id doesn't exist.
 
@@ -572,7 +574,9 @@ class TestConversationServiceSummarization:
             ConversationService.auto_generate_name(app_model, conversation)
 
     @patch("services.conversation_service.LLMGenerator.generate_conversation_name")
-    def test_auto_generate_name_handles_llm_failure_gracefully(self, mock_llm_generator, db_session_with_containers: Session):
+    def test_auto_generate_name_handles_llm_failure_gracefully(
+        self, mock_llm_generator, db_session_with_containers: Session
+    ):
         """
         Test that LLM generation failures are suppressed and don't crash.
 
@@ -683,7 +687,9 @@ class TestConversationServiceMessageAnnotation:
 
     @patch("services.annotation_service.add_annotation_to_index_task")
     @patch("services.annotation_service.current_account_with_tenant")
-    def test_create_annotation_from_message(self, mock_current_account, mock_add_task, db_session_with_containers: Session):
+    def test_create_annotation_from_message(
+        self, mock_current_account, mock_add_task, db_session_with_containers: Session
+    ):
         """
         Test creating annotation from existing message.
 
@@ -722,7 +728,9 @@ class TestConversationServiceMessageAnnotation:
 
     @patch("services.annotation_service.add_annotation_to_index_task")
     @patch("services.annotation_service.current_account_with_tenant")
-    def test_create_annotation_without_message(self, mock_current_account, mock_add_task, db_session_with_containers: Session):
+    def test_create_annotation_without_message(
+        self, mock_current_account, mock_add_task, db_session_with_containers: Session
+    ):
         """
         Test creating standalone annotation without message.
 

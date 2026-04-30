@@ -4,7 +4,6 @@ Verifies enterprise account deletion sync functionality including
 Redis queuing, error handling, and community vs enterprise behavior.
 """
 
-from sqlalchemy.orm import Session
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -12,6 +11,7 @@ from uuid import uuid4
 
 import pytest
 from redis import RedisError
+from sqlalchemy.orm import Session
 
 from extensions.ext_redis import redis_client
 from models.account import TenantAccountJoin

@@ -1,9 +1,9 @@
 """Testcontainers integration tests for CreditPoolService."""
 
-from sqlalchemy.orm import Session
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.errors.error import QuotaExceededError
 from models import TenantCreditPool

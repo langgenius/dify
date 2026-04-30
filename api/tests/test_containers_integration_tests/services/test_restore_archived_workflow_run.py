@@ -2,13 +2,13 @@
 Testcontainers integration tests for workflow run restore functionality.
 """
 
-from sqlalchemy.orm import Session
 from __future__ import annotations
 
 from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from models.workflow import WorkflowPause, WorkflowRun
 from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
