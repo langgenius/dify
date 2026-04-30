@@ -263,6 +263,7 @@ def test_publish_evaluation_workflow_success(app, monkeypatch: pytest.MonkeyPatc
     workflow = SimpleNamespace(created_at=datetime(2024, 1, 1), id="wf-1")
     user = SimpleNamespace(id="account-1")
     app_model = SimpleNamespace(id="app-1")
+    session_kwargs: dict[str, object] = {}
 
     class _FakeSession:
         def __enter__(self) -> "_FakeSession":
@@ -284,7 +285,8 @@ def test_publish_evaluation_workflow_success(app, monkeypatch: pytest.MonkeyPatc
             return None
 
     class _FakeSessionFactory:
-        def __call__(self, _engine) -> _FakeSession:
+        def __call__(self, _engine, **kwargs) -> _FakeSession:
+            session_kwargs.update(kwargs)
             return _FakeSession()
 
     monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "tenant-1"))
@@ -308,6 +310,60 @@ def test_publish_evaluation_workflow_success(app, monkeypatch: pytest.MonkeyPatc
 
     assert response["result"] == "success"
     assert response["created_at"] is not None
+    assert session_kwargs == {"expire_on_commit": False}
+
+
+def test_convert_workflow_type_uses_non_expiring_session(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        created_at=datetime(2024, 1, 1),
+        updated_at=datetime(2024, 1, 2),
+        id="wf-2",
+        type=workflow_module.WorkflowKind.EVALUATION,
+        kind_or_standard="evaluation",
+    )
+    user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1")
+    session_kwargs: dict[str, object] = {}
+
+    class _FakeSession:
+        def __enter__(self) -> "_FakeSession":
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        def commit(self) -> None:
+            return None
+
+    class _FakeSessionFactory:
+        def __call__(self, _engine, **kwargs) -> _FakeSession:
+            session_kwargs.update(kwargs)
+            return _FakeSession()
+
+    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "tenant-1"))
+    monkeypatch.setattr(workflow_module, "Session", _FakeSessionFactory())
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(convert_published_workflow_type=lambda **_kwargs: workflow),
+    )
+
+    api = workflow_module.WorkflowTypeConvertApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/convert-type?target_type=evaluation",
+        method="POST",
+    ):
+        response = handler(api, app_model=app_model)
+
+    assert response["result"] == "success"
+    assert response["workflow_id"] == "wf-2"
+    assert response["type"] == workflow_module.WorkflowKind.EVALUATION.value
+    assert response["kind"] == "evaluation"
+    assert response["updated_at"] is not None
+    assert session_kwargs == {"expire_on_commit": False}
 
 
 def test_get_published_workflows_marshals_items_before_session_closes(app, monkeypatch: pytest.MonkeyPatch) -> None:

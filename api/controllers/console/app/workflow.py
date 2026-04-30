@@ -900,7 +900,7 @@ class EvaluationPublishedWorkflowApi(Resource):
         args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             workflow = workflow_service.publish_evaluation_workflow(
                 session=session,
                 app_model=app_model,
@@ -1142,7 +1142,7 @@ class WorkflowTypeConvertApi(Resource):
         target_type = WorkflowKind.EVALUATION if args.target_type == "evaluation" else WorkflowKind.STANDARD
 
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
+        with Session(db.engine, expire_on_commit=False) as session:
             try:
                 workflow = workflow_service.convert_published_workflow_type(
                     session=session,
