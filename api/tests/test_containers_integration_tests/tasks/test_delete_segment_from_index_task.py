@@ -38,7 +38,7 @@ class TestDeleteSegmentFromIndexTask:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_tenant(self, db_session_with_containers: Session, fake:Faker|None=None):
+    def _create_test_tenant(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
         Helper method to create a test tenant with realistic data.
 
@@ -59,7 +59,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return tenant
 
-    def _create_test_account(self, db_session_with_containers: Session, tenant, fake:Faker|None=None):
+    def _create_test_account(self, db_session_with_containers: Session, tenant, fake: Faker | None = None):
         """
         Helper method to create a test account with realistic data.
 
@@ -87,7 +87,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return account
 
-    def _create_test_dataset(self, db_session_with_containers: Session, tenant, account, fake:Faker|None=None):
+    def _create_test_dataset(self, db_session_with_containers: Session, tenant, account, fake: Faker | None = None):
         """
         Helper method to create a test dataset with realistic data.
 
