@@ -35,7 +35,7 @@ export type GetExploreAppsData = {
   body?: never
   path?: never
   query?: {
-    language?: string
+    language?: string | null
   }
   url: '/explore/apps'
 }

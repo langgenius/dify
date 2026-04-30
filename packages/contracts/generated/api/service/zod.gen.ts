@@ -619,8 +619,8 @@ export const zWorkflowAppLogPaginationResponse = z.object({
 export const zGetRootResponse = z.record(z.string(), z.unknown())
 
 export const zGetAppFeedbacksQuery = z.object({
-  limit: z.int().optional().default(20),
-  page: z.int().optional().default(1),
+  limit: z.int().gte(1).lte(101).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
 })
 
 /**
@@ -722,8 +722,8 @@ export const zPostCompletionMessagesByTaskIdStopPath = z.object({
 export const zPostCompletionMessagesByTaskIdStopResponse = z.record(z.string(), z.unknown())
 
 export const zGetConversationsQuery = z.object({
-  last_id: z.string().optional(),
-  limit: z.int().optional().default(20),
+  last_id: z.string().nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
   sort_by: z
     .enum(['created_at', '-created_at', 'updated_at', '-updated_at'])
     .optional()
@@ -760,9 +760,9 @@ export const zGetConversationsByCIdVariablesPath = z.object({
 })
 
 export const zGetConversationsByCIdVariablesQuery = z.object({
-  last_id: z.string().optional(),
-  limit: z.int().optional().default(20),
-  variable_name: z.string().optional(),
+  last_id: z.string().nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  variable_name: z.string().min(1).max(255).nullish(),
 })
 
 /**
@@ -1039,7 +1039,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.object
 })
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery = z.object({
-  keyword: z.string().optional(),
+  keyword: z.string().nullish(),
   status: z.array(z.string()).optional(),
 })
 
@@ -1081,9 +1081,9 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdR
 )
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
-  segment_id: z.string(),
   document_id: z.string(),
   dataset_id: z.string(),
+  segment_id: z.string(),
 })
 
 /**
@@ -1120,9 +1120,9 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery
   = z.object({
-    keyword: z.string().optional(),
-    limit: z.int().optional().default(20),
-    page: z.int().optional().default(1),
+    keyword: z.string().nullish(),
+    limit: z.int().gte(1).optional().default(20),
+    page: z.int().gte(1).optional().default(1),
   })
 
 /**
@@ -1427,8 +1427,8 @@ export const zGetInfoResponse = z.record(z.string(), z.unknown())
 
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),
-  first_id: z.string().optional(),
-  limit: z.int().optional().default(20),
+  first_id: z.string().nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
 /**
@@ -1494,13 +1494,13 @@ export const zGetWorkflowByTaskIdEventsQuery = z.object({
 export const zGetWorkflowByTaskIdEventsResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkflowsLogsQuery = z.object({
-  created_at__after: z.string().optional(),
-  created_at__before: z.string().optional(),
-  created_by_account: z.string().optional(),
-  created_by_end_user_session_id: z.string().optional(),
-  keyword: z.string().optional(),
-  limit: z.int().optional().default(20),
-  page: z.int().optional().default(1),
+  created_at__after: z.string().nullish(),
+  created_at__before: z.string().nullish(),
+  created_by_account: z.string().nullish(),
+  created_by_end_user_session_id: z.string().nullish(),
+  keyword: z.string().nullish(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).lte(99999).optional().default(1),
   status: z.enum(['succeeded', 'failed', 'stopped']).optional(),
 })
 

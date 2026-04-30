@@ -3,8 +3,8 @@
 import * as z from 'zod'
 
 export const zGetAllWorkspacesQuery = z.object({
-  limit: z.int().optional().default(20),
-  page: z.int().optional().default(1),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).lte(99999).optional().default(1),
 })
 
 /**

@@ -825,7 +825,7 @@ export type GetConversationsData = {
   body?: never
   path?: never
   query?: {
-    last_id?: string
+    last_id?: string | null
     limit?: number
     sort_by?: 'created_at' | '-created_at' | 'updated_at' | '-updated_at'
   }
@@ -917,9 +917,9 @@ export type GetConversationsByCIdVariablesData = {
     c_id: string
   }
   query?: {
-    last_id?: string
+    last_id?: string | null
     limit?: number
-    variable_name?: string
+    variable_name?: string | null
   }
   url: '/conversations/{c_id}/variables'
 }
@@ -1736,7 +1736,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
     document_id: string
   }
   query?: {
-    keyword?: string
+    keyword?: string | null
     status?: Array<string>
   }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
@@ -1832,9 +1832,9 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdRes
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body?: never
   path: {
-    segment_id: string
     document_id: string
     dataset_id: string
+    segment_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
@@ -1901,7 +1901,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
     segment_id: string
   }
   query?: {
-    keyword?: string
+    keyword?: string | null
     limit?: number
     page?: number
   }
@@ -2703,7 +2703,7 @@ export type GetMessagesData = {
   path?: never
   query: {
     conversation_id: string
-    first_id?: string
+    first_id?: string | null
     limit?: number
   }
   url: '/messages'
@@ -2939,11 +2939,11 @@ export type GetWorkflowsLogsData = {
   body?: never
   path?: never
   query?: {
-    created_at__after?: string
-    created_at__before?: string
-    created_by_account?: string
-    created_by_end_user_session_id?: string
-    keyword?: string
+    created_at__after?: string | null
+    created_at__before?: string | null
+    created_by_account?: string | null
+    created_by_end_user_session_id?: string | null
+    keyword?: string | null
     limit?: number
     page?: number
     status?: 'succeeded' | 'failed' | 'stopped'

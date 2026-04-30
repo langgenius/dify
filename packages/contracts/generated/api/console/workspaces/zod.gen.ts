@@ -808,7 +808,7 @@ export const zPostWorkspacesCurrentEndpointsEnableBody = zEndpointIdPayload
 export const zPostWorkspacesCurrentEndpointsEnableResponse = zEndpointEnableResponse
 
 export const zGetWorkspacesCurrentEndpointsListQuery = z.object({
-  page: z.int(),
+  page: z.int().gte(1),
   page_size: z.int(),
 })
 
@@ -818,7 +818,7 @@ export const zGetWorkspacesCurrentEndpointsListQuery = z.object({
 export const zGetWorkspacesCurrentEndpointsListResponse = zEndpointListResponse
 
 export const zGetWorkspacesCurrentEndpointsListPluginQuery = z.object({
-  page: z.int(),
+  page: z.int().gte(1),
   page_size: z.int(),
   plugin_id: z.string(),
 })
@@ -926,7 +926,7 @@ export const zPutWorkspacesCurrentMembersByMemberIdUpdateRoleResponse = z.record
 )
 
 export const zGetWorkspacesCurrentModelProvidersQuery = z.object({
-  model_type: z.string().optional(),
+  model_type: z.string().nullish(),
 })
 
 /**
@@ -966,7 +966,7 @@ export const zGetWorkspacesCurrentModelProvidersByProviderCredentialsPath = z.ob
 })
 
 export const zGetWorkspacesCurrentModelProvidersByProviderCredentialsQuery = z.object({
-  credential_id: z.string().optional(),
+  credential_id: z.string().nullish(),
 })
 
 /**
@@ -1095,8 +1095,8 @@ export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath 
 })
 
 export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsQuery = z.object({
-  config_from: z.string().optional(),
-  credential_id: z.string().optional(),
+  config_from: z.string().nullish(),
+  credential_id: z.string().nullish(),
   model: z.string(),
   model_type: z.string(),
 })
@@ -1331,8 +1331,8 @@ export const zPostWorkspacesCurrentPluginInstallPkgBody = zParserPluginIdentifie
 export const zPostWorkspacesCurrentPluginInstallPkgResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkspacesCurrentPluginListQuery = z.object({
-  page: z.int().optional().default(1),
-  page_size: z.int().optional().default(256),
+  page: z.int().gte(1).optional().default(1),
+  page_size: z.int().gte(1).lte(256).optional().default(256),
 })
 
 /**
@@ -1371,7 +1371,7 @@ export const zGetWorkspacesCurrentPluginMarketplacePkgResponse = z.record(z.stri
 
 export const zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery = z.object({
   action: z.string(),
-  credential_id: z.string().optional(),
+  credential_id: z.string().nullish(),
   parameter: z.string(),
   plugin_id: z.string(),
   provider: z.string(),
@@ -1448,8 +1448,8 @@ export const zGetWorkspacesCurrentPluginReadmeQuery = z.object({
 export const zGetWorkspacesCurrentPluginReadmeResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkspacesCurrentPluginTasksQuery = z.object({
-  page: z.int().optional().default(1),
-  page_size: z.int().optional().default(256),
+  page: z.int().gte(1).optional().default(1),
+  page_size: z.int().gte(1).lte(256).optional().default(256),
 })
 
 /**

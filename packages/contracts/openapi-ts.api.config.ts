@@ -318,11 +318,56 @@ const queryParameterFromSchema = (
   if (querySchema.items)
     parameter.items = querySchema.items
 
+  for (const key of [
+    'exclusiveMaximum',
+    'exclusiveMinimum',
+    'maxItems',
+    'maxLength',
+    'maximum',
+    'minItems',
+    'minLength',
+    'minimum',
+    'multipleOf',
+    'pattern',
+    'uniqueItems',
+    'x-nullable',
+  ]) {
+    if (querySchema[key] !== undefined)
+      parameter[key] = querySchema[key]
+  }
+
   parameter.type = ['array', 'boolean', 'integer', 'number', 'string'].includes(querySchema.type ?? '')
     ? querySchema.type
     : 'string'
 
   return parameter
+}
+
+const mergeQueryParameter = (
+  parameters: SwaggerParameter[],
+  queryParameter: SwaggerParameter,
+) => {
+  const existingIndex = parameters.findIndex((parameter) => {
+    return parameter.in === 'query' && parameter.name === queryParameter.name
+  })
+
+  if (existingIndex === -1) {
+    parameters.push(queryParameter)
+    return
+  }
+
+  const existingParameter = parameters[existingIndex]
+  if (!existingParameter) {
+    parameters.push(queryParameter)
+    return
+  }
+
+  parameters[existingIndex] = {
+    ...existingParameter,
+    ...queryParameter,
+    description: queryParameter.description ?? existingParameter.description,
+    required: Boolean(existingParameter.required) || Boolean(queryParameter.required),
+  }
 }
 
 const normalizeGetBodyParameters = (
@@ -332,20 +377,29 @@ const normalizeGetBodyParameters = (
   if (!Array.isArray(operation.parameters))
     return
 
+  const bodyParameters: SwaggerParameter[] = []
   const normalizedParameters: SwaggerParameter[] = []
 
   for (const parameter of operation.parameters) {
-    if (parameter.in !== 'body') {
-      normalizedParameters.push(parameter)
+    if (parameter.in === 'body') {
+      bodyParameters.push(parameter)
       continue
     }
 
+    normalizedParameters.push(parameter)
+  }
+
+  for (const parameter of bodyParameters) {
     const schema = resolveDefinitionRef(parameter.schema, definitions)
     const properties = schema?.properties ?? {}
     const required = new Set(schema?.required ?? [])
 
-    for (const [name, propertySchema] of Object.entries(properties))
-      normalizedParameters.push(queryParameterFromSchema(name, propertySchema, required.has(name)))
+    for (const [name, propertySchema] of Object.entries(properties)) {
+      mergeQueryParameter(
+        normalizedParameters,
+        queryParameterFromSchema(name, propertySchema, required.has(name)),
+      )
+    }
   }
 
   operation.parameters = normalizedParameters

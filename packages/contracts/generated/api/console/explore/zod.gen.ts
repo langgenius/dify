@@ -39,7 +39,7 @@ export const zRecommendedAppListResponse = z.object({
 })
 
 export const zGetExploreAppsQuery = z.object({
-  language: z.string().optional(),
+  language: z.string().nullish(),
 })
 
 /**

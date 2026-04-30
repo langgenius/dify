@@ -985,7 +985,7 @@ export type GetWorkspacesCurrentModelProvidersData = {
   body?: never
   path?: never
   query?: {
-    model_type?: string
+    model_type?: string | null
   }
   url: '/workspaces/current/model-providers'
 }
@@ -1041,7 +1041,7 @@ export type GetWorkspacesCurrentModelProvidersByProviderCredentialsData = {
     provider: string
   }
   query?: {
-    credential_id?: string
+    credential_id?: string | null
   }
   url: '/workspaces/current/model-providers/{provider}/credentials'
 }
@@ -1205,8 +1205,8 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = 
     provider: string
   }
   query: {
-    config_from?: string
-    credential_id?: string
+    config_from?: string | null
+    credential_id?: string | null
     model: string
     model_type: string
   }
@@ -1637,7 +1637,7 @@ export type GetWorkspacesCurrentPluginParametersDynamicOptionsData = {
   path?: never
   query: {
     action: string
-    credential_id?: string
+    credential_id?: string | null
     parameter: string
     plugin_id: string
     provider: string

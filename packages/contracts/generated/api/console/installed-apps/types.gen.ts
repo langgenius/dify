@@ -248,9 +248,9 @@ export type GetInstalledAppsByInstalledAppIdConversationsData = {
     installed_app_id: string
   }
   query?: {
-    last_id?: string
+    last_id?: string | null
     limit?: number
-    pinned?: boolean
+    pinned?: boolean | null
   }
   url: '/installed-apps/{installed_app_id}/conversations'
 }
@@ -347,7 +347,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
   }
   query: {
     conversation_id: string
-    first_id?: string
+    first_id?: string | null
     limit?: number
   }
   url: '/installed-apps/{installed_app_id}/messages'
@@ -463,7 +463,7 @@ export type GetInstalledAppsByInstalledAppIdSavedMessagesData = {
     installed_app_id: string
   }
   query?: {
-    last_id?: string
+    last_id?: string | null
     limit?: number
   }
   url: '/installed-apps/{installed_app_id}/saved-messages'
