@@ -1,5 +1,6 @@
 """Testcontainers integration tests for OAuthServerService."""
 
+from sqlalchemy.orm import Session
 from __future__ import annotations
 
 import uuid
@@ -25,7 +26,7 @@ from services.oauth_server import (
 class TestOAuthServerServiceGetProviderApp:
     """DB-backed tests for get_oauth_provider_app."""
 
-    def _create_oauth_provider_app(self, db_session_with_containers, *, client_id: str) -> OAuthProviderApp:
+    def _create_oauth_provider_app(self, db_session_with_containers: Session, *, client_id: str) -> OAuthProviderApp:
         app = OAuthProviderApp(
             app_icon="icon.png",
             client_id=client_id,

@@ -2,6 +2,7 @@
 Testcontainers integration tests for archived workflow run deletion service.
 """
 
+from sqlalchemy.orm import Session
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -46,7 +47,7 @@ class TestArchivedWorkflowRunDeletion:
         db_session_with_containers.commit()
         return run
 
-    def _create_archive_log(self, db_session_with_containers, *, run: WorkflowRun) -> None:
+    def _create_archive_log(self, db_session_with_containers: Session, *, run: WorkflowRun) -> None:
         archive_log = WorkflowArchiveLog(
             tenant_id=run.tenant_id,
             app_id=run.app_id,

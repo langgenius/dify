@@ -1,3 +1,4 @@
+from sqlalchemy.orm import Session
 import json
 from io import BytesIO
 from unittest.mock import MagicMock, patch
@@ -52,7 +53,7 @@ class TestWebhookService:
             }
 
     @pytest.fixture
-    def test_data(self, db_session_with_containers, mock_external_dependencies):
+    def test_data(self, db_session_with_containers: Session, mock_external_dependencies):
         """Create test data for webhook service tests."""
         fake = Faker()
 

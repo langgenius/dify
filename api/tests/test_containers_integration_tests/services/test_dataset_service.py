@@ -712,7 +712,7 @@ class TestDatasetServiceRetrievalConfiguration:
 class TestDocumentServicePauseRecoverRetry:
     """Tests for pause/recover/retry orchestration using real DB and Redis."""
 
-    def _create_indexing_document(self, db_session_with_containers, indexing_status="indexing"):
+    def _create_indexing_document(self, db_session_with_containers: Session, indexing_status="indexing"):
         factory = DatasetServiceIntegrationDataFactory
         account, tenant = factory.create_account_with_tenant(db_session_with_containers)
         dataset = factory.create_dataset(db_session_with_containers, tenant.id, account.id)

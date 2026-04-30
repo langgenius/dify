@@ -10,6 +10,7 @@ All tests use the testcontainers infrastructure to ensure proper database isolat
 and realistic testing scenarios with actual PostgreSQL and Redis instances.
 """
 
+from sqlalchemy.orm import Session
 import json
 import uuid
 from datetime import UTC, datetime
@@ -147,7 +148,7 @@ class TestMailInviteMemberTask:
         redis_client.setex(cache_key, 24 * 60 * 60, json.dumps(invitation_data))  # 24 hours
         return token
 
-    def _create_pending_account_for_invitation(self, db_session_with_containers, email, tenant):
+    def _create_pending_account_for_invitation(self, db_session_with_containers: Session, email, tenant):
         """
         Helper method to create a pending account for invitation testing.
 
@@ -185,7 +186,7 @@ class TestMailInviteMemberTask:
 
         return account
 
-    def test_send_invite_member_mail_success(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_send_invite_member_mail_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
         Test successful invitation email sending with all parameters.
 
@@ -231,7 +232,7 @@ class TestMailInviteMemberTask:
         assert template_context["url"] == f"https://console.dify.ai/activate?token={token}"
 
     def test_send_invite_member_mail_different_languages(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test invitation email sending with different language codes.
@@ -263,7 +264,7 @@ class TestMailInviteMemberTask:
             assert call_args[1]["language_code"] == language
 
     def test_send_invite_member_mail_mail_not_initialized(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test behavior when mail service is not initialized.
@@ -292,7 +293,7 @@ class TestMailInviteMemberTask:
         mock_email_service.send_email.assert_not_called()
 
     def test_send_invite_member_mail_email_service_exception(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when email service raises an exception.
@@ -322,7 +323,7 @@ class TestMailInviteMemberTask:
             assert "Send invite member mail to %s failed" in error_call
 
     def test_send_invite_member_mail_template_context_validation(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test template context contains all required fields for email rendering.
@@ -368,7 +369,7 @@ class TestMailInviteMemberTask:
         assert template_context["url"] == f"https://console.dify.ai/activate?token={token}"
 
     def test_send_invite_member_mail_integration_with_redis_token(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test integration with Redis token validation.
@@ -407,7 +408,7 @@ class TestMailInviteMemberTask:
         assert invitation_data["workspace_id"] == tenant.id
 
     def test_send_invite_member_mail_with_special_characters(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test email sending with special characters in names and workspace names.
@@ -449,7 +450,7 @@ class TestMailInviteMemberTask:
             assert template_context["workspace_name"] == workspace_name
 
     def test_send_invite_member_mail_real_database_integration(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test real database integration with actual invitation flow.
@@ -501,7 +502,7 @@ class TestMailInviteMemberTask:
         assert tenant_join.role == TenantAccountRole.NORMAL
 
     def test_send_invite_member_mail_token_lifecycle_management(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test token lifecycle management and validation.

@@ -85,7 +85,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         return WorkflowRunService(engine)
 
     @pytest.fixture(autouse=True)
-    def setup_test_data(self, db_session_with_containers, file_service, workflow_run_service):
+    def setup_test_data(self, db_session_with_containers: Session, file_service, workflow_run_service):
         """Set up test data for each test method using TestContainers."""
         # Create test tenant and account
         from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus

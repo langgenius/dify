@@ -7,6 +7,7 @@ The task is responsible for removing document segments from the vector index whe
 are deleted from the dataset.
 """
 
+from sqlalchemy.orm import Session
 import logging
 from unittest.mock import MagicMock, patch
 
@@ -37,7 +38,7 @@ class TestDeleteSegmentFromIndexTask:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_tenant(self, db_session_with_containers, fake=None):
+    def _create_test_tenant(self, db_session_with_containers: Session, fake=None):
         """
         Helper method to create a test tenant with realistic data.
 
@@ -58,7 +59,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return tenant
 
-    def _create_test_account(self, db_session_with_containers, tenant, fake=None):
+    def _create_test_account(self, db_session_with_containers: Session, tenant, fake=None):
         """
         Helper method to create a test account with realistic data.
 
@@ -86,7 +87,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return account
 
-    def _create_test_dataset(self, db_session_with_containers, tenant, account, fake=None):
+    def _create_test_dataset(self, db_session_with_containers: Session, tenant, account, fake=None):
         """
         Helper method to create a test dataset with realistic data.
 
@@ -122,7 +123,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return dataset
 
-    def _create_test_document(self, db_session_with_containers, dataset, account, fake=None, **kwargs):
+    def _create_test_document(self, db_session_with_containers: Session, dataset, account, fake=None, **kwargs):
         """
         Helper method to create a test document with realistic data.
 
@@ -172,7 +173,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return document
 
-    def _create_test_document_segments(self, db_session_with_containers, document, account, count=3, fake=None):
+    def _create_test_document_segments(self, db_session_with_containers: Session, document, account, count=3, fake=None):
         """
         Helper method to create test document segments with realistic data.
 

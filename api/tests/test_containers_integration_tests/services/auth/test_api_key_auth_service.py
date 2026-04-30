@@ -1,4 +1,5 @@
 from __future__ import annotations
+from sqlalchemy.orm import Session
 
 import json
 from unittest.mock import Mock, patch
@@ -31,7 +32,7 @@ class TestApiKeyAuthService:
     def mock_args(self, category, provider, mock_credentials) -> dict:
         return {"category": category, "provider": provider, "credentials": mock_credentials}
 
-    def _create_binding(self, db_session, *, tenant_id, category, provider, credentials=None, disabled=False):
+    def _create_binding(self, db_session: Session, *, tenant_id, category, provider, credentials=None, disabled=False):
         binding = DataSourceApiKeyAuthBinding(
             tenant_id=tenant_id,
             category=category,

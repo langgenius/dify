@@ -1,5 +1,6 @@
 """Testcontainers integration tests for AttachmentService."""
 
+from sqlalchemy.orm import Session
 import base64
 from datetime import UTC, datetime
 from unittest.mock import patch
@@ -19,7 +20,7 @@ from services.attachment_service import AttachmentService
 
 
 class TestAttachmentService:
-    def _create_upload_file(self, db_session_with_containers, *, tenant_id: str | None = None) -> UploadFile:
+    def _create_upload_file(self, db_session_with_containers: Session, *, tenant_id: str | None = None) -> UploadFile:
         upload_file = UploadFile(
             tenant_id=tenant_id or str(uuid4()),
             storage_type=StorageType.OPENDAL,

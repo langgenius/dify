@@ -8,6 +8,7 @@ Includes compatibility tests for migrating from legacy string-only queues.
 All tests use generic naming to avoid coupling to specific business implementations.
 """
 
+from sqlalchemy.orm import Session
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -40,7 +41,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         return Faker()
 
     @pytest.fixture
-    def test_tenant_and_account(self, db_session_with_containers, fake: Faker):
+    def test_tenant_and_account(self, db_session_with_containers: Session, fake: Faker):
         """Create test tenant and account for testing."""
         # Create account
         account = Account(
@@ -403,7 +404,7 @@ class TestTenantIsolatedTaskQueueCompatibility:
         return Faker()
 
     @pytest.fixture
-    def test_tenant_and_account(self, db_session_with_containers, fake: Faker):
+    def test_tenant_and_account(self, db_session_with_containers: Session, fake: Faker):
         """Create test tenant and account for testing."""
         # Create account
         account = Account(
