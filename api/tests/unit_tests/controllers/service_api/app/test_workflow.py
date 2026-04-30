@@ -29,6 +29,7 @@ from controllers.service_api.app.workflow import (
     DifyAPIRepositoryFactory,
     GraphEngineManager,
     WorkflowAppLogApi,
+    WorkflowAppLogPaginationResponse,
     WorkflowLogQuery,
     WorkflowRunApi,
     WorkflowRunByIdApi,
@@ -236,6 +237,25 @@ class TestWorkflowAppService:
 
         assert result.page == 1
         assert result.limit == 20
+
+
+def test_workflow_app_log_pagination_response_normalizes_null_evaluation_to_empty_list():
+    response = WorkflowAppLogPaginationResponse.model_validate(
+        {
+            "page": 1,
+            "limit": 20,
+            "total": 1,
+            "has_more": False,
+            "data": [
+                {
+                    "id": "log-1",
+                    "evaluation": None,
+                }
+            ],
+        }
+    ).model_dump(mode="json")
+
+    assert response["data"][0]["evaluation"] == []
 
 
 class TestWorkflowExecutionStatus:

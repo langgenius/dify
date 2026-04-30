@@ -65,6 +65,25 @@ def test_workflow_app_log_pagination_response_normalizes_nested_fields():
     assert response["data"][0]["evaluation"][0]["nodeInfo"]["node_id"] == "node-1"
 
 
+def test_workflow_app_log_pagination_response_normalizes_null_evaluation_to_empty_list():
+    response = workflow_app_log_module.WorkflowAppLogPaginationResponse.model_validate(
+        {
+            "page": 1,
+            "limit": 20,
+            "total": 1,
+            "has_more": False,
+            "data": [
+                {
+                    "id": "log-1",
+                    "evaluation": None,
+                }
+            ],
+        }
+    ).model_dump(mode="json")
+
+    assert response["data"][0]["evaluation"] == []
+
+
 def test_workflow_archived_log_pagination_response_normalizes_nested_fields():
     created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     response = workflow_app_log_module.WorkflowArchivedLogPaginationResponse.model_validate(
