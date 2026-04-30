@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from dateutil.parser import isoparse
 from flask import request
@@ -136,10 +136,28 @@ class WorkflowRunForLogResponse(ResponseModel):
         return _to_timestamp(value)
 
 
+class WorkflowAppLogEvaluationNodeInfoResponse(ResponseModel):
+    node_id: str
+    type: str
+    title: str
+
+
+class WorkflowAppLogEvaluationItemResponse(ResponseModel):
+    name: str
+    value: Any = None
+    details: dict[str, Any] | None = None
+    node_info: WorkflowAppLogEvaluationNodeInfoResponse | None = Field(
+        default=None,
+        validation_alias="node_info",
+        serialization_alias="nodeInfo",
+    )
+
+
 class WorkflowAppLogPartialResponse(ResponseModel):
     id: str
     workflow_run: WorkflowRunForLogResponse | None = None
     details: dict | list | str | int | float | bool | None = None
+    evaluation: list[WorkflowAppLogEvaluationItemResponse] = Field(default_factory=list)
     created_from: str | None = None
     created_by_role: str | None = None
     created_by_account: SimpleAccount | None = None
@@ -169,6 +187,8 @@ register_schema_models(
     service_api_ns,
     WorkflowRunResponse,
     WorkflowRunForLogResponse,
+    WorkflowAppLogEvaluationNodeInfoResponse,
+    WorkflowAppLogEvaluationItemResponse,
     WorkflowAppLogPartialResponse,
     WorkflowAppLogPaginationResponse,
 )
