@@ -139,6 +139,11 @@ class WorkflowAppLogPartialResponse(ResponseModel):
             return int(value.timestamp())
         return value
 
+    @field_validator("evaluation", mode="before")
+    @classmethod
+    def _normalize_evaluation(cls, value: Any) -> list[dict[str, Any]] | list[WorkflowAppLogEvaluationItemResponse]:
+        return value or []
+
 
 class WorkflowArchivedLogPartialResponse(ResponseModel):
     id: str

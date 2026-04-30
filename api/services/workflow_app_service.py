@@ -24,6 +24,8 @@ class LogView:
 
     - Exposes `details_` for marshalling to `details` in API response
     - Exposes `evaluation_` for marshalling evaluation metrics in API response
+    - Normalizes missing evaluation results to an empty list because the API
+      schema treats "no evaluation data" as an empty collection, not `null`
     - Proxies all other attributes to the underlying `WorkflowAppLog`
     """
 
@@ -35,14 +37,14 @@ class LogView:
     ):
         self.log = log
         self.details_ = details
-        self.evaluation_ = evaluation
+        self.evaluation_ = evaluation or []
 
     @property
     def details(self) -> LogViewDetails | None:
         return self.details_
 
     @property
-    def evaluation(self) -> list[dict] | None:
+    def evaluation(self) -> list[dict]:
         return self.evaluation_
 
     def __getattr__(self, name):
@@ -192,7 +194,7 @@ class WorkflowAppService:
         eval_map = self._batch_query_evaluation_metrics(session, workflow_run_ids)
 
         items = [
-            LogView(log, details, evaluation=eval_map.get(log.workflow_run_id))
+            LogView(log, details, evaluation=eval_map.get(log.workflow_run_id, []))
             for log, details in logs_with_details
         ]
         return {
