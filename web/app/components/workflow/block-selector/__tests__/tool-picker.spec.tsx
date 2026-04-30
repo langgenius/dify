@@ -455,12 +455,12 @@ describe('ToolPicker', () => {
 
   it('should create a custom collection from the add button and refresh custom tools', async () => {
     const user = userEvent.setup()
-    const { container } = renderToolPicker({
+    renderToolPicker({
       isShow: true,
       supportAddCustomTool: true,
     })
 
-    const addCustomToolButton = Array.from(container.querySelectorAll('button')).find((button) => {
+    const addCustomToolButton = Array.from(document.querySelectorAll('button')).find((button) => {
       return button.className.includes('bg-components-button-primary-bg')
     })
 

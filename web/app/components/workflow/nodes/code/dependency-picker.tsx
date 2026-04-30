@@ -1,6 +1,11 @@
 import type { FC } from 'react'
 import type { CodeDependency } from './types'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { t } from 'i18next'
@@ -8,7 +13,6 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import Input from '@/app/components/base/input'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 type Props = {
   value: CodeDependency
@@ -32,21 +36,22 @@ const DependencyPicker: FC<Props> = ({
   }, [onChange])
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
-    >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className="grow cursor-pointer">
-        <div className="flex h-8 items-center justify-between rounded-lg border-0 bg-gray-100 px-2.5 text-[13px] text-gray-900">
-          <div className="w-0 grow truncate" title={value.name}>{value.name}</div>
-          <RiArrowDownSLine className="h-3.5 w-3.5 shrink-0 text-gray-700" />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{
-        zIndex: 100,
-      }}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <div className="grow cursor-pointer">
+            <div className="flex h-8 items-center justify-between rounded-lg border-0 bg-gray-100 px-2.5 text-[13px] text-gray-900">
+              <div className="w-0 grow truncate" title={value.name}>{value.name}</div>
+              <RiArrowDownSLine className="h-3.5 w-3.5 shrink-0 text-gray-700" />
+            </div>
+          </div>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        positionerProps={{ style: { zIndex: 100 } }}
       >
         <div
           className="rounded-lg bg-white p-1 shadow-sm"
@@ -82,8 +87,8 @@ const DependencyPicker: FC<Props> = ({
             ))}
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

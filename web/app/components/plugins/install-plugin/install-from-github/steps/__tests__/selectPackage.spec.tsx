@@ -1,9 +1,13 @@
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../../types'
-import type { Item } from '@/app/components/base/select'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '../../../../types'
 import SelectPackage from '../selectPackage'
+
+type SelectOption = {
+  value: string | number
+  name: string
+}
 
 // Mock upload helper from hooks module
 const { mockHandleUpload } = vi.hoisted(() => ({
@@ -14,6 +18,53 @@ vi.mock('../../../hooks', async (importOriginal) => {
   return {
     ...actual,
     handleUpload: mockHandleUpload,
+  }
+})
+
+vi.mock('@langgenius/dify-ui/select', async () => {
+  const React = await import('react')
+  const SelectContext = React.createContext<{
+    readOnly?: boolean
+    onValueChange?: (value: string) => void
+  }>({})
+
+  return {
+    Select: ({ children, readOnly, onValueChange }: {
+      children: React.ReactNode
+      readOnly?: boolean
+      onValueChange?: (value: string) => void
+    }) => (
+      <SelectContext.Provider value={{ readOnly, onValueChange }}>
+        <div>{children}</div>
+      </SelectContext.Provider>
+    ),
+    SelectTrigger: ({ children }: { children: React.ReactNode }) => {
+      const context = React.useContext(SelectContext)
+      return (
+        <div>
+          <div data-testid="select-trigger" className={context.readOnly ? 'cursor-not-allowed' : 'cursor-pointer'}>
+            {children}
+          </div>
+          <button data-testid="select-empty" type="button" onClick={() => context.onValueChange?.('')}>
+            empty select value
+          </button>
+          <button data-testid="select-invalid" type="button" onClick={() => context.onValueChange?.('__missing__')}>
+            invalid select value
+          </button>
+        </div>
+      )
+    },
+    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+      const context = React.useContext(SelectContext)
+      return (
+        <button type="button" onClick={() => context.onValueChange?.(value)}>
+          {children}
+        </button>
+      )
+    },
+    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    SelectItemIndicator: () => null,
   }
 })
 
@@ -39,12 +90,12 @@ const createMockManifest = (): PluginDeclaration => ({
   trigger: {} as PluginDeclaration['trigger'],
 })
 
-const createVersions = (): Item[] => [
+const createVersions = (): SelectOption[] => [
   { value: 'v1.0.0', name: 'v1.0.0' },
   { value: 'v0.9.0', name: 'v0.9.0' },
 ]
 
-const createPackages = (): Item[] => [
+const createPackages = (): SelectOption[] => [
   { value: 'plugin.zip', name: 'plugin.zip' },
   { value: 'plugin.tar.gz', name: 'plugin.tar.gz' },
 ]
@@ -64,11 +115,11 @@ type TestProps = {
   updatePayload?: UpdateFromGitHubPayload
   repoUrl?: string
   selectedVersion?: string
-  versions?: Item[]
-  onSelectVersion?: (item: Item) => void
+  versions?: SelectOption[]
+  onSelectVersion?: (item: SelectOption) => void
   selectedPackage?: string
-  packages?: Item[]
-  onSelectPackage?: (item: Item) => void
+  packages?: SelectOption[]
+  onSelectPackage?: (item: SelectOption) => void
   onUploaded?: (result: { uniqueIdentifier: string, manifest: PluginDeclaration }) => void
   onFailed?: (errorMsg: string) => void
   onBack?: () => void
@@ -80,10 +131,10 @@ describe('SelectPackage', () => {
     repoUrl: 'https://github.com/owner/repo',
     selectedVersion: '',
     versions: createVersions(),
-    onSelectVersion: vi.fn() as (item: Item) => void,
+    onSelectVersion: vi.fn() as (item: SelectOption) => void,
     selectedPackage: '',
     packages: createPackages(),
-    onSelectPackage: vi.fn() as (item: Item) => void,
+    onSelectPackage: vi.fn() as (item: SelectOption) => void,
     onUploaded: vi.fn() as (result: { uniqueIdentifier: string, manifest: PluginDeclaration }) => void,
     onFailed: vi.fn() as (errorMsg: string) => void,
     onBack: vi.fn() as () => void,
@@ -94,6 +145,14 @@ describe('SelectPackage', () => {
     const props = { ...createDefaultProps(), ...overrides }
     // Cast to any to bypass strict type checking since component accepts optional updatePayload
     return render(<SelectPackage {...(props as Parameters<typeof SelectPackage>[0])} />)
+  }
+
+  const getSection = (label: string): HTMLElement => {
+    const labelElement = screen.getByText(label)
+    const section = labelElement.closest('label')?.nextElementSibling
+    if (!(section instanceof HTMLElement))
+      throw new Error(`Missing section for ${label}`)
+    return section
   }
 
   beforeEach(() => {
@@ -144,13 +203,13 @@ describe('SelectPackage', () => {
       renderSelectPackage({ selectedVersion: 'v1.0.0' })
 
       // PortalSelect should display the selected version
-      expect(screen.getByText('v1.0.0')).toBeInTheDocument()
+      expect(screen.getAllByText('v1.0.0').length).toBeGreaterThan(0)
     })
 
     it('should pass selectedPackage to PortalSelect', () => {
       renderSelectPackage({ selectedPackage: 'plugin.zip' })
 
-      expect(screen.getByText('plugin.zip')).toBeInTheDocument()
+      expect(screen.getAllByText('plugin.zip').length).toBeGreaterThan(0)
     })
 
     it('should show installed version badge when updatePayload version differs', () => {
@@ -230,6 +289,54 @@ describe('SelectPackage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'plugin.installModal.next' }))
 
       expect(mockHandleUpload).not.toHaveBeenCalled()
+    })
+
+    it('should ignore empty and unknown version selections', () => {
+      const onSelectVersion = vi.fn()
+      renderSelectPackage({ onSelectVersion })
+
+      const section = getSection('plugin.installFromGitHub.selectVersion')
+      fireEvent.click(within(section).getByTestId('select-empty'))
+      fireEvent.click(within(section).getByTestId('select-invalid'))
+
+      expect(onSelectVersion).not.toHaveBeenCalled()
+    })
+
+    it('should select a valid version option', () => {
+      const onSelectVersion = vi.fn()
+      renderSelectPackage({ onSelectVersion })
+
+      const section = getSection('plugin.installFromGitHub.selectVersion')
+      fireEvent.click(within(section).getByRole('button', { name: 'v0.9.0' }))
+
+      expect(onSelectVersion).toHaveBeenCalledWith({ value: 'v0.9.0', name: 'v0.9.0' })
+    })
+
+    it('should ignore empty and unknown package selections', () => {
+      const onSelectPackage = vi.fn()
+      renderSelectPackage({
+        selectedVersion: 'v1.0.0',
+        onSelectPackage,
+      })
+
+      const section = getSection('plugin.installFromGitHub.selectPackage')
+      fireEvent.click(within(section).getByTestId('select-empty'))
+      fireEvent.click(within(section).getByTestId('select-invalid'))
+
+      expect(onSelectPackage).not.toHaveBeenCalled()
+    })
+
+    it('should select a valid package option', () => {
+      const onSelectPackage = vi.fn()
+      renderSelectPackage({
+        selectedVersion: 'v1.0.0',
+        onSelectPackage,
+      })
+
+      const section = getSection('plugin.installFromGitHub.selectPackage')
+      fireEvent.click(within(section).getByRole('button', { name: 'plugin.tar.gz' }))
+
+      expect(onSelectPackage).toHaveBeenCalledWith({ value: 'plugin.tar.gz', name: 'plugin.tar.gz' })
     })
   })
 
@@ -424,8 +531,7 @@ describe('SelectPackage', () => {
       renderSelectPackage({ selectedVersion: '' })
 
       // When no version is selected, package select should be readonly
-      // This is tested by verifying the component renders correctly
-      const trigger = screen.getByText('plugin.installFromGitHub.selectPackagePlaceholder').closest('div')
+      const trigger = screen.getAllByTestId('select-trigger')[1]
       expect(trigger).toHaveClass('cursor-not-allowed')
     })
 
@@ -433,7 +539,7 @@ describe('SelectPackage', () => {
       renderSelectPackage({ selectedVersion: 'v1.0.0' })
 
       // When version is selected, package select should be active
-      const trigger = screen.getByText('plugin.installFromGitHub.selectPackagePlaceholder').closest('div')
+      const trigger = screen.getAllByTestId('select-trigger')[1]
       expect(trigger).toHaveClass('cursor-pointer')
     })
   })

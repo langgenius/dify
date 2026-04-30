@@ -45,6 +45,15 @@ describe('EmojiPickerInner', () => {
       expect(screen.getByText('food'))!.toBeInTheDocument()
       expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
     })
+
+    it('initializes selected emoji and background when provided', async () => {
+      render(<EmojiPickerInner emoji="rabbit" background="#E4FBCC" onSelect={mockOnSelect} />)
+
+      expect(screen.getByText('Choose Style'))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(mockOnSelect).toHaveBeenCalledWith('rabbit', '#E4FBCC')
+      })
+    })
   })
 
   describe('User Interactions', () => {

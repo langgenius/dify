@@ -145,8 +145,8 @@ describe('PanelContextmenu', () => {
     const { container } = render(<PanelContextmenu />)
 
     expect(screen.getByTestId('add-block')).toHaveTextContent('common.addBlock')
-    expect(screen.getByTestId('shortcut-alt-r')).toHaveTextContent('alt+r')
-    expect(screen.getByTestId('shortcut-ctrl-v')).toHaveTextContent('ctrl+v')
+    expect(screen.getByRole('button', { name: /common\.run/i })).toHaveTextContent(/Alt\s*R/)
+    expect(screen.getByRole('button', { name: /common\.pasteHere/i })).toHaveTextContent(/Ctrl\s*V/)
     expect(container.firstChild).toHaveStyle({
       left: '24px',
       top: '48px',
@@ -156,7 +156,7 @@ describe('PanelContextmenu', () => {
     fireEvent.click(screen.getByText('common.run'))
     fireEvent.click(screen.getByText('common.pasteHere'))
     fireEvent.click(screen.getByText('export'))
-    fireEvent.click(screen.getByText('common.importDSL'))
+    fireEvent.click(screen.getByText('importApp'))
     clickAwayHandler?.()
 
     expect(mockHandleAddNote).toHaveBeenCalledTimes(1)

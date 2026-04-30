@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { Param } from '../../types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
@@ -13,7 +14,6 @@ import Field from '@/app/components/app/configuration/config-var/config-modal/fi
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import { ChangeType } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
@@ -141,18 +141,21 @@ const AddExtractParameter: FC<Props> = ({
               </Field>
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.type`, { ns: 'workflow' })}>
                 <Select
-                  defaultValue={param.type}
-                  allowSearch={false}
-                  // bgClassName='bg-gray-100'
-                  onSelect={v => handleParamChange('type')(v.value)}
-                  optionClassName="capitalize"
-                  items={
-                    TYPES.map(type => ({
-                      value: type,
-                      name: type,
-                    }))
-                  }
-                />
+                  value={param.type}
+                  onValueChange={value => value && handleParamChange('type')(value)}
+                >
+                  <SelectTrigger className="w-full capitalize">
+                    {param.type}
+                  </SelectTrigger>
+                  <SelectContent popupClassName="w-(--anchor-width)">
+                    {TYPES.map(type => (
+                      <SelectItem key={type} value={type} className="capitalize">
+                        <SelectItemText className="capitalize">{type}</SelectItemText>
+                        <SelectItemIndicator />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               {param.type === ParamType.select && (
                 <Field title={t('variableConfig.options', { ns: 'appDebug' })}>

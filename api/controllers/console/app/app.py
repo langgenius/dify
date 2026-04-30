@@ -692,6 +692,32 @@ class AppExportApi(Resource):
         return payload.model_dump(mode="json")
 
 
+@console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
+class AppPublishToCreatorsPlatformApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=None)
+    @edit_permission_required
+    def post(self, app_model):
+        """Publish app to Creators Platform"""
+        from configs import dify_config
+        from core.helper.creators import get_redirect_url, upload_dsl
+
+        if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
+            return {"error": "Creators Platform features are not enabled"}, 403
+
+        current_user, _ = current_account_with_tenant()
+
+        dsl_content = AppDslService.export_dsl(app_model=app_model, include_secret=False)
+        dsl_bytes = dsl_content.encode("utf-8")
+
+        claim_code = upload_dsl(dsl_bytes)
+        redirect_url = get_redirect_url(str(current_user.id), claim_code)
+
+        return {"redirect_url": redirect_url}
+
+
 @console_ns.route("/apps/<uuid:app_id>/name")
 class AppNameApi(Resource):
     @console_ns.doc("check_app_name")

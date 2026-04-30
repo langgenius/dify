@@ -5,6 +5,7 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
+import { RiStoreLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useKeyPress } from 'ahooks'
 import {
@@ -26,7 +27,7 @@ import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { fetchAppDetailDirect, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
@@ -40,6 +41,7 @@ import {
   PublisherActionsSection,
   PublisherSummarySection,
 } from './sections'
+import SuggestedAction from './suggested-action'
 import {
   getDisabledFunctionTooltip,
   getPublisherAppUrl,
@@ -100,6 +102,7 @@ const AppPublisher = ({
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
+  const [publishingToMarketplace, setPublishingToMarketplace] = useState(false)
 
   const workflowStore = useContext(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
@@ -219,6 +222,23 @@ const AppPublisher = ({
     }
   }, [appDetail, setAppDetail])
 
+  const handlePublishToMarketplace = useCallback(async () => {
+    if (!appDetail?.id || publishingToMarketplace)
+      return
+    setPublishingToMarketplace(true)
+    try {
+      const res = await publishToCreatorsPlatform({ appID: appDetail.id })
+      if (res.redirect_url)
+        window.open(res.redirect_url, '_blank')
+    }
+    catch {
+      toast.error(t('common.publishToMarketplaceFailed', { ns: 'workflow' }))
+    }
+    finally {
+      setPublishingToMarketplace(false)
+    }
+  }, [appDetail?.id, publishingToMarketplace, t])
+
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
     if (publishDisabled || published)
@@ -336,6 +356,19 @@ const AppPublisher = ({
               workflowToolAvailable={workflowToolAvailable}
               workflowToolMessage={workflowToolMessage}
             />
+            {systemFeatures.enable_creators_platform && (
+              <div className="border-t border-divider-subtle p-4">
+                <SuggestedAction
+                  icon={<RiStoreLine className="h-4 w-4" />}
+                  disabled={!publishedAt || publishingToMarketplace}
+                  onClick={handlePublishToMarketplace}
+                >
+                  {publishingToMarketplace
+                    ? t('common.publishingToMarketplace', { ns: 'workflow' })
+                    : t('common.publishToMarketplace', { ns: 'workflow' })}
+                </SuggestedAction>
+              </div>
+            )}
           </div>
         </PopoverContent>
         <EmbeddedModal

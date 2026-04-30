@@ -1,11 +1,11 @@
 import type { Inputs } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
@@ -102,13 +102,26 @@ const ChatUserInput = ({
                 )}
                 {type === 'select' && (
                   <Select
-                    className="w-full"
-                    defaultValue={inputs[key] as string}
-                    onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                    items={(options || []).map(i => ({ name: i, value: i }))}
-                    allowSearch={false}
+                    value={inputs[key] ? String(inputs[key]) : null}
                     disabled={readonly}
-                  />
+                    onValueChange={(nextValue) => {
+                      if (!nextValue)
+                        return
+                      handleInputValueChange(key, nextValue)
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
+                    </SelectTrigger>
+                    <SelectContent popupClassName="w-(--anchor-width)">
+                      {(options || []).map(option => (
+                        <SelectItem key={option} value={option}>
+                          <SelectItemText>{option}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
                 {type === 'number' && (
                   <Input

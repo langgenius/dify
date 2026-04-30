@@ -34,7 +34,6 @@ def _patch_wraps():
         patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         patch("controllers.web.login.dify_config", web_dify),
     ):
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         yield
 
 

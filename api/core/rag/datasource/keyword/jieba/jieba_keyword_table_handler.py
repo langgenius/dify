@@ -109,7 +109,7 @@ class JiebaKeywordTableHandler:
         """Extract keywords with JIEBA tfidf."""
         keywords = self._tfidf.extract_tags(
             sentence=text,
-            topK=max_keywords_per_chunk,
+            topK=max_keywords_per_chunk or 10,
         )
         # jieba.analyse.extract_tags returns an untyped list when withFlag is False by default.
         keywords = cast(list[str], keywords)

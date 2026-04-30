@@ -8,7 +8,7 @@ from sqlalchemy import Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .account import Account
-from .base import Base
+from .base import Base, gen_uuidv7_string
 from .engine import db
 from .types import StringUUID
 
@@ -42,7 +42,7 @@ class WorkflowComment(Base):
         Index("workflow_comments_created_at_idx", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, default=gen_uuidv7_string)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position_x: Mapped[float] = mapped_column(sa.Float)
@@ -149,7 +149,7 @@ class WorkflowCommentReply(Base):
         Index("comment_replies_created_at_idx", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, default=gen_uuidv7_string)
     comment_id: Mapped[str] = mapped_column(
         StringUUID, sa.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )
@@ -194,7 +194,7 @@ class WorkflowCommentMention(Base):
         Index("comment_mentions_user_idx", "mentioned_user_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, default=gen_uuidv7_string)
     comment_id: Mapped[str] = mapped_column(
         StringUUID, sa.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )

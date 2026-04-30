@@ -172,6 +172,57 @@ class TestHitTestingApiPost:
         assert passed_retrieval_model["top_k"] == 10
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
+    @patch("controllers.console.datasets.hit_testing_base.marshal")
+    @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
+    @patch("controllers.console.datasets.hit_testing_base.DatasetService")
+    @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
+    def test_post_normalizes_legacy_query_and_nullable_list_fields(
+        self,
+        mock_current_user,
+        mock_dataset_svc,
+        mock_hit_svc,
+        mock_marshal,
+        mock_ns,
+        app,
+    ):
+        """Test service API normalizes legacy query shape and nullable list fields."""
+        dataset_id = str(uuid.uuid4())
+        tenant_id = str(uuid.uuid4())
+
+        mock_dataset = Mock()
+        mock_dataset.id = dataset_id
+
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "legacy query"}, "records": ["placeholder"]}
+        mock_hit_svc.hit_testing_args_check.return_value = None
+        mock_marshal.return_value = [
+            {
+                "segment": {"id": "segment-1", "keywords": None},
+                "child_chunks": None,
+                "files": None,
+                "score": 0.9,
+            }
+        ]
+
+        mock_ns.payload = {"query": "legacy query"}
+
+        with app.test_request_context():
+            api = HitTestingApi()
+            response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
+
+        assert response["query"] == "legacy query"
+        assert response["records"] == [
+            {
+                "segment": {"id": "segment-1", "keywords": []},
+                "child_chunks": [],
+                "files": [],
+                "score": 0.9,
+            }
+        ]
+
+    @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
     def test_post_dataset_not_found(

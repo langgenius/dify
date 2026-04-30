@@ -2,7 +2,43 @@
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import NotRequired, TypedDict
+
+
+class AdminConfig(TypedDict):
+    """Configuration for admin section."""
+    username: str
+    password: str
+    base_url: str
+
+
+class AuthConfig(TypedDict):
+    """Configuration for authentication section."""
+    access_token: str
+    refresh_token: NotRequired[str]
+    expires_at: NotRequired[int]
+
+
+class AppConfig(TypedDict):
+    """Configuration for app section."""
+    app_id: str
+    app_name: NotRequired[str]
+    description: NotRequired[str]
+
+
+class ApiKeyConfig(TypedDict):
+    """Configuration for API key section."""
+    token: str
+    key_name: NotRequired[str]
+    expires_at: NotRequired[int]
+
+
+class StressTestState(TypedDict):
+    """Complete stress test state structure."""
+    admin: NotRequired[AdminConfig]
+    auth: NotRequired[AuthConfig]
+    app: NotRequired[AppConfig]
+    api_key: NotRequired[ApiKeyConfig]
 
 
 class ConfigHelper:
@@ -44,8 +80,8 @@ class ConfigHelper:
             filename += ".json"
         return self.base_dir / filename
 
-    def read_config(self, filename: str) -> dict[str, Any] | None:
-        """Read a configuration file.
+    def read_config[T](self, filename: str) -> T | None:
+        """Read a configuration file with generic return type.
 
         DEPRECATED: Use read_state() or get_state_section() for new code.
         This method provides backward compatibility.
@@ -54,11 +90,12 @@ class ConfigHelper:
             filename: Name of the config file to read
 
         Returns:
-            Dictionary containing config data, or None if file doesn't exist
+            Configuration data of type T, or None if file doesn't exist
         """
         # Provide backward compatibility for old config names
         if filename in self._LEGACY_SECTION_MAP:
-            return self.get_state_section(self._LEGACY_SECTION_MAP[filename])
+            section_data = self.get_state_section(self._LEGACY_SECTION_MAP[filename])
+            return section_data  # type: ignore
 
         config_path = self.get_config_path(filename)
 
@@ -67,12 +104,12 @@ class ConfigHelper:
 
         try:
             with open(config_path) as f:
-                return json.load(f)
+                return json.load(f)  # type: ignore
         except (OSError, json.JSONDecodeError) as e:
             print(f"❌ Error reading {filename}: {e}")
             return None
 
-    def write_config(self, filename: str, data: dict[str, Any]) -> bool:
+    def write_config[T](self, filename: str, data: T) -> bool:
         """Write data to a configuration file.
 
         DEPRECATED: Use write_state() or update_state_section() for new code.
@@ -80,7 +117,7 @@ class ConfigHelper:
 
         Args:
             filename: Name of the config file to write
-            data: Dictionary containing data to save
+            data: Data to save (must be JSON serializable)
 
         Returns:
             True if successful, False otherwise
@@ -89,7 +126,7 @@ class ConfigHelper:
         if filename in self._LEGACY_SECTION_MAP:
             return self.update_state_section(
                 self._LEGACY_SECTION_MAP[filename],
-                data,
+                data,  # type: ignore
             )
 
         self.ensure_config_dir()
@@ -97,7 +134,7 @@ class ConfigHelper:
 
         try:
             with open(config_path, "w") as f:
-                json.dump(data, f, indent=2)
+                json.dump(data, f, indent=2)  # type: ignore
             return True
         except OSError as e:
             print(f"❌ Error writing {filename}: {e}")
@@ -135,7 +172,7 @@ class ConfigHelper:
             print(f"❌ Error deleting {filename}: {e}")
             return False
 
-    def read_state(self) -> dict[str, Any] | None:
+    def read_state(self) -> StressTestState | None:
         """Read the entire stress test state.
 
         Returns:
@@ -147,12 +184,17 @@ class ConfigHelper:
 
         try:
             with open(state_path) as f:
-                return json.load(f)
+                data = json.load(f)
+                # Validate basic structure
+                if not isinstance(data, dict):
+                    print(f"❌ Invalid state format in {self.state_file}")
+                    return None
+                return data  # type: ignore
         except (OSError, json.JSONDecodeError) as e:
             print(f"❌ Error reading {self.state_file}: {e}")
             return None
 
-    def write_state(self, data: dict[str, Any]) -> bool:
+    def write_state(self, data: StressTestState) -> bool:
         """Write the entire stress test state.
 
         Args:
@@ -172,32 +214,32 @@ class ConfigHelper:
             print(f"❌ Error writing {self.state_file}: {e}")
             return False
 
-    def update_state_section(self, section: str, data: dict[str, Any]) -> bool:
+    def update_state_section[T](self, section: str, data: T) -> bool:
         """Update a specific section of the stress test state.
 
         Args:
             section: Name of the section to update (e.g., 'admin', 'auth', 'app', 'api_key')
-            data: Dictionary containing section data to save
+            data: Section data to save
 
         Returns:
             True if successful, False otherwise
         """
         state = self.read_state() or {}
-        state[section] = data
-        return self.write_state(state)
+        state[section] = data  # type: ignore
+        return self.write_state(state)  # type: ignore
 
-    def get_state_section(self, section: str) -> dict[str, Any] | None:
+    def get_state_section[T](self, section: str) -> T | None:
         """Get a specific section from the stress test state.
 
         Args:
             section: Name of the section to get (e.g., 'admin', 'auth', 'app', 'api_key')
 
         Returns:
-            Dictionary containing section data, or None if not found
+            Section data of type T, or None if not found
         """
         state = self.read_state()
         if state:
-            return state.get(section)
+            return state.get(section)  # type: ignore
         return None
 
     def get_token(self) -> str | None:
@@ -206,7 +248,7 @@ class ConfigHelper:
         Returns:
             Access token string or None if not found
         """
-        auth = self.get_state_section("auth")
+        auth = self.get_state_section[AuthConfig]("auth")
         if auth:
             return auth.get("access_token")
         return None
@@ -217,7 +259,7 @@ class ConfigHelper:
         Returns:
             App ID string or None if not found
         """
-        app = self.get_state_section("app")
+        app = self.get_state_section[AppConfig]("app")
         if app:
             return app.get("app_id")
         return None
@@ -228,7 +270,7 @@ class ConfigHelper:
         Returns:
             API key token string or None if not found
         """
-        api_key = self.get_state_section("api_key")
+        api_key = self.get_state_section[ApiKeyConfig]("api_key")
         if api_key:
             return api_key.get("token")
         return None

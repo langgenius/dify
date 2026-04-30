@@ -13,11 +13,9 @@ from core.app.entities.task_entities import (
 )
 
 
-class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
-    _blocking_response_type = WorkflowAppBlockingResponse
-
+class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter[WorkflowAppBlockingResponse]):
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict[str, Any]:  # type: ignore[override]
+    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict[str, object]:
         """
         Convert blocking full response.
         :param blocking_response: blocking response
@@ -26,7 +24,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
         return dict(blocking_response.model_dump())
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict[str, Any]:  # type: ignore[override]
+    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict[str, object]:
         """
         Convert blocking simple response.
         :param blocking_response: blocking response

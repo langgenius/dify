@@ -10,6 +10,7 @@ import type {
 } from '../../declarations'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '../../declarations'
 import Form from '../Form'
 
@@ -288,7 +289,8 @@ describe('Form', () => {
       expect(onChange).toHaveBeenCalledTimes(1)
     })
 
-    it('should render select and checkbox fields and update checkbox value', () => {
+    it('should render select and checkbox fields and update checkbox value', async () => {
+      const user = userEvent.setup()
       const formSchemas: AnyFormSchema[] = [
         createSelectSchema({
           variable: 'model',
@@ -339,10 +341,10 @@ describe('Form', () => {
       )
 
       expect(screen.getByText('Select A'))!.toBeInTheDocument()
-      fireEvent.click(screen.getByText('Select A'))
-      fireEvent.click(screen.getByText('Select B'))
+      await user.click(screen.getByRole('combobox'))
+      await user.click(screen.getByRole('option', { name: 'Select B' }))
 
-      fireEvent.click(screen.getByText('True'))
+      await user.click(screen.getByText('True'))
 
       expect(onChange).toHaveBeenCalledWith({ model: 'b', agree: false, toggle: 'on' })
       expect(onChange).toHaveBeenCalledWith({ model: 'a', agree: true, toggle: 'on' })
@@ -989,9 +991,8 @@ describe('Form', () => {
         />,
       )
 
-      const selectTrigger = screen.getByRole('button', { name: 'Select A' })
-      fireEvent.click(selectTrigger)
-      expect(screen.queryByText('Select B')).not.toBeInTheDocument()
+      const selectTrigger = screen.getByRole('combobox')
+      expect(selectTrigger).toBeDisabled()
     })
 
     // isShowDefaultValue=false: value used even if empty
@@ -1899,7 +1900,8 @@ describe('Form', () => {
       expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
     })
 
-    it('should show ValidatingTip for select field being validated', () => {
+    it('should show ValidatingTip for select field being validated', async () => {
+      const user = userEvent.setup()
       // Arrange: value 'a' is pre-selected so 'Select A' text appears in the trigger button
       const formSchemas: AnyFormSchema[] = [
         createSelectSchema({
@@ -1923,14 +1925,14 @@ describe('Form', () => {
         />,
       )
 
-      // First click opens the dropdown (Select A is the trigger button text)
-      fireEvent.click(screen.getByText('Select A'))
-      // Then click on 'Select B' option in the open dropdown
-      fireEvent.click(screen.getByText('Select B'))
+      await user.click(screen.getByRole('combobox'))
+      await user.click(screen.getByRole('option', { name: 'Select B' }))
 
       // Assert: ValidatingTip shows for the select field
       // Assert: ValidatingTip shows for the select field
-      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      })
     })
 
     it('should show ValidatingTip for toolSelector field being validated', () => {

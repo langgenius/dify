@@ -13,6 +13,18 @@ type SetURLProps = {
 
 const SetURL: React.FC<SetURLProps> = ({ repoUrl, onChange, onNext, onCancel }) => {
   const { t } = useTranslation()
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  // Focus the input after the dropdown's focus-return animation settles.
+  // Using rAF avoids racing the DropdownMenu FloatingFocusManager that returns
+  // focus to the trigger on close.
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
   return (
     <>
       <label
@@ -22,6 +34,7 @@ const SetURL: React.FC<SetURLProps> = ({ repoUrl, onChange, onNext, onCancel }) 
         <span className="system-sm-semibold">{t('installFromGitHub.gitHubRepo', { ns: 'plugin' })}</span>
       </label>
       <input
+        ref={inputRef}
         type="url"
         id="repoUrl"
         name="repoUrl"

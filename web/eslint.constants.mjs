@@ -5,7 +5,7 @@ export const NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS = [
   },
 ]
 
-export const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
+const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: ['next/image'],
     message: 'Do not import next/image. Use native img tags instead.',
@@ -18,6 +18,21 @@ export const NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS = [
     group: ['next/*', '!next/font', '!next/font/*', '!next/image', '!next/image/*'],
     message: 'Import Next APIs from the corresponding @/next/* module instead of next/*.',
   },
+]
+
+const BASE_UI_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@base-ui/react',
+      '@base-ui/react/*',
+    ],
+    message: 'Do not import Base UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+  },
+]
+
+export const WEB_RESTRICTED_IMPORT_PATTERNS = [
+  ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+  ...BASE_UI_RESTRICTED_IMPORT_PATTERNS,
 ]
 
 export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
@@ -45,15 +60,6 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
   },
   {
     group: [
-      '**/base/select',
-      '**/base/select/index',
-      '**/base/select/custom',
-      '**/base/select/pure',
-    ],
-    message: 'Deprecated: use @langgenius/dify-ui/select instead. See issue #32767.',
-  },
-  {
-    group: [
       '**/base/dialog',
       '**/base/dialog/index',
     ],
@@ -74,9 +80,6 @@ export const OVERLAY_MIGRATION_LEGACY_BASE_FILES = [
   'app/components/base/modal/modal.tsx',
   'app/components/base/prompt-editor/plugins/context-block/component.tsx',
   'app/components/base/prompt-editor/plugins/history-block/component.tsx',
-  'app/components/base/select/custom.tsx',
-  'app/components/base/select/index.tsx',
-  'app/components/base/select/pure.tsx',
   'app/components/base/sort/index.tsx',
   'app/components/base/theme-selector.tsx',
   'app/components/base/tooltip/index.tsx',

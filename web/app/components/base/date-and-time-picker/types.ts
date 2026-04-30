@@ -1,4 +1,4 @@
-import type { Placement } from '@floating-ui/react'
+import type { Placement } from '@langgenius/dify-ui/popover'
 import type { Dayjs } from 'dayjs'
 
 export enum ViewType {

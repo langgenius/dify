@@ -1,9 +1,9 @@
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   icon: any
@@ -41,10 +41,15 @@ const FeatureCard = ({
         <div className="flex grow items-center system-sm-semibold text-text-secondary">
           {title}
           {tooltip && (
-            <Tooltip
-              popupContent={tooltip}
-            >
-              <div className="ml-0.5 p-px"><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" /></div>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <div className="ml-0.5 p-px"><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" /></div>
+                )}
+              />
+              <TooltipContent>
+                {tooltip}
+              </TooltipContent>
             </Tooltip>
           )}
         </div>

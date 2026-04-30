@@ -10,7 +10,6 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
   - `@/app/components/base/portal-to-follow-elem`
   - `@/app/components/base/tooltip`
   - `@/app/components/base/modal`
-  - `@/app/components/base/select` (including `custom` / `pure`)
   - `@/app/components/base/dialog`
 - Replacement primitives:
   - `@langgenius/dify-ui/tooltip`
@@ -43,12 +42,6 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
    - Remove legacy overlay implementations when import count reaches zero.
 
 ## Allowlist maintenance
-
-- After each migration batch, run:
-
-```sh
-pnpm -C web lint:fix --prune-suppressions <changed-files>
-```
 
 - If a migrated file was in the allowlist, remove it from `web/eslint.constants.mjs` in the same PR.
 - Never increase allowlist scope to bypass new code.

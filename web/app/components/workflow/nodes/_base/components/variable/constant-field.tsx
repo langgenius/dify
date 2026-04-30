@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Var } from '@/app/components/workflow/types'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
-import { useCallback } from 'react'
-import { SimpleSelect } from '@/app/components/base/select'
+import { useCallback, useMemo } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
@@ -30,6 +30,18 @@ const ConstantField: FC<Props> = ({
 }) => {
   const language = useLanguage()
   const placeholder = (schema as CredentialFormSchemaSelect).placeholder
+  const selectOptions = useMemo(() => {
+    if (schema.type !== FormTypeEnum.select && schema.type !== FormTypeEnum.dynamicSelect)
+      return []
+
+    return (schema as CredentialFormSchemaSelect).options.map(option => ({
+      value: String(option.value),
+      name: option.label[language] || option.label.en_US,
+    }))
+  }, [language, schema])
+  const selectedOption = useMemo(() => {
+    return selectOptions.find(option => option.value === String(value)) ?? null
+  }, [selectOptions, value])
   const handleStaticChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value === '' ? '' : Number.parseFloat(e.target.value)
     onChange(value, VarKindType.constant)
@@ -42,17 +54,27 @@ const ConstantField: FC<Props> = ({
   return (
     <>
       {(schema.type === FormTypeEnum.select || schema.type === FormTypeEnum.dynamicSelect) && (
-        <SimpleSelect
-          wrapperClassName="w-full h-8!"
-          className="flex items-center"
-          disabled={readonly}
-          defaultValue={value}
-          items={(schema as CredentialFormSchemaSelect).options.map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
-          onSelect={item => handleSelectChange(item.value)}
-          placeholder={placeholder?.[language] || placeholder?.en_US}
+        <Select
+          value={selectedOption?.value ?? null}
+          disabled={readonly || isLoading}
+          onValueChange={nextValue => nextValue && handleSelectChange(nextValue)}
           onOpenChange={onOpenChange}
-          isLoading={isLoading}
-        />
+        >
+          <SelectTrigger
+            className="h-8 w-full"
+            disabled={readonly || isLoading}
+          >
+            {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
+          </SelectTrigger>
+          <SelectContent popupClassName="w-(--anchor-width)">
+            {selectOptions.map(option => (
+              <SelectItem key={option.value} value={option.value}>
+                <SelectItemText>{option.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )}
       {schema.type === FormTypeEnum.textNumber && (
         <input
