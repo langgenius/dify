@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import csv
 from collections.abc import Mapping
 from typing import Any, Union
 
@@ -352,6 +353,7 @@ class EvaluationService:
         target_id: str,
         account_id: str,
         dataset_file_content: bytes,
+        dataset_filename: str,
         run_request: EvaluationRunRequest,
     ) -> EvaluationRun:
         """Validate dataset, create run record, dispatch Celery task.
@@ -386,7 +388,7 @@ class EvaluationService:
             raise EvaluationMaxConcurrentRunsError(f"Maximum concurrent runs ({max_concurrent}) reached.")
 
         # Parse dataset
-        items = cls._parse_dataset(dataset_file_content)
+        items = cls._parse_dataset(dataset_file_content, dataset_filename)
         max_rows = dify_config.EVALUATION_MAX_DATASET_ROWS
         if len(items) > max_rows:
             raise EvaluationDatasetInvalidError(f"Dataset has {len(items)} rows, max is {max_rows}.")
@@ -437,6 +439,7 @@ class EvaluationService:
         target_id: str,
         account_id: str,
         dataset_file_content: bytes,
+        dataset_filename: str,
         run_request: EvaluationRunRequest,
     ) -> EvaluationRun:
         """Persist a completed synthetic run for frontend integration testing.
@@ -461,7 +464,7 @@ class EvaluationService:
             data=run_request,
         )
 
-        items = cls._parse_dataset(dataset_file_content)
+        items = cls._parse_dataset(dataset_file_content, dataset_filename)
         max_rows = dify_config.EVALUATION_MAX_DATASET_ROWS
         if len(items) > max_rows:
             raise EvaluationDatasetInvalidError(f"Dataset has {len(items)} rows, max is {max_rows}.")
@@ -932,7 +935,15 @@ class EvaluationService:
     # ---- Dataset Parsing ----
 
     @classmethod
-    def _parse_dataset(cls, xlsx_content: bytes) -> list[EvaluationDatasetInput]:
+    def _parse_dataset(cls, file_content: bytes, filename: str) -> list[EvaluationDatasetInput]:
+        """Parse evaluation dataset from CSV or XLSX content."""
+        filename_lower = filename.lower()
+        if filename_lower.endswith(".csv"):
+            return cls._parse_csv_dataset(file_content)
+        return cls._parse_xlsx_dataset(file_content)
+
+    @classmethod
+    def _parse_xlsx_dataset(cls, xlsx_content: bytes) -> list[EvaluationDatasetInput]:
         """Parse evaluation dataset from XLSX bytes."""
         wb = load_workbook(io.BytesIO(xlsx_content), read_only=True)
         ws = wb.active
@@ -977,6 +988,51 @@ class EvaluationService:
             )
 
         wb.close()
+        return items
+
+    @classmethod
+    def _parse_csv_dataset(cls, csv_content: bytes) -> list[EvaluationDatasetInput]:
+        """Parse evaluation dataset from UTF-8 CSV bytes.
+
+        CSV follows the same schema as XLSX:
+        the first column must be `index`, remaining columns become inputs,
+        and `expected_output` is extracted into a dedicated field.
+        """
+        try:
+            decoded = csv_content.decode("utf-8-sig")
+        except UnicodeDecodeError as e:
+            raise EvaluationDatasetInvalidError("CSV file must be UTF-8 encoded.") from e
+
+        reader = csv.reader(io.StringIO(decoded))
+        rows = list(reader)
+        if len(rows) < 2:
+            raise EvaluationDatasetInvalidError("Dataset must have at least a header row and one data row.")
+
+        headers = [str(h).strip() if h is not None else "" for h in rows[0]]
+        if not headers or headers[0].lower() != "index":
+            raise EvaluationDatasetInvalidError("First column header must be 'index'.")
+
+        input_headers = headers[1:]
+        items: list[EvaluationDatasetInput] = []
+        for row_idx, row in enumerate(rows[1:], start=1):
+            values = list(row)
+            if all(str(v).strip() == "" for v in values):
+                continue
+
+            index_val = values[0] if values else row_idx
+            try:
+                index = int(str(index_val))
+            except (TypeError, ValueError):
+                index = row_idx
+
+            inputs: dict[str, Any] = {}
+            for col_idx, header in enumerate(input_headers):
+                val = values[col_idx + 1] if col_idx + 1 < len(values) else None
+                inputs[header] = str(val) if val is not None else ""
+
+            expected_output = inputs.pop("expected_output", None)
+            items.append(EvaluationDatasetInput(index=index, inputs=inputs, expected_output=expected_output))
+
         return items
 
     @classmethod
