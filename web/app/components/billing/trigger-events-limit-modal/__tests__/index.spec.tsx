@@ -42,13 +42,13 @@ describe('TriggerEventsLimitModal', () => {
     expect(modal.getAttribute('data-description')).toContain('billing.triggerLimitModal.description')
     expect(planUpgradeModalMock).toHaveBeenCalled()
 
-    const passedProps = planUpgradeModalMock.mock.calls[0][0]
+    const passedProps = planUpgradeModalMock.mock.calls[0]![0]
     expect(passedProps.onClose).toBe(mockOnClose)
     expect(passedProps.onUpgrade).toBe(mockOnUpgrade)
 
-    expect(screen.getByText('billing.triggerLimitModal.usageTitle')).toBeInTheDocument()
-    expect(screen.getByText('12')).toBeInTheDocument()
-    expect(screen.getByText('20')).toBeInTheDocument()
+    expect(screen.getByText('billing.triggerLimitModal.usageTitle'))!.toBeInTheDocument()
+    expect(screen.getByText('12'))!.toBeInTheDocument()
+    expect(screen.getByText('20'))!.toBeInTheDocument()
   })
 
   it('renders even when trigger modal is hidden', () => {
@@ -78,9 +78,9 @@ describe('TriggerEventsLimitModal', () => {
       />,
     )
 
-    expect(screen.getByText('billing.triggerLimitModal.usageTitle')).toBeInTheDocument()
-    expect(screen.getByText('18000')).toBeInTheDocument()
-    expect(screen.getByText('20000')).toBeInTheDocument()
+    expect(screen.getByText('billing.triggerLimitModal.usageTitle'))!.toBeInTheDocument()
+    expect(screen.getByText('18000'))!.toBeInTheDocument()
+    expect(screen.getByText('20000'))!.toBeInTheDocument()
   })
 
   it('passes correct title and description translations', () => {
@@ -110,7 +110,7 @@ describe('TriggerEventsLimitModal', () => {
       />,
     )
 
-    const passedProps = planUpgradeModalMock.mock.calls[0][0]
+    const passedProps = planUpgradeModalMock.mock.calls[0]![0]
     expect(passedProps.onClose).toBe(mockOnClose)
     expect(passedProps.onUpgrade).toBe(mockOnUpgrade)
   })

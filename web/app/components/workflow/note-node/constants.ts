@@ -1,6 +1,7 @@
 import { NoteTheme } from './types'
 
 export const CUSTOM_NOTE_NODE = 'custom-note'
+export const NOTE_SHOW_AUTHOR_STORAGE_KEY = 'workflow-note-show-author'
 
 export const THEME_MAP: Record<string, { outer: string, title: string, bg: string, border: string }> = {
   [NoteTheme.blue]: {

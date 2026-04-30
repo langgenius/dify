@@ -2,6 +2,7 @@ import uuid
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+import sqlalchemy as sa
 from faker import Faker
 from sqlalchemy.orm import Session
 
@@ -35,12 +36,19 @@ class TestAppGenerateService:
             ) as mock_message_based_generator,
             patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
             patch("services.app_generate_service.dify_config", autospec=True) as mock_dify_config,
+            patch("services.quota_service.dify_config", autospec=True) as mock_quota_dify_config,
             patch("configs.dify_config", autospec=True) as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
-            mock_billing_service.update_tenant_feature_plan_usage.return_value = {
-                "result": "success",
-                "history_id": "test_history_id",
+            mock_billing_service.quota_reserve.return_value = {
+                "reservation_id": "test-reservation-id",
+                "available": 100,
+                "reserved": 1,
+            }
+            mock_billing_service.quota_commit.return_value = {
+                "available": 99,
+                "reserved": 0,
+                "refunded": 0,
             }
 
             # Setup default mock returns for workflow service
@@ -100,6 +108,8 @@ class TestAppGenerateService:
             mock_dify_config.APP_DEFAULT_ACTIVE_REQUESTS = 100
             mock_dify_config.APP_DAILY_RATE_LIMIT = 1000
 
+            mock_quota_dify_config.BILLING_ENABLED = False
+
             mock_global_dify_config.BILLING_ENABLED = False
             mock_global_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
             mock_global_dify_config.APP_DAILY_RATE_LIMIT = 1000
@@ -117,6 +127,7 @@ class TestAppGenerateService:
                 "message_based_generator": mock_message_based_generator,
                 "account_feature_service": mock_account_feature_service,
                 "dify_config": mock_dify_config,
+                "quota_dify_config": mock_quota_dify_config,
                 "global_dify_config": mock_global_dify_config,
             }
 
@@ -464,6 +475,7 @@ class TestAppGenerateService:
 
         # Set BILLING_ENABLED to True for this test
         mock_external_service_dependencies["dify_config"].BILLING_ENABLED = True
+        mock_external_service_dependencies["quota_dify_config"].BILLING_ENABLED = True
         mock_external_service_dependencies["global_dify_config"].BILLING_ENABLED = True
 
         # Setup test arguments
@@ -477,8 +489,10 @@ class TestAppGenerateService:
         # Verify the result
         assert result == ["test_response"]
 
-        # Verify billing service was called to consume quota
-        mock_external_service_dependencies["billing_service"].update_tenant_feature_plan_usage.assert_called_once()
+        # Verify billing two-phase quota (reserve + commit)
+        billing = mock_external_service_dependencies["billing_service"]
+        billing.quota_reserve.assert_called_once()
+        billing.quota_commit.assert_called_once()
 
     def test_generate_with_invalid_app_mode(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -492,19 +506,19 @@ class TestAppGenerateService:
         )
 
         # Manually set invalid mode after creation
+        # With EnumText, invalid values are rejected at the DB level during flush,
+        # raising StatementError wrapping ValueError
         app.mode = "invalid_mode"
 
         # Setup test arguments
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
 
-        # Execute the method under test and expect ValueError
-        with pytest.raises(ValueError) as exc_info:
+        # Execute the method under test and expect either ValueError (direct) or
+        # StatementError (from EnumText validation during autoflush)
+        with pytest.raises((ValueError, sa.exc.StatementError)):
             AppGenerateService.generate(
                 app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
             )
-
-        # Verify error message
-        assert "Invalid app mode" in str(exc_info.value)
 
     def test_generate_with_workflow_id_format_error(
         self, db_session_with_containers: Session, mock_external_service_dependencies

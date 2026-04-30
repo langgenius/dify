@@ -1,6 +1,5 @@
 import type { ComponentProps, FC, ReactNode } from 'react'
-import Image from 'next/image'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 const TriangleArrow: FC<ComponentProps<'svg'>> = props => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="11" viewBox="0 0 24 11" fill="none" {...props}>
@@ -23,7 +22,7 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   return (
     <div className={cn('relative flex h-full overflow-hidden rounded-t-xl', isActive && activeClassName, !disabled && 'cursor-pointer')}>
       <div className="relative flex size-14 items-center justify-center overflow-hidden">
-        {isActive && effectImg && <Image src={effectImg} className="absolute left-0 top-0 h-full w-full" alt="" width={56} height={56} />}
+        {isActive && effectImg && <img src={effectImg} className="absolute top-0 left-0 h-full w-full" alt="" width={56} height={56} />}
         <div className="p-1">
           <div className="flex size-8 justify-center rounded-lg border border-components-panel-border-subtle bg-background-default-dodge p-1.5 shadow-md">
             {icon}

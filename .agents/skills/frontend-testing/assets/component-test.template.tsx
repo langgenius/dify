@@ -41,7 +41,7 @@ import userEvent from '@testing-library/user-event'
 // Router (if component uses useRouter, usePathname, useSearchParams)
 // WHY: Isolates tests from Next.js routing, enables testing navigation behavior
 // const mockPush = vi.fn()
-// vi.mock('next/navigation', () => ({
+// vi.mock('@/next/navigation', () => ({
 //   useRouter: () => ({ push: mockPush }),
 //   usePathname: () => '/test-path',
 // }))

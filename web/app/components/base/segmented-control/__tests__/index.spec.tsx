@@ -49,7 +49,7 @@ describe('SegmentedControl', () => {
     render(<SegmentedControl options={options} value="option2" onChange={onSelectMock} />)
 
     const selectedOption = screen.getByText('Option 2').closest('button')
-    expect(selectedOption).toHaveClass('active')
+    expect(selectedOption).toHaveClass('sc-active')
   })
 
   it('calls onChange when an option is clicked', () => {
@@ -74,7 +74,7 @@ describe('SegmentedControl', () => {
 
     const optionElement = screen.getByText('Option 2').closest('button')
     expect(optionElement).toHaveAttribute('disabled')
-    expect(optionElement).toHaveClass('disabled')
+    expect(optionElement).toHaveClass('sc-disabled')
 
     fireEvent.click(screen.getByText('Option 3'))
     expect(onSelectMock).toHaveBeenCalledWith('option3')
@@ -93,5 +93,22 @@ describe('SegmentedControl', () => {
 
     const selectedOption = screen.getByText('Option 1').closest('button')?.closest('div')
     expect(selectedOption).toHaveClass(customClass)
+  })
+
+  it('renders Icon when provided', () => {
+    const MockIcon = () => <svg data-testid="mock-icon" />
+    const optionsWithIcon = [
+      { value: 'option1', text: 'Option 1', Icon: MockIcon },
+    ]
+    render(<SegmentedControl options={optionsWithIcon} value="option1" onChange={onSelectMock} />)
+    expect(screen.getByTestId('mock-icon')).toBeInTheDocument()
+  })
+
+  it('renders count when provided and size is large', () => {
+    const optionsWithCount = [
+      { value: 'option1', text: 'Option 1', count: 42 },
+    ]
+    render(<SegmentedControl options={optionsWithCount} value="option1" onChange={onSelectMock} size="large" />)
+    expect(screen.getByText('42')).toBeInTheDocument()
   })
 })

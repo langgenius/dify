@@ -5,15 +5,20 @@ from unittest.mock import Mock
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from dify_graph.enums import SystemVariableKey, WorkflowNodeExecutionStatus
-from dify_graph.nodes.knowledge_index.entities import KnowledgeIndexNodeData
-from dify_graph.nodes.knowledge_index.exc import KnowledgeIndexNodeError
-from dify_graph.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
-from dify_graph.repositories.index_processor_protocol import IndexProcessorProtocol, Preview, PreviewItem
-from dify_graph.repositories.summary_index_service_protocol import SummaryIndexServiceProtocol
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variables.segments import StringSegment
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
+from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
+from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
+from core.workflow.nodes.knowledge_index.protocols import (
+    IndexProcessorProtocol,
+    Preview,
+    PreviewItem,
+    SummaryIndexServiceProtocol,
+)
+from core.workflow.system_variables import SystemVariableKey, build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables.segments import StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -36,7 +41,7 @@ def mock_graph_init_params():
 def mock_graph_runtime_state():
     """Create mock GraphRuntimeState."""
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id=str(uuid.uuid4()), files=[]),
+        system_variables=build_system_variables(user_id=str(uuid.uuid4()), files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -45,16 +50,24 @@ def mock_graph_runtime_state():
 
 
 @pytest.fixture
-def mock_index_processor():
+def mock_index_processor(mocker):
     """Create mock IndexProcessorProtocol."""
     mock_processor = Mock(spec=IndexProcessorProtocol)
+    mocker.patch(
+        "core.workflow.nodes.knowledge_index.knowledge_index_node.IndexProcessor",
+        return_value=mock_processor,
+    )
     return mock_processor
 
 
 @pytest.fixture
-def mock_summary_index_service():
+def mock_summary_index_service(mocker):
     """Create mock SummaryIndexServiceProtocol."""
     mock_service = Mock(spec=SummaryIndexServiceProtocol)
+    mocker.patch(
+        "core.workflow.nodes.knowledge_index.knowledge_index_node.SummaryIndex",
+        return_value=mock_service,
+    )
     return mock_service
 
 
@@ -66,7 +79,7 @@ def sample_node_data():
         type="knowledge-index",
         chunk_structure="general_structure",
         index_chunk_variable_selector=["start", "chunks"],
-        indexing_technique="high_quality",
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         summary_index_setting=None,
     )
 
@@ -78,6 +91,25 @@ def sample_chunks():
         "general_chunks": ["Chunk 1 content", "Chunk 2 content"],
         "data_source_info": {"file_id": str(uuid.uuid4())},
     }
+
+
+def _build_node(
+    *,
+    node_id: str,
+    node_data: KnowledgeIndexNodeData | dict[str, object],
+    graph_init_params,
+    graph_runtime_state,
+) -> KnowledgeIndexNode:
+    return KnowledgeIndexNode(
+        node_id=node_id,
+        config=(
+            node_data
+            if isinstance(node_data, KnowledgeIndexNodeData)
+            else KnowledgeIndexNodeData.model_validate(node_data)
+        ),
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
 
 
 class TestKnowledgeIndexNode:
@@ -102,13 +134,11 @@ class TestKnowledgeIndexNode:
         }
 
         # Act
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Assert
@@ -132,13 +162,11 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act & Assert
@@ -167,13 +195,11 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act & Assert
@@ -205,13 +231,11 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -264,13 +288,11 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -329,13 +351,11 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -382,13 +402,11 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -441,13 +459,11 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -501,13 +517,11 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -541,13 +555,11 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -590,13 +602,11 @@ class TestKnowledgeIndexNode:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act
@@ -632,13 +642,11 @@ class TestInvokeKnowledgeIndex:
             "data": sample_node_data.model_dump(),
         }
 
-        node = KnowledgeIndexNode(
-            id=node_id,
-            config=config,
+        node = _build_node(
+            node_id=node_id,
+            node_data=config["data"],
             graph_init_params=mock_graph_init_params,
             graph_runtime_state=mock_graph_runtime_state,
-            index_processor=mock_index_processor,
-            summary_index_service=mock_summary_index_service,
         )
 
         # Act

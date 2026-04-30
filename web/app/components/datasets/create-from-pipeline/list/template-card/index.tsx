@@ -1,13 +1,21 @@
 import type { PipelineTemplate } from '@/models/pipeline'
-import { useRouter } from 'next/navigation'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Confirm from '@/app/components/base/confirm'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useRouter } from '@/next/navigation'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import {
@@ -50,10 +58,7 @@ const TemplateCard = ({
   const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
     if (!pipelineTemplateInfo) {
-      Toast.notify({
-        type: 'error',
-        message: t('creation.errorTip', { ns: 'datasetPipeline' }),
-      })
+      toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       return
     }
     const request = {
@@ -61,10 +66,7 @@ const TemplateCard = ({
     }
     await createDataset(request, {
       onSuccess: async (newDataset) => {
-        Toast.notify({
-          type: 'success',
-          message: t('creation.successTip', { ns: 'datasetPipeline' }),
-        })
+        toast.success(t('creation.successTip', { ns: 'datasetPipeline' }))
         invalidDatasetList()
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
@@ -76,10 +78,7 @@ const TemplateCard = ({
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
-        })
+        toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       },
     })
   }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList, pipeline.name, pipeline.id, type])
@@ -109,16 +108,10 @@ const TemplateCard = ({
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
         downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
-        Toast.notify({
-          type: 'success',
-          message: t('exportDSL.successTip', { ns: 'datasetPipeline' }),
-        })
+        toast.success(t('exportDSL.successTip', { ns: 'datasetPipeline' }))
       },
       onError: () => {
-        Toast.notify({
-          type: 'error',
-          message: t('exportDSL.errorTip', { ns: 'datasetPipeline' }),
-        })
+        toast.error(t('exportDSL.errorTip', { ns: 'datasetPipeline' }))
       },
     })
   }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])
@@ -171,15 +164,24 @@ const TemplateCard = ({
           />
         </Modal>
       )}
-      {showDeleteConfirm && (
-        <Confirm
-          title={t('deletePipeline.title', { ns: 'datasetPipeline' })}
-          content={t('deletePipeline.content', { ns: 'datasetPipeline' })}
-          isShow={showDeleteConfirm}
-          onConfirm={onConfirmDelete}
-          onCancel={onCancelDelete}
-        />
-      )}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && onCancelDelete()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('deletePipeline.title', { ns: 'datasetPipeline' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('deletePipeline.content', { ns: 'datasetPipeline' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={onConfirmDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {showDetailModal && (
         <Modal
           isShow={showDetailModal}

@@ -1,7 +1,7 @@
 import type { BasicPlan } from '../../../type'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 import { Plan } from '../../../type'
 
 const BUTTON_CLASSNAME = {
@@ -37,7 +37,7 @@ const Button = ({
       type="button"
       disabled={isPlanDisabled}
       className={cn(
-        'system-xl-semibold flex items-center gap-x-2 py-3 pl-5 pr-4',
+        'flex items-center gap-x-2 py-3 pr-4 pl-5 system-xl-semibold',
         BUTTON_CLASSNAME[plan].btnClassname,
         isPlanDisabled && BUTTON_CLASSNAME[plan].btnDisabledClassname,
         isPlanDisabled && 'cursor-not-allowed',

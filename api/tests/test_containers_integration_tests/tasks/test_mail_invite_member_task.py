@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import delete, select
 
 from extensions.ext_redis import redis_client
 from libs.email_i18n import EmailType
@@ -44,9 +45,9 @@ class TestMailInviteMemberTask:
     def cleanup_database(self, db_session_with_containers):
         """Clean up database before each test to ensure isolation."""
         # Clear all test data
-        db_session_with_containers.query(TenantAccountJoin).delete()
-        db_session_with_containers.query(Tenant).delete()
-        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.execute(delete(TenantAccountJoin))
+        db_session_with_containers.execute(delete(Tenant))
+        db_session_with_containers.execute(delete(Account))
         db_session_with_containers.commit()
 
         # Clear Redis cache
@@ -491,10 +492,10 @@ class TestMailInviteMemberTask:
         assert tenant.name is not None
 
         # Verify tenant relationship exists
-        tenant_join = (
-            db_session_with_containers.query(TenantAccountJoin)
-            .filter_by(tenant_id=tenant.id, account_id=pending_account.id)
-            .first()
+        tenant_join = db_session_with_containers.scalar(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == pending_account.id)
+            .limit(1)
         )
         assert tenant_join is not None
         assert tenant_join.role == TenantAccountRole.NORMAL

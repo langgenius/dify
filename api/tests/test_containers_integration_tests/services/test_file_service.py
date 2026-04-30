@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from extensions.storage.storage_type import StorageType
 from models import Account, Tenant
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
@@ -140,7 +141,7 @@ class TestFileService:
 
         upload_file = UploadFile(
             tenant_id=account.current_tenant_id if hasattr(account, "current_tenant_id") else str(fake.uuid4()),
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"upload_files/test/{fake.uuid4()}.txt",
             name="test_file.txt",
             size=1024,
@@ -262,6 +263,27 @@ class TestFileService:
                 mimetype=mimetype,
                 user=account,
             )
+
+    def test_upload_file_allows_regular_punctuation_in_filename(
+        self, db_session_with_containers: Session, engine, mock_external_service_dependencies
+    ):
+        """
+        Test file upload allows punctuation that is safe when stored as metadata.
+        """
+        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
+
+        filename = 'candidate?resume for "dify"<final>|v2:.txt'
+        content = b"test content"
+        mimetype = "text/plain"
+
+        upload_file = FileService(engine).upload_file(
+            filename=filename,
+            content=content,
+            mimetype=mimetype,
+            user=account,
+        )
+
+        assert upload_file.name == filename
 
     def test_upload_file_filename_too_long(
         self, db_session_with_containers: Session, engine, mock_external_service_dependencies

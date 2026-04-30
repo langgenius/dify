@@ -78,7 +78,7 @@ class UserProfile(TypedDict):
     nickname: NotRequired[str]
 ```
 
-- For classes, declare member variables at the top of the class body (before `__init__`) so the class shape is obvious at a glance:
+- For classes, declare all member variables explicitly with types at the top of the class body (before `__init__`), even when the class is not a dataclass or Pydantic model, so the class shape is obvious at a glance:
 
 ```python
 from datetime import datetime

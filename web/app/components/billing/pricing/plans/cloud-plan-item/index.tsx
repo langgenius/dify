@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { BasicPlan } from '../../../type'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +9,6 @@ import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient } from '@/service/client'
-import Toast from '../../../../base/toast'
 import { ALL_PLANS } from '../../../config'
 import { Plan } from '../../../type'
 import { Professional, Sandbox, Team } from '../../assets'
@@ -66,11 +66,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       return
 
     if (!isCurrentWorkspaceManager) {
-      Toast.notify({
-        type: 'error',
-        message: t('buyPermissionDeniedTip', { ns: 'billing' }),
-        className: 'z-[1001]',
-      })
+      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
       return
     }
     setLoading(true)
@@ -83,7 +79,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           throw new Error('Failed to open billing page')
         }, {
           onError: (err) => {
-            Toast.notify({ type: 'error', message: err.message || String(err) })
+            toast.error(err.message || String(err))
           },
         })
         return
@@ -107,7 +103,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           {ICON_MAP[plan]}
           <div className="flex min-h-[104px] flex-col gap-y-2">
             <div className="flex items-center gap-x-2.5">
-              <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
+              <div className="text-[30px] leading-[1.2] font-medium text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
               {
                 isMostPopularPlan && (
                   <div className="flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1">
@@ -122,7 +118,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           </div>
         </div>
         {/* Price */}
-        <div className="flex items-end gap-x-2 px-1 pb-8 pt-4">
+        <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
           {isFreePlan && (
             <span className="title-4xl-semi-bold text-text-primary">{t('plansCommon.free', { ns: 'billing' })}</span>
           )}
@@ -138,7 +134,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
                 $
                 {isYear ? planInfo.price * 10 : planInfo.price}
               </span>
-              <span className="system-md-regular pb-0.5 text-text-tertiary">
+              <span className="pb-0.5 system-md-regular text-text-tertiary">
                 {t('plansCommon.priceTip', { ns: 'billing' })}
                 {t(`plansCommon.${!isYear ? 'month' : 'year'}`, { ns: 'billing' })}
               </span>

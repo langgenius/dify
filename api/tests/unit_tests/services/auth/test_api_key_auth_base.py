@@ -13,13 +13,13 @@ class ConcreteApiKeyAuth(ApiKeyAuthBase):
 class TestApiKeyAuthBase:
     def test_should_store_credentials_on_init(self):
         """Test that credentials are properly stored during initialization"""
-        credentials = {"api_key": "test_key", "auth_type": "bearer"}
+        credentials = {"auth_type": "bearer", "config": {"api_key": "test_key"}}
         auth = ConcreteApiKeyAuth(credentials)
         assert auth.credentials == credentials
 
     def test_should_not_instantiate_abstract_class(self):
         """Test that ApiKeyAuthBase cannot be instantiated directly"""
-        credentials = {"api_key": "test_key"}
+        credentials = {"auth_type": "bearer", "config": {"api_key": "test_key"}}
 
         with pytest.raises(TypeError) as exc_info:
             ApiKeyAuthBase(credentials)
@@ -29,7 +29,7 @@ class TestApiKeyAuthBase:
 
     def test_should_allow_subclass_implementation(self):
         """Test that subclasses can properly implement the abstract method"""
-        credentials = {"api_key": "test_key", "auth_type": "bearer"}
+        credentials = {"auth_type": "bearer", "config": {"api_key": "test_key"}}
         auth = ConcreteApiKeyAuth(credentials)
 
         # Should not raise any exception

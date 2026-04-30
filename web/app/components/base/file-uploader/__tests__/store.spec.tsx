@@ -25,6 +25,11 @@ describe('createFileStore', () => {
     expect(store.getState().files).toEqual([])
   })
 
+  it('should create a store with empty array when value is null', () => {
+    const store = createFileStore(null as unknown as FileEntity[])
+    expect(store.getState().files).toEqual([])
+  })
+
   it('should create a store with initial files', () => {
     const files = [createMockFile()]
     const store = createFileStore(files)
@@ -95,6 +100,11 @@ describe('useFileStore', () => {
     })
 
     expect(result.current).toBe(store)
+  })
+
+  it('should return null when no provider exists', () => {
+    const { result } = renderHook(() => useFileStore())
+    expect(result.current).toBeNull()
   })
 })
 

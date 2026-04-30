@@ -1,12 +1,12 @@
 'use client'
 import type { FC, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -18,6 +18,7 @@ type Props = {
   operations?: React.JSX.Element
   inline?: boolean
   required?: boolean
+  warningDot?: boolean
 }
 
 const Field: FC<Props> = ({
@@ -30,6 +31,7 @@ const Field: FC<Props> = ({
   inline,
   supportFold,
   required,
+  warningDot,
 }) => {
   const [fold, {
     toggle: toggleFold,
@@ -41,7 +43,10 @@ const Field: FC<Props> = ({
         className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}
       >
         <div className="flex h-6 items-center">
-          <div className={cn(isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
+          <div className={cn('relative', isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
+            {warningDot && (
+              <span className="absolute top-1/2 -left-[9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+            )}
             {title}
             {' '}
             {required && <span className="text-text-destructive">*</span>}

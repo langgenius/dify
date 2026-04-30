@@ -1,24 +1,23 @@
 import type { Node } from 'reactflow'
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ReasoningConfigValue as ReasoningConfigValueShape } from './reasoning-config-form.helpers'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import type {
   NodeOutPutVar,
   ValueSelector,
-  Var,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiArrowRightUpLine,
   RiBracesLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { produce } from 'immer'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { SimpleSelect } from '@/app/components/base/select'
-import Switch from '@/app/components/base/switch'
+// eslint-disable-next-line no-restricted-imports -- legacy tooltip migration is handled separately from this change
 import Tooltip from '@/app/components/base/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -31,21 +30,20 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
+import {
+  createPickerProps,
+  getFieldFlags,
+  getFieldTitle,
+  mergeReasoningValue,
+  resolveTargetVarType,
+  updateInputAutoState,
+  updateReasoningValue,
+  updateVariableSelectorValue,
+  updateVariableTypeValue,
+} from './reasoning-config-form.helpers'
 import SchemaModal from './schema-modal'
 
-type ReasoningConfigInputValue = {
-  type?: VarKindType
-  value?: unknown
-} | null
-
-type ReasoningConfigInput = {
-  value: ReasoningConfigInputValue
-  auto?: 0 | 1
-}
-
-export type ReasoningConfigValue = Record<string, ReasoningConfigInput>
+export type ReasoningConfigValue = ReasoningConfigValueShape
 
 type Props = {
   value: ReasoningConfigValue
@@ -66,79 +64,42 @@ const ReasoningConfigForm: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
-  const getVarKindType = (type: string) => {
-    if (type === FormTypeEnum.file || type === FormTypeEnum.files)
-      return VarKindType.variable
-    if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber || type === FormTypeEnum.array || type === FormTypeEnum.object)
-      return VarKindType.constant
-    if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
-      return VarKindType.mixed
-  }
 
   const handleAutomatic = (key: string, val: boolean, type: string) => {
-    onChange({
-      ...value,
-      [key]: {
-        value: val ? null : { type: getVarKindType(type), value: null },
-        auto: val ? 1 : 0,
-      },
-    })
+    onChange(updateInputAutoState(value, key, val, type))
   }
+
   const handleTypeChange = useCallback((variable: string, defaultValue: unknown) => {
     return (newType: VarKindType) => {
-      const res = produce(value, (draft: ToolVarInputs) => {
-        draft[variable].value = {
-          type: newType,
-          value: newType === VarKindType.variable ? '' : defaultValue,
-        }
-      })
-      onChange(res)
+      onChange(updateVariableTypeValue(value, variable, newType, defaultValue))
     }
   }, [onChange, value])
+
   const handleValueChange = useCallback((variable: string, varType: string) => {
     return (newValue: unknown) => {
-      const res = produce(value, (draft: ToolVarInputs) => {
-        draft[variable].value = {
-          type: getVarKindType(varType),
-          value: newValue,
-        }
-      })
-      onChange(res)
+      onChange(updateReasoningValue(value, variable, varType, newValue))
     }
   }, [onChange, value])
+
   const handleAppChange = useCallback((variable: string) => {
     return (app: {
       app_id: string
       inputs: Record<string, unknown>
       files?: unknown[]
     }) => {
-      const newValue = produce(value, (draft: ToolVarInputs) => {
-        draft[variable].value = app
-      })
-      onChange(newValue)
+      onChange(updateReasoningValue(value, variable, FormTypeEnum.appSelector, app))
     }
   }, [onChange, value])
+
   const handleModelChange = useCallback((variable: string) => {
     return (model: Record<string, unknown>) => {
-      const newValue = produce(value, (draft: ToolVarInputs) => {
-        const currentValue = draft[variable].value as Record<string, unknown> | undefined
-        draft[variable].value = {
-          ...currentValue,
-          ...model,
-        }
-      })
-      onChange(newValue)
+      onChange(mergeReasoningValue(value, variable, model))
     }
   }, [onChange, value])
+
   const handleVariableSelectorChange = useCallback((variable: string) => {
     return (newValue: ValueSelector | string) => {
-      const res = produce(value, (draft: ToolVarInputs) => {
-        draft[variable].value = {
-          type: VarKindType.variable,
-          value: newValue,
-        }
-      })
-      onChange(res)
+      onChange(updateVariableSelectorValue(value, variable, newValue))
     }
   }, [onChange, value])
 
@@ -165,6 +126,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       options,
     } = schema
     const auto = value[variable]?.auto
+    const fieldTitle = getFieldTitle(label, language)
     const tooltipContent = (tooltip && (
       <Tooltip
         popupContent={(
@@ -176,65 +138,40 @@ const ReasoningConfigForm: React.FC<Props> = ({
         asChild={false}
       />
     ))
-    const varInput = value[variable].value
-    const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
-    const isNumber = type === FormTypeEnum.textNumber
-    const isObject = type === FormTypeEnum.object
-    const isArray = type === FormTypeEnum.array
-    const isShowJSONEditor = isObject || isArray
-    const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
-    const isBoolean = type === FormTypeEnum.checkbox
-    const isSelect = type === FormTypeEnum.select
-    const isAppSelector = type === FormTypeEnum.appSelector
-    const isModelSelector = type === FormTypeEnum.modelSelector
-    const showTypeSwitch = isNumber || isObject || isArray
-    const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
-    const showVariableSelector = isFile || varInput?.type === VarKindType.variable
-    const targetVarType = () => {
-      if (isString)
-        return VarType.string
-      else if (isNumber)
-        return VarType.number
-      else if (type === FormTypeEnum.files)
-        return VarType.arrayFile
-      else if (type === FormTypeEnum.file)
-        return VarType.file
-      else if (isBoolean)
-        return VarType.boolean
-      else if (isObject)
-        return VarType.object
-      else if (isArray)
-        return VarType.arrayObject
-      else
-        return VarType.string
-    }
-    const getFilterVar = () => {
-      if (isNumber)
-        return (varPayload: Var) => varPayload.type === VarType.number
-      else if (isString)
-        return (varPayload: Var) => [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
-      else if (isFile)
-        return (varPayload: Var) => [VarType.file, VarType.arrayFile].includes(varPayload.type)
-      else if (isBoolean)
-        return (varPayload: Var) => varPayload.type === VarType.boolean
-      else if (isObject)
-        return (varPayload: Var) => varPayload.type === VarType.object
-      else if (isArray)
-        return (varPayload: Var) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
-      return undefined
-    }
+    const varInput = value[variable]!.value
+    const {
+      isString,
+      isNumber,
+      isShowJSONEditor,
+      isBoolean,
+      isSelect,
+      isAppSelector,
+      isModelSelector,
+      showTypeSwitch,
+      isConstant,
+      showVariableSelector,
+    } = getFieldFlags(type, varInput)
+    const pickerProps = createPickerProps({
+      type,
+      value,
+      language,
+      schema,
+    })
+    const selectedOption = isSelect && options
+      ? pickerProps.selectItems.find(item => item.value === (varInput?.value as string | number | undefined)) ?? null
+      : null
 
     return (
       <div key={variable} className="space-y-0.5">
-        <div className="system-sm-semibold flex items-center justify-between py-2 text-text-secondary">
+        <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
           <div className="flex items-center">
-            <span className={cn('code-sm-semibold max-w-[140px] truncate text-text-secondary')} title={label[language] || label.en_US}>{label[language] || label.en_US}</span>
+            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')} title={fieldTitle}>{fieldTitle}</span>
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
-            <span className="system-xs-regular mx-1 text-text-quaternary">·</span>
-            <span className="system-xs-regular text-text-tertiary">{targetVarType()}</span>
+            <span className="mx-1 system-xs-regular text-text-quaternary">·</span>
+            <span className="system-xs-regular text-text-tertiary">{resolveTargetVarType(type)}</span>
             {isShowJSONEditor && (
               <Tooltip
                 popupContent={(
@@ -245,8 +182,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 asChild={false}
               >
                 <div
-                  className="ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                  onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
+                  className="ml-0.5 cursor-pointer rounded-sm p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                  onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
                 >
                   <RiBracesLine className="size-3.5" />
                 </div>
@@ -254,12 +191,12 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
 
           </div>
-          <div className="flex cursor-pointer items-center gap-1 rounded-[6px] border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
+          <div className="flex cursor-pointer items-center gap-1 rounded-md border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
             <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
             <Switch
               size="xs"
-              value={!!auto}
-              onChange={val => handleAutomatic(variable, val, type)}
+              checked={!!auto}
+              onCheckedChange={val => handleAutomatic(variable, val, type)}
             />
           </div>
         </div>
@@ -292,18 +229,19 @@ const ReasoningConfigForm: React.FC<Props> = ({
               />
             )}
             {isSelect && options && (
-              <SimpleSelect
-                wrapperClassName="h-8 grow"
-                defaultValue={varInput?.value as string | number | undefined}
-                items={options.filter((option) => {
-                  if (option.show_on.length)
-                    return option.show_on.every(showOnItem => value[showOnItem.variable]?.value?.value === showOnItem.value)
-
-                  return true
-                }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
-                onSelect={item => handleValueChange(variable, type)(item.value as string)}
-                placeholder={placeholder?.[language] || placeholder?.en_US}
-              />
+              <Select value={selectedOption ? String(selectedOption.value) : null} onValueChange={value => value && handleValueChange(variable, type)(value)}>
+                <SelectTrigger className="h-8 grow">
+                  {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
+                </SelectTrigger>
+                <SelectContent popupClassName="w-(--anchor-width)">
+                  {pickerProps.selectItems.map(item => (
+                    <SelectItem key={item.value} value={String(item.value)}>
+                      <SelectItemText>{item.name}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
             {isShowJSONEditor && isConstant && (
               <div className="mt-1 w-full">
@@ -330,7 +268,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {isModelSelector && (
               <ModelParameterModal
-                popupClassName="!w-[387px]"
+                popupClassName="w-[387px]!"
                 isAdvancedMode
                 isInWorkflow
                 value={varInput}
@@ -347,9 +285,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 nodeId={nodeId}
                 value={(varInput?.value as string | ValueSelector) || []}
                 onChange={handleVariableSelectorChange(variable)}
-                filterVar={getFilterVar()}
-                schema={schema as Partial<CredentialFormSchema>}
-                valueTypePlaceHolder={targetVarType()}
+                filterVar={pickerProps.filterVar}
+                schema={pickerProps.schema}
+                valueTypePlaceHolder={pickerProps.targetVarType}
               />
             )}
           </div>

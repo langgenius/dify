@@ -64,7 +64,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           required
         >
           <ModelParameterModal
-            popupClassName="!w-[387px]"
+            popupClassName="w-[387px]!"
             isInWorkflow
             isAdvancedMode={true}
             provider={model?.provider}
@@ -75,6 +75,8 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
             readonly={readOnly}
+            nodesOutputVars={availableVars}
+            availableNodes={availableNodesWithParent}
           />
         </Field>
         <Field

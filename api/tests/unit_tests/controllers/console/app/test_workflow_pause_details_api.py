@@ -10,10 +10,10 @@ from flask import Flask
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow_run as workflow_run_module
 from controllers.web.error import NotFoundError
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.enums import WorkflowExecutionStatus
-from dify_graph.nodes.human_input.entities import FormInput, UserAction
-from dify_graph.nodes.human_input.enums import FormInputType
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
+from graphon.nodes.human_input.entities import FormInput, UserAction
+from graphon.nodes.human_input.enums import FormInputType
 from libs import login as login_lib
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.workflow import WorkflowRun
@@ -67,7 +67,6 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
         actions=[UserAction(id="approve", title="Approve")],
         node_id="node-1",
         node_title="Ask Name",
-        form_token="backstage-token",
     )
     pause_entity = _PauseEntity(paused_at=datetime(2024, 1, 1, 12, 0, 0), reasons=[reason])
 
@@ -77,6 +76,11 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
         workflow_run_module.DifyAPIRepositoryFactory,
         "create_api_workflow_run_repository",
         lambda *_, **__: repo,
+    )
+    monkeypatch.setattr(
+        workflow_run_module,
+        "_load_form_tokens_by_form_id",
+        lambda _form_ids: {"form-1": "backstage-token"},
     )
 
     with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):

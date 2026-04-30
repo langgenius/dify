@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { Dependency, InstallStatus, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
 import type { ExposeRefs } from './install-multi'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useMittContextSelector } from '@/context/mitt-context'
@@ -83,7 +83,7 @@ const Install: FC<Props> = ({
         onInstalled(selectedPlugins, res.map((r, i) => {
           return ({
             success: r.status === TaskStatus.success,
-            isFromMarketPlace: allPlugins[selectedIndexes[i]].type === 'marketplace',
+            isFromMarketPlace: allPlugins[selectedIndexes[i]!]!.type === 'marketplace',
           })
         }))
         const hasInstallSuccess = res.some(r => r.status === TaskStatus.success)
@@ -101,7 +101,7 @@ const Install: FC<Props> = ({
         if (item.status !== TaskStatus.running) {
           return {
             success: item.status === TaskStatus.success,
-            isFromMarketPlace: allPlugins[selectedIndexes[index]].type === 'marketplace',
+            isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
           }
         }
         const { status } = await check({
@@ -110,7 +110,7 @@ const Install: FC<Props> = ({
         })
         return {
           success: status === TaskStatus.success,
-          isFromMarketPlace: allPlugins[selectedIndexes[index]].type === 'marketplace',
+          isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
         }
       }))
       onInstalled(selectedPlugins, installStatus)
@@ -195,7 +195,7 @@ const Install: FC<Props> = ({
             {canInstall && (
               <div className="flex items-center gap-x-2" onClick={handleClickSelectAll}>
                 <Checkbox checked={isSelectAll} indeterminate={isIndeterminate} />
-                <p className="system-sm-medium cursor-pointer text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</p>
+                <p className="cursor-pointer system-sm-medium text-text-secondary">{isSelectAll ? t('operation.deSelectAll', { ns: 'common' }) : t('operation.selectAll', { ns: 'common' })}</p>
               </div>
             )}
           </div>

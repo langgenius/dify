@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
 import type { App } from '@/types/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDashboard2Fill,
   RiDashboard2Line,
@@ -13,8 +14,6 @@ import {
   RiTerminalWindowLine,
 } from '@remixicon/react'
 import { useUnmount } from 'ahooks'
-import dynamic from 'next/dynamic'
-import { usePathname, useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,16 +25,17 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import dynamic from '@/next/dynamic'
+import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import s from './style.module.css'
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
 })
 
-export type IAppDetailLayoutProps = {
+type IAppDetailLayoutProps = {
   children: React.ReactNode
   appId: string
 }

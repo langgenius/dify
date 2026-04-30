@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { Slider } from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useCallback } from 'react'
-import Slider from '@/app/components/base/slider'
 
 export type InputNumberWithSliderProps = {
   value: number
@@ -22,7 +22,7 @@ const InputNumberWithSlider: FC<InputNumberWithSliderProps> = ({
   onChange,
 }) => {
   const handleBlur = useCallback(() => {
-    if (value === undefined || value === null) {
+    if (value === undefined || value === null || Number.isNaN(value)) {
       onChange(defaultValue)
       return
     }
@@ -42,7 +42,7 @@ const InputNumberWithSlider: FC<InputNumberWithSliderProps> = ({
     <div className="flex h-8 items-center justify-between space-x-2">
       <input
         value={value}
-        className="block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-[13px] text-components-input-text-filled outline-none"
+        className="block h-8 w-12 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 text-[13px] text-components-input-text-filled outline-hidden"
         type="number"
         min={min}
         max={max}
@@ -57,8 +57,9 @@ const InputNumberWithSlider: FC<InputNumberWithSliderProps> = ({
         min={min}
         max={max}
         step={1}
-        onChange={onChange}
+        onValueChange={onChange}
         disabled={readonly}
+        aria-label="Number input slider"
       />
     </div>
   )

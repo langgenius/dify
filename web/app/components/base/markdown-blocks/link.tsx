@@ -9,7 +9,7 @@ import { isValidUrl } from './utils'
 
 const Link = ({ node, children, ...props }: any) => {
   const { onSend } = useChatContext()
-  const commonClassName = 'cursor-pointer underline !decoration-primary-700 decoration-dashed'
+  const commonClassName = 'cursor-pointer underline decoration-primary-700! decoration-dashed'
   if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 

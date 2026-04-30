@@ -1,6 +1,5 @@
 import json
 import operator
-from typing import TypeVar
 from unittest.mock import Mock, patch
 
 import httpx
@@ -16,10 +15,8 @@ from core.tools.entities.tool_entities import (
     ToolInvokeMessage,
 )
 
-_T = TypeVar("_T")
 
-
-def _get_message_by_type(msgs: list[ToolInvokeMessage], msg_type: type[_T]) -> ToolInvokeMessage | None:
+def _get_message_by_type[T](msgs: list[ToolInvokeMessage], msg_type: type[T]) -> ToolInvokeMessage | None:
     return next((i for i in msgs if isinstance(i.message, msg_type)), None)
 
 

@@ -1,19 +1,16 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar
 
 from flask import current_app, request
 from flask_login import user_logged_in
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 from extensions.ext_database import db
 from libs.login import current_user
 from models.account import Tenant
 from models.model import DefaultEndUserSessionID, EndUser
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 
 class TenantUserPayload(BaseModel):
@@ -23,35 +20,38 @@ class TenantUserPayload(BaseModel):
 
 def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     """
-    Get current user
+    Get current user.
 
     NOTE: user_id is not trusted, it could be maliciously set to any value.
-    As a result, it could only be considered as an end user id.
+    As a result, it could only be considered as an end user id. Even when a
+    concrete end-user ID is supplied, lookups must stay tenant-scoped so one
+    tenant cannot bind another tenant's user record into the plugin request
+    context.
     """
     if not user_id:
         user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
     is_anonymous = user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
     try:
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             user_model = None
 
             if is_anonymous:
-                user_model = (
-                    session.query(EndUser)
+                user_model = session.scalar(
+                    select(EndUser)
                     .where(
                         EndUser.session_id == user_id,
                         EndUser.tenant_id == tenant_id,
                     )
-                    .first()
+                    .limit(1)
                 )
             else:
-                user_model = (
-                    session.query(EndUser)
+                user_model = session.scalar(
+                    select(EndUser)
                     .where(
                         EndUser.id == user_id,
                         EndUser.tenant_id == tenant_id,
                     )
-                    .first()
+                    .limit(1)
                 )
 
             if not user_model:
@@ -62,7 +62,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
                     session_id=user_id,
                 )
                 session.add(user_model)
-                session.commit()
+                session.flush()
                 session.refresh(user_model)
 
     except Exception:
@@ -71,9 +71,9 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
     return user_model
 
 
-def get_user_tenant(view_func: Callable[P, R]):
+def get_user_tenant[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
     @wraps(view_func)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs):
+    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
         payload = TenantUserPayload.model_validate(request.get_json(silent=True) or {})
 
         user_id = payload.user_id
@@ -85,16 +85,7 @@ def get_user_tenant(view_func: Callable[P, R]):
         if not user_id:
             user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
-        try:
-            tenant_model = (
-                db.session.query(Tenant)
-                .where(
-                    Tenant.id == tenant_id,
-                )
-                .first()
-            )
-        except Exception:
-            raise ValueError("tenant not found")
+        tenant_model = db.session.get(Tenant, tenant_id)
 
         if not tenant_model:
             raise ValueError("tenant not found")
@@ -112,9 +103,13 @@ def get_user_tenant(view_func: Callable[P, R]):
     return decorated_view
 
 
-def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseModel]):
-    def decorator(view_func: Callable[P, R]):
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
+def plugin_data[**P, R](
+    *,
+    payload_type: type[BaseModel],
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
+        @wraps(view_func)
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 data = request.get_json()
             except Exception:
@@ -130,7 +125,4 @@ def plugin_data(view: Callable[P, R] | None = None, *, payload_type: type[BaseMo
 
         return decorated_view
 
-    if view is None:
-        return decorator
-    else:
-        return decorator(view)
+    return decorator

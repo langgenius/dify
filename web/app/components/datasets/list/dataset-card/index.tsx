@@ -1,15 +1,15 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
 import { useHover } from 'ahooks'
-import { useRouter } from 'next/navigation'
 import { useMemo, useRef } from 'react'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useRouter } from '@/next/navigation'
 import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
 import DatasetCardModals from './components/dataset-card-modals'
 import Description from './components/description'
-import OperationsPopover from './components/operations-popover'
+import OperationsDropdown from './components/operations-dropdown'
 import TagArea from './components/tag-area'
 import { useDatasetCardState } from './hooks/use-dataset-card-state'
 
@@ -82,7 +82,7 @@ const DatasetCard = ({
           onClick={handleTagAreaClick}
         />
         <DatasetCardFooter dataset={dataset} />
-        <OperationsPopover
+        <OperationsDropdown
           dataset={dataset}
           isCurrentWorkspaceDatasetOperator={isCurrentWorkspaceDatasetOperator}
           openRenameModal={openRenameModal}

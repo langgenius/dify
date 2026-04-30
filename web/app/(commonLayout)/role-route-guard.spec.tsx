@@ -6,7 +6,7 @@ const mockReplace = vi.fn()
 const mockUseAppContext = vi.fn()
 let mockPathname = '/apps'
 
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
   useRouter: () => ({
     replace: mockReplace,

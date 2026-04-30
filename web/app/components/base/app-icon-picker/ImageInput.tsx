@@ -2,12 +2,12 @@
 
 import type { ChangeEvent, FC } from 'react'
 import type { Area, CropperProps } from 'react-easy-crop'
+import { cn } from '@langgenius/dify-ui/cn'
 import { createRef, useEffect, useState } from 'react'
 import Cropper from 'react-easy-crop'
 import { useTranslation } from 'react-i18next'
-import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
-import { cn } from '@/utils/classnames'
+import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
 import { checkIsAnimatedImage } from './utils'
@@ -42,6 +42,7 @@ const ImageInput: FC<UploaderProps> = ({
   const [zoom, setZoom] = useState(1)
 
   const onCropComplete = async (_: Area, croppedAreaPixels: Area) => {
+    /* v8 ignore next -- unreachable guard when Cropper is rendered @preserve */
     if (!inputImage)
       return
     onImageInput?.(true, inputImage.url, croppedAreaPixels, inputImage.file.name)
@@ -72,7 +73,7 @@ const ImageInput: FC<UploaderProps> = ({
   const handleShowImage = () => {
     if (isAnimatedImage) {
       return (
-        // eslint-disable-next-line next/no-img-element
+
         <img src={inputImage?.url} alt="" data-testid="animated-image" />
       )
     }

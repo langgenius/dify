@@ -381,6 +381,54 @@ class TestEdgeCases:
         assert response.status_code == 200
         assert response.get_data() == binary_body
 
+    def test_deserialize_request_with_lf_only_newlines(self):
+        raw_data = b"POST /lf-only?x=1 HTTP/1.1\nHost: localhost\nX-Test: yes\n\npayload"
+
+        request = deserialize_request(raw_data)
+
+        assert request.method == "POST"
+        assert request.path == "/lf-only"
+        assert request.args.get("x") == "1"
+        assert request.headers.get("X-Test") == "yes"
+        assert request.get_data() == b"payload"
+
+    def test_deserialize_request_without_header_separator_uses_full_input_as_headers(self):
+        raw_data = b"GET /no-separator HTTP/1.1\nHost: localhost\nInvalidHeader\n"
+
+        request = deserialize_request(raw_data)
+
+        assert request.method == "GET"
+        assert request.path == "/no-separator"
+        assert request.headers.get("Host") == "localhost"
+        assert request.headers.get("InvalidHeader") is None
+
+    def test_deserialize_request_empty_payload_raises(self):
+        with pytest.raises(ValueError, match="Empty HTTP request"):
+            deserialize_request(b"")
+
+    def test_deserialize_response_with_lf_only_newlines(self):
+        raw_data = b"HTTP/1.1 202 Accepted\nX-Test: yes\n\nbody"
+
+        response = deserialize_response(raw_data)
+
+        assert response.status_code == 202
+        assert response.headers.get("X-Test") == "yes"
+        assert response.get_data() == b"body"
+
+    def test_deserialize_response_without_header_separator_uses_full_input_as_headers(self):
+        raw_data = b"HTTP/1.1 204 No Content\nX-Test: yes\nInvalidHeader\n"
+
+        response = deserialize_response(raw_data)
+
+        assert response.status_code == 204
+        assert response.headers.get("X-Test") == "yes"
+        assert response.headers.get("InvalidHeader") is None
+        assert response.get_data() == b""
+
+    def test_deserialize_response_empty_payload_raises(self):
+        with pytest.raises(ValueError, match="Empty HTTP response"):
+            deserialize_response(b"")
+
 
 class TestFileUploads:
     def test_serialize_request_with_text_file_upload(self):

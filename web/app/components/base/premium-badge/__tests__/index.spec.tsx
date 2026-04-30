@@ -30,7 +30,7 @@ describe('PremiumBadge', () => {
     )
     const badge = screen.getByText('Premium')
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('allowHover')
+    expect(badge).toHaveClass('pb-allow-hover')
   })
 
   it('applies custom styles', () => {
@@ -41,6 +41,6 @@ describe('PremiumBadge', () => {
     )
     const badge = screen.getByText('Premium')
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveStyle('background-color: rgb(255, 0, 0)') // Note: React converts 'red' to 'rgb(255, 0, 0)'
+    expect(badge).toHaveStyle('background-color: red')
   })
 })

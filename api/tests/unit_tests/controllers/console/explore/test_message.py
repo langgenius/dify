@@ -21,7 +21,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from dify_graph.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -48,7 +48,7 @@ def make_message():
     msg.query = "hello"
     msg.re_sign_file_url_answer = ""
     msg.user_feedback = MagicMock(rating=None)
-    msg.status = "success"
+    msg.status = "normal"
     msg.error = None
     return msg
 

@@ -12,16 +12,16 @@ describe('PreviewContainer', () => {
     it('should render header content in a header element', () => {
       render(<PreviewContainer header={<span>Header Title</span>}>Body</PreviewContainer>)
 
-      expect(screen.getByText('Header Title')).toBeInTheDocument()
+      expect(screen.getByText('Header Title'))!.toBeInTheDocument()
       const headerEl = screen.getByText('Header Title').closest('header')
-      expect(headerEl).toBeInTheDocument()
+      expect(headerEl)!.toBeInTheDocument()
     })
 
     it('should render children in a main element', () => {
       render(<PreviewContainer header="Header">Main content</PreviewContainer>)
 
       const mainEl = screen.getByRole('main')
-      expect(mainEl).toHaveTextContent('Main content')
+      expect(mainEl)!.toHaveTextContent('Main content')
     })
 
     it('should render both header and children simultaneously', () => {
@@ -31,14 +31,14 @@ describe('PreviewContainer', () => {
         </PreviewContainer>,
       )
 
-      expect(screen.getByText('My Header')).toBeInTheDocument()
-      expect(screen.getByText('Body paragraph')).toBeInTheDocument()
+      expect(screen.getByText('My Header'))!.toBeInTheDocument()
+      expect(screen.getByText('Body paragraph'))!.toBeInTheDocument()
     })
 
     it('should render without children', () => {
       render(<PreviewContainer header="Header" />)
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByRole('main'))!.toBeInTheDocument()
       expect(screen.getByRole('main').childElementCount).toBe(0)
     })
   })
@@ -49,7 +49,7 @@ describe('PreviewContainer', () => {
         <PreviewContainer header="Header" className="outer-class">Content</PreviewContainer>,
       )
 
-      expect(container.firstElementChild).toHaveClass('outer-class')
+      expect(container.firstElementChild)!.toHaveClass('outer-class')
     })
 
     it('should apply mainClassName to the main element', () => {
@@ -58,9 +58,10 @@ describe('PreviewContainer', () => {
       )
 
       const mainEl = screen.getByRole('main')
-      expect(mainEl).toHaveClass('custom-main')
+      expect(mainEl)!.toHaveClass('custom-main')
       // Default classes should still be present
-      expect(mainEl).toHaveClass('w-full', 'grow', 'overflow-y-auto', 'px-6', 'py-5')
+      // Default classes should still be present
+      expect(mainEl)!.toHaveClass('w-full', 'grow', 'overflow-y-auto', 'px-6', 'py-5')
     })
 
     it('should forward ref to the inner container div', () => {
@@ -70,7 +71,7 @@ describe('PreviewContainer', () => {
       )
 
       expect(ref).toHaveBeenCalled()
-      const refArg = ref.mock.calls[0][0]
+      const refArg = ref.mock.calls[0]![0]
       expect(refArg).toBeInstanceOf(HTMLDivElement)
     })
 
@@ -82,7 +83,7 @@ describe('PreviewContainer', () => {
       )
 
       const inner = screen.getByTestId('inner-container')
-      expect(inner).toHaveAttribute('id', 'container-1')
+      expect(inner)!.toHaveAttribute('id', 'container-1')
     })
 
     it('should render ReactNode as header', () => {
@@ -92,8 +93,8 @@ describe('PreviewContainer', () => {
         </PreviewContainer>,
       )
 
-      expect(screen.getByTestId('complex-header')).toBeInTheDocument()
-      expect(screen.getByText('Complex')).toBeInTheDocument()
+      expect(screen.getByTestId('complex-header'))!.toBeInTheDocument()
+      expect(screen.getByText('Complex'))!.toBeInTheDocument()
     })
   })
 
@@ -103,7 +104,7 @@ describe('PreviewContainer', () => {
       render(<PreviewContainer header="Header">Content</PreviewContainer>)
 
       const headerEl = screen.getByText('Header').closest('header')
-      expect(headerEl).toHaveClass('border-b', 'border-divider-subtle')
+      expect(headerEl)!.toHaveClass('border-b', 'border-divider-subtle')
     })
 
     it('should have inner div with flex column layout', () => {
@@ -112,13 +113,13 @@ describe('PreviewContainer', () => {
       )
 
       const inner = screen.getByTestId('inner')
-      expect(inner).toHaveClass('flex', 'h-full', 'w-full', 'flex-col')
+      expect(inner)!.toHaveClass('flex', 'h-full', 'w-full', 'flex-col')
     })
 
     it('should have main with overflow-y-auto for scrolling', () => {
       render(<PreviewContainer header="Header">Content</PreviewContainer>)
 
-      expect(screen.getByRole('main')).toHaveClass('overflow-y-auto')
+      expect(screen.getByRole('main'))!.toHaveClass('overflow-y-auto')
     })
   })
 
@@ -134,13 +135,13 @@ describe('PreviewContainer', () => {
       render(<PreviewContainer header="">Content</PreviewContainer>)
 
       const headerEl = screen.getByRole('banner')
-      expect(headerEl).toBeInTheDocument()
+      expect(headerEl)!.toBeInTheDocument()
     })
 
     it('should render with null children', () => {
       render(<PreviewContainer header="Header">{null}</PreviewContainer>)
 
-      expect(screen.getByRole('main')).toBeInTheDocument()
+      expect(screen.getByRole('main'))!.toBeInTheDocument()
     })
 
     it('should render with multiple children', () => {
@@ -152,9 +153,9 @@ describe('PreviewContainer', () => {
         </PreviewContainer>,
       )
 
-      expect(screen.getByText('Child 1')).toBeInTheDocument()
-      expect(screen.getByText('Child 2')).toBeInTheDocument()
-      expect(screen.getByText('Child 3')).toBeInTheDocument()
+      expect(screen.getByText('Child 1'))!.toBeInTheDocument()
+      expect(screen.getByText('Child 2'))!.toBeInTheDocument()
+      expect(screen.getByText('Child 3'))!.toBeInTheDocument()
     })
 
     it('should not crash on re-render with different props', () => {
@@ -166,8 +167,8 @@ describe('PreviewContainer', () => {
         <PreviewContainer header="Second" className="b" mainClassName="new-main">Content B</PreviewContainer>,
       )
 
-      expect(screen.getByText('Second')).toBeInTheDocument()
-      expect(screen.getByText('Content B')).toBeInTheDocument()
+      expect(screen.getByText('Second'))!.toBeInTheDocument()
+      expect(screen.getByText('Content B'))!.toBeInTheDocument()
     })
   })
 })

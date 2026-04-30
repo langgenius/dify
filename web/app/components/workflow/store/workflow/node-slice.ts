@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import type { ChecklistItem } from '@/app/components/workflow/hooks/use-checklist'
 import type {
   VariableAssignerNodeType,
 } from '@/app/components/workflow/nodes/variable-assigner/types'
@@ -10,6 +11,7 @@ import type {
 } from '@/types/workflow'
 
 export type NodeSliceShape = {
+  checklistItems: ChecklistItem[]
   showSingleRunPanel: boolean
   setShowSingleRunPanel: (showSingleRunPanel: boolean) => void
   nodeAnimation: boolean
@@ -56,6 +58,7 @@ export type NodeSliceShape = {
 }
 
 export const createNodeSlice: StateCreator<NodeSliceShape> = set => ({
+  checklistItems: [],
   showSingleRunPanel: false,
   setShowSingleRunPanel: showSingleRunPanel => set(() => ({ showSingleRunPanel })),
   nodeAnimation: false,

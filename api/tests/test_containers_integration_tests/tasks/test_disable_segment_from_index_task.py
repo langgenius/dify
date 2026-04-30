@@ -15,9 +15,11 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 
 logger = logging.getLogger(__name__)
@@ -97,8 +99,8 @@ class TestDisableSegmentFromIndexTask:
             tenant_id=tenant.id,
             name=fake.sentence(nb_words=3),
             description=fake.text(max_nb_chars=200),
-            data_source_type="upload_file",
-            indexing_technique="high_quality",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -112,7 +114,7 @@ class TestDisableSegmentFromIndexTask:
         dataset: Dataset,
         tenant: Tenant,
         account: Account,
-        doc_form: str = "text_model",
+        doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
     ) -> Document:
         """
         Helper method to create a test document.
@@ -132,12 +134,12 @@ class TestDisableSegmentFromIndexTask:
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             batch=fake.uuid4(),
             name=fake.file_name(),
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             created_by=account.id,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             enabled=True,
             archived=False,
             doc_form=doc_form,
@@ -189,7 +191,7 @@ class TestDisableSegmentFromIndexTask:
             status=status,
             enabled=enabled,
             created_by=account.id,
-            completed_at=datetime.now(UTC) if status == "completed" else None,
+            completed_at=datetime.now(UTC) if status == SegmentStatus.COMPLETED else None,
         )
         db_session_with_containers.add(segment)
         db_session_with_containers.commit()
@@ -271,7 +273,7 @@ class TestDisableSegmentFromIndexTask:
         dataset = self._create_test_dataset(db_session_with_containers, tenant, account)
         document = self._create_test_document(db_session_with_containers, dataset, tenant, account)
         segment = self._create_test_segment(
-            db_session_with_containers, document, dataset, tenant, account, status="indexing", enabled=True
+            db_session_with_containers, document, dataset, tenant, account, status=SegmentStatus.INDEXING, enabled=True
         )
 
         # Act: Execute the task
@@ -475,7 +477,11 @@ class TestDisableSegmentFromIndexTask:
         - Index processor clean method is called correctly
         """
         # Test different document forms
-        doc_forms = ["text_model", "qa_model", "table_model"]
+        doc_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
 
         for doc_form in doc_forms:
             # Arrange: Create test data for each form

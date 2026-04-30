@@ -58,7 +58,7 @@ vi.mock('@/app/components/datasets/common/document-file-icon', () => ({
 }))
 
 // Mock SimplePieChart
-vi.mock('next/dynamic', () => ({
+vi.mock('@/next/dynamic', () => ({
   default: () => {
     const Component = ({ percentage }: { percentage: number }) => (
       <div data-testid="pie-chart">

@@ -13,9 +13,11 @@ from uuid import uuid4
 
 import pytest
 
+from core.rag.index_processor.constant.index_type import IndexStructureType
+from extensions.storage.storage_type import StorageType
 from models import Account
 from models.dataset import Dataset, Document
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
 from services.dataset_service import DocumentService
 from services.errors.document import DocumentIndexingError
@@ -88,9 +90,9 @@ class DocumentStatusTestDataFactory:
             data_source_info=json.dumps(data_source_info or {}),
             batch=f"batch-{uuid4()}",
             name=name,
-            created_from="web",
+            created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
-            doc_form="text_model",
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
         document.id = document_id
         document.indexing_status = indexing_status
@@ -100,7 +102,7 @@ class DocumentStatusTestDataFactory:
         document.paused_by = paused_by
         document.paused_at = paused_at
         document.doc_metadata = doc_metadata or {}
-        if indexing_status == "completed" and "completed_at" not in kwargs:
+        if indexing_status == IndexingStatus.COMPLETED and "completed_at" not in kwargs:
             document.completed_at = FIXED_TIME
 
         for key, value in kwargs.items():
@@ -139,7 +141,7 @@ class DocumentStatusTestDataFactory:
         dataset = Dataset(
             tenant_id=tenant_id,
             name=name,
-            data_source_type="upload_file",
+            data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
         )
         dataset.id = dataset_id
@@ -198,7 +200,7 @@ class DocumentStatusTestDataFactory:
         """
         upload_file = UploadFile(
             tenant_id=tenant_id,
-            storage_type="local",
+            storage_type=StorageType.LOCAL,
             key=f"uploads/{uuid4()}",
             name=name,
             size=128,
@@ -291,7 +293,7 @@ class TestDocumentServicePauseDocument:
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
-            indexing_status="waiting",
+            indexing_status=IndexingStatus.WAITING,
             is_paused=False,
         )
 
@@ -326,7 +328,7 @@ class TestDocumentServicePauseDocument:
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
-            indexing_status="indexing",
+            indexing_status=IndexingStatus.INDEXING,
             is_paused=False,
         )
 
@@ -354,7 +356,7 @@ class TestDocumentServicePauseDocument:
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
-            indexing_status="parsing",
+            indexing_status=IndexingStatus.PARSING,
             is_paused=False,
         )
 
@@ -383,7 +385,7 @@ class TestDocumentServicePauseDocument:
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             is_paused=False,
         )
 
@@ -412,7 +414,7 @@ class TestDocumentServicePauseDocument:
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
-            indexing_status="error",
+            indexing_status=IndexingStatus.ERROR,
             is_paused=False,
         )
 
@@ -487,7 +489,7 @@ class TestDocumentServiceRecoverDocument:
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
-            indexing_status="indexing",
+            indexing_status=IndexingStatus.INDEXING,
             is_paused=True,
             paused_by=str(uuid4()),
             paused_at=paused_time,
@@ -526,7 +528,7 @@ class TestDocumentServiceRecoverDocument:
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
-            indexing_status="indexing",
+            indexing_status=IndexingStatus.INDEXING,
             is_paused=False,
         )
 
@@ -609,7 +611,7 @@ class TestDocumentServiceRetryDocument:
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
             document_id=str(uuid4()),
-            indexing_status="error",
+            indexing_status=IndexingStatus.ERROR,
         )
 
         mock_document_service_dependencies["redis_client"].get.return_value = None
@@ -619,7 +621,7 @@ class TestDocumentServiceRetryDocument:
 
         # Assert
         db_session_with_containers.refresh(document)
-        assert document.indexing_status == "waiting"
+        assert document.indexing_status == IndexingStatus.WAITING
 
         expected_cache_key = f"document_{document.id}_is_retried"
         mock_document_service_dependencies["redis_client"].setex.assert_called_once_with(expected_cache_key, 600, 1)
@@ -646,14 +648,14 @@ class TestDocumentServiceRetryDocument:
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
             document_id=str(uuid4()),
-            indexing_status="error",
+            indexing_status=IndexingStatus.ERROR,
         )
         document2 = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
             document_id=str(uuid4()),
-            indexing_status="error",
+            indexing_status=IndexingStatus.ERROR,
             position=2,
         )
 
@@ -665,8 +667,8 @@ class TestDocumentServiceRetryDocument:
         # Assert
         db_session_with_containers.refresh(document1)
         db_session_with_containers.refresh(document2)
-        assert document1.indexing_status == "waiting"
-        assert document2.indexing_status == "waiting"
+        assert document1.indexing_status == IndexingStatus.WAITING
+        assert document2.indexing_status == IndexingStatus.WAITING
 
         mock_document_service_dependencies["retry_task"].delay.assert_called_once_with(
             dataset.id, [document1.id, document2.id], mock_document_service_dependencies["user_id"]
@@ -693,7 +695,7 @@ class TestDocumentServiceRetryDocument:
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
             document_id=str(uuid4()),
-            indexing_status="error",
+            indexing_status=IndexingStatus.ERROR,
         )
 
         mock_document_service_dependencies["redis_client"].get.return_value = "1"
@@ -703,7 +705,7 @@ class TestDocumentServiceRetryDocument:
             DocumentService.retry_document(dataset.id, [document])
 
         db_session_with_containers.refresh(document)
-        assert document.indexing_status == "error"
+        assert document.indexing_status == IndexingStatus.ERROR
 
     def test_retry_document_missing_current_user_error(
         self, db_session_with_containers, mock_document_service_dependencies
@@ -726,7 +728,7 @@ class TestDocumentServiceRetryDocument:
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
             document_id=str(uuid4()),
-            indexing_status="error",
+            indexing_status=IndexingStatus.ERROR,
         )
 
         mock_document_service_dependencies["redis_client"].get.return_value = None
@@ -816,7 +818,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
             tenant_id=dataset.tenant_id,
             document_id=str(uuid4()),
             enabled=False,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
         document2 = DocumentStatusTestDataFactory.create_document(
             db_session_with_containers,
@@ -824,7 +826,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
             tenant_id=dataset.tenant_id,
             document_id=str(uuid4()),
             enabled=False,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             position=2,
         )
         document_ids = [document1.id, document2.id]
@@ -866,7 +868,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
             tenant_id=dataset.tenant_id,
             document_id=str(uuid4()),
             enabled=True,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
             completed_at=FIXED_TIME,
         )
         document_ids = [document.id]
@@ -909,7 +911,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
             document_id=str(uuid4()),
             archived=False,
             enabled=True,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
         document_ids = [document.id]
 
@@ -951,7 +953,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
             document_id=str(uuid4()),
             archived=True,
             enabled=True,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
         document_ids = [document.id]
 
@@ -1015,7 +1017,7 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
             dataset_id=dataset.id,
             tenant_id=dataset.tenant_id,
             document_id=str(uuid4()),
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
         document_ids = [document.id]
 
@@ -1098,7 +1100,7 @@ class TestDocumentServiceRenameDocument:
             document_id=document_id,
             dataset_id=dataset.id,
             tenant_id=tenant_id,
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
 
         # Act
@@ -1139,7 +1141,7 @@ class TestDocumentServiceRenameDocument:
             dataset_id=dataset.id,
             tenant_id=tenant_id,
             doc_metadata={"existing_key": "existing_value"},
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
 
         # Act
@@ -1187,7 +1189,7 @@ class TestDocumentServiceRenameDocument:
             dataset_id=dataset.id,
             tenant_id=tenant_id,
             data_source_info={"upload_file_id": upload_file.id},
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
 
         # Act
@@ -1277,7 +1279,7 @@ class TestDocumentServiceRenameDocument:
             document_id=document_id,
             dataset_id=dataset.id,
             tenant_id=str(uuid4()),
-            indexing_status="completed",
+            indexing_status=IndexingStatus.COMPLETED,
         )
 
         # Act & Assert

@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .documentTable tbody td {
   padding: 5px 10px 5px 12px;
   box-sizing: border-box;
@@ -9,18 +11,16 @@
   max-width: 200px;
 }
 .actionIconWrapperList {
-  @apply h-6 w-6 rounded-md border-none p-1 hover:bg-state-base-hover !important;
+  @apply !h-6 !w-6 !border-none !p-1 rounded-md hover:!bg-state-base-hover;
 }
 .actionIconWrapperDetail {
-  @apply p-2 bg-components-button-secondary-bg hover:bg-components-button-secondary-bg-hover
-  border-[0.5px] border-components-button-secondary-border hover:border-components-button-secondary-border-hover
-  shadow-xs shadow-shadow-shadow-3 !important;
+  @apply !p-2 !border-[0.5px] !border-components-button-secondary-border !bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 hover:!border-components-button-secondary-border-hover hover:!bg-components-button-secondary-bg-hover;
 }
 .actionItem {
   @apply h-9 py-2 px-3 mx-1 flex items-center gap-2 hover:bg-state-base-hover rounded-lg cursor-pointer;
 }
 .deleteActionItem {
-  @apply hover:bg-state-destructive-hover !important;
+  @apply hover:!bg-state-destructive-hover;
 }
 .actionName {
   @apply text-text-secondary text-sm;

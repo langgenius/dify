@@ -18,7 +18,7 @@ let mockSearchParams = new URLSearchParams()
 const mockMutateAsync = vi.fn()
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/',

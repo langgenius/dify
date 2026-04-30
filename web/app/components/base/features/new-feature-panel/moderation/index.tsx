@@ -1,9 +1,9 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
@@ -30,6 +30,7 @@ const Moderation = ({
   const [isHovering, setIsHovering] = useState(false)
 
   const handleOpenModerationSettingModal = () => {
+    /* v8 ignore next -- guarded path is not reachable in tests with a real disabled button because click is prevented at DOM level. @preserve */
     if (disabled)
       return
 
@@ -138,19 +139,19 @@ const Moderation = ({
     >
       <>
         {!moderation?.enabled && (
-          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.moderation.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t('feature.moderation.description', { ns: 'appDebug' })}</div>
         )}
         {!!moderation?.enabled && (
           <>
             {!isHovering && (
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{providerContent}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.moderation.contentEnableLabel', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.moderation.contentEnableLabel', { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{enableContent}</div>
                 </div>
               </div>

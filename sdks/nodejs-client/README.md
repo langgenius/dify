@@ -100,6 +100,10 @@ Notes:
 - Chat/completion require a stable `user` identifier in the request payload.
 - For streaming responses, iterate the returned AsyncIterable. Use `stream.toText()` to collect text.
 
+## Maintainers
+
+This package is published from the repository workspace. Install dependencies from the repository root with `pnpm install`, then use `./scripts/publish.sh` for dry runs and publishing so `catalog:` dependencies are resolved before release.
+
 ## License
 
 This SDK is released under the MIT License.

@@ -49,6 +49,20 @@ describe('Modal Component', () => {
       expect(onExtraClick).toHaveBeenCalledTimes(1)
     })
 
+    it('renders md size class and default extra button label', () => {
+      const { container } = render(
+        <Modal
+          {...defaultProps}
+          size="md"
+          showExtraButton={true}
+          onExtraButtonClick={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText(/remove/i)).toBeInTheDocument()
+      expect(container.querySelector('.w-\\[640px\\]')).toBeInTheDocument()
+    })
+
     it('renders footerSlot and bottomSlot', () => {
       render(
         <Modal

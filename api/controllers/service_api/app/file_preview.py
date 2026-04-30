@@ -4,6 +4,7 @@ from urllib.parse import quote
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from controllers.common.file_response import enforce_download_for_html
 from controllers.common.schema import register_schema_model
@@ -102,27 +103,27 @@ class FilePreviewApi(Resource):
                 raise FileAccessDeniedError("Invalid file or app identifier")
 
             # First, find the MessageFile that references this upload file
-            message_file = db.session.query(MessageFile).where(MessageFile.upload_file_id == file_id).first()
+            message_file = db.session.scalar(select(MessageFile).where(MessageFile.upload_file_id == file_id).limit(1))
 
             if not message_file:
                 raise FileNotFoundError("File not found in message context")
 
             # Get the message and verify it belongs to the requesting app
-            message = (
-                db.session.query(Message).where(Message.id == message_file.message_id, Message.app_id == app_id).first()
+            message = db.session.scalar(
+                select(Message).where(Message.id == message_file.message_id, Message.app_id == app_id).limit(1)
             )
 
             if not message:
                 raise FileAccessDeniedError("File access denied: not owned by requesting app")
 
             # Get the actual upload file record
-            upload_file = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+            upload_file = db.session.get(UploadFile, file_id)
 
             if not upload_file:
                 raise FileNotFoundError("Upload file record not found")
 
             # Additional security: verify tenant isolation
-            app = db.session.query(App).where(App.id == app_id).first()
+            app = db.session.get(App, app_id)
             if app and upload_file.tenant_id != app.tenant_id:
                 raise FileAccessDeniedError("File access denied: tenant mismatch")
 

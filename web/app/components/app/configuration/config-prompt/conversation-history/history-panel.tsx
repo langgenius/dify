@@ -32,7 +32,7 @@ const HistoryPanel: FC<Props> = ({
       headerRight={(
         <div className="flex items-center">
           <div className="text-xs text-text-tertiary">{t('feature.conversationHistory.description', { ns: 'appDebug' })}</div>
-          <div className="ml-3 h-[14px] w-[1px] bg-divider-regular"></div>
+          <div className="ml-3 h-[14px] w-px bg-divider-regular"></div>
           <OperationBtn type="edit" onClick={onShowEditModal} />
         </div>
       )}

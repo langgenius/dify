@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import pytest
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
@@ -16,6 +17,7 @@ from models.dataset import (
     DatasetPermission,
     DatasetPermissionEnum,
 )
+from models.enums import DataSourceType
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.errors.account import NoPermissionError
 
@@ -67,8 +69,8 @@ class DatasetPermissionTestDataFactory:
             tenant_id=tenant_id,
             name=name,
             description="desc",
-            data_source_type="upload_file",
-            indexing_technique="high_quality",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=created_by,
             permission=permission,
             provider="vendor",
@@ -396,6 +398,68 @@ class TestDatasetPermissionServiceClearPartialMemberList:
 class TestDatasetServiceCheckDatasetPermission:
     """Verify dataset access checks against persisted partial-member permissions."""
 
+    def test_check_dataset_permission_different_tenant_should_fail(self, db_session_with_containers):
+        """Test that users from different tenants cannot access dataset."""
+        owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        other_user, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.EDITOR)
+
+        dataset = DatasetPermissionTestDataFactory.create_dataset(
+            tenant.id, owner.id, permission=DatasetPermissionEnum.ALL_TEAM
+        )
+
+        with pytest.raises(NoPermissionError):
+            DatasetService.check_dataset_permission(dataset, other_user)
+
+    def test_check_dataset_permission_owner_can_access_any_dataset(self, db_session_with_containers):
+        """Test that tenant owners can access any dataset regardless of permission level."""
+        owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
+        creator, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL, tenant=tenant
+        )
+
+        dataset = DatasetPermissionTestDataFactory.create_dataset(
+            tenant.id, creator.id, permission=DatasetPermissionEnum.ONLY_ME
+        )
+
+        DatasetService.check_dataset_permission(dataset, owner)
+
+    def test_check_dataset_permission_only_me_creator_can_access(self, db_session_with_containers):
+        """Test ONLY_ME permission allows only the dataset creator to access."""
+        creator, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.EDITOR)
+
+        dataset = DatasetPermissionTestDataFactory.create_dataset(
+            tenant.id, creator.id, permission=DatasetPermissionEnum.ONLY_ME
+        )
+
+        DatasetService.check_dataset_permission(dataset, creator)
+
+    def test_check_dataset_permission_only_me_others_cannot_access(self, db_session_with_containers):
+        """Test ONLY_ME permission denies access to non-creators."""
+        creator, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
+        other, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL, tenant=tenant
+        )
+
+        dataset = DatasetPermissionTestDataFactory.create_dataset(
+            tenant.id, creator.id, permission=DatasetPermissionEnum.ONLY_ME
+        )
+
+        with pytest.raises(NoPermissionError):
+            DatasetService.check_dataset_permission(dataset, other)
+
+    def test_check_dataset_permission_all_team_allows_access(self, db_session_with_containers):
+        """Test ALL_TEAM permission allows any team member to access the dataset."""
+        creator, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
+        member, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
+            role=TenantAccountRole.NORMAL, tenant=tenant
+        )
+
+        dataset = DatasetPermissionTestDataFactory.create_dataset(
+            tenant.id, creator.id, permission=DatasetPermissionEnum.ALL_TEAM
+        )
+
+        DatasetService.check_dataset_permission(dataset, member)
+
     def test_check_dataset_permission_partial_members_with_permission_success(self, db_session_with_containers):
         """
         Test that user with explicit permission can access partial_members dataset.
@@ -441,6 +505,16 @@ class TestDatasetServiceCheckDatasetPermission:
         # Act & Assert
         with pytest.raises(NoPermissionError, match="You do not have permission to access this dataset"):
             DatasetService.check_dataset_permission(dataset, user)
+
+    def test_check_dataset_permission_partial_team_creator_can_access(self, db_session_with_containers):
+        """Test PARTIAL_TEAM permission allows creator to access without explicit permission."""
+        creator, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.EDITOR)
+
+        dataset = DatasetPermissionTestDataFactory.create_dataset(
+            tenant.id, creator.id, permission=DatasetPermissionEnum.PARTIAL_TEAM
+        )
+
+        DatasetService.check_dataset_permission(dataset, creator)
 
 
 class TestDatasetServiceCheckDatasetOperatorPermission:

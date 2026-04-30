@@ -4,6 +4,8 @@ import type {
   CustomModel,
   ModelProvider,
 } from '../declarations'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
@@ -11,11 +13,9 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
 import Authorized from './authorized'
 
 type SwitchCredentialInLoadBalancingProps = {

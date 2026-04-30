@@ -2,13 +2,14 @@
 
 import type { ReactNode } from 'react'
 import Cookies from 'js-cookie'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { parseAsBoolean, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useState } from 'react'
 import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
+import RootLoading from '@/app/loading'
+import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { sendGAEvent } from '@/utils/gtag'
 import { fetchSetupStatusWithCache } from '@/utils/setup-status'
 import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
@@ -84,7 +85,7 @@ export const AppInitializer = ({
           return
         }
 
-        const redirectUrl = resolvePostLoginRedirect()
+        const redirectUrl = resolvePostLoginRedirect(searchParams)
         if (redirectUrl) {
           location.replace(redirectUrl)
           return
@@ -98,5 +99,5 @@ export const AppInitializer = ({
     })()
   }, [isSetupFinished, router, pathname, searchParams, oauthNewUser])
 
-  return init ? children : null
+  return init ? children : <RootLoading />
 }

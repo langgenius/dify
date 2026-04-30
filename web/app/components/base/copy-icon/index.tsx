@@ -1,11 +1,7 @@
 'use client'
-import { useClipboard } from 'foxact/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Copy,
-  CopyCheck,
-} from '@/app/components/base/icons/src/vender/line/files'
+import { useClipboard } from '@/hooks/use-clipboard'
 import Tooltip from '../tooltip'
 
 type Props = {
@@ -22,22 +18,20 @@ const CopyIcon = ({ content }: Props) => {
     copy(content)
   }, [copy, content])
 
+  const tooltipText = copied
+    ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+    : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })
+  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
+  const safeTooltipText = tooltipText || ''
+
   return (
     <Tooltip
-      popupContent={
-        (copied
-          ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-          : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
-      }
+      popupContent={safeTooltipText}
     >
       <div onMouseLeave={reset}>
         {!copied
-          ? (
-              <Copy className="mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={handleCopy} />
-            )
-          : (
-              <CopyCheck className="mx-1 h-3.5 w-3.5 text-text-tertiary" />
-            )}
+          ? (<span className="mx-1 i-custom-vender-line-files-copy h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={handleCopy} data-testid="copy-icon" />)
+          : (<span className="mx-1 i-custom-vender-line-files-copy-check h-3.5 w-3.5 text-text-tertiary" data-testid="copied-icon" />)}
       </div>
     </Tooltip>
   )

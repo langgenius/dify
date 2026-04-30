@@ -1,21 +1,15 @@
 import type { Mock } from 'vitest'
+import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient } from '@/service/client'
-import Toast from '../../../../../base/toast'
 import { ALL_PLANS } from '../../../../config'
 import { Plan } from '../../../../type'
 import { PlanRange } from '../../../plan-switcher/plan-range-switcher'
 import CloudPlanItem from '../index'
-
-vi.mock('../../../../../base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
@@ -47,10 +41,18 @@ const mockUseAppContext = useAppContext as Mock
 const mockUseAsyncWindowOpen = useAsyncWindowOpen as Mock
 const mockBillingInvoices = consoleClient.billing.invoices as Mock
 const mockFetchSubscriptionUrls = fetchSubscriptionUrls as Mock
-const mockToastNotify = Toast.notify as Mock
 
 let assignedHref = ''
 const originalLocation = window.location
+
+const renderWithToastHost = (ui: React.ReactNode) => {
+  return render(
+    <>
+      <ToastHost timeout={0} />
+      {ui}
+    </>,
+  )
+}
 
 beforeAll(() => {
   Object.defineProperty(window, 'location', {
@@ -68,6 +70,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  toast.dismiss()
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
   mockUseAsyncWindowOpen.mockReturnValue(vi.fn(async open => await open()))
   mockBillingInvoices.mockResolvedValue({ url: 'https://billing.example' })
@@ -95,10 +98,10 @@ describe('CloudPlanItem', () => {
         />,
       )
 
-      expect(screen.getByText('billing.plans.sandbox.name')).toBeInTheDocument()
-      expect(screen.getByText('billing.plans.sandbox.description')).toBeInTheDocument()
-      expect(screen.getByText('billing.plansCommon.free')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeInTheDocument()
+      expect(screen.getByText('billing.plans.sandbox.name'))!.toBeInTheDocument()
+      expect(screen.getByText('billing.plans.sandbox.description'))!.toBeInTheDocument()
+      expect(screen.getByText('billing.plansCommon.free'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' }))!.toBeInTheDocument()
     })
 
     it('should display yearly pricing with discount when planRange is yearly', () => {
@@ -112,9 +115,9 @@ describe('CloudPlanItem', () => {
       )
 
       const professionalPlan = ALL_PLANS[Plan.professional]
-      expect(screen.getByText(`$${professionalPlan.price * 12}`)).toBeInTheDocument()
-      expect(screen.getByText(`$${professionalPlan.price * 10}`)).toBeInTheDocument()
-      expect(screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.year/)).toBeInTheDocument()
+      expect(screen.getByText(`$${professionalPlan.price * 12}`))!.toBeInTheDocument()
+      expect(screen.getByText(`$${professionalPlan.price * 10}`))!.toBeInTheDocument()
+      expect(screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.year/))!.toBeInTheDocument()
     })
 
     it('should show "most popular" badge for professional plan', () => {
@@ -127,7 +130,7 @@ describe('CloudPlanItem', () => {
         />,
       )
 
-      expect(screen.getByText('billing.plansCommon.mostPopular')).toBeInTheDocument()
+      expect(screen.getByText('billing.plansCommon.mostPopular'))!.toBeInTheDocument()
     })
 
     it('should not show "most popular" badge for non-professional plans', () => {
@@ -154,7 +157,7 @@ describe('CloudPlanItem', () => {
       )
 
       const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
-      expect(button).toBeDisabled()
+      expect(button)!.toBeDisabled()
     })
   })
 
@@ -163,7 +166,7 @@ describe('CloudPlanItem', () => {
     it('should show toast when non-manager tries to buy a plan', () => {
       mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
 
-      render(
+      renderWithToastHost(
         <CloudPlanItem
           plan={Plan.professional}
           currentPlan={Plan.sandbox}
@@ -173,10 +176,7 @@ describe('CloudPlanItem', () => {
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
-      expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: 'billing.buyPermissionDeniedTip',
-      }))
+      expect(screen.getByText('billing.buyPermissionDeniedTip'))!.toBeInTheDocument()
       expect(mockBillingInvoices).not.toHaveBeenCalled()
     })
 
@@ -320,7 +320,7 @@ describe('CloudPlanItem', () => {
         expect(openWindow).toHaveBeenCalledTimes(1)
         // The onError callback should have been passed to openAsyncWindow
         const callArgs = openWindow.mock.calls[0]
-        expect(callArgs[1]).toHaveProperty('onError')
+        expect(callArgs![1]).toHaveProperty('onError')
       })
     })
 
@@ -336,8 +336,39 @@ describe('CloudPlanItem', () => {
       )
 
       const teamPlan = ALL_PLANS[Plan.team]
-      expect(screen.getByText(`$${teamPlan.price}`)).toBeInTheDocument()
-      expect(screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.month/)).toBeInTheDocument()
+      expect(screen.getByText(`$${teamPlan.price}`))!.toBeInTheDocument()
+      expect(screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.month/))!.toBeInTheDocument()
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
+      // Should NOT show crossed-out yearly price
       // Should NOT show crossed-out yearly price
       expect(screen.queryByText(`$${teamPlan.price * 12}`)).not.toBeInTheDocument()
     })

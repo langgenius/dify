@@ -1,6 +1,6 @@
 import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
-import { RiExternalLinkLine } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useStore } from '@tanstack/react-form'
 import {
   isValidElement,
@@ -18,7 +18,6 @@ import PureSelect from '@/app/components/base/select/pure'
 import Tooltip from '@/app/components/base/tooltip'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
-import { cn } from '@/utils/classnames'
 
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
@@ -198,6 +197,7 @@ const BaseField = ({
           }
           {tooltip && (
             <Tooltip
+              triggerTestId="base-field-tooltip-trigger"
               popupContent={<div className="w-[200px]">{translatedTooltip}</div>}
               triggerClassName="ml-0.5 w-4 h-4"
             />
@@ -270,16 +270,18 @@ const BaseField = ({
           }
           {
             formItemType === FormTypeEnum.radio && (
-              <div className={cn(
-                memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
-              )}
+              <div
+                className={cn(
+                  memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
+                )}
+                data-testid="radio-group"
               >
                 {
                   memorizedOptions.map(option => (
                     <div
                       key={option.value}
                       className={cn(
-                        'system-sm-regular hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-[1] grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary',
+                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-1 grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary',
                         value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
                         disabled && 'cursor-not-allowed opacity-50',
                         inputClassName,
@@ -308,14 +310,14 @@ const BaseField = ({
                 value={value}
                 onChange={v => field.handleChange(v)}
               >
-                <Radio value={true} className="!mr-1">True</Radio>
+                <Radio value={true} className="mr-1!">True</Radio>
                 <Radio value={false}>False</Radio>
               </Radio.Group>
             )
           }
           {fieldState?.validateStatus && [FormItemValidateStatusEnum.Error, FormItemValidateStatusEnum.Warning].includes(fieldState?.validateStatus) && (
             <div className={cn(
-              'system-xs-regular mt-1 px-0 py-[2px]',
+              'mt-1 px-0 py-[2px] system-xs-regular',
               VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].textClassName,
             )}
             >
@@ -325,21 +327,21 @@ const BaseField = ({
         </div>
       </div>
       {description && (
-        <div className="system-xs-regular mt-4 text-text-tertiary">
+        <div className="mt-4 system-xs-regular text-text-tertiary">
           {translatedDescription}
         </div>
       )}
       {
         url && (
           <a
-            className="system-xs-regular mt-4 flex items-center text-text-accent"
+            className="mt-4 flex items-center system-xs-regular text-text-accent"
             href={url}
             target="_blank"
           >
             <span className="break-all">
               {translatedHelp}
             </span>
-            <RiExternalLinkLine className="ml-1 h-3 w-3 shrink-0" />
+            <div className="ml-1 i-ri-external-link-line h-3 w-3 shrink-0" />
           </a>
         )
       }

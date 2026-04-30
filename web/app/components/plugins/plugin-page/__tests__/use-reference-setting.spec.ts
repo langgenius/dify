@@ -1,20 +1,16 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocks for assertions
+import { toast } from '@langgenius/dify-ui/toast'
+import { waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
-import Toast from '../../../base/toast'
 import { PermissionType } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
 }))
 
 vi.mock('@/service/use-plugins', () => ({
@@ -23,15 +19,12 @@ vi.mock('@/service/use-plugins', () => ({
   useInvalidateReferenceSettings: vi.fn(),
 }))
 
-vi.mock('../../../base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
+const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
 
 describe('useReferenceSetting Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    toastSuccessSpy.mockClear()
 
     // Default mocks
     vi.mocked(useAppContext).mockReturnValue({
@@ -226,10 +219,7 @@ describe('useReferenceSetting Hook', () => {
 
       await waitFor(() => {
         expect(mockInvalidate).toHaveBeenCalled()
-        expect(Toast.notify).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'common.api.actionSuccess',
-        })
+        expect(toastSuccessSpy).toHaveBeenCalledWith('common.api.actionSuccess')
       })
     })
   })
@@ -302,45 +292,22 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   })
 
   it('should return true when marketplace is enabled and canManagement is true', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
-      const state = {
-        systemFeatures: {
-          enable_marketplace: true,
-        },
-      }
-      return selector(state as Parameters<typeof selector>[0])
+    const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
+      systemFeatures: { enable_marketplace: true },
     })
-
-    const { result } = renderHook(() => useCanInstallPluginFromMarketplace())
 
     expect(result.current.canInstallPluginFromMarketplace).toBe(true)
   })
 
   it('should return false when marketplace is disabled', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
-      const state = {
-        systemFeatures: {
-          enable_marketplace: false,
-        },
-      }
-      return selector(state as Parameters<typeof selector>[0])
+    const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
+      systemFeatures: { enable_marketplace: false },
     })
-
-    const { result } = renderHook(() => useCanInstallPluginFromMarketplace())
 
     expect(result.current.canInstallPluginFromMarketplace).toBe(false)
   })
 
   it('should return false when canManagement is false', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
-      const state = {
-        systemFeatures: {
-          enable_marketplace: true,
-        },
-      }
-      return selector(state as Parameters<typeof selector>[0])
-    })
-
     vi.mocked(useReferenceSettings).mockReturnValue({
       data: {
         permission: {
@@ -350,21 +317,14 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
       },
     } as ReturnType<typeof useReferenceSettings>)
 
-    const { result } = renderHook(() => useCanInstallPluginFromMarketplace())
+    const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
+      systemFeatures: { enable_marketplace: true },
+    })
 
     expect(result.current.canInstallPluginFromMarketplace).toBe(false)
   })
 
   it('should return false when both marketplace is disabled and canManagement is false', () => {
-    vi.mocked(useGlobalPublicStore).mockImplementation((selector) => {
-      const state = {
-        systemFeatures: {
-          enable_marketplace: false,
-        },
-      }
-      return selector(state as Parameters<typeof selector>[0])
-    })
-
     vi.mocked(useReferenceSettings).mockReturnValue({
       data: {
         permission: {
@@ -374,7 +334,9 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
       },
     } as ReturnType<typeof useReferenceSettings>)
 
-    const { result } = renderHook(() => useCanInstallPluginFromMarketplace())
+    const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
+      systemFeatures: { enable_marketplace: false },
+    })
 
     expect(result.current.canInstallPluginFromMarketplace).toBe(false)
   })

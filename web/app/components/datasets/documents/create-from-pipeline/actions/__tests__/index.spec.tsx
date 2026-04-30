@@ -4,12 +4,12 @@ import Actions from '../index'
 
 // Mock next/navigation - useParams returns datasetId
 const mockDatasetId = 'test-dataset-id'
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: mockDatasetId }),
 }))
 
 // Mock next/link to capture href
-vi.mock('next/link', () => ({
+vi.mock('@/next/link', () => ({
   default: ({ children, href, replace }: { children: React.ReactNode, href: string, replace?: boolean }) => (
     <a href={href} data-replace={replace}>
       {children}

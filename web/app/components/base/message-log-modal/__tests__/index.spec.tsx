@@ -4,9 +4,11 @@ import { useStore } from '@/app/components/app/store'
 import MessageLogModal from '../index'
 
 let clickAwayHandler: (() => void) | null = null
+let clickAwayHandlers: (() => void)[] = []
 vi.mock('ahooks', () => ({
   useClickAway: (fn: () => void) => {
     clickAwayHandler = fn
+    clickAwayHandlers.push(fn)
   },
 }))
 
@@ -38,6 +40,7 @@ describe('MessageLogModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     clickAwayHandler = null
+    clickAwayHandlers = []
     // eslint-disable-next-line ts/no-explicit-any
     vi.mocked(useStore).mockImplementation((selector: any) => selector({
       appDetail: { id: 'app-1' },
@@ -57,8 +60,8 @@ describe('MessageLogModal', () => {
 
     it('renders modal with correct title and Run component', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
-      expect(screen.getByText(/title/i)).toBeInTheDocument()
-      expect(screen.getByTestId('workflow-run')).toBeInTheDocument()
+      expect(screen.getByText(/title/i))!.toBeInTheDocument()
+      expect(screen.getByTestId('workflow-run'))!.toBeInTheDocument()
     })
   })
 
@@ -89,7 +92,7 @@ describe('MessageLogModal', () => {
     it('calls onCancel when close icon is clicked', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
       const closeButton = screen.getByTestId('close-button')
-      expect(closeButton).toBeInTheDocument()
+      expect(closeButton)!.toBeInTheDocument()
       fireEvent.click(closeButton)
       expect(onCancel).toHaveBeenCalledTimes(1)
     })
@@ -99,6 +102,13 @@ describe('MessageLogModal', () => {
       expect(clickAwayHandler).toBeTruthy()
       clickAwayHandler!()
       expect(onCancel).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not call onCancel when clicked away if not mounted', () => {
+      render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
+      expect(clickAwayHandlers.length).toBeGreaterThan(0)
+      clickAwayHandlers[0]!() // This is the closure from the initial render, where mounted is false
+      expect(onCancel).not.toHaveBeenCalled()
     })
   })
 })

@@ -10,6 +10,8 @@ EXCLUDES_FILE="api/pyrefly-local-excludes.txt"
 
 pyrefly_args=(
   "--summary=none"
+  "--use-ignore-files=false"
+  "--disable-project-excludes-heuristics=true"
   "--project-excludes=.venv"
   "--project-excludes=migrations/"
   "--project-excludes=tests/"

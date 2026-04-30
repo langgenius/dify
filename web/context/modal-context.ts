@@ -88,5 +88,3 @@ export const useModalContext = () => useContext(ModalContext)
 // https://github.com/microsoft/TypeScript/issues/15713
 export const useModalContextSelector = <T>(selector: (state: ModalContextState) => T): T =>
   useContextSelector(ModalContext, selector)
-
-export default ModalContext

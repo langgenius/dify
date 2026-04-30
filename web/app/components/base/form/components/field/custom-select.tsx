@@ -1,6 +1,6 @@
 import type { CustomSelectProps, Option } from '../../../select/custom'
 import type { LabelProps } from '../label'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useFieldContext } from '../..'
 import CustomSelect from '../../../select/custom'
 import Label from '../label'

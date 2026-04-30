@@ -2,7 +2,7 @@ import type { FC, PropsWithChildren } from 'react'
 import type { QA } from '@/models/datasets'
 import { SelectionMod } from '../base/icons/src/public/knowledge'
 
-export type ChunkLabelProps = {
+type ChunkLabelProps = {
   label: string
   characterCount: number
 }
@@ -27,7 +27,7 @@ export const ChunkLabel: FC<ChunkLabelProps> = (props) => {
   )
 }
 
-export type ChunkContainerProps = ChunkLabelProps & PropsWithChildren
+type ChunkContainerProps = ChunkLabelProps & PropsWithChildren
 
 export const ChunkContainer: FC<ChunkContainerProps> = (props) => {
   const { label, characterCount, children } = props
@@ -41,7 +41,7 @@ export const ChunkContainer: FC<ChunkContainerProps> = (props) => {
   )
 }
 
-export type QAPreviewProps = {
+type QAPreviewProps = {
   qa: QA
 }
 
@@ -50,11 +50,11 @@ export const QAPreview: FC<QAPreviewProps> = (props) => {
   return (
     <div className="flex flex-col gap-y-2">
       <div className="flex gap-x-1">
-        <label className="shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">Q</label>
+        <label className="shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">Q</label>
         <p className="body-md-regular text-text-secondary">{qa.question}</p>
       </div>
       <div className="flex gap-x-1">
-        <label className="shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">A</label>
+        <label className="shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">A</label>
         <p className="body-md-regular text-text-secondary">{qa.answer}</p>
       </div>
     </div>

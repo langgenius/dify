@@ -1,6 +1,6 @@
 import type { ChatWithHistoryContextValue } from '../../context'
 import type { AppData, ConversationItem } from '@/models/share'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useChatWithHistoryContext } from '../../context'
@@ -108,7 +108,7 @@ describe('Header Component', () => {
         currentConversationItem: mockConv,
         sidebarCollapseState: true,
       })
-      expect(screen.getByText('My Chat')).toBeInTheDocument()
+      expect(screen.getByText('My Chat'))!.toBeInTheDocument()
     })
 
     it('should render ViewFormDropdown trigger when inputsForms are present', () => {
@@ -133,7 +133,7 @@ describe('Header Component', () => {
       const buttons = screen.getAllByRole('button')
       // Sidebar, NewChat, ResetChat (3)
       const resetChatBtn = buttons[buttons.length - 1]
-      await userEvent.click(resetChatBtn)
+      await userEvent.click(resetChatBtn!)
 
       expect(handleNewConversation).toHaveBeenCalled()
     })
@@ -144,7 +144,7 @@ describe('Header Component', () => {
 
       const buttons = screen.getAllByRole('button')
       const sidebarBtn = buttons[0]
-      await userEvent.click(sidebarBtn)
+      await userEvent.click(sidebarBtn!)
 
       expect(handleSidebarCollapse).toHaveBeenCalledWith(false)
     })
@@ -163,7 +163,7 @@ describe('Header Component', () => {
       await userEvent.click(trigger)
 
       const pinBtn = await screen.findByText('explore.sidebar.action.pin')
-      expect(pinBtn).toBeInTheDocument()
+      expect(pinBtn)!.toBeInTheDocument()
 
       await userEvent.click(pinBtn)
 
@@ -225,7 +225,7 @@ describe('Header Component', () => {
       const renameMenuBtn = await screen.findByText('explore.sidebar.action.rename')
       await userEvent.click(renameMenuBtn)
 
-      expect(await screen.findByText('common.chat.renameConversation')).toBeInTheDocument()
+      expect(await screen.findByText('common.chat.renameConversation'))!.toBeInTheDocument()
 
       const input = screen.getByDisplayValue('My Chat')
       await userEvent.clear(input)
@@ -236,8 +236,10 @@ describe('Header Component', () => {
 
       expect(handleRenameConversation).toHaveBeenCalledWith('conv-1', 'New Name', expect.any(Object))
 
-      const successCallback = handleRenameConversation.mock.calls[0][2].onSuccess
-      successCallback()
+      const successCallback = handleRenameConversation.mock.calls[0]![2].onSuccess
+      await act(async () => {
+        successCallback()
+      })
 
       await waitFor(() => {
         expect(screen.queryByText('common.chat.renameConversation')).not.toBeInTheDocument()
@@ -260,15 +262,17 @@ describe('Header Component', () => {
       await userEvent.click(deleteMenuBtn)
 
       expect(handleDeleteConversation).not.toHaveBeenCalled()
-      expect(await screen.findByText('share.chat.deleteConversation.title')).toBeInTheDocument()
+      expect(await screen.findByText('share.chat.deleteConversation.title'))!.toBeInTheDocument()
 
       const confirmBtn = await screen.findByText('common.operation.confirm')
       await userEvent.click(confirmBtn)
 
       expect(handleDeleteConversation).toHaveBeenCalledWith('conv-1', expect.any(Object))
 
-      const successCallback = handleDeleteConversation.mock.calls[0][1].onSuccess
-      successCallback()
+      const successCallback = handleDeleteConversation.mock.calls[0]![1].onSuccess
+      await act(async () => {
+        successCallback()
+      })
 
       await waitFor(() => {
         expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
@@ -295,6 +299,20 @@ describe('Header Component', () => {
         expect(screen.queryByText('share.chat.deleteConversation.title')).not.toBeInTheDocument()
       })
     })
+
+    it('should handle empty translated delete content via fallback', async () => {
+      const mockConv = { id: 'conv-1', name: 'My Chat' } as ConversationItem
+      setup({
+        currentConversationId: 'conv-1',
+        currentConversationItem: mockConv,
+        sidebarCollapseState: true,
+      })
+
+      await userEvent.click(screen.getByText('My Chat'))
+      await userEvent.click(await screen.findByText('explore.sidebar.action.delete'))
+
+      expect(await screen.findByText('share.chat.deleteConversation.title'))!.toBeInTheDocument()
+    })
   })
 
   describe('Edge Cases', () => {
@@ -314,7 +332,66 @@ describe('Header Component', () => {
     it('should render system title if conversation id is missing', () => {
       setup({ currentConversationId: '', sidebarCollapseState: true })
       const titleEl = screen.getByText('Test App')
-      expect(titleEl).toHaveClass('system-md-semibold')
+      expect(titleEl)!.toHaveClass('system-md-semibold')
+    })
+
+    it('should render app icon from URL when icon_url is provided', () => {
+      setup({
+        appData: {
+          ...mockAppData,
+          site: {
+            ...mockAppData.site,
+            icon_type: 'image',
+            icon_url: 'https://example.com/icon.png',
+          },
+        },
+      })
+      const img = screen.getByAltText('app icon')
+      expect(img)!.toHaveAttribute('src', 'https://example.com/icon.png')
+    })
+
+    it('should handle undefined appData gracefully (optional chaining)', () => {
+      setup({ appData: null as unknown as AppData })
+      // Just verify it doesn't crash and renders the basic structure
+      expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
+    })
+
+    it('should handle missing name in conversation item', () => {
+      const mockConv = { id: 'conv-1', name: '' } as ConversationItem
+      setup({
+        currentConversationId: 'conv-1',
+        currentConversationItem: mockConv,
+        sidebarCollapseState: true,
+      })
+      // The separator is just a div with text content '/'
+      // The separator is just a div with text content '/'
+      expect(screen.getByText('/'))!.toBeInTheDocument()
+    })
+
+    it('should handle New Chat button state when currentConversationId is present but isResponding is true', () => {
+      setup({
+        isResponding: true,
+        sidebarCollapseState: true,
+        currentConversationId: 'conv-1',
+      })
+
+      const buttons = screen.getAllByRole('button')
+      // Sidebar, NewChat, ResetChat (3)
+      const newChatBtn = buttons[1]
+      expect(newChatBtn)!.toBeDisabled()
+    })
+
+    it('should handle New Chat button state when currentConversationId is missing and isResponding is false', () => {
+      setup({
+        isResponding: false,
+        sidebarCollapseState: true,
+        currentConversationId: '',
+      })
+
+      const buttons = screen.getAllByRole('button')
+      // Sidebar, NewChat (2)
+      const newChatBtn = buttons[1]
+      expect(newChatBtn)!.toBeDisabled()
     })
 
     it('should not render operation menu if conversation id is missing', () => {
@@ -332,17 +409,20 @@ describe('Header Component', () => {
       expect(screen.queryByText('My Chat')).not.toBeInTheDocument()
     })
 
-    it('should handle New Chat button disabled state when responding', () => {
-      setup({
-        isResponding: true,
+    it('should pass empty rename value when conversation name is undefined', async () => {
+      const mockConv = { id: 'conv-1' } as ConversationItem
+      const { container } = setup({
+        currentConversationId: 'conv-1',
+        currentConversationItem: mockConv,
         sidebarCollapseState: true,
-        currentConversationId: undefined,
       })
 
-      const buttons = screen.getAllByRole('button')
-      // Sidebar(1) + NewChat(1) = 2
-      const newChatBtn = buttons[1]
-      expect(newChatBtn).toBeDisabled()
+      const operationTrigger = container.querySelector('.flex.cursor-pointer.items-center.rounded-lg.p-1\\.5.pl-2.text-text-secondary.hover\\:bg-state-base-hover') as HTMLElement
+      await userEvent.click(operationTrigger)
+      await userEvent.click(await screen.findByText('explore.sidebar.action.rename'))
+
+      const input = screen.getByRole('textbox') as HTMLInputElement
+      expect(input.value).toBe('')
     })
   })
 })

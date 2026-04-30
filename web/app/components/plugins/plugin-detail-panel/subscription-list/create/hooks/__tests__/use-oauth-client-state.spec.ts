@@ -77,10 +77,19 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (params: unknown) => mockToastNotify(params),
-  },
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
 }))
 
 // ============================================================================
@@ -185,8 +194,8 @@ describe('useOAuthClientState', () => {
       }))
 
       expect(result.current.oauthClientSchema).toHaveLength(2)
-      expect(result.current.oauthClientSchema[0].default).toBe('my-client-id')
-      expect(result.current.oauthClientSchema[1].default).toBe('my-secret')
+      expect(result.current.oauthClientSchema[0]!.default).toBe('my-client-id')
+      expect(result.current.oauthClientSchema[1]!.default).toBe('my-secret')
     })
 
     it('should return empty array when oauth_client_schema is empty', () => {
@@ -230,9 +239,9 @@ describe('useOAuthClientState', () => {
       }))
 
       // client_id should be overridden
-      expect(result.current.oauthClientSchema[0].default).toBe('only-client-id')
+      expect(result.current.oauthClientSchema[0]!.default).toBe('only-client-id')
       // extra_field should keep original default since key not in params
-      expect(result.current.oauthClientSchema[1].default).toBe('extra-default')
+      expect(result.current.oauthClientSchema[1]!.default).toBe('extra-default')
     })
   })
 

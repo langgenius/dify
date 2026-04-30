@@ -1,4 +1,3 @@
-import Image from 'next/image'
 import * as React from 'react'
 import useTheme from '@/hooks/use-theme'
 import { basePath } from '@/utils/var'
@@ -11,7 +10,7 @@ const PipelineScreenShot = () => {
       <source media="(resolution: 1x)" srcSet={`${basePath}/screenshots/${theme}/Pipeline.png`} />
       <source media="(resolution: 2x)" srcSet={`${basePath}/screenshots/${theme}/Pipeline@2x.png`} />
       <source media="(resolution: 3x)" srcSet={`${basePath}/screenshots/${theme}/Pipeline@3x.png`} />
-      <Image
+      <img
         src={`${basePath}/screenshots/${theme}/Pipeline.png`}
         alt="Pipeline Screenshot"
         width={692}

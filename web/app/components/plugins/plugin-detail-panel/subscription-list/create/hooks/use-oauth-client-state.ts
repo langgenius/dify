@@ -2,9 +2,9 @@
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useConfigureTriggerOAuth,
@@ -118,20 +118,14 @@ export const useOAuthClientState = ({
         openOAuthPopup(response.authorization_url, (callbackData) => {
           if (!callbackData)
             return
-          Toast.notify({
-            type: 'success',
-            message: t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }),
-          })
+          toast.success(t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }))
           onClose()
           showOAuthCreateModal(response.subscription_builder)
         })
       },
       onError: () => {
         setAuthorizationStatus(AuthorizationStatusEnum.Failed)
-        Toast.notify({
-          type: 'error',
-          message: t('modal.oauth.authorization.authFailed', { ns: 'pluginTrigger' }),
-        })
+        toast.error(t('modal.oauth.authorization.authFailed', { ns: 'pluginTrigger' }))
       },
     })
   }, [providerName, initiateOAuth, onClose, showOAuthCreateModal, t])
@@ -141,16 +135,10 @@ export const useOAuthClientState = ({
     deleteOAuth(providerName, {
       onSuccess: () => {
         onClose()
-        Toast.notify({
-          type: 'success',
-          message: t('modal.oauth.remove.success', { ns: 'pluginTrigger' }),
-        })
+        toast.success(t('modal.oauth.remove.success', { ns: 'pluginTrigger' }))
       },
       onError: (error: unknown) => {
-        Toast.notify({
-          type: 'error',
-          message: getErrorMessage(error, t('modal.oauth.remove.failed', { ns: 'pluginTrigger' })),
-        })
+        toast.error(getErrorMessage(error, t('modal.oauth.remove.failed', { ns: 'pluginTrigger' })))
       },
     })
   }, [providerName, deleteOAuth, onClose, t])
@@ -187,10 +175,7 @@ export const useOAuthClientState = ({
           return
         }
         onClose()
-        Toast.notify({
-          type: 'success',
-          message: t('modal.oauth.save.success', { ns: 'pluginTrigger' }),
-        })
+        toast.success(t('modal.oauth.save.success', { ns: 'pluginTrigger' }))
       },
     })
   }, [clientType, providerName, oauthClientSchema, oauthConfig?.params, configureOAuth, handleAuthorization, onClose, t])

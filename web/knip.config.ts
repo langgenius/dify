@@ -7,9 +7,9 @@ const config: KnipConfig = {
   entry: [
     'scripts/**/*.{js,ts,mjs}',
     'bin/**/*.{js,ts,mjs}',
+    'tsslint.config.ts',
   ],
   ignore: [
-    'i18n/**',
     'public/**',
   ],
   ignoreBinaries: [
@@ -17,26 +17,33 @@ const config: KnipConfig = {
   ],
   ignoreDependencies: [
     '@iconify-json/*',
-
     '@storybook/addon-onboarding',
-
-    '@tsslint/compat-eslint',
-    '@tsslint/config',
   ],
+  /// keep-sorted
   rules: {
-    files: 'warn',
+    // TODO: fix these warnings
+    // Unused devDependencies (3)
+    // @eslint-react/eslint-plugin  package.json:160:6
+    // @next/eslint-plugin-next     package.json:168:6
+    // eslint-plugin-react-refresh  package.json:211:6
+    // Unlisted binaries (2)
+    // eslint  package.json
+    // vp      package.json
+    binaries: 'warn',
+    catalog: 'error',
     dependencies: 'error',
-    devDependencies: 'error',
+    devDependencies: 'warn',
+    duplicates: 'error',
+    enumMembers: 'error',
+    exports: 'error',
+    files: 'error',
+    namespaceMembers: 'error',
+    nsExports: 'error',
+    nsTypes: 'error',
     optionalPeerDependencies: 'error',
-    unlisted: 'warn',
-    unresolved: 'warn',
-    exports: 'warn',
-    nsExports: 'warn',
-    classMembers: 'warn',
-    types: 'warn',
-    nsTypes: 'warn',
-    enumMembers: 'warn',
-    duplicates: 'warn',
+    types: 'error',
+    unlisted: 'error',
+    unresolved: 'error',
   },
 }
 

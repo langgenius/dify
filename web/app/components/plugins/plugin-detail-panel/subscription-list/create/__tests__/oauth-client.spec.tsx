@@ -86,17 +86,28 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: (params: unknown) => mockToastNotify(params),
-  },
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
 }))
 
 const mockClipboardWriteText = vi.fn()
-Object.assign(navigator, {
-  clipboard: {
+Object.defineProperty(navigator, 'clipboard', {
+  value: {
     writeText: mockClipboardWriteText,
   },
+  configurable: true,
+  writable: true,
 })
 
 vi.mock('@/app/components/base/modal/modal', () => ({
@@ -183,6 +194,13 @@ describe('OAuthClientSettingsModal', () => {
     vi.clearAllMocks()
     mockUsePluginStore.mockReturnValue(mockPluginDetail)
     mockClipboardWriteText.mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: mockClipboardWriteText,
+      },
+      configurable: true,
+      writable: true,
+    })
     setMockFormValues({
       values: { client_id: 'test-client-id', client_secret: 'test-client-secret' },
       isCheckValidated: true,

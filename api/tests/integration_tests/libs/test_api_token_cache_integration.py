@@ -13,6 +13,7 @@ from unittest.mock import patch
 import pytest
 
 from extensions.ext_redis import redis_client
+from models.enums import ApiTokenType
 from models.model import ApiToken
 from services.api_token_service import ApiTokenCache, CachedApiToken
 
@@ -279,7 +280,7 @@ class TestEndToEndCacheFlow:
         test_token = ApiToken()
         test_token.id = "test-e2e-id"
         test_token.token = test_token_value
-        test_token.type = test_scope
+        test_token.type = ApiTokenType.APP
         test_token.app_id = "test-app"
         test_token.tenant_id = "test-tenant"
         test_token.last_used_at = None

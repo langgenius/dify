@@ -1,8 +1,8 @@
 import type { FC, ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useState } from 'react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { useInstalledPluginList } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
 
 type Option = {
   value: string
@@ -52,7 +52,7 @@ const TabSlider: FC<TabSliderProps> = ({
     >
       <div
         data-testid="tab-slider-bg"
-        className="shadows-shadow-xs absolute bottom-0.5 left-0 right-0 top-0.5 rounded-[10px] bg-components-panel-bg transition-transform duration-300 ease-in-out"
+        className="shadows-shadow-xs absolute top-0.5 right-0 bottom-0.5 left-0 rounded-[10px] bg-components-panel-bg transition-transform duration-300 ease-in-out"
         style={sliderStyle}
       />
       {options.map((option, index) => (

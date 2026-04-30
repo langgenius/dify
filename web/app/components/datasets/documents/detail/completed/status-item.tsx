@@ -1,10 +1,14 @@
 import type { FC } from 'react'
-import type { Item } from '@/app/components/base/select'
 import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 
+type StatusOption = {
+  value: string | number
+  name: string
+}
+
 type IStatusItemProps = {
-  item: Item
+  item: StatusOption
   selected: boolean
 }
 

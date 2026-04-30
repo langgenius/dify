@@ -13,7 +13,7 @@ const PromptEditorMock = ({ value, onChange, placeholder, editable, compact, cla
   return (
     <div className={wrapperClassName}>
       <textarea
-        className={`w-full resize-none outline-none ${compact ? 'text-[13px] leading-5' : 'text-sm leading-6'} ${className}`}
+        className={`w-full resize-none outline-hidden ${compact ? 'text-[13px] leading-5' : 'text-sm leading-6'} ${className}`}
         value={content}
         onChange={handleChange}
         placeholder={placeholder}
@@ -86,7 +86,7 @@ const PromptEditorDemo = (args: any) => {
       {value && (
         <div className="mt-4 rounded-lg bg-gray-50 p-3">
           <div className="mb-2 text-xs font-medium text-gray-600">Current Value:</div>
-          <div className="whitespace-pre-wrap font-mono text-sm text-gray-800">
+          <div className="font-mono text-sm whitespace-pre-wrap text-gray-800">
             {value}
           </div>
         </div>
@@ -204,7 +204,7 @@ const MultipleEditorsDemo = () => {
       {(systemPrompt || userPrompt) && (
         <div className="rounded-lg bg-gray-50 p-4">
           <div className="mb-2 text-xs font-medium text-gray-600">Combined Output:</div>
-          <div className="whitespace-pre-wrap text-sm text-gray-800">
+          <div className="text-sm whitespace-pre-wrap text-gray-800">
             {systemPrompt && (
               <>
                 <strong>System:</strong>
@@ -317,7 +317,7 @@ const ChatPromptBuilderDemo = () => {
         {' '}
         Type
         {' '}
-        <code className="rounded bg-blue-100 px-1 py-0.5">/</code>
+        <code className="rounded-sm bg-blue-100 px-1 py-0.5">/</code>
         {' '}
         to insert variables or templates
       </div>

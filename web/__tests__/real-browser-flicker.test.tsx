@@ -296,7 +296,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
 
       // Wait for theme system to fully initialize
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toHaveTextContent('Current Theme: dark')
+        expect(screen.getByTestId('theme-indicator'))!.toHaveTextContent('Current Theme: dark')
       })
 
       const finalState = {
@@ -319,10 +319,10 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toHaveTextContent('Current Theme: light')
+        expect(screen.getByTestId('theme-indicator'))!.toHaveTextContent('Current Theme: light')
       })
 
-      expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: light')
+      expect(screen.getByTestId('visual-appearance'))!.toHaveTextContent('Appearance: light')
     })
 
     it('handles system theme with dark preference', async () => {
@@ -335,10 +335,10 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toHaveTextContent('Current Theme: dark')
+        expect(screen.getByTestId('theme-indicator'))!.toHaveTextContent('Current Theme: dark')
       })
 
-      expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: dark')
+      expect(screen.getByTestId('visual-appearance'))!.toHaveTextContent('Appearance: dark')
     })
 
     it('handles system theme with light preference', async () => {
@@ -351,10 +351,10 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toHaveTextContent('Current Theme: light')
+        expect(screen.getByTestId('theme-indicator'))!.toHaveTextContent('Current Theme: light')
       })
 
-      expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: light')
+      expect(screen.getByTestId('visual-appearance'))!.toHaveTextContent('Appearance: light')
     })
 
     it('handles no stored theme (defaults to system)', async () => {
@@ -367,7 +367,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toHaveTextContent('Current Theme: light')
+        expect(screen.getByTestId('theme-indicator'))!.toHaveTextContent('Current Theme: light')
       })
     })
 
@@ -384,7 +384,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('timing-status')).toHaveTextContent('Phase: CSR')
+        expect(screen.getByTestId('timing-status'))!.toHaveTextContent('Phase: CSR')
       })
 
       // Analyze timing and style changes
@@ -395,7 +395,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
 
       // Check if there are style changes (this is visible flicker)
       const hasStyleChange = timingData.length > 1
-        && timingData[0].styles.backgroundColor !== timingData[timingData.length - 1].styles.backgroundColor
+        && timingData[0]!.styles.backgroundColor !== timingData[timingData.length - 1]!.styles.backgroundColor
 
       if (hasStyleChange)
         console.log('⚠️  Style changes detected - this causes visible flicker')
@@ -420,7 +420,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('css-classes')).toHaveTextContent('bg-gray-900 text-white')
+        expect(screen.getByTestId('css-classes'))!.toHaveTextContent('bg-gray-900 text-white')
       })
 
       console.log('\n=== CSS Class Change Detection ===')
@@ -430,12 +430,12 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
 
       // Check if CSS classes have changed
       const hasCSSChange = cssStates.length > 1
-        && cssStates[0].className !== cssStates[cssStates.length - 1].className
+        && cssStates[0]!.className !== cssStates[cssStates.length - 1]!.className
 
       if (hasCSSChange) {
         console.log('⚠️  CSS class changes detected - may cause style flicker')
-        console.log(`From: "${cssStates[0].className}"`)
-        console.log(`To: "${cssStates[cssStates.length - 1].className}"`)
+        console.log(`From: "${cssStates[0]!.className}"`)
+        console.log(`To: "${cssStates[cssStates.length - 1]!.className}"`)
       }
 
       expect(hasCSSChange).toBe(true) // We expect to see this change
@@ -469,11 +469,12 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
 
         // Should fallback gracefully without crashing
         await waitFor(() => {
-          expect(screen.getByTestId('theme-indicator')).toBeInTheDocument()
+          expect(screen.getByTestId('theme-indicator'))!.toBeInTheDocument()
         })
 
         // Should default to light theme when localStorage fails
-        expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: light')
+        // Should default to light theme when localStorage fails
+        expect(screen.getByTestId('visual-appearance'))!.toHaveTextContent('Appearance: light')
       }
       finally {
         Reflect.deleteProperty(window, 'localStorage')
@@ -490,12 +491,12 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('theme-indicator')).toBeInTheDocument()
+        expect(screen.getByTestId('theme-indicator'))!.toBeInTheDocument()
       })
 
       // Should handle invalid values gracefully
       const themeIndicator = screen.getByTestId('theme-indicator')
-      expect(themeIndicator).toBeInTheDocument()
+      expect(themeIndicator)!.toBeInTheDocument()
     })
   })
 
@@ -516,7 +517,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByTestId('performance-test')).toHaveTextContent('Theme: dark')
+        expect(screen.getByTestId('performance-test'))!.toHaveTextContent('Theme: dark')
       })
 
       // Analyze performance timeline

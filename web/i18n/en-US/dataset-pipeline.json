@@ -35,6 +35,7 @@
   "details.structureTooltip": "Chunk Structure determines how documents are split and indexed—offering General, Parent-Child, and Q&A modes—and is unique to each knowledge base.",
   "documentSettings.title": "Document Settings",
   "editPipelineInfo": "Edit pipeline info",
+  "editPipelineInfoNameRequired": "Please enter a name for the Knowledge Base.",
   "exportDSL.errorTip": "Failed to export pipeline DSL",
   "exportDSL.successTip": "Export pipeline DSL successfully",
   "inputField": "Input Field",

@@ -1,0 +1,16 @@
+[project]
+name = "dify-vdb-oceanbase"
+version = "0.0.1"
+
+dependencies = [
+    "pyobvector~=0.2.17",
+    "mysql-connector-python>=9.3.0",
+]
+description = "Dify vector store backend (dify-vdb-oceanbase)."
+
+[project.entry-points."dify.vector_backends"]
+oceanbase = "dify_vdb_oceanbase.oceanbase_vector:OceanBaseVectorFactory"
+seekdb = "dify_vdb_oceanbase.oceanbase_vector:OceanBaseVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

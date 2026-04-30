@@ -1,15 +1,46 @@
 import logging
 import time
 
+import socketio  # type: ignore[reportMissingTypeStubs]
+from flask import request
 from opentelemetry.trace import get_current_span
 from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
 
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
+from controllers.console.error import UnauthorizedAndForceLogout
 from core.logging.context import init_request_context
 from dify_app import DifyApp
+from extensions.ext_socketio import sio
+from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import LicenseStatus
 
 logger = logging.getLogger(__name__)
+
+# Console bootstrap APIs exempt from license check.
+# Defined at module level to avoid per-request tuple construction.
+# - system-features: license status for expiry UI (GlobalPublicStoreProvider)
+# - setup: install/setup status check (AppInitializer)
+# - init: init password validation for fresh install (InitPasswordPopup)
+# - login: auto-login after setup completion (InstallForm)
+# - features: billing/plan features (ProviderContextProvider)
+# - account/profile: login check + user profile (AppContextProvider, useIsLogin)
+# - workspaces/current: workspace + model providers (AppContextProvider)
+# - version: version check (AppContextProvider)
+# - activate/check: invitation link validation (signin page)
+# Without these exemptions, the signin page triggers location.reload()
+# on unauthorized_and_force_logout, causing an infinite loop.
+_CONSOLE_EXEMPT_PREFIXES = (
+    "/console/api/system-features",
+    "/console/api/setup",
+    "/console/api/init",
+    "/console/api/login",
+    "/console/api/features",
+    "/console/api/account/profile",
+    "/console/api/workspaces/current",
+    "/console/api/version",
+    "/console/api/activate/check",
+)
 
 
 # ----------------------------
@@ -30,6 +61,39 @@ def create_flask_app_with_configs() -> DifyApp:
         # Initialize logging context for this request
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
+
+        # Enterprise license validation for API endpoints (both console and webapp)
+        # When license expires, block all API access except bootstrap endpoints needed
+        # for the frontend to load the license expiration page without infinite reloads.
+        if dify_config.ENTERPRISE_ENABLED:
+            is_console_api = request.path.startswith("/console/api/")
+            is_webapp_api = request.path.startswith("/api/")
+
+            if is_console_api or is_webapp_api:
+                if is_console_api:
+                    is_exempt = any(request.path.startswith(p) for p in _CONSOLE_EXEMPT_PREFIXES)
+                else:  # webapp API
+                    is_exempt = request.path.startswith("/api/system-features")
+
+                if not is_exempt:
+                    try:
+                        # Check license status (cached — see EnterpriseService for TTL details)
+                        license_status = EnterpriseService.get_cached_license_status()
+                        if license_status in (LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST):
+                            raise UnauthorizedAndForceLogout(
+                                f"Enterprise license is {license_status}. Please contact your administrator."
+                            )
+                        if license_status is None:
+                            raise UnauthorizedAndForceLogout(
+                                "Unable to verify enterprise license. Please contact your administrator."
+                            )
+                    except UnauthorizedAndForceLogout:
+                        raise
+                    except Exception:
+                        logger.exception("Failed to check enterprise license status")
+                        raise UnauthorizedAndForceLogout(
+                            "Unable to verify enterprise license. Please contact your administrator."
+                        )
 
     # add after request hook for injecting trace headers from OpenTelemetry span context
     # Only adds headers when OTEL is enabled and has valid context
@@ -60,14 +124,18 @@ def create_flask_app_with_configs() -> DifyApp:
     return dify_app
 
 
-def create_app() -> DifyApp:
+def create_app() -> tuple[socketio.WSGIApp, DifyApp]:
     start_time = time.perf_counter()
     app = create_flask_app_with_configs()
     initialize_extensions(app)
+
+    sio.app = app
+    socketio_app = socketio.WSGIApp(sio, app)
+
     end_time = time.perf_counter()
     if dify_config.DEBUG:
         logger.info("Finished create_app (%s ms)", round((end_time - start_time) * 1000, 2))
-    return app
+    return socketio_app, app
 
 
 def initialize_extensions(app: DifyApp):
@@ -81,6 +149,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_compress,
         ext_database,
+        ext_enterprise_telemetry,
         ext_fastopenapi,
         ext_forward_refs,
         ext_hosting_provider,
@@ -131,6 +200,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_fastopenapi,
         ext_otel,
+        ext_enterprise_telemetry,
         ext_request_logging,
         ext_session_factory,
     ]

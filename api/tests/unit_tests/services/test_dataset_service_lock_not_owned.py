@@ -4,6 +4,7 @@ from unittest.mock import Mock, create_autospec
 import pytest
 from redis.exceptions import LockNotOwnedError
 
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.account import Account
 from models.dataset import Dataset, Document
 from services.dataset_service import DocumentService, SegmentService
@@ -70,16 +71,16 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
     dataset.id = "ds-1"
     dataset.tenant_id = fake_current_user.current_tenant_id
     dataset.data_source_type = "upload_file"
-    dataset.indexing_technique = "high_quality"  # so we skip re-initialization branch
+    dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY  # so we skip re-initialization branch
 
     # Minimal knowledge_config stub that satisfies pre-lock code
     info_list = types.SimpleNamespace(data_source_type="upload_file")
     data_source = types.SimpleNamespace(info_list=info_list)
     knowledge_config = types.SimpleNamespace(
-        doc_form="qa_model",
+        doc_form=IndexStructureType.QA_INDEX,
         original_document_id=None,  # go into "new document" branch
         data_source=data_source,
-        indexing_technique="high_quality",
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         embedding_model=None,
         embedding_model_provider=None,
         retrieval_model=None,
@@ -125,13 +126,13 @@ def test_add_segment_ignores_lock_not_owned(
     dataset = create_autospec(Dataset, instance=True)
     dataset.id = "ds-1"
     dataset.tenant_id = fake_current_user.current_tenant_id
-    dataset.indexing_technique = "economy"  # skip embedding/token calculation branch
+    dataset.indexing_technique = IndexTechniqueType.ECONOMY  # skip embedding/token calculation branch
 
     document = create_autospec(Document, instance=True)
     document.id = "doc-1"
     document.dataset_id = dataset.id
     document.word_count = 0
-    document.doc_form = "qa_model"
+    document.doc_form = IndexStructureType.QA_INDEX
 
     # Minimal args required by add_segment
     args = {
@@ -168,10 +169,10 @@ def test_multi_create_segment_ignores_lock_not_owned(
     dataset = create_autospec(Dataset, instance=True)
     dataset.id = "ds-1"
     dataset.tenant_id = fake_current_user.current_tenant_id
-    dataset.indexing_technique = "economy"  # again, skip high_quality path
+    dataset.indexing_technique = IndexTechniqueType.ECONOMY  # again, skip high_quality path
 
     document = create_autospec(Document, instance=True)
     document.id = "doc-1"
     document.dataset_id = dataset.id
     document.word_count = 0
-    document.doc_form = "qa_model"
+    document.doc_form = IndexStructureType.QA_INDEX

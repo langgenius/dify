@@ -3,6 +3,9 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
+  Button,
+} from '@langgenius/dify-ui/button'
+import {
   RiEqualizer2Line,
 } from '@remixicon/react'
 import {
@@ -10,9 +13,6 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Button,
-} from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'

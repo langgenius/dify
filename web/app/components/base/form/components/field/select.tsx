@@ -1,6 +1,6 @@
 import type { Option, PureSelectProps } from '../../../select/pure'
 import type { LabelProps } from '../label'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useFieldContext } from '../..'
 import PureSelect from '../../../select/pure'
 import Label from '../label'

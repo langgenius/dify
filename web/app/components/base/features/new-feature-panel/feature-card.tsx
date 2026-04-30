@@ -1,9 +1,9 @@
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   icon: any
@@ -32,26 +32,31 @@ const FeatureCard = ({
 }: Props) => {
   return (
     <div
-      className="mb-1 rounded-xl border-l-[0.5px] border-t-[0.5px] border-effects-highlight bg-background-section-burn p-3"
+      className="mb-1 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-3"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
       <div className="mb-2 flex items-center gap-2">
         {icon}
-        <div className="system-sm-semibold flex grow items-center text-text-secondary">
+        <div className="flex grow items-center system-sm-semibold text-text-secondary">
           {title}
           {tooltip && (
-            <Tooltip
-              popupContent={tooltip}
-            >
-              <div className="ml-0.5 p-px"><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" /></div>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <div className="ml-0.5 p-px"><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" /></div>
+                )}
+              />
+              <TooltipContent>
+                {tooltip}
+              </TooltipContent>
             </Tooltip>
           )}
         </div>
-        <Switch disabled={disabled} className="shrink-0" onChange={state => onChange?.(state)} value={value} />
+        <Switch disabled={disabled} className="shrink-0" onCheckedChange={state => onChange?.(state)} checked={value} />
       </div>
       {description && (
-        <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{description}</div>
+        <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{description}</div>
       )}
       {children}
     </div>
