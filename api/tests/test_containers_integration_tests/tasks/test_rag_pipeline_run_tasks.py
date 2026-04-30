@@ -1,3 +1,5 @@
+from models import TenantStatus
+from models import AccountStatus
 import json
 import uuid
 from unittest.mock import MagicMock, patch
@@ -69,14 +71,14 @@ class TestRagPipelineRunTasks:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

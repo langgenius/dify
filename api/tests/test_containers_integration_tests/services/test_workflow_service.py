@@ -33,7 +33,7 @@ class TestWorkflowService:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_account(self, db_session_with_containers: Session, fake=None):
+    def _create_test_account(self, db_session_with_containers: Session, fake:Faker|None=None):
         """
         Helper method to create a test account with realistic data.
 
@@ -77,7 +77,7 @@ class TestWorkflowService:
 
         return account
 
-    def _create_test_app(self, db_session_with_containers: Session, fake=None):
+    def _create_test_app(self, db_session_with_containers: Session, fake:Faker|None=None):
         """
         Helper method to create a test app with realistic data.
 
@@ -109,7 +109,7 @@ class TestWorkflowService:
         db_session_with_containers.commit()
         return app
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app, account, fake=None):
+    def _create_test_workflow(self, db_session_with_containers: Session, app, account, fake:Faker|None=None):
         """
         Helper method to create a test workflow associated with an app.
 

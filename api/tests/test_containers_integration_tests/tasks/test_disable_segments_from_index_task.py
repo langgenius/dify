@@ -6,6 +6,9 @@ using TestContainers to ensure realistic database interactions and proper isolat
 The task is responsible for removing document segments from the search index when they are disabled.
 """
 
+from models import TenantStatus
+from models import TenantAccountRole
+from models import AccountStatus
 from unittest.mock import MagicMock, patch
 
 from faker import Faker
@@ -35,7 +38,7 @@ class TestDisableSegmentsFromIndexTask:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_account(self, db_session_with_containers: Session, fake=None):
+    def _create_test_account(self, db_session_with_containers: Session, fake:Faker|None=None):
         """
         Helper method to create a test account with realistic data.
 
@@ -51,24 +54,24 @@ class TestDisableSegmentsFromIndexTask:
             email=fake.email(),
             name=fake.name(),
             avatar=fake.url(),
-            status="active",
+            status=AccountStatus.ACTIVE,
             interface_language="en-US",
+        # monkey-patch attributes for test setup
+      
+      role = TenantAccountRole.OWNER
+      ,created_at = fake.date_time_this_year()
+      ,updated_at = fake.date_time_this_year()
         )
         account.id = fake.uuid4()
-        # monkey-patch attributes for test setup
         account.tenant_id = fake.uuid4()
         account.type = "normal"
-        account.role = "owner"
-        account.created_at = fake.date_time_this_year()
-        account.updated_at = account.created_at
-
         # Create a tenant for the account
         from models.account import Tenant
 
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         tenant.id = account.tenant_id
         tenant.created_at = fake.date_time_this_year()
@@ -83,7 +86,7 @@ class TestDisableSegmentsFromIndexTask:
 
         return account
 
-    def _create_test_dataset(self, db_session_with_containers: Session, account, fake=None):
+    def _create_test_dataset(self, db_session_with_containers: Session, account, fake:Faker|None=None):
         """
         Helper method to create a test dataset with realistic data.
 
@@ -117,7 +120,7 @@ class TestDisableSegmentsFromIndexTask:
 
         return dataset
 
-    def _create_test_document(self, db_session_with_containers: Session, dataset, account, fake=None):
+    def _create_test_document(self, db_session_with_containers: Session, dataset, account: Account, fake:Faker|None=None):
         """
         Helper method to create a test document with realistic data.
 
@@ -216,7 +219,7 @@ class TestDisableSegmentsFromIndexTask:
 
         return segments
 
-    def _create_dataset_process_rule(self, db_session_with_containers: Session, dataset, fake=None):
+    def _create_dataset_process_rule(self, db_session_with_containers: Session, dataset, fake:Faker|None=None):
         """
         Helper method to create a dataset process rule.
 
