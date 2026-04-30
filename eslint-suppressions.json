@@ -202,11 +202,6 @@
       "count": 1
     }
   },
-  "web/app/components/app-sidebar/dataset-info/dropdown.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app-sidebar/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1158,7 +1153,7 @@
   },
   "web/app/components/base/form/components/base/base-field.tsx": {
     "no-restricted-imports": {
-      "count": 2
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 3
@@ -1749,11 +1744,6 @@
       "count": 4
     }
   },
-  "web/app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/plugins/component-picker-block/menu.tsx": {
     "erasable-syntax-only/parameter-properties": {
       "count": 1
@@ -1904,25 +1894,6 @@
   "web/app/components/base/search-input/index.stories.tsx": {
     "no-console": {
       "count": 3
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/select/index.stories.tsx": {
-    "no-console": {
-      "count": 4
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/select/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "style/multiline-ternary": {
-      "count": 2
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -3167,11 +3138,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/common-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-common-modal-state.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -3798,11 +3764,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/header/version-history-button.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/hooks-store/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -3825,7 +3786,7 @@
   },
   "web/app/components/workflow/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 27
+      "count": 26
     }
   },
   "web/app/components/workflow/hooks/use-checklist.ts": {
@@ -5023,11 +4984,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/operator/tip-popup.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/operator/zoom-in-out.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -5367,11 +5323,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/workflow-history-store.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/workflow-preview/components/nodes/base.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -5434,11 +5385,6 @@
   },
   "web/app/reset-password/layout.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/signin/_header.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },

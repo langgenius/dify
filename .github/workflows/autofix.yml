@@ -113,8 +113,12 @@ jobs:
           find . -name "*.py.bak" -type f -delete
 
       - name: Setup web environment
-        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
+        if: github.event_name != 'merge_group'
         uses: ./.github/actions/setup-web
+
+      - name: Generate API contracts
+        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
+        run: pnpm --filter @dify/contracts gen-api-contract
 
       - name: ESLint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
