@@ -160,8 +160,8 @@ const EducationApplyAgeContent = () => {
 
     if (appliedEducationCase === AppliedEducationCase.activeSubscription) {
       return (
-        <div className="flex flex-col items-start gap-3">
-          <div className="flex items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
+        <div className="flex w-full flex-col items-start gap-3">
+          <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
             <span className="mt-0.5 mr-2 i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning-secondary" />
             <div className="system-md-regular text-text-warning">
               <Trans
@@ -186,8 +186,8 @@ const EducationApplyAgeContent = () => {
     }
 
     return (
-      <div className="flex flex-col items-start gap-3">
-        <div className="flex items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
+      <div className="flex w-full flex-col items-start gap-3">
+        <div className="flex w-full items-start rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5">
           <span className="mt-0.5 mr-2 i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning-secondary" />
           <div className="system-md-regular text-text-warning">
             {t('applied.noPaymentPermission.description', { ns: 'education' })}
