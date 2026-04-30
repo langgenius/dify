@@ -59,6 +59,8 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const { enableEducationPlan, isEducationAccount } = useProviderContext()
   const isEducationDiscountMode = enableEducationPlan && isEducationAccount
   const isEducationDiscountSupportedPlan = plan === Plan.professional && isYear
+  const selectedPlanName = t(`${i18nPrefix}.name`, { ns: 'billing' })
+  const selectedBillingPeriod = t(`educationPricingConfirm.billingPeriod.${isYear ? 'yearly' : 'monthly'}`, { ns: 'education' })
   const educationDiscountWarningText = isEducationDiscountMode && !isFreePlan && !isEducationDiscountSupportedPlan
     ? t('planNotSupportEducationDiscount', { ns: 'education' })
     : undefined
@@ -131,10 +133,6 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
 
     await handlePayCurrentPlan()
   }
-  const handleSwitchToEducationPricing = async () => {
-    await handleEducationDiscount()
-    setShowEducationPricingConfirm(false)
-  }
   const handleContinueCurrentPlan = async () => {
     setShowEducationPricingConfirm(false)
     await handlePayCurrentPlan()
@@ -205,28 +203,35 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           >
             <span className="i-ri-close-line size-4" />
           </AlertDialogCancelButton>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+          <div className="flex flex-col gap-4 px-6 pt-6 pb-4">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('educationPricingConfirm.title', { ns: 'education' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular text-text-tertiary">
-              {t('educationPricingConfirm.description', { ns: 'education' })}
+            <AlertDialogDescription className="flex w-full gap-2 system-md-regular text-text-tertiary">
+              <span className="mt-0.5 i-ri-error-warning-fill size-4 shrink-0 text-text-warning-secondary" />
+              <span>
+                {t('educationPricingConfirm.description', {
+                  ns: 'education',
+                  planName: selectedPlanName,
+                  billingPeriod: selectedBillingPeriod,
+                })}
+              </span>
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton
-              onClick={handleContinueCurrentPlan}
+              onClick={() => setShowEducationPricingConfirm(false)}
               disabled={loading}
             >
-              {t('educationPricingConfirm.continue', { ns: 'education' })}
+              {t('educationPricingConfirm.cancel', { ns: 'education' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               tone="default"
-              onClick={handleSwitchToEducationPricing}
-              disabled={isEducationDiscountLoading}
-              loading={isEducationDiscountLoading}
+              onClick={handleContinueCurrentPlan}
+              disabled={loading}
+              loading={loading}
             >
-              {t('useEducationDiscount', { ns: 'education' })}
+              {t('educationPricingConfirm.continue', { ns: 'education' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

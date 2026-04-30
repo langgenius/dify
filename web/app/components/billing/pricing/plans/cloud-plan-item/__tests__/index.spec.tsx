@@ -314,8 +314,9 @@ describe('CloudPlanItem', () => {
 
       fireEvent.click(button)
       expect(screen.getByText('education.educationPricingConfirm.title'))!.toBeInTheDocument()
-      expect(screen.getByText('education.educationPricingConfirm.description'))!.toBeInTheDocument()
+      expect(screen.getByText(/^education\.educationPricingConfirm\.description/))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.close' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))!.toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.continue' }))
 
       await waitFor(() => {
@@ -324,7 +325,7 @@ describe('CloudPlanItem', () => {
       })
     })
 
-    it('should switch to eligible education pricing from unsupported plan confirm', async () => {
+    it('should close the unsupported plan confirm without checkout when canceled', async () => {
       mockUseProviderContext.mockReturnValue({
         enableEducationPlan: true,
         isEducationAccount: true,
@@ -340,12 +341,13 @@ describe('CloudPlanItem', () => {
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
-      fireEvent.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
+      fireEvent.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))
 
       await waitFor(() => {
-        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'year')
-        expect(assignedHref).toBe('https://subscription.example')
+        expect(screen.queryByText('education.educationPricingConfirm.title'))!.not.toBeInTheDocument()
       })
+      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+      expect(assignedHref).toBe('')
     })
 
     // Covers L62-63: loading guard prevents double click

@@ -38,8 +38,8 @@ const AppliedEducationContent = ({
   const workspaceId = currentWorkspaceInList?.id || currentWorkspace?.id
 
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="rounded-lg border border-effects-highlight bg-background-default-subtle px-3">
+    <div className="flex w-full flex-col gap-5">
+      <div className="rounded-lg border border-effects-highlight bg-background-default-subtle px-3 py-3">
         <div className="flex items-center gap-2">
           <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-state-success-solid text-text-primary-on-surface">
             <span className="i-ri-check-line h-3.5 w-3.5" />
@@ -52,7 +52,7 @@ const AppliedEducationContent = ({
         </div>
       </div>
       <div className="rounded-lg px-3">
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3.5 flex items-center gap-2">
           <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-components-icon-bg-blue-solid system-xs-semibold text-text-primary-on-surface">
             2
           </div>
@@ -69,9 +69,9 @@ const AppliedEducationContent = ({
               onSwitchWorkspace(value)
           }}
         >
-          <SelectTrigger className="h-14! w-full cursor-pointer justify-between rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3! py-2! hover:bg-state-base-hover">
+          <SelectTrigger className="h-12! w-fit max-w-full min-w-[280px] cursor-pointer justify-between rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3! py-1.5! hover:bg-state-base-hover">
             <span className="flex min-w-0 items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-blue-solid text-[18px]">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-components-icon-bg-blue-solid text-[14px]">
                 <span className="bg-gradient-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">
                   {workspaceName?.[0]?.toLocaleUpperCase()}
                 </span>
@@ -82,7 +82,7 @@ const AppliedEducationContent = ({
           </SelectTrigger>
           <WorkplaceSelectorContent workspaces={workspaces} />
         </Select>
-        <div className="mt-2">
+        <div className="mt-3">
           {action}
         </div>
       </div>
