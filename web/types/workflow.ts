@@ -429,6 +429,8 @@ export type PublishWorkflowParams = {
 
 export type WorkflowTypeConversionTarget = 'workflow' | 'evaluation'
 
+export type WorkflowKind = 'standard' | 'evaluation'
+
 export type UpdateWorkflowParams = {
   url: string
   title: string

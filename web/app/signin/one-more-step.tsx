@@ -2,11 +2,11 @@
 import type { Reducer } from 'react'
 import type { LanguagesSupported } from '@/i18n-config/language'
 import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import { LICENSE_LINK } from '@/constants/link'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
@@ -94,21 +94,35 @@ const OneMoreStep = () => {
       <div className="mx-auto mt-6 w-full">
         <div className="relative">
           <div className="mb-5">
-            <label className="my-2 flex items-center justify-between system-md-semibold text-text-secondary">
-              {t('invitationCode', { ns: 'login' })}
-              <Tooltip
-                popupContent={(
-                  <div className="w-[256px] text-xs font-medium">
+            <div className="my-2 flex items-center justify-between system-md-semibold text-text-secondary">
+              <label htmlFor="invitation_code">
+                {t('invitationCode', { ns: 'login' })}
+              </label>
+              <Popover>
+                <PopoverTrigger
+                  openOnHover
+                  render={(
+                    <button
+                      type="button"
+                      className="cursor-pointer rounded-sm text-text-accent-secondary outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                    >
+                      {t('dontHave', { ns: 'login' })}
+                    </button>
+                  )}
+                />
+                <PopoverContent
+                  placement="top"
+                  popupClassName="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
+                >
+                  <div>
                     <div className="font-medium">{t('sendUsMail', { ns: 'login' })}</div>
                     <div className="cursor-pointer text-xs font-medium text-text-accent-secondary">
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
                   </div>
-                )}
-              >
-                <span className="cursor-pointer text-text-accent-secondary">{t('dontHave', { ns: 'login' })}</span>
-              </Tooltip>
-            </label>
+                </PopoverContent>
+              </Popover>
+            </div>
             <div className="mt-1">
               <Input
                 id="invitation_code"

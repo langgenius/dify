@@ -1,8 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { AppPublisherProps } from './index'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
-import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/types/workflow'
+import type { WorkflowTypeSwitchConfig } from './use-workflow-type-switch'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Tooltip,
@@ -23,8 +23,6 @@ import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 import { ACCESS_MODE_MAP } from './utils'
 
-type WorkflowTypeSwitchLabelKey = I18nKeysWithPrefix<'workflow', 'common.'>
-
 type SummarySectionProps = Pick<AppPublisherProps, | 'debugWithMultipleModel'
   | 'draftUpdatedAt'
   | 'multipleModelConfigs'
@@ -39,12 +37,7 @@ type SummarySectionProps = Pick<AppPublisherProps, | 'debugWithMultipleModel'
     published: boolean
     publishShortcut: string[]
     upgradeHighlightStyle: CSSProperties
-    workflowTypeSwitchConfig?: {
-      targetType: WorkflowTypeConversionTarget
-      publishLabelKey: WorkflowTypeSwitchLabelKey
-      switchLabelKey: WorkflowTypeSwitchLabelKey
-      tipKey: WorkflowTypeSwitchLabelKey
-    }
+    workflowTypeSwitchConfig?: WorkflowTypeSwitchConfig
     workflowTypeSwitchDisabled: boolean
     workflowTypeSwitchDisabledReason?: string
   }
@@ -208,9 +201,9 @@ export const PublisherSummarySection = ({
               </Button>
               {workflowTypeSwitchConfig && (
                 <ActionTooltip disabled={workflowTypeSwitchDisabled} tooltip={workflowTypeSwitchDisabledReason}>
-                  <button
-                    type="button"
-                    className="flex h-8 w-full items-center justify-center gap-0.5 rounded-lg px-3 py-2 system-sm-medium text-text-tertiary hover:bg-state-base-hover disabled:cursor-not-allowed disabled:opacity-50"
+                  <Button
+                    variant="ghost"
+                    className="mt-1 w-full gap-0.5 px-3 text-text-tertiary"
                     onClick={() => void onWorkflowTypeSwitch()}
                     disabled={workflowTypeSwitchDisabled}
                   >
@@ -244,7 +237,7 @@ export const PublisherSummarySection = ({
                         {t(workflowTypeSwitchConfig.tipKey, { ns: 'workflow' })}
                       </TooltipContent>
                     </Tooltip>
-                  </button>
+                  </Button>
                 </ActionTooltip>
               )}
               {startNodeLimitExceeded && (

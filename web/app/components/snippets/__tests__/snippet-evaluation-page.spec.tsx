@@ -1,10 +1,11 @@
 import type { SnippetDetailPayload } from '@/models/snippet'
+import type { Snippet } from '@/types/snippet'
 import { render, screen } from '@testing-library/react'
 import SnippetEvaluationPage from '../snippet-evaluation-page'
 
 const mockUseSnippetApiDetail = vi.fn()
-const mockGetSnippetDetailMock = vi.fn()
 const mockSetAppSidebarExpand = vi.fn()
+const mockUseDocumentTitle = vi.fn()
 
 vi.mock('@/service/use-snippets', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/use-snippets')>()
@@ -34,13 +35,13 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/service/use-snippets.mock', () => ({
-  getSnippetDetailMock: (snippetId: string) => mockGetSnippetDetailMock(snippetId),
-}))
-
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: () => 'desktop',
   MediaType: { mobile: 'mobile', desktop: 'desktop' },
+}))
+
+vi.mock('@/hooks/use-document-title', () => ({
+  default: (title: string) => mockUseDocumentTitle(title),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
@@ -101,21 +102,39 @@ const mockSnippetDetail: SnippetDetailPayload = {
   },
 }
 
+const mockSnippetApiDetail: Snippet = {
+  id: mockSnippetDetail.snippet.id,
+  name: mockSnippetDetail.snippet.name,
+  description: mockSnippetDetail.snippet.description,
+  type: 'node',
+  version: '1',
+  use_count: 19,
+  icon_info: {
+    icon: mockSnippetDetail.snippet.icon,
+    icon_background: mockSnippetDetail.snippet.iconBackground,
+    icon_type: 'emoji',
+  },
+  input_fields: [],
+  created_at: 1711267200,
+  created_by: 'user-1',
+  updated_at: 1711267200,
+  updated_by: 'user-1',
+  is_published: true,
+}
+
 describe('SnippetEvaluationPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseSnippetApiDetail.mockReturnValue({
-      data: undefined,
+      data: mockSnippetApiDetail,
       isLoading: false,
     })
-    mockGetSnippetDetailMock.mockReturnValue(mockSnippetDetail)
   })
 
-  it('should render evaluation with mock snippet detail data', () => {
+  it('should render evaluation with snippet detail data from api', () => {
     render(<SnippetEvaluationPage snippetId="snippet-1" />)
 
-    expect(mockGetSnippetDetailMock).toHaveBeenCalledWith('snippet-1')
-    expect(mockUseSnippetApiDetail).not.toHaveBeenCalled()
+    expect(mockUseSnippetApiDetail).toHaveBeenCalledWith('snippet-1')
     expect(screen.getByTestId('app-sidebar')).toBeInTheDocument()
     expect(screen.getByTestId('evaluation')).toHaveTextContent('snippet-1')
   })

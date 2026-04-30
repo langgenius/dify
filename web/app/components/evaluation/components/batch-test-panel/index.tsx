@@ -1,13 +1,9 @@
 'use client'
 
 import type { BatchTestTab, EvaluationResourceProps } from '../../types'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useTranslation } from 'react-i18next'
-import { useSaveEvaluationConfigMutation } from '@/service/use-evaluation'
 import { isEvaluationRunnable, useEvaluationResource, useEvaluationStore } from '../../store'
-import { buildEvaluationConfigPayload } from '../../store-utils'
 import { TAB_CLASS_NAME } from '../../utils'
 import HistoryTab from './history-tab'
 import InputFieldsTab from './input-fields-tab'
@@ -19,70 +15,30 @@ const BatchTestPanel = ({
   resourceId,
 }: EvaluationResourceProps) => {
   const { t } = useTranslation('evaluation')
-  const { t: tCommon } = useTranslation('common')
   const tabLabels: Record<BatchTestTab, string> = {
     'input-fields': t('batch.tabs.input-fields'),
     'history': t('batch.tabs.history'),
   }
   const resource = useEvaluationResource(resourceType, resourceId)
   const setBatchTab = useEvaluationStore(state => state.setBatchTab)
-  const saveConfigMutation = useSaveEvaluationConfigMutation()
   const isRunnable = isEvaluationRunnable(resource)
-  const isPanelReady = !!resource.judgeModelId && resource.metrics.length > 0
-
-  const handleSave = () => {
-    if (!isRunnable) {
-      toast.warning(t('batch.validation'))
-      return
-    }
-
-    const body = buildEvaluationConfigPayload(resource, resourceType)
-
-    if (!body) {
-      toast.warning(t('batch.validation'))
-      return
-    }
-
-    saveConfigMutation.mutate({
-      params: {
-        targetType: resourceType,
-        targetId: resourceId,
-      },
-      body,
-    }, {
-      onSuccess: () => {
-        toast.success(tCommon('api.saved'))
-      },
-      onError: () => {
-        toast.error(t('config.saveFailed'))
-      },
-    })
-  }
+  const hasBatchConfig = !!resource.judgeModelId && resource.metrics.length > 0
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background-default">
       <div className="px-6 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="system-xl-semibold text-text-primary">{t('batch.title')}</div>
-            <div className="mt-1 system-sm-regular text-text-tertiary">{t('batch.description')}</div>
-          </div>
-          <Button
-            className="shrink-0"
-            variant="primary"
-            disabled={!isRunnable}
-            loading={saveConfigMutation.isPending}
-            onClick={handleSave}
-          >
-            {tCommon('operation.save')}
-          </Button>
+        <div className="min-w-0">
+          <div className="system-xl-semibold text-text-primary">{t('batch.title')}</div>
+          <div className="mt-1 system-sm-regular text-text-tertiary">{t('batch.description')}</div>
         </div>
-        <div className="mt-4 rounded-xl border border-divider-subtle bg-components-card-bg p-3">
-          <div className="flex items-start gap-3">
-            <span aria-hidden="true" className="mt-0.5 i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning" />
-            <div className="system-xs-regular text-text-tertiary">{t('batch.noticeDescription')}</div>
+        {!hasBatchConfig && (
+          <div className="mt-4 rounded-xl border border-divider-subtle bg-components-card-bg p-3">
+            <div className="flex items-start gap-3">
+              <span aria-hidden="true" className="mt-0.5 i-ri-alert-fill h-4 w-4 shrink-0 text-text-warning" />
+              <div className="system-xs-regular text-text-tertiary">{t('batch.noticeDescription')}</div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <div className="border-b border-divider-subtle px-6">
         <div className="flex gap-4">
@@ -102,12 +58,12 @@ const BatchTestPanel = ({
           ))}
         </div>
       </div>
-      <div className={cn('min-h-0 flex-1 overflow-y-auto px-6 py-4', !isPanelReady && 'opacity-50')}>
+      <div className={cn('min-h-0 flex-1 overflow-y-auto px-6 py-4', !hasBatchConfig && 'opacity-50')}>
         {resource.activeBatchTab === 'input-fields' && (
           <InputFieldsTab
             resourceType={resourceType}
             resourceId={resourceId}
-            isPanelReady={isPanelReady}
+            isPanelReady={hasBatchConfig}
             isRunnable={isRunnable}
           />
         )}

@@ -13,6 +13,7 @@ import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useConfigsMap } from '../hooks/use-configs-map'
+import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
@@ -179,6 +180,7 @@ const SnippetMain = ({
     handleRun,
     inputFields: fields,
   })
+  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl(snippetId)
 
   useEffect(() => {
     reset()
@@ -200,6 +202,7 @@ const SnippetMain = ({
       handleStopRun,
       handleStartWorkflowRun,
       handleWorkflowStartRunInWorkflow,
+      getWorkflowRunAndTraceUrl,
       availableNodesMetaData,
       fetchInspectVars,
       hasNodeInspectVars,
@@ -237,6 +240,7 @@ const SnippetMain = ({
     handleStartWorkflowRun,
     handleStopRun,
     handleWorkflowStartRunInWorkflow,
+    getWorkflowRunAndTraceUrl,
     hasNodeInspectVars,
     hasSetInspectVar,
     invalidateConversationVarValues,

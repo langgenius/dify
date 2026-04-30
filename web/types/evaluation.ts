@@ -1,4 +1,5 @@
 export type EvaluationTargetType = 'apps' | 'snippets' | 'datasets'
+export type EvaluationDefaultMetricsTargetType = 'apps' | 'snippets'
 
 export type EvaluationJudgmentConditionValue = string | string[] | boolean
 
@@ -31,6 +32,10 @@ export type EvaluationDefaultMetric = {
   metric?: string
   value_type?: string
   node_info_list?: NodeInfo[]
+}
+
+export type EvaluationDefaultMetricsResponse = {
+  default_metrics: EvaluationDefaultMetric[]
 }
 
 export type EvaluationCustomizedMetric = {

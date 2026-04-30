@@ -1,11 +1,10 @@
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
+import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type {
   CommonEdgeType,
   Node,
 } from '@/app/components/workflow/types'
-import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -144,7 +143,7 @@ const FeaturesTrigger = () => {
   const needWarningNodes = useChecklist(nodes, edges)
 
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
-  const onPublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
+  const onPublish = useCallback(async (params?: AppPublisherPublishParams) => {
     const publishParams = params && 'title' in params ? params : undefined
     // First check if there are any items in the checklist
     // if (!validateBeforeRun())

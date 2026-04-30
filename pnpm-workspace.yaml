@@ -1,3 +1,11 @@
+saveExact: true
+catalogMode: prefer
+dedupeDirectDeps: true
+engineStrict: true
+minimumReleaseAge: 1440
+optimisticRepeatInstall: true
+verifyDepsBeforeRun: install
+resolutionMode: time-based
 allowBuilds:
   '@parcel/watcher': false
   canvas: false
@@ -5,7 +13,6 @@ allowBuilds:
   sharp: false
 autoInstallPeers: false
 blockExoticSubdeps: true
-catalogMode: prefer
 shellEmulator: true
 strictDepBuilds: true
 trustPolicy: no-downgrade
@@ -42,13 +49,13 @@ overrides:
   svgo@>=3.0.0 <3.3.3: 3.3.3
   tar@<=7.5.10: 7.5.11
   undici@>=7.0.0 <7.24.0: 7.24.0
-  vite: npm:@voidzero-dev/vite-plus-core@0.1.19
-  vitest: npm:@voidzero-dev/vite-plus-test@0.1.19
+  vite: npm:@voidzero-dev/vite-plus-core@0.1.20
+  vitest: npm:@voidzero-dev/vite-plus-test@0.1.20
   yaml@>=2.0.0 <2.8.3: 2.8.3
   yauzl@<3.2.1: 3.2.1
 catalog:
-  '@amplitude/analytics-browser': 2.41.1
-  '@amplitude/plugin-session-replay-browser': 1.28.0
+  '@amplitude/analytics-browser': 2.42.0
+  '@amplitude/plugin-session-replay-browser': 1.28.1
   '@antfu/eslint-config': 8.2.0
   '@base-ui/react': 1.4.1
   '@chromatic-com/storybook': 5.1.2
@@ -61,16 +68,16 @@ catalog:
   '@formatjs/intl-localematcher': 0.8.4
   '@headlessui/react': 2.2.10
   '@heroicons/react': 2.2.0
-  '@hono/node-server': 1.19.14
+  '@hono/node-server': 2.0.0
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/ri': 1.2.10
-  '@lexical/code': 0.43.0
-  '@lexical/link': 0.43.0
-  '@lexical/list': 0.43.0
-  '@lexical/react': 0.43.0
-  '@lexical/selection': 0.43.0
-  '@lexical/text': 0.43.0
-  '@lexical/utils': 0.43.0
+  '@lexical/code': 0.44.0
+  '@lexical/link': 0.44.0
+  '@lexical/list': 0.44.0
+  '@lexical/react': 0.44.0
+  '@lexical/selection': 0.44.0
+  '@lexical/text': 0.44.0
+  '@lexical/utils': 0.44.0
   '@mdx-js/loader': 3.1.1
   '@mdx-js/react': 3.1.1
   '@mdx-js/rollup': 3.1.1
@@ -98,20 +105,20 @@ catalog:
   '@tailwindcss/postcss': 4.2.4
   '@tailwindcss/typography': 0.5.19
   '@tailwindcss/vite': 4.2.4
-  '@tanstack/eslint-plugin-query': 5.100.5
+  '@tanstack/eslint-plugin-query': 5.100.6
   '@tanstack/react-devtools': 0.10.2
   '@tanstack/react-form': 1.29.1
   '@tanstack/react-form-devtools': 0.2.22
-  '@tanstack/react-query': 5.100.5
-  '@tanstack/react-query-devtools': 5.100.5
+  '@tanstack/react-query': 5.100.6
+  '@tanstack/react-query-devtools': 5.100.6
   '@tanstack/react-virtual': 3.13.24
   '@testing-library/dom': 10.4.1
   '@testing-library/jest-dom': 6.9.1
   '@testing-library/react': 16.3.2
   '@testing-library/user-event': 14.6.1
-  '@tsslint/cli': 3.0.4
-  '@tsslint/compat-eslint': 3.0.4
-  '@tsslint/config': 3.0.4
+  '@tsslint/cli': 3.1.0
+  '@tsslint/compat-eslint': 3.1.0
+  '@tsslint/config': 3.1.0
   '@types/js-cookie': 3.0.6
   '@types/js-yaml': 4.0.9
   '@types/negotiator': 0.6.4
@@ -120,9 +127,9 @@ catalog:
   '@types/react': 19.2.14
   '@types/react-dom': 19.2.3
   '@types/sortablejs': 1.15.9
-  '@typescript-eslint/eslint-plugin': 8.59.0
-  '@typescript-eslint/parser': 8.59.0
-  '@typescript/native-preview': 7.0.0-dev.20260426.1
+  '@typescript-eslint/eslint-plugin': 8.59.1
+  '@typescript-eslint/parser': 8.59.1
+  '@typescript/native-preview': 7.0.0-dev.20260428.1
   '@vitejs/plugin-react': 6.0.1
   '@vitejs/plugin-rsc': 0.5.25
   '@vitest/coverage-v8': 4.1.5
@@ -134,7 +141,8 @@ catalog:
   clsx: 2.1.1
   cmdk: 1.1.1
   code-inspector-plugin: 1.5.1
-  copy-to-clipboard: 3.3.3
+  concurrently: ^9.2.1
+  copy-to-clipboard: 4.0.2
   cron-parser: 5.5.0
   dayjs: 1.11.20
   decimal.js: 10.6.0
@@ -147,8 +155,8 @@ catalog:
   emoji-mart: 5.6.0
   es-toolkit: 1.46.0
   eslint: 10.2.1
-  eslint-markdown: 0.6.1
-  eslint-plugin-better-tailwindcss: 4.4.1
+  eslint-markdown: 0.7.0
+  eslint-plugin-better-tailwindcss: 4.5.0
   eslint-plugin-hyoban: 0.14.1
   eslint-plugin-markdown-preferences: 0.41.1
   eslint-plugin-no-barrel-files: 1.3.1
@@ -161,7 +169,7 @@ catalog:
   hono: 4.12.15
   html-entities: 2.6.0
   html-to-image: 1.11.13
-  i18next: 26.0.6
+  i18next: 26.0.8
   i18next-resources-to-backend: 1.2.1
   iconify-import-svg: 0.2.0
   immer: 11.1.4
@@ -174,7 +182,7 @@ catalog:
   knip: 6.7.0
   ky: 2.0.2
   lamejs: 1.2.1
-  lexical: 0.43.0
+  lexical: 0.44.0
   loro-crdt: 1.12.0
   mermaid: 11.14.0
   mime: 4.1.0
@@ -214,18 +222,18 @@ catalog:
   string-ts: 2.3.1
   tailwind-merge: 3.5.0
   tailwindcss: 4.2.4
-  tldts: 7.0.28
+  tldts: 7.0.29
   tsx: 4.21.0
   typescript: 6.0.3
   uglify-js: 3.19.3
   unist-util-visit: 5.1.0
   use-context-selector: 2.0.0
-  uuid: 13.0.0
-  vinext: 0.0.41
-  vite: npm:@voidzero-dev/vite-plus-core@0.1.19
+  uuid: 14.0.0
+  vinext: 0.0.45
+  vite: npm:@voidzero-dev/vite-plus-core@0.1.20
   vite-plugin-inspect: 12.0.0-beta.1
-  vite-plus: 0.1.19
-  vitest: npm:@voidzero-dev/vite-plus-test@0.1.19
+  vite-plus: 0.1.20
+  vitest: npm:@voidzero-dev/vite-plus-test@0.1.20
   vitest-browser-react: 2.2.0
   vitest-canvas-mock: 1.1.4
   zod: 4.3.6

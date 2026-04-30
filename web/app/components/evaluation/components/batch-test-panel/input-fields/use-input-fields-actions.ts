@@ -21,6 +21,7 @@ type UseInputFieldsActionsParams = EvaluationResourceProps & {
   isInputFieldsLoading: boolean
   isPanelReady: boolean
   isRunnable: boolean
+  templateContent?: string
   templateFileName: string
 }
 
@@ -31,6 +32,7 @@ export const useInputFieldsActions = ({
   isInputFieldsLoading,
   isPanelReady,
   isRunnable,
+  templateContent,
   templateFileName,
 }: UseInputFieldsActionsParams) => {
   const { t } = useTranslation('evaluation')
@@ -79,7 +81,7 @@ export const useInputFieldsActions = ({
       return
     }
 
-    const content = buildTemplateCsvContent(inputFields)
+    const content = templateContent ?? buildTemplateCsvContent(inputFields)
     const link = document.createElement('a')
     link.href = `data:text/csv;charset=utf-8,${encodeURIComponent(content)}`
     link.download = templateFileName

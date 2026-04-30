@@ -1,12 +1,16 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { InputVar, Node } from '@/app/components/workflow/types'
+import type { SnippetInputField } from '@/types/snippet'
 import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { PipelineInputVarType } from '@/models/pipeline'
 
 export type InputField = {
   name: string
   type: string
 }
+
+export const EXPECTED_OUTPUT_FIELD_NAME = 'expected_output'
 
 export const getGraphNodes = (graph?: Record<string, unknown>) => {
   return Array.isArray(graph?.nodes) ? graph.nodes as Node[] : []
@@ -27,6 +31,32 @@ export const getStartNodeInputFields = (nodes?: Node[]): InputField[] => {
     }))
 }
 
+const PIPELINE_INPUT_VAR_TYPE_TO_FIELD_TYPE: Record<PipelineInputVarType, string> = {
+  [PipelineInputVarType.textInput]: 'string',
+  [PipelineInputVarType.paragraph]: 'string',
+  [PipelineInputVarType.select]: 'string',
+  [PipelineInputVarType.number]: 'number',
+  [PipelineInputVarType.singleFile]: 'file',
+  [PipelineInputVarType.multiFiles]: 'array[file]',
+  [PipelineInputVarType.checkbox]: 'boolean',
+}
+
+export const getSnippetInputFields = (fields?: SnippetInputField[]): InputField[] => {
+  if (!Array.isArray(fields))
+    return []
+
+  return fields
+    .filter((field): field is SnippetInputField & { variable: string } =>
+      typeof field.variable === 'string' && !!field.variable,
+    )
+    .map(field => ({
+      name: field.variable,
+      type: typeof field.type === 'string' && field.type in PIPELINE_INPUT_VAR_TYPE_TO_FIELD_TYPE
+        ? PIPELINE_INPUT_VAR_TYPE_TO_FIELD_TYPE[field.type as PipelineInputVarType]
+        : 'string',
+    }))
+}
+
 const escapeCsvCell = (value: string) => {
   if (!/[",\n\r]/.test(value))
     return value
@@ -35,7 +65,12 @@ const escapeCsvCell = (value: string) => {
 }
 
 export const buildTemplateCsvContent = (inputFields: InputField[]) => {
-  return `${inputFields.map(field => escapeCsvCell(field.name)).join(',')}\n`
+  const fieldNames = inputFields.map(field => field.name)
+  const templateFieldNames = fieldNames.includes(EXPECTED_OUTPUT_FIELD_NAME)
+    ? fieldNames
+    : [...fieldNames, EXPECTED_OUTPUT_FIELD_NAME]
+
+  return `${templateFieldNames.map(escapeCsvCell).join(',')}\n`
 }
 
 export const getFileExtension = (fileName: string) => {

@@ -113,8 +113,18 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
     # Validates name encoding for non-Latin characters.
     name = name.strip().encode("utf-8").decode("utf-8") if name else None
 
-    # generate random password
-    new_password = secrets.token_urlsafe(16)
+    # Generate a random password that satisfies the password policy.
+    # The iteration limit guards against infinite loops caused by unexpected bugs in valid_password.
+    for _ in range(100):
+        new_password = secrets.token_urlsafe(16)
+        try:
+            valid_password(new_password)
+            break
+        except Exception:
+            continue
+    else:
+        click.echo(click.style("Failed to generate a valid password. Please try again.", fg="red"))
+        return
 
     # register account
     account = RegisterService.register(

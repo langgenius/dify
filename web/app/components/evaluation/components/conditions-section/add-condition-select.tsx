@@ -1,15 +1,12 @@
 'use client'
 
 import type { ConditionMetricOptionGroup, EvaluationResourceProps } from '../../types'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Button } from '@langgenius/dify-ui/button'
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEvaluationStore } from '../../store'
@@ -28,47 +25,59 @@ const AddConditionSelect = ({
 }: AddConditionSelectProps) => {
   const { t } = useTranslation('evaluation')
   const addCondition = useEvaluationStore(state => state.addCondition)
-  const [selectKey, setSelectKey] = useState(0)
+  const [open, setOpen] = useState(false)
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (disabled)
+      return
+
+    setOpen(nextOpen)
+  }
 
   return (
-    <Select key={selectKey}>
-      <SelectTrigger
-        aria-label={t('conditions.addCondition')}
-        className={cn(
-          'inline-flex w-auto min-w-0 border-none bg-transparent px-0 py-0 text-text-accent shadow-none hover:bg-transparent focus-visible:bg-transparent',
-          disabled && 'cursor-not-allowed text-components-button-secondary-accent-text-disabled',
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger
+        render={(
+          <Button
+            variant="ghost-accent"
+            aria-label={t('conditions.addCondition')}
+            disabled={disabled}
+          >
+            <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
+            {t('conditions.addCondition')}
+          </Button>
         )}
-        disabled={disabled}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        popupClassName="w-[320px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border p-0 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]"
       >
-        <span aria-hidden="true" className="i-ri-add-line h-4 w-4" />
-        {t('conditions.addCondition')}
-      </SelectTrigger>
-      <SelectContent placement="bottom-start" popupClassName="w-[320px]">
-        {metricOptionGroups.map(group => (
-          <SelectGroup key={group.label}>
-            <SelectLabel className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">{group.label}</SelectLabel>
-            {group.options.map(option => (
-              <SelectItem
-                key={option.id}
-                value={option.id}
-                className="h-auto gap-0 px-3 py-2"
-                onClick={() => {
-                  addCondition(resourceType, resourceId, option.variableSelector)
-                  setSelectKey(current => current + 1)
-                }}
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span className="truncate system-sm-medium text-text-secondary">{option.itemLabel}</span>
+        <div className="max-h-[360px] overflow-y-auto bg-components-panel-bg p-1" role="menu">
+          {metricOptionGroups.map(group => (
+            <div key={group.label} role="group" aria-label={group.label}>
+              <div className="px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary">{group.label}</div>
+              {group.options.map(option => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="menuitem"
+                  className="flex h-auto w-full items-center gap-3 overflow-hidden rounded-lg px-3 py-2 text-left hover:bg-components-panel-on-panel-item-bg-hover"
+                  onClick={() => {
+                    addCondition(resourceType, resourceId, option.variableSelector)
+                    setOpen(false)
+                  }}
+                >
+                  <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">{option.itemLabel}</span>
                   <span className="ml-auto shrink-0 system-xs-medium text-text-tertiary">
                     {t(getConditionMetricValueTypeTranslationKey(option.valueType))}
                   </span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        ))}
-      </SelectContent>
-    </Select>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 

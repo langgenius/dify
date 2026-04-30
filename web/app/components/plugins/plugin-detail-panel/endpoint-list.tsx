@@ -1,5 +1,6 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAddLine,
@@ -11,7 +12,6 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -67,10 +67,23 @@ const EndpointList = ({ detail }: Props) => {
       <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
         <div className="flex items-center gap-0.5">
           {t('detailPanel.endpoints', { ns: 'plugin' })}
-          <Tooltip
-            position="right"
-            popupClassName="w-[240px] p-4 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border"
-            popupContent={(
+          <Popover>
+            <PopoverTrigger
+              openOnHover
+              aria-label={t('detailPanel.endpointsTip', { ns: 'plugin' })}
+              render={(
+                <button
+                  type="button"
+                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm p-px outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                >
+                  <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+                </button>
+              )}
+            />
+            <PopoverContent
+              placement="right"
+              popupClassName="w-[240px] p-4 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border"
+            >
               <div className="flex flex-col gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
                   <RiApps2AddLine className="h-4 w-4 text-text-tertiary" />
@@ -80,17 +93,19 @@ const EndpointList = ({ detail }: Props) => {
                   href={docLink('/develop-plugin/getting-started/getting-started-dify-plugin')}
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="inline-flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent"
                 >
-                  <div className="inline-flex cursor-pointer items-center gap-1 system-xs-regular text-text-accent">
-                    <RiBookOpenLine className="h-3 w-3" />
-                    {t('detailPanel.endpointsDocLink', { ns: 'plugin' })}
-                  </div>
+                  <RiBookOpenLine className="h-3 w-3" />
+                  {t('detailPanel.endpointsDocLink', { ns: 'plugin' })}
                 </a>
               </div>
-            )}
-          />
+            </PopoverContent>
+          </Popover>
         </div>
-        <ActionButton onClick={showEndpointModal}>
+        <ActionButton
+          aria-label={t('detailPanel.endpointModalTitle', { ns: 'plugin' })}
+          onClick={showEndpointModal}
+        >
           <RiAddLine className="h-4 w-4" />
         </ActionButton>
       </div>

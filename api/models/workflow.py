@@ -1617,12 +1617,14 @@ class WorkflowDraftVariable(Base):
         ),
     )
 
-    # Relationship to WorkflowDraftVariableFile
+    # WorkflowDraftVariableFile uses TypeBase while WorkflowDraftVariable uses Base, so the relationship
+    # must resolve the class object lazily instead of relying on string lookup across registries.
     variable_file: Mapped[Optional["WorkflowDraftVariableFile"]] = orm.relationship(
+        lambda: WorkflowDraftVariableFile,
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowDraftVariableFile.id == WorkflowDraftVariable.file_id",
+        primaryjoin=lambda: orm.foreign(WorkflowDraftVariable.file_id) == WorkflowDraftVariableFile.id,
     )
 
     # Cache for deserialized value
@@ -1941,7 +1943,7 @@ class WorkflowDraftVariable(Base):
         return self.last_edited_at is not None
 
 
-class WorkflowDraftVariableFile(Base):
+class WorkflowDraftVariableFile(TypeBase):
     """Stores metadata about files associated with large workflow draft variables.
 
     This model acts as an intermediary between WorkflowDraftVariable and UploadFile,
@@ -1955,18 +1957,7 @@ class WorkflowDraftVariableFile(Base):
     __tablename__ = "workflow_draft_variable_files"
 
     # Primary key
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        primary_key=True,
-        default=lambda: str(uuidv7()),
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        default=naive_utc_now,
-        server_default=func.current_timestamp(),
-    )
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
     tenant_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -2018,13 +2009,21 @@ class WorkflowDraftVariableFile(Base):
         nullable=False,
     )
 
-    # Relationship to UploadFile
+    # Rows are created with `upload_file_id`; callers should load this relationship explicitly when needed.
     upload_file: Mapped["UploadFile"] = orm.relationship(
         UploadFile,
         foreign_keys=[upload_file_id],
         lazy="raise",
+        init=False,
         uselist=False,
         primaryjoin=lambda: orm.foreign(WorkflowDraftVariableFile.upload_file_id) == UploadFile.id,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default_factory=naive_utc_now,
+        server_default=func.current_timestamp(),
     )
 
 

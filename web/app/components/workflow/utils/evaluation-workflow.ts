@@ -1,3 +1,4 @@
+import type { WorkflowKind } from '@/types/workflow'
 import { AppTypeEnum } from '@/types/app'
 import { BlockEnum, TRIGGER_NODE_TYPES } from '../types'
 
@@ -6,7 +7,7 @@ const EVALUATION_WORKFLOW_RESTRICTED_NODE_TYPES = new Set<string>([
   ...TRIGGER_NODE_TYPES,
 ])
 
-export const isEvaluationWorkflow = (appType?: string) => appType === AppTypeEnum.EVALUATION
+export const isEvaluationWorkflow = (appType?: WorkflowKind | null) => appType === AppTypeEnum.EVALUATION
 
 export const isEvaluationWorkflowRestrictedNodeType = (nodeType?: string) => {
   if (!nodeType)

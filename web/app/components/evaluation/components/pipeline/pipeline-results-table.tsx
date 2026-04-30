@@ -26,7 +26,7 @@ const PipelineResultsTable = ({
   const { t } = useTranslation('evaluation')
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto py-2">
+    <div className="overflow-x-auto py-2 xl:min-h-0 xl:flex-1 xl:overflow-auto">
       <table className="min-w-full table-fixed border-collapse overflow-hidden rounded-lg">
         <colgroup>
           <col className="w-10" />
@@ -38,14 +38,14 @@ const PipelineResultsTable = ({
         <thead>
           <tr className="bg-background-section">
             <th className="h-7 rounded-l-lg" />
-            <th className="system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary">{t('results.columns.query')}</th>
-            <th className="system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary">{t('results.columns.expected')}</th>
-            <th className="system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary">{t('results.columns.actual')}</th>
+            <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('results.columns.query')}</th>
+            <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('results.columns.expected')}</th>
+            <th className="h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary">{t('results.columns.actual')}</th>
             {metricColumns.map((column, index) => (
               <th
                 key={column.id}
                 className={cn(
-                  'system-xs-medium-uppercase h-7 px-3 text-left text-text-tertiary',
+                  'h-7 px-3 text-left system-xs-medium-uppercase text-text-tertiary',
                   index === metricColumns.length - 1 && 'rounded-r-lg',
                 )}
               >
@@ -79,14 +79,14 @@ const PipelineResultsTable = ({
                     )}
                   />
                 </td>
-                <td className="system-sm-regular h-10 px-3 py-3 align-top text-text-secondary">
+                <td className="h-10 px-3 py-3 align-top system-sm-regular text-text-secondary">
                   <div className="line-clamp-2 break-words">{getQueryContent(item)}</div>
                 </td>
-                <td className="system-sm-regular h-10 px-3 py-3 align-top text-text-secondary">
+                <td className="h-10 px-3 py-3 align-top system-sm-regular text-text-secondary">
                   <div className="line-clamp-2 break-words">{formatValue(item.expected_output)}</div>
                 </td>
                 <td className={cn(
-                  'system-sm-regular h-10 px-3 py-3 align-top',
+                  'h-10 px-3 py-3 align-top system-sm-regular',
                   actualOutput ? 'text-text-secondary' : 'text-text-destructive',
                 )}
                 >
@@ -100,7 +100,7 @@ const PipelineResultsTable = ({
                   return (
                     <td
                       key={column.id}
-                      className={cn('system-sm-regular h-10 px-3 py-3 align-top', getMetricTextClassName(metricValue, column))}
+                      className={cn('h-10 px-3 py-3 align-top system-sm-regular', getMetricTextClassName(metricValue, column))}
                     >
                       {formatValue(metricValue)}
                     </td>

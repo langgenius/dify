@@ -181,7 +181,7 @@ const HistoryTab = ({
           </tbody>
         </table>
         {!isInitialLoading && records.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-divider-subtle px-4 py-10 text-center system-sm-regular text-text-tertiary">
+          <div className="mt-4 rounded-2xl border border-dashed border-divider-subtle px-4 py-10 text-center system-sm-regular text-text-tertiary">
             {t('history.empty')}
           </div>
         )}

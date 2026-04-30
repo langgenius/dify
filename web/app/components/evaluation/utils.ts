@@ -70,10 +70,12 @@ export const buildConditionMetricOptions = (metrics: EvaluationMetric[]): Condit
       return (metric.nodeInfoList ?? []).map((nodeInfo) => {
         return {
           id: `${nodeInfo.node_id}:${metric.optionId}`,
+          kind: metric.kind,
           groupLabel: metric.label,
           itemLabel: nodeInfo.title || nodeInfo.node_id,
           valueType: metric.valueType,
           variableSelector: [nodeInfo.node_id, metric.optionId] as [string, string],
+          nodeInfo,
         }
       })
     }
@@ -86,6 +88,7 @@ export const buildConditionMetricOptions = (metrics: EvaluationMetric[]): Condit
     return customConfig.outputs.map((output) => {
       return {
         id: `${customConfig.workflowId}:${output.id}`,
+        kind: metric.kind,
         groupLabel: customConfig.workflowName ?? metric.label,
         itemLabel: output.id,
         valueType: getMetricValueType(output.valueType),

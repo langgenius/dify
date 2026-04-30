@@ -1,7 +1,7 @@
 import type { EvaluationResourceProps } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import { getEvaluationMockConfig } from '../../mock'
+import { EVALUATION_TEMPLATE_FILE_NAMES } from '../../store-utils'
 import InputFieldsRequirements from './input-fields/input-fields-requirements'
 import UploadRunPopover from './input-fields/upload-run-popover'
 import { useInputFieldsActions } from './input-fields/use-input-fields-actions'
@@ -19,7 +19,6 @@ const InputFieldsTab = ({
   isRunnable,
 }: InputFieldsTabProps) => {
   const { t } = useTranslation('evaluation')
-  const config = getEvaluationMockConfig(resourceType)
   const { inputFields, isInputFieldsLoading } = usePublishedInputFields(resourceType, resourceId)
   const actions = useInputFieldsActions({
     resourceType,
@@ -28,12 +27,13 @@ const InputFieldsTab = ({
     isInputFieldsLoading,
     isPanelReady,
     isRunnable,
-    templateFileName: config.templateFileName,
+    templateFileName: EVALUATION_TEMPLATE_FILE_NAMES[resourceType],
   })
 
   return (
     <div className="space-y-5">
       <InputFieldsRequirements
+        resourceType={resourceType}
         inputFields={inputFields}
         isLoading={isInputFieldsLoading}
       />
@@ -55,7 +55,6 @@ const InputFieldsTab = ({
           isRunning={actions.isRunning}
           onUploadFile={actions.handleUploadFile}
           onClearUploadedFile={actions.handleClearUploadedFile}
-          onDownloadTemplate={actions.handleDownloadTemplate}
           onRun={actions.handleRun}
         />
       </div>

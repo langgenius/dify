@@ -2,7 +2,9 @@ import type { TFunction } from 'i18next'
 import type { EvaluationMetric } from '../../types'
 import type { MetricSelectorSection } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { getMetricVisual, getNodeVisual, getToneClasses } from './utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { getEvaluationNodeBlockType, getMetricVisual, getToneClasses } from './utils'
 
 type SelectorMetricSectionProps = {
   section: MetricSelectorSection
@@ -12,7 +14,7 @@ type SelectorMetricSectionProps = {
   isShowingAllNodes: boolean
   onToggleExpanded: () => void
   onToggleShowAllNodes: () => void
-  onToggleNodeSelection: (metricId: string, nodeInfo: MetricSelectorSection['visibleNodes'][number]) => void
+  onToggleNodeSelection: (metric: MetricSelectorSection['metric'], nodeInfo: MetricSelectorSection['visibleNodes'][number]) => void
   t: TFunction<'evaluation'>
 }
 
@@ -56,7 +58,7 @@ const SelectorMetricSection = ({
             <span aria-hidden="true" className={cn(metricVisual.icon, 'h-3.5 w-3.5')} />
           </div>
           <div className="flex items-center gap-1">
-            <span className="system-xs-medium-uppercase truncate text-text-secondary">{metric.label}</span>
+            <span className="truncate system-xs-medium-uppercase text-text-secondary">{metric.label}</span>
             <span
               aria-hidden="true"
               className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary transition-transform', !isExpanded && '-rotate-90')}
@@ -64,21 +66,34 @@ const SelectorMetricSection = ({
           </div>
         </button>
 
-        <button type="button" className="p-px text-text-quaternary">
-          <span aria-hidden="true" className="i-ri-question-line h-[14px] w-[14px]" />
-        </button>
+        {metric.description && (
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <button
+                  type="button"
+                  className="p-px text-text-quaternary transition-colors hover:text-text-tertiary"
+                  aria-label={metric.label}
+                >
+                  <span aria-hidden="true" className="i-ri-question-line h-[14px] w-[14px]" />
+                </button>
+              )}
+            />
+            <TooltipContent className="max-w-[260px]">
+              {metric.description}
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {isExpanded && (
         <div className="px-1 py-1">
           {hasNoNodeInfo && (
-            <div className="system-sm-regular px-3 pt-0.5 pb-2 text-text-tertiary">
+            <div className="px-3 pt-0.5 pb-2 system-sm-regular text-text-tertiary">
               {t('metrics.noNodesInWorkflow')}
             </div>
           )}
           {shownNodes.map((nodeInfo) => {
-            const nodeVisual = getNodeVisual(nodeInfo)
-            const nodeToneClasses = getToneClasses(nodeVisual.tone)
             const isAdded = addedMetric
               ? addedMetric.nodeInfoList?.length
                 ? selectedNodeIds.has(nodeInfo.node_id)
@@ -91,21 +106,23 @@ const SelectorMetricSection = ({
                 data-testid={`evaluation-metric-node-${metric.id}-${nodeInfo.node_id}`}
                 type="button"
                 className={cn(
-                  'flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-state-base-hover-alt',
+                  'flex w-full items-center gap-1 rounded-md px-3 py-1.5 text-left transition-colors hover:bg-state-base-hover-alt',
                   isAdded && 'opacity-50',
                 )}
-                onClick={() => onToggleNodeSelection(metric.id, nodeInfo)}
+                onClick={() => onToggleNodeSelection(metric, nodeInfo)}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-1">
-                  <div className={cn('flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border-[0.45px] border-divider-subtle shadow-xs shadow-shadow-shadow-3', nodeToneClasses.solid)}>
-                    <span aria-hidden="true" className={cn(nodeVisual.icon, 'h-3.5 w-3.5')} />
-                  </div>
+                  <BlockIcon
+                    type={getEvaluationNodeBlockType(nodeInfo)}
+                    size="xs"
+                    className="h-[18px] w-[18px] shrink-0"
+                  />
                   <span className="truncate text-[13px] leading-4 font-medium text-text-secondary">
                     {nodeInfo.title}
                   </span>
                 </div>
                 {isAdded && (
-                  <span className="system-xs-regular shrink-0 px-1 text-text-quaternary">{t('metrics.added')}</span>
+                  <span className="shrink-0 px-1 system-xs-regular text-text-quaternary">{t('metrics.added')}</span>
                 )}
               </button>
             )
@@ -120,7 +137,7 @@ const SelectorMetricSection = ({
                 <div className="flex items-center px-1 text-text-tertiary">
                   <span aria-hidden="true" className={cn(isShowingAllNodes ? 'i-ri-subtract-line' : 'i-ri-more-line', 'h-4 w-4')} />
                 </div>
-                <span className="system-xs-regular truncate text-text-tertiary">
+                <span className="truncate system-xs-regular text-text-tertiary">
                   {isShowingAllNodes ? t('metrics.showLess') : t('metrics.showMore')}
                 </span>
               </div>

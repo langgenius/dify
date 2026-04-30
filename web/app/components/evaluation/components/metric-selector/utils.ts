@@ -1,10 +1,16 @@
-import type { MetricOption } from '../../types'
+import type { ConditionMetricValueType, MetricOption } from '../../types'
 import type { MetricVisualTone } from './types'
-import type { EvaluationTargetType, NodeInfo } from '@/types/evaluation'
+import type { EvaluationDefaultMetric, NodeInfo } from '@/types/evaluation'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { getDefaultMetricDescription } from '../../default-metric-descriptions'
 
-export const toEvaluationTargetType = (resourceType: 'apps' | 'snippets'): EvaluationTargetType => {
-  return resourceType === 'snippets' ? 'snippets' : 'apps'
+const defaultConditionMetricValueType: ConditionMetricValueType = 'number'
+
+export const normalizeMetricValueType = (valueType: string | undefined): ConditionMetricValueType => {
+  if (valueType === 'string' || valueType === 'number' || valueType === 'boolean')
+    return valueType
+
+  return defaultConditionMetricValueType
 }
 
 const humanizeMetricId = (metricId: string) => {
@@ -15,17 +21,37 @@ const humanizeMetricId = (metricId: string) => {
     .join(' ')
 }
 
-export const buildMetricOption = (metricId: string): MetricOption => ({
+export const buildMetricOption = (metricId: string, valueType?: string): MetricOption => ({
   id: metricId,
   label: humanizeMetricId(metricId),
   description: getDefaultMetricDescription(metricId),
-  valueType: 'number',
+  valueType: normalizeMetricValueType(valueType),
 })
 
+export const dedupeNodeInfoList = (nodeInfoList: NodeInfo[]) => {
+  return Array.from(new Map(nodeInfoList.map(nodeInfo => [nodeInfo.node_id, nodeInfo])).values())
+}
+
+export const getDefaultMetricNodeInfoMap = (defaultMetrics: EvaluationDefaultMetric[]) => {
+  const nodeInfoMap: Record<string, NodeInfo[]> = {}
+
+  defaultMetrics.forEach((defaultMetric) => {
+    if (!defaultMetric.metric)
+      return
+
+    nodeInfoMap[defaultMetric.metric] = dedupeNodeInfoList([
+      ...(nodeInfoMap[defaultMetric.metric] ?? []),
+      ...(defaultMetric.node_info_list ?? []),
+    ])
+  })
+
+  return nodeInfoMap
+}
+
 export const getMetricVisual = (metricId: string): { icon: string, tone: MetricVisualTone } => {
-  if (['context-precision', 'context-recall'].includes(metricId)) {
+  if (['context_precision', 'context_recall'].includes(metricId)) {
     return {
-      icon: metricId === 'context-recall' ? 'i-ri-arrow-go-back-line' : 'i-ri-focus-2-line',
+      icon: metricId === 'context_recall' ? 'i-ri-arrow-go-back-line' : 'i-ri-focus-2-line',
       tone: 'green',
     }
   }
@@ -33,29 +59,25 @@ export const getMetricVisual = (metricId: string): { icon: string, tone: MetricV
   if (metricId === 'faithfulness')
     return { icon: 'i-ri-anchor-line', tone: 'indigo' }
 
-  if (metricId === 'tool-correctness')
+  if (metricId === 'tool_correctness')
     return { icon: 'i-ri-tools-line', tone: 'indigo' }
 
-  if (metricId === 'task-completion')
+  if (metricId === 'task_completion')
     return { icon: 'i-ri-task-line', tone: 'indigo' }
 
-  if (metricId === 'argument-correctness')
+  if (metricId === 'argument_correctness')
     return { icon: 'i-ri-scales-3-line', tone: 'indigo' }
 
   return { icon: 'i-ri-checkbox-circle-line', tone: 'indigo' }
 }
 
-export const getNodeVisual = (nodeInfo: NodeInfo): { icon: string, tone: MetricVisualTone } => {
-  const normalizedType = nodeInfo.type.toLowerCase()
-  const normalizedTitle = nodeInfo.title.toLowerCase()
+const workflowBlockTypeSet = new Set<string>(Object.values(BlockEnum))
 
-  if (normalizedType.includes('retriev') || normalizedTitle.includes('retriev') || normalizedTitle.includes('knowledge'))
-    return { icon: 'i-ri-book-open-line', tone: 'green' }
+export const getEvaluationNodeBlockType = (nodeInfo: Pick<NodeInfo, 'type'>): BlockEnum => {
+  if (workflowBlockTypeSet.has(nodeInfo.type))
+    return nodeInfo.type as BlockEnum
 
-  if (normalizedType.includes('agent') || normalizedTitle.includes('agent'))
-    return { icon: 'i-ri-user-star-line', tone: 'indigo' }
-
-  return { icon: 'i-ri-ai-generate-2', tone: 'indigo' }
+  return BlockEnum.LLM
 }
 
 export const getToneClasses = (tone: MetricVisualTone) => {
@@ -70,8 +92,4 @@ export const getToneClasses = (tone: MetricVisualTone) => {
     soft: 'bg-util-colors-indigo-indigo-50 text-util-colors-indigo-indigo-500',
     solid: 'bg-util-colors-indigo-indigo-500 text-white',
   }
-}
-
-export const dedupeNodeInfoList = (nodeInfoList: NodeInfo[]) => {
-  return Array.from(new Map(nodeInfoList.map(nodeInfo => [nodeInfo.node_id, nodeInfo])).values())
 }

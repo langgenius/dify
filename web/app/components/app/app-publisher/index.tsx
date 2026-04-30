@@ -3,9 +3,7 @@ import type { ModelAndParameter } from '../configuration/debug/types'
 import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '@/app/components/app/overview/app-card-utils'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
-import type { EvaluationWorkflowAssociatedTarget } from '@/types/evaluation'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
-import type { PublishWorkflowParams, WorkflowTypeConversionTarget } from '@/types/workflow'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -42,11 +40,9 @@ import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/acces
 import { fetchAppDetailDirect, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { useConvertWorkflowTypeMutation } from '@/service/use-apps'
-import { useEvaluationWorkflowAssociatedTargets } from '@/service/use-evaluation'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
-import { AppModeEnum, AppTypeEnum } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
@@ -57,11 +53,19 @@ import {
   PublisherSummarySection,
 } from './sections'
 import SuggestedAction from './suggested-action'
+import { useWorkflowTypeSwitch } from './use-workflow-type-switch'
 import {
   getDisabledFunctionTooltip,
   getPublisherAppUrl,
   isPublisherAccessConfigured,
 } from './utils'
+
+export type AppPublisherPublishParams
+  = | ModelAndParameter
+    | (Pick<PublishWorkflowParams, 'title' | 'releaseNotes'> & {
+      url?: string
+      id?: string
+    })
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -72,8 +76,8 @@ export type AppPublisherProps = {
   debugWithMultipleModel?: boolean
   multipleModelConfigs?: ModelAndParameter[]
   /** modelAndParameter is passed when debugWithMultipleModel is true */
-  onPublish?: (params?: any) => Promise<any> | any
-  onRestore?: () => Promise<any> | any
+  onPublish?: (params?: AppPublisherPublishParams) => Promise<unknown> | unknown
+  onRestore?: () => Promise<unknown> | unknown
   onToggle?: (state: boolean) => void
   crossAxisOffset?: number
   toolPublished?: boolean
@@ -88,32 +92,6 @@ export type AppPublisherProps = {
 }
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
-
-type WorkflowTypeSwitchLabelKey = I18nKeysWithPrefix<'workflow', 'common.'>
-
-const WORKFLOW_TYPE_SWITCH_CONFIG: Record<WorkflowTypeConversionTarget, {
-  targetType: WorkflowTypeConversionTarget
-  publishLabelKey: WorkflowTypeSwitchLabelKey
-  switchLabelKey: WorkflowTypeSwitchLabelKey
-  tipKey: WorkflowTypeSwitchLabelKey
-}> = {
-  workflow: {
-    targetType: 'evaluation',
-    publishLabelKey: 'common.publishAsEvaluationWorkflow',
-    switchLabelKey: 'common.switchToEvaluationWorkflow',
-    tipKey: 'common.switchToEvaluationWorkflowTip',
-  },
-  evaluation: {
-    targetType: 'workflow',
-    publishLabelKey: 'common.publishAsStandardWorkflow',
-    switchLabelKey: 'common.switchToStandardWorkflow',
-    tipKey: 'common.switchToStandardWorkflowTip',
-  },
-} as const
-
-const isWorkflowTypeConversionTarget = (type?: AppTypeEnum): type is WorkflowTypeConversionTarget => {
-  return type === 'workflow' || type === 'evaluation'
-}
 
 const AppPublisher = ({
   disabled = false,
@@ -141,8 +119,6 @@ const AppPublisher = ({
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
-  const [showEvaluationWorkflowSwitchConfirm, setShowEvaluationWorkflowSwitchConfirm] = useState(false)
-  const [evaluationWorkflowSwitchTargets, setEvaluationWorkflowSwitchTargets] = useState<EvaluationWorkflowAssociatedTarget[]>([])
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
   const [workflowLaunchDialogOpen, setWorkflowLaunchDialogOpen] = useState(false)
@@ -157,36 +133,10 @@ const AppPublisher = ({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
-  const { mutateAsync: convertWorkflowType, isPending: isConvertingWorkflowType } = useConvertWorkflowTypeMutation()
 
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
   const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
-  const workflowTypeSwitchConfig = useMemo(() => {
-    if (!appDetail?.workflow_kind)
-      return WORKFLOW_TYPE_SWITCH_CONFIG.workflow
 
-    if (!isWorkflowTypeConversionTarget(appDetail?.workflow_kind))
-      return undefined
-
-    return WORKFLOW_TYPE_SWITCH_CONFIG[appDetail.workflow_kind]
-  }, [appDetail?.workflow_kind])
-  const isEvaluationWorkflowType = appDetail?.workflow_kind === AppTypeEnum.EVALUATION
-  const {
-    refetch: refetchEvaluationWorkflowAssociatedTargets,
-    isFetching: isFetchingEvaluationWorkflowAssociatedTargets,
-  } = useEvaluationWorkflowAssociatedTargets(appDetail?.id, { enabled: false })
-  const workflowTypeSwitchDisabledReason = useMemo(() => {
-    if (workflowTypeSwitchConfig?.targetType !== AppTypeEnum.EVALUATION)
-      return undefined
-
-    if (!canAccessSnippetsAndEvaluation)
-      return t('compliance.sandboxUpgradeTooltip', { ns: 'common' })
-
-    if (!hasHumanInputNode && !hasTriggerNode)
-      return undefined
-
-    return t('common.switchToEvaluationWorkflowDisabledTip', { ns: 'workflow' })
-  }, [canAccessSnippetsAndEvaluation, hasHumanInputNode, hasTriggerNode, t, workflowTypeSwitchConfig?.targetType])
   const hiddenLaunchVariables = useMemo<WorkflowHiddenStartVariable[]>(
     () => (inputs ?? []).filter(input => input.hide === true),
     [inputs],
@@ -230,7 +180,7 @@ const AppPublisher = ({
       refetch()
   }, [open, appDetail, refetch, systemFeatures])
 
-  const handlePublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
+  const handlePublish = useCallback(async (params?: AppPublisherPublishParams) => {
     try {
       await onPublish?.(params)
       setPublished(true)
@@ -312,109 +262,8 @@ const AppPublisher = ({
     }
   }, [appDetail, setAppDetail])
 
-  const getWorkflowTypeSwitchPublishUrl = useCallback(() => {
-    if (!appDetail?.id || !workflowTypeSwitchConfig)
-      return undefined
-
-    if (workflowTypeSwitchConfig.targetType === AppTypeEnum.EVALUATION)
-      return `/apps/${appDetail.id}/workflows/publish/evaluation`
-
-    return `/apps/${appDetail.id}/workflows/publish`
-  }, [appDetail?.id, workflowTypeSwitchConfig])
-
-  const performWorkflowTypeSwitch = useCallback(async () => {
-    if (!appDetail?.id || !workflowTypeSwitchConfig)
-      return false
-
-    try {
-      if (!publishedAt) {
-        const publishUrl = getWorkflowTypeSwitchPublishUrl()
-        if (!publishUrl)
-          return false
-
-        await handlePublish({
-          url: publishUrl,
-          title: '',
-          releaseNotes: '',
-        })
-
-        const latestAppDetail = await fetchAppDetailDirect({
-          url: '/apps',
-          id: appDetail.id,
-        })
-        setAppDetail(latestAppDetail)
-        setShowEvaluationWorkflowSwitchConfirm(false)
-        setEvaluationWorkflowSwitchTargets([])
-        return true
-      }
-
-      await convertWorkflowType({
-        params: {
-          appId: appDetail.id,
-        },
-        query: {
-          target_type: workflowTypeSwitchConfig.targetType,
-        },
-      })
-
-      const latestAppDetail = await fetchAppDetailDirect({
-        url: '/apps',
-        id: appDetail.id,
-      })
-      setAppDetail(latestAppDetail)
-
-      if (publishedAt)
-        setOpen(false)
-
-      setShowEvaluationWorkflowSwitchConfirm(false)
-      setEvaluationWorkflowSwitchTargets([])
-      return true
-    }
-    catch {
-      return false
-    }
-  }, [appDetail?.id, convertWorkflowType, getWorkflowTypeSwitchPublishUrl, handlePublish, publishedAt, setAppDetail, workflowTypeSwitchConfig])
-
-  const handleWorkflowTypeSwitch = useCallback(async () => {
-    if (!appDetail?.id || !workflowTypeSwitchConfig)
-      return
-    if (workflowTypeSwitchDisabledReason) {
-      toast.error(workflowTypeSwitchDisabledReason)
-      return
-    }
-
-    if (appDetail.workflow_kind === AppTypeEnum.EVALUATION && workflowTypeSwitchConfig.targetType === AppTypeEnum.WORKFLOW) {
-      const associatedTargetsResult = await refetchEvaluationWorkflowAssociatedTargets()
-
-      if (associatedTargetsResult.isError) {
-        toast.error(t('common.switchToStandardWorkflowConfirm.loadFailed', { ns: 'workflow' }))
-        return
-      }
-
-      const associatedTargets = associatedTargetsResult.data?.items ?? []
-      if (associatedTargets.length > 0) {
-        setEvaluationWorkflowSwitchTargets(associatedTargets)
-        setShowEvaluationWorkflowSwitchConfirm(true)
-        return
-      }
-    }
-
-    await performWorkflowTypeSwitch()
-  }, [
-    appDetail?.id,
-    appDetail?.workflow_kind,
-    performWorkflowTypeSwitch,
-    refetchEvaluationWorkflowAssociatedTargets,
-    t,
-    workflowTypeSwitchConfig,
-    workflowTypeSwitchDisabledReason,
-  ])
-
-  const handleEvaluationWorkflowSwitchConfirmOpenChange = useCallback((nextOpen: boolean) => {
-    setShowEvaluationWorkflowSwitchConfirm(nextOpen)
-
-    if (!nextOpen)
-      setEvaluationWorkflowSwitchTargets([])
+  const handlePublishedWorkflowTypeSwitch = useCallback(() => {
+    setOpen(false)
   }, [])
 
   const handleOpenWorkflowLaunchDialog = useCallback((targetUrl: string) => {
@@ -442,6 +291,29 @@ const AppPublisher = ({
     window.open(targetUrl, '_blank')
     setWorkflowLaunchDialogOpen(false)
   }, [supportedWorkflowLaunchVariables, workflowLaunchTargetUrl, workflowLaunchValues])
+  const {
+    evaluationWorkflowSwitchTargets,
+    handleEvaluationWorkflowSwitchConfirmOpenChange,
+    handleWorkflowTypeSwitch,
+    isConvertingWorkflowType,
+    isEvaluationWorkflowType,
+    performWorkflowTypeSwitch,
+    showEvaluationWorkflowSwitchConfirm,
+    workflowTypeSwitchConfig,
+    workflowTypeSwitchDisabled,
+    workflowTypeSwitchDisabledReason,
+  } = useWorkflowTypeSwitch({
+    appDetail,
+    canAccessSnippetsAndEvaluation,
+    hasHumanInputNode,
+    hasTriggerNode,
+    onPublish: handlePublish,
+    onPublishedSwitch: handlePublishedWorkflowTypeSwitch,
+    published,
+    publishedAt,
+    publishDisabled,
+    setAppDetail,
+  })
 
   const handlePublishToMarketplace = useCallback(async () => {
     if (!appDetail?.id || publishingToMarketplace)
@@ -541,7 +413,7 @@ const AppPublisher = ({
               startNodeLimitExceeded={startNodeLimitExceeded}
               upgradeHighlightStyle={upgradeHighlightStyle}
               workflowTypeSwitchConfig={workflowTypeSwitchConfig}
-              workflowTypeSwitchDisabled={publishDisabled || published || isConvertingWorkflowType || isFetchingEvaluationWorkflowAssociatedTargets || Boolean(workflowTypeSwitchDisabledReason)}
+              workflowTypeSwitchDisabled={workflowTypeSwitchDisabled}
               workflowTypeSwitchDisabledReason={workflowTypeSwitchDisabledReason}
               onWorkflowTypeSwitch={handleWorkflowTypeSwitch}
             />

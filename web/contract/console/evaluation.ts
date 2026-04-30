@@ -2,6 +2,8 @@ import type {
   AvailableEvaluationWorkflowsResponse,
   EvaluationConfig,
   EvaluationConfigData,
+  EvaluationDefaultMetricsResponse,
+  EvaluationDefaultMetricsTargetType,
   EvaluationFileInfo,
   EvaluationLogsResponse,
   EvaluationMetricsListResponse,
@@ -255,6 +257,19 @@ export const evaluationMetricsContract = base
   }>())
   .output(type<EvaluationMetricsMapResponse>())
 
+export const evaluationDefaultMetricsContract = base
+  .route({
+    path: '/{targetType}/{targetId}/evaluation/default-metrics',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      targetType: EvaluationDefaultMetricsTargetType
+      targetId: string
+    }
+  }>())
+  .output(type<EvaluationDefaultMetricsResponse>())
+
 export const evaluationNodeInfoContract = base
   .route({
     path: '/{targetType}/{targetId}/evaluation/node-info',
@@ -268,13 +283,6 @@ export const evaluationNodeInfoContract = base
     body: EvaluationNodeInfoRequest
   }>())
   .output(type<EvaluationNodeInfoResponse>())
-
-export const availableEvaluationMetricsContract = base
-  .route({
-    path: '/evaluation/available-metrics',
-    method: 'GET',
-  })
-  .output(type<EvaluationMetricsListResponse>())
 
 export const availableEvaluationWorkflowsContract = base
   .route({

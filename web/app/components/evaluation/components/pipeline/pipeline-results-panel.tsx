@@ -57,7 +57,7 @@ const PipelineResultsPanel = ({
 
   if (isEmpty) {
     return (
-      <div className="flex min-h-[360px] flex-1 items-center justify-center xl:min-h-0">
+      <div className="flex min-h-[360px] w-full items-center justify-center xl:h-full xl:min-h-0">
         <div className="flex flex-col items-center gap-4 px-4 text-center">
           <span aria-hidden="true" className="i-ri-file-list-3-line h-12 w-12 text-text-quaternary" />
           <div className="system-md-medium text-text-quaternary">{t('results.empty')}</div>
@@ -67,7 +67,7 @@ const PipelineResultsPanel = ({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col border-l border-divider-subtle bg-background-default">
+    <div className="flex min-h-[360px] flex-col border-l border-divider-subtle bg-background-default xl:h-full xl:min-h-0">
       <div className="shrink-0 px-6 pt-4 pb-2">
         <h2 className="system-xl-semibold text-text-primary">{t('results.title')}</h2>
       </div>
@@ -75,7 +75,7 @@ const PipelineResultsPanel = ({
         <div className="px-6 py-4 system-sm-regular text-text-destructive">{t('results.loadFailed')}</div>
       )}
       {!runDetailQuery.isError && (
-        <div className="flex min-h-0 flex-1 flex-col px-6 py-1">
+        <div className="flex flex-col px-6 py-1 xl:min-h-0 xl:flex-1">
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 py-1">
             <div className="flex min-w-0 flex-wrap items-center gap-2 system-xs-regular text-text-secondary">
               <span>{getRunDate(runDetail?.run.started_at ?? runDetail?.run.created_at ?? null)}</span>

@@ -316,5 +316,16 @@ describe('SnippetMain', () => {
       expect(capturedHooksStore?.handleStartWorkflowRun).toBe(mockHandleStartWorkflowRun)
       expect(capturedHooksStore?.handleWorkflowStartRunInWorkflow).toBe(mockHandleWorkflowStartRunInWorkflow)
     })
+
+    it('should pass snippet workflow run detail urls to WorkflowWithInnerContext', () => {
+      renderSnippetMain()
+
+      const getWorkflowRunAndTraceUrl = capturedHooksStore?.getWorkflowRunAndTraceUrl as ((runId?: string) => { runUrl: string, traceUrl: string }) | undefined
+
+      expect(getWorkflowRunAndTraceUrl?.('run-1')).toEqual({
+        runUrl: '/snippets/snippet-1/workflow-runs/run-1',
+        traceUrl: '/snippets/snippet-1/workflow-runs/run-1/node-executions',
+      })
+    })
   })
 })

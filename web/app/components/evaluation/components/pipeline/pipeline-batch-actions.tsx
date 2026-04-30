@@ -4,15 +4,16 @@ import type { EvaluationResourceProps } from '../../types'
 import type { InputField } from '../batch-test-panel/input-fields/input-fields-utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import { getEvaluationMockConfig } from '../../mock'
 import { isEvaluationRunnable, useEvaluationResource } from '../../store'
+import { EVALUATION_TEMPLATE_FILE_NAMES } from '../../store-utils'
 import UploadRunPopover from '../batch-test-panel/input-fields/upload-run-popover'
 import { useInputFieldsActions } from '../batch-test-panel/input-fields/use-input-fields-actions'
 
 const PIPELINE_INPUT_FIELDS: InputField[] = [
   { name: 'query', type: 'string' },
-  { name: 'Expect Results', type: 'string' },
+  { name: 'expected_outputs', type: 'string' },
 ]
+const PIPELINE_TEMPLATE_CONTENT = 'query,expected_outputs\n'
 
 const PipelineBatchActions = ({
   resourceType,
@@ -20,7 +21,6 @@ const PipelineBatchActions = ({
 }: EvaluationResourceProps) => {
   const { t } = useTranslation('evaluation')
   const resource = useEvaluationResource(resourceType, resourceId)
-  const config = getEvaluationMockConfig(resourceType)
   const isConfigReady = !!resource.judgeModelId && resource.metrics.some(metric => metric.kind === 'builtin')
   const isRunnable = isEvaluationRunnable(resource)
   const actions = useInputFieldsActions({
@@ -30,7 +30,8 @@ const PipelineBatchActions = ({
     isInputFieldsLoading: false,
     isPanelReady: isConfigReady,
     isRunnable,
-    templateFileName: config.templateFileName,
+    templateContent: PIPELINE_TEMPLATE_CONTENT,
+    templateFileName: EVALUATION_TEMPLATE_FILE_NAMES[resourceType],
   })
 
   return (
@@ -59,7 +60,6 @@ const PipelineBatchActions = ({
           isRunning={actions.isRunning}
           onUploadFile={actions.handleUploadFile}
           onClearUploadedFile={actions.handleClearUploadedFile}
-          onDownloadTemplate={actions.handleDownloadTemplate}
           onRun={actions.handleRun}
         />
       </div>

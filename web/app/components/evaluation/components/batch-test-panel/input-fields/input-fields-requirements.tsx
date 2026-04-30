@@ -1,16 +1,22 @@
+import type { EvaluationResourceType } from '../../../types'
 import type { InputField } from './input-fields-utils'
 import { useTranslation } from 'react-i18next'
 
 type InputFieldsRequirementsProps = {
+  resourceType: EvaluationResourceType
   inputFields: InputField[]
   isLoading: boolean
 }
 
 const InputFieldsRequirements = ({
+  resourceType,
   inputFields,
   isLoading,
 }: InputFieldsRequirementsProps) => {
   const { t } = useTranslation('evaluation')
+  const emptyDescription = resourceType === 'snippets'
+    ? t('batch.noSnippetInputFields')
+    : t('batch.noInputFields')
 
   return (
     <div>
@@ -24,7 +30,7 @@ const InputFieldsRequirements = ({
         )}
         {!isLoading && inputFields.length === 0 && (
           <div className="px-1 py-0.5 system-xs-regular text-text-tertiary">
-            {t('batch.noInputFields')}
+            {emptyDescription}
           </div>
         )}
         {!isLoading && inputFields.map(field => (

@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.13.3",
+  "version": "1.14.0",
   "private": true,
   "imports": {
     "#i18n": {

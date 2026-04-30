@@ -1,17 +1,21 @@
 import type { NodeInfo } from '@/types/evaluation'
 
 export type EvaluationResourceType = 'apps' | 'datasets' | 'snippets'
+export type NonPipelineEvaluationResourceType = Exclude<EvaluationResourceType, 'datasets'>
 
 export type EvaluationResourceProps = {
   resourceType: EvaluationResourceType
   resourceId: string
 }
 
+export type NonPipelineEvaluationResourceProps = {
+  resourceType: NonPipelineEvaluationResourceType
+  resourceId: string
+}
+
 export type MetricKind = 'builtin' | 'custom-workflow'
 
 export type BatchTestTab = 'input-fields' | 'history'
-
-export type FieldType = 'string' | 'number' | 'boolean' | 'enum'
 
 export type ConditionMetricValueType = 'string' | 'number' | 'boolean'
 
@@ -35,38 +39,11 @@ export type ComparisonOperator
     | 'is null'
     | 'is not null'
 
-export type JudgeModelOption = {
-  id: string
-  label: string
-  provider: string
-}
-
 export type MetricOption = {
   id: string
   label: string
   description: string
   valueType: ConditionMetricValueType
-}
-
-export type EvaluationWorkflowOption = {
-  id: string
-  label: string
-  description: string
-  targetVariables: Array<{
-    id: string
-    label: string
-  }>
-}
-
-export type EvaluationFieldOption = {
-  id: string
-  label: string
-  group: string
-  type: FieldType
-  options?: Array<{
-    value: string
-    label: string
-  }>
 }
 
 export type CustomMetricMapping = {
@@ -112,10 +89,12 @@ export type JudgmentConfig = {
 
 export type ConditionMetricOption = {
   id: string
+  kind: MetricKind
   groupLabel: string
   itemLabel: string
   valueType: ConditionMetricValueType
   variableSelector: [string, string]
+  nodeInfo?: NodeInfo
 }
 
 export type ConditionMetricOptionGroup = {
@@ -140,14 +119,4 @@ export type EvaluationResourceState = {
   uploadedFileName: string | null
   selectedRunId: string | null
   batchRecords: BatchTestRecord[]
-}
-
-export type EvaluationMockConfig = {
-  judgeModels: JudgeModelOption[]
-  builtinMetrics: MetricOption[]
-  workflowOptions: EvaluationWorkflowOption[]
-  fieldOptions: EvaluationFieldOption[]
-  templateFileName: string
-  batchRequirements: string[]
-  historySummaryLabel: string
 }

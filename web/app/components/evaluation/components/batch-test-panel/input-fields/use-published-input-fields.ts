@@ -2,7 +2,7 @@ import type { EvaluationResourceType } from '../../../types'
 import { useMemo } from 'react'
 import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import { useAppWorkflow } from '@/service/use-workflow'
-import { getGraphNodes, getStartNodeInputFields } from './input-fields-utils'
+import { getSnippetInputFields, getStartNodeInputFields } from './input-fields-utils'
 
 export const usePublishedInputFields = (
   resourceType: EvaluationResourceType,
@@ -16,10 +16,10 @@ export const usePublishedInputFields = (
       return getStartNodeInputFields(currentAppWorkflow?.graph.nodes)
 
     if (resourceType === 'snippets')
-      return getStartNodeInputFields(getGraphNodes(currentSnippetWorkflow?.graph))
+      return getSnippetInputFields(currentSnippetWorkflow?.input_fields)
 
     return []
-  }, [currentAppWorkflow?.graph.nodes, currentSnippetWorkflow?.graph, resourceType])
+  }, [currentAppWorkflow?.graph.nodes, currentSnippetWorkflow?.input_fields, resourceType])
 
   return {
     inputFields,

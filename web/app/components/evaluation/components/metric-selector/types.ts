@@ -1,9 +1,8 @@
-import type { EvaluationMetric, EvaluationResourceProps, MetricOption } from '../../types'
+import type { EvaluationMetric, MetricOption, NonPipelineEvaluationResourceProps } from '../../types'
 import type { NodeInfo } from '@/types/evaluation'
 
-export type MetricSelectorProps = EvaluationResourceProps & {
+export type MetricSelectorProps = NonPipelineEvaluationResourceProps & {
   triggerClassName?: string
-  triggerStyle?: 'button' | 'text'
 }
 
 export type MetricVisualTone = 'indigo' | 'green'

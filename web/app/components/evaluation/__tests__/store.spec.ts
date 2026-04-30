@@ -1,5 +1,4 @@
 import type { EvaluationConfig } from '@/types/evaluation'
-import { getEvaluationMockConfig } from '../mock'
 import {
   getAllowedOperators,
   isCustomMetricConfigured,
@@ -8,16 +7,21 @@ import {
 } from '../store'
 import { buildEvaluationConfigPayload, buildEvaluationRunRequest } from '../store-utils'
 
+const customWorkflow = {
+  id: 'workflow-precision-review',
+  appId: 'custom-workflow-app-id',
+  name: 'Precision Review Workflow',
+}
+
 describe('evaluation store', () => {
   beforeEach(() => {
-    useEvaluationStore.setState({ resources: {} })
+    useEvaluationStore.setState({ resources: {}, initialResources: {} })
   })
 
   it('should configure a custom metric mapping to a valid state', () => {
     const resourceType = 'apps'
     const resourceId = 'app-1'
     const store = useEvaluationStore.getState()
-    const config = getEvaluationMockConfig(resourceType)
 
     store.ensureResource(resourceType, resourceId)
     store.addCustomMetric(resourceType, resourceId)
@@ -27,9 +31,9 @@ describe('evaluation store', () => {
     expect(isCustomMetricConfigured(initialMetric!)).toBe(false)
 
     store.setCustomMetricWorkflow(resourceType, resourceId, initialMetric!.id, {
-      workflowId: config.workflowOptions[0].id,
-      workflowAppId: 'custom-workflow-app-id',
-      workflowName: config.workflowOptions[0].label,
+      workflowId: customWorkflow.id,
+      workflowAppId: customWorkflow.appId,
+      workflowName: customWorkflow.name,
     })
     store.syncCustomMetricMappings(resourceType, resourceId, initialMetric!.id, ['query'])
     store.syncCustomMetricOutputs(resourceType, resourceId, initialMetric!.id, [{
@@ -44,8 +48,8 @@ describe('evaluation store', () => {
 
     const configuredMetric = useEvaluationStore.getState().resources['apps:app-1'].metrics.find(metric => metric.id === initialMetric!.id)
     expect(isCustomMetricConfigured(configuredMetric!)).toBe(true)
-    expect(configuredMetric!.customConfig!.workflowAppId).toBe('custom-workflow-app-id')
-    expect(configuredMetric!.customConfig!.workflowName).toBe(config.workflowOptions[0].label)
+    expect(configuredMetric!.customConfig!.workflowAppId).toBe(customWorkflow.appId)
+    expect(configuredMetric!.customConfig!.workflowName).toBe(customWorkflow.name)
     expect(configuredMetric!.customConfig!.outputs).toEqual([{ id: 'score', valueType: 'number' }])
   })
 
@@ -71,12 +75,11 @@ describe('evaluation store', () => {
     const resourceType = 'apps'
     const resourceId = 'app-2'
     const store = useEvaluationStore.getState()
-    const config = getEvaluationMockConfig(resourceType)
 
     store.ensureResource(resourceType, resourceId)
-    store.addBuiltinMetric(resourceType, resourceId, config.builtinMetrics[1].id)
+    store.addBuiltinMetric(resourceType, resourceId, 'faithfulness')
 
-    const addedMetric = useEvaluationStore.getState().resources['apps:app-2'].metrics.find(metric => metric.optionId === config.builtinMetrics[1].id)
+    const addedMetric = useEvaluationStore.getState().resources['apps:app-2'].metrics.find(metric => metric.optionId === 'faithfulness')
     expect(addedMetric).toBeDefined()
 
     store.removeMetric(resourceType, resourceId, addedMetric!.id)
@@ -88,8 +91,7 @@ describe('evaluation store', () => {
     const resourceType = 'apps'
     const resourceId = 'app-4'
     const store = useEvaluationStore.getState()
-    const config = getEvaluationMockConfig(resourceType)
-    const metricId = config.builtinMetrics[0].id
+    const metricId = 'answer-correctness'
 
     store.ensureResource(resourceType, resourceId)
     store.addBuiltinMetric(resourceType, resourceId, metricId, [
@@ -115,10 +117,9 @@ describe('evaluation store', () => {
     const resourceType = 'apps'
     const resourceId = 'app-conditions'
     const store = useEvaluationStore.getState()
-    const config = getEvaluationMockConfig(resourceType)
 
     store.ensureResource(resourceType, resourceId)
-    store.addBuiltinMetric(resourceType, resourceId, config.builtinMetrics[0].id, [
+    store.addBuiltinMetric(resourceType, resourceId, 'answer-correctness', [
       { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
     ])
     store.setConditionLogicalOperator(resourceType, resourceId, 'or')
@@ -137,27 +138,26 @@ describe('evaluation store', () => {
     const resourceType = 'apps'
     const resourceId = 'app-condition-selector'
     const store = useEvaluationStore.getState()
-    const config = getEvaluationMockConfig(resourceType)
 
     store.ensureResource(resourceType, resourceId)
     store.addCustomMetric(resourceType, resourceId)
 
     const customMetric = useEvaluationStore.getState().resources['apps:app-condition-selector'].metrics.find(metric => metric.kind === 'custom-workflow')!
     store.setCustomMetricWorkflow(resourceType, resourceId, customMetric.id, {
-      workflowId: config.workflowOptions[0].id,
-      workflowAppId: 'custom-workflow-app-id',
-      workflowName: config.workflowOptions[0].label,
+      workflowId: customWorkflow.id,
+      workflowAppId: customWorkflow.appId,
+      workflowName: customWorkflow.name,
     })
     store.syncCustomMetricOutputs(resourceType, resourceId, customMetric.id, [{
       id: 'reason',
       valueType: 'string',
     }])
 
-    store.addCondition(resourceType, resourceId, [config.workflowOptions[0].id, 'reason'])
+    store.addCondition(resourceType, resourceId, [customWorkflow.id, 'reason'])
 
     const condition = useEvaluationStore.getState().resources['apps:app-condition-selector'].judgmentConfig.conditions[0]
 
-    expect(condition.variableSelector).toEqual([config.workflowOptions[0].id, 'reason'])
+    expect(condition.variableSelector).toEqual([customWorkflow.id, 'reason'])
     expect(condition.comparisonOperator).toBe('contains')
     expect(condition.value).toBeNull()
   })
@@ -166,16 +166,15 @@ describe('evaluation store', () => {
     const resourceType = 'apps'
     const resourceId = 'app-3'
     const store = useEvaluationStore.getState()
-    const config = getEvaluationMockConfig(resourceType)
 
     store.ensureResource(resourceType, resourceId)
     store.addCustomMetric(resourceType, resourceId)
 
     const customMetric = useEvaluationStore.getState().resources['apps:app-3'].metrics.find(metric => metric.kind === 'custom-workflow')!
     store.setCustomMetricWorkflow(resourceType, resourceId, customMetric.id, {
-      workflowId: config.workflowOptions[0].id,
-      workflowAppId: 'custom-workflow-app-id',
-      workflowName: config.workflowOptions[0].label,
+      workflowId: customWorkflow.id,
+      workflowAppId: customWorkflow.appId,
+      workflowName: customWorkflow.name,
     })
     store.syncCustomMetricOutputs(resourceType, resourceId, customMetric.id, [{
       id: 'reason',
@@ -185,7 +184,7 @@ describe('evaluation store', () => {
 
     const condition = useEvaluationStore.getState().resources['apps:app-3'].judgmentConfig.conditions[0]
 
-    store.updateConditionMetric(resourceType, resourceId, condition.id, [config.workflowOptions[0].id, 'reason'])
+    store.updateConditionMetric(resourceType, resourceId, condition.id, [customWorkflow.id, 'reason'])
     store.updateConditionValue(resourceType, resourceId, condition.id, 'needs follow-up')
     store.updateConditionOperator(resourceType, resourceId, condition.id, 'empty')
 

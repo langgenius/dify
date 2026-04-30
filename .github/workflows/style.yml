@@ -81,7 +81,6 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
-            .npmrc
             .nvmrc
             .github/workflows/style.yml
             .github/actions/setup-web/**
@@ -108,8 +107,6 @@ jobs:
       - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
         run: vp run lint:tss
 
       - name: Web type check

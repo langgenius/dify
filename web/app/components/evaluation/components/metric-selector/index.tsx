@@ -3,7 +3,6 @@
 import type { ChangeEvent } from 'react'
 import type { MetricSelectorProps } from './types'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
@@ -22,14 +21,12 @@ const MetricSelector = ({
   resourceType,
   resourceId,
   triggerClassName,
-  triggerStyle = 'button',
 }: MetricSelectorProps) => {
   const { t } = useTranslation('evaluation')
   const resource = useEvaluationResource(resourceType, resourceId)
   const addCustomMetric = useEvaluationStore(state => state.addCustomMetric)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [nodeInfoMap, setNodeInfoMap] = useState<Record<string, Array<{ node_id: string, title: string, type: string }>>>({})
   const [collapsedMetricMap, setCollapsedMetricMap] = useState<Record<string, boolean>>({})
   const [expandedMetricNodesMap, setExpandedMetricNodesMap] = useState<Record<string, boolean>>({})
   const hasCustomMetric = resource.metrics.some(metric => metric.kind === 'custom-workflow')
@@ -44,8 +41,6 @@ const MetricSelector = ({
     query,
     resourceType,
     resourceId,
-    nodeInfoMap,
-    setNodeInfoMap,
   })
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -66,19 +61,10 @@ const MetricSelector = ({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={(
-          triggerStyle === 'text'
-            ? (
-                <button type="button" className={cn('inline-flex items-center system-sm-medium text-text-accent', triggerClassName)}>
-                  <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
-                  {t('metrics.add')}
-                </button>
-              )
-            : (
-                <Button variant="ghost-accent" className={triggerClassName}>
-                  <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
-                  {t('metrics.add')}
-                </Button>
-              )
+          <Button variant="ghost-accent" className={triggerClassName}>
+            <span aria-hidden="true" className="mr-1 i-ri-add-line h-4 w-4" />
+            {t('metrics.add')}
+          </Button>
         )}
       />
       <PopoverContent popupClassName="w-[360px] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border p-0 shadow-[0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03)]">

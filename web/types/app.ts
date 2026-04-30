@@ -9,6 +9,7 @@ import type {
   WeightedScoreEnum,
 } from '@/models/datasets'
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
+import type { WorkflowKind } from '@/types/workflow'
 
 export type Theme = 'light' | 'dark' | 'system'
 export const Theme = {
@@ -392,7 +393,7 @@ export type App = {
   /** whether workflow trigger has un-published draft */
   has_draft_trigger?: boolean
   /** Type */
-  workflow_kind?: AppTypeEnum
+  workflow_kind?: WorkflowKind | null
 }
 
 export type AppSSO = {

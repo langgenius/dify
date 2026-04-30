@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 
 type MethodSelectorProps = {
   value?: string
@@ -20,37 +20,43 @@ const MethodSelector: FC<MethodSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const handleSelect = (value: string) => {
+    onChange(value)
+    setOpen(false)
+  }
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
     >
       <div className="relative">
-        <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
-          className="block"
-        >
-          <div className={cn(
-            'flex h-9 min-h-[56px] cursor-pointer items-center gap-1 bg-transparent px-3 py-2 hover:bg-background-section-burn',
-            open && 'bg-background-section-burn! hover:bg-background-section-burn',
+        <PopoverTrigger
+          nativeButton={false}
+          render={(
+            <div className={cn(
+              'flex h-9 min-h-[56px] cursor-pointer items-center gap-1 bg-transparent px-3 py-2 hover:bg-background-section-burn',
+              open && 'bg-background-section-burn! hover:bg-background-section-burn',
+            )}
+            >
+              <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>
+                {value === 'llm' ? t('createTool.toolInput.methodParameter', { ns: 'tools' }) : t('createTool.toolInput.methodSetting', { ns: 'tools' })}
+              </div>
+              <div className="ml-1 shrink-0 text-text-secondary opacity-60">
+                <RiArrowDownSLine className="h-4 w-4" />
+              </div>
+            </div>
           )}
-          >
-            <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>
-              {value === 'llm' ? t('createTool.toolInput.methodParameter', { ns: 'tools' }) : t('createTool.toolInput.methodSetting', { ns: 'tools' })}
-            </div>
-            <div className="ml-1 shrink-0 text-text-secondary opacity-60">
-              <RiArrowDownSLine className="h-4 w-4" />
-            </div>
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-1040">
-          <div className="relative w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+        />
+        <PopoverContent
+          placement="bottom-start"
+          sideOffset={4}
+          positionerProps={{ style: { zIndex: 1040 } }}
+        >
+          <div className="relative w-[320px]">
             <div className="p-1">
-              <div className="cursor-pointer rounded-lg py-2.5 pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover" onClick={() => onChange('llm')}>
-                <div className="item-center flex gap-1">
+              <div className="cursor-pointer rounded-lg py-2.5 pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover" onClick={() => handleSelect('llm')}>
+                <div className="flex items-center gap-1">
                   <div className="h-4 w-4 shrink-0">
                     {value === 'llm' && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
                   </div>
@@ -58,8 +64,8 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                 </div>
                 <div className="pl-5 text-[13px] leading-[18px] text-text-tertiary">{t('createTool.toolInput.methodParameterTip', { ns: 'tools' })}</div>
               </div>
-              <div className="cursor-pointer rounded-lg py-2.5 pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover" onClick={() => onChange('form')}>
-                <div className="item-center flex gap-1">
+              <div className="cursor-pointer rounded-lg py-2.5 pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover" onClick={() => handleSelect('form')}>
+                <div className="flex items-center gap-1">
                   <div className="h-4 w-4 shrink-0">
                     {value === 'form' && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
                   </div>
@@ -69,9 +75,9 @@ const MethodSelector: FC<MethodSelectorProps> = ({
               </div>
             </div>
           </div>
-        </PortalToFollowElemContent>
+        </PopoverContent>
       </div>
-    </PortalToFollowElem>
+    </Popover>
   )
 }
 

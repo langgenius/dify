@@ -1,31 +1,29 @@
+import type { MetricOption, NonPipelineEvaluationResourceType } from '../../types'
 import type { BuiltinMetricMap, MetricSelectorSection } from './types'
 import type { NodeInfo } from '@/types/evaluation'
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAvailableEvaluationMetrics, useEvaluationNodeInfoMutation } from '@/service/use-evaluation'
+import { useDefaultEvaluationMetrics } from '@/service/use-evaluation'
 import { getTranslatedMetricDescription } from '../../default-metric-descriptions'
-import { getEvaluationMockConfig } from '../../mock'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
 import {
   buildMetricOption,
   dedupeNodeInfoList,
-  toEvaluationTargetType,
+  getDefaultMetricNodeInfoMap,
 } from './utils'
 
 type UseMetricSelectorDataOptions = {
   open: boolean
   query: string
-  resourceType: 'apps' | 'datasets' | 'snippets'
+  resourceType: NonPipelineEvaluationResourceType
   resourceId: string
-  nodeInfoMap: Record<string, NodeInfo[]>
-  setNodeInfoMap: (value: Record<string, NodeInfo[]>) => void
 }
 
 type UseMetricSelectorDataResult = {
   builtinMetricMap: BuiltinMetricMap
   filteredSections: MetricSelectorSection[]
   isRemoteLoading: boolean
-  toggleNodeSelection: (metricId: string, nodeInfo: NodeInfo) => void
+  toggleNodeSelection: (metric: MetricOption, nodeInfo: NodeInfo) => void
 }
 
 export const useMetricSelectorData = ({
@@ -33,16 +31,12 @@ export const useMetricSelectorData = ({
   query,
   resourceType,
   resourceId,
-  nodeInfoMap,
-  setNodeInfoMap,
 }: UseMetricSelectorDataOptions): UseMetricSelectorDataResult => {
   const { t } = useTranslation('evaluation')
-  const config = getEvaluationMockConfig(resourceType)
   const metrics = useEvaluationResource(resourceType, resourceId).metrics
   const addBuiltinMetric = useEvaluationStore(state => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore(state => state.removeMetric)
-  const { data: availableMetricsData, isLoading: isAvailableMetricsLoading } = useAvailableEvaluationMetrics(open)
-  const { mutate: loadNodeInfo, isPending: isNodeInfoLoading } = useEvaluationNodeInfoMutation()
+  const { data: defaultMetricsData, isLoading: isDefaultMetricsLoading } = useDefaultEvaluationMetrics(resourceType, resourceId, open)
 
   const builtinMetrics = useMemo(() => {
     return metrics.filter(metric => metric.kind === 'builtin')
@@ -52,54 +46,19 @@ export const useMetricSelectorData = ({
     return new Map(builtinMetrics.map(metric => [metric.optionId, metric] as const))
   }, [builtinMetrics])
 
-  const availableMetricIds = useMemo(() => availableMetricsData?.metrics ?? [], [availableMetricsData?.metrics])
-  const availableMetricIdsKey = availableMetricIds.join(',')
+  const defaultMetrics = useMemo(() => defaultMetricsData?.default_metrics ?? [], [defaultMetricsData?.default_metrics])
+  const nodeInfoMap = useMemo(() => getDefaultMetricNodeInfoMap(defaultMetrics), [defaultMetrics])
 
   const resolvedMetrics = useMemo(() => {
-    const metricsMap = new Map(config.builtinMetrics.map(metric => [metric.id, metric] as const))
+    return defaultMetrics
+      .map((defaultMetric) => {
+        if (!defaultMetric.metric)
+          return null
 
-    return availableMetricIds.map(metricId => metricsMap.get(metricId) ?? buildMetricOption(metricId))
-  }, [availableMetricIds, config.builtinMetrics])
-
-  useEffect(() => {
-    if (!open)
-      return
-
-    if (resourceType === 'datasets' || !resourceId || availableMetricIds.length === 0)
-      return
-
-    let isActive = true
-
-    loadNodeInfo(
-      {
-        params: {
-          targetType: toEvaluationTargetType(resourceType),
-          targetId: resourceId,
-        },
-        body: {
-          metrics: availableMetricIds,
-        },
-      },
-      {
-        onSuccess: (data) => {
-          if (!isActive)
-            return
-
-          setNodeInfoMap(data)
-        },
-        onError: () => {
-          if (!isActive)
-            return
-
-          setNodeInfoMap({})
-        },
-      },
-    )
-
-    return () => {
-      isActive = false
-    }
-  }, [availableMetricIds, availableMetricIdsKey, loadNodeInfo, open, resourceId, resourceType, setNodeInfoMap])
+        return buildMetricOption(defaultMetric.metric, defaultMetric.value_type)
+      })
+      .filter((metric): metric is MetricOption => !!metric)
+  }, [defaultMetrics])
 
   const filteredSections = useMemo(() => {
     const keyword = query.trim().toLowerCase()
@@ -110,8 +69,7 @@ export const useMetricSelectorData = ({
         || metric.label.toLowerCase().includes(keyword)
         || metricDescription.toLowerCase().includes(keyword)
       const metricNodes = nodeInfoMap[metric.id] ?? []
-      const supportsNodeSelection = resourceType !== 'datasets'
-      const hasNoNodeInfo = supportsNodeSelection && metricNodes.length === 0
+      const hasNoNodeInfo = metricNodes.length === 0
 
       if (hasNoNodeInfo) {
         if (!metricMatches)
@@ -146,10 +104,11 @@ export const useMetricSelectorData = ({
         hasNoNodeInfo: false,
         visibleNodes,
       }
-    }).filter(section => !!section)
-  }, [nodeInfoMap, query, resolvedMetrics, resourceType, t])
+    }).filter((section): section is MetricSelectorSection => !!section)
+  }, [nodeInfoMap, query, resolvedMetrics, t])
 
-  const toggleNodeSelection = (metricId: string, nodeInfo: NodeInfo) => {
+  const toggleNodeSelection = (metric: MetricOption, nodeInfo: NodeInfo) => {
+    const metricId = metric.id
     const addedMetric = builtinMetricMap.get(metricId)
     const currentSelectedNodes = addedMetric?.nodeInfoList ?? []
 
@@ -164,13 +123,13 @@ export const useMetricSelectorData = ({
       return
     }
 
-    addBuiltinMetric(resourceType, resourceId, metricId, nextSelectedNodes)
+    addBuiltinMetric(resourceType, resourceId, metricId, nextSelectedNodes, metric)
   }
 
   return {
     builtinMetricMap,
     filteredSections,
-    isRemoteLoading: isAvailableMetricsLoading || isNodeInfoLoading,
+    isRemoteLoading: isDefaultMetricsLoading,
     toggleNodeSelection,
   }
 }

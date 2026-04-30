@@ -385,9 +385,6 @@
     }
   },
   "web/app/components/app/configuration/config/agent/agent-tools/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 9
     }
@@ -639,11 +636,6 @@
   "web/app/components/app/log/model-info.tsx": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/app/overview/app-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/app/overview/customize/index.tsx": {
@@ -2607,14 +2599,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/external-api/external-api-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -2622,11 +2606,6 @@
   },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelection.tsx": {
     "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/extra-info/statistics.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3203,22 +3182,9 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-auth/authorize/add-oauth-button.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/plugin-auth/authorize/index.tsx": {
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-auth/authorize/oauth-client-settings.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/plugins/plugin-auth/authorized-in-node.tsx": {
@@ -3299,9 +3265,6 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/endpoint-list.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -3764,11 +3727,6 @@
       "count": 1
     }
   },
-  "web/app/components/tools/mcp/detail/tool-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/mcp/mcp-server-modal.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3779,11 +3737,6 @@
   },
   "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/mcp/mcp-service-card.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3818,21 +3771,6 @@
     },
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/tools/workflow-tool/confirm-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/workflow-tool/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/workflow-tool/method-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/workflow-app/components/workflow-children.tsx": {
@@ -4266,9 +4204,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/prompt/editor.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -5736,9 +5671,6 @@
     }
   },
   "web/app/signin/one-more-step.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }

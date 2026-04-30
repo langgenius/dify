@@ -7,10 +7,10 @@ import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useAvailableEvaluationMetrics } from '@/service/use-evaluation'
+import { useDatasetEvaluationMetrics } from '@/service/use-evaluation'
 import { usePublishedPipelineInfo } from '@/service/use-pipeline'
-import { getEvaluationMockConfig } from '../../mock'
 import { useEvaluationResource, useEvaluationStore } from '../../store'
+import { buildMetricOption } from '../metric-selector/utils'
 import { InlineSectionHeader } from '../section-header'
 import PipelineMetricItem from './pipeline-metric-item'
 
@@ -49,10 +49,9 @@ const PipelineMetricsSection = ({
   const addBuiltinMetric = useEvaluationStore(state => state.addBuiltinMetric)
   const removeMetric = useEvaluationStore(state => state.removeMetric)
   const updateMetricThreshold = useEvaluationStore(state => state.updateMetricThreshold)
-  const { data: availableMetricsData } = useAvailableEvaluationMetrics()
+  const { data: datasetMetricsData } = useDatasetEvaluationMetrics(resourceId)
   const { data: publishedPipeline } = usePublishedPipelineInfo(pipelineId || '')
   const resource = useEvaluationResource(resourceType, resourceId)
-  const config = getEvaluationMockConfig(resourceType)
   const knowledgeIndexNodeInfoList = useMemo(
     () => getKnowledgeIndexNodeInfo(publishedPipeline?.graph.nodes),
     [publishedPipeline?.graph.nodes],
@@ -62,12 +61,14 @@ const PipelineMetricsSection = ({
       .filter(metric => metric.kind === 'builtin')
       .map(metric => [metric.optionId, metric]),
   ), [resource.metrics])
-  const availableMetricIds = useMemo(() => new Set(availableMetricsData?.metrics ?? []), [availableMetricsData?.metrics])
   const availableBuiltinMetrics = useMemo(() => {
-    return config.builtinMetrics.filter(metric =>
-      availableMetricIds.has(metric.id) || builtinMetricMap.has(metric.id),
-    )
-  }, [availableMetricIds, builtinMetricMap, config.builtinMetrics])
+    const metricIds = new Set([
+      ...(datasetMetricsData?.metrics ?? []),
+      ...builtinMetricMap.keys(),
+    ])
+
+    return Array.from(metricIds).map(metricId => buildMetricOption(metricId))
+  }, [datasetMetricsData?.metrics, builtinMetricMap])
 
   useEffect(() => {
     if (!knowledgeIndexNodeInfoList.length)
@@ -77,7 +78,7 @@ const PipelineMetricsSection = ({
       if (metric.kind !== 'builtin' || isSameNodeInfoList(metric.nodeInfoList, knowledgeIndexNodeInfoList))
         return
 
-      addBuiltinMetric(resourceType, resourceId, metric.optionId, knowledgeIndexNodeInfoList)
+      addBuiltinMetric(resourceType, resourceId, metric.optionId, knowledgeIndexNodeInfoList, metric)
     })
   }, [addBuiltinMetric, knowledgeIndexNodeInfoList, resource.metrics, resourceId, resourceType])
 
@@ -88,7 +89,8 @@ const PipelineMetricsSection = ({
       return
     }
 
-    addBuiltinMetric(resourceType, resourceId, metricId, knowledgeIndexNodeInfoList)
+    const metricOption = availableBuiltinMetrics.find(metric => metric.id === metricId)
+    addBuiltinMetric(resourceType, resourceId, metricId, knowledgeIndexNodeInfoList, metricOption)
   }
 
   return (

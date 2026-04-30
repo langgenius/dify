@@ -21,7 +21,6 @@ import type {
   NodeInfo,
 } from '@/types/evaluation'
 import { getDefaultMetricDescription } from './default-metric-descriptions'
-import { getEvaluationMockConfig } from './mock'
 import {
   buildConditionMetricOptions,
   decodeModelSelection,
@@ -34,6 +33,19 @@ import {
 type EvaluationStoreResources = Record<string, EvaluationResourceState>
 
 export const DEFAULT_PIPELINE_METRIC_THRESHOLD = 0.85
+export const EVALUATION_TEMPLATE_FILE_NAMES: Record<EvaluationResourceType, string> = {
+  apps: 'workflow-evaluation-template.csv',
+  snippets: 'snippet-evaluation-template.csv',
+  datasets: 'pipeline-evaluation-template.csv',
+}
+
+const BATCH_HISTORY_SUMMARY_LABELS: Record<EvaluationResourceType, string> = {
+  apps: 'Workflow evaluation batch',
+  snippets: 'Snippet evaluation batch',
+  datasets: 'Pipeline evaluation batch',
+}
+
+const PIPELINE_METRIC_IDS = new Set(['context-precision', 'context-recall', 'context-relevance'])
 
 const PIPELINE_LOGICAL_OPERATOR: JudgmentConfig['logicalOperator'] = 'and'
 
@@ -47,9 +59,8 @@ const humanizeMetricId = (metricId: string) => {
     .join(' ')
 }
 
-const resolveMetricOption = (resourceType: EvaluationResourceType, metricId: string): MetricOption => {
-  const config = getEvaluationMockConfig(resourceType)
-  return config.builtinMetrics.find(metric => metric.id === metricId) ?? {
+export const resolveMetricOption = (metricId: string): MetricOption => {
+  return {
     id: metricId,
     label: humanizeMetricId(metricId),
     description: getDefaultMetricDescription(metricId),
@@ -57,13 +68,11 @@ const resolveMetricOption = (resourceType: EvaluationResourceType, metricId: str
   }
 }
 
-const pipelineMetricIds = new Set(getEvaluationMockConfig('datasets').builtinMetrics.map(metric => metric.id))
-
 const isPipelineResourceType = (resourceType: EvaluationResourceType) => resourceType === 'datasets'
 
 const isPipelineResourceState = (resource: EvaluationResourceState) => {
   return resource.metrics.length > 0
-    && resource.metrics.every(metric => metric.kind === 'builtin' && pipelineMetricIds.has(metric.optionId))
+    && resource.metrics.every(metric => metric.kind === 'builtin' && PIPELINE_METRIC_IDS.has(metric.optionId))
 }
 
 const normalizeNodeInfoList = (value: NodeInfo[] | undefined): NodeInfo[] => {
@@ -88,10 +97,7 @@ const normalizeNodeInfoList = (value: NodeInfo[] | undefined): NodeInfo[] => {
     .filter((item): item is NodeInfo => !!item)
 }
 
-const normalizeDefaultMetrics = (
-  resourceType: EvaluationResourceType,
-  value: EvaluationDefaultMetric[] | null | undefined,
-): EvaluationMetric[] => {
+const normalizeDefaultMetrics = (value: EvaluationDefaultMetric[] | null | undefined): EvaluationMetric[] => {
   if (!value?.length)
     return []
 
@@ -101,7 +107,7 @@ const normalizeDefaultMetrics = (
       if (!metricId)
         return null
 
-      const metricOption = resolveMetricOption(resourceType, metricId)
+      const metricOption = resolveMetricOption(metricId)
       return createBuiltinMetric(metricOption, normalizeNodeInfoList(item.node_info_list ?? []))
     })
     .filter((item): item is EvaluationMetric => !!item)
@@ -455,7 +461,7 @@ export const buildStateFromEvaluationConfig = (
   resourceType: EvaluationResourceType,
   config: EvaluationConfig,
 ): EvaluationResourceState => {
-  const defaultMetrics = normalizeDefaultMetrics(resourceType, config.default_metrics)
+  const defaultMetrics = normalizeDefaultMetrics(config.default_metrics)
   const customMetrics = isPipelineResourceType(resourceType) ? [] : normalizeCustomMetric(config.customized_metrics)
   const metrics = isPipelineResourceType(resourceType)
     ? normalizePipelineMetrics(config, defaultMetrics)
@@ -652,14 +658,12 @@ export const createBatchTestRecord = (
   resourceType: EvaluationResourceType,
   uploadedFileName: string | null | undefined,
 ): BatchTestRecord => {
-  const config = getEvaluationMockConfig(resourceType)
-
   return {
     id: createId('batch'),
-    fileName: uploadedFileName ?? config.templateFileName,
+    fileName: uploadedFileName ?? EVALUATION_TEMPLATE_FILE_NAMES[resourceType],
     status: 'running',
     startedAt: new Date().toLocaleTimeString(),
-    summary: config.historySummaryLabel,
+    summary: BATCH_HISTORY_SUMMARY_LABELS[resourceType],
   }
 }
 

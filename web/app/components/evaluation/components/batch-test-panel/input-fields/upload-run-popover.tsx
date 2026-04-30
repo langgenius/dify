@@ -25,7 +25,6 @@ type UploadRunPopoverProps = {
   isRunning: boolean
   onUploadFile: (file: File | undefined) => void
   onClearUploadedFile: () => void
-  onDownloadTemplate: () => void
   onRun: () => void
 }
 
@@ -43,7 +42,6 @@ const UploadRunPopover = ({
   isRunning,
   onUploadFile,
   onClearUploadedFile,
-  onDownloadTemplate,
   onRun,
 }: UploadRunPopoverProps) => {
   const { t } = useTranslation('evaluation')
@@ -82,7 +80,7 @@ const UploadRunPopover = ({
               ref={fileInputRef}
               hidden
               type="file"
-              accept=".csv,.xlsx"
+              accept=".csv"
               onChange={handleFileChange}
             />
             {currentFileName
@@ -111,7 +109,7 @@ const UploadRunPopover = ({
                         onClick={onClearUploadedFile}
                         aria-label={t('batch.removeUploadedFile')}
                       >
-                        <span aria-hidden="true" className="i-ri-close-line h-4 w-4" />
+                        <span aria-hidden="true" className="i-ri-delete-bin-line h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -139,15 +137,15 @@ const UploadRunPopover = ({
                         {t('batch.uploadDropzoneSuffix')}
                       </div>
                       <div className="mt-0.5 system-xs-regular text-text-tertiary">
-                        {t('batch.uploadDropzoneDownloadPrefix')}
-                        {' '}
                         <button
                           type="button"
                           className="text-text-accent hover:underline"
-                          onClick={onDownloadTemplate}
+                          onClick={() => fileInputRef.current?.click()}
                         >
-                          {t('batch.uploadDropzoneDownloadLink')}
+                          {t('batch.uploadDropzoneUploadButton')}
                         </button>
+                        {' '}
+                        {t('batch.uploadHint')}
                       </div>
                     </div>
                   </div>

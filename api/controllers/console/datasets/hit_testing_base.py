@@ -39,6 +39,48 @@ class HitTestingPayload(BaseModel):
 
 class DatasetsHitTestingBase:
     @staticmethod
+    def _normalize_hit_testing_query(query: Any) -> str:
+        """Return the user-visible query string from legacy and current response shapes."""
+        if isinstance(query, str):
+            return query
+
+        if isinstance(query, dict):
+            content = query.get("content")
+            if isinstance(content, str):
+                return content
+
+        raise ValueError("Invalid hit testing query response")
+
+    @staticmethod
+    def _normalize_hit_testing_records(records: Any) -> list[dict[str, Any]]:
+        """Coerce nullable collection fields into lists before response validation."""
+        if not isinstance(records, list):
+            return []
+
+        normalized_records: list[dict[str, Any]] = []
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+
+            normalized_record = dict(record)
+            segment = normalized_record.get("segment")
+            if isinstance(segment, dict):
+                normalized_segment = dict(segment)
+                if normalized_segment.get("keywords") is None:
+                    normalized_segment["keywords"] = []
+                normalized_record["segment"] = normalized_segment
+
+            if normalized_record.get("child_chunks") is None:
+                normalized_record["child_chunks"] = []
+
+            if normalized_record.get("files") is None:
+                normalized_record["files"] = []
+
+            normalized_records.append(normalized_record)
+
+        return normalized_records
+
+    @staticmethod
     def get_and_validate_dataset(dataset_id: str):
         assert isinstance(current_user, Account)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -75,7 +117,12 @@ class DatasetsHitTestingBase:
                 attachment_ids=args.get("attachment_ids"),
                 limit=10,
             )
-            return {"query": response["query"], "records": marshal(response["records"], hit_testing_record_fields)}
+            return {
+                "query": DatasetsHitTestingBase._normalize_hit_testing_query(response.get("query")),
+                "records": DatasetsHitTestingBase._normalize_hit_testing_records(
+                    marshal(response.get("records", []), hit_testing_record_fields)
+                ),
+            }
         except services.errors.index.IndexNotInitializedError:
             raise DatasetNotInitializedError()
         except ProviderTokenNotInitError as ex:

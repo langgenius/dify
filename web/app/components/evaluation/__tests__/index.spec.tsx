@@ -6,12 +6,13 @@ import ConditionsSection from '../components/conditions-section'
 import { useEvaluationStore } from '../store'
 
 const mockUpload = vi.hoisted(() => vi.fn())
-const mockUseAvailableEvaluationMetrics = vi.hoisted(() => vi.fn())
+const mockUseDatasetEvaluationMetrics = vi.hoisted(() => vi.fn())
+const mockUseDefaultEvaluationMetrics = vi.hoisted(() => vi.fn())
 const mockUseEvaluationConfig = vi.hoisted(() => vi.fn())
-const mockUseEvaluationNodeInfoMutation = vi.hoisted(() => vi.fn())
 const mockUseSaveEvaluationConfigMutation = vi.hoisted(() => vi.fn())
 const mockUseStartEvaluationRunMutation = vi.hoisted(() => vi.fn())
 const mockUsePublishedPipelineInfo = vi.hoisted(() => vi.fn())
+const mockUseSnippetPublishedWorkflow = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: () => ({
@@ -50,8 +51,8 @@ vi.mock('@/service/base', () => ({
 
 vi.mock('@/service/use-evaluation', () => ({
   useEvaluationConfig: (...args: unknown[]) => mockUseEvaluationConfig(...args),
-  useAvailableEvaluationMetrics: (...args: unknown[]) => mockUseAvailableEvaluationMetrics(...args),
-  useEvaluationNodeInfoMutation: (...args: unknown[]) => mockUseEvaluationNodeInfoMutation(...args),
+  useDatasetEvaluationMetrics: (...args: unknown[]) => mockUseDatasetEvaluationMetrics(...args),
+  useDefaultEvaluationMetrics: (...args: unknown[]) => mockUseDefaultEvaluationMetrics(...args),
   useSaveEvaluationConfigMutation: (...args: unknown[]) => mockUseSaveEvaluationConfigMutation(...args),
   useStartEvaluationRunMutation: (...args: unknown[]) => mockUseStartEvaluationRunMutation(...args),
 }))
@@ -86,23 +87,7 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('@/service/use-snippet-workflows', () => ({
-  useSnippetPublishedWorkflow: () => ({
-    data: {
-      graph: {
-        nodes: [{
-          id: 'start',
-          data: {
-            type: 'start',
-            variables: [{
-              variable: 'query',
-              type: 'text-input',
-            }],
-          },
-        }],
-      },
-    },
-    isLoading: false,
-  }),
+  useSnippetPublishedWorkflow: (...args: unknown[]) => mockUseSnippetPublishedWorkflow(...args),
 }))
 
 const renderWithQueryClient = (ui: ReactNode) => {
@@ -128,31 +113,54 @@ const renderWithQueryClient = (ui: ReactNode) => {
 
 describe('Evaluation', () => {
   beforeEach(() => {
-    useEvaluationStore.setState({ resources: {} })
+    useEvaluationStore.setState({ resources: {}, initialResources: {} })
     vi.clearAllMocks()
     mockUseEvaluationConfig.mockReturnValue({
       data: null,
     })
 
-    mockUseAvailableEvaluationMetrics.mockReturnValue({
+    mockUseDatasetEvaluationMetrics.mockReturnValue({
       data: {
         metrics: ['answer-correctness', 'faithfulness', 'context-precision', 'context-recall', 'context-relevance'],
       },
       isLoading: false,
     })
 
-    mockUseEvaluationNodeInfoMutation.mockReturnValue({
-      isPending: false,
-      mutate: (_input: unknown, options?: { onSuccess?: (data: Record<string, Array<{ node_id: string, title: string, type: string }>>) => void }) => {
-        options?.onSuccess?.({
-          'answer-correctness': [
-            { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
-          ],
-          'faithfulness': [
-            { node_id: 'node-faithfulness', title: 'Retriever Node', type: 'retriever' },
-          ],
-        })
+    mockUseDefaultEvaluationMetrics.mockReturnValue({
+      data: {
+        default_metrics: [
+          {
+            metric: 'answer-correctness',
+            value_type: 'number',
+            node_info_list: [
+              { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
+            ],
+          },
+          {
+            metric: 'faithfulness',
+            value_type: 'number',
+            node_info_list: [
+              { node_id: 'node-faithfulness', title: 'Retriever Node', type: 'retriever' },
+            ],
+          },
+          {
+            metric: 'context-precision',
+            value_type: 'number',
+            node_info_list: [],
+          },
+          {
+            metric: 'context-recall',
+            value_type: 'number',
+            node_info_list: [],
+          },
+          {
+            metric: 'context-relevance',
+            value_type: 'number',
+            node_info_list: [],
+          },
+        ],
       },
+      isLoading: false,
     })
     mockUseSaveEvaluationConfigMutation.mockReturnValue({
       isPending: false,
@@ -175,6 +183,24 @@ describe('Evaluation', () => {
           edges: [],
         },
       },
+    })
+    mockUseSnippetPublishedWorkflow.mockReturnValue({
+      data: {
+        graph: {
+          nodes: [{
+            id: 'start',
+            data: {
+              type: 'start',
+              variables: [{
+                variable: 'query',
+                type: 'text-input',
+              }],
+            },
+          }],
+        },
+        input_fields: [],
+      },
+      isLoading: false,
     })
     mockUpload.mockResolvedValue({
       id: 'uploaded-file-id',
@@ -251,6 +277,123 @@ describe('Evaluation', () => {
     })
   })
 
+  it('should reset unsaved non-pipeline config changes to the hydrated config', () => {
+    mockUseEvaluationConfig.mockReturnValue({
+      data: {
+        evaluation_model: 'gpt-4o-mini',
+        evaluation_model_provider: 'openai',
+        default_metrics: [],
+        customized_metrics: null,
+        judgment_config: null,
+      },
+    })
+
+    renderWithQueryClient(<Evaluation resourceType="apps" resourceId="app-reset" />)
+
+    const resetButton = screen.getByRole('button', { name: 'common.operation.reset' })
+    expect(resetButton).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.add' }))
+    fireEvent.change(screen.getByPlaceholderText('evaluation.metrics.searchNodeOrMetrics'), {
+      target: { value: 'faith' },
+    })
+    fireEvent.click(screen.getByTestId('evaluation-metric-node-faithfulness-node-faithfulness'))
+
+    expect(useEvaluationStore.getState().resources['apps:app-reset']!.metrics).toHaveLength(1)
+    expect(resetButton).toBeEnabled()
+
+    fireEvent.click(resetButton)
+
+    expect(useEvaluationStore.getState().resources['apps:app-reset']!.metrics).toHaveLength(0)
+    expect(resetButton).toBeDisabled()
+  })
+
+  it('should hide the batch config warning when judge model and metrics are configured', () => {
+    const resourceType = 'apps'
+    const resourceId = 'app-batch-configured'
+    const store = useEvaluationStore.getState()
+
+    act(() => {
+      store.ensureResource(resourceType, resourceId)
+      store.setJudgeModel(resourceType, resourceId, 'openai::gpt-4o-mini')
+      store.addBuiltinMetric(resourceType, resourceId, 'faithfulness', [
+        { node_id: 'node-faithfulness', title: 'Retriever Node', type: 'retriever' },
+      ])
+    })
+
+    renderWithQueryClient(<Evaluation resourceType={resourceType} resourceId={resourceId} />)
+
+    expect(screen.queryByText('evaluation.batch.noticeDescription')).not.toBeInTheDocument()
+  })
+
+  it('should use published snippet input fields for snippet batch templates', () => {
+    mockUseSnippetPublishedWorkflow.mockReturnValue({
+      data: {
+        graph: {
+          nodes: [{
+            id: 'start',
+            data: {
+              type: 'start',
+              variables: [{
+                variable: 'graph_only',
+                type: 'text-input',
+              }],
+            },
+          }],
+        },
+        input_fields: [
+          {
+            label: 'Snippet Topic',
+            variable: 'snippet_topic',
+            type: 'text-input',
+            required: true,
+          },
+          {
+            label: 'Need Summary',
+            variable: 'need_summary',
+            type: 'checkbox',
+            required: false,
+          },
+        ],
+      },
+      isLoading: false,
+    })
+
+    renderWithQueryClient(<Evaluation resourceType="snippets" resourceId="snippet-fields" />)
+
+    expect(mockUseSnippetPublishedWorkflow).toHaveBeenCalledWith('snippet-fields')
+    expect(screen.getByText('snippet_topic')).toBeInTheDocument()
+    expect(screen.getByText('need_summary')).toBeInTheDocument()
+    expect(screen.queryByText('graph_only')).not.toBeInTheDocument()
+  })
+
+  it('should show snippet-specific empty input fields copy', () => {
+    mockUseSnippetPublishedWorkflow.mockReturnValue({
+      data: {
+        graph: {
+          nodes: [{
+            id: 'start',
+            data: {
+              type: 'start',
+              variables: [{
+                variable: 'graph_only',
+                type: 'text-input',
+              }],
+            },
+          }],
+        },
+        input_fields: [],
+      },
+      isLoading: false,
+    })
+
+    renderWithQueryClient(<Evaluation resourceType="snippets" resourceId="snippet-empty-fields" />)
+
+    expect(screen.getByText('evaluation.batch.noSnippetInputFields')).toBeInTheDocument()
+    expect(screen.queryByText('evaluation.batch.noInputFields')).not.toBeInTheDocument()
+    expect(screen.queryByText('graph_only')).not.toBeInTheDocument()
+  })
+
   it('should hide the value row for empty operators', () => {
     const resourceType = 'apps'
     const resourceId = 'app-2'
@@ -312,7 +455,7 @@ describe('Evaluation', () => {
 
     render(<ConditionsSection resourceType={resourceType} resourceId={resourceId} />)
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'evaluation.conditions.addCondition' }))
+    fireEvent.click(screen.getByRole('button', { name: 'evaluation.conditions.addCondition' }))
 
     expect(screen.getByText('Faithfulness')).toBeInTheDocument()
     expect(screen.getByText('Review Workflow')).toBeInTheDocument()
@@ -321,7 +464,7 @@ describe('Evaluation', () => {
     expect(screen.getByText('evaluation.conditions.valueTypes.number')).toBeInTheDocument()
     expect(screen.getByText('evaluation.conditions.valueTypes.string')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('option', { name: /reason/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /reason/i }))
 
     const condition = useEvaluationStore.getState().resources['apps:app-conditions-dropdown'].judgmentConfig.conditions[0]
 
@@ -330,20 +473,17 @@ describe('Evaluation', () => {
   })
 
   it('should render the metric no-node empty state', () => {
-    mockUseAvailableEvaluationMetrics.mockReturnValue({
+    mockUseDefaultEvaluationMetrics.mockReturnValue({
       data: {
-        metrics: ['context-precision'],
+        default_metrics: [
+          {
+            metric: 'context-precision',
+            value_type: 'number',
+            node_info_list: [],
+          },
+        ],
       },
       isLoading: false,
-    })
-
-    mockUseEvaluationNodeInfoMutation.mockReturnValue({
-      isPending: false,
-      mutate: (_input: unknown, options?: { onSuccess?: (data: Record<string, Array<{ node_id: string, title: string, type: string }>>) => void }) => {
-        options?.onSuccess?.({
-          'context-precision': [],
-        })
-      },
     })
 
     renderWithQueryClient(<Evaluation resourceType="apps" resourceId="app-3" />)
@@ -353,10 +493,49 @@ describe('Evaluation', () => {
     expect(screen.getByText('evaluation.metrics.noNodesInWorkflow')).toBeInTheDocument()
   })
 
-  it('should render the global empty state when no metrics are available', () => {
-    mockUseAvailableEvaluationMetrics.mockReturnValue({
+  it('should add a node from a dynamically returned metric option', () => {
+    mockUseDefaultEvaluationMetrics.mockReturnValue({
       data: {
-        metrics: [],
+        default_metrics: [
+          {
+            metric: 'answer-correctness',
+            value_type: 'number',
+            node_info_list: [
+              { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
+            ],
+          },
+          {
+            metric: 'context-precision',
+            value_type: 'number',
+            node_info_list: [
+              { node_id: 'node-context', title: 'Context Node', type: 'knowledge-retrieval' },
+            ],
+          },
+        ],
+      },
+      isLoading: false,
+    })
+
+    renderWithQueryClient(<Evaluation resourceType="apps" resourceId="app-dynamic-metric" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'evaluation.metrics.add' }))
+    fireEvent.click(screen.getByTestId('evaluation-metric-node-context-precision-node-context'))
+
+    const metrics = useEvaluationStore.getState().resources['apps:app-dynamic-metric']!.metrics
+    expect(metrics).toHaveLength(1)
+    expect(metrics[0]).toMatchObject({
+      optionId: 'context-precision',
+      label: 'Context Precision',
+      nodeInfoList: [
+        { node_id: 'node-context', title: 'Context Node', type: 'knowledge-retrieval' },
+      ],
+    })
+  })
+
+  it('should render the global empty state when no metrics are available', () => {
+    mockUseDefaultEvaluationMetrics.mockReturnValue({
+      data: {
+        default_metrics: [],
       },
       isLoading: false,
     })
@@ -369,25 +548,22 @@ describe('Evaluation', () => {
   })
 
   it('should show more nodes when a metric has more than three nodes', () => {
-    mockUseAvailableEvaluationMetrics.mockReturnValue({
+    mockUseDefaultEvaluationMetrics.mockReturnValue({
       data: {
-        metrics: ['answer-correctness'],
+        default_metrics: [
+          {
+            metric: 'answer-correctness',
+            value_type: 'number',
+            node_info_list: [
+              { node_id: 'node-1', title: 'LLM 1', type: 'llm' },
+              { node_id: 'node-2', title: 'LLM 2', type: 'llm' },
+              { node_id: 'node-3', title: 'LLM 3', type: 'llm' },
+              { node_id: 'node-4', title: 'LLM 4', type: 'llm' },
+            ],
+          },
+        ],
       },
       isLoading: false,
-    })
-
-    mockUseEvaluationNodeInfoMutation.mockReturnValue({
-      isPending: false,
-      mutate: (_input: unknown, options?: { onSuccess?: (data: Record<string, Array<{ node_id: string, title: string, type: string }>>) => void }) => {
-        options?.onSuccess?.({
-          'answer-correctness': [
-            { node_id: 'node-1', title: 'LLM 1', type: 'llm' },
-            { node_id: 'node-2', title: 'LLM 2', type: 'llm' },
-            { node_id: 'node-3', title: 'LLM 3', type: 'llm' },
-            { node_id: 'node-4', title: 'LLM 4', type: 'llm' },
-          ],
-        })
-      },
     })
 
     renderWithQueryClient(<Evaluation resourceType="apps" resourceId="app-5" />)
@@ -406,6 +582,7 @@ describe('Evaluation', () => {
   it('should render the pipeline-specific layout without auto-selecting a judge model', () => {
     renderWithQueryClient(<Evaluation resourceType="datasets" resourceId="dataset-1" />)
 
+    expect(mockUseDatasetEvaluationMetrics).toHaveBeenCalledWith('dataset-1')
     expect(screen.getByTestId('evaluation-model-selector')).toHaveTextContent('empty')
     expect(screen.getByText('evaluation.history.columns.time')).toBeInTheDocument()
     expect(screen.getByText('Context Precision')).toBeInTheDocument()
@@ -445,6 +622,33 @@ describe('Evaluation', () => {
     expect(screen.getByRole('button', { name: 'evaluation.pipeline.uploadAndRun' })).toBeEnabled()
   })
 
+  it('should download the fixed pipeline template columns', () => {
+    const createElement = document.createElement.bind(document)
+    let downloadLink: HTMLAnchorElement | undefined
+    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName, options) => {
+      const element = createElement(tagName, options)
+
+      if (tagName === 'a') {
+        downloadLink = element as HTMLAnchorElement
+        vi.spyOn(downloadLink, 'click').mockImplementation(() => {})
+      }
+
+      return element
+    })
+
+    renderWithQueryClient(<Evaluation resourceType="datasets" resourceId="dataset-template" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-model' }))
+    fireEvent.click(screen.getByRole('button', { name: /Context Precision/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'evaluation.batch.downloadTemplate' }))
+
+    expect(downloadLink?.download).toBe('pipeline-evaluation-template.csv')
+    expect(decodeURIComponent(downloadLink?.href ?? '')).toContain('query,expected_outputs\n')
+    expect(decodeURIComponent(downloadLink?.href ?? '')).not.toContain('expected_output')
+
+    createElementSpy.mockRestore()
+  })
+
   it('should upload and start a pipeline evaluation run', async () => {
     const startRun = vi.fn()
     mockUseStartEvaluationRunMutation.mockReturnValue({
@@ -463,14 +667,14 @@ describe('Evaluation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'evaluation.pipeline.uploadAndRun' }))
 
     expect(screen.getAllByText('query').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Expect Results').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('expected_outputs').length).toBeGreaterThan(0)
 
-    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"][accept=".csv,.xlsx"]')
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"][accept=".csv"]')
     expect(fileInput).toBeInTheDocument()
 
     fireEvent.change(fileInput!, {
       target: {
-        files: [new File(['query,Expect Results'], 'pipeline-evaluation.csv', { type: 'text/csv' })],
+        files: [new File(['query,expected_outputs'], 'pipeline-evaluation.csv', { type: 'text/csv' })],
       },
     })
 
