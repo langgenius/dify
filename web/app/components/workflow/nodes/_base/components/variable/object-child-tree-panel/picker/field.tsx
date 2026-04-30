@@ -43,7 +43,7 @@ const Field: FC<Props> = ({
           disabled={depth !== MAX_DEPTH + 1}
           render={(
             <div
-              className={cn('flex items-center justify-between rounded-md pr-2', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
+              className={cn('flex items-center justify-between rounded-md pr-2 outline-none focus:outline-none focus-visible:outline-none', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
               onMouseDown={() => !readonly && onSelect?.([...valueSelector, name])}
             >
               <div className="flex grow items-stretch">
