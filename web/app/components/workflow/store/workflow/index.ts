@@ -19,7 +19,7 @@ import type { WorkflowDraftSliceShape } from './workflow-draft-slice'
 import type { WorkflowSliceShape } from './workflow-slice'
 import type { RagPipelineSliceShape } from '@/app/components/rag-pipeline/store'
 import type { WorkflowSliceShape as WorkflowAppSliceShape } from '@/app/components/workflow-app/store/workflow/workflow-slice'
-import { useContext } from 'react'
+import { use } from 'react'
 import { temporal } from 'zundo'
 import {
   useStore as useZustandStore,
@@ -67,7 +67,7 @@ export type Shape
     & LayoutSliceShape
     & SliceFromInjection
 
-export type WorkflowStoreApi = StoreApi<Shape> & {
+type WorkflowStoreApi = StoreApi<Shape> & {
   temporal: StoreApi<TemporalState<WorkflowHistoryTemporalState>>
 }
 
@@ -108,7 +108,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
 }
 
 export function useStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(WorkflowContext)
+  const store = use(WorkflowContext)
   if (!store)
     throw new Error('Missing WorkflowContext.Provider in the tree')
 
@@ -116,5 +116,5 @@ export function useStore<T>(selector: (state: Shape) => T): T {
 }
 
 export const useWorkflowStore = () => {
-  return useContext(WorkflowContext)!
+  return use(WorkflowContext)!
 }
