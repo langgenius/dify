@@ -45,7 +45,7 @@ class TestMailOwnerTransferTask:
                 "get_email_service": mock_get_email_service,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
         """
         Helper method to create test account and tenant for testing.
 

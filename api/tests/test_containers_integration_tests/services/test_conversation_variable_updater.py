@@ -30,7 +30,7 @@ class TestConversationVariableUpdater:
         db_session_with_containers.commit()
         return row
 
-    def test_should_update_conversation_variable_data_and_commit(self, db_session_with_containers):
+    def test_should_update_conversation_variable_data_and_commit(self, db_session_with_containers: Session):
         conversation_id = str(uuid4())
         variable = StringVariable(id=str(uuid4()), name="topic", value="old value")
         self._create_conversation_variable(
@@ -47,7 +47,7 @@ class TestConversationVariableUpdater:
         assert row is not None
         assert row.data == updated_variable.model_dump_json()
 
-    def test_should_raise_not_found_when_variable_missing(self, db_session_with_containers):
+    def test_should_raise_not_found_when_variable_missing(self, db_session_with_containers: Session):
         conversation_id = str(uuid4())
         variable = StringVariable(id=str(uuid4()), name="topic", value="value")
         updater = ConversationVariableUpdater(sessionmaker(bind=db.engine))
@@ -55,7 +55,7 @@ class TestConversationVariableUpdater:
         with pytest.raises(ConversationVariableNotFoundError, match="conversation variable not found in the database"):
             updater.update(conversation_id=conversation_id, variable=variable)
 
-    def test_should_do_nothing_when_flush_is_called(self, db_session_with_containers):
+    def test_should_do_nothing_when_flush_is_called(self, db_session_with_containers: Session):
         updater = ConversationVariableUpdater(sessionmaker(bind=db.engine))
 
         result = updater.flush()

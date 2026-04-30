@@ -26,7 +26,7 @@ class TestCreateSegmentToIndexTask:
     """Integration tests for create_segment_to_index_task using testcontainers."""
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers):
+    def cleanup_database(self, db_session_with_containers: Session):
         """Clean up database and Redis before each test to ensure isolation."""
 
         # Clear all test data using fixture session
@@ -56,7 +56,7 @@ class TestCreateSegmentToIndexTask:
                 "index_processor": mock_processor,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
         """
         Helper method to create a test account and tenant for testing.
 

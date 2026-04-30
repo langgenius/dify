@@ -390,7 +390,7 @@ class TestConversationServiceVariables:
 
 
 class TestConversationServicePaginationWithContainers:
-    def test_pagination_by_last_id_raises_error_when_last_id_missing(self, db_session_with_containers):
+    def test_pagination_by_last_id_raises_error_when_last_id_missing(self, db_session_with_containers: Session):
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
 
@@ -404,7 +404,7 @@ class TestConversationServicePaginationWithContainers:
                 invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_pagination_by_last_id_with_default_desc_updated_at(self, db_session_with_containers):
+    def test_pagination_by_last_id_with_default_desc_updated_at(self, db_session_with_containers: Session):
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         base_time = datetime(2024, 1, 1, 8, 0, 0)
@@ -442,7 +442,7 @@ class TestConversationServicePaginationWithContainers:
         assert newest.id != middle.id
         assert [conversation.id for conversation in result.data] == [oldest.id]
 
-    def test_pagination_by_last_id_with_name_sort(self, db_session_with_containers):
+    def test_pagination_by_last_id_with_name_sort(self, db_session_with_containers: Session):
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         alpha = factory.create_conversation(db_session_with_containers, app, account, name="Alpha")
@@ -462,7 +462,7 @@ class TestConversationServicePaginationWithContainers:
         assert alpha.id != beta.id
         assert [conversation.id for conversation in result.data] == [gamma.id]
 
-    def test_pagination_filters_to_end_user_api_source(self, db_session_with_containers):
+    def test_pagination_filters_to_end_user_api_source(self, db_session_with_containers: Session):
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         end_user = factory.create_end_user(db_session_with_containers, app)
@@ -493,7 +493,7 @@ class TestConversationServicePaginationWithContainers:
         assert account_conversation.id != end_user_conversation.id
         assert [conversation.id for conversation in result.data] == [end_user_conversation.id]
 
-    def test_pagination_filters_to_account_console_source(self, db_session_with_containers):
+    def test_pagination_filters_to_account_console_source(self, db_session_with_containers: Session):
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         end_user = factory.create_end_user(db_session_with_containers, app)

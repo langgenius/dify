@@ -39,7 +39,7 @@ class TestOAuthServerServiceGetProviderApp:
         db_session_with_containers.commit()
         return app
 
-    def test_get_oauth_provider_app_returns_app_when_exists(self, db_session_with_containers):
+    def test_get_oauth_provider_app_returns_app_when_exists(self, db_session_with_containers: Session):
         client_id = f"client-{uuid4()}"
         created = self._create_oauth_provider_app(db_session_with_containers, client_id=client_id)
 
@@ -49,7 +49,7 @@ class TestOAuthServerServiceGetProviderApp:
         assert result.client_id == client_id
         assert result.id == created.id
 
-    def test_get_oauth_provider_app_returns_none_when_not_exists(self, db_session_with_containers):
+    def test_get_oauth_provider_app_returns_none_when_not_exists(self, db_session_with_containers: Session):
         result = OAuthServerService.get_oauth_provider_app(f"nonexistent-{uuid4()}")
 
         assert result is None

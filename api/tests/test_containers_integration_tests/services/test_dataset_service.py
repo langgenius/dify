@@ -721,7 +721,7 @@ class TestDocumentServicePauseRecoverRetry:
         db_session_with_containers.commit()
         return doc, account
 
-    def test_pause_document_success(self, db_session_with_containers):
+    def test_pause_document_success(self, db_session_with_containers: Session):
         from extensions.ext_redis import redis_client
         from services.dataset_service import DocumentService
 
@@ -740,7 +740,7 @@ class TestDocumentServicePauseRecoverRetry:
         assert redis_client.get(cache_key) is not None
         redis_client.delete(cache_key)
 
-    def test_pause_document_invalid_status_error(self, db_session_with_containers):
+    def test_pause_document_invalid_status_error(self, db_session_with_containers: Session):
         from services.dataset_service import DocumentService
         from services.errors.document import DocumentIndexingError
 
@@ -751,7 +751,7 @@ class TestDocumentServicePauseRecoverRetry:
             with pytest.raises(DocumentIndexingError):
                 DocumentService.pause_document(doc)
 
-    def test_recover_document_success(self, db_session_with_containers):
+    def test_recover_document_success(self, db_session_with_containers: Session):
         from extensions.ext_redis import redis_client
         from services.dataset_service import DocumentService
 
@@ -775,7 +775,7 @@ class TestDocumentServicePauseRecoverRetry:
         assert redis_client.get(cache_key) is None
         recover_task.delay.assert_called_once_with(doc.dataset_id, doc.id)
 
-    def test_retry_document_indexing_success(self, db_session_with_containers):
+    def test_retry_document_indexing_success(self, db_session_with_containers: Session):
         from extensions.ext_redis import redis_client
         from services.dataset_service import DocumentService
 

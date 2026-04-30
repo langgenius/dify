@@ -43,7 +43,7 @@ class TestMailInviteMemberTask:
     """
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers):
+    def cleanup_database(self, db_session_with_containers: Session):
         """Clean up database before each test to ensure isolation."""
         # Clear all test data
         db_session_with_containers.execute(delete(TenantAccountJoin))
@@ -79,7 +79,7 @@ class TestMailInviteMemberTask:
                 "config": mock_config,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers):
+    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
         """
         Helper method to create a test account and tenant for testing.
 

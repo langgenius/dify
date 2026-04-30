@@ -455,7 +455,7 @@ class TestEndUserServiceCreateBatch:
         all_apps = db_session_with_containers.query(App).filter(App.tenant_id == tenant_id).all()
         return tenant_id, all_apps
 
-    def test_create_batch_empty_app_ids(self, db_session_with_containers):
+    def test_create_batch_empty_app_ids(self, db_session_with_containers: Session):
         result = EndUserService.create_end_user_batch(
             type=InvokeFrom.SERVICE_API, tenant_id=str(uuid4()), app_ids=[], user_id="user-1"
         )

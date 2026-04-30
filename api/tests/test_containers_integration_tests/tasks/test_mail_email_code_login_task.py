@@ -38,7 +38,7 @@ class TestSendEmailCodeLoginMailTask:
     """
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers):
+    def cleanup_database(self, db_session_with_containers: Session):
         """Clean up database before each test to ensure isolation."""
         from extensions.ext_redis import redis_client
 

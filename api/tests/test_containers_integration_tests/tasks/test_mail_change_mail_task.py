@@ -30,7 +30,7 @@ class TestMailChangeMailTask:
                 "get_email_i18n_service": mock_get_email_i18n_service,
             }
 
-    def _create_test_account(self, db_session_with_containers):
+    def _create_test_account(self, db_session_with_containers: Session):
         """
         Helper method to create a test account for testing.
 

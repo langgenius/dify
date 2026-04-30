@@ -1,5 +1,6 @@
 """Testcontainers integration tests for DatasetService.create_empty_rag_pipeline_dataset."""
 
+from sqlalchemy.orm import Session
 from __future__ import annotations
 
 from unittest.mock import Mock, patch
@@ -48,7 +49,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
             permission="only_me",
         )
 
-    def test_create_rag_pipeline_dataset_raises_when_current_user_id_is_none(self, db_session_with_containers):
+    def test_create_rag_pipeline_dataset_raises_when_current_user_id_is_none(self, db_session_with_containers: Session):
         tenant, _ = self._create_tenant_and_account(db_session_with_containers)
 
         mock_user = Mock(id=None)
