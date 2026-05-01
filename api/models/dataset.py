@@ -1201,7 +1201,7 @@ class DatasetKeywordTable(TypeBase):
     )
 
     @property
-    def keyword_table_dict(self) -> dict[str, set[Any]] | None:
+    def keyword_table_dict(self) -> dict[str, Any] | None:
         class SetDecoder(json.JSONDecoder):
             def __init__(self, *args: Any, **kwargs: Any) -> None:
                 def object_hook(dct: Any) -> Any:
