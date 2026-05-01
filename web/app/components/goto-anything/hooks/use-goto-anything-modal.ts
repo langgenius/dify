@@ -12,6 +12,8 @@ type UseGotoAnythingModalReturn = {
   handleClose: () => void
 }
 
+export const GOTO_ANYTHING_OPEN_EVENT = 'dify:goto-anything-open'
+
 export const useGotoAnythingModal = (): UseGotoAnythingModalReturn => {
   const [show, setShow] = useState<boolean>(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -36,6 +38,13 @@ export const useGotoAnythingModal = (): UseGotoAnythingModalReturn => {
       setShow(false)
     }
   })
+
+  useEffect(() => {
+    const handleOpen = () => setShow(true)
+
+    window.addEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
+    return () => window.removeEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
+  }, [])
 
   const handleClose = useCallback(() => {
     setShow(false)

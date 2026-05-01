@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { useGotoAnythingModal } from '../use-goto-anything-modal'
+import { GOTO_ANYTHING_OPEN_EVENT, useGotoAnythingModal } from '../use-goto-anything-modal'
 
 type KeyPressEvent = {
   preventDefault: () => void
@@ -164,6 +164,20 @@ describe('useGotoAnythingModal', () => {
       })
 
       expect(result.current.show).toBe(false)
+    })
+  })
+
+  describe('open event', () => {
+    it('should open the modal when the global open event is dispatched', () => {
+      const { result } = renderHook(() => useGotoAnythingModal())
+
+      expect(result.current.show).toBe(false)
+
+      act(() => {
+        window.dispatchEvent(new Event(GOTO_ANYTHING_OPEN_EVENT))
+      })
+
+      expect(result.current.show).toBe(true)
     })
   })
 

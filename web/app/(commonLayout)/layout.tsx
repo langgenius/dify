@@ -6,8 +6,7 @@ import AmplitudeProvider from '@/app/components/base/amplitude'
 import GA, { GaType } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
 import { GotoAnything } from '@/app/components/goto-anything'
-import Header from '@/app/components/header'
-import HeaderWrapper from '@/app/components/header/header-wrapper'
+import MainNavLayout from '@/app/components/main-nav/layout'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
 import { AppContextProvider } from '@/context/app-context-provider'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
@@ -26,12 +25,11 @@ const Layout = ({ children }: { children: ReactNode }) => {
           <EventEmitterContextProvider>
             <ProviderContextProvider>
               <ModalContextProvider>
-                <HeaderWrapper>
-                  <Header />
-                </HeaderWrapper>
-                <RoleRouteGuard>
-                  {children}
-                </RoleRouteGuard>
+                <MainNavLayout>
+                  <RoleRouteGuard>
+                    {children}
+                  </RoleRouteGuard>
+                </MainNavLayout>
                 <InSiteMessageNotification />
                 <PartnerStack />
                 <ReadmePanel />

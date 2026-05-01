@@ -1,6 +1,6 @@
 'use client'
 
-import type { MouseEventHandler, ReactNode } from 'react'
+import type { MouseEventHandler, ReactElement, ReactNode } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
@@ -107,7 +107,16 @@ function AccountMenuSection({ children }: AccountMenuSectionProps) {
   return <DropdownMenuGroup className="py-1">{children}</DropdownMenuGroup>
 }
 
-export default function AppSelector() {
+type AccountDropdownProps = {
+  trigger?: (props: {
+    isOpen: boolean
+    ariaLabel: string
+  }) => ReactElement
+}
+
+export default function AppSelector({
+  trigger,
+}: AccountDropdownProps = {}) {
   const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
@@ -137,12 +146,23 @@ export default function AppSelector() {
   return (
     <div>
       <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
-        <DropdownMenuTrigger
-          aria-label={t('account.account', { ns: 'common' })}
-          className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}
-        >
-          <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
-        </DropdownMenuTrigger>
+        {trigger
+          ? (
+              <DropdownMenuTrigger
+                render={trigger({
+                  isOpen: isAccountMenuOpen,
+                  ariaLabel: t('account.account', { ns: 'common' }),
+                })}
+              />
+            )
+          : (
+              <DropdownMenuTrigger
+                aria-label={t('account.account', { ns: 'common' })}
+                className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', isAccountMenuOpen && 'bg-background-default-dodge')}
+              >
+                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
+              </DropdownMenuTrigger>
+            )}
         <DropdownMenuContent
           sideOffset={6}
           popupClassName="w-60 max-w-80 bg-components-panel-bg-blur! py-0! backdrop-blur-xs"

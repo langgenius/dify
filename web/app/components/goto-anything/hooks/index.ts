@@ -1,4 +1,4 @@
-export { useGotoAnythingModal } from './use-goto-anything-modal'
+export { GOTO_ANYTHING_OPEN_EVENT, useGotoAnythingModal } from './use-goto-anything-modal'
 
 export { useGotoAnythingNavigation } from './use-goto-anything-navigation'
 
