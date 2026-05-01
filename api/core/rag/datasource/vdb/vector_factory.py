@@ -144,8 +144,20 @@ class Vector:
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
         return get_vector_factory_class(vector_type)
 
+    @staticmethod
+    def _filter_empty_text_documents(documents: list[Document]) -> list[Document]:
+        filtered_documents = [document for document in documents if document.page_content.strip()]
+        skipped_count = len(documents) - len(filtered_documents)
+        if skipped_count:
+            logger.warning("skip %s empty documents before vector embedding", skipped_count)
+        return filtered_documents
+
     def create(self, texts: list | None = None, **kwargs):
         if texts:
+            texts = self._filter_empty_text_documents(texts)
+            if not texts:
+                return
+
             start = time.time()
             logger.info("start embedding %s texts %s", len(texts), start)
             batch_size = 1000
@@ -205,6 +217,10 @@ class Vector:
     def add_texts(self, documents: list[Document], **kwargs):
         if kwargs.get("duplicate_check", False):
             documents = self._filter_duplicate_texts(documents)
+
+        documents = self._filter_empty_text_documents(documents)
+        if not documents:
+            return
 
         embeddings = self._embeddings.embed_documents([document.page_content for document in documents])
         self._vector_processor.create(texts=documents, embeddings=embeddings, **kwargs)
