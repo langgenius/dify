@@ -145,8 +145,8 @@ describe('PanelContextmenu', () => {
     const { container } = render(<PanelContextmenu />)
 
     expect(screen.getByTestId('add-block')).toHaveTextContent('common.addBlock')
-    expect(screen.getByTestId('shortcut-alt-r')).toHaveTextContent('alt+r')
-    expect(screen.getByTestId('shortcut-ctrl-v')).toHaveTextContent('ctrl+v')
+    expect(screen.getByRole('button', { name: /common\.run/i })).toHaveTextContent(/Alt\s*R/)
+    expect(screen.getByRole('button', { name: /common\.pasteHere/i })).toHaveTextContent(/Ctrl\s*V/)
     expect(container.firstChild).toHaveStyle({
       left: '24px',
       top: '48px',

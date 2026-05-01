@@ -1,10 +1,10 @@
 import type { FileEntity } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import FileImageRender from './file-image-render'
 import FileTypeIcon from './file-type-icon'
@@ -49,27 +49,37 @@ const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPaddi
               return (
                 <>
                   {isImageFile && (
-                    <Tooltip
-                      popupContent={name}
-                    >
-                      <div key={id}>
-                        <FileImageRender
-                          className="h-8 w-8"
-                          imageUrl={base64Url || url || ''}
-                        />
-                      </div>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={(
+                          <div key={id}>
+                            <FileImageRender
+                              className="h-8 w-8"
+                              imageUrl={base64Url || url || ''}
+                            />
+                          </div>
+                        )}
+                      />
+                      <TooltipContent>
+                        {name}
+                      </TooltipContent>
                     </Tooltip>
                   )}
                   {!isImageFile && (
-                    <Tooltip
-                      popupContent={name}
-                    >
-                      <div key={id} className="rounded-md border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1.5 shadow-xs">
-                        <FileTypeIcon
-                          type={getFileAppearanceType(name, type)}
-                          size="lg"
-                        />
-                      </div>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={(
+                          <div key={id} className="rounded-md border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1.5 shadow-xs">
+                            <FileTypeIcon
+                              type={getFileAppearanceType(name, type)}
+                              size="lg"
+                            />
+                          </div>
+                        )}
+                      />
+                      <TooltipContent>
+                        {name}
+                      </TooltipContent>
                     </Tooltip>
                   )}
                 </>

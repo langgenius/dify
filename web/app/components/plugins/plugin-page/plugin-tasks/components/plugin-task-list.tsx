@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
 import ErrorPluginItem from './error-plugin-item'
@@ -86,7 +87,14 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
               {t('task.clearAll', { ns: 'plugin' })}
             </Button>
           </div>
-          <div className="max-h-[300px] overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <ScrollArea
+            className="max-h-[300px] overflow-hidden"
+            label={t('task.installedError', { ns: 'plugin', errorLength: errorPlugins.length })}
+            slotClassNames={{
+              viewport: 'overscroll-contain',
+              content: 'min-w-0',
+            }}
+          >
             {errorPlugins.map(plugin => (
               <ErrorPluginItem
                 key={plugin.plugin_unique_identifier}
@@ -96,7 +104,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
                 onClear={() => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)}
               />
             ))}
-          </div>
+          </ScrollArea>
         </>
       )}
     </div>

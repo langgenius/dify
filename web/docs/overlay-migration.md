@@ -10,7 +10,6 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
   - `@/app/components/base/portal-to-follow-elem`
   - `@/app/components/base/tooltip`
   - `@/app/components/base/modal`
-  - `@/app/components/base/select` (including `custom` / `pure`)
   - `@/app/components/base/dialog`
 - Replacement primitives:
   - `@langgenius/dify-ui/tooltip`

@@ -251,17 +251,23 @@ vi.mock('../hooks/use-workflow-comment', () => ({
 vi.mock('../base/confirm', () => ({
   default: ({
     isShow,
+    title,
+    desc,
     onConfirm,
     onCancel,
   }: {
     isShow: boolean
+    title?: string
+    desc?: string
     onConfirm: () => void
     onCancel: () => void
   }) => isShow
     ? (
-        <div data-testid="confirm-dialog">
-          <button type="button" onClick={onConfirm}>confirm</button>
-          <button type="button" onClick={onCancel}>cancel</button>
+        <div role="alertdialog" data-testid="confirm-dialog">
+          {title && <div>{title}</div>}
+          {desc && <div>{desc}</div>}
+          <button type="button" onClick={onConfirm}>common.operation.confirm</button>
+          <button type="button" onClick={onCancel}>common.operation.cancel</button>
         </div>
       )
     : null,
@@ -336,6 +342,11 @@ vi.mock('../simple-node', () => ({
 
 vi.mock('../syncing-data-modal', () => ({
   default: () => null,
+}))
+
+vi.mock('../shortcuts/use-workflow-hotkeys', () => ({
+  useWorkflowHotkeys: workflowHookMocks.useShortcuts,
+  useWorkflowShortcut: vi.fn(),
 }))
 
 vi.mock('../hooks', () => ({

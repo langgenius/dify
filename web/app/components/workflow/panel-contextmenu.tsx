@@ -15,7 +15,7 @@ import {
 } from './hooks'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
-import ShortcutsName from './shortcuts-name'
+import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
 const PanelContextmenu = () => {
@@ -40,11 +40,12 @@ const PanelContextmenu = () => {
 
   const renderTrigger = () => {
     return (
-      <div
-        className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+      <button
+        type="button"
+        className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
       >
         {t('common.addBlock', { ns: 'workflow' })}
-      </div>
+      </button>
     )
   }
 
@@ -68,8 +69,9 @@ const PanelContextmenu = () => {
             crossAxis: -4,
           }}
         />
-        <div
-          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+        <button
+          type="button"
+          className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={(e) => {
             e.stopPropagation()
             handleAddNote()
@@ -77,11 +79,13 @@ const PanelContextmenu = () => {
           }}
         >
           {t('nodes.note.addNote', { ns: 'workflow' })}
-        </div>
+        </button>
         {isCommentModeAvailable && (
-          <div
+          <button
+            type="button"
+            disabled={!!pendingComment}
             className={cn(
-              'flex h-8 items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
+              'flex h-8 w-full items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
               pendingComment ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-state-base-hover',
             )}
             onClick={(e) => {
@@ -94,24 +98,27 @@ const PanelContextmenu = () => {
             }}
           >
             {t('comments.actions.addComment', { ns: 'workflow' })}
-          </div>
+          </button>
         )}
-        <div
-          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+        <button
+          type="button"
+          className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => {
             handleStartWorkflowRun()
             handlePaneContextmenuCancel()
           }}
         >
           {t('common.run', { ns: 'workflow' })}
-          <ShortcutsName keys={['alt', 'r']} />
-        </div>
+          <ShortcutKbd shortcut="workflow.open-test-run-menu" />
+        </button>
       </div>
       <Divider className="m-0" />
       <div className="p-1">
-        <div
+        <button
+          type="button"
+          disabled={!clipboardElements.length}
           className={cn(
-            'flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
+            'flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
             !clipboardElements.length ? 'cursor-not-allowed opacity-50' : 'hover:bg-state-base-hover',
           )}
           onClick={() => {
@@ -122,23 +129,25 @@ const PanelContextmenu = () => {
           }}
         >
           {t('common.pasteHere', { ns: 'workflow' })}
-          <ShortcutsName keys={['ctrl', 'v']} />
-        </div>
+          <ShortcutKbd shortcut="workflow.paste" />
+        </button>
       </div>
       <Divider className="m-0" />
       <div className="p-1">
-        <div
-          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+        <button
+          type="button"
+          className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => exportCheck?.()}
         >
           {t('export', { ns: 'app' })}
-        </div>
-        <div
-          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+        </button>
+        <button
+          type="button"
+          className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => setShowImportDSLModal(true)}
         >
           {t('importApp', { ns: 'app' })}
-        </div>
+        </button>
       </div>
     </div>
   )

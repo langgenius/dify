@@ -117,7 +117,7 @@ const PluginTasks = () => {
         <DropdownMenuContent
           placement="bottom-end"
           sideOffset={4}
-          popupClassName="[scrollbar-width:none] overflow-visible border-0 bg-transparent p-0 shadow-none backdrop-blur-none [&::-webkit-scrollbar]:hidden"
+          popupClassName="overflow-visible border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           <PluginTaskList
             runningPlugins={runningPlugins}

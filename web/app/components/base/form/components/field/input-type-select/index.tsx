@@ -1,10 +1,13 @@
-import type { CustomSelectProps } from '../../../../select/custom'
 import type { LabelProps } from '../../label'
 import type { FileTypeSelectOption, InputType } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback } from 'react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { useFieldContext } from '../../..'
-import CustomSelect from '../../../../select/custom'
 import Label from '../../label'
 import { useInputTypeOptions } from './hooks'
 import Option from './option'
@@ -15,24 +18,19 @@ type InputTypeSelectFieldProps = {
   labelOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
   supportFile: boolean
   className?: string
-} & Omit<CustomSelectProps<FileTypeSelectOption>, 'options' | 'value' | 'onChange' | 'CustomTrigger' | 'CustomOption'>
+  disabled?: boolean
+}
 
 const InputTypeSelectField = ({
   label,
   labelOptions,
   supportFile,
   className,
-  ...customSelectProps
+  disabled,
 }: InputTypeSelectFieldProps) => {
   const field = useFieldContext<InputType>()
   const inputTypeOptions = useInputTypeOptions(supportFile)
-
-  const renderTrigger = useCallback((option: FileTypeSelectOption | undefined, open: boolean) => {
-    return <Trigger option={option} open={open} />
-  }, [])
-  const renderOption = useCallback((option: FileTypeSelectOption) => {
-    return <Option option={option} />
-  }, [])
+  const selected = inputTypeOptions.find(option => option.value === field.state.value)
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
@@ -41,22 +39,31 @@ const InputTypeSelectField = ({
         label={label}
         {...(labelOptions ?? {})}
       />
-      <CustomSelect<FileTypeSelectOption>
-        value={field.state.value}
-        options={inputTypeOptions}
-        onChange={value => field.handleChange(value as InputType)}
-        triggerProps={{
-          className: 'gap-x-0.5',
+      <Select
+        items={inputTypeOptions}
+        value={field.state.value ?? null}
+        disabled={disabled}
+        onValueChange={(next) => {
+          if (next == null)
+            return
+          field.handleChange(next as InputType)
         }}
-        popupProps={{
-          className: 'w-[368px]',
-          wrapperClassName: 'z-9999999',
-          itemClassName: 'gap-x-1',
-        }}
-        CustomTrigger={renderTrigger}
-        CustomOption={renderOption}
-        {...customSelectProps}
-      />
+      >
+        <SelectTrigger id={field.name} className="gap-x-0.5 px-2">
+          <Trigger option={selected} />
+        </SelectTrigger>
+        <SelectContent popupClassName="w-[368px] bg-components-panel-bg-blur shadow-shadow-shadow-5">
+          {inputTypeOptions.map((option: FileTypeSelectOption) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              className="gap-x-1"
+            >
+              <Option option={option} />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }

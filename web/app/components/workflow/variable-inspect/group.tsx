@@ -1,6 +1,7 @@
 import type { currentVarType } from './panel'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowRightSLine,
   RiDeleteBinLine,
@@ -12,7 +13,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 // import { Button } from '@langgenius/dify-ui/button'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarInInspectType } from '@/types/workflow'
@@ -130,15 +130,29 @@ const Group = ({
         </div>
         {nodeData && !nodeData.isSingRunRunning && (
           <div className="hidden shrink-0 items-center group-hover:flex">
-            <Tooltip popupContent={t('debug.variableInspect.view', { ns: 'workflow' })}>
-              <ActionButton onClick={handleView}>
-                <RiFileList3Line className="h-4 w-4" />
-              </ActionButton>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <ActionButton onClick={handleView}>
+                    <RiFileList3Line className="h-4 w-4" />
+                  </ActionButton>
+                )}
+              />
+              <TooltipContent>
+                {t('debug.variableInspect.view', { ns: 'workflow' })}
+              </TooltipContent>
             </Tooltip>
-            <Tooltip popupContent={t('debug.variableInspect.clearNode', { ns: 'workflow' })}>
-              <ActionButton onClick={handleClear}>
-                <RiDeleteBinLine className="h-4 w-4" />
-              </ActionButton>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <ActionButton onClick={handleClear}>
+                    <RiDeleteBinLine className="h-4 w-4" />
+                  </ActionButton>
+                )}
+              />
+              <TooltipContent>
+                {t('debug.variableInspect.clearNode', { ns: 'workflow' })}
+              </TooltipContent>
             </Tooltip>
           </div>
         )}

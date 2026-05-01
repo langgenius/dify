@@ -2,6 +2,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -13,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import Tooltip from '@/app/components/base/tooltip'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
 import Indicator from '@/app/components/header/indicator'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
@@ -167,12 +167,17 @@ const ToolItem = ({
         />
       )}
       {isError && (
-        <Tooltip
-          popupContent={errorTip}
-        >
-          <div>
-            <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
-          </div>
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <div aria-label={typeof errorTip === 'string' ? errorTip : undefined}>
+                <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+              </div>
+            )}
+          />
+          <TooltipContent>
+            {errorTip}
+          </TooltipContent>
         </Tooltip>
       )}
     </div>
