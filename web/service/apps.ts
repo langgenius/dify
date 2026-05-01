@@ -1,5 +1,5 @@
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { AppDetailResponse, AppListResponse, CreateApiKeyResponse, DSLImportMode, DSLImportResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, WebhookTriggerResponse, WorkflowOnlineUser } from '@/models/app'
+import type { AppDetailResponse, AppListResponse, CreateApiKeyResponse, DSLImportMode, DSLImportResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, WebhookTriggerResponse, WorkflowOnlineUser, WorkflowOnlineUsersResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppIconType, AppModeEnum, ModelConfig } from '@/types/app'
 import { del, get, patch, post, put } from './base'
@@ -9,29 +9,45 @@ export const fetchAppList = ({ url, params }: { url: string, params?: Record<str
   return get<AppListResponse>(url, { params })
 }
 
-export const fetchWorkflowOnlineUsers = async ({ appIds }: { appIds: string[] }): Promise<Record<string, WorkflowOnlineUser[]>> => {
-  if (!appIds.length)
+const MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS = 50
+
+const normalizeWorkflowOnlineUsersResponse = (data?: WorkflowOnlineUsersResponse['data']): Record<string, WorkflowOnlineUser[]> => {
+  if (!data)
     return {}
 
-  const response = await consoleClient.apps.workflowOnlineUsers({
-    query: { app_ids: appIds.join(',') },
-  })
-
-  if (!response?.data)
-    return {}
-
-  if (Array.isArray(response.data)) {
-    return response.data.reduce<Record<string, WorkflowOnlineUser[]>>((acc, item) => {
+  if (Array.isArray(data)) {
+    return data.reduce<Record<string, WorkflowOnlineUser[]>>((acc, item) => {
       if (item?.app_id)
         acc[item.app_id] = item.users || []
       return acc
     }, {})
   }
 
-  return Object.entries(response.data).reduce<Record<string, WorkflowOnlineUser[]>>((acc, [appId, users]) => {
+  return Object.entries(data).reduce<Record<string, WorkflowOnlineUser[]>>((acc, [appId, users]) => {
     if (appId)
       acc[appId] = users || []
     return acc
+  }, {})
+}
+
+export const fetchWorkflowOnlineUsers = async ({ appIds }: { appIds: string[] }): Promise<Record<string, WorkflowOnlineUser[]>> => {
+  if (!appIds.length)
+    return {}
+
+  const appIdBatches = Array.from({ length: Math.ceil(appIds.length / MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS) }, (_, index) => {
+    const start = index * MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS
+    return appIds.slice(start, start + MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS)
+  })
+
+  const responses = await Promise.all(appIdBatches.map(batch => consoleClient.apps.workflowOnlineUsers({
+    query: { app_ids: batch.join(',') },
+  })))
+
+  return responses.reduce<Record<string, WorkflowOnlineUser[]>>((acc, response) => {
+    return {
+      ...acc,
+      ...normalizeWorkflowOnlineUsersResponse(response?.data),
+    }
   }, {})
 }
 
