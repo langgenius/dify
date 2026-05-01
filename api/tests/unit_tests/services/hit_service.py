@@ -32,7 +32,7 @@ class HitTestingTestDataFactory:
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
         provider: str = "vendor",
-        retrieval_model: dict[str, Any] | None = None,
+        retrieval_model: dict[str, Any] | str | None = None,
         **kwargs,
     ) -> Mock:
         """
@@ -513,6 +513,38 @@ class TestHitTestingServiceRetrieve:
 
             call_kwargs = mock_retrieve.call_args[1]
             assert call_kwargs["score_threshold"] == 0.0
+
+    def test_retrieve_ignores_non_dict_dataset_retrieval_model_when_request_model_is_provided(self, mock_db_session):
+        dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external", retrieval_model="external-config")
+        account = HitTestingTestDataFactory.create_user_mock()
+        query = "test query"
+        retrieval_model = {
+            "search_method": RetrievalMethod.KEYWORD_SEARCH,
+            "reranking_enable": False,
+            "top_k": 6,
+            "score_threshold_enabled": False,
+        }
+        external_retrieval_model = {}
+
+        documents = [HitTestingTestDataFactory.create_document_mock()]
+        mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
+
+        with (
+            patch("services.hit_testing_service.RetrievalService.retrieve", autospec=True) as mock_retrieve,
+            patch(
+                "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
+            ) as mock_format,
+            patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
+        ):
+            mock_perf_counter.side_effect = [0.0, 0.1]
+            mock_retrieve.return_value = documents
+            mock_format.return_value = mock_records
+
+            HitTestingService.retrieve(dataset, query, account, retrieval_model, external_retrieval_model)
+
+            call_kwargs = mock_retrieve.call_args[1]
+            assert call_kwargs["retrieval_method"] == RetrievalMethod.KEYWORD_SEARCH
+            assert call_kwargs["top_k"] == 6
 
 
 class TestHitTestingServiceExternalRetrieve:

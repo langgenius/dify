@@ -57,7 +57,7 @@ class HitTestingService:
         cls, dataset: Dataset, retrieval_model: RetrievalModel | dict[str, Any] | None
     ) -> RetrievalModel:
         merged_model_dict: dict[str, Any] = deepcopy(dict(default_retrieval_model))
-        if dataset.retrieval_model:
+        if isinstance(dataset.retrieval_model, dict):
             merged_model_dict = cls._deep_merge_dicts(merged_model_dict, dataset.retrieval_model)
 
         if isinstance(retrieval_model, RetrievalModel):
