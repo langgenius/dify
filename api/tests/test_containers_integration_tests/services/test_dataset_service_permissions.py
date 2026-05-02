@@ -1,5 +1,6 @@
 """Testcontainers integration tests for DatasetService permission and lifecycle SQL paths."""
 
+from flask import Flask
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -363,7 +364,7 @@ class TestDatasetServicePermissionsAndLifecycle:
 
         DatasetService.check_dataset_operator_permission(user=operator, dataset=dataset)
 
-    def test_update_dataset_api_status_raises_not_found_for_missing_dataset(self, flask_app_with_containers):
+    def test_update_dataset_api_status_raises_not_found_for_missing_dataset(self, flask_app_with_containers:Flask):
         with flask_app_with_containers.app_context():
             with pytest.raises(NotFound, match="Dataset not found"):
                 DatasetService.update_dataset_api_status(str(uuid4()), True)
@@ -473,7 +474,7 @@ class TestDatasetCollectionBindingServiceIntegration:
         assert persisted.type == "dataset"
         assert persisted.collection_name
 
-    def test_get_dataset_collection_binding_by_id_and_type_raises_when_missing(self, flask_app_with_containers):
+    def test_get_dataset_collection_binding_by_id_and_type_raises_when_missing(self, flask_app_with_containers:Flask):
         with flask_app_with_containers.app_context():
             with pytest.raises(ValueError, match="Dataset collection binding not found"):
                 DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(str(uuid4()))

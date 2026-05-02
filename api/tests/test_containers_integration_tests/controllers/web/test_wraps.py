@@ -1,6 +1,7 @@
 """Testcontainers integration tests for controllers.web.wraps — JWT auth decorator and validation helpers."""
 
 from __future__ import annotations
+from flask import Flask
 
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -182,7 +183,7 @@ class TestValidateUserAccessibility:
 
 class TestDecodeJwtToken:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers:Flask):
         return flask_app_with_containers
 
     def _create_app_site_enduser(self, db_session: Session, *, enable_site: bool = True):

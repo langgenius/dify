@@ -1,6 +1,7 @@
 """Testcontainers integration tests for OAuth controller endpoints."""
 
 from __future__ import annotations
+from flask import Flask
 
 from unittest.mock import MagicMock, patch
 
@@ -21,7 +22,7 @@ from services.errors.account import AccountRegisterError
 
 class TestGetOAuthProviders:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers:Flask):
         return flask_app_with_containers
 
     @pytest.mark.parametrize(
@@ -65,7 +66,7 @@ class TestOAuthLogin:
         return OAuthLogin()
 
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers:Flask):
         return flask_app_with_containers
 
     @pytest.fixture
@@ -130,7 +131,7 @@ class TestOAuthCallback:
         return OAuthCallback()
 
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers:Flask):
         return flask_app_with_containers
 
     @pytest.fixture
@@ -394,7 +395,7 @@ class TestOAuthCallback:
 
 class TestAccountGeneration:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers:Flask):
         return flask_app_with_containers
 
     @pytest.fixture

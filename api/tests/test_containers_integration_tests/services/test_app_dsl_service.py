@@ -1,4 +1,5 @@
 from __future__ import annotations
+from flask import Flask
 
 import base64
 import json
@@ -89,7 +90,7 @@ class TestAppDslService:
     """Integration tests for AppDslService using testcontainers."""
 
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers:Flask):
         return flask_app_with_containers
 
     @pytest.fixture
