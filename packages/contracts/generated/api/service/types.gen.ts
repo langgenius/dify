@@ -1862,9 +1862,9 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdRes
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body?: never
   path: {
-    dataset_id: string
-    segment_id: string
     document_id: string
+    segment_id: string
+    dataset_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'

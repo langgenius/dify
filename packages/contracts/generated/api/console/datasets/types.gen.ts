@@ -1204,8 +1204,8 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
   path: {
-    dataset_id: string
     document_id: string
+    dataset_id: string
   }
   query?: never
   url: '/datasets/{dataset_id}/documents/{document_id}'

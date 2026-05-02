@@ -1816,8 +1816,8 @@ export type GetAppsByAppIdAnnotationsExportResponse
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdData = {
   body?: never
   path: {
-    app_id: string
     annotation_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/annotations/{annotation_id}'
@@ -3980,8 +3980,8 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse
 export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
   path: {
-    app_id: string
     node_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/variables'
@@ -4156,8 +4156,8 @@ export type GetAppsByAppIdWorkflowsDraftVariablesResponse
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
   body?: never
   path: {
-    app_id: string
     variable_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/workflows/draft/variables/{variable_id}'
@@ -4210,8 +4210,8 @@ export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
   body: WorkflowDraftVariableUpdatePayload
   path: {
-    app_id: string
     variable_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/workflows/draft/variables/{variable_id}'
@@ -4328,8 +4328,8 @@ export type GetAppsByAppIdWorkflowsTriggersWebhookResponse
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
   body?: never
   path: {
-    app_id: string
     workflow_id: string
+    app_id: string
   }
   query?: never
   url: '/apps/{app_id}/workflows/{workflow_id}'
