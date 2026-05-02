@@ -637,6 +637,82 @@ describe('file-uploader utils', () => {
       expect(getFileNameFromUrl('http://example.com/path/'))
         .toBe('')
     })
+
+    it('should strip query strings from URL', () => {
+      expect(getFileNameFromUrl('http://example.com/path/file.pdf?query=param&other=value'))
+        .toBe('file.pdf')
+      expect(getFileNameFromUrl('http://example.com/file.txt?version=1'))
+        .toBe('file.txt')
+    })
+
+    it('should strip hash fragments from URL', () => {
+      expect(getFileNameFromUrl('http://example.com/path/file.pdf#section'))
+        .toBe('file.pdf')
+      expect(getFileNameFromUrl('http://example.com/file.txt#fragment'))
+        .toBe('file.txt')
+    })
+
+    it('should strip both query strings and hash fragments', () => {
+      expect(getFileNameFromUrl('http://example.com/path/file.pdf?query=param#section'))
+        .toBe('file.pdf')
+      expect(getFileNameFromUrl('http://example.com/file.txt?version=1#fragment'))
+        .toBe('file.txt')
+    })
+
+    it('should decode percent-encoded filenames', () => {
+      expect(getFileNameFromUrl('http://example.com/path/file%20name.pdf'))
+        .toBe('file name.pdf')
+      expect(getFileNameFromUrl('http://example.com/file%2Cname.txt'))
+        .toBe('file,name.txt')
+      expect(getFileNameFromUrl('http://example.com/file%26name.pdf'))
+        .toBe('file&name.pdf')
+    })
+
+    it('should handle signed URLs with parameters', () => {
+      expect(getFileNameFromUrl('http://example.com/file.pdf?AWSAccessKeyId=AKIAEXAMPLE&Signature=example&Expires=1234567890'))
+        .toBe('file.pdf')
+      expect(getFileNameFromUrl('http://example.com/file.pdf?X-Amz-Signature=abc123'))
+        .toBe('file.pdf')
+    })
+
+    it('should handle encoded slashes in path', () => {
+      expect(getFileNameFromUrl('http://example.com/path%2Fto%2Ffile.pdf'))
+        .toBe('file.pdf')
+      expect(getFileNameFromUrl('http://example.com/folder%2Fsubfolder%2Fdocument.txt'))
+        .toBe('document.txt')
+    })
+
+    it('should handle malformed percent-encoding gracefully', () => {
+      // Both decodeURIComponent and decodeURI throw on malformed % sequences
+      // So we preserve the original string
+      expect(getFileNameFromUrl('http://example.com/file%2Gname.pdf'))
+        .toBe('file%2Gname.pdf') // Invalid %2G sequence preserved
+      expect(getFileNameFromUrl('http://example.com/file%name.pdf'))
+        .toBe('file%name.pdf') // Incomplete % sequence preserved
+    })
+
+    it('should handle URLs without protocol', () => {
+      expect(getFileNameFromUrl('//example.com/path/file.txt'))
+        .toBe('file.txt')
+      expect(getFileNameFromUrl('/path/to/file.pdf'))
+        .toBe('file.pdf')
+      expect(getFileNameFromUrl('file.txt'))
+        .toBe('file.txt')
+    })
+
+    it('should handle complex real-world URLs', () => {
+      expect(getFileNameFromUrl('https://storage.googleapis.com/bucket/path/to/document.pdf?GoogleAccessId=service-account&Expires=1700000000&Signature=ABC123'))
+        .toBe('document.pdf')
+      expect(getFileNameFromUrl('https://example.com/path/to/file%20with%20spaces%20and%20%26%20ampersand.txt?param=value#fragment'))
+        .toBe('file with spaces and & ampersand.txt')
+    })
+
+    it('should return empty string for root URL', () => {
+      expect(getFileNameFromUrl('http://example.com/'))
+        .toBe('')
+      expect(getFileNameFromUrl('https://example.com/'))
+        .toBe('')
+    })
   })
 
   describe('getSupportFileExtensionList', () => {

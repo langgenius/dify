@@ -208,8 +208,57 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
 }
 
 export const getFileNameFromUrl = (url: string) => {
-  const urlParts = url.split('/')
-  return urlParts[urlParts.length - 1] || ''
+  try {
+    // Handle protocol-relative URLs (e.g., //example.com/file.pdf)
+    const urlToParse = url.startsWith('//') ? `https:${url}` : url
+    // Create URL object to parse the URL
+    const urlObj = new URL(urlToParse)
+    // Get the pathname (e.g., '/path/to/file.pdf')
+    const pathname = urlObj.pathname
+    // Extract basename from pathname
+    const basename = pathname.split('/').pop() || ''
+    
+    // Decode percent-encoded filename segments
+    // Using decodeURIComponent which throws on malformed input
+    // We'll catch and fall back to decodeURI for malformed input
+    let decodedName = basename
+    try {
+      decodedName = decodeURIComponent(basename)
+    } catch {
+      // If decodeURIComponent fails (malformed percent-encoding),
+      // try decodeURI which is more lenient
+      try {
+        decodedName = decodeURI(basename)
+      } catch {
+        // If both fail, preserve the original basename
+        decodedName = basename
+      }
+    }
+    
+    return decodedName
+  } catch {
+    // If URL parsing fails (e.g., relative URL without protocol),
+    // fall back to manual parsing
+    // First, strip query string (everything after ? including #)
+    const withoutQuery = url.split('?')[0]
+    // Then strip fragment (everything after #)
+    const withoutFragment = withoutQuery.split('#')[0]
+    // Extract basename
+    const urlParts = withoutFragment.split('/')
+    const basename = urlParts[urlParts.length - 1] || ''
+    
+    // Decode percent-encoded filename segments
+    try {
+      return decodeURIComponent(basename)
+    } catch {
+      try {
+        return decodeURI(basename)
+      } catch {
+        // If both decoding methods fail, preserve the original basename
+        return basename
+      }
+    }
+  }
 }
 
 export const getSupportFileExtensionList = (allowFileTypes: string[], allowFileExtensions: string[]) => {
