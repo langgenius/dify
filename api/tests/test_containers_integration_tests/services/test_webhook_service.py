@@ -176,7 +176,7 @@ class TestWebhookService:
             assert node_config["id"] == "webhook_node"
             assert node_config["data"].title == "Test Webhook"
 
-    def test_get_webhook_trigger_and_workflow_not_found(self, flask_app_with_containers:Flask):
+    def test_get_webhook_trigger_and_workflow_not_found(self, flask_app_with_containers: Flask):
         """Test webhook trigger not found scenario."""
         with flask_app_with_containers.app_context():
             with pytest.raises(ValueError, match="Webhook not found"):

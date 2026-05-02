@@ -2891,8 +2891,8 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse = z.r
 )
 
 export const zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
-  node_id: z.string(),
   app_id: z.string(),
+  node_id: z.string(),
 })
 
 /**
@@ -2980,8 +2980,8 @@ export const zGetAppsByAppIdWorkflowsDraftVariablesQuery = z.object({
 export const zGetAppsByAppIdWorkflowsDraftVariablesResponse = zWorkflowDraftVariableListWithoutValue
 
 export const zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  app_id: z.string(),
   variable_id: z.string(),
+  app_id: z.string(),
 })
 
 /**
@@ -3006,8 +3006,8 @@ export const zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdBody
   = zWorkflowDraftVariableUpdatePayload
 
 export const zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  app_id: z.string(),
   variable_id: z.string(),
+  app_id: z.string(),
 })
 
 /**

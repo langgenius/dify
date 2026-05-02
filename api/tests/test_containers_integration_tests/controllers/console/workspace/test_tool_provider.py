@@ -1,12 +1,12 @@
 """Testcontainers integration tests for controllers.console.workspace.tool_providers endpoints."""
 
 from __future__ import annotations
-from flask import Flask
 
 import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.tool_providers import (
@@ -148,10 +148,10 @@ class TestUtils:
 
 class TestToolProviderListApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_get_success(self, app:Flask):
+    def test_get_success(self, app: Flask):
         api = ToolProviderListApi()
         method = unwrap(api.get)
 
@@ -171,10 +171,10 @@ class TestToolProviderListApi:
 
 class TestBuiltinProviderApis:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_list_tools(self, app:Flask):
+    def test_list_tools(self, app: Flask):
         api = ToolBuiltinProviderListToolsApi()
         method = unwrap(api.get)
 
@@ -191,7 +191,7 @@ class TestBuiltinProviderApis:
         ):
             assert method(api, "provider") == [{"a": 1}]
 
-    def test_info(self, app:Flask):
+    def test_info(self, app: Flask):
         api = ToolBuiltinProviderInfoApi()
         method = unwrap(api.get)
 
@@ -208,7 +208,7 @@ class TestBuiltinProviderApis:
         ):
             assert method(api, "provider") == {"x": 1}
 
-    def test_delete(self, app:Flask):
+    def test_delete(self, app: Flask):
         api = ToolBuiltinProviderDeleteApi()
         method = unwrap(api.post)
 
@@ -225,7 +225,7 @@ class TestBuiltinProviderApis:
         ):
             assert method(api, "provider")["result"] == "success"
 
-    def test_add_invalid_type(self, app:Flask):
+    def test_add_invalid_type(self, app: Flask):
         api = ToolBuiltinProviderAddApi()
         method = unwrap(api.post)
 
@@ -239,7 +239,7 @@ class TestBuiltinProviderApis:
             with pytest.raises(ValueError):
                 method(api, "provider")
 
-    def test_add_success(self, app:Flask):
+    def test_add_success(self, app: Flask):
         api = ToolBuiltinProviderAddApi()
         method = unwrap(api.post)
 
@@ -258,7 +258,7 @@ class TestBuiltinProviderApis:
         ):
             assert method(api, "provider")["id"] == 1
 
-    def test_update(self, app:Flask):
+    def test_update(self, app: Flask):
         api = ToolBuiltinProviderUpdateApi()
         method = unwrap(api.post)
 
@@ -277,7 +277,7 @@ class TestBuiltinProviderApis:
         ):
             assert method(api, "provider")["ok"]
 
-    def test_get_credentials(self, app:Flask):
+    def test_get_credentials(self, app: Flask):
         api = ToolBuiltinProviderGetCredentialsApi()
         method = unwrap(api.get)
 
@@ -294,7 +294,7 @@ class TestBuiltinProviderApis:
         ):
             assert method(api, "provider") == {"k": "v"}
 
-    def test_icon(self, app:Flask):
+    def test_icon(self, app: Flask):
         api = ToolBuiltinProviderIconApi()
         method = unwrap(api.get)
 
@@ -308,7 +308,7 @@ class TestBuiltinProviderApis:
             response = method(api, "provider")
             assert response.mimetype == "image/png"
 
-    def test_credentials_schema(self, app:Flask):
+    def test_credentials_schema(self, app: Flask):
         api = ToolBuiltinProviderCredentialsSchemaApi()
         method = unwrap(api.get)
 
@@ -325,7 +325,7 @@ class TestBuiltinProviderApis:
         ):
             assert method(api, "provider", "oauth2") == {"schema": {}}
 
-    def test_set_default_credential(self, app:Flask):
+    def test_set_default_credential(self, app: Flask):
         api = ToolBuiltinProviderSetDefaultApi()
         method = unwrap(api.post)
 
@@ -342,7 +342,7 @@ class TestBuiltinProviderApis:
         ):
             assert method(api, "provider")["ok"]
 
-    def test_get_credential_info(self, app:Flask):
+    def test_get_credential_info(self, app: Flask):
         api = ToolBuiltinProviderGetCredentialInfoApi()
         method = unwrap(api.get)
 
@@ -359,7 +359,7 @@ class TestBuiltinProviderApis:
         ):
             assert method(api, "provider") == {"info": "x"}
 
-    def test_get_oauth_client_schema(self, app:Flask):
+    def test_get_oauth_client_schema(self, app: Flask):
         api = ToolBuiltinProviderGetOauthClientSchemaApi()
         method = unwrap(api.get)
 
@@ -379,10 +379,10 @@ class TestBuiltinProviderApis:
 
 class TestApiProviderApis:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_add(self, app:Flask):
+    def test_add(self, app: Flask):
         api = ToolApiProviderAddApi()
         method = unwrap(api.post)
 
@@ -407,7 +407,7 @@ class TestApiProviderApis:
         ):
             assert method(api)["id"] == 1
 
-    def test_remote_schema(self, app:Flask):
+    def test_remote_schema(self, app: Flask):
         api = ToolApiProviderGetRemoteSchemaApi()
         method = unwrap(api.get)
 
@@ -424,7 +424,7 @@ class TestApiProviderApis:
         ):
             assert method(api)["schema"] == "x"
 
-    def test_list_tools(self, app:Flask):
+    def test_list_tools(self, app: Flask):
         api = ToolApiProviderListToolsApi()
         method = unwrap(api.get)
 
@@ -441,7 +441,7 @@ class TestApiProviderApis:
         ):
             assert method(api) == [{"tool": 1}]
 
-    def test_update(self, app:Flask):
+    def test_update(self, app: Flask):
         api = ToolApiProviderUpdateApi()
         method = unwrap(api.post)
 
@@ -469,7 +469,7 @@ class TestApiProviderApis:
         ):
             assert method(api)["ok"]
 
-    def test_delete(self, app:Flask):
+    def test_delete(self, app: Flask):
         api = ToolApiProviderDeleteApi()
         method = unwrap(api.post)
 
@@ -486,7 +486,7 @@ class TestApiProviderApis:
         ):
             assert method(api)["result"] == "success"
 
-    def test_get(self, app:Flask):
+    def test_get(self, app: Flask):
         api = ToolApiProviderGetApi()
         method = unwrap(api.get)
 
@@ -506,10 +506,10 @@ class TestApiProviderApis:
 
 class TestWorkflowApis:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_create(self, app:Flask):
+    def test_create(self, app: Flask):
         api = ToolWorkflowProviderCreateApi()
         method = unwrap(api.post)
 
@@ -535,7 +535,7 @@ class TestWorkflowApis:
         ):
             assert method(api)["id"] == 1
 
-    def test_update_invalid(self, app:Flask):
+    def test_update_invalid(self, app: Flask):
         api = ToolWorkflowProviderUpdateApi()
         method = unwrap(api.post)
 
@@ -561,7 +561,7 @@ class TestWorkflowApis:
             result = method(api)
             assert result["ok"]
 
-    def test_delete(self, app:Flask):
+    def test_delete(self, app: Flask):
         api = ToolWorkflowProviderDeleteApi()
         method = unwrap(api.post)
 
@@ -578,7 +578,7 @@ class TestWorkflowApis:
         ):
             assert method(api)["ok"]
 
-    def test_get_error(self, app:Flask):
+    def test_get_error(self, app: Flask):
         api = ToolWorkflowProviderGetApi()
         method = unwrap(api.get)
 
@@ -595,10 +595,10 @@ class TestWorkflowApis:
 
 class TestLists:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_builtin_list(self, app:Flask):
+    def test_builtin_list(self, app: Flask):
         api = ToolBuiltinListApi()
         method = unwrap(api.get)
 
@@ -618,7 +618,7 @@ class TestLists:
         ):
             assert method(api) == [{"x": 1}]
 
-    def test_api_list(self, app:Flask):
+    def test_api_list(self, app: Flask):
         api = ToolApiListApi()
         method = unwrap(api.get)
 
@@ -638,7 +638,7 @@ class TestLists:
         ):
             assert method(api) == [{"x": 1}]
 
-    def test_workflow_list(self, app:Flask):
+    def test_workflow_list(self, app: Flask):
         api = ToolWorkflowListApi()
         method = unwrap(api.get)
 
@@ -661,10 +661,10 @@ class TestLists:
 
 class TestLabels:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_labels(self, app:Flask):
+    def test_labels(self, app: Flask):
         api = ToolLabelsApi()
         method = unwrap(api.get)
 
@@ -680,10 +680,10 @@ class TestLabels:
 
 class TestOAuth:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_oauth_no_client(self, app:Flask):
+    def test_oauth_no_client(self, app: Flask):
         api = ToolPluginOAuthApi()
         method = unwrap(api.get)
 
@@ -701,7 +701,7 @@ class TestOAuth:
             with pytest.raises(Forbidden):
                 method(api, "provider")
 
-    def test_oauth_callback_no_cookie(self, app:Flask):
+    def test_oauth_callback_no_cookie(self, app: Flask):
         api = ToolOAuthCallback()
         method = unwrap(api.get)
 
@@ -712,10 +712,10 @@ class TestOAuth:
 
 class TestOAuthCustomClient:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_save_custom_client(self, app:Flask):
+    def test_save_custom_client(self, app: Flask):
         api = ToolOAuthCustomClient()
         method = unwrap(api.post)
 
@@ -732,7 +732,7 @@ class TestOAuthCustomClient:
         ):
             assert method(api, "provider")["ok"]
 
-    def test_get_custom_client(self, app:Flask):
+    def test_get_custom_client(self, app: Flask):
         api = ToolOAuthCustomClient()
         method = unwrap(api.get)
 
@@ -749,7 +749,7 @@ class TestOAuthCustomClient:
         ):
             assert method(api, "provider") == {"client_id": "x"}
 
-    def test_delete_custom_client(self, app:Flask):
+    def test_delete_custom_client(self, app: Flask):
         api = ToolOAuthCustomClient()
         method = unwrap(api.delete)
 

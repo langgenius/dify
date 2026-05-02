@@ -1,12 +1,12 @@
 """Testcontainers integration tests for rag_pipeline controller endpoints."""
 
 from __future__ import annotations
-from flask import Flask
 
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 
 from controllers.console import console_ns
@@ -27,7 +27,7 @@ def unwrap(func):
 
 class TestPipelineTemplateListApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_success(self, app):
@@ -51,7 +51,7 @@ class TestPipelineTemplateListApi:
 
 class TestPipelineTemplateDetailApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_success(self, app):
@@ -116,7 +116,7 @@ class TestPipelineTemplateDetailApi:
 
 class TestCustomizedPipelineTemplateApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_patch_success(self, app):
@@ -194,7 +194,7 @@ class TestCustomizedPipelineTemplateApi:
 
 class TestPublishCustomizedPipelineTemplateApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_post_success(self, app):

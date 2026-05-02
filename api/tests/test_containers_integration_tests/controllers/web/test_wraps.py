@@ -1,7 +1,6 @@
 """Testcontainers integration tests for controllers.web.wraps — JWT auth decorator and validation helpers."""
 
 from __future__ import annotations
-from flask import Flask
 
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -9,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
@@ -183,7 +183,7 @@ class TestValidateUserAccessibility:
 
 class TestDecodeJwtToken:
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def _create_app_site_enduser(self, db_session: Session, *, enable_site: bool = True):

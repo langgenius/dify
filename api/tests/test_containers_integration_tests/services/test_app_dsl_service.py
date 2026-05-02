@@ -1,5 +1,4 @@
 from __future__ import annotations
-from flask import Flask
 
 import base64
 import json
@@ -11,6 +10,7 @@ from uuid import uuid4
 import pytest
 import yaml
 from faker import Faker
+from flask import Flask
 from sqlalchemy.orm import Session
 
 from core.trigger.constants import (
@@ -90,7 +90,7 @@ class TestAppDslService:
     """Integration tests for AppDslService using testcontainers."""
 
     @pytest.fixture
-    def app(self, flask_app_with_containers:Flask):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     @pytest.fixture
