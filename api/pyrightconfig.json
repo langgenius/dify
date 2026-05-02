@@ -1,12 +1,8 @@
 {
   "include": ["."],
   "exclude": [
-    "tests/",
     ".venv",
-    "migrations/",
-    "core/rag",
-    "providers/vdb/",
-    "providers/trace/*/tests",
+    "migrations/"
   ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [
@@ -37,10 +33,7 @@
     "tos",
     "gmpy2",
     "sendgrid",
-    "sendgrid.helpers.mail",
-    "holo_search_sdk.types",
-    "dify_vdb_qdrant",
-    "dify_vdb_tidb_on_qdrant"
+    "sendgrid.helpers.mail"
   ],
   "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",
@@ -51,8 +44,9 @@
   "reportMissingTypeArgument": "hint",
   "reportUnnecessaryComparison": "hint",
   "reportUnnecessaryIsInstance": "hint",
+  "reportUntypedFunctionDecorator": "hint",
   "reportUnnecessaryTypeIgnoreComment": "hint",
   "reportAttributeAccessIssue": "hint",
-  "pythonVersion": "3.12",
+  "pythonVersion": "3.11",
   "pythonPlatform": "All"
 }
