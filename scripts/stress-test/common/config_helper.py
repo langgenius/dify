@@ -7,6 +7,7 @@ from typing import NotRequired, TypedDict
 
 class AdminConfig(TypedDict):
     """Configuration for admin section."""
+
     username: str
     password: str
     base_url: str
@@ -14,6 +15,7 @@ class AdminConfig(TypedDict):
 
 class AuthConfig(TypedDict):
     """Configuration for authentication section."""
+
     access_token: str
     refresh_token: NotRequired[str]
     expires_at: NotRequired[int]
@@ -21,6 +23,7 @@ class AuthConfig(TypedDict):
 
 class AppConfig(TypedDict):
     """Configuration for app section."""
+
     app_id: str
     app_name: NotRequired[str]
     description: NotRequired[str]
@@ -28,6 +31,7 @@ class AppConfig(TypedDict):
 
 class ApiKeyConfig(TypedDict):
     """Configuration for API key section."""
+
     token: str
     key_name: NotRequired[str]
     expires_at: NotRequired[int]
@@ -35,6 +39,7 @@ class ApiKeyConfig(TypedDict):
 
 class StressTestState(TypedDict):
     """Complete stress test state structure."""
+
     admin: NotRequired[AdminConfig]
     auth: NotRequired[AuthConfig]
     app: NotRequired[AppConfig]
