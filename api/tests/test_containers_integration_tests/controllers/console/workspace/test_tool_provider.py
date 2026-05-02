@@ -61,7 +61,7 @@ def _mock_user_tenant():
 
 
 @pytest.fixture
-def client(flask_app_with_containers):
+def client(flask_app_with_containers: Flask):
     return flask_app_with_containers.test_client()
 
 

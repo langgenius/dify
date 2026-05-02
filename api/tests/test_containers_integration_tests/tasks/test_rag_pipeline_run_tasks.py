@@ -1,3 +1,4 @@
+from flask import Flask
 import json
 import uuid
 from unittest.mock import MagicMock, patch
@@ -725,7 +726,7 @@ class TestRagPipelineRunTasks:
             assert queue1._task_key != queue2._task_key
 
     def test_run_single_rag_pipeline_task_success(
-        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers: Flask
     ):
         """
         Test successful run_single_rag_pipeline_task execution.
@@ -760,7 +761,7 @@ class TestRagPipelineRunTasks:
         assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_run_single_rag_pipeline_task_entity_validation_error(
-        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers: Flask
     ):
         """
         Test run_single_rag_pipeline_task with invalid entity data.
@@ -805,7 +806,7 @@ class TestRagPipelineRunTasks:
         mock_pipeline_generator.assert_not_called()
 
     def test_run_single_rag_pipeline_task_database_entity_not_found(
-        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers
+        self, db_session_with_containers: Session, mock_pipeline_generator, flask_app_with_containers: Flask
     ):
         """
         Test run_single_rag_pipeline_task with non-existent database entities.

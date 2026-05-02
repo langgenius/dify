@@ -13,6 +13,7 @@ Services (DatasetService, TagService, DocumentService) remain mocked
 since these test controller-level behavior.
 """
 
+from flask import Flask
 import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -236,7 +237,7 @@ def _unwrap(method):
 
 
 @pytest.fixture
-def app(flask_app_with_containers):
+def app(flask_app_with_containers: Flask):
     # Uses the full containerised app so that Flask config, extensions, and
     # blueprint registrations match production.  Most tests mock the service
     # layer to isolate controller logic; a few (e.g. test_list_tags_from_db)

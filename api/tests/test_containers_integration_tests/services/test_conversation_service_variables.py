@@ -1,4 +1,5 @@
 from __future__ import annotations
+from flask import Flask
 
 from datetime import datetime, timedelta
 from unittest.mock import patch
@@ -149,7 +150,7 @@ class ConversationServiceVariableIntegrationFactory:
 
 
 @pytest.fixture
-def real_conversation_service_session_factory(flask_app_with_containers):
+def real_conversation_service_session_factory(flask_app_with_containers: Flask):
     del flask_app_with_containers
     real_session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
 

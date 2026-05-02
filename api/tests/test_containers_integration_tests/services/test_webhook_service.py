@@ -161,7 +161,7 @@ class TestWebhookService:
             "app_trigger": app_trigger,
         }
 
-    def test_get_webhook_trigger_and_workflow_success(self, test_data, flask_app_with_containers):
+    def test_get_webhook_trigger_and_workflow_success(self, test_data, flask_app_with_containers: Flask):
         """Test successful retrieval of webhook trigger and workflow."""
         webhook_id = test_data["webhook_id"]
 
@@ -422,7 +422,7 @@ class TestWebhookService:
 
             assert result["files"] == {}
 
-    def test_trigger_workflow_execution_success(self, test_data, mock_external_dependencies, flask_app_with_containers):
+    def test_trigger_workflow_execution_success(self, test_data, mock_external_dependencies, flask_app_with_containers: Flask):
         """Test successful workflow execution trigger."""
         webhook_data = {
             "method": "POST",
@@ -453,7 +453,7 @@ class TestWebhookService:
                     mock_external_dependencies["async_service"].trigger_workflow_async.assert_called_once()
 
     def test_trigger_workflow_execution_end_user_service_failure(
-        self, test_data, mock_external_dependencies, flask_app_with_containers
+        self, test_data, mock_external_dependencies, flask_app_with_containers: Flask
     ):
         """Test workflow execution trigger when EndUserService fails."""
         webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
