@@ -59,7 +59,7 @@ const useThinkTimer = (children: React.ReactNode) => {
   const endThinkDetected = hasEndThink(children)
   const contentKey = getThinkContentKey(children)
   const cachedElapsedTime = completedThinkDurations.get(contentKey) ?? 0
-  const [startTime] = useState(() => Date.now())
+  const [startTime] = useState(() => Date.now() - cachedElapsedTime * 1000)
   const [elapsedTime, setElapsedTime] = useState(cachedElapsedTime)
   const isComplete = endThinkDetected || !isResponding
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -80,7 +80,7 @@ const useThinkTimer = (children: React.ReactNode) => {
       if (timerRef.current)
         clearInterval(timerRef.current)
     }
-  }, [startTime, isComplete])
+  }, [contentKey, startTime, isComplete])
 
   useEffect(() => {
     // Stop timer when:
