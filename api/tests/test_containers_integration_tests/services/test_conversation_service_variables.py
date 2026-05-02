@@ -1,11 +1,11 @@
 from __future__ import annotations
-from flask import Flask
 
 from datetime import datetime, timedelta
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom

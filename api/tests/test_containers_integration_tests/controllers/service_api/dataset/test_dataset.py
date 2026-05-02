@@ -13,12 +13,12 @@ Services (DatasetService, TagService, DocumentService) remain mocked
 since these test controller-level behavior.
 """
 
-from flask import Flask
 import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 

@@ -1,12 +1,12 @@
 """Testcontainers integration tests for email register controller endpoints."""
 
 from __future__ import annotations
-from flask import Flask
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.console.auth.email_register import (
     EmailRegisterCheckApi,
@@ -34,7 +34,7 @@ class TestEmailRegisterSendEmailApi:
         mock_is_freeze,
         mock_send_mail,
         mock_get_account,
-        app:Flask,
+        app: Flask,
     ):
         mock_send_mail.return_value = "token-123"
         mock_is_freeze.return_value = False
@@ -76,7 +76,7 @@ class TestEmailRegisterCheckApi:
         mock_revoke,
         mock_generate_token,
         mock_reset_rate,
-        app:Flask,
+        app: Flask,
     ):
         mock_rate_limit_check.return_value = False
         mock_get_data.return_value = {"email": "User@Example.com", "code": "4321"}
@@ -121,7 +121,7 @@ class TestEmailRegisterResetApi:
         mock_create_account,
         mock_login,
         mock_reset_login_rate,
-        app:Flask,
+        app: Flask,
     ):
         mock_get_data.return_value = {"phase": "register", "email": "Invitee@Example.com"}
         mock_create_account.return_value = MagicMock()

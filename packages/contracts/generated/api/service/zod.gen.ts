@@ -1122,9 +1122,9 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdR
 )
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
+  dataset_id: z.string(),
   segment_id: z.string(),
   document_id: z.string(),
-  dataset_id: z.string(),
 })
 
 /**

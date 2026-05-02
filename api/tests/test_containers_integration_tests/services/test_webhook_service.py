@@ -422,7 +422,9 @@ class TestWebhookService:
 
             assert result["files"] == {}
 
-    def test_trigger_workflow_execution_success(self, test_data, mock_external_dependencies, flask_app_with_containers: Flask):
+    def test_trigger_workflow_execution_success(
+        self, test_data, mock_external_dependencies, flask_app_with_containers: Flask
+    ):
         """Test successful workflow execution trigger."""
         webhook_data = {
             "method": "POST",

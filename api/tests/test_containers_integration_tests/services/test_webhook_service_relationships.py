@@ -1,5 +1,4 @@
 from __future__ import annotations
-from flask import Flask
 
 import json
 from types import SimpleNamespace
@@ -7,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
