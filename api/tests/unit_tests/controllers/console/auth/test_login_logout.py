@@ -329,13 +329,13 @@ class TestLoginApi:
     def test_login_fails_when_no_workspace_and_limit_exceeded(
         self,
         mock_get_features: MagicMock,
-        mock_get_tenants,
-        mock_authenticate,
-        mock_get_invitation,
+        mock_get_tenants: MagicMock,
+        mock_authenticate: MagicMock,
+        mock_get_invitation: MagicMock,
         mock_is_rate_limit: MagicMock,
-        mock_db,
+        mock_db: MagicMock,
         app: Flask,
-        mock_account,
+        mock_account: MagicMock,
     ):
         """
         Test login failure when user has no workspace and workspace limit exceeded.
