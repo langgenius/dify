@@ -149,7 +149,7 @@ class Vector:
         filtered_documents = [document for document in documents if document.page_content.strip()]
         skipped_count = len(documents) - len(filtered_documents)
         if skipped_count:
-            logger.warning("skip %s empty documents before vector embedding", skipped_count)
+            logger.warning("skip %d empty documents before vector embedding", skipped_count)
         return filtered_documents
 
     def create(self, texts: list | None = None, **kwargs):
@@ -215,12 +215,14 @@ class Vector:
             logger.info("Embedding %s files took %s s", len(file_documents), time.time() - start)
 
     def add_texts(self, documents: list[Document], **kwargs):
-        if kwargs.get("duplicate_check", False):
-            documents = self._filter_duplicate_texts(documents)
-
         documents = self._filter_empty_text_documents(documents)
         if not documents:
             return
+
+        if kwargs.get("duplicate_check", False):
+            documents = self._filter_duplicate_texts(documents)
+            if not documents:
+                return
 
         embeddings = self._embeddings.embed_documents([document.page_content for document in documents])
         self._vector_processor.create(texts=documents, embeddings=embeddings, **kwargs)

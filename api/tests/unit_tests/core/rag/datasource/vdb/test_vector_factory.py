@@ -446,6 +446,25 @@ def test_add_texts_skips_empty_text_documents(vector_factory_module):
     vector._vector_processor.create.assert_not_called()
 
 
+def test_add_texts_filters_empty_documents_before_duplicate_check(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1]]
+    vector._vector_processor = MagicMock()
+    vector._filter_duplicate_texts = MagicMock(return_value=[])
+
+    docs = [
+        Document(page_content="keep", metadata={"doc_id": "id-1"}),
+        Document(page_content="   ", metadata={"doc_id": "id-empty"}),
+    ]
+
+    vector.add_texts(docs, duplicate_check=True)
+
+    vector._filter_duplicate_texts.assert_called_once_with([docs[0]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
 def test_vector_delegation_methods(vector_factory_module):
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
