@@ -124,9 +124,7 @@ describe('InfoGroup', () => {
           titleTooltip="This is a tooltip"
         />,
       )
-      // Tooltip icon should be present
-      const tooltipIcon = screen.getByText('Test').closest('.flex')?.querySelector('svg')
-      expect(tooltipIcon)!.toBeInTheDocument()
+      expect(screen.getByLabelText('This is a tooltip'))!.toBeInTheDocument()
     })
 
     it('should render headerRight content', () => {
