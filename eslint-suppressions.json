@@ -1721,11 +1721,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/param-item/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-editor/index.stories.tsx": {
     "no-console": {
       "count": 1
@@ -2082,11 +2077,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/common/retrieval-param-config/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/dsl-confirm-modal.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -2153,11 +2143,6 @@
   "web/app/components/datasets/create/step-two/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 5
-    }
-  },
-  "web/app/components/datasets/create/step-two/components/indexing-mode-section.tsx": {
-    "no-restricted-imports": {
-      "count": 2
     }
   },
   "web/app/components/datasets/create/step-two/hooks/index.ts": {
