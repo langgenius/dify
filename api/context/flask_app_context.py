@@ -134,9 +134,10 @@ class FlaskExecutionContext:
 
     def __enter__(self) -> "FlaskExecutionContext":
         """Enter the Flask execution context."""
-        # Restore non-Flask context variables to avoid leaking Flask tokens across threads
+        tokens: list[contextvars.Token[Any]] = []
         for var, val in self._context_vars.items():
-            var.set(val)
+            tokens.append(var.set(val))
+        self._local.ctx_var_tokens = tokens
 
         # Enter Flask app context
         cm = self._app_context.enter()
@@ -151,23 +152,31 @@ class FlaskExecutionContext:
 
     def __exit__(self, *args: Any) -> None:
         """Exit the Flask execution context."""
-        cm = getattr(self._local, "cm", None)
-        if cm is not None:
-            cm.__exit__(*args)
+        try:
+            cm = getattr(self._local, "cm", None)
+            if cm is not None:
+                cm.__exit__(*args)
+        finally:
+            tokens = getattr(self._local, "ctx_var_tokens", None)
+            if tokens:
+                for token in reversed(tokens):
+                    token.var.reset(token)
 
     @contextmanager
     def enter(self) -> Generator[None, None, None]:
         """Enter Flask execution context as context manager."""
-        # Restore non-Flask context variables to avoid leaking Flask tokens across threads
-        for var, val in self._context_vars.items():
-            var.set(val)
+        tokens: list[contextvars.Token[Any]] = []
+        try:
+            for var, val in self._context_vars.items():
+                tokens.append(var.set(val))
 
-        # Enter Flask app context
-        with self._flask_app.app_context():
-            # Restore user in new app context
-            if self._user is not None:
-                g._login_user = self._user
-            yield
+            with self._flask_app.app_context():
+                if self._user is not None:
+                    g._login_user = self._user
+                yield
+        finally:
+            for token in reversed(tokens):
+                token.var.reset(token)
 
 
 def init_flask_context() -> None:

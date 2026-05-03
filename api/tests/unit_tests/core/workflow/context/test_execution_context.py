@@ -98,26 +98,56 @@ class TestExecutionContext:
         assert ctx.user is None
 
     def test_enter_with_context_vars(self):
-        """Test enter restores context variables."""
+        """Inside enter(), captured values apply; on exit, outer ContextVar state is restored."""
         test_var = contextvars.ContextVar("test_var")
         test_var.set("original_value")
 
         # Copy context with the variable
         context_vars = contextvars.copy_context()
 
-        # Change the variable
+        # Change the variable in the outer scope before entering
         test_var.set("new_value")
 
         # Create execution context and enter it
         ctx = ExecutionContext(context_vars=context_vars)
 
         with ctx.enter():
-            # Variable should be restored to original value
+            # Captured snapshot value is applied for the duration of the block
             assert test_var.get() == "original_value"
 
-        # After exiting, variable stays at the value from within the context
-        # (this is expected Python contextvars behavior)
-        assert test_var.get() == "original_value"
+        # Tokens from var.set() must be reset so we return to the pre-enter outer value
+        assert test_var.get() == "new_value"
+
+    def test_enter_resets_contextvars_after_inner_exception(self):
+        """ContextVar tokens are reset even when the guarded block raises."""
+        test_var = contextvars.ContextVar("test_exc_var")
+        test_var.set("outer")
+
+        captured = contextvars.copy_context()
+        test_var.set("before_enter")
+
+        ctx = ExecutionContext(context_vars=captured)
+
+        with pytest.raises(RuntimeError, match="boom"):
+            with ctx.enter():
+                assert test_var.get() == "outer"
+                raise RuntimeError("boom")
+
+        assert test_var.get() == "before_enter"
+
+    def test_enter_context_manager_protocol_restores_after_exit(self):
+        """__enter__/__exit__ delegates to enter(); outer ContextVar state restored."""
+        test_var = contextvars.ContextVar("test_cm_var")
+        test_var.set("snap")
+        captured = contextvars.copy_context()
+        test_var.set("outer_after_snap")
+
+        ctx = ExecutionContext(context_vars=captured)
+
+        with ctx:
+            assert test_var.get() == "snap"
+
+        assert test_var.get() == "outer_after_snap"
 
     def test_enter_with_app_context(self):
         """Test enter enters app context if available."""

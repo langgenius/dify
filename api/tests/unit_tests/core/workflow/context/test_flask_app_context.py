@@ -227,18 +227,14 @@ class TestFlaskExecutionContextIntegration:
         return app
 
     def test_enter_restores_context_vars(self, mock_flask_app):
-        """Test that enter restores captured context variables."""
-        # Create a context variable and set a value
+        """Captured values apply inside the block; outer ContextVar state is restored on exit."""
         test_var = contextvars.ContextVar("integration_test_var")
         test_var.set("original_value")
 
-        # Capture the context
         context_vars = contextvars.copy_context()
 
-        # Change the value
         test_var.set("new_value")
 
-        # Create FlaskExecutionContext and enter it
         from context.flask_app_context import FlaskExecutionContext
 
         ctx = FlaskExecutionContext(
@@ -247,12 +243,9 @@ class TestFlaskExecutionContextIntegration:
         )
 
         with ctx:
-            # Value should be restored to original
             assert test_var.get() == "original_value"
 
-        # After exiting, variable stays at the value from within the context
-        # (this is expected Python contextvars behavior)
-        assert test_var.get() == "original_value"
+        assert test_var.get() == "new_value"
 
     def test_enter_enters_flask_app_context(self, mock_flask_app):
         """Test that enter enters Flask app context."""

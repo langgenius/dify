@@ -100,15 +100,20 @@ class ExecutionContext:
     @contextmanager
     def enter(self) -> Generator[None, None, None]:
         """Enter this execution context."""
-        if self._context_vars:
-            for var, val in self._context_vars.items():
-                var.set(val)
+        tokens: list[contextvars.Token[Any]] = []
+        try:
+            if self._context_vars:
+                for var, val in self._context_vars.items():
+                    tokens.append(var.set(val))
 
-        if self._app_context is not None:
-            with self._app_context.enter():
+            if self._app_context is not None:
+                with self._app_context.enter():
+                    yield
+            else:
                 yield
-        else:
-            yield
+        finally:
+            for token in reversed(tokens):
+                token.var.reset(token)
 
     def __enter__(self) -> "ExecutionContext":
         """Enter the execution context."""
