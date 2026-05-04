@@ -69,12 +69,9 @@ const List: FC<Props> = ({
   const [searchKeywords, setSearchKeywords] = useState(keywords)
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const appListRef = useRef<HTMLDivElement>(null)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
   const [workflowOnlineUsersMap, setWorkflowOnlineUsersMap] = useState<Record<string, WorkflowOnlineUser[]>>({})
-  const visibleAppIdsRef = useRef<Set<string>>(new Set())
-  const [visibleAppIds, setVisibleAppIds] = useState<string[]>([])
   const setKeywords = useCallback((keywords: string) => {
     setQuery(prev => ({ ...prev, keywords }))
   }, [setQuery])
@@ -189,58 +186,25 @@ const List: FC<Props> = ({
     setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
   }, [isCreatedByMe, setQuery])
 
-  const { run: commitVisibleAppIds } = useDebounceFn(() => {
-    setVisibleAppIds(Array.from(visibleAppIdsRef.current))
-  }, { wait: 300 })
-
-  const handleAppVisibilityChange = useCallback((appId: string, isVisible: boolean) => {
-    const visibleAppIds = visibleAppIdsRef.current
-    const wasVisible = visibleAppIds.has(appId)
-
-    if (wasVisible === isVisible)
-      return
-
-    if (isVisible)
-      visibleAppIds.add(appId)
-    else
-      visibleAppIds.delete(appId)
-
-    commitVisibleAppIds()
-  }, [commitVisibleAppIds])
-
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: apps }) => apps), [pages])
 
-  useEffect(() => {
-    visibleAppIdsRef.current = new Set()
-    commitVisibleAppIds()
+  const getVisibleAppIds = useCallback(() => {
+    const containerElement = containerRef.current
+    if (!containerElement)
+      return []
 
-    if (!systemFeatures.enable_collaboration_mode) {
-      return
-    }
+    const containerRect = containerElement.getBoundingClientRect()
+    const appCardElements = Array.from(containerElement.querySelectorAll<HTMLElement>('[data-app-id]'))
 
-    const scrollContainerElement = containerRef.current
-    const appListElement = appListRef.current
-    if (!scrollContainerElement || !appListElement)
-      return
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        const appId = (entry.target as HTMLElement).dataset.appId
-        if (appId)
-          handleAppVisibilityChange(appId, entry.isIntersecting)
+    return appCardElements
+      .filter((element) => {
+        const rect = element.getBoundingClientRect()
+        return rect.bottom >= containerRect.top - 100 && rect.top <= containerRect.bottom + 100
       })
-    }, {
-      root: scrollContainerElement,
-      rootMargin: '100px 0px',
-      threshold: 0,
-    })
-
-    const appCardElements = appListElement.querySelectorAll<HTMLElement>('[data-app-id]')
-    appCardElements.forEach(element => observer.observe(element))
-
-    return () => observer.disconnect()
-  }, [apps, commitVisibleAppIds, handleAppVisibilityChange, systemFeatures.enable_collaboration_mode])
+      .map(element => element.dataset.appId)
+      .filter((appId): appId is string => Boolean(appId))
+  }, [])
 
   const refreshWorkflowOnlineUsers = useCallback(async () => {
     if (!systemFeatures.enable_collaboration_mode) {
@@ -248,6 +212,7 @@ const List: FC<Props> = ({
       return
     }
 
+    const visibleAppIds = getVisibleAppIds()
     if (!visibleAppIds.length) {
       setWorkflowOnlineUsersMap({})
       return
@@ -260,11 +225,11 @@ const List: FC<Props> = ({
     catch {
       setWorkflowOnlineUsersMap({})
     }
-  }, [visibleAppIds, systemFeatures.enable_collaboration_mode])
+  }, [getVisibleAppIds, systemFeatures.enable_collaboration_mode])
 
   useEffect(() => {
     void refreshWorkflowOnlineUsers()
-  }, [refreshWorkflowOnlineUsers])
+  }, [apps, refreshWorkflowOnlineUsers])
 
   useEffect(() => {
     if (!systemFeatures.enable_collaboration_mode)
@@ -317,12 +282,10 @@ const List: FC<Props> = ({
             />
           </div>
         </div>
-        <div
-          ref={appListRef}
-          className={cn(
-            'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
-            !hasAnyApp && 'overflow-hidden',
-          )}
+        <div className={cn(
+          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+          !hasAnyApp && 'overflow-hidden',
+        )}
         >
           {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
             <NewAppCard
