@@ -9,23 +9,23 @@ import {
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { VersionHistoryContextMenuOptions } from '../../../types'
-import MenuItem from './menu-item'
-import useContextMenu from './use-context-menu'
+import ActionMenuItem from './action-menu-item'
+import useActionMenu from './use-action-menu'
 
-export type ContextMenuProps = {
+export type ActionMenuProps = {
   isShowDelete: boolean
   isNamedVersion: boolean
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
-  handleClickMenuItem: (operation: VersionHistoryContextMenuOptions) => void
+  handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
 
-const ContextMenu: FC<ContextMenuProps> = (props: ContextMenuProps) => {
-  const { isShowDelete, handleClickMenuItem, open, setOpen } = props
+const ActionMenu: FC<ActionMenuProps> = (props: ActionMenuProps) => {
+  const { isShowDelete, handleClickActionMenuItem, open, setOpen } = props
   const {
     deleteOperation,
     options,
-  } = useContextMenu(props)
+  } = useActionMenu(props)
 
   return (
     <DropdownMenu
@@ -44,10 +44,10 @@ const ContextMenu: FC<ContextMenuProps> = (props: ContextMenuProps) => {
       >
         {
           options.map(option => (
-            <MenuItem
+            <ActionMenuItem
               key={option.key}
               item={option}
-              onClick={handleClickMenuItem.bind(null, option.key)}
+              onClick={handleClickActionMenuItem.bind(null, option.key)}
             />
           ))
         }
@@ -55,10 +55,10 @@ const ContextMenu: FC<ContextMenuProps> = (props: ContextMenuProps) => {
           isShowDelete && (
             <>
               <DropdownMenuSeparator className="my-0" />
-              <MenuItem
+              <ActionMenuItem
                 item={deleteOperation}
                 isDestructive
-                onClick={handleClickMenuItem.bind(null, VersionHistoryContextMenuOptions.delete)}
+                onClick={handleClickActionMenuItem.bind(null, VersionHistoryContextMenuOptions.delete)}
               />
             </>
           )
@@ -68,4 +68,4 @@ const ContextMenu: FC<ContextMenuProps> = (props: ContextMenuProps) => {
   )
 }
 
-export default React.memo(ContextMenu)
+export default React.memo(ActionMenu)
