@@ -101,7 +101,7 @@ function Confirm({
             <div className="flex items-center gap-1">
               {showLink && (
                 <>
-                  <a onClick={handleClick} href={eduDocLink} target="_blank" className="cursor-pointer system-xs-regular text-text-accent">{t('learn', { ns: 'education' })}</a>
+                  <a onClick={handleClick} href={eduDocLink} target="_blank" rel="noopener noreferrer" className="cursor-pointer system-xs-regular text-text-accent">{t('learn', { ns: 'education' })}</a>
                   <RiExternalLinkLine className="h-3 w-3 text-text-accent" />
                 </>
               )}

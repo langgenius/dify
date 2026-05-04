@@ -29,6 +29,7 @@ import {
 } from './var-reference-vars.helpers'
 
 const VAR_SEARCH_INPUT_CLASS_NAME = 'var-search-input'
+export const VAR_REFERENCE_CHILD_POPUP_CLASS_NAME = 'var-reference-vars-child-popup'
 
 const resolveValueSelector = ({
   itemData,
@@ -210,7 +211,7 @@ const Item: FC<ItemProps> = ({
       className={cn(
         (isObj || isStructureOutput) ? 'pr-1' : 'pr-[18px]',
         (isHovering || isSelected) && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
-        'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3',
+        'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3 outline-none focus:outline-none focus-visible:outline-none',
         className,
       )}
       data-selected={isSelected ? 'true' : 'false'}
@@ -263,7 +264,7 @@ const Item: FC<ItemProps> = ({
       <PopoverContent
         placement="left-start"
         sideOffset={0}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        popupClassName={cn(VAR_REFERENCE_CHILD_POPUP_CLASS_NAME, 'border-none bg-transparent p-0 shadow-none backdrop-blur-none')}
         positionerProps={{
           style: {
             zIndex: zIndex || 100,

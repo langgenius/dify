@@ -10,7 +10,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import { useEdgesInteractions, usePanelInteractions } from './hooks'
-import ShortcutsName from './shortcuts-name'
+import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
 const EdgeContextmenu = () => {
@@ -53,7 +53,7 @@ const EdgeContextmenu = () => {
           onClick={() => handleEdgeDeleteById(edgeMenu.edgeId)}
         >
           <span>{t('common:operation.delete')}</span>
-          <ShortcutsName keys={['del']} />
+          <ShortcutKbd shortcut="workflow.delete" />
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

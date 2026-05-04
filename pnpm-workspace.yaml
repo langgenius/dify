@@ -68,6 +68,7 @@ catalog:
   '@formatjs/intl-localematcher': 0.8.4
   '@headlessui/react': 2.2.10
   '@heroicons/react': 2.2.0
+  '@hey-api/openapi-ts': 0.97.0
   '@hono/node-server': 2.0.0
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/ri': 1.2.10
@@ -109,6 +110,7 @@ catalog:
   '@tanstack/react-devtools': 0.10.2
   '@tanstack/react-form': 1.29.1
   '@tanstack/react-form-devtools': 0.2.22
+  '@tanstack/react-hotkeys': 0.10.0
   '@tanstack/react-query': 5.100.6
   '@tanstack/react-query-devtools': 5.100.6
   '@tanstack/react-virtual': 3.13.24

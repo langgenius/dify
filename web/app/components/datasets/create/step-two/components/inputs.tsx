@@ -12,8 +12,8 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Tooltip from '@/app/components/base/tooltip'
 import { env } from '@/env'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
@@ -38,13 +38,9 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({ tooltip,
     <FormField label={(
       <div className="mb-1 flex items-center">
         <span className="mr-0.5 system-sm-semibold">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
-        <Tooltip
-          popupContent={(
-            <div className="max-w-[200px]">
-              {tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
-            </div>
-          )}
-        />
+        <Infotip aria-label={tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })} popupClassName="max-w-[200px]">
+          {tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
+        </Infotip>
       </div>
     )}
     >
@@ -154,13 +150,9 @@ export const OverlapInput: FC<CompoundNumberInputProps> = (props) => {
     <FormField label={(
       <div className="mb-1 flex items-center">
         <span className="system-sm-semibold">{t('stepTwo.overlap', { ns: 'datasetCreation' })}</span>
-        <Tooltip
-          popupContent={(
-            <div className="max-w-[200px]">
-              {t('stepTwo.overlapTip', { ns: 'datasetCreation' })}
-            </div>
-          )}
-        />
+        <Infotip aria-label={t('stepTwo.overlapTip', { ns: 'datasetCreation' })} popupClassName="max-w-[200px]">
+          {t('stepTwo.overlapTip', { ns: 'datasetCreation' })}
+        </Infotip>
       </div>
     )}
     >

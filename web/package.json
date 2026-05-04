@@ -75,6 +75,7 @@
     "@t3-oss/env-nextjs": "catalog:",
     "@tailwindcss/typography": "catalog:",
     "@tanstack/react-form": "catalog:",
+    "@tanstack/react-hotkeys": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "abcjs": "catalog:",
@@ -154,6 +155,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",
     "@chromatic-com/storybook": "catalog:",
+    "@dify/contracts": "workspace:*",
     "@dify/iconify-collections": "workspace:*",
     "@dify/tsconfig": "workspace:*",
     "@egoist/tailwindcss-icons": "catalog:",

@@ -123,11 +123,11 @@ const EducationApplyAge = () => {
             <div className="mb-1 system-md-regular text-text-tertiary">
               {t('form.terms.desc.front', { ns: 'education' })}
 &nbsp;
-              <a href="https://dify.ai/terms" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.termsOfService', { ns: 'education' })}</a>
+              <a href="https://dify.ai/terms" target="_blank" rel="noopener noreferrer" className="text-text-secondary hover:underline">{t('form.terms.desc.termsOfService', { ns: 'education' })}</a>
 &nbsp;
               {t('form.terms.desc.and', { ns: 'education' })}
 &nbsp;
-              <a href="https://dify.ai/privacy" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.privacyPolicy', { ns: 'education' })}</a>
+              <a href="https://dify.ai/privacy" target="_blank" rel="noopener noreferrer" className="text-text-secondary hover:underline">{t('form.terms.desc.privacyPolicy', { ns: 'education' })}</a>
               {t('form.terms.desc.end', { ns: 'education' })}
             </div>
             <div className="py-2 system-md-regular text-text-primary">
@@ -161,6 +161,7 @@ const EducationApplyAge = () => {
             className="flex items-center system-xs-regular text-text-accent"
             href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}
             target="_blank"
+            rel="noopener noreferrer"
           >
             {t('learn', { ns: 'education' })}
             <RiExternalLinkLine className="ml-1 h-3 w-3" />
