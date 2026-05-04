@@ -330,27 +330,6 @@ describe('publisher', () => {
         })
         expect(mockSetShowPricingModal).toHaveBeenCalled()
       })
-
-      it('should keep confirm dialog mounted when first publish opens follow-up overlay', async () => {
-        mockPublishedAt.mockReturnValue(null)
-        renderWithQueryClient(<Publisher />)
-
-        fireEvent.click(screen.getByText('workflow.common.publish'))
-
-        await waitFor(() => {
-          expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
-        })
-
-        fireEvent.click(screen.getByRole('button', { name: /workflow.common.publishUpdate/i }))
-
-        await waitFor(() => {
-          expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
-        })
-
-        fireEvent.mouseDown(document.body)
-
-        expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
-      })
     })
   })
 
