@@ -3,8 +3,8 @@
 # Dify 精簡部署套件
 #   外部依賴：PostgreSQL + Redis（sacahan-network）
 #   向量資料庫：Weaviate（容器內）
-#   檔案儲存：本地（volumes/app/storage）
 #   包含：api、worker、worker_beat、web、nginx、sandbox、ssrf_proxy、plugin_daemon、weaviate
+#   Host 需要新建的目錄：./app/storage、./plugin_daemon、./weaviate、./nginx/conf.d、./nginx/ssl、./sandbox/dependencies、./sandbox/conf、./ssrf_proxy
 #
 # 啟動方式（在本目錄下執行）：
 #   cp .env.example .env    # 填入真實憑證
@@ -38,7 +38,7 @@ services:
         chown -R 1001:1001 /app/api/storage && touch "$${FLAG_FILE}"
         echo "初始化完成。"
     volumes:
-      - ./volumes/app/storage:/app/api/storage
+      - ./app/storage:/app/api/storage
 
   # API 服務
   api:
@@ -50,7 +50,7 @@ services:
       PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
       PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
     volumes:
-      - ./volumes/app/storage:/app/api/storage
+      - ./app/storage:/app/api/storage
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -73,7 +73,7 @@ services:
     environment:
       MODE: worker
     volumes:
-      - ./volumes/app/storage:/app/api/storage
+      - ./app/storage:/app/api/storage
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -138,8 +138,8 @@ services:
       HTTPS_PROXY: http://ssrf_proxy:3128
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
-      - ./volumes/sandbox/dependencies:/dependencies
-      - ./volumes/sandbox/conf:/conf
+      - ./sandbox/dependencies:/dependencies
+      - ./sandbox/conf:/conf
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8194/health"]
       interval: 30s
@@ -196,7 +196,7 @@ services:
     ports:
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
-      - ./volumes/plugin_daemon:/app/storage
+      - ./plugin_daemon:/app/storage
     networks:
       - default
       - sacahan-network
@@ -206,7 +206,7 @@ services:
     image: semitechnologies/weaviate:1.27.0
     restart: always
     volumes:
-      - ./volumes/weaviate:/var/lib/weaviate
+      - ./weaviate:/var/lib/weaviate
     environment:
       PERSISTENCE_DATA_PATH: /var/lib/weaviate
       QUERY_DEFAULTS_LIMIT: 25
