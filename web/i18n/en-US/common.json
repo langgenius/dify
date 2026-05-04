@@ -223,6 +223,7 @@
   "mainNav.webApps.noResults": "No web apps found",
   "mainNav.webApps.searchPlaceholder": "Search web apps",
   "mainNav.workspace.credits": "{{count}} credits",
+  "mainNav.workspace.creditsUnit": "credits",
   "mainNav.workspace.inviteMembers": "Invite and manage members",
   "mainNav.workspace.openMenu": "Open workspace menu",
   "mainNav.workspace.settings": "Settings",

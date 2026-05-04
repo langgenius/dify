@@ -68,11 +68,11 @@ type MainNavItem = {
 const navItemClassName = 'group relative flex h-9 items-center gap-2 rounded-xl p-2 transition-colors'
 
 const activeNavItemClassName = [
-  'overflow-hidden border border-components-main-nav-glass-edge-reflection-first bg-components-main-nav-nav-button-bg-active',
-  'bg-[linear-gradient(98deg,var(--color-components-main-nav-glass-surface-first)_0%,var(--color-components-main-nav-glass-surface-middle-1)_18%,var(--color-components-main-nav-glass-surface-middle-2)_59%,var(--color-components-main-nav-glass-surface-end)_100%)]',
+  'overflow-hidden border border-transparent',
+  'bg-[linear-gradient(98.077deg,var(--color-components-main-nav-glass-surface-first)_0%,var(--color-components-main-nav-glass-surface-middle-1)_17.98%,var(--color-components-main-nav-glass-surface-middle-2)_58.75%,var(--color-components-main-nav-glass-surface-end)_101.09%)]',
   'system-md-semibold text-components-main-nav-text-active backdrop-blur-[5px]',
   'shadow-[0px_4px_8px_0px_var(--color-components-main-nav-glass-shadow-reflection-glow),0px_12px_16px_-4px_var(--color-shadow-shadow-5),0px_4px_6px_-2px_var(--color-shadow-shadow-1),0px_10px_16px_-4px_var(--color-components-main-nav-glass-shadow-reflection)]',
-  'before:pointer-events-none before:absolute before:inset-[-1px] before:rounded-xl before:border before:border-components-main-nav-glass-edge-highlight-first before:shadow-[inset_0px_0px_8px_0px_var(--color-components-main-nav-glass-inner-glow)] before:content-[""]',
+  'main-nav-active-edge',
 ].join(' ')
 
 const inactiveNavItemClassName = 'system-md-medium bg-components-main-nav-nav-button-bg text-components-main-nav-text hover:bg-state-base-hover hover:text-components-main-nav-text'
@@ -113,6 +113,23 @@ const NavIcon = ({
   <span aria-hidden className={cn(icon, 'h-5 w-5 shrink-0', className)} />
 )
 
+const WorkspacePlanBadge = ({
+  plan,
+}: {
+  plan: Plan
+}) => {
+  if (plan !== Plan.sandbox)
+    return <PlanBadge plan={plan} />
+
+  return (
+    <div className="flex min-w-4 shrink-0 items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5">
+      <span className="min-w-0 text-center system-2xs-medium-uppercase text-text-tertiary">
+        {plan}
+      </span>
+    </div>
+  )
+}
+
 const WorkspaceMenuItemContent = ({
   icon,
   label,
@@ -124,7 +141,7 @@ const WorkspaceMenuItemContent = ({
 }) => (
   <>
     <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary">{icon}</span>
-    <span className="min-w-0 grow truncate text-left system-sm-regular text-text-secondary">{label}</span>
+    <span className="min-w-0 grow truncate text-left system-md-regular text-text-secondary">{label}</span>
     {trailing}
   </>
 )
@@ -135,7 +152,10 @@ const WorkspaceCard = () => {
   const { workspaces } = useWorkspacesContext()
   const { enableBilling, plan } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
+  const [open, setOpen] = useState(false)
   const credits = getRemainingCredits(currentWorkspace.trial_credits, currentWorkspace.trial_credits_used)
+  const formattedCredits = formatCredits(credits)
+  const workspacePlan = (workspaces.find(workspace => workspace.current)?.plan || currentWorkspace.plan || plan.type) as Plan
   const isFreePlan = plan.type === Plan.sandbox
 
   const handlePlanClick = () => {
@@ -160,43 +180,55 @@ const WorkspaceCard = () => {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={(
-          <div
-            role="button"
-            tabIndex={0}
-            className="w-full rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs transition-colors hover:bg-components-card-bg-alt"
-            aria-label={t('mainNav.workspace.openMenu', { ns: 'common' })}
-          />
+    <div
+      className={cn(
+        'relative w-full',
+        open && 'z-20',
+      )}
+    >
+      <div
+        className={cn(
+          'overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs transition-colors',
+          open ? 'pointer-events-none invisible' : 'hover:bg-components-card-bg-alt',
         )}
       >
-        <div className="flex items-center gap-2 px-2 py-2">
-          <WorkspaceIcon name={currentWorkspace.name} />
+        <button
+          type="button"
+          className={cn(
+            'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors',
+            open && 'bg-gradient-to-b from-background-section-burn to-background-section',
+          )}
+          aria-expanded={open}
+          aria-label={t('mainNav.workspace.openMenu', { ns: 'common' })}
+          onClick={() => setOpen(value => !value)}
+        >
+          <WorkspaceIcon name={currentWorkspace.name} className="h-6 w-6 rounded-lg" />
           <div className="min-w-0 grow">
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate system-md-semibold text-text-secondary">{currentWorkspace.name}</span>
-              <PlanBadge plan={(currentWorkspace.plan || plan.type) as Plan} />
+              <span className="max-w-[120px] truncate system-sm-medium text-text-primary">{currentWorkspace.name}</span>
+              <WorkspacePlanBadge plan={workspacePlan} />
             </div>
           </div>
-          <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
-        </div>
-        <div className="flex items-center border-t border-divider-subtle">
+          <span aria-hidden className="i-ri-expand-up-down-line h-4 w-4 shrink-0 text-text-tertiary" />
+        </button>
+        <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
           <button
             type="button"
-            className="flex min-w-0 grow items-center gap-1.5 px-3 py-2 text-left system-sm-regular text-text-tertiary hover:text-text-secondary"
+            className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary"
+            aria-label={t('mainNav.workspace.credits', { ns: 'common', count: formattedCredits })}
             onClick={(e) => {
               e.stopPropagation()
               setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
             }}
           >
-            <span className="i-custom-vender-main-nav-credits h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate">{t('mainNav.workspace.credits', { ns: 'common', count: formatCredits(credits) })}</span>
+            <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate system-xs-medium">{formattedCredits}</span>
+            <span className="shrink-0 system-xs-regular">{t('mainNav.workspace.creditsUnit', { ns: 'common' })}</span>
           </button>
           {enableBilling && (
             <button
               type="button"
-              className="shrink-0 px-3 py-2 system-xs-semibold-uppercase text-text-accent hover:text-text-accent-secondary"
+              className="max-w-[120px] shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover"
               onClick={(e) => {
                 e.stopPropagation()
                 handlePlanClick()
@@ -206,45 +238,59 @@ const WorkspaceCard = () => {
             </button>
           )}
         </div>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="right-start"
-        sideOffset={8}
-        popupClassName="w-[280px] p-1"
-      >
-        <DropdownMenuGroup>
-          <div className="flex items-center gap-2 px-3 py-2">
-            <WorkspaceIcon name={currentWorkspace.name} />
-            <div className="min-w-0 grow">
-              <div className="truncate system-sm-semibold text-text-secondary">{currentWorkspace.name}</div>
-              <PlanBadge plan={(currentWorkspace.plan || plan.type) as Plan} />
-            </div>
+      </div>
+      {open && (
+        <div className="absolute top-0 right-0 left-0 z-20 flex flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
+          <div className="rounded-xl bg-gradient-to-b from-background-section-burn to-background-section pb-2">
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-xl p-3 text-left transition-colors hover:bg-state-base-hover"
+              aria-expanded={open}
+              aria-label={t('mainNav.workspace.openMenu', { ns: 'common' })}
+              onClick={() => setOpen(false)}
+            >
+              <div className="flex min-w-0 grow flex-col items-start justify-center gap-1">
+                <div className="max-w-[120px] shrink-0 truncate system-xl-medium leading-5 text-text-primary">{currentWorkspace.name}</div>
+                <WorkspacePlanBadge plan={workspacePlan} />
+              </div>
+              <WorkspaceIcon name={currentWorkspace.name} className="h-9 w-9" />
+            </button>
+            <button
+              type="button"
+              className="flex h-8 w-full items-center gap-1 rounded-lg px-2 py-1 text-left transition-colors hover:bg-state-base-hover"
+              onClick={() => {
+                setOpen(false)
+                setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
+              }}
+            >
+              <WorkspaceMenuItemContent icon={<span aria-hidden className="i-custom-vender-main-nav-workspace-settings h-4 w-4" />} label={t('mainNav.workspace.settings', { ns: 'common' })} />
+            </button>
+            <button
+              type="button"
+              className="flex h-8 w-full items-center gap-1 rounded-lg px-2 py-1 text-left transition-colors hover:bg-state-base-hover"
+              onClick={() => {
+                setOpen(false)
+                setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
+              }}
+            >
+              <WorkspaceMenuItemContent icon={<span aria-hidden className="i-ri-user-add-line h-4 w-4" />} label={t('mainNav.workspace.inviteMembers', { ns: 'common' })} />
+            </button>
           </div>
-          <DropdownMenuItem
-            className="gap-2 px-3"
-            onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })}
-          >
-            <WorkspaceMenuItemContent icon={<span aria-hidden className="i-ri-settings-3-line h-4 w-4" />} label={t('mainNav.workspace.settings', { ns: 'common' })} />
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="gap-2 px-3"
-            onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
-          >
-            <WorkspaceMenuItemContent icon={<span aria-hidden className="i-ri-team-line h-4 w-4" />} label={t('mainNav.workspace.inviteMembers', { ns: 'common' })} />
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        {workspaces.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <div className="px-3 py-1 system-2xs-medium-uppercase text-text-tertiary">
+          {workspaces.length > 0 && (
+            <div className="mt-1 flex flex-col">
+              <div className="px-3 py-1.5 system-xs-medium-uppercase text-text-tertiary">
                 {t('mainNav.workspace.switchWorkspace', { ns: 'common' })}
               </div>
               {workspaces.map(workspace => (
-                <DropdownMenuItem
+                <button
+                  type="button"
                   key={workspace.id}
-                  className="gap-2 px-3"
+                  className={cn(
+                    'flex h-8 w-full items-center gap-2 rounded-lg px-3 py-1 text-left transition-colors hover:bg-state-base-hover',
+                    workspace.current && 'text-text-secondary',
+                  )}
                   onClick={() => {
+                    setOpen(false)
                     void handleSwitchWorkspace(workspace.id)
                   }}
                 >
@@ -253,13 +299,13 @@ const WorkspaceCard = () => {
                     label={workspace.name}
                     trailing={workspace.current ? <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" /> : undefined}
                   />
-                </DropdownMenuItem>
+                </button>
               ))}
-            </DropdownMenuGroup>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -583,7 +629,7 @@ const MainNav = ({
 
   const renderLogo = () => (
     <h1 className="min-w-0">
-      <Link href="/apps" className="flex h-8 shrink-0 items-center overflow-hidden px-0.5 indent-[-9999px] whitespace-nowrap">
+      <Link href="/apps" className="flex h-8 shrink-0 items-center overflow-hidden px-2 indent-[-9999px] whitespace-nowrap">
         {systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
         {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
           ? (
@@ -599,20 +645,23 @@ const MainNav = ({
   )
 
   return (
-    <aside className={cn('flex h-full w-[240px] shrink-0 flex-col bg-background-body px-2 py-4', className)}>
-      <div className="mb-5 flex items-center justify-between px-1">
-        {renderLogo()}
-        <MainNavSearchButton />
+    <aside className={cn('flex h-full w-[240px] shrink-0 flex-col bg-background-body', className)}>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-center justify-between px-2 pt-4 pb-2">
+          {renderLogo()}
+          <MainNavSearchButton />
+        </div>
+        <div className="p-2">
+          <WorkspaceCard />
+        </div>
+        <nav className="space-y-1 p-2">
+          {navItems.map(item => (
+            <MainNavLink key={item.href} item={item} pathname={pathname} />
+          ))}
+        </nav>
+        <WebAppsSection />
       </div>
-      <WorkspaceCard />
-      <nav className="mt-6 space-y-1">
-        {navItems.map(item => (
-          <MainNavLink key={item.href} item={item} pathname={pathname} />
-        ))}
-      </nav>
-      <div className="my-4 h-px bg-divider-subtle" />
-      <WebAppsSection />
-      <div className="-mx-2 mt-auto flex w-[240px] items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
+      <div className="flex w-[240px] items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
         <AccountDropdown
           trigger={({ isOpen, ariaLabel }) => (
             <button

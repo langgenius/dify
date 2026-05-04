@@ -161,6 +161,7 @@ describe('MainNav', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
+      isFetchedPlan: true,
       plan: { type: Plan.sandbox },
     } as ProviderContextState)
     ;(useModalContext as Mock).mockReturnValue({
@@ -169,8 +170,8 @@ describe('MainNav', () => {
     } as unknown as ModalContextState)
     ;(useWorkspacesContext as Mock).mockReturnValue({
       workspaces: [
-        { id: 'workspace-1', name: 'Solar Studio', current: true },
-        { id: 'workspace-2', name: 'Evan Workspace', current: false },
+        { id: 'workspace-1', name: 'Solar Studio', plan: Plan.team, status: 'normal', created_at: 0, current: true },
+        { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.sandbox, status: 'normal', created_at: 0, current: false },
       ],
     })
     ;(useGetInstalledApps as Mock).mockImplementation(() => ({
@@ -190,6 +191,7 @@ describe('MainNav', () => {
   it('renders primary navigation with the planned routes', () => {
     renderMainNav()
 
+    expect(screen.getByText(Plan.team)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/explore/apps')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
@@ -202,7 +204,24 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveClass('bg-components-main-nav-nav-button-bg-active')
+    const datasetsLink = screen.getByRole('link', { name: /common.menus.datasets/ })
+    expect(datasetsLink.className).toContain('bg-[linear-gradient(98.077deg')
+    expect(datasetsLink).toHaveClass('main-nav-active-edge')
+  })
+
+  it('applies the Figma glass active state to the Home route', () => {
+    mockPathname = '/explore/apps'
+
+    renderMainNav()
+
+    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
+
+    expect(homeLink).toHaveClass(
+      'border-transparent',
+      'backdrop-blur-[5px]',
+      'main-nav-active-edge',
+    )
+    expect(homeLink.className).toContain('bg-[linear-gradient(98.077deg')
   })
 
   it('dispatches the goto anything open event from the search button', () => {
@@ -219,7 +238,7 @@ describe('MainNav', () => {
   it('opens workspace settings, members, provider credits, upgrade, and workspace switching actions', async () => {
     renderMainNav()
 
-    fireEvent.click(screen.getByText(/common\.mainNav\.workspace\.credits|7,500 credits/))
+    fireEvent.click(screen.getByRole('button', { name: /common\.mainNav\.workspace\.credits|7,500 credits/ }))
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
 
     fireEvent.click(screen.getByText('billing.upgradeBtn.encourageShort'))
