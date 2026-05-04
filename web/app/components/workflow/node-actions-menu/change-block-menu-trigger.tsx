@@ -4,11 +4,7 @@ import type {
   OnSelectBlock,
 } from '@/app/components/workflow/types'
 import { intersection } from 'es-toolkit/array'
-import {
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
@@ -19,19 +15,19 @@ import {
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
-
 import { FlowType } from '@/types/common'
 
-type ChangeBlockProps = {
+type ChangeBlockMenuTriggerProps = {
   nodeId: string
   nodeData: Node['data']
   sourceHandle: string
 }
-const ChangeBlock = ({
+
+export function ChangeBlockMenuTrigger({
   nodeId,
   nodeData,
   sourceHandle,
-}: ChangeBlockProps) => {
+}: ChangeBlockMenuTriggerProps) {
   const { t } = useTranslation()
   const { handleNodeChange } = useNodesInteractions()
   const {
@@ -55,10 +51,9 @@ const ChangeBlock = ({
   const availableNodes = useMemo(() => {
     if (availablePrevBlocks.length && availableNextBlocks.length)
       return intersection(availablePrevBlocks, availableNextBlocks)
-    else if (availablePrevBlocks.length)
+    if (availablePrevBlocks.length)
       return availablePrevBlocks
-    else
-      return availableNextBlocks
+    return availableNextBlocks
   }, [availablePrevBlocks, availableNextBlocks])
 
   const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
@@ -67,19 +62,17 @@ const ChangeBlock = ({
 
   const renderTrigger = useCallback(() => {
     return (
-      <div className="flex h-8 w-[232px] cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover">
+      <button
+        type="button"
+        className="mx-1 flex h-8 w-[calc(100%-8px)] cursor-pointer items-center rounded-lg border-0 bg-transparent px-2 text-left text-sm text-text-secondary outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+      >
         {t('panel.changeBlock', { ns: 'workflow' })}
-      </div>
+      </button>
     )
   }, [t])
 
   return (
     <BlockSelector
-      placement="bottom-end"
-      offset={{
-        mainAxis: -36,
-        crossAxis: 4,
-      }}
       onSelect={handleSelect}
       trigger={renderTrigger}
       popupClassName="min-w-[240px]"
@@ -91,5 +84,3 @@ const ChangeBlock = ({
     />
   )
 }
-
-export default memo(ChangeBlock)

@@ -241,8 +241,8 @@ vi.mock('../next-step', () => ({
   default: () => <div>next-step</div>,
 }))
 
-vi.mock('../panel-operator', () => ({
-  default: () => <div>panel-operator</div>,
+vi.mock('@/app/components/workflow/node-actions-menu', () => ({
+  NodeActionsDropdown: () => <div>node-actions-menu</div>,
 }))
 
 vi.mock('../retry/retry-on-panel', () => ({

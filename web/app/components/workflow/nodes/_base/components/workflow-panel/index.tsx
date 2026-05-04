@@ -49,6 +49,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
@@ -71,7 +72,6 @@ import PanelWrap from '../before-run-form/panel-wrap'
 import ErrorHandleOnPanel from '../error-handle/error-handle-on-panel'
 import HelpLink from '../help-link'
 import NextStep from '../next-step'
-import PanelOperator from '../panel-operator'
 import RetryOnPanel from '../retry/retry-on-panel'
 import { DescriptionInput, TitleInput } from '../title-description-input'
 import {
@@ -540,7 +540,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 )
               }
               <HelpLink nodeType={data.type} />
-              <PanelOperator id={id} data={data} showHelpLink={false} />
+              <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <div
                 className="flex h-6 w-6 cursor-pointer items-center justify-center"

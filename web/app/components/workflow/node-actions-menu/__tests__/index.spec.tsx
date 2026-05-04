@@ -12,7 +12,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAllWorkflowTools } from '@/service/use-tools'
-import PanelOperator from '../index'
+import { NodeActionsDropdown } from '../index'
 
 vi.mock('@/app/components/workflow/hooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/app/components/workflow/hooks')>()
@@ -30,8 +30,8 @@ vi.mock('@/service/use-tools', () => ({
   useAllWorkflowTools: vi.fn(),
 }))
 
-vi.mock('../change-block', () => ({
-  default: () => <div data-testid="panel-operator-change-block" />,
+vi.mock('../change-block-menu-trigger', () => ({
+  ChangeBlockMenuTrigger: () => <div data-testid="node-actions-change-block" />,
 }))
 
 const mockUseNodeDataUpdate = vi.mocked(useNodeDataUpdate)
@@ -73,18 +73,16 @@ const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> => ({
 const renderComponent = (
   showHelpLink: boolean = true,
   onOpenChange?: (open: boolean) => void,
-  offset?: { mainAxis: number, crossAxis: number } | number,
 ) =>
   renderWorkflowFlowComponent(
-    <PanelOperator
+    <NodeActionsDropdown
       id="node-1"
       data={{
         title: 'Code Node',
         desc: '',
         type: BlockEnum.Code,
       }}
-      triggerClassName="panel-operator-trigger"
-      offset={offset}
+      triggerClassName="node-actions-trigger"
       onOpenChange={onOpenChange}
       showHelpLink={showHelpLink}
     />,
@@ -94,7 +92,7 @@ const renderComponent = (
     },
   )
 
-describe('PanelOperator', () => {
+describe('NodeActionsDropdown', () => {
   const handleNodeSelect = vi.fn()
   const handleNodeDataUpdate = vi.fn()
   const handleSyncWorkflowDraft = vi.fn()
@@ -131,47 +129,34 @@ describe('PanelOperator', () => {
     mockUseAllWorkflowTools.mockReturnValue(createQueryResult<ToolWithProvider[]>([]))
   })
 
-  // The operator should open the real popup, expose actionable items, and respect help-link visibility.
-  describe('Popup Interaction', () => {
-    it('should open the popup and trigger single-run actions', async () => {
-      const user = userEvent.setup()
-      const onOpenChange = vi.fn()
-      const { container } = renderComponent(true, onOpenChange)
+  it('should open the dropdown and trigger single-run actions', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    renderComponent(true, onOpenChange)
 
-      await user.click(container.querySelector('.panel-operator-trigger') as HTMLElement)
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
-      expect(onOpenChange).toHaveBeenCalledWith(true)
-      expect(screen.getByText('workflow.panel.runThisStep')).toBeInTheDocument()
-      expect(screen.getByText('Node description')).toBeInTheDocument()
+    expect(onOpenChange).toHaveBeenCalledWith(true)
+    expect(screen.getByText('workflow.panel.runThisStep')).toBeInTheDocument()
+    expect(screen.getByText('Node description')).toBeInTheDocument()
 
-      await user.click(screen.getByText('workflow.panel.runThisStep'))
+    await user.click(screen.getByText('workflow.panel.runThisStep'))
 
-      expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
-      expect(handleNodeDataUpdate).toHaveBeenCalledWith({
-        id: 'node-1',
-        data: { _isSingleRun: true },
-      })
-      expect(handleSyncWorkflowDraft).toHaveBeenCalledWith(true)
+    expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
+    expect(handleNodeDataUpdate).toHaveBeenCalledWith({
+      id: 'node-1',
+      data: { _isSingleRun: true },
     })
+    expect(handleSyncWorkflowDraft).toHaveBeenCalledWith(true)
+  })
 
-    it('should hide the help link when showHelpLink is false', async () => {
-      const user = userEvent.setup()
-      const { container } = renderComponent(false)
+  it('should hide the help link when showHelpLink is false', async () => {
+    const user = userEvent.setup()
+    renderComponent(false)
 
-      await user.click(container.querySelector('.panel-operator-trigger') as HTMLElement)
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
-      expect(screen.queryByText('workflow.panel.helpLink')).not.toBeInTheDocument()
-      expect(screen.getByText('Node description')).toBeInTheDocument()
-    })
-
-    it('should still open the popup when using a numeric offset and no open-change callback', async () => {
-      const user = userEvent.setup()
-      const { container } = renderComponent(true, undefined, 0)
-
-      await user.click(container.querySelector('.panel-operator-trigger') as HTMLElement)
-
-      expect(screen.getByText('workflow.panel.runThisStep')).toBeInTheDocument()
-      expect(screen.getByText('Node description')).toBeInTheDocument()
-    })
+    expect(screen.queryByText('workflow.panel.helpLink')).not.toBeInTheDocument()
+    expect(screen.getByText('Node description')).toBeInTheDocument()
   })
 })

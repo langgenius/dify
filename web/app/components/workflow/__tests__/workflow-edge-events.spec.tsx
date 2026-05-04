@@ -297,7 +297,7 @@ vi.mock('../edge-contextmenu', () => ({
 }))
 
 vi.mock('../node-contextmenu', () => ({
-  default: () => null,
+  NodeContextmenu: () => null,
 }))
 
 vi.mock('../nodes', () => ({

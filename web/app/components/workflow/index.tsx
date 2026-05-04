@@ -95,7 +95,7 @@ import {
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
-import NodeContextmenu from './node-contextmenu'
+import { NodeContextmenu } from './node-contextmenu'
 import CustomNode from './nodes'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
