@@ -14,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   useDSL,
+  useIsChatMode,
   useNodesInteractions,
   usePanelInteractions,
   useWorkflowMoveMode,
@@ -34,10 +35,14 @@ const PanelContextmenu = () => {
   const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
   const { handleNodesPaste } = useNodesInteractions()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
-  const { handleStartWorkflowRun } = useWorkflowStartRun()
+  const {
+    handleStartWorkflowRun,
+    handleWorkflowStartRunInChatflow,
+  } = useWorkflowStartRun()
   const { handleAddNote } = useOperator()
   const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
+  const isChatMode = useIsChatMode()
   const panelMenuClientX = panelMenu?.clientX
   const panelMenuClientY = panelMenu?.clientY
 
@@ -68,6 +73,15 @@ const PanelContextmenu = () => {
       </button>
     )
   }, [t])
+
+  const handleRunAction = useCallback(() => {
+    if (isChatMode)
+      handleWorkflowStartRunInChatflow()
+    else
+      handleStartWorkflowRun()
+
+    handlePaneContextmenuCancel()
+  }, [isChatMode, handleWorkflowStartRunInChatflow, handleStartWorkflowRun, handlePaneContextmenuCancel])
 
   if (!panelMenu || !anchor)
     return null
@@ -120,13 +134,10 @@ const PanelContextmenu = () => {
           )}
           <ContextMenuItem
             className="justify-between gap-4 px-3 text-text-secondary"
-            onClick={() => {
-              handleStartWorkflowRun()
-              handlePaneContextmenuCancel()
-            }}
+            onClick={handleRunAction}
           >
-            {t('common.run', { ns: 'workflow' })}
-            <ShortcutKbd shortcut="workflow.open-test-run-menu" />
+            {isChatMode ? t('common.debugAndPreview', { ns: 'workflow' }) : t('common.run', { ns: 'workflow' })}
+            {!isChatMode && <ShortcutKbd shortcut="workflow.open-test-run-menu" />}
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />

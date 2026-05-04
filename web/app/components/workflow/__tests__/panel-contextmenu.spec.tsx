@@ -40,6 +40,7 @@ describe('PanelContextmenu', () => {
   const mockHandleNodesPaste = vi.fn()
   const mockHandlePaneContextmenuCancel = vi.fn()
   const mockHandleStartWorkflowRun = vi.fn()
+  const mockHandleWorkflowStartRunInChatflow = vi.fn()
   const mockHandleAddNote = vi.fn()
   const mockExportCheck = vi.fn()
   const defaultNodesMetaDataMap = {
@@ -65,6 +66,7 @@ describe('PanelContextmenu', () => {
     })
     mockUseWorkflowStartRun.mockReturnValue({
       handleStartWorkflowRun: mockHandleStartWorkflowRun,
+      handleWorkflowStartRunInChatflow: mockHandleWorkflowStartRunInChatflow,
     })
     mockUseWorkflowMoveMode.mockReturnValue({
       isCommentModeAvailable: false,
@@ -133,6 +135,28 @@ describe('PanelContextmenu', () => {
       expect(mockHandleNodesPaste).toHaveBeenCalledTimes(1)
       expect(mockExportCheck).toHaveBeenCalledTimes(1)
       expect(store.getState().showImportDSLModal).toBe(true)
+    })
+  })
+
+  it('should render preview action in chat mode', async () => {
+    mockUseIsChatMode.mockReturnValue(true)
+
+    renderWorkflowFlowComponent(<PanelContextmenu />, {
+      initialStoreState: {
+        panelMenu: { clientX: 24, clientY: 48 },
+      },
+      hooksStoreProps: {},
+    })
+
+    expect(await screen.findByText('common.debugAndPreview')).toBeInTheDocument()
+    expect(screen.queryByText('common.run')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('common.debugAndPreview'))
+
+    await waitFor(() => {
+      expect(mockHandleWorkflowStartRunInChatflow).toHaveBeenCalledTimes(1)
+      expect(mockHandleStartWorkflowRun).not.toHaveBeenCalled()
+      expect(mockHandlePaneContextmenuCancel).toHaveBeenCalled()
     })
   })
 })
