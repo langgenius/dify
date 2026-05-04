@@ -187,7 +187,6 @@ const List: FC<Props> = ({
   }, [isCreatedByMe, setQuery])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
-  const apps = useMemo(() => pages.flatMap(({ data: apps }) => apps), [pages])
 
   const getVisibleAppIds = useCallback(() => {
     const containerElement = containerRef.current
@@ -229,7 +228,7 @@ const List: FC<Props> = ({
 
   useEffect(() => {
     void refreshWorkflowOnlineUsers()
-  }, [apps, refreshWorkflowOnlineUsers])
+  }, [refreshWorkflowOnlineUsers])
 
   useEffect(() => {
     if (!systemFeatures.enable_collaboration_mode)
@@ -301,18 +300,13 @@ const List: FC<Props> = ({
               return <AppCardSkeleton count={6} />
 
             if (hasAnyApp) {
-              return apps.map(app => (
-                <div
+              return pages.flatMap(({ data: apps }) => apps).map(app => (
+                <AppCard
                   key={app.id}
-                  data-app-id={app.id}
-                  className="col-span-1 [&>*]:w-full"
-                >
-                  <AppCard
-                    app={app}
-                    onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
-                    onRefresh={refetch}
-                  />
-                </div>
+                  app={app}
+                  onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
+                  onRefresh={refetch}
+                />
               ))
             }
 

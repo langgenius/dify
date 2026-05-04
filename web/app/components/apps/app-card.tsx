@@ -421,6 +421,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
   return (
     <>
       <div
+        data-app-id={app.id}
         onClick={(e) => {
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
