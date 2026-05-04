@@ -174,7 +174,7 @@ describe('useSelectionInteractions', () => {
   it('handleSelectionContextMenu should set menu only when clicking on selection rect', () => {
     const { result, store } = renderSelectionInteractions({
       nodeMenu: { clientX: 20, clientY: 10, nodeId: 'n1' },
-      panelMenu: { top: 30, left: 40 },
+      panelMenu: { clientX: 40, clientY: 30 },
       edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
     })
 
