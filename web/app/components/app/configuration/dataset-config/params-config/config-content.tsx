@@ -15,9 +15,9 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
+import { Infotip } from '@/app/components/base/infotip'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
-import Tooltip from '@/app/components/base/tooltip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -244,15 +244,14 @@ const ConfigContent: FC<Props> = ({
                       onClick={() => handleRerankModeChange(option.value)}
                     >
                       <div className="truncate">{option.label}</div>
-                      <Tooltip
-                        popupContent={(
-                          <div className="w-[200px]">
-                            {option.tips}
-                          </div>
-                        )}
-                        popupClassName="ml-0.5"
-                        triggerClassName="ml-0.5 w-3.5 h-3.5"
-                      />
+                      <Infotip
+                        aria-label={option.tips}
+                        className="ml-0.5 h-3.5 w-3.5"
+                        iconClassName="h-3.5 w-3.5"
+                        popupClassName="w-[200px]"
+                      >
+                        {option.tips}
+                      </Infotip>
                     </div>
                   ))
                 }
@@ -273,15 +272,13 @@ const ConfigContent: FC<Props> = ({
                     )
                   }
                   <div className="ml-1 system-sm-semibold leading-[32px] text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</div>
-                  <Tooltip
-                    popupContent={(
-                      <div className="w-[200px]">
-                        {t('modelProvider.rerankModel.tip', { ns: 'common' })}
-                      </div>
-                    )}
-                    popupClassName="ml-1"
-                    triggerClassName="ml-1 w-4 h-4"
-                  />
+                  <Infotip
+                    aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                    className="ml-1"
+                    popupClassName="w-[200px]"
+                  >
+                    {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                  </Infotip>
                 </div>
                 {
                   showRerankModel && (
@@ -363,9 +360,9 @@ const ConfigContent: FC<Props> = ({
         <div className="mt-4">
           <div className="flex items-center space-x-0.5">
             <div className="text-[13px] leading-[32px] font-medium text-text-primary">{t('modelProvider.systemReasoningModel.key', { ns: 'common' })}</div>
-            <Tooltip
-              popupContent={t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}
-            />
+            <Infotip aria-label={t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}>
+              {t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}
+            </Infotip>
           </div>
           <ModelParameterModal
             isInWorkflow={isInWorkflow}

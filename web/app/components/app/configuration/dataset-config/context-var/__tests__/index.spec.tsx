@@ -275,7 +275,7 @@ describe('ContextVar', () => {
       // Act
       render(<ContextVar {...props} />)
 
-      const varPickerTrigger = screen.getByTestId('popover-trigger')
+      const varPickerTrigger = screen.getAllByTestId('popover-trigger').at(-1)!
 
       await user.click(varPickerTrigger!)
       expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
@@ -296,7 +296,7 @@ describe('ContextVar', () => {
       // Act
       render(<ContextVar {...props} />)
 
-      const varPickerTrigger = screen.getByTestId('popover-trigger')
+      const varPickerTrigger = screen.getAllByTestId('popover-trigger').at(-1)!
 
       // Open dropdown
       await user.click(varPickerTrigger!)
