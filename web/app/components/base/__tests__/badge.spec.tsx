@@ -33,6 +33,13 @@ describe('Badge', () => {
       expect(badge).toHaveClass('relative', 'inline-flex', 'h-5', 'items-center')
     })
 
+    it('should render xs dimm badge variant', () => {
+      const { container } = render(<Badge text="beta" size="xs" variant="dimm" />)
+      const badge = container.firstChild as HTMLElement
+      expect(badge).toHaveClass('min-w-4', 'px-1', 'py-0.5', 'bg-components-badge-bg-dimm')
+      expect(badge).not.toHaveClass('h-5')
+    })
+
     it('should apply uppercase class by default', () => {
       const { container } = render(<Badge text="test" />)
       const badge = container.firstChild as HTMLElement

@@ -191,7 +191,8 @@ describe('MainNav', () => {
   it('renders primary navigation with the planned routes', () => {
     renderMainNav()
 
-    expect(screen.getByText(Plan.team)).toBeInTheDocument()
+    expect(screen.getAllByText(Plan.team)).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(Plan.team)
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/explore/apps')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')

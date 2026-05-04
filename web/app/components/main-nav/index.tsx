@@ -27,6 +27,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { Plan } from '@/app/components/billing/type'
 import ItemOperation from '@/app/components/explore/item-operation'
@@ -34,11 +35,11 @@ import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
 import AccountAbout from '@/app/components/header/account-about'
 import AccountDropdown from '@/app/components/header/account-dropdown'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
+import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
 import Support from '@/app/components/header/account-dropdown/support'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import GithubStar from '@/app/components/header/github-star'
 import Indicator from '@/app/components/header/indicator'
-import PlanBadge from '@/app/components/header/plan-badge'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
@@ -95,14 +96,6 @@ const WorkspaceIcon = ({
   </div>
 )
 
-const MenuIcon = ({
-  className,
-}: {
-  className?: string
-}) => (
-  <span className={cn('flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary', className)} />
-)
-
 const NavIcon = ({
   icon,
   className,
@@ -118,15 +111,10 @@ const WorkspacePlanBadge = ({
 }: {
   plan: Plan
 }) => {
-  if (plan !== Plan.sandbox)
-    return <PlanBadge plan={plan} />
-
   return (
-    <div className="flex min-w-4 shrink-0 items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5">
-      <span className="min-w-0 text-center system-2xs-medium-uppercase text-text-tertiary">
-        {plan}
-      </span>
-    </div>
+    <Badge size="xs" variant="dimm" className="shrink-0">
+      {plan === Plan.professional ? 'pro' : plan}
+    </Badge>
   )
 }
 
@@ -365,7 +353,7 @@ const WebAppItem = ({
   return (
     <div
       className={cn(
-        'group flex h-6 cursor-pointer items-center justify-between rounded-lg pr-0.5 pl-2 system-sm-regular text-components-main-nav-text transition-colors',
+        'group flex cursor-pointer items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 text-components-main-nav-text transition-colors',
         isSelected ? 'bg-state-base-hover text-components-main-nav-text' : 'hover:bg-state-base-hover hover:text-components-main-nav-text',
       )}
       onClick={() => router.push(url)}
@@ -373,15 +361,16 @@ const WebAppItem = ({
       onMouseLeave={() => setIsHovering(false)}
       title={app.app.name}
     >
-      <div className="flex min-w-0 grow items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <AppIcon
           size="tiny"
+          className="size-5 rounded-md text-sm"
           iconType={app.app.icon_type}
           icon={app.app.icon}
           background={app.app.icon_background}
           imageUrl={app.app.icon_url}
         />
-        <span className="truncate">{app.app.name}</span>
+        <span className="min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular">{app.app.name}</span>
       </div>
       <div className="h-6 shrink-0" onClick={e => e.stopPropagation()}>
         <ItemOperation
@@ -429,23 +418,25 @@ const WebAppsSection = () => {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between px-2 pb-1">
+      <div className="flex items-center justify-between py-1 pr-2.5 pl-2">
         <button
           type="button"
-          className="flex min-w-0 items-center gap-1 text-left system-xs-medium-uppercase text-text-quaternary hover:text-text-tertiary"
+          className="flex min-w-0 items-center rounded-md px-2 py-1 text-left system-xs-medium-uppercase text-text-tertiary hover:text-text-secondary"
           onClick={() => setSearchVisible(value => !value)}
         >
           <span>{t('sidebar.webApps', { ns: 'explore' })}</span>
-          <span aria-hidden className="i-ri-arrow-down-s-line h-3.5 w-3.5 shrink-0" />
+          <span aria-hidden className="i-ri-arrow-down-s-fill h-4 w-4 shrink-0" />
         </button>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             aria-label={t('operation.search', { ns: 'common' })}
-            className={cn('flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', searchVisible && 'bg-state-base-hover text-text-secondary')}
+            className={cn('flex h-6 w-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', searchVisible && 'bg-state-base-hover text-text-secondary')}
             onClick={() => setSearchVisible(value => !value)}
           >
-            <span aria-hidden className="i-ri-search-line h-4 w-4" />
+            <span className="flex size-5 shrink-0 items-center justify-center">
+              <span aria-hidden className="i-ri-search-line size-3.5" />
+            </span>
           </button>
         </div>
       </div>
@@ -530,46 +521,60 @@ const HelpMenu = () => {
         <DropdownMenuContent
           placement="top-end"
           sideOffset={8}
-          popupClassName="w-60 p-1"
+          popupClassName="w-60 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           {!systemFeatures.branding.enabled && (
             <>
-              <DropdownMenuGroup>
-                <DropdownMenuLinkItem href={docLink('/use-dify/getting-started/introduction')} target="_blank" rel="noopener noreferrer" className="gap-2 px-3">
-                  <MenuIcon className="i-ri-book-open-line" />
-                  <span className="grow system-sm-regular text-text-secondary">{t('userProfile.helpCenter', { ns: 'common' })}</span>
+              <DropdownMenuGroup className="p-1">
+                <DropdownMenuLinkItem href={docLink('/use-dify/getting-started/introduction')} target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1">
+                  <MenuItemContent
+                    iconClassName="i-ri-book-open-line"
+                    label={t('mainNav.help.docs', { ns: 'common' })}
+                    trailing={<ExternalLinkIndicator />}
+                  />
                 </DropdownMenuLinkItem>
                 <Support closeAccountDropdown={() => setOpen(false)} />
                 {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
               </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuLinkItem href="https://roadmap.dify.ai" target="_blank" rel="noopener noreferrer" className="gap-2 px-3">
-                  <MenuIcon className="i-ri-map-2-line" />
-                  <span className="grow system-sm-regular text-text-secondary">{t('userProfile.roadmap', { ns: 'common' })}</span>
+              <DropdownMenuSeparator className="my-0!" />
+              <DropdownMenuGroup className="p-1">
+                <DropdownMenuLinkItem href="https://roadmap.dify.ai" target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1.5">
+                  <MenuItemContent
+                    iconClassName="i-ri-map-2-line"
+                    label={t('userProfile.roadmap', { ns: 'common' })}
+                    trailing={<ExternalLinkIndicator />}
+                  />
                 </DropdownMenuLinkItem>
-                <DropdownMenuLinkItem href="https://github.com/langgenius/dify" target="_blank" rel="noopener noreferrer" className="gap-2 px-3">
-                  <MenuIcon className="i-ri-github-line" />
-                  <span className="grow system-sm-regular text-text-secondary">{t('userProfile.github', { ns: 'common' })}</span>
-                  <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
-                    <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
-                    <GithubStar className="system-2xs-medium-uppercase text-text-tertiary" />
-                  </div>
+                <DropdownMenuLinkItem href="https://github.com/langgenius/dify" target="_blank" rel="noopener noreferrer" className="mx-0 h-8 gap-1 px-3 py-1.5">
+                  <MenuItemContent
+                    iconClassName="i-ri-github-line"
+                    label={t('userProfile.github', { ns: 'common' })}
+                    trailing={(
+                      <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
+                        <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
+                        <GithubStar className="system-2xs-medium-uppercase text-text-tertiary" />
+                      </div>
+                    )}
+                  />
                 </DropdownMenuLinkItem>
                 {env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
                   <DropdownMenuItem
-                    className="gap-2 px-3"
+                    className="mx-0 h-8 gap-1 px-3 py-1.5"
                     onClick={() => {
                       setAboutVisible(true)
                       setOpen(false)
                     }}
                   >
-                    <span aria-hidden className="i-ri-information-2-line h-4 w-4 shrink-0 text-text-tertiary" />
-                    <span className="grow system-sm-regular text-text-secondary">{t('userProfile.about', { ns: 'common' })}</span>
-                    <div className="flex shrink-0 items-center">
-                      <div className="mr-2 system-xs-regular text-text-tertiary">{langGeniusVersionInfo.current_version}</div>
-                      <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
-                    </div>
+                    <MenuItemContent
+                      iconClassName="i-ri-information-2-line"
+                      label={t('userProfile.about', { ns: 'common' })}
+                      trailing={(
+                        <div className="flex shrink-0 items-center">
+                          <div className="mr-2 system-xs-regular text-text-tertiary">{t('about.version', { ns: 'common', version: langGeniusVersionInfo.current_version })}</div>
+                          <Indicator color={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'green' : 'orange'} />
+                        </div>
+                      )}
+                    />
                   </DropdownMenuItem>
                 )}
               </DropdownMenuGroup>
@@ -587,8 +592,11 @@ const MainNav = ({
 }: MainNavProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const { userProfile } = useAppContext()
+  const { currentWorkspace, userProfile } = useAppContext()
+  const { plan } = useProviderContext()
+  const { workspaces } = useWorkspacesContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const workspacePlan = (workspaces.find(workspace => workspace.current)?.plan || currentWorkspace.plan || plan.type) as Plan
   const navItems = useMemo<MainNavItem[]>(() => [
     {
       href: '/explore/apps',
@@ -663,14 +671,16 @@ const MainNav = ({
       </div>
       <div className="flex w-[240px] items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
         <AccountDropdown
+          mainNavBadge={<WorkspacePlanBadge plan={workspacePlan} />}
+          variant="mainNav"
           trigger={({ isOpen, ariaLabel }) => (
             <button
               type="button"
               aria-label={ariaLabel}
-              className={cn('flex shrink-0 items-center gap-3 rounded-full py-1 pr-4 pl-1 text-left text-components-main-nav-text transition-colors hover:bg-state-base-hover', isOpen && 'bg-state-base-hover')}
+              className={cn('flex max-w-[188px] min-w-0 shrink items-center gap-3 rounded-full py-1 pr-4 pl-1 text-left text-components-main-nav-text transition-colors hover:bg-state-base-hover', isOpen && 'bg-state-base-hover')}
             >
               <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="md" className="size-7" />
-              <span className="system-md-medium whitespace-nowrap">{userProfile.name}</span>
+              <span className="min-w-0 flex-1 truncate system-md-medium">{userProfile.name}</span>
             </button>
           )}
         />
