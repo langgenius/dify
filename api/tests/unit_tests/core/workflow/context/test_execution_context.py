@@ -128,10 +128,13 @@ class TestExecutionContext:
 
         ctx = ExecutionContext(context_vars=captured)
 
-        with pytest.raises(RuntimeError, match="boom"):
+        def _enter_and_raise() -> None:
             with ctx.enter():
                 assert test_var.get() == "outer"
                 raise RuntimeError("boom")
+
+        with pytest.raises(RuntimeError, match="boom"):
+            _enter_and_raise()
 
         assert test_var.get() == "before_enter"
 
