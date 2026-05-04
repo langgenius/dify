@@ -162,6 +162,7 @@ const PanelOperatorPopup = ({
               <a
                 href={`/app/${workflowAppId}/workflow`}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
               >
                 {t('panel.openWorkflow', { ns: 'workflow' })}
@@ -178,6 +179,7 @@ const PanelOperatorPopup = ({
               <a
                 href={nodeMetaData.helpLinkUri}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
               >
                 {t('panel.helpLink', { ns: 'workflow' })}

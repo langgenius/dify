@@ -241,6 +241,7 @@ const Right = ({
                         <a
                           href={fullContent?.download_url}
                           target="_blank"
+                          rel="noopener noreferrer"
                         >
                           <RiFileDownloadFill className="size-4" />
                         </a>

@@ -2728,9 +2728,6 @@
     }
   },
   "web/app/components/header/account-setting/key-validator/declarations.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
