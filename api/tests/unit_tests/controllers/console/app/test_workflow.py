@@ -404,9 +404,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(app, monkeypatch: p
         ]
     }
     workflow_module.redis_client.pipeline.assert_called_once_with(transaction=False)
-    redis_pipeline.hgetall.assert_called_once_with(
-        f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}"
-    )
+    redis_pipeline.hgetall.assert_called_once_with(f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}")
     redis_pipeline.execute.assert_called_once_with()
     sign_avatar.assert_called_once_with("avatar-file-id")
 
