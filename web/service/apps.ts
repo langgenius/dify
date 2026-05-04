@@ -14,7 +14,7 @@ export const fetchWorkflowOnlineUsers = async ({ appIds }: { appIds: string[] })
     return {}
 
   const response = await consoleClient.apps.workflowOnlineUsers({
-    query: { app_ids: appIds.join(',') },
+    body: { app_ids: appIds },
   })
 
   if (!response?.data)

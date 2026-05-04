@@ -188,22 +188,16 @@ const List: FC<Props> = ({
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
 
-  const getVisibleAppIds = useCallback(() => {
-    const containerElement = containerRef.current
-    if (!containerElement)
-      return []
-
-    const containerRect = containerElement.getBoundingClientRect()
-    const appCardElements = Array.from(containerElement.querySelectorAll<HTMLElement>('[data-app-id]'))
-
-    return appCardElements
-      .filter((element) => {
-        const rect = element.getBoundingClientRect()
-        return rect.bottom >= containerRect.top - 100 && rect.top <= containerRect.bottom + 100
+  const workflowOnlineUserAppIds = useMemo(() => {
+    const appIds = new Set<string>()
+    pages.forEach(({ data: apps }) => {
+      apps.forEach((app) => {
+        if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
+          appIds.add(app.id)
       })
-      .map(element => element.dataset.appId)
-      .filter((appId): appId is string => Boolean(appId))
-  }, [])
+    })
+    return Array.from(appIds)
+  }, [pages])
 
   const refreshWorkflowOnlineUsers = useCallback(async () => {
     if (!systemFeatures.enable_collaboration_mode) {
@@ -211,20 +205,19 @@ const List: FC<Props> = ({
       return
     }
 
-    const visibleAppIds = getVisibleAppIds()
-    if (!visibleAppIds.length) {
+    if (!workflowOnlineUserAppIds.length) {
       setWorkflowOnlineUsersMap({})
       return
     }
 
     try {
-      const onlineUsersMap = await fetchWorkflowOnlineUsers({ appIds: visibleAppIds })
+      const onlineUsersMap = await fetchWorkflowOnlineUsers({ appIds: workflowOnlineUserAppIds })
       setWorkflowOnlineUsersMap(onlineUsersMap)
     }
     catch {
       setWorkflowOnlineUsersMap({})
     }
-  }, [getVisibleAppIds, systemFeatures.enable_collaboration_mode])
+  }, [systemFeatures.enable_collaboration_mode, workflowOnlineUserAppIds])
 
   useEffect(() => {
     void refreshWorkflowOnlineUsers()

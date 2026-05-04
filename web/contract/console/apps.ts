@@ -17,11 +17,11 @@ export const appDeleteContract = base
 export const workflowOnlineUsersContract = base
   .route({
     path: '/apps/workflows/online-users',
-    method: 'GET',
+    method: 'POST',
   })
   .input(type<{
-    query: {
-      app_ids: string
+    body: {
+      app_ids: string[]
     }
   }>())
   .output(type<WorkflowOnlineUsersResponse>())
