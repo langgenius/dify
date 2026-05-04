@@ -33,24 +33,34 @@ const Uploading: FC<Props> = ({
   const { t } = useTranslation()
   const fileName = file.name
   const handleUpload = async () => {
+    const finishUpload = (res: unknown) => {
+      const body = res !== null && res !== undefined && typeof res === 'object' && !Array.isArray(res)
+        ? (res as { message?: string, unique_identifier?: string, manifest?: PluginDeclaration })
+        : null
+
+      if (body?.message) {
+        onFailed(body.message)
+        return
+      }
+      if (isBundle) {
+        onBundleUploaded(res as Dependency[])
+        return
+      }
+      const uniqueIdentifier = body?.unique_identifier
+      const manifest = body?.manifest
+      if (!uniqueIdentifier || !manifest) {
+        onFailed(t(`${i18nPrefix}.pluginLoadErrorDesc`, { ns: 'plugin' }))
+        return
+      }
+      onPackageUploaded({ uniqueIdentifier, manifest })
+    }
+
     try {
-      await uploadFile(file, isBundle)
+      const res = await uploadFile(file, isBundle)
+      finishUpload(res)
     }
     catch (e: any) {
-      if (e.response?.message) {
-        onFailed(e.response?.message)
-      }
-      else { // Why it would into this branch?
-        const res = e.response
-        if (isBundle) {
-          onBundleUploaded(res)
-          return
-        }
-        onPackageUploaded({
-          uniqueIdentifier: res.unique_identifier,
-          manifest: res.manifest,
-        })
-      }
+      finishUpload(e?.response)
     }
   }
 
