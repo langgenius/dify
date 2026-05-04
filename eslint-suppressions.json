@@ -202,11 +202,6 @@
       "count": 1
     }
   },
-  "web/app/components/app-sidebar/toggle-button.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -346,16 +341,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/config-vision/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/config-vision/param-config-content.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config/agent/agent-setting/index.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -440,21 +425,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/configuration/config/config-audio.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/config/config-document.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/dataset-config/context-var/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/dataset-config/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -462,11 +432,6 @@
   },
   "web/app/components/app/configuration/dataset-config/params-config/__tests__/config-content.spec.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2062,11 +2027,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing/image-input.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/common/image-uploader/store.tsx": {
     "react-refresh/only-export-components": {
       "count": 3
@@ -2095,22 +2055,12 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/create-from-pipeline/list/template-card/details/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create-from-pipeline/list/template-card/details/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
     }
   },
   "web/app/components/datasets/create-from-pipeline/list/template-card/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/create/embedding-process/indexing-progress-item.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -2432,11 +2382,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/documents/status-item/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -2536,11 +2481,6 @@
     }
   },
   "web/app/components/datasets/settings/index-method/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/settings/summary-index-setting.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
