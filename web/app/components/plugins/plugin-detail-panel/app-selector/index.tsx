@@ -4,19 +4,22 @@ import type {
   Placement,
 } from '@floating-ui/react'
 import type { FC } from 'react'
+import type { AppListQuery } from '@/contract/console/apps'
 import type { App } from '@/types/app'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
 import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
-import { useAppDetail, useInfiniteAppList } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
+import { useAppDetail } from '@/service/use-apps'
 
 const PAGE_SIZE = 20
 
@@ -50,16 +53,30 @@ const AppSelector: FC<Props> = ({
   const [isShow, setIsShow] = useState(false)
   const [searchText, setSearchText] = useState('')
 
+  const appListQuery = useMemo<AppListQuery>(() => ({
+    page: 1,
+    limit: PAGE_SIZE,
+    name: searchText,
+  }), [searchText])
+
   const {
     data,
     isLoading,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
-  } = useInfiniteAppList({
-    page: 1,
-    limit: PAGE_SIZE,
-    name: searchText,
+  } = useInfiniteQuery({
+    ...consoleQuery.apps.list.infiniteOptions({
+      input: pageParam => ({
+        query: {
+          ...appListQuery,
+          page: Number(pageParam),
+        },
+      }),
+      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+      initialPageParam: 1,
+      placeholderData: keepPreviousData,
+    }),
   })
 
   const displayedApps = useMemo(() => {
