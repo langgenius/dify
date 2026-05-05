@@ -60,6 +60,16 @@ describe('PlanUpgradeModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('should call onClose when dialog requests close', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    renderComponent({ onClose })
+
+    await user.keyboard('{Escape}')
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   // Upgrade path uses provided callback over pricing modal
   it('should call onUpgrade and onClose when upgrade button is clicked with onUpgrade provided', async () => {
     const user = userEvent.setup()

@@ -162,4 +162,27 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
+
+  it('closes the trigger events limit modal and opens pricing when upgrading', async () => {
+    const plan = createPlan({
+      type: Plan.professional,
+      usage: { triggerEvents: 400 },
+      total: { triggerEvents: 400 },
+      reset: { triggerEvents: 6 },
+    })
+    mockUseProviderContext.mockReturnValue({
+      plan,
+      isFetchedPlan: true,
+    })
+    const user = userEvent.setup()
+
+    renderProvider()
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
+
+    await user.click(screen.getByText('billing.triggerLimitModal.upgrade'))
+
+    await waitFor(() => expect(screen.getByText('billing.plansCommon.mostPopular')).toBeInTheDocument())
+    expect(screen.queryByText('400')).not.toBeInTheDocument()
+  })
 })
