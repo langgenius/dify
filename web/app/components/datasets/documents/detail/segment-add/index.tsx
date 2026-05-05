@@ -11,7 +11,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 
