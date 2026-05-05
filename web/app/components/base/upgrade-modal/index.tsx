@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import styles from './style.module.css'
 
-export type UpgradeModalClassNames = {
+type UpgradeModalClassNames = {
   content?: string
   heroOverlay?: string
   body?: string
@@ -16,7 +16,7 @@ export type UpgradeModalClassNames = {
   footer?: string
 }
 
-export type UpgradeModalProps = {
+type UpgradeModalProps = {
   open: boolean
   onOpenChange?: (open: boolean) => void
   Icon?: ComponentType<{ className?: string }>
