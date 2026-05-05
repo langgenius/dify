@@ -10,7 +10,7 @@ import { Infotip } from '@/app/components/base/infotip'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import MethodItem from './method-item'
 import MethodSelector from './method-selector'
-import UpgradeModal from './upgrade-modal'
+import { UpgradeModal } from './upgrade-modal'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -62,9 +62,6 @@ const DeliveryMethodForm: React.FC<Props> = ({
   const handleShowUpgradeModal = () => {
     setShowUpgradeModal(true)
   }
-  const handleCloseUpgradeModal = () => {
-    setShowUpgradeModal(false)
-  }
 
   return (
     <div className="px-4 py-2">
@@ -106,12 +103,10 @@ const DeliveryMethodForm: React.FC<Props> = ({
           ))}
         </div>
       )}
-      {showUpgradeModal && (
-        <UpgradeModal
-          isShow={showUpgradeModal}
-          onClose={handleCloseUpgradeModal}
-        />
-      )}
+      <UpgradeModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+      />
     </div>
   )
 }
