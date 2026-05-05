@@ -121,9 +121,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                       render={(
                         <ActionButton
                           aria-label={emailSenderTooltipContent}
-                          onClick={() => {
-                            setShowTestEmailModal(true)
-                          }}
+                          onClick={() => setShowTestEmailModal(true)}
                         >
                           <RiSendPlane2Line className="h-4 w-4" />
                         </ActionButton>
@@ -184,33 +182,29 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
           )}
         </div>
       </div>
-      {showEmailModal && (
-        <EmailConfigureModal
-          isShow={showEmailModal}
-          config={method.config as EmailConfig}
-          nodesOutputVars={nodesOutputVars}
-          availableNodes={availableNodes}
-          onClose={() => setShowEmailModal(false)}
-          onConfirm={(data) => {
-            handleConfigChange(data)
-            setShowEmailModal(false)
-          }}
-        />
-      )}
-      {showTestEmailModal && (
-        <TestEmailSender
-          nodeId={nodeId}
-          deliveryId={method.id}
-          isShow={showTestEmailModal}
-          config={method.config as EmailConfig}
-          formContent={formContent}
-          formInputs={formInputs}
-          nodesOutputVars={nodesOutputVars}
-          availableNodes={availableNodes}
-          onClose={() => setShowTestEmailModal(false)}
-          jumpToEmailConfigModal={jumpToEmailConfigModal}
-        />
-      )}
+      <EmailConfigureModal
+        open={showEmailModal}
+        config={method.config as EmailConfig}
+        nodesOutputVars={nodesOutputVars}
+        availableNodes={availableNodes}
+        onOpenChange={setShowEmailModal}
+        onConfirm={(data) => {
+          handleConfigChange(data)
+          setShowEmailModal(false)
+        }}
+      />
+      <TestEmailSender
+        nodeId={nodeId}
+        deliveryId={method.id}
+        open={showTestEmailModal}
+        config={method.config as EmailConfig}
+        formContent={formContent}
+        formInputs={formInputs}
+        nodesOutputVars={nodesOutputVars}
+        availableNodes={availableNodes}
+        onOpenChange={setShowTestEmailModal}
+        jumpToEmailConfigModal={jumpToEmailConfigModal}
+      />
     </>
   )
 }

@@ -31,11 +31,11 @@ import EmailInput from './recipient/email-input'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type EmailConfigureModalProps = {
+type EmailSenderModalProps = {
   nodeId: string
   deliveryId: string
-  isShow: boolean
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   jumpToEmailConfigModal: () => void
   config?: EmailConfig
   formContent?: string
@@ -73,15 +73,15 @@ const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
 const EmailSenderModal = ({
   nodeId,
   deliveryId,
-  isShow,
-  onClose,
+  open,
+  onOpenChange,
   jumpToEmailConfigModal,
   config,
   formContent,
   formInputs,
   nodesOutputVars = [],
   availableNodes = [],
-}: EmailConfigureModalProps) => {
+}: EmailSenderModalProps) => {
   const { t } = useTranslation()
   const { userProfile, currentWorkspace } = useAppContext()
   const appDetail = useAppStore(state => state.appDetail)
@@ -184,11 +184,11 @@ const EmailSenderModal = ({
   if (done) {
     return (
       <Dialog
-        open={isShow}
-        onOpenChange={open => !open && onClose()}
+        open={open}
+        onOpenChange={onOpenChange}
       >
-        <DialogContent className="relative max-w-[480px]! p-0!">
-          <div className="space-y-2 p-6 pb-3">
+        <DialogContent>
+          <div className="space-y-2">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.done`, { ns: 'workflow' })}</DialogTitle>
             {debugEnabled && (
               <div className="system-md-regular text-text-secondary">
@@ -225,7 +225,7 @@ const EmailSenderModal = ({
             )}
           </div>
           {(onlySpecificUsers || combinedRecipients) && !debugEnabled && (
-            <div className="px-5">
+            <div className="mt-4">
               <EmailInput
                 disabled
                 email={userProfile.email}
@@ -237,11 +237,11 @@ const EmailSenderModal = ({
               />
             </div>
           )}
-          <div className="flex flex-row-reverse gap-2 p-6 pt-5">
+          <div className="mt-6 flex flex-row-reverse gap-2">
             <Button
               variant="primary"
               className="w-[72px]"
-              onClick={onClose}
+              onClick={() => onOpenChange(false)}
             >
               {t('operation.ok', { ns: 'common' })}
             </Button>
@@ -253,12 +253,12 @@ const EmailSenderModal = ({
 
   return (
     <Dialog
-      open={isShow}
-      onOpenChange={open => !open && onClose()}
+      open={open}
+      onOpenChange={onOpenChange}
     >
-      <DialogContent className="relative max-w-[480px]! p-0!">
-        <DialogCloseButton className="top-5 right-5 h-8 w-8" />
-        <div className="space-y-1 p-6 pb-3">
+      <DialogContent>
+        <DialogCloseButton />
+        <div className="space-y-1 pr-8">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.title`, { ns: 'workflow' })}</DialogTitle>
           {debugEnabled && (
             <>
@@ -299,7 +299,7 @@ const EmailSenderModal = ({
         </div>
         {(onlySpecificUsers || combinedRecipients) && !debugEnabled && (
           <>
-            <div className="px-5">
+            <div className="mt-4">
               <EmailInput
                 disabled
                 email={userProfile.email}
@@ -310,7 +310,7 @@ const EmailSenderModal = ({
                 onAdd={noop}
               />
             </div>
-            <div className="px-6 pt-1 system-xs-regular text-text-tertiary">
+            <div className="mt-1 system-xs-regular text-text-tertiary">
               <Trans
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.tip`}
                 ns="workflow"
@@ -324,10 +324,10 @@ const EmailSenderModal = ({
         {/* vars */}
         {generatedInputs.length > 0 && (
           <>
-            <div className="px-6">
+            <div>
               <Divider className="mt-4! mb-2! h-px! w-12! bg-divider-regular" />
             </div>
-            <div className="px-6 py-2">
+            <div className="py-2">
               <div className="group flex h-6 cursor-pointer items-center" onClick={() => setCollapsed(!collapsed)}>
                 <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
                 <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} />
@@ -353,7 +353,7 @@ const EmailSenderModal = ({
             </div>
           </>
         )}
-        <div className="flex flex-row-reverse gap-2 p-6 pt-5">
+        <div className="mt-6 flex flex-row-reverse gap-2">
           <Button
             disabled={sendingEmail || !confirmChecked}
             loading={sendingEmail}
@@ -364,7 +364,7 @@ const EmailSenderModal = ({
           </Button>
           <Button
             className="w-[72px]"
-            onClick={onClose}
+            onClick={() => onOpenChange(false)}
           >
             {t('operation.cancel', { ns: 'common' })}
           </Button>
