@@ -140,14 +140,14 @@ describe('human-input/delivery-method/method-item', () => {
 
     const row = getMethodRow('webapp')
     const actionButtons = within(row).getAllByRole('button')
-    const deleteButtonWrapper = actionButtons[0]!.parentElement as HTMLDivElement
+    const deleteButton = actionButtons[0]!
 
-    fireEvent.mouseEnter(deleteButtonWrapper)
+    fireEvent.mouseEnter(deleteButton)
     expect(row)!.toHaveClass('border-state-destructive-border')
-    fireEvent.mouseLeave(deleteButtonWrapper)
+    fireEvent.mouseLeave(deleteButton)
     expect(row).not.toHaveClass('border-state-destructive-border')
 
-    fireEvent.click(actionButtons[0]!)
+    fireEvent.click(deleteButton)
     expect(handleDelete).toHaveBeenCalledWith(DeliveryMethodType.WebApp)
   })
 

@@ -3,10 +3,10 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import MethodItem from './method-item'
 import MethodSelector from './method-selector'
@@ -71,18 +71,9 @@ const DeliveryMethodForm: React.FC<Props> = ({
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
           <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <span className="flex h-3.5 w-3.5 shrink-0 p-px">
-                  <span aria-hidden className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" />
-                </span>
-              )}
-            />
-            <TooltipContent>
-              {t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}
-            </TooltipContent>
-          </Tooltip>
+          <Infotip aria-label={t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}>
+            {t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}
+          </Infotip>
         </div>
         {!readonly && (
           <div className="flex items-center px-1">

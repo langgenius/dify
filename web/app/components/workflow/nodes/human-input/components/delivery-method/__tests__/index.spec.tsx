@@ -9,11 +9,6 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  __esModule: true,
-  default: ({ popupContent }: { popupContent: string }) => <div data-testid="tooltip">{popupContent}</div>,
-}))
-
 vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesSyncDraft: () => mockUseNodesSyncDraft(),
 }))
