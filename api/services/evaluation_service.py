@@ -14,6 +14,7 @@ from configs import dify_config
 from core.evaluation.entities.evaluation_entity import (
     METRIC_NODE_TYPE_MAPPING,
     METRIC_VALUE_TYPE_MAPPING,
+    CustomizedMetrics,
     DefaultMetric,
     EvaluationCategory,
     EvaluationConfigData,
@@ -358,6 +359,55 @@ class EvaluationService:
             ).all()
         )
 
+    @classmethod
+    def resolve_run_request_config(
+        cls,
+        session: Session,
+        tenant_id: str,
+        target_type: str,
+        target_id: str,
+        run_request: EvaluationRunRequest,
+    ) -> EvaluationRunRequest:
+        """Hydrate an empty run request from the latest saved evaluation config.
+
+        Console callers may submit only ``file_id`` when they want to reuse the
+        previously saved evaluation settings. We only hydrate the request when
+        *all* config fields are absent so partially specified payloads remain
+        exactly as submitted by the caller.
+        """
+        if cls._has_inline_run_config(run_request):
+            return run_request
+
+        config = cls.get_evaluation_config(session, tenant_id, target_type, target_id)
+        if config is None:
+            raise EvaluationNotFoundError("Evaluation configuration not found. Save evaluation settings first.")
+
+        return EvaluationRunRequest(
+            file_id=run_request.file_id,
+            evaluation_model=config.evaluation_model or "",
+            evaluation_model_provider=config.evaluation_model_provider or "",
+            default_metrics=[DefaultMetric.model_validate(metric) for metric in config.default_metrics_list],
+            customized_metrics=(
+                CustomizedMetrics.model_validate(config.customized_metrics_dict)
+                if config.customized_metrics_dict
+                else None
+            ),
+            judgment_config=(
+                JudgmentConfig.model_validate(config.judgment_config_dict) if config.judgment_config_dict else None
+            ),
+        )
+
+    @staticmethod
+    def _has_inline_run_config(run_request: EvaluationRunRequest) -> bool:
+        """Return True when the request body already includes evaluation settings."""
+        return bool(
+            run_request.evaluation_model.strip()
+            or run_request.evaluation_model_provider.strip()
+            or run_request.default_metrics
+            or run_request.customized_metrics is not None
+            or run_request.judgment_config is not None
+        )
+
     # ---- Evaluation Run Management ----
 
     @classmethod
@@ -374,13 +424,22 @@ class EvaluationService:
     ) -> EvaluationRun:
         """Validate dataset, create run record, dispatch Celery task.
 
-        Saves the provided parameters as the latest EvaluationConfiguration
-        before creating the run.
+        Saves the effective parameters as the latest EvaluationConfiguration
+        before creating the run. When the request body contains only ``file_id``,
+        the latest saved evaluation config for the target is reused.
         """
         # Check framework is configured
         evaluation_instance = EvaluationManager.get_evaluation_instance()
         if evaluation_instance is None:
             raise EvaluationFrameworkNotConfiguredError()
+
+        resolved_run_request = cls.resolve_run_request_config(
+            session=session,
+            tenant_id=tenant_id,
+            target_type=target_type,
+            target_id=target_id,
+            run_request=run_request,
+        )
 
         # Save as latest EvaluationConfiguration
         config = cls.save_evaluation_config(
@@ -389,7 +448,7 @@ class EvaluationService:
             target_type=target_type,
             target_id=target_id,
             account_id=account_id,
-            data=run_request,
+            data=resolved_run_request,
         )
 
         # Check concurrent run limit
@@ -416,7 +475,7 @@ class EvaluationService:
             target_id=target_id,
             evaluation_config_id=config.id,
             status=EvaluationRunStatus.PENDING,
-            dataset_file_id=run_request.file_id,
+            dataset_file_id=resolved_run_request.file_id,
             total_items=len(items),
             created_by=account_id,
         )
@@ -430,11 +489,11 @@ class EvaluationService:
             tenant_id=tenant_id,
             target_type=target_type,
             target_id=target_id,
-            evaluation_model_provider=run_request.evaluation_model_provider,
-            evaluation_model=run_request.evaluation_model,
-            default_metrics=run_request.default_metrics,
-            customized_metrics=run_request.customized_metrics,
-            judgment_config=run_request.judgment_config,
+            evaluation_model_provider=resolved_run_request.evaluation_model_provider,
+            evaluation_model=resolved_run_request.evaluation_model,
+            default_metrics=resolved_run_request.default_metrics,
+            customized_metrics=resolved_run_request.customized_metrics,
+            judgment_config=resolved_run_request.judgment_config,
             input_list=items,
         )
 
@@ -463,7 +522,8 @@ class EvaluationService:
 
         This lightweight path keeps the existing read flows (`logs`, `run detail`,
         and result-file download) available for app evaluations without invoking
-        the asynchronous real execution flow.
+        the asynchronous real execution flow. Requests that only provide
+        ``file_id`` reuse the latest saved evaluation config for the target.
         """
         from tasks.evaluation_task import (
             _compute_metrics_summary,
@@ -472,13 +532,21 @@ class EvaluationService:
             _store_result_file,
         )
 
+        resolved_run_request = cls.resolve_run_request_config(
+            session=session,
+            tenant_id=tenant_id,
+            target_type=target_type,
+            target_id=target_id,
+            run_request=run_request,
+        )
+
         config = cls.save_evaluation_config(
             session=session,
             tenant_id=tenant_id,
             target_type=target_type,
             target_id=target_id,
             account_id=account_id,
-            data=run_request,
+            data=resolved_run_request,
         )
 
         items = cls._parse_dataset(dataset_file_content, dataset_filename)
@@ -487,8 +555,8 @@ class EvaluationService:
             raise EvaluationDatasetInvalidError(f"Dataset has {len(items)} rows, max is {max_rows}.")
 
         now = naive_utc_now()
-        results = cls._build_stub_results(input_list=items, run_request=run_request)
-        metrics_summary = _compute_metrics_summary(results, run_request.judgment_config)
+        results = cls._build_stub_results(input_list=items, run_request=resolved_run_request)
+        metrics_summary = _compute_metrics_summary(results, resolved_run_request.judgment_config)
 
         evaluation_run = EvaluationRun(
             tenant_id=tenant_id,
@@ -496,7 +564,7 @@ class EvaluationService:
             target_id=target_id,
             evaluation_config_id=config.id,
             status=EvaluationRunStatus.COMPLETED,
-            dataset_file_id=run_request.file_id,
+            dataset_file_id=resolved_run_request.file_id,
             total_items=len(items),
             completed_items=len(items),
             failed_items=0,
