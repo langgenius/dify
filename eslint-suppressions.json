@@ -162,11 +162,6 @@
       "count": 5
     }
   },
-  "web/app/account/(commonLayout)/account-page/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/account/(commonLayout)/delete-account/components/feed-back.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -650,14 +645,6 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/apps/list.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
-    "react/unsupported-syntax": {
       "count": 2
     }
   },
@@ -2822,14 +2809,6 @@
   "web/app/components/header/account-setting/plugin-page/utils.ts": {
     "ts/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/header/app-nav/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/header/header-wrapper.tsx": {
@@ -5478,11 +5457,6 @@
   "web/service/try-app.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    }
-  },
-  "web/service/use-apps.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/service/use-common.ts": {
