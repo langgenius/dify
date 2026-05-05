@@ -17,15 +17,28 @@ def is_file_valid_with_config(
     if file_transfer_method == FileTransferMethod.TOOL_FILE:
         return True
 
+    # When FileType.CUSTOM is allowed with an explicit extension list, treat
+    # any file whose extension is listed as a CUSTOM file — regardless of the
+    # input_file_type reported by the caller.  This lets API clients omit or
+    # auto-detect the type for files configured under "Other File Types".
+    effective_file_type = input_file_type
     if (
         config.allowed_file_types
-        and input_file_type not in config.allowed_file_types
-        and input_file_type != FileType.CUSTOM
+        and FileType.CUSTOM in config.allowed_file_types
+        and config.allowed_file_extensions
+        and file_extension in config.allowed_file_extensions
+    ):
+        effective_file_type = FileType.CUSTOM
+
+    if (
+        config.allowed_file_types
+        and effective_file_type not in config.allowed_file_types
+        and effective_file_type != FileType.CUSTOM
     ):
         return False
 
     if (
-        input_file_type == FileType.CUSTOM
+        effective_file_type == FileType.CUSTOM
         and config.allowed_file_extensions is not None
         and file_extension not in config.allowed_file_extensions
     ):
