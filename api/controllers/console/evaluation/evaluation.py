@@ -187,7 +187,17 @@ evaluation_default_metrics_response_model = console_ns.model(
 evaluation_dataset_columns_response_model = console_ns.model(
     "EvaluationDatasetColumnsResponse",
     {
-        "columns": fields.List(fields.String),
+        "columns": fields.List(
+            fields.Nested(
+                console_ns.model(
+                    "EvaluationTemplateColumn",
+                    {
+                        "name": fields.String,
+                        "type": fields.String,
+                    },
+                )
+            )
+        ),
     },
 )
 
@@ -388,7 +398,7 @@ class EvaluationTemplateColumnsApi(Resource):
     @account_initialization_required
     @get_evaluation_target
     def post(self, target: Union[App, CustomizedSnippet], target_type: str):
-        """Return the dataset column names implied by the current evaluation config."""
+        """Return the dataset template columns implied by the current evaluation config."""
         body = request.get_json(silent=True) or {}
         try:
             config_data = EvaluationConfigData.model_validate(body)
@@ -441,7 +451,7 @@ class EvaluationLogsApi(Resource):
         }
 
 
-@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run")
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run1")
 class EvaluationRunApi(Resource):
     @console_ns.doc("start_evaluation_run")
     @console_ns.response(200, "Evaluation run started")
@@ -502,7 +512,7 @@ class EvaluationRunApi(Resource):
             return {"message": str(e.description)}, 400
 
 
-@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run1")
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run")
 class EvaluationRunRealApi(Resource):
     @console_ns.doc("start_evaluation_run_real")
     @console_ns.response(200, "Evaluation run started")

@@ -3,7 +3,7 @@ import io
 import json
 import logging
 from collections.abc import Mapping
-from typing import Any, Union
+from typing import Any, TypedDict, Union
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -51,6 +51,11 @@ from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
+
+
+class EvaluationTemplateColumn(TypedDict):
+    name: str
+    type: str
 
 
 class EvaluationService:
@@ -456,9 +461,9 @@ class EvaluationService:
     ) -> EvaluationRun:
         """Persist a completed synthetic run for frontend integration testing.
 
-        This temporary path keeps the existing read flows (`logs`, `run detail`,
-        and result-file download) working for app evaluations while the real
-        execution logic is moved to `/evaluation/run1` for backend iteration.
+        This lightweight path keeps the existing read flows (`logs`, `run detail`,
+        and result-file download) available for app evaluations without invoking
+        the asynchronous real execution flow.
         """
         from tasks.evaluation_task import (
             _compute_metrics_summary,
@@ -670,18 +675,18 @@ class EvaluationService:
         target: Union[App, CustomizedSnippet],
         target_type: str,
         data: EvaluationConfigData,
-    ) -> list[str]:
-        """Build dataset column names from target inputs and the selected evaluation config."""
-        input_columns = cls._get_target_input_column_names(target, target_type)
-        expected_output_columns = cls._get_expected_output_column_names(data.default_metrics)
-        return ["index", *input_columns, *expected_output_columns]
+    ) -> list[EvaluationTemplateColumn]:
+        """Build dataset template columns from target inputs and the selected evaluation config."""
+        input_columns = cls._get_target_input_columns(target, target_type)
+        expected_output_columns = cls._get_expected_output_columns(data.default_metrics)
+        return [{"name": "index", "type": "number"}, *input_columns, *expected_output_columns]
 
     @classmethod
-    def _get_target_input_column_names(
+    def _get_target_input_columns(
         cls,
         target: Union[App, CustomizedSnippet],
         target_type: str,
-    ) -> list[str]:
+    ) -> list[EvaluationTemplateColumn]:
         """Resolve user-input variables for the target in workflow order."""
         if target_type == EvaluationTargetType.APPS.value and isinstance(target, App):
             input_fields = cls._get_app_input_fields(target)
@@ -690,23 +695,30 @@ class EvaluationService:
         else:
             raise ValueError(f"Unsupported target type: {target_type}")
 
-        columns: list[str] = []
+        columns: list[EvaluationTemplateColumn] = []
         seen: set[str] = set()
         for field in input_fields:
             column_name = str(field.get("variable") or field.get("label") or "").strip()
             if not column_name or column_name in seen:
                 continue
             seen.add(column_name)
-            columns.append(column_name)
+            columns.append(
+                {
+                    "name": column_name,
+                    "type": cls._normalize_template_column_type(
+                        field.get("type") or field.get("value_type") or field.get("input_type")
+                    ),
+                }
+            )
         return columns
 
     @classmethod
-    def _get_expected_output_column_names(
+    def _get_expected_output_columns(
         cls,
         default_metrics: list[DefaultMetric | Mapping[str, Any]],
-    ) -> list[str]:
+    ) -> list[EvaluationTemplateColumn]:
         """Build one expected_output column per visible node that needs a reference answer."""
-        columns: list[str] = []
+        columns: list[EvaluationTemplateColumn] = []
         seen: set[str] = set()
         for metric in cls.filter_console_default_metrics(default_metrics):
             if metric.metric not in cls.METRICS_REQUIRING_EXPECTED_OUTPUT:
@@ -717,8 +729,19 @@ class EvaluationService:
                 if column_name in seen:
                     continue
                 seen.add(column_name)
-                columns.append(column_name)
+                columns.append({"name": column_name, "type": "string"})
         return columns
+
+    @staticmethod
+    def _normalize_template_column_type(raw_type: Any) -> str:
+        normalized = str(raw_type or "").strip().lower()
+        if normalized in {"number", "integer", "float", "int"}:
+            return "number"
+        if normalized in {"bool", "boolean", "switch"}:
+            return "boolean"
+        if normalized in {"file", "files"}:
+            return "file"
+        return "string"
 
     @classmethod
     def _nodes_for_metrics_from_workflow(
