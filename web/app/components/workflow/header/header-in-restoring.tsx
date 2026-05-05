@@ -2,6 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiHistoryLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useCallback,
 } from 'react'
@@ -9,7 +10,8 @@ import { useTranslation } from 'react-i18next'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import useTheme from '@/hooks/use-theme'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { useInvalidAllLastRun, useRestoreWorkflow } from '@/service/use-workflow'
 import {
   useLeaderRestore,
   useWorkflowRefreshDraft,
@@ -27,9 +29,11 @@ import RestoringTitle from './restoring-title'
 
 export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void
+  restoreVersionUrl?: (versionId: string) => string
 }
 const HeaderInRestoring = ({
   onRestoreSettled,
+  restoreVersionUrl,
 }: HeaderInRestoringProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
@@ -38,6 +42,10 @@ const HeaderInRestoring = ({
   const featuresStore = useFeaturesStore()
   const configsMap = useHooksStore(s => s.configsMap)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const { data: isCollaborationEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_collaboration_mode,
+  })
   const {
     deleteAllInspectVars,
   } = workflowStore.getState()
@@ -49,6 +57,7 @@ const HeaderInRestoring = ({
   } = useWorkflowRun()
   const { requestRestore } = useLeaderRestore()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
   const canRestore = !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
 
   const handleCancelRestore = useCallback(() => {
@@ -57,7 +66,7 @@ const HeaderInRestoring = ({
     setShowWorkflowVersionHistoryPanel(false)
   }, [workflowStore, handleLoadBackupDraft, setShowWorkflowVersionHistoryPanel])
 
-  const handleRestore = useCallback(() => {
+  const handleRestore = useCallback(async () => {
     if (!canRestore || !currentVersion)
       return
 
@@ -65,6 +74,31 @@ const HeaderInRestoring = ({
     workflowStore.setState({ isRestoring: false })
     workflowStore.setState({ backupDraft: undefined })
 
+    // When collaboration mode is disabled the CRDT layer is never initialised, so
+    // setNodes/setEdges are no-ops and refreshGraphSynchronously emits an empty
+    // graphImport event that wipes the canvas.  Use the REST API path instead,
+    // which is identical to what the context-menu "Restore" option does.
+    // NOTE: restoreVersionUrl must always be provided when collaboration is disabled.
+    if (!isCollaborationEnabled && restoreVersionUrl) {
+      // Non-collaboration path: call the dedicated restore API endpoint, then
+      // refresh the draft from the server — same mechanism as context menu restore.
+      try {
+        await restoreWorkflow(restoreVersionUrl(currentVersion.id))
+        handleRefreshWorkflowDraft()
+        toast.success(t('versionHistory.action.restoreSuccess', { ns: 'workflow' }))
+        deleteAllInspectVars()
+        invalidAllLastRun()
+      }
+      catch {
+        toast.error(t('versionHistory.action.restoreFailure', { ns: 'workflow' }))
+      }
+      finally {
+        onRestoreSettled?.()
+      }
+      return
+    }
+
+    // Collaboration path: apply graph locally via CRDT then sync draft.
     const { graph } = currentVersion
     const features = featuresStore?.getState().features
     const environmentVariables = currentVersion.environment_variables || []
@@ -97,7 +131,7 @@ const HeaderInRestoring = ({
         onRestoreSettled?.()
       },
     })
-  }, [canRestore, currentVersion, setShowWorkflowVersionHistoryPanel, workflowStore, featuresStore, requestRestore, userProfile, handleRefreshWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
+  }, [canRestore, currentVersion, setShowWorkflowVersionHistoryPanel, workflowStore, isCollaborationEnabled, restoreVersionUrl, restoreWorkflow, handleRefreshWorkflowDraft, featuresStore, requestRestore, userProfile, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>

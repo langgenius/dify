@@ -58,6 +58,9 @@ vi.mock('@/hooks/use-theme', () => ({
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useRestoreWorkflow: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({}),
+  }),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({

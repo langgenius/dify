@@ -51,9 +51,10 @@ const WorkflowHeader = () => {
       },
       restoring: {
         onRestoreSettled: resetWorkflowVersionHistory,
+        restoreVersionUrl: (versionId: string) => `/apps/${appDetail!.id}/workflows/${versionId}/restore`,
       },
     }
-  }, [resetWorkflowVersionHistory, isChatMode, viewHistoryProps])
+  }, [resetWorkflowVersionHistory, isChatMode, viewHistoryProps, appDetail])
   return (
     <Header {...headerProps} />
   )
