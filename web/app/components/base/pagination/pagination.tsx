@@ -33,7 +33,7 @@ const PrevButton = ({
   as = <button type="button" />,
   ...buttonProps
 }: ButtonProps) => {
-  const pagination = React.useContext(PaginationContext)
+  const pagination = React.use(PaginationContext)
   const previous = () => {
     if (pagination.currentPage + 1 > 1)
       pagination.setCurrentPage(pagination.currentPage - 1)
@@ -68,7 +68,7 @@ const NextButton = ({
   as = <button type="button" />,
   ...buttonProps
 }: ButtonProps) => {
-  const pagination = React.useContext(PaginationContext)
+  const pagination = React.use(PaginationContext)
   const next = () => {
     if (pagination.currentPage + 1 < pagination.pages.length)
       pagination.setCurrentPage(pagination.currentPage + 1)
@@ -101,7 +101,7 @@ type ITruncableElementProps = {
 }
 
 const TruncableElement = ({ prev }: ITruncableElementProps) => {
-  const pagination: IPagination = React.useContext(PaginationContext)
+  const pagination: IPagination = React.use(PaginationContext)
 
   const {
     isPreviousTruncable,
@@ -126,7 +126,7 @@ const PageButton = ({
   inactiveClassName,
   renderExtraProps,
 }: PageButtonProps) => {
-  const pagination: IPagination = React.useContext(PaginationContext)
+  const pagination: IPagination = React.use(PaginationContext)
 
   const renderPageButton = (page: number) => (
     <li key={page}>
