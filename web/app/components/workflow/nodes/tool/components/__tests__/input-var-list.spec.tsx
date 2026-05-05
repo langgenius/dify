@@ -116,22 +116,29 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: {
-      pages: [{
-        data: mockApps,
-      }],
-    },
-    isLoading: false,
-    isFetchingNextPage: false,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: false,
-  }),
   useAppDetail: (appId: string) => ({
     data: mockApps.find(app => app.id === appId),
     isFetching: false,
   }),
 }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: {
+        pages: [{
+          data: mockApps,
+        }],
+      },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+    }),
+  }
+})
 
 vi.mock('@/service/use-workflow', () => ({
   useAppWorkflow: () => ({

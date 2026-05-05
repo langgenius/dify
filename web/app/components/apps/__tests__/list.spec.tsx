@@ -57,6 +57,7 @@ const mockFetchNextPage = vi.fn()
 const mockServiceState = {
   error: null as Error | null,
   hasNextPage: false,
+  isFetching: false,
   isLoading: false,
   isFetchingNextPage: false,
 }
@@ -95,16 +96,24 @@ const defaultAppData = {
   }],
 }
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: defaultAppData,
+      isLoading: mockServiceState.isLoading,
+      isFetching: mockServiceState.isFetching,
+      isFetchingNextPage: mockServiceState.isFetchingNextPage,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: mockServiceState.hasNextPage,
+      error: mockServiceState.error,
+      refetch: mockRefetch,
+    }),
+  }
+})
+
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: defaultAppData,
-    isLoading: mockServiceState.isLoading,
-    isFetchingNextPage: mockServiceState.isFetchingNextPage,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockServiceState.hasNextPage,
-    error: mockServiceState.error,
-    refetch: mockRefetch,
-  }),
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,

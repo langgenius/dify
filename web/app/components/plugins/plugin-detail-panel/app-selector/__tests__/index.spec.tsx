@@ -163,18 +163,25 @@ const getAppDetailData = (appId: string) => {
 }
 
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: mockAppListData,
-    isLoading: mockIsLoading,
-    isFetchingNextPage: mockIsFetchingNextPage,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockHasNextPage,
-  }),
   useAppDetail: (appId: string) => ({
     data: getAppDetailData(appId),
     isFetching: mockAppDetailLoading,
   }),
 }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: mockAppListData,
+      isLoading: mockIsLoading,
+      isFetchingNextPage: mockIsFetchingNextPage,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: mockHasNextPage,
+    }),
+  }
+})
 
 // Allow configurable mock data for useAppWorkflow
 let mockWorkflowData: Record<string, unknown> | undefined | null

@@ -1,9 +1,9 @@
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import { useParams } from '@/next/navigation'
-import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import AppNav from '../index'
 
@@ -25,9 +25,13 @@ vi.mock('@/app/components/app/store', () => ({
   useStore: vi.fn(),
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/app/create-app-dialog', () => ({
   default: ({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) =>
@@ -130,7 +134,7 @@ const mockAppData = [
 const mockUseParams = vi.mocked(useParams)
 const mockUseAppContext = vi.mocked(useAppContext)
 const mockUseAppStore = vi.mocked(useAppStore)
-const mockUseInfiniteAppList = vi.mocked(useInfiniteAppList)
+const mockUseInfiniteQuery = vi.mocked(useInfiniteQuery)
 let mockAppDetail: { id: string, name: string } | null = null
 
 const setupDefaultMocks = (options?: {
@@ -146,13 +150,13 @@ const setupDefaultMocks = (options?: {
   mockUseParams.mockReturnValue({ appId: 'app-1' } as ReturnType<typeof useParams>)
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceEditor: options?.isEditor ?? false } as ReturnType<typeof useAppContext>)
   mockUseAppStore.mockImplementation((selector: unknown) => (selector as (state: { appDetail: { id: string, name: string } | null }) => unknown)({ appDetail: mockAppDetail }))
-  mockUseInfiniteAppList.mockReturnValue({
+  mockUseInfiniteQuery.mockReturnValue({
     data: { pages: [{ data: options?.appData ?? mockAppData }] },
     fetchNextPage,
     hasNextPage: options?.hasNextPage ?? false,
     isFetchingNextPage: false,
     refetch,
-  } as ReturnType<typeof useInfiniteAppList>)
+  } as ReturnType<typeof useInfiniteQuery>)
 
   return { refetch, fetchNextPage }
 }
@@ -282,13 +286,13 @@ describe('AppNav', () => {
     // Arrange
     setupDefaultMocks()
     mockUseParams.mockReturnValue({} as ReturnType<typeof useParams>)
-    mockUseInfiniteAppList.mockReturnValue({
+    mockUseInfiniteQuery.mockReturnValue({
       data: undefined,
       fetchNextPage: vi.fn(),
       hasNextPage: false,
       isFetchingNextPage: false,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof useInfiniteAppList>)
+    } as unknown as ReturnType<typeof useInfiniteQuery>)
 
     // Act
     render(<AppNav />)

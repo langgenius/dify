@@ -1,8 +1,9 @@
 'use client'
 
 import type { FC } from 'react'
+import type { AppListQuery } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -16,8 +17,8 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
+import { consoleQuery } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum, AppModes } from '@/types/app'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
@@ -88,14 +89,14 @@ const List: FC<Props> = ({
     enabled: isCurrentWorkspaceEditor,
   })
 
-  const appListQueryParams = {
+  const appListQuery = useMemo<AppListQuery>(() => ({
     page: 1,
     limit: 30,
     name: searchKeywords,
-    tag_ids: tagIDs,
-    is_created_by_me: isCreatedByMe,
+    ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
+    ...(isCreatedByMe ? { is_created_by_me: isCreatedByMe } : {}),
     ...(activeTab !== 'all' ? { mode: activeTab } : {}),
-  }
+  }), [activeTab, isCreatedByMe, searchKeywords, tagIDs])
 
   const {
     data,
@@ -106,7 +107,18 @@ const List: FC<Props> = ({
     hasNextPage,
     error,
     refetch,
-  } = useInfiniteAppList(appListQueryParams, {
+  } = useInfiniteQuery({
+    ...consoleQuery.apps.list.infiniteOptions({
+      input: pageParam => ({
+        query: {
+          ...appListQuery,
+          page: Number(pageParam),
+        },
+      }),
+      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+      initialPageParam: 1,
+      placeholderData: keepPreviousData,
+    }),
     enabled: !isCurrentWorkspaceDatasetOperator,
     refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
   })

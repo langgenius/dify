@@ -7,7 +7,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -16,9 +16,9 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { IS_CE_EDITION, validPassword } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
 import { updateUserProfile } from '@/service/common'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { useAppList } from '@/service/use-apps'
 import { commonQueryKeys, userProfileQueryOptions } from '@/service/use-common'
 import DeleteAccount from '../delete-account'
 
@@ -35,7 +35,15 @@ const descriptionClassName = `
 export default function AccountPage() {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: appList } = useAppList({ page: 1, limit: 100, name: '' })
+  const { data: appList } = useQuery(consoleQuery.apps.list.queryOptions({
+    input: {
+      query: {
+        page: 1,
+        limit: 100,
+        name: '',
+      },
+    },
+  }))
   const apps = appList?.data || []
   const queryClient = useQueryClient()
   // Cache is warmed by AppContextProvider's useSuspenseQuery; this hits cache synchronously.
@@ -129,7 +137,7 @@ export default function AccountPage() {
   }
 
   const renderAppItem = (item: IItem) => {
-    const { icon, icon_background, icon_type, icon_url } = item as any
+    const { icon, icon_background, icon_type, icon_url } = item as IItem & Pick<App, 'icon' | 'icon_background' | 'icon_type' | 'icon_url'>
     return (
       <div className="flex px-3 py-1">
         <div className="mr-3">

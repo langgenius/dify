@@ -75,17 +75,24 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: { pages: mockPages },
+      isLoading: mockIsLoading,
+      isFetching: mockIsFetching,
+      isFetchingNextPage: false,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      error: null,
+      refetch: mockRefetch,
+    }),
+  }
+})
+
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: { pages: mockPages },
-    isLoading: mockIsLoading,
-    isFetching: mockIsFetching,
-    isFetchingNextPage: false,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: false,
-    error: null,
-    refetch: mockRefetch,
-  }),
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
