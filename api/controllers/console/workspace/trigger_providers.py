@@ -331,7 +331,7 @@ class TriggerSubscriptionUpdateApi(Resource):
             # For rename only, just update the name
             rename = request.name is not None and not any((request.credentials, request.parameters, request.properties))
             # When credential type is UNAUTHORIZED, it indicates the subscription was manually created
-            # For Manually created subscription, they dont have credentials, parameters
+            # For Manually created subscription, they don't have credentials, parameters
             # They only have name and properties(which is input by user)
             manually_created = subscription.credential_type == CredentialType.UNAUTHORIZED
             if rename or manually_created:
