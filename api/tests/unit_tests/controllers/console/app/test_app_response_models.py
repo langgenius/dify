@@ -179,12 +179,14 @@ def _dummy_workflow():
 def test_app_list_query_normalizes_orpc_bracket_tag_ids(app_module):
     first_tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
     second_tag_id = "3c39395b-6d1f-4030-8b17-eaa7cc85221c"
-    query_args = MultiDict([
-        ("page", "1"),
-        ("limit", "30"),
-        ("tag_ids[1]", second_tag_id),
-        ("tag_ids[0]", first_tag_id),
-    ])
+    query_args = MultiDict(
+        [
+            ("page", "1"),
+            ("limit", "30"),
+            ("tag_ids[1]", second_tag_id),
+            ("tag_ids[0]", first_tag_id),
+        ]
+    )
 
     normalized = app_module._normalize_app_list_query_args(query_args)
     query = app_module.AppListQuery.model_validate(normalized)
