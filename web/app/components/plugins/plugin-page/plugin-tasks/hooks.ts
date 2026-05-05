@@ -42,7 +42,7 @@ export const usePluginTaskStatus = () => {
     })
     handleRefetch()
   }, [mutateAsync, handleRefetch])
-  
+
   const handleStopAllPlugins = useCallback(async () => {
     await mutateStopAllAsync()
     handleRefetch()

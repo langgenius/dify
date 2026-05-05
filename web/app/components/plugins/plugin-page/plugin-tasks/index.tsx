@@ -82,7 +82,6 @@ const PluginTasks = () => {
     [clearPluginsAndClose, errorPlugins],
   )
 
-  
   const handleStopAll = useCallback(async () => {
     await handleStopAllPlugins()
     setOpen(false)
