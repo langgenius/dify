@@ -1,15 +1,15 @@
 import { renderWorkflowHook } from '../../../../__tests__/workflow-test-env'
 import { VersionHistoryContextMenuOptions } from '../../../../types'
-import useContextMenu from '../use-context-menu'
+import useActionMenu from '../use-action-menu'
 
-describe('useContextMenu', () => {
+describe('useActionMenu', () => {
   it('returns restore, edit, export, copy and delete operations for app workflows', () => {
-    const { result } = renderWorkflowHook(() => useContextMenu({
+    const { result } = renderWorkflowHook(() => useActionMenu({
       isNamedVersion: true,
       isShowDelete: false,
       open: false,
       setOpen: vi.fn(),
-      handleClickMenuItem: vi.fn(),
+      handleClickActionMenuItem: vi.fn(),
     }))
 
     expect(result.current.deleteOperation).toEqual({
@@ -25,12 +25,12 @@ describe('useContextMenu', () => {
   })
 
   it('omits export for pipelines and renames the edit action for unnamed versions', () => {
-    const { result } = renderWorkflowHook(() => useContextMenu({
+    const { result } = renderWorkflowHook(() => useActionMenu({
       isNamedVersion: false,
       isShowDelete: true,
       open: false,
       setOpen: vi.fn(),
-      handleClickMenuItem: vi.fn(),
+      handleClickActionMenuItem: vi.fn(),
     }), {
       initialStoreState: {
         pipelineId: 'pipeline-1',

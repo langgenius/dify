@@ -232,15 +232,16 @@ const List: FC<Props> = ({
     ? t('newApp.noAppsFound', { ns: 'app' })
     : t('tabs.noSnippetsFound', { ns: 'workflow' })
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
-  const appIds = useMemo(() => {
-    const ids = new Set<string>()
-    pages.forEach((page) => {
-      page.data?.forEach((app) => {
-        if (app.id)
-          ids.add(app.id)
+
+  const workflowOnlineUserAppIds = useMemo(() => {
+    const appIds = new Set<string>()
+    pages.forEach(({ data: apps }) => {
+      apps.forEach((app) => {
+        if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
+          appIds.add(app.id)
       })
     })
-    return Array.from(ids)
+    return Array.from(appIds)
   }, [pages])
 
   const refreshWorkflowOnlineUsers = useCallback(async () => {
@@ -249,19 +250,19 @@ const List: FC<Props> = ({
       return
     }
 
-    if (!appIds.length) {
+    if (!workflowOnlineUserAppIds.length) {
       setWorkflowOnlineUsersMap({})
       return
     }
 
     try {
-      const onlineUsersMap = await fetchWorkflowOnlineUsers({ appIds })
+      const onlineUsersMap = await fetchWorkflowOnlineUsers({ appIds: workflowOnlineUserAppIds })
       setWorkflowOnlineUsersMap(onlineUsersMap)
     }
     catch {
       setWorkflowOnlineUsersMap({})
     }
-  }, [appIds, systemFeatures.enable_collaboration_mode])
+  }, [systemFeatures.enable_collaboration_mode, workflowOnlineUserAppIds])
 
   useEffect(() => {
     void refreshWorkflowOnlineUsers()

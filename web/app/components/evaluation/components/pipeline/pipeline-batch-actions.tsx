@@ -1,20 +1,12 @@
 'use client'
 
 import type { EvaluationResourceProps } from '../../types'
-import type { InputField } from '../batch-test-panel/input-fields/input-fields-utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import { isEvaluationRunnable, useEvaluationResource } from '../../store'
 import { EVALUATION_TEMPLATE_FILE_NAMES } from '../../store-utils'
 import UploadRunPopover from '../batch-test-panel/input-fields/upload-run-popover'
 import { useInputFieldsActions } from '../batch-test-panel/input-fields/use-input-fields-actions'
-
-const PIPELINE_INPUT_FIELDS: InputField[] = [
-  { name: 'index', type: 'number' },
-  { name: 'query', type: 'string' },
-  { name: 'expected_output', type: 'string' },
-]
-const PIPELINE_TEMPLATE_CONTENT = 'index,query,expected_output\n'
 
 const PipelineBatchActions = ({
   resourceType,
@@ -27,11 +19,8 @@ const PipelineBatchActions = ({
   const actions = useInputFieldsActions({
     resourceType,
     resourceId,
-    inputFields: PIPELINE_INPUT_FIELDS,
-    isInputFieldsLoading: false,
     isPanelReady: isConfigReady,
     isRunnable,
-    templateContent: PIPELINE_TEMPLATE_CONTENT,
     templateFileName: EVALUATION_TEMPLATE_FILE_NAMES[resourceType],
   })
 
@@ -52,7 +41,7 @@ const PipelineBatchActions = ({
           onOpenChange={actions.setIsUploadPopoverOpen}
           triggerDisabled={actions.uploadButtonDisabled}
           triggerLabel={t('pipeline.uploadAndRun')}
-          inputFields={PIPELINE_INPUT_FIELDS}
+          inputFields={actions.templateColumns}
           currentFileName={actions.currentFileName}
           currentFileExtension={actions.currentFileExtension}
           currentFileSize={actions.currentFileSize}

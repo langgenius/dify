@@ -1,4 +1,5 @@
 import type { CreateSnippetDialogPayload } from './create-snippet-dialog'
+import type { WorkflowShortcutId } from './shortcuts/definitions'
 import type { Edge, Node } from './types'
 import type { SnippetCanvasData } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -28,7 +29,6 @@ import CreateSnippetDialog from './create-snippet-dialog'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
-import type { WorkflowShortcutId } from './shortcuts/definitions'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore, useWorkflowStore } from './store'
 import { BlockEnum, TRIGGER_NODE_TYPES } from './types'
@@ -65,6 +65,7 @@ type ActionMenuItem = {
   disabled?: boolean
   shortcut?: WorkflowShortcutId
   translationKey: string
+  workflowShortcutId?: WorkflowShortcutId
 }
 
 const DEFAULT_SNIPPET_VIEWPORT: SnippetCanvasData['viewport'] = { x: 0, y: 0, zoom: 1 }

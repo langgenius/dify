@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { DropdownMenuItem } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
 
-type MenuItemProps = {
+type ActionMenuItemProps = {
   item: {
     key: VersionHistoryContextMenuOptions
     name: string
@@ -13,7 +13,7 @@ type MenuItemProps = {
   isDestructive?: boolean
 }
 
-const MenuItem: FC<MenuItemProps> = ({
+const ActionMenuItem: FC<ActionMenuItemProps> = ({
   item,
   onClick,
   isDestructive = false,
@@ -41,4 +41,4 @@ const MenuItem: FC<MenuItemProps> = ({
   )
 }
 
-export default React.memo(MenuItem)
+export default React.memo(ActionMenuItem)

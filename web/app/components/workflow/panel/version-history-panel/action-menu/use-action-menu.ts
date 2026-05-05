@@ -1,10 +1,10 @@
-import type { ContextMenuProps } from './index'
+import type { ActionMenuProps } from './index'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 
-const useContextMenu = (props: ContextMenuProps) => {
+const useActionMenu = (props: ActionMenuProps) => {
   const {
     isNamedVersion,
   } = props
@@ -43,7 +43,7 @@ const useContextMenu = (props: ContextMenuProps) => {
         name: t('versionHistory.copyId', { ns: 'workflow' }),
       },
     ]
-  }, [isNamedVersion, t])
+  }, [isNamedVersion, pipelineId, t])
 
   return {
     deleteOperation,
@@ -51,4 +51,4 @@ const useContextMenu = (props: ContextMenuProps) => {
   }
 }
 
-export default useContextMenu
+export default useActionMenu

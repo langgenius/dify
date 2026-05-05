@@ -1,5 +1,6 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { InputVar, Node } from '@/app/components/workflow/types'
+import type { EvaluationTemplateColumn } from '@/types/evaluation'
 import type { SnippetInputField } from '@/types/snippet'
 import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
@@ -11,7 +12,6 @@ export type InputField = {
 }
 
 export const INDEX_FIELD_NAME = 'index'
-export const EXPECTED_OUTPUT_FIELD_NAME = 'expected_output'
 
 export const getGraphNodes = (graph?: Record<string, unknown>) => {
   return Array.isArray(graph?.nodes) ? graph.nodes as Node[] : []
@@ -65,15 +65,8 @@ const escapeCsvCell = (value: string) => {
   return `"${value.replace(/"/g, '""')}"`
 }
 
-export const buildTemplateCsvContent = (inputFields: InputField[]) => {
-  const fieldNames = inputFields
-    .map(field => field.name)
-    .filter(name => name !== INDEX_FIELD_NAME)
-  const templateFieldNames = fieldNames.includes(EXPECTED_OUTPUT_FIELD_NAME)
-    ? [INDEX_FIELD_NAME, ...fieldNames]
-    : [INDEX_FIELD_NAME, ...fieldNames, EXPECTED_OUTPUT_FIELD_NAME]
-
-  return `${templateFieldNames.map(escapeCsvCell).join(',')}\n`
+export const buildTemplateCsvContent = (columns: EvaluationTemplateColumn[]) => {
+  return `${columns.map(column => escapeCsvCell(column.name)).join(',')}\n`
 }
 
 export const getFileExtension = (fileName: string) => {

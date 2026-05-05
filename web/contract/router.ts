@@ -20,6 +20,7 @@ import {
   evaluationMetricsContract,
   evaluationNodeInfoContract,
   evaluationRunDetailContract,
+  evaluationTemplateColumnsContract,
   evaluationTemplateDownloadContract,
   evaluationVersionDetailContract,
   evaluationWorkflowAssociatedTargetsContract,
@@ -140,6 +141,7 @@ export const consoleRouterContract = {
   },
   evaluation: {
     templateDownload: evaluationTemplateDownloadContract,
+    templateColumns: evaluationTemplateColumnsContract,
     config: evaluationConfigContract,
     saveConfig: saveEvaluationConfigContract,
     logs: evaluationLogsContract,

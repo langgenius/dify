@@ -14,6 +14,7 @@ import type {
   EvaluationRunDetailResponse,
   EvaluationRunRequest,
   EvaluationTargetType,
+  EvaluationTemplateColumnsResponse,
   EvaluationVersionDetailResponse,
   EvaluationWorkflowAssociatedTargetsResponse,
 } from '@/types/evaluation'
@@ -153,6 +154,20 @@ export const evaluationTemplateDownloadContract = base
     }
   }>())
   .output(type<unknown>())
+
+export const evaluationTemplateColumnsContract = base
+  .route({
+    path: '/{targetType}/{targetId}/evaluation/template-columns',
+    method: 'POST',
+  })
+  .input(type<{
+    params: {
+      targetType: EvaluationTargetType
+      targetId: string
+    }
+    body: EvaluationConfigData
+  }>())
+  .output(type<EvaluationTemplateColumnsResponse>())
 
 export const evaluationConfigContract = base
   .route({

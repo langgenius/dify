@@ -108,7 +108,7 @@ describe('createWorkflowStore', () => {
       ['showWorkflowVersionHistoryPanel', 'setShowWorkflowVersionHistoryPanel', true],
       ['showInputsPanel', 'setShowInputsPanel', true],
       ['showDebugAndPreviewPanel', 'setShowDebugAndPreviewPanel', true],
-      ['panelMenu', 'setPanelMenu', { top: 10, left: 20 }],
+      ['panelMenu', 'setPanelMenu', { clientX: 20, clientY: 10 }],
       ['selectionMenu', 'setSelectionMenu', { clientX: 50, clientY: 60 }],
       ['edgeMenu', 'setEdgeMenu', { clientX: 320, clientY: 180, edgeId: 'e1' }],
       ['showVariableInspectPanel', 'setShowVariableInspectPanel', true],

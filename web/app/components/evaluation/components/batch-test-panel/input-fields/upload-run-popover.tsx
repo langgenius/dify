@@ -47,7 +47,7 @@ const UploadRunPopover = ({
   const { t } = useTranslation('evaluation')
   const { t: tCommon } = useTranslation('common')
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const previewFields = inputFields.slice(0, 3)
+  const previewFields = inputFields
   const booleanExampleValue = t('conditions.boolean.true')
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {

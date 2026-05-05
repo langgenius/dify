@@ -11,6 +11,7 @@ const mockUseDefaultEvaluationMetrics = vi.hoisted(() => vi.fn())
 const mockUseEvaluationConfig = vi.hoisted(() => vi.fn())
 const mockUseSaveEvaluationConfigMutation = vi.hoisted(() => vi.fn())
 const mockUseStartEvaluationRunMutation = vi.hoisted(() => vi.fn())
+const mockUseEvaluationTemplateColumns = vi.hoisted(() => vi.fn())
 const mockUsePublishedPipelineInfo = vi.hoisted(() => vi.fn())
 const mockUseSnippetPublishedWorkflow = vi.hoisted(() => vi.fn())
 
@@ -55,6 +56,7 @@ vi.mock('@/service/use-evaluation', () => ({
   useDefaultEvaluationMetrics: (...args: unknown[]) => mockUseDefaultEvaluationMetrics(...args),
   useSaveEvaluationConfigMutation: (...args: unknown[]) => mockUseSaveEvaluationConfigMutation(...args),
   useStartEvaluationRunMutation: (...args: unknown[]) => mockUseStartEvaluationRunMutation(...args),
+  useEvaluationTemplateColumns: (...args: unknown[]) => mockUseEvaluationTemplateColumns(...args),
 }))
 
 vi.mock('@/service/use-pipeline', () => ({
@@ -169,6 +171,18 @@ describe('Evaluation', () => {
     mockUseStartEvaluationRunMutation.mockReturnValue({
       isPending: false,
       mutate: vi.fn(),
+    })
+    mockUseEvaluationTemplateColumns.mockReturnValue({
+      data: {
+        columns: [
+          { name: 'index', type: 'number' },
+          { name: 'query', type: 'string' },
+          { name: 'expected_output', type: 'string' },
+        ],
+      },
+      isError: false,
+      isFetching: false,
+      isPending: false,
     })
     mockUsePublishedPipelineInfo.mockReturnValue({
       data: {
@@ -326,72 +340,61 @@ describe('Evaluation', () => {
     expect(screen.queryByText('evaluation.batch.noticeDescription')).not.toBeInTheDocument()
   })
 
-  it('should use published snippet input fields for snippet batch templates', () => {
-    mockUseSnippetPublishedWorkflow.mockReturnValue({
+  it('should use template columns for snippet batch templates', () => {
+    const store = useEvaluationStore.getState()
+    act(() => {
+      store.ensureResource('snippets', 'snippet-fields')
+      store.setJudgeModel('snippets', 'snippet-fields', 'openai::gpt-4o-mini')
+      store.addBuiltinMetric('snippets', 'snippet-fields', 'answer-correctness', [
+        { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
+      ])
+    })
+    mockUseEvaluationTemplateColumns.mockReturnValue({
       data: {
-        graph: {
-          nodes: [{
-            id: 'start',
-            data: {
-              type: 'start',
-              variables: [{
-                variable: 'graph_only',
-                type: 'text-input',
-              }],
-            },
-          }],
-        },
-        input_fields: [
-          {
-            label: 'Snippet Topic',
-            variable: 'snippet_topic',
-            type: 'text-input',
-            required: true,
-          },
-          {
-            label: 'Need Summary',
-            variable: 'need_summary',
-            type: 'checkbox',
-            required: false,
-          },
+        columns: [
+          { name: 'index', type: 'number' },
+          { name: 'snippet_topic', type: 'string' },
+          { name: 'need_summary', type: 'boolean' },
         ],
       },
-      isLoading: false,
+      isError: false,
+      isFetching: false,
+      isPending: false,
     })
 
     renderWithQueryClient(<Evaluation resourceType="snippets" resourceId="snippet-fields" />)
 
-    expect(mockUseSnippetPublishedWorkflow).toHaveBeenCalledWith('snippet-fields')
+    expect(mockUseEvaluationTemplateColumns).toHaveBeenCalledWith(
+      'snippets',
+      'snippet-fields',
+      expect.any(Object),
+      true,
+    )
     expect(screen.getByText('snippet_topic')).toBeInTheDocument()
     expect(screen.getByText('need_summary')).toBeInTheDocument()
-    expect(screen.queryByText('graph_only')).not.toBeInTheDocument()
   })
 
-  it('should show snippet-specific empty input fields copy', () => {
-    mockUseSnippetPublishedWorkflow.mockReturnValue({
+  it('should show empty template columns copy', () => {
+    const store = useEvaluationStore.getState()
+    act(() => {
+      store.ensureResource('snippets', 'snippet-empty-fields')
+      store.setJudgeModel('snippets', 'snippet-empty-fields', 'openai::gpt-4o-mini')
+      store.addBuiltinMetric('snippets', 'snippet-empty-fields', 'answer-correctness', [
+        { node_id: 'node-answer', title: 'Answer Node', type: 'llm' },
+      ])
+    })
+    mockUseEvaluationTemplateColumns.mockReturnValue({
       data: {
-        graph: {
-          nodes: [{
-            id: 'start',
-            data: {
-              type: 'start',
-              variables: [{
-                variable: 'graph_only',
-                type: 'text-input',
-              }],
-            },
-          }],
-        },
-        input_fields: [],
+        columns: [],
       },
-      isLoading: false,
+      isError: false,
+      isFetching: false,
+      isPending: false,
     })
 
     renderWithQueryClient(<Evaluation resourceType="snippets" resourceId="snippet-empty-fields" />)
 
-    expect(screen.getByText('evaluation.batch.noSnippetInputFields')).toBeInTheDocument()
-    expect(screen.queryByText('evaluation.batch.noInputFields')).not.toBeInTheDocument()
-    expect(screen.queryByText('graph_only')).not.toBeInTheDocument()
+    expect(screen.getByText('evaluation.batch.noTemplateColumns')).toBeInTheDocument()
   })
 
   it('should hide the value row for empty operators', () => {
@@ -624,6 +627,18 @@ describe('Evaluation', () => {
 
   it('should download the fixed pipeline template columns', () => {
     const createElement = document.createElement.bind(document)
+    mockUseEvaluationTemplateColumns.mockReturnValue({
+      data: {
+        columns: [
+          { name: 'index', type: 'number' },
+          { name: 'query', type: 'string' },
+          { name: 'expected_output', type: 'string' },
+        ],
+      },
+      isError: false,
+      isFetching: false,
+      isPending: false,
+    })
     let downloadLink: HTMLAnchorElement | undefined
     const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName, options) => {
       const element = createElement(tagName, options)
@@ -645,6 +660,15 @@ describe('Evaluation', () => {
     const templateContent = decodeURIComponent(downloadLink?.href ?? '').replace('data:text/csv;charset=utf-8,', '')
     expect(downloadLink?.download).toBe('pipeline-evaluation-template.csv')
     expect(templateContent.trim().split(',')).toEqual(['index', 'query', 'expected_output'])
+    expect(mockUseEvaluationTemplateColumns).toHaveBeenLastCalledWith(
+      'datasets',
+      'dataset-template',
+      expect.objectContaining({
+        evaluation_model: 'gpt-4o-mini',
+        evaluation_model_provider: 'openai',
+      }),
+      true,
+    )
 
     createElementSpy.mockRestore()
   })
