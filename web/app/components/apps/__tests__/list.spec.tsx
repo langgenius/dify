@@ -45,6 +45,12 @@ vi.mock('../hooks/use-dsl-drag-drop', () => ({
   },
 }))
 
+vi.mock('../hooks/use-workflow-online-users', () => ({
+  useWorkflowOnlineUsers: () => ({
+    onlineUsersMap: {},
+  }),
+}))
+
 const mockRefetch = vi.fn()
 const mockFetchNextPage = vi.fn()
 

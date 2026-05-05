@@ -88,10 +88,6 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('@/service/apps', () => ({
-  fetchWorkflowOnlineUsers: vi.fn().mockResolvedValue({}),
-}))
-
 vi.mock('@/service/use-apps', () => ({
   useInfiniteAppList: () => ({
     data: { pages: mockPages },
@@ -106,6 +102,12 @@ vi.mock('@/service/use-apps', () => ({
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
+  }),
+}))
+
+vi.mock('@/app/components/apps/hooks/use-workflow-online-users', () => ({
+  useWorkflowOnlineUsers: () => ({
+    onlineUsersMap: {},
   }),
 }))
 

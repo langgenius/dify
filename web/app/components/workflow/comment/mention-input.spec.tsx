@@ -1,4 +1,4 @@
-import type { UserProfile } from '@/service/workflow-comment'
+import type { UserProfile } from '@/contract/console/workflow-comment'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { MentionInput } from './mention-input'
@@ -30,8 +30,12 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ appId: 'app-1' }),
 }))
 
-vi.mock('@/service/workflow-comment', () => ({
-  fetchMentionableUsers: (...args: unknown[]) => mockFetchMentionableUsers(...args),
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    workflowComments: {
+      mentionUsers: (...args: unknown[]) => mockFetchMentionableUsers(...args),
+    },
+  },
 }))
 
 vi.mock('../store', () => ({
@@ -80,7 +84,7 @@ describe('MentionInput', () => {
     vi.clearAllMocks()
     mentionStoreState.mentionableUsersCache = {}
     mentionStoreState.mentionableUsersLoading = {}
-    mockFetchMentionableUsers.mockResolvedValue(mentionUsers)
+    mockFetchMentionableUsers.mockResolvedValue({ users: mentionUsers })
   })
 
   it('loads mentionable users when cache is empty', async () => {
@@ -93,7 +97,9 @@ describe('MentionInput', () => {
     )
 
     await waitFor(() => {
-      expect(mockFetchMentionableUsers).toHaveBeenCalledWith('app-1')
+      expect(mockFetchMentionableUsers).toHaveBeenCalledWith({
+        params: { appId: 'app-1' },
+      })
     })
 
     expect(mockSetMentionableUsersLoading).toHaveBeenCalledWith('app-1', true)

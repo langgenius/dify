@@ -58,7 +58,7 @@ const normalizeAppListParams = (params: AppListParams) => {
     is_created_by_me,
   } = params
 
-  const safeMode = allowedModes.has((mode as any)) ? mode : undefined
+  const safeMode = mode && allowedModes.has(mode) ? mode : undefined
 
   return {
     page,
@@ -104,7 +104,12 @@ export const useAppList = (params: AppListParams, options?: { enabled?: boolean 
   })
 }
 
-export const useInfiniteAppList = (params: AppListParams, options?: { enabled?: boolean }) => {
+type UseInfiniteAppListOptions = {
+  enabled?: boolean
+  refetchInterval?: number | false
+}
+
+export const useInfiniteAppList = (params: AppListParams, options?: UseInfiniteAppListOptions) => {
   const normalizedParams = normalizeAppListParams(params)
   return useInfiniteQuery<AppListResponse>({
     queryKey: appListKey(normalizedParams),

@@ -1,4 +1,4 @@
-import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
+import type { WorkflowCommentDetail, WorkflowCommentList } from '@/contract/console/workflow-comment'
 import { act, waitFor } from '@testing-library/react'
 import { createTestQueryClient, seedSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -52,16 +52,30 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/service/workflow-comment', () => ({
-  createWorkflowComment: (...args: unknown[]) => mockCreateWorkflowComment(...args),
-  createWorkflowCommentReply: (...args: unknown[]) => mockCreateWorkflowCommentReply(...args),
-  deleteWorkflowComment: (...args: unknown[]) => mockDeleteWorkflowComment(...args),
-  deleteWorkflowCommentReply: (...args: unknown[]) => mockDeleteWorkflowCommentReply(...args),
-  fetchWorkflowComment: (...args: unknown[]) => mockFetchWorkflowComment(...args),
-  fetchWorkflowComments: (...args: unknown[]) => mockFetchWorkflowComments(...args),
-  resolveWorkflowComment: (...args: unknown[]) => mockResolveWorkflowComment(...args),
-  updateWorkflowComment: (...args: unknown[]) => mockUpdateWorkflowComment(...args),
-  updateWorkflowCommentReply: (...args: unknown[]) => mockUpdateWorkflowCommentReply(...args),
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    systemFeatures: () => ({
+      enable_collaboration_mode: globalFeatureState.enableCollaboration,
+    }),
+    workflowComments: {
+      create: (...args: unknown[]) => mockCreateWorkflowComment(...args),
+      delete: (...args: unknown[]) => mockDeleteWorkflowComment(...args),
+      detail: (...args: unknown[]) => mockFetchWorkflowComment(...args),
+      list: (...args: unknown[]) => mockFetchWorkflowComments(...args),
+      resolve: (...args: unknown[]) => mockResolveWorkflowComment(...args),
+      update: (...args: unknown[]) => mockUpdateWorkflowComment(...args),
+      replies: {
+        create: (...args: unknown[]) => mockCreateWorkflowCommentReply(...args),
+        delete: (...args: unknown[]) => mockDeleteWorkflowCommentReply(...args),
+        update: (...args: unknown[]) => mockUpdateWorkflowCommentReply(...args),
+      },
+    },
+  },
+  consoleQuery: {
+    systemFeatures: {
+      queryKey: () => ['console', 'systemFeatures'],
+    },
+  },
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
@@ -127,25 +141,27 @@ describe('useWorkflowComment', () => {
     commentsUpdateState.handler = undefined
     globalFeatureState.enableCollaboration = true
 
-    mockFetchWorkflowComments.mockResolvedValue([])
+    mockFetchWorkflowComments.mockResolvedValue({ data: [] })
     mockFetchWorkflowComment.mockResolvedValue(baseCommentDetail())
     mockCreateWorkflowComment.mockResolvedValue({
       id: 'comment-2',
-      created_at: '1700000000',
+      created_at: 1700000000,
     })
     mockUpdateWorkflowComment.mockResolvedValue({})
   })
 
   it('loads comment list on mount when collaboration is enabled', async () => {
     const comment = baseComment()
-    mockFetchWorkflowComments.mockResolvedValue([comment])
+    mockFetchWorkflowComments.mockResolvedValue({ data: [comment] })
 
     const { store } = renderWorkflowHook(() => useWorkflowComment(), {
       queryClient: createSeededQueryClient(),
     })
 
     await waitFor(() => {
-      expect(mockFetchWorkflowComments).toHaveBeenCalledWith('app-1')
+      expect(mockFetchWorkflowComments).toHaveBeenCalledWith({
+        params: { appId: 'app-1' },
+      })
     })
 
     expect(store.getState().comments).toEqual([comment])
@@ -186,11 +202,14 @@ describe('useWorkflowComment', () => {
       await result.current.handleCommentSubmit('new message', ['user-2'])
     })
 
-    expect(mockCreateWorkflowComment).toHaveBeenCalledWith('app-1', {
-      position_x: 10,
-      position_y: 20,
-      content: 'new message',
-      mentioned_user_ids: ['user-2'],
+    expect(mockCreateWorkflowComment).toHaveBeenCalledWith({
+      params: { appId: 'app-1' },
+      body: {
+        position_x: 10,
+        position_y: 20,
+        content: 'new message',
+        mentioned_user_ids: ['user-2'],
+      },
     })
     expect(mockEmitCommentsUpdate).toHaveBeenCalledWith('app-1')
 
@@ -235,10 +254,13 @@ describe('useWorkflowComment', () => {
       await result.current.handleCommentPositionUpdate(comment.id, { x: 300, y: 400 })
     })
 
-    expect(mockUpdateWorkflowComment).toHaveBeenCalledWith('app-1', comment.id, {
-      content: 'hello',
-      position_x: 300,
-      position_y: 400,
+    expect(mockUpdateWorkflowComment).toHaveBeenCalledWith({
+      params: { appId: 'app-1', commentId: comment.id },
+      body: {
+        content: 'hello',
+        position_x: 300,
+        position_y: 400,
+      },
     })
     expect(mockEmitCommentsUpdate).not.toHaveBeenCalled()
     expect(store.getState().comments[0]).toMatchObject({
@@ -257,8 +279,8 @@ describe('useWorkflowComment', () => {
       ...baseCommentDetail(),
       content: 'updated by another user',
     }
-    mockFetchWorkflowComments.mockResolvedValue([comment])
-    mockFetchWorkflowComment.mockResolvedValue({ data: detail })
+    mockFetchWorkflowComments.mockResolvedValue({ data: [comment] })
+    mockFetchWorkflowComment.mockResolvedValue(detail)
 
     const { unmount } = renderWorkflowHook(() => useWorkflowComment(), {
       queryClient: createSeededQueryClient(),
@@ -276,7 +298,9 @@ describe('useWorkflowComment', () => {
     })
 
     await waitFor(() => {
-      expect(mockFetchWorkflowComment).toHaveBeenCalledWith('app-1', comment.id)
+      expect(mockFetchWorkflowComment).toHaveBeenCalledWith({
+        params: { appId: 'app-1', commentId: comment.id },
+      })
     })
     expect(mockFetchWorkflowComments).toHaveBeenCalledTimes(2)
 
@@ -362,7 +386,7 @@ describe('useWorkflowComment', () => {
       position_x: 33,
       position_y: 55,
     }
-    mockFetchWorkflowComments.mockResolvedValue([commentB])
+    mockFetchWorkflowComments.mockResolvedValue({ data: [commentB] })
     mockFetchWorkflowComment.mockResolvedValue({
       ...baseCommentDetail(),
       id: commentB.id,
@@ -383,7 +407,9 @@ describe('useWorkflowComment', () => {
       await result.current.handleCommentResolve(commentA.id)
     })
 
-    expect(mockResolveWorkflowComment).toHaveBeenCalledWith('app-1', commentA.id)
+    expect(mockResolveWorkflowComment).toHaveBeenCalledWith({
+      params: { appId: 'app-1', commentId: commentA.id },
+    })
 
     await act(async () => {
       await result.current.handleCommentReply(commentA.id, '  new reply  ', ['user-2'])
@@ -391,21 +417,31 @@ describe('useWorkflowComment', () => {
       await result.current.handleCommentReplyDelete(commentA.id, 'reply-1')
     })
 
-    expect(mockCreateWorkflowCommentReply).toHaveBeenCalledWith('app-1', commentA.id, {
-      content: 'new reply',
-      mentioned_user_ids: ['user-2'],
+    expect(mockCreateWorkflowCommentReply).toHaveBeenCalledWith({
+      params: { appId: 'app-1', commentId: commentA.id },
+      body: {
+        content: 'new reply',
+        mentioned_user_ids: ['user-2'],
+      },
     })
-    expect(mockUpdateWorkflowCommentReply).toHaveBeenCalledWith('app-1', commentA.id, 'reply-1', {
-      content: 'edited reply',
-      mentioned_user_ids: ['user-2'],
+    expect(mockUpdateWorkflowCommentReply).toHaveBeenCalledWith({
+      params: { appId: 'app-1', commentId: commentA.id, replyId: 'reply-1' },
+      body: {
+        content: 'edited reply',
+        mentioned_user_ids: ['user-2'],
+      },
     })
-    expect(mockDeleteWorkflowCommentReply).toHaveBeenCalledWith('app-1', commentA.id, 'reply-1')
+    expect(mockDeleteWorkflowCommentReply).toHaveBeenCalledWith({
+      params: { appId: 'app-1', commentId: commentA.id, replyId: 'reply-1' },
+    })
 
     await act(async () => {
       await result.current.handleCommentDelete(commentA.id)
     })
 
-    expect(mockDeleteWorkflowComment).toHaveBeenCalledWith('app-1', commentA.id)
+    expect(mockDeleteWorkflowComment).toHaveBeenCalledWith({
+      params: { appId: 'app-1', commentId: commentA.id },
+    })
     await waitFor(() => {
       expect(store.getState().activeCommentId).toBe(commentB.id)
     })
