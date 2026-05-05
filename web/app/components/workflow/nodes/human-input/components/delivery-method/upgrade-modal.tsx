@@ -43,7 +43,7 @@ export function UpgradeModal({
             size="custom"
             color="blue"
             allowHover={true}
-            className="ml-3 h-8 w-[93px]"
+            className="h-8 w-[93px]"
             onClick={handleUpgrade}
           >
             <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
