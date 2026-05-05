@@ -233,6 +233,79 @@ describe('useWorkflowComment', () => {
     expect(store.getState().isCommentQuickAdd).toBe(false)
   })
 
+  it('normalizes numeric string timestamps when creating a comment', async () => {
+    mockCreateWorkflowComment.mockResolvedValue({
+      id: 'comment-string-time',
+      created_at: '1700001234',
+    })
+
+    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [],
+        pendingComment: { pageX: 100, pageY: 200, elementX: 10, elementY: 20 },
+        isCommentQuickAdd: true,
+      },
+    })
+
+    await act(async () => {
+      await result.current.handleCommentSubmit('new message')
+    })
+
+    expect(store.getState().comments[0]).toMatchObject({
+      id: 'comment-string-time',
+      created_at: 1700001234,
+      updated_at: 1700001234,
+    })
+  })
+
+  it('normalizes ISO timestamps and keeps unresolved mentions as null', async () => {
+    const createdAt = '2024-01-02T03:04:05.000Z'
+    mockCreateWorkflowComment.mockResolvedValue({
+      id: 'comment-date-time',
+      created_at: createdAt,
+    })
+
+    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [],
+        pendingComment: { pageX: 100, pageY: 200, elementX: 10, elementY: 20 },
+        isCommentQuickAdd: true,
+        mentionableUsersCache: {
+          'app-1': [{
+            id: 'user-2',
+            name: 'Bob',
+            email: 'bob@example.com',
+            avatar_url: 'bob.png',
+          }],
+        },
+      },
+    })
+
+    await act(async () => {
+      await result.current.handleCommentSubmit('new message', ['missing-user'])
+    })
+
+    const expectedCreatedAt = Math.floor(Date.parse(createdAt) / 1000)
+    expect(store.getState().comments[0]).toMatchObject({
+      id: 'comment-date-time',
+      created_at: expectedCreatedAt,
+      updated_at: expectedCreatedAt,
+      participants: [{
+        id: 'user-1',
+        name: 'Alice',
+        email: 'alice@example.com',
+        avatar_url: 'alice.png',
+      }],
+    })
+    expect(store.getState().commentDetailCache['comment-date-time']?.mentions).toEqual([{
+      mentioned_user_id: 'missing-user',
+      mentioned_user_account: null,
+      reply_id: null,
+    }])
+  })
+
   it('rolls back optimistic position update when API update fails', async () => {
     const comment = baseComment()
     const commentDetail = baseCommentDetail()
@@ -446,5 +519,125 @@ describe('useWorkflowComment', () => {
       expect(store.getState().activeCommentId).toBe(commentB.id)
     })
     expect(mockEmitCommentsUpdate).toHaveBeenCalled()
+  })
+
+  it('does not update a reply when the content is blank', async () => {
+    const { result } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+    })
+
+    await act(async () => {
+      await result.current.handleCommentReplyUpdate('comment-1', 'reply-1', '   ')
+    })
+
+    expect(mockUpdateWorkflowCommentReply).not.toHaveBeenCalled()
+  })
+
+  it('resets reply submit loading when creation fails', async () => {
+    mockCreateWorkflowCommentReply.mockRejectedValueOnce(new Error('create reply failed'))
+
+    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        replySubmitting: false,
+      },
+    })
+
+    await act(async () => {
+      await result.current.handleCommentReply('comment-1', 'new reply')
+    })
+
+    expect(mockCreateWorkflowCommentReply).toHaveBeenCalledWith({
+      params: { appId: 'app-1', commentId: 'comment-1' },
+      body: {
+        content: 'new reply',
+        mentioned_user_ids: [],
+      },
+    })
+    expect(store.getState().replySubmitting).toBe(false)
+  })
+
+  it('resets reply update loading when update fails', async () => {
+    mockUpdateWorkflowCommentReply.mockRejectedValueOnce(new Error('update failed'))
+
+    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        replyUpdating: false,
+      },
+    })
+
+    await act(async () => {
+      await result.current.handleCommentReplyUpdate('comment-1', 'reply-1', 'updated reply')
+    })
+
+    expect(mockUpdateWorkflowCommentReply).toHaveBeenCalledWith({
+      params: { appId: 'app-1', commentId: 'comment-1', replyId: 'reply-1' },
+      body: {
+        content: 'updated reply',
+        mentioned_user_ids: [],
+      },
+    })
+    expect(store.getState().replyUpdating).toBe(false)
+  })
+
+  it('resets reply delete loading when deletion fails', async () => {
+    mockDeleteWorkflowCommentReply.mockRejectedValueOnce(new Error('delete failed'))
+
+    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        activeCommentDetailLoading: false,
+      },
+    })
+
+    await act(async () => {
+      await result.current.handleCommentReplyDelete('comment-1', 'reply-1')
+    })
+
+    expect(mockDeleteWorkflowCommentReply).toHaveBeenCalledWith({
+      params: { appId: 'app-1', commentId: 'comment-1', replyId: 'reply-1' },
+    })
+    expect(store.getState().activeCommentDetailLoading).toBe(false)
+  })
+
+  it('ignores navigation when no active comment or active comment is absent from the list', () => {
+    const { result } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [baseComment()],
+      },
+    })
+
+    act(() => {
+      result.current.handleCommentNavigate('next')
+    })
+
+    expect(mockSetCenter).not.toHaveBeenCalled()
+
+    act(() => {
+      result.current.handleCommentIconClick({ ...baseComment(), id: 'missing-comment' })
+    })
+
+    mockSetCenter.mockClear()
+
+    act(() => {
+      result.current.handleCommentNavigate('next')
+    })
+
+    expect(mockSetCenter).not.toHaveBeenCalled()
+  })
+
+  it('clears a pending comment when comment mode is left outside quick add', () => {
+    const { store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        controlMode: ControlMode.Pointer,
+        isCommentQuickAdd: false,
+        pendingComment: { pageX: 1, pageY: 2, elementX: 3, elementY: 4 },
+      },
+    })
+
+    expect(store.getState().pendingComment).toBeNull()
   })
 })

@@ -1,5 +1,5 @@
 import type { UserProfile } from '@/contract/console/workflow-comment'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { MentionInput } from './mention-input'
 
@@ -153,5 +153,36 @@ describe('MentionInput', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith('updated reply', [])
     })
+  })
+
+  it('focuses the textarea at the end when autoFocus is enabled', () => {
+    vi.useFakeTimers()
+    try {
+      mentionStoreState.mentionableUsersCache['app-1'] = mentionUsers
+
+      const { unmount } = render(
+        <MentionInput
+          value="draft"
+          onChange={vi.fn()}
+          onSubmit={vi.fn()}
+          autoFocus
+        />,
+      )
+
+      const textarea = screen.getByPlaceholderText('workflow.comments.placeholder.add') as HTMLTextAreaElement
+
+      act(() => {
+        vi.runOnlyPendingTimers()
+      })
+
+      expect(document.activeElement).toBe(textarea)
+      expect(textarea.selectionStart).toBe(5)
+      expect(textarea.selectionEnd).toBe(5)
+
+      unmount()
+    }
+    finally {
+      vi.useRealTimers()
+    }
   })
 })

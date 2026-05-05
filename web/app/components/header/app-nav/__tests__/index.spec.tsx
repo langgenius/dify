@@ -7,6 +7,8 @@ import { useParams } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import AppNav from '../index'
 
+const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
+
 vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(),
 }))
@@ -23,6 +25,16 @@ vi.mock('@/context/app-context', () => ({
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: vi.fn(),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      list: {
+        infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
+      },
+    },
+  },
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -136,6 +148,10 @@ const mockUseAppContext = vi.mocked(useAppContext)
 const mockUseAppStore = vi.mocked(useAppStore)
 const mockUseInfiniteQuery = vi.mocked(useInfiniteQuery)
 let mockAppDetail: { id: string, name: string } | null = null
+type AppListInfiniteOptions = {
+  input: (pageParam: number) => { query: { page: number, limit: number, name: string } }
+  getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
+}
 
 const setupDefaultMocks = (options?: {
   hasNextPage?: boolean
@@ -166,6 +182,23 @@ describe('AppNav', () => {
     vi.clearAllMocks()
     mockAppDetail = null
     setupDefaultMocks()
+  })
+
+  it('should configure paged app list query options', () => {
+    setupDefaultMocks()
+    render(<AppNav />)
+
+    const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
+
+    expect(options.input(3)).toEqual({
+      query: {
+        page: 3,
+        limit: 30,
+        name: '',
+      },
+    })
+    expect(options.getNextPageParam({ has_more: true, page: 3 })).toBe(4)
+    expect(options.getNextPageParam({ has_more: false, page: 3 })).toBeUndefined()
   })
 
   it('should build editor links and update app name when app detail changes', async () => {
