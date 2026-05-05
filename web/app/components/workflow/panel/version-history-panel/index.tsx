@@ -107,7 +107,7 @@ export const VersionHistoryPanel = ({
     setIsOnlyShowNamedVersions(false)
   }, [])
 
-  const handleClickMenuItem = useCallback((item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
+  const handleClickActionMenuItem = useCallback((item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
     setOperatedItem(item)
     switch (operation) {
       case VersionHistoryContextMenuOptions.restore:
@@ -292,7 +292,7 @@ export const VersionHistoryPanel = ({
                           currentVersion={currentVersion}
                           latestVersionId={latestVersionId || ''}
                           onClick={handleVersionClick}
-                          handleClickMenuItem={handleClickMenuItem.bind(null, item)}
+                          handleClickActionMenuItem={handleClickActionMenuItem.bind(null, item)}
                           isLast={isLast}
                         />
                       )
