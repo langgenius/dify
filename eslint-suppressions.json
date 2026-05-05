@@ -1969,11 +1969,6 @@
       "count": 4
     }
   },
-  "web/app/components/billing/plan-upgrade-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 4
@@ -4195,37 +4190,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/email-configure-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/method-item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/method-selector.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    },
-    "ts/no-non-null-asserted-optional-chain": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/upgrade-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/form-content-preview.tsx": {
     "react/unsupported-syntax": {
       "count": 1
@@ -4248,11 +4212,6 @@
   "web/app/components/workflow/nodes/human-input/components/variable-in-markdown.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/panel.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/human-input/types.ts": {
@@ -5282,21 +5241,6 @@
   "web/context/hooks/use-trigger-events-limit-modal.ts": {
     "react/set-state-in-effect": {
       "count": 3
-    }
-  },
-  "web/context/modal-context-provider.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "web/context/modal-context.test.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
-  "web/context/modal-context.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/context/provider-context-provider.tsx": {
