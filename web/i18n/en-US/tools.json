@@ -206,6 +206,7 @@
   "thought.using": "Using",
   "title": "Tools",
   "toolNameUsageTip": "Tool call name for agent reasoning and prompting",
+  "toolOperationsOutOfSync": "This tool has {{available}} operations available, but this app only uses {{attached}}. Add missing operations with the '+' button.",
   "toolRemoved": "Tool removed",
   "type.builtIn": "Tools",
   "type.custom": "Custom",

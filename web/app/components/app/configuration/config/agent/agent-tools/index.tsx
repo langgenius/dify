@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
+  RiErrorWarningLine,
   RiInformation2Line,
 } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
@@ -72,6 +73,35 @@ const AgentTools: FC = () => {
       collection,
     }
   })
+
+  // Detect providers where the app uses fewer operations than the provider exposes
+  const outOfSyncProviders = useMemo(() => {
+    const agentTools = modelConfig?.agentConfig?.tools as AgentTool[] || []
+    const syncMap = new Map<string, { attached: number, available: number }>()
+
+    // Group attached tools by provider_id
+    const attachedByProvider = new Map<string, Set<string>>()
+    for (const tool of agentTools) {
+      if (!attachedByProvider.has(tool.provider_id))
+        attachedByProvider.set(tool.provider_id, new Set())
+      attachedByProvider.get(tool.provider_id)!.add(tool.tool_name)
+    }
+
+    // Compare against available operations in collectionList
+    for (const [providerId, attachedNames] of attachedByProvider) {
+      const collection = collectionList.find(c =>
+        canFindTool(c.id, providerId),
+      )
+      if (collection && collection.tools.length > attachedNames.size) {
+        syncMap.set(providerId, {
+          attached: attachedNames.size,
+          available: collection.tools.length,
+        })
+      }
+    }
+
+    return syncMap
+  }, [modelConfig?.agentConfig?.tools, collectionList])
   const useSubscribe = useMittContextSelector(s => s.useSubscribe)
   const handleUpdateToolsWhenInstallToolSuccess = useCallback((installedPluginNames: string[]) => {
     const newModelConfig = produce(modelConfig, (draft) => {
@@ -260,6 +290,36 @@ const AgentTools: FC = () => {
                     </Popover>
                   )}
                 </div>
+                {!item.isDeleted && outOfSyncProviders.has(item.provider_id) && (
+                  <div className="ml-1 flex shrink-0 items-center">
+                    <Popover>
+                      <PopoverTrigger
+                        openOnHover
+                        aria-label={t('toolOperationsOutOfSync', {
+                          ns: 'tools',
+                          available: outOfSyncProviders.get(item.provider_id)!.available,
+                          attached: outOfSyncProviders.get(item.provider_id)!.attached,
+                        })}
+                        render={(
+                          <button
+                            type="button"
+                            className="flex h-4 w-4 items-center justify-center rounded-sm outline-hidden hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                            data-testid="tool-ops-out-of-sync"
+                          >
+                            <RiErrorWarningLine className="h-4 w-4 text-[#F79009]" />
+                          </button>
+                        )}
+                      />
+                      <PopoverContent popupClassName="w-[240px] px-3 py-2 system-xs-regular text-text-tertiary">
+                        {t('toolOperationsOutOfSync', {
+                          ns: 'tools',
+                          available: outOfSyncProviders.get(item.provider_id)!.available,
+                          attached: outOfSyncProviders.get(item.provider_id)!.attached,
+                        })}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
               <div className="ml-1 flex shrink-0 items-center">
                 {item.isDeleted && (
