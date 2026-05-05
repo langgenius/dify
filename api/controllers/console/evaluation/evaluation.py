@@ -454,7 +454,7 @@ class EvaluationLogsApi(Resource):
         }
 
 
-@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run")
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run1")
 class EvaluationRunApi(Resource):
     @console_ns.doc("start_evaluation_run")
     @console_ns.response(200, "Evaluation run started")
@@ -515,7 +515,7 @@ class EvaluationRunApi(Resource):
             return {"message": str(e.description)}, 400
 
 
-@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run1")
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/run")
 class EvaluationRunRealApi(Resource):
     @console_ns.doc("start_evaluation_run_real")
     @console_ns.response(200, "Evaluation run started")

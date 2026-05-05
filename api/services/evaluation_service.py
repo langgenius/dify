@@ -461,9 +461,9 @@ class EvaluationService:
     ) -> EvaluationRun:
         """Persist a completed synthetic run for frontend integration testing.
 
-        This temporary path keeps the existing read flows (`logs`, `run detail`,
-        and result-file download) working for app evaluations while the real
-        execution logic is moved to `/evaluation/run1` for backend iteration.
+        This lightweight path keeps the existing read flows (`logs`, `run detail`,
+        and result-file download) available for app evaluations without invoking
+        the asynchronous real execution flow.
         """
         from tasks.evaluation_task import (
             _compute_metrics_summary,
