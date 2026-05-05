@@ -76,7 +76,7 @@ RUN \
     && apt-get update \
     # Install dependencies
     && apt-get install -y --no-install-recommends \
-        # basic environment \
+        # basic environment
         git \
         nodejs=${NODE_PACKAGE_VERSION} \
         # for gmpy2 \
