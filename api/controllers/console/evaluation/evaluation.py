@@ -190,7 +190,17 @@ evaluation_default_metrics_response_model = console_ns.model(
 evaluation_dataset_columns_response_model = console_ns.model(
     "EvaluationDatasetColumnsResponse",
     {
-        "columns": fields.List(fields.String),
+        "columns": fields.List(
+            fields.Nested(
+                console_ns.model(
+                    "EvaluationTemplateColumn",
+                    {
+                        "name": fields.String,
+                        "type": fields.String,
+                    },
+                )
+            )
+        ),
     },
 )
 
@@ -391,7 +401,7 @@ class EvaluationTemplateColumnsApi(Resource):
     @account_initialization_required
     @get_evaluation_target
     def post(self, target: Union[App, CustomizedSnippet], target_type: str):
-        """Return the dataset column names implied by the current evaluation config."""
+        """Return the dataset template columns implied by the current evaluation config."""
         body = request.get_json(silent=True) or {}
         try:
             config_data = EvaluationConfigData.model_validate(body)
