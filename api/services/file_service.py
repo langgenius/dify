@@ -179,9 +179,7 @@ class FileService:
         """
         with self._session_maker(expire_on_commit=False) as session:
             upload_file = session.scalar(
-                select(UploadFile)
-                .where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)
-                .limit(1)
+                select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id).limit(1)
             )
 
         if not upload_file:
