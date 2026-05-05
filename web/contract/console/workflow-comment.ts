@@ -58,48 +58,48 @@ export type WorkflowCommentDetail = {
   mentions: WorkflowCommentDetailMention[]
 }
 
-export type WorkflowCommentCreateRes = {
+type WorkflowCommentCreateRes = {
   id: string
   created_at: number
 }
 
-export type WorkflowCommentUpdateRes = {
+type WorkflowCommentUpdateRes = {
   id: string
   updated_at: number
 }
 
-export type WorkflowCommentResolveRes = {
+type WorkflowCommentResolveRes = {
   id: string
   resolved: boolean
   resolved_by: string
   resolved_at: number
 }
 
-export type WorkflowCommentReplyCreateRes = {
+type WorkflowCommentReplyCreateRes = {
   id: string
   created_at: number
 }
 
-export type WorkflowCommentReplyUpdateRes = {
+type WorkflowCommentReplyUpdateRes = {
   id: string
   updated_at: number
 }
 
-export type CreateCommentParams = {
+type CreateCommentParams = {
   position_x: number
   position_y: number
   content: string
   mentioned_user_ids?: string[]
 }
 
-export type UpdateCommentParams = {
+type UpdateCommentParams = {
   content: string
   position_x?: number
   position_y?: number
   mentioned_user_ids?: string[]
 }
 
-export type CreateReplyParams = {
+type CreateReplyParams = {
   content: string
   mentioned_user_ids?: string[]
 }
