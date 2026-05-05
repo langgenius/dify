@@ -148,6 +148,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.evaluation_task",  # evaluation run execution
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 

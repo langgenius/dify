@@ -1,4 +1,5 @@
 import logging
+from importlib import import_module
 from typing import Any
 
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
@@ -138,12 +139,13 @@ class RagasEvaluator(BaseEvaluationInstance):
         ragas_metrics = self._build_ragas_metrics(requested_metrics)
         if not ragas_metrics:
             logger.warning("No valid RAGAS metrics found for: %s", requested_metrics)
-            return [EvaluationItemResult(index=item.index) for item in items]
+            return [EvaluationItemResult(index=item.index, actual_output=item.output) for item in items]
 
         try:
             result = ragas_evaluate(
                 dataset=dataset,
                 metrics=ragas_metrics,
+                llm=model_wrapper,
             )
 
             results: list[EvaluationItemResult] = []
@@ -155,7 +157,7 @@ class RagasEvaluator(BaseEvaluationInstance):
                         score = result_df.iloc[i][m_name]
                         if score is not None and not (isinstance(score, float) and score != score):
                             metrics.append(EvaluationMetric(name=m_name, value=float(score)))
-                results.append(EvaluationItemResult(index=item.index, metrics=metrics))
+                results.append(EvaluationItemResult(index=item.index, metrics=metrics, actual_output=item.output))
             return results
         except Exception:
             logger.exception("RAGAS evaluation failed, falling back to simple evaluation")
@@ -216,7 +218,7 @@ class RagasEvaluator(BaseEvaluationInstance):
                     metrics.append(EvaluationMetric(name=m_name, value=score))
                 except Exception:
                     logger.exception("Failed to compute metric %s for item %d", m_name, item.index)
-            results.append(EvaluationItemResult(index=item.index, metrics=metrics))
+            results.append(EvaluationItemResult(index=item.index, metrics=metrics, actual_output=item.output))
         return results
 
     def _judge_with_llm(
@@ -265,40 +267,71 @@ class RagasEvaluator(BaseEvaluationInstance):
     def _build_ragas_metrics(requested_metrics: list[str]) -> list[Any]:
         """Build RAGAS metric instances from canonical metric names."""
         try:
-            from ragas.metrics.collections import (
-                AnswerCorrectness,
-                AnswerRelevancy,
-                ContextPrecision,
-                ContextRecall,
-                ContextRelevance,
-                Faithfulness,
-                SemanticSimilarity,
-                ToolCallAccuracy,
-            )
+            metrics_module = _import_ragas_metrics_module()
 
             # Maps canonical name → ragas metric class
             ragas_class_map: dict[str, Any] = {
-                EvaluationMetricName.FAITHFULNESS: Faithfulness,
-                EvaluationMetricName.ANSWER_RELEVANCY: AnswerRelevancy,
-                EvaluationMetricName.ANSWER_CORRECTNESS: AnswerCorrectness,
-                EvaluationMetricName.SEMANTIC_SIMILARITY: SemanticSimilarity,
-                EvaluationMetricName.CONTEXT_PRECISION: ContextPrecision,
-                EvaluationMetricName.CONTEXT_RECALL: ContextRecall,
-                EvaluationMetricName.CONTEXT_RELEVANCE: ContextRelevance,
-                EvaluationMetricName.TOOL_CORRECTNESS: ToolCallAccuracy,
+                EvaluationMetricName.FAITHFULNESS: getattr(metrics_module, "Faithfulness"),
+                EvaluationMetricName.ANSWER_RELEVANCY: getattr(metrics_module, "AnswerRelevancy"),
+                EvaluationMetricName.ANSWER_CORRECTNESS: getattr(metrics_module, "AnswerCorrectness"),
+                EvaluationMetricName.SEMANTIC_SIMILARITY: getattr(metrics_module, "SemanticSimilarity"),
+                EvaluationMetricName.CONTEXT_PRECISION: getattr(metrics_module, "ContextPrecision"),
+                EvaluationMetricName.CONTEXT_RECALL: getattr(metrics_module, "ContextRecall"),
+                EvaluationMetricName.CONTEXT_RELEVANCE: getattr(metrics_module, "ContextRelevance"),
+                EvaluationMetricName.TOOL_CORRECTNESS: getattr(metrics_module, "ToolCallAccuracy"),
             }
 
             metrics = []
             for name in requested_metrics:
                 metric_class = ragas_class_map.get(name)
                 if metric_class:
-                    metrics.append(metric_class())
+                    if name == EvaluationMetricName.ANSWER_CORRECTNESS:
+                        # ragas answer_correctness blends factuality with semantic
+                        # similarity. The latter requires an embeddings backend,
+                        # which is not wired through Dify's evaluation stack yet.
+                        # Keep the metric usable by relying on the factuality
+                        # component only for now.
+                        metrics.append(metric_class(weights=[1.0, 0.0], embeddings=_NoopRagasEmbeddings()))
+                    else:
+                        metrics.append(metric_class())
                 else:
                     logger.warning("Metric '%s' is not supported by RAGAS, skipping", name)
             return metrics
         except ImportError:
             logger.warning("RAGAS metrics not available")
             return []
+
+
+def _import_ragas_metrics_module() -> Any:
+    """Load ragas metric classes across supported ragas versions.
+
+    ragas 0.3.x exposes metric classes from ``ragas.metrics`` while some older
+    versions used ``ragas.metrics.collections``. Support both so worker
+    environments do not silently drop all metrics because of a module path
+    mismatch.
+    """
+    try:
+        return import_module("ragas.metrics")
+    except ImportError:
+        return import_module("ragas.metrics.collections")
+
+
+class _NoopRagasEmbeddings:
+    """Placeholder embeddings for ragas metrics whose embedding branch is disabled.
+
+    ragas eagerly injects a default embeddings backend for any metric that
+    subclasses ``MetricWithEmbeddings``. For answer_correctness we currently
+    disable the semantic-similarity weight, so no real embedding call should
+    happen. Supplying this placeholder keeps ragas from constructing its
+    default OpenAI embeddings client during setup.
+    """
+
+    async def aembed_query(self, text: str) -> list[float]:
+        del text
+        return [0.0]
+
+    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [[0.0] for _ in texts]
 
 
 def _format_input(inputs: dict[str, Any], category: EvaluationCategory) -> str:

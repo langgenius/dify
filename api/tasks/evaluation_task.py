@@ -67,7 +67,12 @@ def run_evaluation(run_data_dict: dict[str, Any]) -> None:
 
 
 def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
-    """Core evaluation execution logic."""
+    """Core evaluation execution logic.
+
+    The task stores progress using dataset row indices instead of positional
+    offsets so retries, sparse runner outputs, and result-file generation all
+    stay aligned with the user-uploaded dataset.
+    """
     evaluation_run = session.query(EvaluationRun).filter_by(id=run_data.evaluation_run_id).first()
     if not evaluation_run:
         logger.error("EvaluationRun %s not found", run_data.evaluation_run_id)
@@ -136,6 +141,8 @@ def _execute_evaluation(session: Any, run_data: EvaluationRunData) -> None:
     if evaluation_run:
         evaluation_run.status = EvaluationRunStatus.COMPLETED
         evaluation_run.completed_at = naive_utc_now()
+        evaluation_run.completed_items = sum(1 for result in results if not result.error)
+        evaluation_run.failed_items = len(run_data.input_list) - evaluation_run.completed_items
         evaluation_run.metrics_summary = json.dumps(metrics_summary)
         if result_file_id:
             evaluation_run.result_file_id = result_file_id
@@ -166,12 +173,14 @@ def _execute_evaluation_runner(
     for default_metric in run_data.default_metrics:
         for node_info in default_metric.node_info_list:
             node_run_result_list: list[NodeRunResult] = []
-            item_indices: list[int] = []
+            dataset_items: list[EvaluationDatasetInput] = []
+            dataset_indices: list[int] = []
             for i, mapping in enumerate(node_run_result_mapping_list):
                 node_result = mapping.get(node_info.node_id)
                 if node_result is not None:
                     node_run_result_list.append(node_result)
-                    item_indices.append(i)
+                    dataset_items.append(run_data.input_list[i])
+                    dataset_indices.append(run_data.input_list[i].index)
 
             if not node_run_result_list:
                 continue
@@ -184,6 +193,8 @@ def _execute_evaluation_runner(
                     model_provider=run_data.evaluation_model_provider,
                     model_name=run_data.evaluation_model,
                     tenant_id=run_data.tenant_id,
+                    dataset_items=dataset_items,
+                    node_info=node_info,
                 )
             except Exception:
                 logger.exception(
@@ -191,7 +202,7 @@ def _execute_evaluation_runner(
                 )
                 continue
 
-            _stamp_and_merge(evaluated, item_indices, node_info, results_by_index)
+            _stamp_and_merge(evaluated, dataset_indices, node_info, results_by_index)
 
     # Phase 2: Customized metrics
     if run_data.customized_metrics:
@@ -201,14 +212,16 @@ def _execute_evaluation_runner(
                 customized_metrics=run_data.customized_metrics,
                 tenant_id=run_data.tenant_id,
             )
-            for result in customized_results:
-                _merge_result(results_by_index, result.index, result)
+            _merge_customized_results(results_by_index, customized_results, run_data.input_list)
         except Exception:
             logger.exception("Failed customized metrics for run %s", run_data.evaluation_run_id)
 
-    results = list(results_by_index.values())
-
     # Phase 3: Judgment
+    results = _finalize_results(
+        input_list=run_data.input_list,
+        results_by_index=results_by_index,
+        missing_errors=_build_missing_result_errors(run_data.input_list, node_run_result_mapping_list),
+    )
     if run_data.judgment_config:
         results = _apply_judgment(results, run_data.judgment_config)
 
@@ -249,13 +262,17 @@ def _execute_retrieval_test(
                 model_provider=run_data.evaluation_model_provider,
                 model_name=run_data.evaluation_model,
                 tenant_id=run_data.tenant_id,
+                dataset_items=run_data.input_list,
             )
-            item_indices = list(range(len(node_run_result_list)))
-            _stamp_and_merge(evaluated, item_indices, None, results_by_index)
+            dataset_indices = [item.index for item in run_data.input_list]
+            _stamp_and_merge(evaluated, dataset_indices, None, results_by_index)
         except Exception:
             logger.exception("Failed retrieval metrics for run %s", run_data.evaluation_run_id)
 
-    results = list(results_by_index.values())
+    results = _finalize_results(
+        input_list=run_data.input_list,
+        results_by_index=results_by_index,
+    )
 
     if run_data.judgment_config:
         results = _apply_judgment(results, run_data.judgment_config)
@@ -272,17 +289,17 @@ def _execute_retrieval_test(
 
 def _stamp_and_merge(
     evaluated: list[EvaluationItemResult],
-    item_indices: list[int],
+    dataset_indices: list[int],
     node_info: NodeInfo | None,
     results_by_index: dict[int, EvaluationItemResult],
 ) -> None:
-    """Attach node_info to each metric and merge into results_by_index."""
+    """Attach node_info to each metric and remap positional results to dataset indices."""
     for result in evaluated:
-        original_index = item_indices[result.index]
+        dataset_index = dataset_indices[result.index]
         if node_info is not None:
             for metric in result.metrics:
                 metric.node_info = node_info
-        _merge_result(results_by_index, original_index, result)
+        _merge_result(results_by_index, dataset_index, result)
 
 
 def _merge_result(
@@ -295,11 +312,79 @@ def _merge_result(
     if existing:
         merged_metrics = existing.metrics + new_result.metrics
         actual = existing.actual_output or new_result.actual_output
+        merged_metadata = {**existing.metadata, **new_result.metadata}
+        merged_error = new_result.error
+        if merged_error is None and new_result.metrics:
+            merged_error = None
+        elif merged_error is None:
+            merged_error = existing.error
         results_by_index[index] = existing.model_copy(
-            update={"metrics": merged_metrics, "actual_output": actual}
+            update={
+                "metrics": merged_metrics,
+                "actual_output": actual,
+                "metadata": merged_metadata,
+                "error": merged_error,
+            }
         )
     else:
         results_by_index[index] = new_result.model_copy(update={"index": index})
+
+
+def _merge_customized_results(
+    results_by_index: dict[int, EvaluationItemResult],
+    customized_results: list[EvaluationItemResult],
+    input_list: list[EvaluationDatasetInput],
+) -> None:
+    """Remap customized workflow results from positional indices to dataset indices."""
+    for result in customized_results:
+        if 0 <= result.index < len(input_list):
+            dataset_index = input_list[result.index].index
+        else:
+            dataset_index = result.index
+        _merge_result(results_by_index, dataset_index, result)
+
+
+def _build_missing_result_errors(
+    input_list: list[EvaluationDatasetInput],
+    node_run_result_mapping_list: list[dict[str, NodeRunResult]],
+) -> dict[int, str]:
+    """Describe why a dataset row produced no merged evaluation result."""
+    errors: dict[int, str] = {}
+    for item, node_results in zip(input_list, node_run_result_mapping_list):
+        if node_results:
+            errors[item.index] = "No evaluation metrics were generated for this row."
+        else:
+            errors[item.index] = "Target execution produced no node results for this row."
+    return errors
+
+
+def _finalize_results(
+    input_list: list[EvaluationDatasetInput],
+    results_by_index: dict[int, EvaluationItemResult],
+    missing_errors: dict[int, str] | None = None,
+) -> list[EvaluationItemResult]:
+    """Return ordered results with one item per dataset row.
+
+    Runners can legitimately emit sparse outputs when a target execution or a
+    metric batch fails. Before persistence we materialize a placeholder result
+    for every missing dataset row so history/detail APIs always remain
+    one-input-row to one-result-row.
+    """
+    finalized: list[EvaluationItemResult] = []
+    for item in input_list:
+        result = results_by_index.get(item.index)
+        if result is not None:
+            finalized.append(result)
+            continue
+
+        finalized.append(
+            EvaluationItemResult(
+                index=item.index,
+                error=(missing_errors or {}).get(item.index, "No evaluation result was generated for this row."),
+            )
+        )
+
+    return finalized
 
 
 def _apply_judgment(
@@ -328,17 +413,17 @@ def _persist_results(
     workflow_run_id_map: dict[int, str] | None = None,
 ) -> None:
     """Persist evaluation results — one EvaluationRunItem per test-data row."""
-    dataset_map = {item.index: item for item in input_list}
+    result_map = {result.index: result for result in results}
     wf_map = workflow_run_id_map or {}
 
-    for result in results:
-        item_input = dataset_map.get(result.index)
+    for item_input in input_list:
+        result = result_map.get(item_input.index, EvaluationItemResult(index=item_input.index, error="Missing result"))
         run_item = EvaluationRunItem(
             evaluation_run_id=evaluation_run_id,
-            workflow_run_id=wf_map.get(result.index),
-            item_index=result.index,
-            inputs=json.dumps(item_input.inputs) if item_input else None,
-            expected_output=item_input.expected_output if item_input else None,
+            workflow_run_id=wf_map.get(item_input.index),
+            item_index=item_input.index,
+            inputs=json.dumps(item_input.inputs),
+            expected_output=item_input.serialize_expected_output(),
             actual_output=result.actual_output,
             metrics=json.dumps([m.model_dump() for m in result.metrics]) if result.metrics else None,
             judgment=json.dumps(result.judgment.model_dump()) if result.judgment else None,
@@ -450,12 +535,16 @@ def _generate_result_xlsx(
             if key not in input_keys:
                 input_keys.append(key)
 
+    expected_output_headers: list[str] = []
+    for item in input_list:
+        for header, _ in item.iter_expected_output_columns():
+            if header not in expected_output_headers:
+                expected_output_headers.append(header)
+
     has_judgment = any(bool(r.judgment.condition_results) for r in results)
 
     judgment_headers = ["judgment"] if has_judgment else []
-    headers = (
-        ["index"] + input_keys + ["expected_output", "actual_output"] + all_metric_names + judgment_headers + ["error"]
-    )
+    headers = ["index"] + input_keys + expected_output_headers + ["actual_output"] + all_metric_names + judgment_headers + ["error"]
 
     for col_idx, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col_idx, value=header)
@@ -482,8 +571,9 @@ def _generate_result_xlsx(
             ws.cell(row=row_idx, column=col, value=str(val)).border = thin_border
             col += 1
 
-        ws.cell(row=row_idx, column=col, value=item.expected_output or "").border = thin_border
-        col += 1
+        for header in expected_output_headers:
+            ws.cell(row=row_idx, column=col, value=_get_expected_output_cell_value(item, header)).border = thin_border
+            col += 1
 
         ws.cell(row=row_idx, column=col, value=result.actual_output if result else "").border = thin_border
         col += 1
@@ -508,6 +598,14 @@ def _generate_result_xlsx(
     wb.save(output)
     output.seek(0)
     return output.getvalue()
+
+
+def _get_expected_output_cell_value(item: EvaluationDatasetInput, header: str) -> str:
+    """Return the expected-output cell value for a generated result file header."""
+    for column_header, value in item.iter_expected_output_columns():
+        if column_header == header:
+            return value
+    return ""
 
 
 def _store_result_file(

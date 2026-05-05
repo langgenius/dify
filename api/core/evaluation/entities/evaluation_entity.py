@@ -1,3 +1,4 @@
+import json
 from enum import StrEnum
 from typing import Any
 
@@ -164,9 +165,62 @@ class EvaluationItemInput(BaseModel):
 
 
 class EvaluationDatasetInput(BaseModel):
+    """Parsed dataset row used throughout evaluation execution.
+
+    ``expected_output`` keeps backward compatibility with the original
+    single-reference template. When users upload node-specific reference
+    columns such as ``LLM 1 : expected_output``, they are stored in
+    ``expected_outputs`` and resolved by node title at execution time.
+    """
+
     index: int
     inputs: dict[str, Any]
     expected_output: str | None = None
+    expected_outputs: dict[str, str] = Field(default_factory=dict)
+
+    def get_expected_output_for_node(self, node_title: str | None) -> str | None:
+        """Return the best matching reference answer for the given node title."""
+        if node_title:
+            if node_title in self.expected_outputs:
+                return self.expected_outputs[node_title]
+
+        if self.expected_output is not None:
+            return self.expected_output
+
+        if len(self.expected_outputs) == 1:
+            return next(iter(self.expected_outputs.values()))
+
+        return None
+
+    def serialize_expected_output(self) -> str | None:
+        """Serialize references for persistence and API responses.
+
+        Single-reference datasets stay unchanged, while multi-node references
+        are stored as JSON so history/detail APIs can still expose the full
+        uploaded payload without changing the database schema.
+        """
+        if self.expected_output is not None and not self.expected_outputs:
+            return self.expected_output
+
+        if not self.expected_outputs:
+            return None
+
+        serialized_expected_outputs = dict(self.expected_outputs)
+        if self.expected_output is not None:
+            serialized_expected_outputs = {"expected_output": self.expected_output, **serialized_expected_outputs}
+
+        return json.dumps(serialized_expected_outputs, ensure_ascii=False, sort_keys=True)
+
+    def iter_expected_output_columns(self) -> list[tuple[str, str]]:
+        """Return uploaded expected-output columns in display order."""
+        columns: list[tuple[str, str]] = []
+        if self.expected_output is not None:
+            columns.append(("expected_output", self.expected_output))
+
+        for node_title, value in self.expected_outputs.items():
+            columns.append((f"{node_title} : expected_output", value))
+
+        return columns
 
 
 class EvaluationItemResult(BaseModel):

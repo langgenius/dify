@@ -5,8 +5,10 @@ from typing import Any
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     DefaultMetric,
+    EvaluationDatasetInput,
     EvaluationItemInput,
     EvaluationItemResult,
+    NodeInfo,
 )
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from graphon.node_events import NodeRunResult
@@ -27,6 +29,8 @@ class WorkflowEvaluationRunner(BaseEvaluationRunner):
         model_provider: str,
         model_name: str,
         tenant_id: str,
+        dataset_items: list[EvaluationDatasetInput] | None = None,
+        node_info: NodeInfo | None = None,
     ) -> list[EvaluationItemResult]:
         """Compute workflow evaluation metrics (end-to-end)."""
         if not node_run_result_list:
