@@ -14,6 +14,8 @@ from abc import ABC, abstractmethod
 from core.evaluation.base_evaluation_instance import BaseEvaluationInstance
 from core.evaluation.entities.evaluation_entity import (
     DefaultMetric,
+    EvaluationDatasetInput,
+    NodeInfo,
     EvaluationItemResult,
 )
 from graphon.node_events import NodeRunResult
@@ -40,6 +42,8 @@ class BaseEvaluationRunner(ABC):
         model_provider: str,
         model_name: str,
         tenant_id: str,
+        dataset_items: list[EvaluationDatasetInput] | None = None,
+        node_info: NodeInfo | None = None,
     ) -> list[EvaluationItemResult]:
         """Compute evaluation metrics on the collected results.
 

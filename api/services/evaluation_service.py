@@ -63,6 +63,17 @@ class EvaluationService:
 
     # Excluded app modes that don't support evaluation templates
     EXCLUDED_APP_MODES = {AppMode.RAG_PIPELINE}
+    CONSOLE_DISABLED_CATEGORIES = {EvaluationCategory.AGENT}
+    CONSOLE_DISABLED_METRICS = {
+        EvaluationMetricName.TOOL_CORRECTNESS.value,
+        EvaluationMetricName.TASK_COMPLETION.value,
+    }
+    METRICS_REQUIRING_EXPECTED_OUTPUT = {
+        EvaluationMetricName.ANSWER_CORRECTNESS.value,
+        EvaluationMetricName.SEMANTIC_SIMILARITY.value,
+        EvaluationMetricName.CONTEXT_PRECISION.value,
+        EvaluationMetricName.CONTEXT_RECALL.value,
+    }
 
     @classmethod
     def generate_dataset_template(
@@ -400,6 +411,7 @@ class EvaluationService:
             target_id=target_id,
             evaluation_config_id=config.id,
             status=EvaluationRunStatus.PENDING,
+            dataset_file_id=run_request.file_id,
             total_items=len(items),
             created_by=account_id,
         )
@@ -588,10 +600,125 @@ class EvaluationService:
     def get_supported_metrics(cls, category: EvaluationCategory) -> list[str]:
         return EvaluationManager.get_supported_metrics(category)
 
-    @staticmethod
-    def get_available_metrics() -> list[str]:
+    @classmethod
+    def get_available_metrics(cls) -> list[str]:
         """Return the centrally-defined list of evaluation metrics."""
         return [m.value for m in EvaluationMetricName]
+
+    @classmethod
+    def filter_console_default_metrics(
+        cls,
+        default_metrics: list[DefaultMetric | Mapping[str, Any]],
+    ) -> list[DefaultMetric]:
+        """Drop agent-only metrics/nodes from console-facing evaluation configs."""
+        filtered: list[DefaultMetric] = []
+        for raw_metric in default_metrics:
+            metric = raw_metric if isinstance(raw_metric, DefaultMetric) else DefaultMetric.model_validate(raw_metric)
+            if metric.metric in cls.CONSOLE_DISABLED_METRICS:
+                continue
+
+            visible_nodes = [node for node in metric.node_info_list if node.type not in cls.CONSOLE_DISABLED_CATEGORIES]
+            if not visible_nodes:
+                continue
+
+            filtered.append(metric.model_copy(update={"node_info_list": visible_nodes}))
+        return filtered
+
+    @classmethod
+    def filter_console_judgment_config(
+        cls,
+        judgment_config: JudgmentConfig | Mapping[str, Any] | None,
+    ) -> JudgmentConfig | None:
+        """Strip judgment conditions that reference metrics hidden from console evaluation."""
+        if judgment_config is None:
+            return None
+
+        config = (
+            judgment_config
+            if isinstance(judgment_config, JudgmentConfig)
+            else JudgmentConfig.model_validate(judgment_config)
+        )
+        visible_conditions = [
+            condition
+            for condition in config.conditions
+            if len(condition.variable_selector) < 2 or condition.variable_selector[1] not in cls.CONSOLE_DISABLED_METRICS
+        ]
+        if not visible_conditions:
+            return None
+        return config.model_copy(update={"conditions": visible_conditions})
+
+    @classmethod
+    def serialize_console_default_metrics(
+        cls,
+        default_metrics: list[Mapping[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Return sanitized default metrics payload for console responses."""
+        return [metric.model_dump() for metric in cls.filter_console_default_metrics(default_metrics)]
+
+    @classmethod
+    def serialize_console_judgment_config(
+        cls,
+        judgment_config: Mapping[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        """Return sanitized judgment config payload for console responses."""
+        filtered = cls.filter_console_judgment_config(judgment_config)
+        return filtered.model_dump() if filtered else None
+
+    @classmethod
+    def get_dataset_column_names(
+        cls,
+        target: Union[App, CustomizedSnippet],
+        target_type: str,
+        data: EvaluationConfigData,
+    ) -> list[str]:
+        """Build dataset column names from target inputs and the selected evaluation config."""
+        input_columns = cls._get_target_input_column_names(target, target_type)
+        expected_output_columns = cls._get_expected_output_column_names(data.default_metrics)
+        return ["index", *input_columns, *expected_output_columns]
+
+    @classmethod
+    def _get_target_input_column_names(
+        cls,
+        target: Union[App, CustomizedSnippet],
+        target_type: str,
+    ) -> list[str]:
+        """Resolve user-input variables for the target in workflow order."""
+        if target_type == EvaluationTargetType.APPS.value and isinstance(target, App):
+            input_fields = cls._get_app_input_fields(target)
+        elif target_type == EvaluationTargetType.SNIPPETS.value and isinstance(target, CustomizedSnippet):
+            input_fields = cls._get_snippet_input_fields(target)
+        else:
+            raise ValueError(f"Unsupported target type: {target_type}")
+
+        columns: list[str] = []
+        seen: set[str] = set()
+        for field in input_fields:
+            column_name = str(field.get("variable") or field.get("label") or "").strip()
+            if not column_name or column_name in seen:
+                continue
+            seen.add(column_name)
+            columns.append(column_name)
+        return columns
+
+    @classmethod
+    def _get_expected_output_column_names(
+        cls,
+        default_metrics: list[DefaultMetric | Mapping[str, Any]],
+    ) -> list[str]:
+        """Build one expected_output column per visible node that needs a reference answer."""
+        columns: list[str] = []
+        seen: set[str] = set()
+        for metric in cls.filter_console_default_metrics(default_metrics):
+            if metric.metric not in cls.METRICS_REQUIRING_EXPECTED_OUTPUT:
+                continue
+            for node_info in metric.node_info_list:
+                node_title = node_info.title or node_info.node_id
+                column_name = f"{node_title} : expected_output"
+                if column_name in seen:
+                    continue
+                seen.add(column_name)
+                columns.append(column_name)
+        return columns
 
     @classmethod
     def _nodes_for_metrics_from_workflow(
@@ -602,6 +729,8 @@ class EvaluationService:
         node_type_to_nodes: dict[str, list[dict[str, str]]] = {}
         for node_id, node_data in workflow.walk_nodes():
             ntype = node_data.get("type", "")
+            if ntype in cls.CONSOLE_DISABLED_CATEGORIES:
+                continue
             node_type_to_nodes.setdefault(ntype, []).append(
                 NodeInfo(node_id=node_id, type=ntype, title=node_data.get("title", "")).model_dump()
             )
@@ -682,6 +811,7 @@ class EvaluationService:
             all_nodes = [
                 NodeInfo(node_id=node_id, type=node_data.get("type", ""), title=node_data.get("title", "")).model_dump()
                 for node_id, node_data in workflow.walk_nodes()
+                if node_data.get("type", "") not in cls.CONSOLE_DISABLED_CATEGORIES
             ]
             return {"all": all_nodes}
 
@@ -942,7 +1072,16 @@ class EvaluationService:
 
     @classmethod
     def _parse_dataset(cls, file_content: bytes, filename: str) -> list[EvaluationDatasetInput]:
-        """Parse evaluation dataset from CSV or XLSX content."""
+        """Parse evaluation dataset from CSV or XLSX content.
+
+        Supported schemas:
+
+        - ``index,<input...>,expected_output`` for the legacy single-reference flow
+        - ``index,<input...>,<node title> : expected_output`` for node-specific references
+
+        Column parsing treats the *last* ``:`` as the separator so node titles
+        can themselves contain ``:`` characters.
+        """
         filename_lower = filename.lower()
         if filename_lower.endswith(".csv"):
             return cls._parse_csv_dataset(file_content)
@@ -964,35 +1103,7 @@ class EvaluationService:
         if not headers or headers[0].lower() != "index":
             raise EvaluationDatasetInvalidError("First column header must be 'index'.")
 
-        input_headers = headers[1:]  # Skip 'index'
-        items = []
-        for row_idx, row in enumerate(rows[1:], start=1):
-            values = list(row)
-            if all(v is None or str(v).strip() == "" for v in values):
-                continue  # Skip empty rows
-
-            index_val = values[0] if values else row_idx
-            try:
-                index = int(str(index_val))
-            except (TypeError, ValueError):
-                index = row_idx
-
-            inputs: dict[str, Any] = {}
-            for col_idx, header in enumerate(input_headers):
-                val = values[col_idx + 1] if col_idx + 1 < len(values) else None
-                inputs[header] = str(val) if val is not None else ""
-
-            # Extract expected_output column into dedicated field
-            expected_output = inputs.pop("expected_output", None)
-
-            items.append(
-                EvaluationDatasetInput(
-                    index=index,
-                    inputs=inputs,
-                    expected_output=expected_output,
-                )
-            )
-
+        items = cls._rows_to_dataset_items(rows)
         wb.close()
         return items
 
@@ -1002,7 +1113,8 @@ class EvaluationService:
 
         CSV follows the same schema as XLSX:
         the first column must be `index`, remaining columns become inputs,
-        and `expected_output` is extracted into a dedicated field.
+        and expected-output columns can be either the legacy
+        ``expected_output`` or node-scoped ``<node title> : expected_output``.
         """
         try:
             decoded = csv_content.decode("utf-8-sig")
@@ -1018,11 +1130,19 @@ class EvaluationService:
         if not headers or headers[0].lower() != "index":
             raise EvaluationDatasetInvalidError("First column header must be 'index'.")
 
+        return cls._rows_to_dataset_items(rows)
+
+    @classmethod
+    def _rows_to_dataset_items(cls, rows: list[list[Any] | tuple[Any, ...]]) -> list[EvaluationDatasetInput]:
+        """Normalize spreadsheet rows into dataset items with index validation."""
+        headers = [str(h).strip() if h is not None else "" for h in rows[0]]
         input_headers = headers[1:]
+
         items: list[EvaluationDatasetInput] = []
+        seen_indices: set[int] = set()
         for row_idx, row in enumerate(rows[1:], start=1):
             values = list(row)
-            if all(str(v).strip() == "" for v in values):
+            if all(v is None or str(v).strip() == "" for v in values):
                 continue
 
             index_val = values[0] if values else row_idx
@@ -1031,15 +1151,58 @@ class EvaluationService:
             except (TypeError, ValueError):
                 index = row_idx
 
+            if index in seen_indices:
+                raise EvaluationDatasetInvalidError(f"Dataset index '{index}' is duplicated.")
+            seen_indices.add(index)
+
             inputs: dict[str, Any] = {}
+            expected_output: str | None = None
+            expected_outputs: dict[str, str] = {}
             for col_idx, header in enumerate(input_headers):
                 val = values[col_idx + 1] if col_idx + 1 < len(values) else None
-                inputs[header] = str(val) if val is not None else ""
+                string_value = str(val) if val is not None else ""
+                expected_output_target = cls._parse_expected_output_header(header)
+                if expected_output_target is None:
+                    inputs[header] = string_value
+                    continue
 
-            expected_output = inputs.pop("expected_output", None)
-            items.append(EvaluationDatasetInput(index=index, inputs=inputs, expected_output=expected_output))
+                if expected_output_target == "":
+                    expected_output = string_value
+                else:
+                    expected_outputs[expected_output_target] = string_value
+
+            items.append(
+                EvaluationDatasetInput(
+                    index=index,
+                    inputs=inputs,
+                    expected_output=expected_output,
+                    expected_outputs=expected_outputs,
+                )
+            )
 
         return items
+
+    @staticmethod
+    def _parse_expected_output_header(header: str) -> str | None:
+        """Return the node title for an expected-output column, if any.
+
+        ``expected_output`` keeps the legacy single-reference behaviour and
+        returns an empty string marker. Node-specific columns split on the last
+        ``:`` so titles such as ``RAG: final judge`` remain valid.
+        """
+        normalized_header = header.strip()
+        if normalized_header == "expected_output":
+            return ""
+
+        if ":" not in normalized_header:
+            return None
+
+        node_title, suffix = normalized_header.rsplit(":", 1)
+        if suffix.strip() != "expected_output":
+            return None
+
+        normalized_title = node_title.strip()
+        return normalized_title or None
 
     @classmethod
     def _build_stub_results(
@@ -1095,11 +1258,20 @@ class EvaluationService:
                                 "value_type": output_field.value_type,
                                 "customized": True,
                             },
+                            node_info=NodeInfo(
+                                node_id=run_request.customized_metrics.evaluation_workflow_id,
+                                type="customized",
+                                title="customized",
+                            ),
                         )
                     )
 
             judgment = cls._evaluate_stub_judgment(metrics, run_request.judgment_config)
-            actual_output = item.expected_output or cls._build_stub_output(item_position, item.inputs)
+            if isinstance(item, EvaluationDatasetInput):
+                actual_output = item.get_expected_output_for_node(None)
+            else:
+                actual_output = getattr(item, "expected_output", None)
+            actual_output = actual_output or cls._build_stub_output(item_position, item.inputs)
 
             results.append(
                 EvaluationItemResult(

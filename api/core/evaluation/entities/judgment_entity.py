@@ -26,9 +26,18 @@ Typical usage::
 from collections.abc import Sequence
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from graphon.utils.condition.entities import SupportedComparisonOperator
+
+COMPARISON_OPERATOR_ALIASES: dict[str, str] = {
+    "==": "=",
+    "!=": "≠",
+    ">=": "≥",
+    "<=": "≤",
+    "is null": "null",
+    "is not null": "not null",
+}
 
 
 class JudgmentCondition(BaseModel):
@@ -47,6 +56,19 @@ class JudgmentCondition(BaseModel):
     variable_selector: list[str]
     comparison_operator: SupportedComparisonOperator
     value: str | Sequence[str] | bool | None = None
+
+    @field_validator("comparison_operator", mode="before")
+    @classmethod
+    def normalize_comparison_operator(cls, value: Any) -> Any:
+        """Accept common ASCII/API aliases for workflow comparison operators."""
+        if not isinstance(value, str):
+            return value
+
+        normalized_value = value.strip().lower()
+        alias = COMPARISON_OPERATOR_ALIASES.get(normalized_value)
+        if alias is not None:
+            return alias
+        return value.strip()
 
 
 class JudgmentConfig(BaseModel):

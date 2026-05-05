@@ -184,6 +184,13 @@ evaluation_default_metrics_response_model = console_ns.model(
     },
 )
 
+evaluation_dataset_columns_response_model = console_ns.model(
+    "EvaluationDatasetColumnsResponse",
+    {
+        "columns": fields.List(fields.String),
+    },
+)
+
 
 def get_evaluation_target[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
     """
@@ -326,9 +333,9 @@ class EvaluationDetailApi(Resource):
         return {
             "evaluation_model": config.evaluation_model,
             "evaluation_model_provider": config.evaluation_model_provider,
-            "default_metrics": config.default_metrics_list,
+            "default_metrics": EvaluationService.serialize_console_default_metrics(config.default_metrics_list),
             "customized_metrics": config.customized_metrics_dict,
-            "judgment_config": config.judgment_config_dict,
+            "judgment_config": EvaluationService.serialize_console_judgment_config(config.judgment_config_dict),
         }
 
     @console_ns.doc("save_evaluation_detail")
@@ -364,9 +371,36 @@ class EvaluationDetailApi(Resource):
         return {
             "evaluation_model": config.evaluation_model,
             "evaluation_model_provider": config.evaluation_model_provider,
-            "default_metrics": config.default_metrics_list,
+            "default_metrics": EvaluationService.serialize_console_default_metrics(config.default_metrics_list),
             "customized_metrics": config.customized_metrics_dict,
-            "judgment_config": config.judgment_config_dict,
+            "judgment_config": EvaluationService.serialize_console_judgment_config(config.judgment_config_dict),
+        }
+
+
+@console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/template-columns")
+class EvaluationTemplateColumnsApi(Resource):
+    @console_ns.doc("get_evaluation_template_columns")
+    @console_ns.response(200, "Evaluation dataset columns resolved", evaluation_dataset_columns_response_model)
+    @console_ns.response(400, "Invalid request body")
+    @console_ns.response(404, "Target not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_evaluation_target
+    def post(self, target: Union[App, CustomizedSnippet], target_type: str):
+        """Return the dataset column names implied by the current evaluation config."""
+        body = request.get_json(silent=True) or {}
+        try:
+            config_data = EvaluationConfigData.model_validate(body)
+        except Exception as e:
+            raise BadRequest(f"Invalid request body: {e}")
+
+        return {
+            "columns": EvaluationService.get_dataset_column_names(
+                target=target,
+                target_type=target_type,
+                data=config_data,
+            )
         }
 
 
@@ -595,6 +629,8 @@ class EvaluationMetricsApi(Resource):
         """
         result = {}
         for category in EvaluationCategory:
+            if category in EvaluationService.CONSOLE_DISABLED_CATEGORIES:
+                continue
             result[category.value] = EvaluationService.get_supported_metrics(category)
         return {"metrics": result}
 
@@ -622,7 +658,11 @@ class EvaluationDefaultMetricsApi(Resource):
             target=target,
             target_type=target_type,
         )
-        return {"default_metrics": [m.model_dump() for m in default_metrics]}
+        return {
+            "default_metrics": [
+                m.model_dump() for m in EvaluationService.filter_console_default_metrics(default_metrics)
+            ]
+        }
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/node-info")
@@ -652,6 +692,20 @@ class EvaluationNodeInfoApi(Resource):
             target_type=target_type,
             metrics=metrics,
         )
+        if not metrics:
+            result = {
+                "all": [
+                    node
+                    for node in result.get("all", [])
+                    if node.get("type") not in EvaluationService.CONSOLE_DISABLED_CATEGORIES
+                ]
+            }
+        else:
+            result = {
+                metric: nodes
+                for metric, nodes in result.items()
+                if metric not in EvaluationService.CONSOLE_DISABLED_METRICS
+            }
         return result
 
 
@@ -664,7 +718,13 @@ class EvaluationAvailableMetricsApi(Resource):
     @account_initialization_required
     def get(self):
         """Return the centrally-defined list of evaluation metrics."""
-        return {"metrics": EvaluationService.get_available_metrics()}
+        return {
+            "metrics": [
+                metric
+                for metric in EvaluationService.get_available_metrics()
+                if metric not in EvaluationService.CONSOLE_DISABLED_METRICS
+            ]
+        }
 
 
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/evaluation/files/<uuid:file_id>")

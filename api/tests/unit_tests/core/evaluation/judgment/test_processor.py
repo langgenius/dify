@@ -143,3 +143,14 @@ def test_evaluate_string_contains_operator() -> None:
     )
 
     assert result.passed is True
+
+
+def test_judgment_condition_accepts_ascii_operator_aliases() -> None:
+    """Request payloads may use ASCII operators such as ``>=`` and should normalize."""
+    condition = JudgmentCondition(
+        variable_selector=["node_a", "score"],
+        comparison_operator=">=",
+        value="0.8",
+    )
+
+    assert condition.comparison_operator == "≥"
