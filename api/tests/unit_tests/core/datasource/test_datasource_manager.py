@@ -2,15 +2,15 @@ import types
 from collections.abc import Generator
 
 import pytest
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 
 from contexts.wrapper import RecyclableContextVar
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage, DatasourceProviderType
 from core.datasource.errors import DatasourceProviderNotFoundError
 from core.workflow.file_reference import parse_file_reference
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 
 
 def _gen_messages_text_only(text: str) -> Generator[DatasourceMessage, None, None]:

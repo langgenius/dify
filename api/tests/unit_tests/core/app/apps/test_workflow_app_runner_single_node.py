@@ -4,8 +4,6 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.runtime import GraphRuntimeState, VariablePool
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
@@ -13,6 +11,8 @@ from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
 from core.workflow.system_variables import default_system_variables
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.workflow import Workflow
 
 

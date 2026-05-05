@@ -266,7 +266,7 @@ def test_publish_evaluation_workflow_success(app, monkeypatch: pytest.MonkeyPatc
     session_kwargs: dict[str, object] = {}
 
     class _FakeSession:
-        def __enter__(self) -> "_FakeSession":
+        def __enter__(self) -> _FakeSession:
             return self
 
         def __exit__(self, exc_type, exc, tb) -> None:
@@ -326,7 +326,7 @@ def test_convert_workflow_type_uses_non_expiring_session(app, monkeypatch: pytes
     session_kwargs: dict[str, object] = {}
 
     class _FakeSession:
-        def __enter__(self) -> "_FakeSession":
+        def __enter__(self) -> _FakeSession:
             return self
 
         def __exit__(self, exc_type, exc, tb) -> None:

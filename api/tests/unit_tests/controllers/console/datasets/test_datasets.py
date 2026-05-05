@@ -13,9 +13,9 @@ from controllers.console.datasets.datasets import (
     DatasetApiDeleteApi,
     DatasetApiKeyApi,
     DatasetAutoDisableLogApi,
-    DatasetEvaluationMetricsApi,
     DatasetEnableApiApi,
     DatasetErrorDocs,
+    DatasetEvaluationMetricsApi,
     DatasetIndexingEstimateApi,
     DatasetIndexingStatusApi,
     DatasetListApi,
@@ -34,8 +34,8 @@ from core.rag.index_processor.constant.index_type import IndexStructureType
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import ApiToken, UploadFile
-from services.evaluation_service import EvaluationService
 from services.dataset_service import DatasetPermissionService, DatasetService
+from services.evaluation_service import EvaluationService
 
 
 def unwrap(func):

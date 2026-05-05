@@ -126,8 +126,6 @@ from .snippets import snippet_workflow, snippet_workflow_draft_variable
 from .socketio import workflow as socketio_workflow  # pyright: ignore[reportUnusedImport]
 
 # Import snippet controllers
-from .snippets import snippet_workflow, snippet_workflow_draft_variable
-
 # Import tag controllers
 from .tag import tags
 
@@ -215,12 +213,12 @@ __all__ = [
     "setup",
     "site",
     "snippet_workflow",
-    "snippet_workflow_draft_variable",
-    "snippets",
-    "socketio_workflow",
     "snippet_workflow",
     "snippet_workflow_draft_variable",
+    "snippet_workflow_draft_variable",
     "snippets",
+    "snippets",
+    "socketio_workflow",
     "spec",
     "statistic",
     "tags",

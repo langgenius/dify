@@ -3,6 +3,15 @@ import uuid
 from collections import defaultdict
 
 import pytest
+
+from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
+from core.workflow.variable_pool_initializer import add_variables_to_pool
+from core.workflow.variable_prefixes import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
+from factories.variable_factory import build_segment, segment_to_variable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import VariablePool
 from graphon.variables import FileSegment, StringSegment
@@ -28,15 +37,6 @@ from graphon.variables.variables import (
     Variable,
 )
 from models.utils.file_input_compat import rebuild_serialized_graph_files_without_lookup
-
-from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
-from core.workflow.variable_pool_initializer import add_variables_to_pool
-from core.workflow.variable_prefixes import (
-    CONVERSATION_VARIABLE_NODE_ID,
-    ENVIRONMENT_VARIABLE_NODE_ID,
-    SYSTEM_VARIABLE_NODE_ID,
-)
-from factories.variable_factory import build_segment, segment_to_variable
 
 
 @pytest.fixture

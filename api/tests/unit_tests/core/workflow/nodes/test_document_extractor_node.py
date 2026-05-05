@@ -4,6 +4,8 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
+
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod
@@ -21,8 +23,6 @@ from graphon.nodes.document_extractor.node import (
 from graphon.variables import ArrayFileSegment, FileSegment
 from graphon.variables.segments import ArrayStringSegment
 from graphon.variables.variables import StringVariable
-
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

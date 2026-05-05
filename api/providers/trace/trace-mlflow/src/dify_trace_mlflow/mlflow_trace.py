@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from typing import Any, cast
 
 import mlflow
-from graphon.enums import BuiltinNodeTypes
 from mlflow.entities import Document, Span, SpanEvent, SpanStatusCode, SpanType
 from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey, TraceMetadataKey
 from mlflow.tracing.fluent import start_span_no_context, update_current_trace
@@ -26,6 +25,7 @@ from core.ops.entities.trace_entity import (
 from core.ops.utils import JSON_DICT_ADAPTER
 from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
 from extensions.ext_database import db
+from graphon.enums import BuiltinNodeTypes
 from models import EndUser
 from models.workflow import WorkflowNodeExecutionModel
 

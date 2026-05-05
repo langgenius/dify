@@ -3,10 +3,6 @@ import uuid
 from unittest.mock import Mock
 
 import pytest
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variables import StringSegment
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.nodes.knowledge_retrieval.entities import (
@@ -25,6 +21,10 @@ from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import (
 )
 from core.workflow.nodes.knowledge_retrieval.retrieval import RAGRetrievalProtocol, Source
 from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables import StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

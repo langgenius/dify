@@ -8,8 +8,6 @@ from typing import Any, Literal, cast
 import sqlalchemy as sa
 from flask import request, send_file
 from flask_restx import Resource, fields, marshal, marshal_with
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from pydantic import BaseModel, Field
 from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -39,6 +37,8 @@ from fields.document_fields import (
     document_status_fields,
     document_with_segments_fields,
 )
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import DatasetProcessRule, Document, DocumentSegment, UploadFile

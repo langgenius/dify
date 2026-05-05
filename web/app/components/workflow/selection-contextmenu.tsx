@@ -28,7 +28,8 @@ import CreateSnippetDialog from './create-snippet-dialog'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
-import ShortcutsName from './shortcuts-name'
+import type { WorkflowShortcutId } from './shortcuts/definitions'
+import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore, useWorkflowStore } from './store'
 import { BlockEnum, TRIGGER_NODE_TYPES } from './types'
 
@@ -62,7 +63,7 @@ type AlignMenuItem = {
 type ActionMenuItem = {
   action: 'copy' | 'createSnippet' | 'delete' | 'duplicate'
   disabled?: boolean
-  shortcutKeys?: string[]
+  shortcut?: WorkflowShortcutId
   translationKey: string
 }
 
@@ -465,17 +466,17 @@ const SelectionContextmenu = () => {
     nextActions.push(
       {
         action: 'copy',
-        shortcutKeys: ['ctrl', 'c'],
+        shortcut: 'workflow.copy',
         translationKey: 'common.copy',
       },
       {
         action: 'duplicate',
-        shortcutKeys: ['ctrl', 'd'],
+        shortcut: 'workflow.duplicate',
         translationKey: 'common.duplicate',
       },
       {
         action: 'delete',
-        shortcutKeys: ['del'],
+        shortcut: 'workflow.delete',
         translationKey: 'operation.delete',
       },
     )
@@ -631,9 +632,9 @@ const SelectionContextmenu = () => {
                   onClick={() => handleMenuAction(item.action)}
                 >
                   <span>{getActionLabel(item.translationKey)}</span>
-                  {item.shortcutKeys && (
-                    <ShortcutsName
-                      keys={item.shortcutKeys}
+                  {item.shortcut && (
+                    <ShortcutKbd
+                      shortcut={item.shortcut}
                       textColor="secondary"
                     />
                   )}

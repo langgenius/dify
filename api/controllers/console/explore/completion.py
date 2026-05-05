@@ -2,7 +2,6 @@ import logging
 from typing import Any, Literal
 from uuid import UUID
 
-from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -26,6 +25,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user

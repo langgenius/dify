@@ -1,15 +1,15 @@
 from collections.abc import Mapping
 
 import pytest
+
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.node_runtime import resolve_dify_run_context
+from core.workflow.system_variables import build_system_variables
 from graphon.entities import GraphInitParams
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.runtime import GraphRuntimeState, VariablePool
-
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.workflow.node_runtime import resolve_dify_run_context
-from core.workflow.system_variables import build_system_variables
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

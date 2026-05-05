@@ -12,7 +12,7 @@ Other routes mirror `workflow_draft_variable` app APIs under `/snippets/...`.
 
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, ParamSpec, TypeVar
+from typing import Any
 
 from flask import Response, request
 from flask_restx import Resource, marshal, marshal_with
@@ -44,9 +44,6 @@ from models.workflow import WorkflowDraftVariable
 from services.snippet_service import SnippetService
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 
-P = ParamSpec("P")
-R = TypeVar("R")
-
 _SNIPPET_EXCLUDED_DRAFT_VARIABLE_NODE_IDS: frozenset[str] = frozenset(
     {SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID}
 )
@@ -62,7 +59,7 @@ def _ensure_snippet_draft_variable_row_allowed(
         raise NotFoundError(description=f"variable not found, id={variable_id}")
 
 
-def _snippet_draft_var_prerequisite(f: Callable[P, R]) -> Callable[P, R]:
+def _snippet_draft_var_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     """Setup, auth, snippet resolution, and tenant edit permission (same stack as snippet workflow APIs)."""
 
     @setup_required

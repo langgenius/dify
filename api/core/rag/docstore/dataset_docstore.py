@@ -3,13 +3,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import delete, func, select
 
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import AttachmentDocument, Document
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.enums import SegmentType
 

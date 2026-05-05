@@ -1,6 +1,5 @@
-from graphon.runtime import VariablePool
-
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool
+from graphon.runtime import VariablePool
 
 
 def test_add_node_inputs_to_pool_writes_primary_and_alias_selectors() -> None:

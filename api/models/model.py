@@ -14,9 +14,6 @@ from uuid import uuid4
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
-from graphon.enums import WorkflowExecutionStatus
-from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
-from graphon.file import helpers as file_helpers
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
@@ -24,6 +21,9 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.tools.signature import sign_tool_file
 from extensions.storage.storage_type import StorageType
+from graphon.enums import WorkflowExecutionStatus
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from graphon.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.url_utils import normalize_api_base_url
 from libs.uuid_utils import uuidv7

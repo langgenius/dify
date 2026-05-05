@@ -10,10 +10,10 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { Infotip } from '@/app/components/base/infotip'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import RadioCard from '@/app/components/base/radio-card'
-import Tooltip from '@/app/components/base/tooltip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -127,11 +127,12 @@ const RetrievalParamConfig: FC<Props> = ({
             )}
             <div className="flex items-center">
               <span className="mr-0.5 system-sm-semibold text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
-              <Tooltip
-                popupContent={
-                  <div className="w-[200px]">{t('modelProvider.rerankModel.tip', { ns: 'common' })}</div>
-                }
-              />
+              <Infotip
+                aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                popupClassName="w-[200px]"
+              >
+                {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+              </Infotip>
             </div>
           </div>
           {

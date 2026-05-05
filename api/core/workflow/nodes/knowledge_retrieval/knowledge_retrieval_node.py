@@ -8,6 +8,11 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
+from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.workflow.file_reference import parse_file_reference
 from graphon.entities import GraphInitParams
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -25,12 +30,6 @@ from graphon.variables import (
     StringSegment,
 )
 from graphon.variables.segments import ArrayObjectSegment
-
-from core.app.app_config.entities import DatasetRetrieveConfigEntity
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from core.workflow.file_reference import parse_file_reference
 
 from .entities import (
     Condition,

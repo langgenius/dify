@@ -2,16 +2,16 @@ import json
 import time
 
 import pytest
+from pydantic import ValidationError as PydanticValidationError
+
+from core.workflow.system_variables import build_system_variables
+from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import GraphRuntimeState
 from graphon.variables import build_segment, segment_to_variable
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from graphon.variables.variables import Variable
-from pydantic import ValidationError as PydanticValidationError
-
-from core.workflow.system_variables import build_system_variables
-from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 

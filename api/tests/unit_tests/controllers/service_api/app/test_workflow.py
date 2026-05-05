@@ -20,7 +20,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from graphon.enums import WorkflowExecutionStatus
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.service_api.app.error import NotWorkflowAppError
@@ -38,6 +37,7 @@ from controllers.service_api.app.workflow import (
     WorkflowTaskStopApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from graphon.enums import WorkflowExecutionStatus
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError

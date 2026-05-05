@@ -232,6 +232,7 @@ __all__ = [
     "WorkflowComment",
     "WorkflowCommentMention",
     "WorkflowCommentReply",
+    "WorkflowKind",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
     "WorkflowNodeExecutionTriggeredFrom",
@@ -241,6 +242,5 @@ __all__ = [
     "WorkflowSchedulePlan",
     "WorkflowToolProvider",
     "WorkflowTriggerStatus",
-    "WorkflowKind",
     "WorkflowType",
 ]

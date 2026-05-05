@@ -1,6 +1,5 @@
 import logging
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy import delete, select
 
 from core.model_manager import ModelInstance, ModelManager
@@ -13,6 +12,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, Document
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument

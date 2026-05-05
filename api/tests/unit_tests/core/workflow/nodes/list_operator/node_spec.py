@@ -2,14 +2,14 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
 from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.nodes.list_operator.entities import ListOperatorNodeData
 from graphon.nodes.list_operator.node import ListOperatorNode
 from graphon.runtime import GraphRuntimeState
 from graphon.variables import ArrayNumberSegment, ArrayStringSegment
-
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
 
 
 class TestListOperatorNode:

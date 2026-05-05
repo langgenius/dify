@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar
 
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
@@ -52,9 +51,6 @@ from services.snippet_service import SnippetService
 
 logger = logging.getLogger(__name__)
 
-P = ParamSpec("P")
-R = TypeVar("R")
-
 # Register Pydantic models with Swagger
 register_schema_models(
     console_ns,
@@ -80,11 +76,11 @@ class SnippetNotFoundError(Exception):
     pass
 
 
-def get_snippet(view_func: Callable[P, R]):
+def get_snippet[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
     """Decorator to fetch and validate snippet access."""
 
     @wraps(view_func)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs):
+    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
         if not kwargs.get("snippet_id"):
             raise ValueError("missing snippet_id in path parameters")
 

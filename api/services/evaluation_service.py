@@ -1,7 +1,7 @@
+import csv
 import io
 import json
 import logging
-import csv
 from collections.abc import Mapping
 from typing import Any, Union
 
@@ -1054,7 +1054,9 @@ class EvaluationService:
             metrics: list[EvaluationMetric] = []
 
             for metric_position, default_metric in enumerate(run_request.default_metrics):
-                metric_value_type = default_metric.value_type or METRIC_VALUE_TYPE_MAPPING.get(default_metric.metric, "")
+                metric_value_type = default_metric.value_type or METRIC_VALUE_TYPE_MAPPING.get(
+                    default_metric.metric, ""
+                )
                 for node_position, node_info in enumerate(default_metric.node_info_list):
                     metrics.append(
                         EvaluationMetric(

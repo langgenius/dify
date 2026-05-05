@@ -88,7 +88,7 @@ describe('createWorkflowStore', () => {
       ['showSingleRunPanel', 'setShowSingleRunPanel', true],
       ['nodeAnimation', 'setNodeAnimation', true],
       ['candidateNode', 'setCandidateNode', undefined],
-      ['nodeMenu', 'setNodeMenu', { top: 100, left: 200, nodeId: 'n1' }],
+      ['nodeMenu', 'setNodeMenu', { clientX: 200, clientY: 100, nodeId: 'n1' }],
       ['showAssignVariablePopup', 'setShowAssignVariablePopup', undefined],
       ['hoveringAssignVariableGroupId', 'setHoveringAssignVariableGroupId', 'group-1'],
       ['connectingNodePayload', 'setConnectingNodePayload', { nodeId: 'n1', nodeType: 'llm', handleType: 'source', handleId: 'h1' }],

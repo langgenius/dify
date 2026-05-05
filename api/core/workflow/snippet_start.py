@@ -8,7 +8,6 @@ runtime-only snippet Start node as compatible with the legacy ``start`` id.
 
 from __future__ import annotations
 
-
 LEGACY_START_NODE_ID = "start"
 SNIPPET_VIRTUAL_START_NODE_ID = "__snippet_virtual_start__"
 

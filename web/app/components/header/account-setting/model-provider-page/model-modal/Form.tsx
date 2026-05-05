@@ -15,9 +15,9 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useCallback, useState } from 'react'
+import { Infotip } from '@/app/components/base/infotip'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
-import Tooltip from '@/app/components/base/tooltip'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
@@ -27,6 +27,23 @@ import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import { FormTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import Input from './Input'
+
+const radioGridColumnsClassNames: Record<number, string> = {
+  1: 'grid-cols-1',
+  2: 'grid-cols-2',
+  3: 'grid-cols-3',
+  4: 'grid-cols-4',
+  5: 'grid-cols-5',
+  6: 'grid-cols-6',
+  7: 'grid-cols-7',
+  8: 'grid-cols-8',
+  9: 'grid-cols-9',
+  10: 'grid-cols-10',
+  11: 'grid-cols-11',
+  12: 'grid-cols-12',
+}
+
+type ModelSelectorValue = Record<string, unknown>
 
 type FormProps<
   CustomFormSchema extends Omit<CredentialFormSchema, 'type'> & { type: string } = never,
@@ -100,7 +117,7 @@ function Form<
     fieldMoreInfo,
   }
 
-  const handleFormChange = (key: string, val: string | boolean) => {
+  const handleFormChange = (key: string, val: FormValue[string]) => {
     if (isEditMode && (key === '__model_type' || key === '__model_name'))
       return
 
@@ -115,7 +132,7 @@ function Form<
     onChange({ ...value, [key]: val, ...shouldClearVariable })
   }
 
-  const handleModelChanged = useCallback((key: string, model: any) => {
+  const handleModelChanged = useCallback((key: string, model: ModelSelectorValue) => {
     const newValue = {
       ...value[key],
       ...model,
@@ -125,17 +142,16 @@ function Form<
   }, [onChange, value])
 
   const renderField = (formSchema: CredentialFormSchema | CustomFormSchema) => {
-    const tooltip = formSchema.tooltip
-    const tooltipContent = (tooltip && (
-      <Tooltip
-        popupContent={(
-          <div className="w-[200px]">
-            {tooltip[language] || tooltip.en_US}
-          </div>
-        )}
-        triggerClassName="ml-1 w-4 h-4"
-        asChild={false}
-      />
+    const infotip = formSchema.tooltip
+    const infotipText = infotip?.[language] || infotip?.en_US
+    const infotipContent = (infotipText && (
+      <Infotip
+        aria-label={infotipText}
+        className="ml-1"
+        popupClassName="w-[200px] max-w-[200px]"
+      >
+        {infotipText}
+      </Infotip>
     ))
     if (override) {
       const [overrideTypes, overrideRender] = override
@@ -166,7 +182,7 @@ function Form<
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
-            {tooltipContent}
+            {infotipContent}
           </div>
           <Input
             className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
@@ -201,6 +217,7 @@ function Form<
         return null
 
       const disabled = isEditMode && (variable === '__model_type' || variable === '__model_name')
+      const gridColumnsClassName = radioGridColumnsClassNames[options.length] ?? 'grid-cols-1'
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
@@ -209,10 +226,9 @@ function Form<
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
-            {tooltipContent}
+            {infotipContent}
           </div>
-          {/* eslint-disable-next-line tailwindcss/no-unknown-classes */}
-          <div className={cn('grid gap-3', `grid-cols-${options?.length}`)}>
+          <div className={cn('grid gap-3', gridColumnsClassName)}>
             {options.filter((option) => {
               if (option.show_on.length)
                 return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
@@ -272,7 +288,7 @@ function Form<
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
-            {tooltipContent}
+            {infotipContent}
           </div>
           <Select
             disabled={readonly}
@@ -320,7 +336,7 @@ function Form<
               {required && (
                 <span className="ml-1 text-red-500">*</span>
               )}
-              {tooltipContent}
+              {infotipContent}
             </div>
             <Radio.Group
               className="flex items-center"
@@ -350,7 +366,7 @@ function Form<
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
-            {tooltipContent}
+            {infotipContent}
           </div>
           <ModelParameterModal
             popupClassName="w-[387px]!"
@@ -382,7 +398,7 @@ function Form<
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
-            {tooltipContent}
+            {infotipContent}
           </div>
           <ToolSelector
             scope={scope}
@@ -392,8 +408,8 @@ function Form<
             disabled={readonly}
             value={value[variable]}
             // selectedTools={value[variable] ? [value[variable]] : []}
-            onSelect={item => handleFormChange(variable, item as any)}
-            onDelete={() => handleFormChange(variable, null as any)}
+            onSelect={item => handleFormChange(variable, item)}
+            onDelete={() => handleFormChange(variable, null)}
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
@@ -405,7 +421,7 @@ function Form<
       const {
         variable,
         label,
-        tooltip,
+        tooltip: infotip,
         required,
         scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
@@ -420,9 +436,9 @@ function Form<
             scope={scope}
             label={label[language] || label.en_US}
             required={required}
-            tooltip={tooltip?.[language] || tooltip?.en_US}
+            tooltip={infotip?.[language] || infotip?.en_US}
             value={value[variable] || []}
-            onChange={item => handleFormChange(variable, item as any)}
+            onChange={item => handleFormChange(variable, item)}
             supportCollapse
           />
           {fieldMoreInfo?.(formSchema)}
@@ -446,13 +462,13 @@ function Form<
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
-            {tooltipContent}
+            {infotipContent}
           </div>
           <AppSelector
             disabled={readonly}
             scope={scope}
             value={value[variable]}
-            onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector } as any)}
+            onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector })}
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
@@ -475,7 +491,7 @@ function Form<
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
-            {tooltipContent}
+            {infotipContent}
           </div>
           <VarReferencePicker
             zIndex={1001}
@@ -483,7 +499,7 @@ function Form<
             isShowNodeName
             nodeId={nodeId || ''}
             value={value[variable] || []}
-            onChange={item => handleFormChange(variable, item as any)}
+            onChange={item => handleFormChange(variable, item)}
             filterVar={(varPayload) => {
               if (!scope)
                 return true

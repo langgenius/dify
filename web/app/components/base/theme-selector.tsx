@@ -1,25 +1,25 @@
 'use client'
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuRadioItemIndicator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useTheme } from 'next-themes'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 
 export type Theme = 'light' | 'dark' | 'system'
 
 export default function ThemeSelector() {
   const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
-  const [open, setOpen] = useState(false)
 
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme)
-    setOpen(false)
   }
 
   const getCurrentIcon = () => {
@@ -31,70 +31,36 @@ export default function ThemeSelector() {
   }
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{ mainAxis: 6 }}
-    >
-      <PortalToFollowElemTrigger
-        onClick={() => setOpen(!open)}
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={(
+          <ActionButton
+            aria-label={t('theme.theme', { ns: 'common' })}
+            className="h-8 w-8 p-[6px] data-popup-open:bg-state-base-hover"
+          />
+        )}
       >
-        <ActionButton
-          className={`h-8 w-8 p-[6px] ${open && 'bg-state-base-hover'}`}
-        >
-          {getCurrentIcon()}
-        </ActionButton>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1000">
-        <div className="flex w-[144px] flex-col items-start rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
-          <button
-            type="button"
-            className="flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleThemeChange('light')}
-          >
+        {getCurrentIcon()}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent placement="bottom-end" sideOffset={6} popupClassName="w-[144px]">
+        <DropdownMenuRadioGroup value={theme || 'system'} onValueChange={value => handleThemeChange(value as Theme)}>
+          <DropdownMenuRadioItem value="light" closeOnClick>
             <span className="i-ri-sun-line h-4 w-4 text-text-tertiary" />
-            <div className="flex grow items-center justify-start px-1">
-              <span className="system-md-regular">{t('theme.light', { ns: 'common' })}</span>
-            </div>
-            {theme === 'light' && (
-              <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-                <span className="i-ri-check-line h-4 w-4 text-text-accent" data-testid="light-icon" />
-              </div>
-            )}
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleThemeChange('dark')}
-          >
+            <span className="grow px-1 system-md-regular">{t('theme.light', { ns: 'common' })}</span>
+            <DropdownMenuRadioItemIndicator data-testid="light-icon" />
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark" closeOnClick>
             <span className="i-ri-moon-line h-4 w-4 text-text-tertiary" />
-            <div className="flex grow items-center justify-start px-1">
-              <span className="system-md-regular">{t('theme.dark', { ns: 'common' })}</span>
-            </div>
-            {theme === 'dark' && (
-              <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-                <span className="i-ri-check-line h-4 w-4 text-text-accent" data-testid="dark-icon" />
-              </div>
-            )}
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover"
-            onClick={() => handleThemeChange('system')}
-          >
+            <span className="grow px-1 system-md-regular">{t('theme.dark', { ns: 'common' })}</span>
+            <DropdownMenuRadioItemIndicator data-testid="dark-icon" />
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system" closeOnClick>
             <span className="i-ri-computer-line h-4 w-4 text-text-tertiary" />
-            <div className="flex grow items-center justify-start px-1">
-              <span className="system-md-regular">{t('theme.auto', { ns: 'common' })}</span>
-            </div>
-            {theme === 'system' && (
-              <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-                <span className="i-ri-check-line h-4 w-4 text-text-accent" data-testid="system-icon" />
-              </div>
-            )}
-          </button>
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+            <span className="grow px-1 system-md-regular">{t('theme.auto', { ns: 'common' })}</span>
+            <DropdownMenuRadioItemIndicator data-testid="system-icon" />
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

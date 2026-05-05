@@ -2,7 +2,6 @@ import json
 import logging
 from typing import Any, TypedDict, cast
 
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from httpx import get
 from sqlalchemy import select
 
@@ -21,6 +20,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models.tools import ApiToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 

@@ -68,20 +68,11 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
 ]
 
 export const OVERLAY_MIGRATION_LEGACY_BASE_FILES = [
-  'app/components/base/chat/chat-with-history/header/mobile-operation-dropdown.tsx',
-  'app/components/base/chat/chat-with-history/header/operation.tsx',
-  'app/components/base/chat/chat-with-history/sidebar/operation.tsx',
-  'app/components/base/chat/chat/citation/popup.tsx',
   'app/components/base/chat/chat/citation/progress-tooltip.tsx',
   'app/components/base/chat/chat/citation/tooltip.tsx',
   'app/components/base/chip/index.tsx',
-  'app/components/base/date-and-time-picker/date-picker/index.tsx',
-  'app/components/base/date-and-time-picker/time-picker/index.tsx',
   'app/components/base/modal/modal.tsx',
-  'app/components/base/prompt-editor/plugins/context-block/component.tsx',
-  'app/components/base/prompt-editor/plugins/history-block/component.tsx',
   'app/components/base/sort/index.tsx',
-  'app/components/base/theme-selector.tsx',
   'app/components/base/tooltip/index.tsx',
 ]
 

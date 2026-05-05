@@ -3,14 +3,13 @@ import json
 from unittest import mock
 from uuid import uuid4
 
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
-from graphon.variables.segments import IntegerSegment, Segment
-
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
 from core.workflow.file_reference import build_file_reference
 from factories.variable_factory import build_segment
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
+from graphon.variables.segments import IntegerSegment, Segment
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,

@@ -39,7 +39,7 @@ describe('usePanelInteractions', () => {
   it('handlePaneContextMenu should set panelMenu with computed coordinates when container exists', () => {
     const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
       initialStoreState: {
-        nodeMenu: { top: 20, left: 40, nodeId: 'n1' },
+        nodeMenu: { clientX: 40, clientY: 20, nodeId: 'n1' },
         selectionMenu: { clientX: 30, clientY: 50 },
         edgeMenu: { clientX: 320, clientY: 180, edgeId: 'e1' },
       },
@@ -116,7 +116,7 @@ describe('usePanelInteractions', () => {
 
   it('handleNodeContextmenuCancel should clear nodeMenu', () => {
     const { result, store } = renderWorkflowHook(() => usePanelInteractions(), {
-      initialStoreState: { nodeMenu: { top: 10, left: 20, nodeId: 'n1' } },
+      initialStoreState: { nodeMenu: { clientX: 20, clientY: 10, nodeId: 'n1' } },
     })
 
     result.current.handleNodeContextmenuCancel()

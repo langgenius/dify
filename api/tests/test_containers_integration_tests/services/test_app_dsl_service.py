@@ -10,6 +10,7 @@ from uuid import uuid4
 import pytest
 import yaml
 from faker import Faker
+
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
     TRIGGER_SCHEDULE_NODE_TYPE,

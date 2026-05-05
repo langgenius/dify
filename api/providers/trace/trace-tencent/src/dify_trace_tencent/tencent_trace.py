@@ -3,10 +3,6 @@
 import inspect
 import logging
 
-from graphon.entities.workflow_node_execution import (
-    WorkflowNodeExecution,
-)
-from graphon.nodes import BuiltinNodeTypes
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -28,6 +24,10 @@ from dify_trace_tencent.entities.tencent_trace_entity import SpanData
 from dify_trace_tencent.span_builder import TencentSpanBuilder
 from dify_trace_tencent.utils import TencentTraceUtils
 from extensions.ext_database import db
+from graphon.entities.workflow_node_execution import (
+    WorkflowNodeExecution,
+)
+from graphon.nodes import BuiltinNodeTypes
 from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)

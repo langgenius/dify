@@ -1,12 +1,11 @@
 from unittest.mock import MagicMock
 
-from graphon.model_runtime.entities.model_entities import ModelType
-
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import ProviderType
 
 

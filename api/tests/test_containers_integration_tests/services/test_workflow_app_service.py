@@ -8,9 +8,9 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
-from graphon.enums import WorkflowExecutionStatus
 from sqlalchemy.orm import Session
 
+from graphon.enums import WorkflowExecutionStatus
 from models import EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
 from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLogCreatedFrom

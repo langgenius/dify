@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING, ParamSpec, TypeVar, Union
+from typing import TYPE_CHECKING, Union
 from urllib.parse import quote
 
 from flask import Response, request
@@ -45,9 +45,6 @@ if TYPE_CHECKING:
     from models.evaluation import EvaluationRun, EvaluationRunItem
 
 logger = logging.getLogger(__name__)
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 EVALUATE_TARGET_TYPES = {
     EvaluationTargetType.APPS.value,
@@ -188,7 +185,7 @@ evaluation_default_metrics_response_model = console_ns.model(
 )
 
 
-def get_evaluation_target(view_func: Callable[P, R]):
+def get_evaluation_target[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
     """
     Decorator to resolve polymorphic evaluation target (apps or snippets).
 
@@ -197,7 +194,7 @@ def get_evaluation_target(view_func: Callable[P, R]):
     """
 
     @wraps(view_func)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs):
+    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
         target_type = kwargs.get("evaluate_target_type")
         target_id = kwargs.get("evaluate_target_id")
 
