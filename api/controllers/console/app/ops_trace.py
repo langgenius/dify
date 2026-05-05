@@ -49,7 +49,9 @@ class TraceAppConfigApi(Resource):
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
-            trace_config = OpsService.get_tracing_app_config(app_id=app_model.id, tracing_provider=args.tracing_provider)
+            trace_config = OpsService.get_tracing_app_config(
+                app_id=app_model.id, tracing_provider=args.tracing_provider
+            )
             if not trace_config:
                 return {"has_not_configured": True}
             return trace_config
