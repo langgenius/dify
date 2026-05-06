@@ -1,7 +1,6 @@
 import type { TagSelectorProps } from './selector'
 import type { Tag } from '@/contract/console/tags'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useUnmount } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -9,18 +8,21 @@ import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { useApplyTagBindingsMutation, useCreateTagMutation } from './hooks'
+import { useCreateTagMutation } from './hooks'
 
 type PanelProps = TagSelectorProps & {
   tagList: Tag[]
+  selectedTagIDs?: string[]
+  onSelectedTagIDsChange?: (tagIDs: string[]) => void
   onClose?: () => void
 }
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
-  const { targetID, type, value, selectedTags, tagList, onOpenTagManagement, onClose } = props
+  const { type, value, selectedTags, tagList, onOpenTagManagement, onClose } = props
   const createTagMutation = useCreateTagMutation()
-  const applyTagBindingsMutation = useApplyTagBindingsMutation()
-  const [selectedTagIDs, setSelectedTagIDs] = useState<string[]>(value)
+  const [localSelectedTagIDs, setLocalSelectedTagIDs] = useState<string[]>(value)
+  const selectedTagIDs = props.selectedTagIDs ?? localSelectedTagIDs
+  const onSelectedTagIDsChange = props.onSelectedTagIDsChange ?? setLocalSelectedTagIDs
   const [keywords, setKeywords] = useState('')
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
@@ -57,26 +59,10 @@ const Panel = (props: PanelProps) => {
   }
   const selectTag = (tagID: string) => {
     if (selectedTagIDs.includes(tagID))
-      setSelectedTagIDs(selectedTagIDs.filter(v => v !== tagID))
+      onSelectedTagIDsChange(selectedTagIDs.filter(v => v !== tagID))
     else
-      setSelectedTagIDs([...selectedTagIDs, tagID])
+      onSelectedTagIDsChange([...selectedTagIDs, tagID])
   }
-  const valueNotChanged = useMemo(() => {
-    return value.length === selectedTagIDs.length && value.every(v => selectedTagIDs.includes(v)) && selectedTagIDs.every(v => value.includes(v))
-  }, [value, selectedTagIDs])
-  const handleValueChange = () => {
-    applyTagBindingsMutation.mutate({
-      currentTagIDs: value,
-      nextTagIDs: selectedTagIDs,
-      targetID,
-      type,
-    })
-  }
-  useUnmount(() => {
-    if (valueNotChanged)
-      return
-    handleValueChange()
-  })
   return (
     <div className="relative w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur">
       <div className="p-2 pb-1">

@@ -114,7 +114,7 @@ export const useApplyTagBindingsMutation = () => {
 
       return Promise.all(operations)
     },
-    onSuccess: (_data, variables) => {
+    onSettled: (_data, _error, variables) => {
       void invalidateTagConsumers(variables.type)
     },
   })

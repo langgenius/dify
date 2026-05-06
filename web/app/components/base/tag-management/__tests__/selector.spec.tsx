@@ -46,12 +46,21 @@ vi.mock('../hooks', () => ({
     },
   }),
   useApplyTagBindingsMutation: () => ({
-    mutate: ({ currentTagIDs, nextTagIDs, targetID, type }: { currentTagIDs: string[], nextTagIDs: string[], targetID: string, type: 'app' | 'knowledge' }) => {
+    mutate: (
+      { currentTagIDs, nextTagIDs, targetID, type }: { currentTagIDs: string[], nextTagIDs: string[], targetID: string, type: 'app' | 'knowledge' },
+      options?: { onSuccess?: () => void, onError?: () => void },
+    ) => {
       const addTagIDs = nextTagIDs.filter(tagID => !currentTagIDs.includes(tagID))
       const removeTagIDs = currentTagIDs.filter(tagID => !nextTagIDs.includes(tagID))
+      const operations: Promise<unknown>[] = []
+
       if (addTagIDs.length)
-        bindTag(addTagIDs, targetID, type)
-      removeTagIDs.forEach(tagID => unBindTag(tagID, targetID, type))
+        operations.push(Promise.resolve(bindTag(addTagIDs, targetID, type)))
+      operations.push(...removeTagIDs.map(tagID => Promise.resolve(unBindTag(tagID, targetID, type))))
+
+      Promise.all(operations)
+        .then(() => options?.onSuccess?.())
+        .catch(() => options?.onError?.())
     },
   }),
 }))
@@ -62,6 +71,8 @@ const i18n = {
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
   manageTags: 'common.tag.manageTags',
   noTag: 'common.tag.noTag',
+  modifiedSuccessfully: 'common.actionMsg.modifiedSuccessfully',
+  modifiedUnsuccessfully: 'common.actionMsg.modifiedUnsuccessfully',
 }
 
 const appTags: Tag[] = [
@@ -207,6 +218,24 @@ describe('TagSelector', () => {
       })
     })
 
+    it('should show one success toast when tag bindings are applied on close', async () => {
+      const user = userEvent.setup()
+      render(<TagSelector {...defaultProps} />)
+
+      const triggerButton = screen.getByRole('button', { name: /Frontend/i })
+      await user.click(triggerButton)
+
+      await screen.findByPlaceholderText(i18n.selectorPlaceholder)
+      await user.click(getPanelTagRow('Backend'))
+      await user.click(triggerButton)
+
+      await waitFor(() => {
+        expect(mockToast.success).toHaveBeenCalledWith(i18n.modifiedSuccessfully, {
+          id: 'tag-bindings-app-target-1',
+        })
+      })
+    })
+
     it('should unbind a deselected tag when closing the panel', async () => {
       const user = userEvent.setup()
       render(<TagSelector {...defaultProps} />)
@@ -223,6 +252,25 @@ describe('TagSelector', () => {
       await waitFor(() => {
         expect(unBindTag).toHaveBeenCalledTimes(1)
         expect(unBindTag).toHaveBeenCalledWith('tag-1', 'target-1', 'app')
+      })
+    })
+
+    it('should show one error toast when applying tag bindings fails on close', async () => {
+      const user = userEvent.setup()
+      vi.mocked(unBindTag).mockRejectedValueOnce(new Error('Unbind failed'))
+      render(<TagSelector {...defaultProps} />)
+
+      const triggerButton = screen.getByRole('button', { name: /Frontend/i })
+      await user.click(triggerButton)
+
+      await screen.findByPlaceholderText(i18n.selectorPlaceholder)
+      await user.click(getPanelTagRow('Frontend'))
+      await user.click(triggerButton)
+
+      await waitFor(() => {
+        expect(mockToast.error).toHaveBeenCalledWith(i18n.modifiedUnsuccessfully, {
+          id: 'tag-bindings-app-target-1',
+        })
       })
     })
   })

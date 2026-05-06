@@ -49,12 +49,21 @@ vi.mock('../hooks', () => ({
     return mutation
   },
   useApplyTagBindingsMutation: () => ({
-    mutate: ({ currentTagIDs, nextTagIDs, targetID, type }: { currentTagIDs: string[], nextTagIDs: string[], targetID: string, type: 'app' | 'knowledge' }) => {
+    mutate: (
+      { currentTagIDs, nextTagIDs, targetID, type }: { currentTagIDs: string[], nextTagIDs: string[], targetID: string, type: 'app' | 'knowledge' },
+      options?: { onSuccess?: () => void, onError?: () => void },
+    ) => {
       const addTagIDs = nextTagIDs.filter(tagID => !currentTagIDs.includes(tagID))
       const removeTagIDs = currentTagIDs.filter(tagID => !nextTagIDs.includes(tagID))
+      const operations: Promise<unknown>[] = []
+
       if (addTagIDs.length)
-        bindTag(addTagIDs, targetID, type)
-      removeTagIDs.forEach(tagID => unBindTag(tagID, targetID, type))
+        operations.push(Promise.resolve(bindTag(addTagIDs, targetID, type)))
+      operations.push(...removeTagIDs.map(tagID => Promise.resolve(unBindTag(tagID, targetID, type))))
+
+      Promise.all(operations)
+        .then(() => options?.onSuccess?.())
+        .catch(() => options?.onError?.())
     },
   }),
 }))
@@ -454,91 +463,17 @@ describe('Panel', () => {
     })
   })
 
-  describe('Bind/Unbind on Unmount', () => {
-    it('should call bindTag for newly selected tags on unmount', async () => {
+  describe('Binding Selection State', () => {
+    it('should not submit tag bindings on panel unmount', async () => {
       const user = userEvent.setup()
       const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
 
-      // Select 'Backend' (tag-2) — currently not in value[]
       await user.click(screen.getByText('Backend'))
-
-      unmount()
-
-      await waitFor(() => {
-        expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
-      })
-    })
-
-    it('should call unBindTag for deselected tags on unmount', async () => {
-      const user = userEvent.setup()
-      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
-
-      // Deselect 'Frontend' (tag-1) — currently in value[]
-      await user.click(screen.getByText('Frontend'))
-
-      unmount()
-
-      await waitFor(() => {
-        expect(unBindTag).toHaveBeenCalledWith('tag-1', 'target-1', 'app')
-      })
-    })
-
-    it('should not call bind/unbind when value has not changed', async () => {
-      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
-
       unmount()
 
       await act(async () => { })
       expect(bindTag).not.toHaveBeenCalled()
       expect(unBindTag).not.toHaveBeenCalled()
-    })
-
-    it('should not show notification after successful bind', async () => {
-      const user = userEvent.setup()
-      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
-
-      await user.click(screen.getByText('Backend'))
-
-      unmount()
-
-      await waitFor(() => {
-        expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
-      })
-
-      expect(mockNotify).not.toHaveBeenCalled()
-    })
-
-    it('should not show notification when bind fails', async () => {
-      const user = userEvent.setup()
-      vi.mocked(bindTag).mockRejectedValue(new Error('Bind failed'))
-
-      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
-
-      await user.click(screen.getByText('Backend'))
-
-      unmount()
-
-      await waitFor(() => {
-        expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
-      })
-
-      expect(mockNotify).not.toHaveBeenCalled()
-    })
-
-    it('should not show notification when unbind fails', async () => {
-      const user = userEvent.setup()
-      vi.mocked(unBindTag).mockRejectedValue(new Error('Unbind failed'))
-
-      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
-
-      await user.click(screen.getByText('Frontend'))
-
-      unmount()
-
-      await waitFor(() => {
-        expect(unBindTag).toHaveBeenCalledWith('tag-1', 'target-1', 'app')
-      })
-
       expect(mockNotify).not.toHaveBeenCalled()
     })
   })

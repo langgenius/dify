@@ -6,10 +6,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { useApplyTagBindingsMutation } from './hooks'
 import Panel from './panel'
 import Trigger from './trigger'
 
@@ -36,6 +38,8 @@ const TagSelector: FC<TagSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [selectedTagIDs, setSelectedTagIDs] = useState<string[]>(value)
+  const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
     input: {
       query: {
@@ -72,11 +76,53 @@ const TagSelector: FC<TagSelectorProps> = ({
     return t('tag.addTag', { ns: 'common' })
   }, [tags, t])
 
+  const tagSelectionChanged = useMemo(() => {
+    if (value.length !== selectedTagIDs.length)
+      return true
+
+    const selectedTagIDSet = new Set(selectedTagIDs)
+    return value.some(tagID => !selectedTagIDSet.has(tagID))
+  }, [value, selectedTagIDs])
+
+  const applyTagBindings = useCallback(() => {
+    if (!tagSelectionChanged)
+      return
+
+    const toastId = `tag-bindings-${type}-${targetID}`
+
+    applyTagBindingsMutation.mutate({
+      currentTagIDs: value,
+      nextTagIDs: selectedTagIDs,
+      targetID,
+      type,
+    }, {
+      onSuccess: () => {
+        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }), {
+          id: toastId,
+        })
+      },
+      onError: () => {
+        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }), {
+          id: toastId,
+        })
+      },
+    })
+  }, [applyTagBindingsMutation, selectedTagIDs, t, tagSelectionChanged, targetID, type, value])
+
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (nextOpen)
+      setSelectedTagIDs(value)
+    else
+      applyTagBindings()
+
+    setOpen(nextOpen)
+  }, [applyTagBindings, value])
+
   if (!isPopover)
     return null
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         aria-label={triggerLabel}
         className={cn(
@@ -102,9 +148,11 @@ const TagSelector: FC<TagSelectorProps> = ({
           targetID={targetID}
           value={value}
           selectedTags={selectedTags}
+          selectedTagIDs={selectedTagIDs}
+          onSelectedTagIDsChange={setSelectedTagIDs}
           tagList={tagList}
           onOpenTagManagement={onOpenTagManagement}
-          onClose={() => setOpen(false)}
+          onClose={() => handleOpenChange(false)}
         />
       </PopoverContent>
     </Popover>
