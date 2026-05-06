@@ -1,11 +1,9 @@
 'use client'
 
-import type { InfiniteData } from '@tanstack/react-query'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import type { AppListResponse, WorkflowOnlineUser } from '@/models/app'
+import type { WorkflowOnlineUser } from '@/models/app'
 import type { App } from '@/types/app'
 import {
   AlertDialog,
@@ -30,7 +28,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useId, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -48,7 +47,6 @@ import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { copyApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import { consoleQuery } from '@/service/client'
 import { fetchInstalledAppList } from '@/service/explore'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useDeleteAppMutation } from '@/service/use-apps'
@@ -79,56 +77,6 @@ type AppCardProps = {
   app: App
   onlineUsers?: WorkflowOnlineUser[]
   onRefresh?: () => void
-}
-
-const updateAppTagsInListResponse = (response: AppListResponse, appId: string, tags: Tag[]) => {
-  let hasChanged = false
-  const data = response.data.map((item) => {
-    if (item.id !== appId)
-      return item
-
-    hasChanged = true
-    return {
-      ...item,
-      tags,
-    }
-  })
-
-  return hasChanged
-    ? {
-        ...response,
-        data,
-      }
-    : response
-}
-
-const isAppListResponse = (data: unknown): data is AppListResponse => {
-  if (!data || typeof data !== 'object')
-    return false
-
-  return Array.isArray((data as { data?: unknown }).data)
-}
-
-const isInfiniteAppListResponse = (data: unknown): data is InfiniteData<AppListResponse> => {
-  if (!data || typeof data !== 'object')
-    return false
-
-  const pages = (data as { pages?: unknown }).pages
-  return Array.isArray(pages) && pages.every(isAppListResponse)
-}
-
-const updateAppTagsInAppListQueryData = (data: unknown, appId: string, tags: Tag[]) => {
-  if (isInfiniteAppListResponse(data)) {
-    return {
-      ...data,
-      pages: data.pages.map(page => updateAppTagsInListResponse(page, appId, tags)),
-    }
-  }
-
-  if (isAppListResponse(data))
-    return updateAppTagsInListResponse(data, appId, tags)
-
-  return data
 }
 
 type AppCardOperationsMenuProps = {
@@ -262,7 +210,6 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
 const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
-  const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
@@ -449,14 +396,6 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
   const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
-  const handleTagsUpdate = useCallback((nextTags: Tag[]) => {
-    queryClient.setQueriesData({
-      queryKey: consoleQuery.apps.list.key(),
-    }, data => updateAppTagsInAppListQueryData(data, app.id, nextTags))
-  }, [app.id, queryClient])
-
-  const tags = app.tags
-
   const EditTimeText = useMemo(() => {
     const timeText = formatTime({
       date: (app.updated_at || app.created_at) * 1000,
@@ -576,9 +515,9 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
                     position="bl"
                     type="app"
                     targetID={app.id}
-                    value={tags.map(tag => tag.id)}
-                    selectedTags={tags}
-                    onCacheUpdate={handleTagsUpdate}
+                    value={app.tags.map(tag => tag.id)}
+                    selectedTags={app.tags}
+                    onCacheUpdate={noop}
                     onChange={onRefresh}
                   />
                 </div>
