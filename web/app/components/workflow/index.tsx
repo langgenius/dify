@@ -81,7 +81,6 @@ import EdgeContextmenu from './edge-contextmenu'
 import HelpLine from './help-line'
 import {
   useEdgesInteractions,
-  useLeaderRestoreListener,
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
@@ -277,6 +276,17 @@ export const Workflow: FC<WorkflowProps> = memo(({
       toast.info(t('collaboration.historyAction.generic', { ns: 'workflow' }))
     })
   }, [t])
+
+  useEffect(() => {
+    return collaborationManager.onRestoreIntent((data) => {
+      toast.info(t('versionHistory.action.restoreInProgress', {
+        ns: 'workflow',
+        userName: data.initiatorName,
+        versionName: data.versionName || data.versionId,
+      }), { timeout: 3000 })
+    })
+  }, [t])
+
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -532,8 +542,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
   useWorkflowHotkeys()
   // Initialize workflow node search functionality
   useWorkflowSearch()
-
-  useLeaderRestoreListener()
 
   // Set up scroll to node event listener using the utility function
   useEffect(() => {
