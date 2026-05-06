@@ -132,7 +132,9 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._task_state.answer = "partial answer"
         pipeline._workflow_run_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=build_test_variable_pool(
+                variables=build_system_variables(workflow_execution_id="run-id"),
+            ),
             start_at=0.0,
             total_tokens=7,
             node_run_steps=3,

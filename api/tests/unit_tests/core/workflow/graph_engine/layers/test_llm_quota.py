@@ -1,4 +1,5 @@
 import threading
+from collections.abc import Generator
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -7,7 +8,7 @@ from core.app.workflow.layers.llm_quota import LLMQuotaLayer
 from core.errors.error import QuotaExceededError
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.graph_engine.entities.commands import CommandType
-from graphon.graph_events import NodeRunSucceededEvent
+from graphon.graph_events import NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 
@@ -42,6 +43,28 @@ def _build_node(*, node_type: BuiltinNodeTypes = BuiltinNodeTypes.LLM) -> MagicM
     node.node_data = SimpleNamespace(model=_build_public_model_identity())
     node.model_instance = SimpleNamespace(provider="stale-provider", model_name="stale-model")
     return node
+
+
+class _RunnableQuotaNode:
+    id = "node-id"
+    execution_id = "execution-id"
+    node_type = BuiltinNodeTypes.LLM
+    title = "LLM node"
+
+    def __init__(self, *, stop_event: threading.Event, node_data: SimpleNamespace | None = None) -> None:
+        self.node_data = node_data or SimpleNamespace(model=_build_public_model_identity())
+        self.graph_runtime_state = SimpleNamespace(stop_event=stop_event)
+        self.original_run_called = False
+
+    def ensure_execution_id(self) -> str:
+        return self.execution_id
+
+    def populate_start_event(self, event: NodeRunStartedEvent) -> None:
+        _ = event
+
+    def run(self) -> Generator[NodeRunSucceededEvent, None, None]:
+        self.original_run_called = True
+        yield _build_succeeded_event()
 
 
 def test_deduct_quota_called_for_successful_llm_node() -> None:
@@ -145,6 +168,48 @@ def test_quota_precheck_failure_aborts_workflow_immediately() -> None:
     abort_command = layer.command_channel.send_command.call_args.args[0]
     assert abort_command.command_type == CommandType.ABORT
     assert abort_command.reason == "Model provider openai quota exceeded."
+
+
+def test_quota_precheck_failure_blocks_current_node_run() -> None:
+    layer = LLMQuotaLayer(tenant_id="tenant-id")
+    stop_event = threading.Event()
+    layer.command_channel = MagicMock()
+
+    node = _RunnableQuotaNode(stop_event=stop_event)
+
+    with patch(
+        "core.app.workflow.layers.llm_quota.ensure_llm_quota_available_for_model",
+        autospec=True,
+        side_effect=QuotaExceededError("Model provider openai quota exceeded."),
+    ):
+        layer.on_node_run_start(node)
+
+    events = list(node.run())
+    assert not node.original_run_called
+    assert isinstance(events[0], NodeRunStartedEvent)
+    assert isinstance(events[1], NodeRunFailedEvent)
+    assert events[1].error == "Model provider openai quota exceeded."
+    assert events[1].node_run_result.status == WorkflowNodeExecutionStatus.FAILED
+    assert events[1].node_run_result.error_type == QuotaExceededError.__name__
+
+
+def test_missing_model_identity_blocks_current_node_run() -> None:
+    layer = LLMQuotaLayer(tenant_id="tenant-id")
+    stop_event = threading.Event()
+    layer.command_channel = MagicMock()
+
+    node = _RunnableQuotaNode(stop_event=stop_event, node_data=SimpleNamespace())
+
+    with patch("core.app.workflow.layers.llm_quota.ensure_llm_quota_available_for_model", autospec=True) as mock_check:
+        layer.on_node_run_start(node)
+
+    events = list(node.run())
+    assert not node.original_run_called
+    assert isinstance(events[1], NodeRunFailedEvent)
+    assert events[1].error == "LLM quota check requires public node model identity before execution."
+    assert events[1].node_run_result.status == WorkflowNodeExecutionStatus.FAILED
+    assert events[1].node_run_result.error_type == "LLMQuotaIdentityError"
+    mock_check.assert_not_called()
 
 
 def test_quota_precheck_passes_without_abort() -> None:

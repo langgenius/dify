@@ -95,7 +95,9 @@ class TestWorkflowGenerateTaskPipeline:
     def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=build_test_variable_pool(
+                variables=build_system_variables(workflow_execution_id="run-id"),
+            ),
             start_at=0.0,
             total_tokens=5,
             node_run_steps=2,
