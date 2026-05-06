@@ -30,8 +30,12 @@ COPY packages /app/packages
 # Use packageManager from package.json
 RUN corepack install
 
-# Install workspace dependencies for the Docker build environment.
-RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
+# ITX patch: persist pnpm store across builds via a BuildKit cache mount.
+# Keeps node_modules tarballs around so `pnpm install` after a lockfile-only
+# change is mostly a deduplicate-and-link pass instead of a full re-fetch.
+# Cached on the Docker host; survives between `scripts/build-web.sh` runs.
+RUN --mount=type=cache,target=/pnpm/store,id=rfx-pnpm-store,sharing=locked \
+    VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
 
 # build resources
 FROM base AS builder
@@ -42,7 +46,13 @@ COPY . .
 WORKDIR /app/web
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV pnpm_config_verify_deps_before_run=false
-RUN pnpm build && pnpm build:vinext
+# ITX patch: persist Next.js build cache (`.next/cache/`) and Turbopack/SWC
+# caches across builds. Without this, every patch to a single .ts file forces
+# a full Next.js compile (~5-10 min). With this, incremental builds typically
+# finish in ~1-2 min after the first cold build.
+RUN --mount=type=cache,target=/app/web/.next/cache,id=rfx-nextjs-cache,sharing=locked \
+    --mount=type=cache,target=/root/.cache,id=rfx-misc-cache,sharing=locked \
+    pnpm build && pnpm build:vinext
 
 
 # production stage
