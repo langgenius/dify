@@ -48,7 +48,7 @@ vi.mock('../hooks/use-tag-mutations', () => ({
   useApplyTagBindingsMutation: () => ({
     mutate: (
       { currentTagIds, nextTagIds, targetId, type }: { currentTagIds: string[], nextTagIds: string[], targetId: string, type: 'app' | 'knowledge' },
-      options?: { onSuccess?: () => void, onError?: () => void },
+      options?: { onSuccess?: () => void, onError?: () => void, onSettled?: () => void },
     ) => {
       const addTagIds = nextTagIds.filter(tagId => !currentTagIds.includes(tagId))
       const removeTagIds = currentTagIds.filter(tagId => !nextTagIds.includes(tagId))
@@ -61,6 +61,7 @@ vi.mock('../hooks/use-tag-mutations', () => ({
       Promise.all(operations)
         .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
+        .finally(() => options?.onSettled?.())
     },
   }),
 }))
@@ -271,6 +272,58 @@ describe('TagSelector', () => {
         expect(mockToast.error).toHaveBeenCalledWith(i18n.modifiedUnsuccessfully, {
           id: 'tag-bindings-app-target-1',
         })
+      })
+    })
+
+    it('should not apply bindings when the selection is unchanged on close', async () => {
+      const user = userEvent.setup()
+      const onTagsChange = vi.fn()
+      render(<TagSelector {...defaultProps} onTagsChange={onTagsChange} />)
+
+      const triggerButton = screen.getByRole('button', { name: /Frontend/i })
+      await user.click(triggerButton)
+      await screen.findByPlaceholderText(i18n.selectorPlaceholder)
+      await user.click(triggerButton)
+
+      expect(bindTag).not.toHaveBeenCalled()
+      expect(unBindTag).not.toHaveBeenCalled()
+      expect(mockToast.success).not.toHaveBeenCalled()
+      expect(mockToast.error).not.toHaveBeenCalled()
+      expect(onTagsChange).not.toHaveBeenCalled()
+    })
+
+    it('should notify tag changes after bindings are applied successfully', async () => {
+      const user = userEvent.setup()
+      const onTagsChange = vi.fn()
+      render(<TagSelector {...defaultProps} onTagsChange={onTagsChange} />)
+
+      const triggerButton = screen.getByRole('button', { name: /Frontend/i })
+      await user.click(triggerButton)
+
+      await screen.findByPlaceholderText(i18n.selectorPlaceholder)
+      await user.click(getPanelTagRow('Backend'))
+      await user.click(triggerButton)
+
+      await waitFor(() => {
+        expect(onTagsChange).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('should notify tag changes after applying bindings settles with an error', async () => {
+      const user = userEvent.setup()
+      const onTagsChange = vi.fn()
+      vi.mocked(unBindTag).mockRejectedValueOnce(new Error('Unbind failed'))
+      render(<TagSelector {...defaultProps} onTagsChange={onTagsChange} />)
+
+      const triggerButton = screen.getByRole('button', { name: /Frontend/i })
+      await user.click(triggerButton)
+
+      await screen.findByPlaceholderText(i18n.selectorPlaceholder)
+      await user.click(getPanelTagRow('Frontend'))
+      await user.click(triggerButton)
+
+      await waitFor(() => {
+        expect(onTagsChange).toHaveBeenCalledTimes(1)
       })
     })
   })
