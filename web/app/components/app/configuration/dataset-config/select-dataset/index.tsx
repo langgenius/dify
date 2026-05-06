@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useInfiniteScroll } from 'ahooks'
 import * as React from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
@@ -79,8 +79,18 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
     onSelect(selected)
   }
 
+  const handleClose = useCallback(() => {
+    setSelectedIdsInModal(selectedIds)
+    onClose()
+  }, [onClose, selectedIds])
+
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (!open)
+      handleClose()
+  }, [handleClose])
+
   return (
-    <Dialog open={isShow} onOpenChange={open => !open && onClose()}>
+    <Dialog open={isShow} onOpenChange={handleOpenChange}>
       <DialogContent className="w-100 overflow-hidden">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t('feature.dataSet.selectTitle', { ns: 'appDebug' })}
@@ -159,7 +169,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
               {selected.length > 0 && `${selected.length} ${t('feature.dataSet.selected', { ns: 'appDebug' })}`}
             </div>
             <div className="flex space-x-2">
-              <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+              <Button onClick={handleClose}>{t('operation.cancel', { ns: 'common' })}</Button>
               <Button variant="primary" onClick={handleSelect} disabled={hasNoData}>{t('operation.add', { ns: 'common' })}</Button>
             </div>
           </div>

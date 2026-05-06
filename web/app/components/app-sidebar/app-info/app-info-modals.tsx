@@ -56,7 +56,12 @@ const AppInfoModals = ({
   const [isConfirmingExport, setIsConfirmingExport] = useState(false)
   const [isSecretExporting, setIsSecretExporting] = useState(false)
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
-  const isExportDialogOpen = activeModal === 'exportWarning' || secretEnvList.length > 0
+  const exportDialogMode = secretEnvList.length > 0
+    ? 'secret'
+    : activeModal === 'exportWarning'
+      ? 'warning'
+      : null
+  const isExportDialogOpen = exportDialogMode !== null
 
   const handleDeleteDialogClose = () => {
     setConfirmDeleteInput('')
@@ -77,13 +82,13 @@ const AppInfoModals = ({
   }, [handleConfirmExport, isConfirmingExport])
 
   const handleExportDialogClose = useCallback(() => {
-    if (secretEnvList.length > 0) {
+    if (exportDialogMode === 'secret') {
       setSecretEnvList([])
       return
     }
 
     closeModal()
-  }, [closeModal, secretEnvList.length, setSecretEnvList])
+  }, [closeModal, exportDialogMode, setSecretEnvList])
 
   const handleExportDialogOpenChange = useCallback((open: boolean) => {
     if (open || isConfirmingExport || isSecretExporting)
@@ -182,7 +187,7 @@ const AppInfoModals = ({
         />
       )}
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
-        {secretEnvList.length > 0
+        {exportDialogMode === 'secret'
           ? (
               <DSLExportConfirmContent
                 envList={secretEnvList}
@@ -191,7 +196,7 @@ const AppInfoModals = ({
                 onExportingChange={setIsSecretExporting}
               />
             )
-          : activeModal === 'exportWarning' && (
+          : exportDialogMode === 'warning' && (
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                 <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
