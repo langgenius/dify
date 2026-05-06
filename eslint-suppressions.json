@@ -438,11 +438,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/dataset-config/select-dataset/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
     "react/set-state-in-effect": {
       "count": 2
@@ -3564,11 +3559,6 @@
   },
   "web/app/components/workflow/datasets-detail-store/provider.tsx": {
     "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/dsl-export-confirm-modal.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
