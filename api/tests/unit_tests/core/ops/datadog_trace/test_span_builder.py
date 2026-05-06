@@ -11,6 +11,27 @@ from graphon.entities.workflow_node_execution import WorkflowNodeExecution
 from graphon.nodes import BuiltinNodeTypes
 
 
+def _build_message_trace_info(**overrides) -> MessageTraceInfo:
+    defaults = {
+        "message_id": "msg-1",
+        "metadata": {"conversation_id": "conv-1", "ls_provider": "langgenius/openai/openai", "ls_model_name": "gpt-4"},
+        "inputs": "Hello",
+        "outputs": "Hi there",
+        "start_time": datetime.now(),
+        "end_time": datetime.now(),
+        "trace_id": None,
+        "conversation_model": "chat",
+        "message_tokens": 10,
+        "answer_tokens": 20,
+        "total_tokens": 30,
+        "file_list": [],
+        "message_file_data": None,
+        "conversation_mode": "chat",
+    }
+    defaults.update(overrides)
+    return MessageTraceInfo(**defaults)
+
+
 class TestOTelMessageFormat:
     """Verify Dify data -> OTel v1.37 message format transformation."""
 
@@ -48,22 +69,7 @@ class TestBuilderOutputFormat:
     """Verify builders produce correct attribute keys and values."""
 
     def test_build_message_attrs_uses_chat_messages_and_tokens(self):
-        trace_info = MessageTraceInfo(
-            message_id="msg-1",
-            metadata={"conversation_id": "conv-1", "ls_provider": "langgenius/openai/openai", "ls_model_name": "gpt-4"},
-            inputs="Hello",
-            outputs="Hi there",
-            start_time=datetime.now(),
-            end_time=datetime.now(),
-            trace_id=None,
-            conversation_model="chat",
-            message_tokens=10,
-            answer_tokens=20,
-            total_tokens=30,
-            file_list=[],
-            message_file_data=None,
-            conversation_mode="chat",
-        )
+        trace_info = _build_message_trace_info()
 
         attrs = span_builder.build_message_attrs(trace_info)
 
@@ -77,20 +83,11 @@ class TestBuilderOutputFormat:
         assert attrs[semconv.CONVERSATION_ID] == "conv-1"
 
     def test_build_message_attrs_uses_completion_operation_for_completion_apps(self):
-        trace_info = MessageTraceInfo(
-            message_id="msg-1",
+        trace_info = _build_message_trace_info(
             metadata={"conversation_id": "conv-1", "ls_provider": "openai", "ls_model_name": "gpt-4"},
             inputs="Complete this",
             outputs="Completed",
-            start_time=datetime.now(),
-            end_time=datetime.now(),
-            trace_id=None,
             conversation_model="completion",
-            message_tokens=10,
-            answer_tokens=20,
-            total_tokens=30,
-            file_list=[],
-            message_file_data=None,
             conversation_mode="completion",
         )
 
@@ -99,7 +96,7 @@ class TestBuilderOutputFormat:
         assert attrs[semconv.OPERATION_NAME] == "completion"
 
     def test_build_message_attrs_converts_dify_prompt_history_to_otel_messages(self):
-        trace_info = MessageTraceInfo(
+        trace_info = _build_message_trace_info(
             message_id="msg-2",
             metadata={"conversation_id": "conv-2", "ls_provider": "langgenius/openai/openai", "ls_model_name": "gpt-4"},
             inputs=[
@@ -107,16 +104,9 @@ class TestBuilderOutputFormat:
                 {"role": "user", "text": "Analyze Datadog", "files": []},
             ],
             outputs="Here is the analysis.",
-            start_time=datetime.now(),
-            end_time=datetime.now(),
-            trace_id=None,
-            conversation_model="chat",
             message_tokens=15,
             answer_tokens=25,
             total_tokens=40,
-            file_list=[],
-            message_file_data=None,
-            conversation_mode="chat",
         )
 
         attrs = span_builder.build_message_attrs(trace_info)

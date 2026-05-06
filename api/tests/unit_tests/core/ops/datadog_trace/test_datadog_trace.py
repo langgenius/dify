@@ -7,7 +7,6 @@ from dify_trace_datadog.client import DatadogTraceClient
 from dify_trace_datadog.config import DatadogConfig
 from dify_trace_datadog.datadog_trace import (
     DatadogDataTrace,
-    _datetime_to_ns,
     _workflow_node_status_to_otel_status,
 )
 from opentelemetry.trace import StatusCode
@@ -142,13 +141,6 @@ class TestWorkflowNodeProcessing:
         datadog_trace.dataset_retrieval_trace(_build_retrieval_trace_info(message_id=None))
 
         datadog_trace.trace_client.add_span.assert_not_called()
-
-    def test_datetime_to_ns_substitutes_now_for_none(self):
-        before_ns = int(datetime.now().timestamp() * 1_000_000_000)
-        result = _datetime_to_ns(None)
-        after_ns = int(datetime.now().timestamp() * 1_000_000_000)
-
-        assert before_ns <= result <= after_ns
 
     def test_span_contexts_parent_child_linking(self, datadog_trace: DatadogDataTrace):
         message_trace = _build_message_trace_info(message_id="msg-42")
