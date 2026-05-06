@@ -2,7 +2,7 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -100,15 +100,26 @@ class TagBindingPayload(BaseModel):
 
 
 class TagUnbindingPayload(BaseModel):
-    tag_ids: list[str]
+    """Accept the legacy single-tag Service API payload while exposing a normalized tag_ids list internally."""
+
+    tag_ids: list[str] = Field(default_factory=list)
+    tag_id: str | None = None
     target_id: str
 
-    @field_validator("tag_ids")
+    @model_validator(mode="before")
     @classmethod
-    def validate_tag_ids(cls, value: list[str]) -> list[str]:
-        if not value:
+    def normalize_legacy_tag_id(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        if not data.get("tag_ids") and data.get("tag_id"):
+            return {**data, "tag_ids": [data["tag_id"]]}
+        return data
+
+    @model_validator(mode="after")
+    def validate_tag_ids(self) -> "TagUnbindingPayload":
+        if not self.tag_ids:
             raise ValueError("Tag IDs is required.")
-        return value
+        return self
 
 
 class DatasetListQuery(BaseModel):
