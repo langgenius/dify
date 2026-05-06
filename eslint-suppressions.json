@@ -608,17 +608,6 @@
       "count": 1
     }
   },
-  "web/app/components/apps/app-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/apps/new-app-card.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
