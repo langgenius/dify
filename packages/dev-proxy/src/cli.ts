@@ -45,17 +45,12 @@ async function main() {
   console.log(`[dev-proxy] listening on http://${host}:${port}`)
 }
 
-let exitCode = 0
-
 try {
   await main()
-  const currentExitCode = process.exitCode
-  exitCode = typeof currentExitCode === 'number' ? currentExitCode : 0
+  await flushStandardStreams()
 }
 catch (error) {
   console.error(error instanceof Error ? error.message : error)
-  exitCode = 1
+  await flushStandardStreams()
+  process.exit(1)
 }
-
-await flushStandardStreams()
-process.exit(exitCode)

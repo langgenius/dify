@@ -1,13 +1,14 @@
 {
   "name": "@langgenius/dev-proxy",
   "type": "module",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     }
   },
+  "types": "./dist/index.d.mts",
   "bin": {
     "dev-proxy": "./bin/dev-proxy.js"
   },
