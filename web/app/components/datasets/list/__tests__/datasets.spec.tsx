@@ -75,6 +75,14 @@ vi.mock('../../rename-modal', () => ({
   default: () => null,
 }))
 
+vi.mock('../dataset-card', () => ({
+  default: ({ dataset }: { dataset: DataSet }) => (
+    <article data-testid={`dataset-card-${dataset.id}`}>
+      {dataset.name}
+    </article>
+  ),
+}))
+
 function createMockDataset(overrides: Partial<DataSet> = {}): DataSet {
   return {
     id: 'dataset-1',
