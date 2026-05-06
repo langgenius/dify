@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 from core.app.entities.app_invoke_entities import DifyRunContext, ModelConfigWithCredentialsEntity
@@ -14,8 +15,21 @@ from graphon.nodes.llm.protocols import CredentialsProvider
 
 
 class DifyCredentialsProvider:
+    """Resolves and returns LLM credentials for a given provider and model.
+
+    Fetched credentials are stored in :attr:`credentials_cache` and reused for
+    subsequent ``fetch`` calls for the same ``(provider_name, model_name)``.
+    Because of that cache, a single instance can return stale credentials after
+    the tenant or provider configuration changes (e.g. API key rotation).
+
+    Do **not** keep one instance for the lifetime of a process or across
+    unrelated invocations. Create a new provider per request, workflow run, or
+    other bounded scope where up-to-date credentials matter.
+    """
+
     tenant_id: str
     provider_manager: ProviderManager
+    credentials_cache: dict[tuple[str, str], dict[str, Any]]
 
     def __init__(
         self,
@@ -30,8 +44,12 @@ class DifyCredentialsProvider:
                 user_id=run_context.user_id,
             )
         self.provider_manager = provider_manager
+        self.credentials_cache = {}
 
     def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
+        if (provider_name, model_name) in self.credentials_cache:
+            return deepcopy(self.credentials_cache[(provider_name, model_name)])
+
         provider_configurations = self.provider_manager.get_configurations(self.tenant_id)
         provider_configuration = provider_configurations.get(provider_name)
         if not provider_configuration:
@@ -46,6 +64,7 @@ class DifyCredentialsProvider:
         if credentials is None:
             raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
 
+        self.credentials_cache[(provider_name, model_name)] = deepcopy(credentials)
         return credentials
 
 
@@ -65,7 +84,8 @@ class DifyModelFactory:
                 provider_manager=create_plugin_provider_manager(
                     tenant_id=run_context.tenant_id,
                     user_id=run_context.user_id,
-                )
+                ),
+                enable_credentials_cache=True,
             )
         self.model_manager = model_manager
 
@@ -84,7 +104,7 @@ def build_dify_model_access(run_context: DifyRunContext) -> tuple[CredentialsPro
         tenant_id=run_context.tenant_id,
         user_id=run_context.user_id,
     )
-    model_manager = ModelManager(provider_manager=provider_manager)
+    model_manager = ModelManager(provider_manager=provider_manager, enable_credentials_cache=True)
 
     return (
         DifyCredentialsProvider(run_context=run_context, provider_manager=provider_manager),

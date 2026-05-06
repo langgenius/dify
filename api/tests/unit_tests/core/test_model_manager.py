@@ -5,7 +5,7 @@ import redis
 from pytest_mock import MockerFixture
 
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
-from core.model_manager import LBModelManager
+from core.model_manager import LBModelManager, ModelManager
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 
@@ -38,6 +38,29 @@ def lb_model_manager():
     lb_model_manager.in_cooldown = MagicMock(side_effect=is_cooldown)
 
     return lb_model_manager
+
+
+def test_model_manager_with_cache_enabled_reuses_stored_credentials():
+    """With ``enable_credentials_cache=True``, later calls for the same key return cached creds."""
+    provider_manager = MagicMock()
+    bundle = MagicMock()
+    bundle.configuration.provider.provider = "openai"
+    bundle.configuration.tenant_id = "tenant-1"
+    bundle.configuration.model_settings = []
+    bundle.model_type_instance.model_type = ModelType.LLM
+    get_creds = MagicMock(return_value={"api_key": "first"})
+    bundle.configuration.get_current_credentials = get_creds
+    provider_manager.get_provider_model_bundle.return_value = bundle
+
+    manager = ModelManager(provider_manager, enable_credentials_cache=True)
+    first = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
+    assert first.credentials == {"api_key": "first"}
+    get_creds.assert_called_once()
+
+    get_creds.return_value = {"api_key": "second"}
+    second = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
+    assert second.credentials == {"api_key": "first"}
+    get_creds.assert_called_once()
 
 
 def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LBModelManager):

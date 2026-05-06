@@ -60,7 +60,8 @@ _file_access_controller = DatabaseFileAccessController()
 LISTENING_RETRY_IN = 2000
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
-MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS = 50
+MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS = 1000
+WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE = 50
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -158,8 +159,13 @@ class WorkflowFeaturesPayload(BaseModel):
     features: dict[str, Any] = Field(..., description="Workflow feature configuration")
 
 
-class WorkflowOnlineUsersQuery(BaseModel):
-    app_ids: str = Field(..., description="Comma-separated app IDs")
+class WorkflowOnlineUsersPayload(BaseModel):
+    app_ids: list[str] = Field(default_factory=list, description="App IDs")
+
+    @field_validator("app_ids")
+    @classmethod
+    def normalize_app_ids(cls, app_ids: list[str]) -> list[str]:
+        return list(dict.fromkeys(app_id.strip() for app_id in app_ids if app_id.strip()))
 
 
 class DraftWorkflowTriggerRunPayload(BaseModel):
@@ -186,7 +192,7 @@ reg(ConvertToWorkflowPayload)
 reg(WorkflowListQuery)
 reg(WorkflowUpdatePayload)
 reg(WorkflowFeaturesPayload)
-reg(WorkflowOnlineUsersQuery)
+reg(WorkflowOnlineUsersPayload)
 reg(DraftWorkflowTriggerRunPayload)
 reg(DraftWorkflowTriggerRunAllPayload)
 
@@ -1384,19 +1390,19 @@ class DraftWorkflowTriggerRunAllApi(Resource):
 
 @console_ns.route("/apps/workflows/online-users")
 class WorkflowOnlineUsersApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowOnlineUsersQuery.__name__])
+    @console_ns.expect(console_ns.models[WorkflowOnlineUsersPayload.__name__])
     @console_ns.doc("get_workflow_online_users")
     @console_ns.doc(description="Get workflow online users")
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(online_user_list_fields)
-    def get(self):
-        args = WorkflowOnlineUsersQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    def post(self):
+        args = WorkflowOnlineUsersPayload.model_validate(console_ns.payload or {})
 
-        app_ids = list(dict.fromkeys(app_id.strip() for app_id in args.app_ids.split(",") if app_id.strip()))
-        if len(app_ids) > MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS:
-            raise BadRequest(f"Maximum {MAX_WORKFLOW_ONLINE_USERS_QUERY_IDS} app_ids are allowed per request.")
+        app_ids = args.app_ids
+        if len(app_ids) > MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS:
+            raise BadRequest(f"Maximum {MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS} app_ids are allowed per request.")
 
         if not app_ids:
             return {"data": []}
@@ -1404,13 +1410,24 @@ class WorkflowOnlineUsersApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         workflow_service = WorkflowService()
         accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id)
+        ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]
+
+        users_json_by_app_id: dict[str, Any] = {}
+        for start_index in range(0, len(ordered_accessible_app_ids), WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE):
+            app_id_batch = ordered_accessible_app_ids[
+                start_index : start_index + WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
+            ]
+            pipe = redis_client.pipeline(transaction=False)
+            for app_id in app_id_batch:
+                pipe.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{app_id}")
+
+            users_json_batch = pipe.execute()
+            for app_id, users_json in zip(app_id_batch, users_json_batch):
+                users_json_by_app_id[app_id] = users_json
 
         results = []
-        for app_id in app_ids:
-            if app_id not in accessible_app_ids:
-                continue
-
-            users_json = redis_client.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{app_id}")
+        for app_id in ordered_accessible_app_ids:
+            users_json = users_json_by_app_id.get(app_id, {})
 
             users = []
             for _, user_info_json in users_json.items():

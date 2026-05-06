@@ -15,7 +15,7 @@ permissions:
 jobs:
   python-style:
     name: Python Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -57,7 +57,7 @@ jobs:
 
   web-style:
     name: Web Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         working-directory: ./web
@@ -83,7 +83,6 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
-            .npmrc
             .nvmrc
             .github/workflows/style.yml
             .github/actions/setup-web/**
@@ -131,7 +130,7 @@ jobs:
 
   superlinter:
     name: SuperLinter
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code

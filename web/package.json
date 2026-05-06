@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.13.3",
+  "version": "1.14.0",
   "private": true,
   "imports": {
     "#i18n": {
@@ -44,8 +44,7 @@
     "test": "vp test",
     "test:coverage": "vp test --coverage",
     "test:watch": "vp test --watch",
-    "type-check": "tsc",
-    "type-check:tsgo": "tsgo",
+    "type-check": "tsgo",
     "uglify-embed": "node ./bin/uglify-embed"
   },
   "dependencies": {
@@ -76,6 +75,7 @@
     "@t3-oss/env-nextjs": "catalog:",
     "@tailwindcss/typography": "catalog:",
     "@tanstack/react-form": "catalog:",
+    "@tanstack/react-hotkeys": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "abcjs": "catalog:",
@@ -155,6 +155,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "catalog:",
     "@chromatic-com/storybook": "catalog:",
+    "@dify/contracts": "workspace:*",
     "@dify/iconify-collections": "workspace:*",
     "@dify/tsconfig": "workspace:*",
     "@egoist/tailwindcss-icons": "catalog:",

@@ -5,10 +5,6 @@
   "private": true,
   "exports": {
     "./styles.css": "./src/styles/styles.css",
-    "./tailwind-preset": {
-      "types": "./src/tailwind-preset.ts",
-      "import": "./src/tailwind-preset.ts"
-    },
     "./cn": {
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"
@@ -83,7 +79,7 @@
     "storybook:build": "storybook build",
     "test": "vp test",
     "test:watch": "vp test --watch",
-    "type-check": "tsc"
+    "type-check": "tsgo"
   },
   "peerDependencies": {
     "@base-ui/react": "catalog:",
@@ -109,6 +105,7 @@
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",

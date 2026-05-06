@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
-import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/service/workflow-comment'
+import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/contract/console/workflow-comment'
 import { Avatar, AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {

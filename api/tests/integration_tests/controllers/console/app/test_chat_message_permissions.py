@@ -171,35 +171,13 @@ class TestChatMessageApiPermissions:
             parent_message_id=None,
         )
 
-        class MockQuery:
-            def __init__(self, model):
-                self.model = model
-
-            def where(self, *args, **kwargs):
-                return self
-
-            def first(self):
-                if getattr(self.model, "__name__", "") == "Conversation":
-                    return mock_conversation
-                return None
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *_):
-                return self
-
-            def all(self):
-                if getattr(self.model, "__name__", "") == "Message":
-                    return [mock_message]
-                return []
-
         mock_session = mock.Mock()
-        mock_session.query.side_effect = MockQuery
-        mock_session.scalar.return_value = False
+        mock_session.scalar.return_value = mock_conversation
+        mock_session.scalars.return_value.all.return_value = [mock_message]
 
         monkeypatch.setattr(message_api, "db", SimpleNamespace(session=mock_session))
         monkeypatch.setattr(message_api, "current_user", mock_account)
+        monkeypatch.setattr(message_api, "attach_message_extra_contents", mock.Mock())
 
         class DummyPagination:
             def __init__(self, data, limit, has_more):

@@ -37,6 +37,11 @@ class TagBindingRemovePayload(BaseModel):
     type: TagType = Field(description="Tag type")
 
 
+class TagBindingItemDeletePayload(BaseModel):
+    target_id: str = Field(description="Target ID to unbind tag from")
+    type: TagType = Field(description="Tag type")
+
+
 class TagListQueryParam(BaseModel):
     type: Literal["knowledge", "app", ""] = Field("", description="Tag type filter")
     keyword: str | None = Field(None, description="Search keyword")
@@ -70,6 +75,7 @@ register_schema_models(
     TagBasePayload,
     TagBindingPayload,
     TagBindingRemovePayload,
+    TagBindingItemDeletePayload,
     TagListQueryParam,
     TagResponse,
 )
@@ -152,41 +158,107 @@ class TagUpdateDeleteApi(Resource):
         return "", 204
 
 
-@console_ns.route("/tag-bindings/create")
-class TagBindingCreateApi(Resource):
+def _require_tag_binding_edit_permission() -> None:
+    """
+    Ensure the current account can edit tag bindings.
+
+    Tag binding operations are allowed for users who can edit resources (app/dataset) within the current tenant.
+    """
+    current_user, _ = current_account_with_tenant()
+    # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+    if not (current_user.has_edit_permission or current_user.is_dataset_editor):
+        raise Forbidden()
+
+
+def _create_tag_bindings() -> tuple[dict[str, str], int]:
+    _require_tag_binding_edit_permission()
+
+    payload = TagBindingPayload.model_validate(console_ns.payload or {})
+    TagService.save_tag_binding(
+        TagBindingCreatePayload(
+            tag_ids=payload.tag_ids,
+            target_id=payload.target_id,
+            type=payload.type,
+        )
+    )
+    return {"result": "success"}, 200
+
+
+def _remove_tag_binding() -> tuple[dict[str, str], int]:
+    _require_tag_binding_edit_permission()
+
+    payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
+    TagService.delete_tag_binding(
+        TagBindingDeletePayload(
+            tag_id=payload.tag_id,
+            target_id=payload.target_id,
+            type=payload.type,
+        )
+    )
+    return {"result": "success"}, 200
+
+
+@console_ns.route("/tag-bindings")
+class TagBindingCollectionApi(Resource):
+    """Canonical collection resource for tag binding creation."""
+
+    @console_ns.doc("create_tag_binding")
     @console_ns.expect(console_ns.models[TagBindingPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        current_user, _ = current_account_with_tenant()
-        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
-            raise Forbidden()
+        return _create_tag_bindings()
 
-        payload = TagBindingPayload.model_validate(console_ns.payload or {})
-        TagService.save_tag_binding(
-            TagBindingCreatePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=payload.type)
+
+@console_ns.route("/tag-bindings/<uuid:id>")
+class TagBindingItemApi(Resource):
+    """Canonical item resource for tag binding deletion."""
+
+    @console_ns.doc("delete_tag_binding")
+    @console_ns.doc(params={"id": "Tag ID"})
+    @console_ns.expect(console_ns.models[TagBindingItemDeletePayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, id):
+        _require_tag_binding_edit_permission()
+        payload = TagBindingItemDeletePayload.model_validate(console_ns.payload or {})
+        TagService.delete_tag_binding(
+            TagBindingDeletePayload(
+                tag_id=str(id),
+                target_id=payload.target_id,
+                type=payload.type,
+            )
         )
-
         return {"result": "success"}, 200
 
 
+@console_ns.route("/tag-bindings/create")
+class DeprecatedTagBindingCreateApi(Resource):
+    """Deprecated verb-based alias for tag binding creation."""
+
+    @console_ns.doc("create_tag_binding_deprecated")
+    @console_ns.doc(deprecated=True)
+    @console_ns.doc(description="Deprecated legacy alias. Use POST /tag-bindings instead.")
+    @console_ns.expect(console_ns.models[TagBindingPayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        return _create_tag_bindings()
+
+
 @console_ns.route("/tag-bindings/remove")
-class TagBindingDeleteApi(Resource):
+class DeprecatedTagBindingRemoveApi(Resource):
+    """Deprecated verb-based alias for tag binding deletion."""
+
+    @console_ns.doc("delete_tag_binding_deprecated")
+    @console_ns.doc(deprecated=True)
+    @console_ns.doc(description="Deprecated legacy alias. Use DELETE /tag-bindings/{id} instead.")
     @console_ns.expect(console_ns.models[TagBindingRemovePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        current_user, _ = current_account_with_tenant()
-        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
-            raise Forbidden()
-
-        payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
-        TagService.delete_tag_binding(
-            TagBindingDeletePayload(tag_id=payload.tag_id, target_id=payload.target_id, type=payload.type)
-        )
-
-        return {"result": "success"}, 200
+        return _remove_tag_binding()

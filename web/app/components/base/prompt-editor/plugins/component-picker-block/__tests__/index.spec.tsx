@@ -29,6 +29,7 @@ import {
 } from 'lexical'
 import * as React from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { VAR_REFERENCE_CHILD_POPUP_CLASS_NAME } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
@@ -599,6 +600,48 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     })
   })
 
+  it('defaults to the first workflow variable and removes the full slash query when selecting by keyboard', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+
+    const workflowVariableBlock = makeWorkflowVariableBlock({}, [
+      makeWorkflowVarNode('node-1', 'Node 1', [
+        makeWorkflowNodeVar('first_value', VarType.string),
+        makeWorkflowNodeVar('second_value', VarType.string),
+      ]),
+    ])
+
+    render((
+      <MinimalEditor
+        triggerString="/"
+        contextBlock={makeContextBlock()}
+        workflowVariableBlock={workflowVariableBlock}
+        captures={captures}
+      />
+    ))
+
+    const editor = await waitForEditor(captures)
+    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+
+    await setEditorText(editor, '/e', true)
+    await flushNextTick()
+
+    const firstItem = screen.getByText('first_value').closest('[data-selected]')
+    const secondItem = screen.getByText('second_value').closest('[data-selected]')
+
+    expect(firstItem).toHaveAttribute('data-selected', 'true')
+    expect(secondItem).toHaveAttribute('data-selected', 'false')
+
+    fireEvent.keyDown(document, { key: 'ArrowDown' })
+
+    expect(firstItem).toHaveAttribute('data-selected', 'false')
+    expect(secondItem).toHaveAttribute('data-selected', 'true')
+
+    fireEvent.keyDown(document, { key: 'Enter' })
+
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, ['node-1', 'second_value'])
+    await waitFor(() => expect(readEditorText(editor)).not.toContain('/e'))
+  })
+
   it('skips removing the trigger when selection is null (needRemove is null) and still dispatches', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }
 
@@ -884,6 +927,47 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
 
       expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
 
+      vi.useRealTimers()
+    })
+
+    it('does not hide the menu when focus moves into a variable child popup', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      render((
+        <MinimalEditor
+          triggerString="/"
+          workflowVariableBlock={makeWorkflowVariableBlock({}, [
+            makeWorkflowVarNode('node-1', 'Node 1', [
+              makeWorkflowNodeVar('payload', VarType.object, [makeWorkflowNodeVar('child', VarType.string)]),
+            ]),
+          ])}
+          captures={captures}
+        />
+      ))
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, '/', true)
+      expect(await screen.findByText('payload')).toBeInTheDocument()
+
+      vi.useFakeTimers()
+
+      const popupTarget = document.createElement('button')
+      const popup = document.createElement('div')
+      popup.classList.add(VAR_REFERENCE_CHILD_POPUP_CLASS_NAME)
+      popup.appendChild(popupTarget)
+      document.body.appendChild(popup)
+
+      act(() => {
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur-sm', { relatedTarget: popupTarget }))
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+
+      expect(screen.queryByText('payload')).toBeInTheDocument()
+
+      popup.remove()
       vi.useRealTimers()
     })
   })

@@ -5,8 +5,6 @@ import type {
   ModelItem,
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
@@ -19,7 +17,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { supportFunctionCall } from '@/utils/tool-call'
-import { getMarketplaceUrl } from '@/utils/var'
 import {
   CustomConfigurationStatusEnum,
   ModelFeatureEnum,
@@ -29,8 +26,17 @@ import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
 import CreditsExhaustedAlert from '../provider-added-card/model-auth-dropdown/credits-exhausted-alert'
 import { useTrialCredits } from '../provider-added-card/use-trial-credits'
 import { providerSupportsCredits } from '../supports-credits'
-import { MODEL_PROVIDER_QUOTA_GET_PAID, modelNameMap, providerIconMap, providerKeyToPluginId } from '../utils'
+import { MODEL_PROVIDER_QUOTA_GET_PAID, providerKeyToPluginId } from '../utils'
+import MarketplaceSection from './marketplace-section'
+import ModelSelectorEmptyState from './popup-empty-state'
 import PopupItem from './popup-item'
+import {
+  CompatibleModelsNotice,
+  ModelProviderSettingsFooter,
+  ModelSelectorPopupFrame,
+  ModelSelectorScrollBody,
+  ModelSelectorSearchHeader,
+} from './popup-layout'
 
 type PopupProps = {
   defaultModel?: DefaultModel
@@ -137,18 +143,26 @@ const Popup: FC<PopupProps> = ({
   }, [aiCreditVisibleProviders, installedProviderMap, modelList])
 
   const filteredModelList = useMemo(() => {
+    const normalizedSearch = searchText.toLowerCase()
+    const matchesLabel = (label: Record<string, string>) => {
+      if (label[language] !== undefined)
+        return label[language].toLowerCase().includes(normalizedSearch)
+      return Object.values(label).some(value =>
+        value.toLowerCase().includes(normalizedSearch),
+      )
+    }
+
     const filtered = installedModelList.map((model) => {
-      const matchesProviderSearch = !searchText
-        || model.provider.toLowerCase().includes(searchText.toLowerCase())
-        || Object.values(model.label).some(label => label.toLowerCase().includes(searchText.toLowerCase()))
+      const providerMatched = !!searchText && (
+        matchesLabel(model.label)
+        || model.provider.toLowerCase().includes(normalizedSearch)
+      )
 
       const filteredModels = model.models
         .filter((modelItem) => {
-          if (modelItem.label[language] !== undefined)
-            return modelItem.label[language].toLowerCase().includes(searchText.toLowerCase())
-          return Object.values(modelItem.label).some(label =>
-            label.toLowerCase().includes(searchText.toLowerCase()),
-          )
+          if (!searchText || providerMatched)
+            return true
+          return matchesLabel(modelItem.label)
         })
         .filter((modelItem) => {
           if (scopeFeatures.length === 0)
@@ -159,8 +173,12 @@ const Popup: FC<PopupProps> = ({
             return modelItem.features?.includes(feature) ?? false
           })
         })
-      if (!matchesProviderSearch || (filteredModels.length === 0 && !aiCreditVisibleProviders.has(model.provider)))
+      if (
+        (searchText && filteredModels.length === 0)
+        || (!searchText && filteredModels.length === 0 && !aiCreditVisibleProviders.has(model.provider))
+      ) {
         return null
+      }
 
       return { ...model, models: filteredModels }
     }).filter((model): model is Model => model !== null)
@@ -181,166 +199,59 @@ const Popup: FC<PopupProps> = ({
     return MODEL_PROVIDER_QUOTA_GET_PAID.filter(key => !installedProviders.has(key))
   }, [modelProviders])
 
+  const handleOpenSettings = useCallback(() => {
+    onHide()
+    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+  }, [onHide, setShowAccountSettingModal])
+
   return (
-    <div className="no-scrollbar max-h-[480px] overflow-y-auto">
-      <div className="sticky top-0 z-10 bg-components-panel-bg pt-3 pr-2 pb-1 pl-3">
-        <div className={`
-          flex h-8 items-center rounded-lg border pr-[10px] pl-[9px]
-          ${searchText ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-transparent bg-components-input-bg-normal'}
-        `}
-        >
-          <span
-            className={`
-              mr-[7px] i-ri-search-line h-[14px] w-[14px] shrink-0
-              ${searchText ? 'text-text-tertiary' : 'text-text-quaternary'}
-            `}
-          />
-          <input
-            className="block h-[18px] grow appearance-none bg-transparent text-[13px] text-text-primary outline-hidden"
-            placeholder={t('form.searchModel', { ns: 'datasetSettings' }) || ''}
-            value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-          />
-          {
-            searchText && (
-              <span
-                className="ml-1.5 i-custom-vender-solid-general-x-circle h-[14px] w-[14px] shrink-0 cursor-pointer text-text-quaternary"
-                onClick={() => setSearchText('')}
-              />
-            )
-          }
-        </div>
-        {scopeFeatures.length > 0 && (
-          <div
-            data-testid="compatible-models-banner"
-            className="mt-2 flex items-center gap-1 rounded-lg bg-background-section-burn px-2.5 py-2"
-          >
-            <span className="i-ri-information-2-fill h-4 w-4 shrink-0 text-text-accent" />
-            <p className="system-xs-medium text-text-secondary">
-              {t('modelProvider.selector.onlyCompatibleModelsShown', { ns: 'common' })}
-            </p>
-          </div>
-        )}
-      </div>
+    <ModelSelectorPopupFrame>
+      <ModelSelectorSearchHeader
+        searchText={searchText}
+        onSearchTextChange={setSearchText}
+      />
       {showCreditsExhaustedAlert && (
         <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
       )}
-      <div className="pr-1 pb-1 pl-3">
-        {
-          filteredModelList.map(model => (
-            <PopupItem
-              key={model.provider}
-              defaultModel={defaultModel}
-              model={model}
-              onSelect={onSelect}
-              onHide={onHide}
+      <ModelSelectorScrollBody label={t('modelProvider.models', { ns: 'common' })}>
+        <div className="pb-1">
+          {
+            filteredModelList.map(model => (
+              <PopupItem
+                key={model.provider}
+                defaultModel={defaultModel}
+                model={model}
+                onSelect={onSelect}
+                onHide={onHide}
+              />
+            ))
+          }
+          {!filteredModelList.length && !installedModelList.length && (
+            <ModelSelectorEmptyState
+              onConfigure={handleOpenSettings}
             />
-          ))
-        }
-        {!filteredModelList.length && !installedModelList.length && (
-          <div className="flex flex-col gap-2 rounded-[10px] bg-linear-to-r from-state-base-hover to-background-gradient-mask-transparent p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
-              <span className="i-ri-brain-2-line h-5 w-5 text-text-tertiary" />
+          )}
+          {!filteredModelList.length && installedModelList.length > 0 && (
+            <div className="px-3 py-1.5 text-center text-xs leading-[18px] break-all text-text-tertiary">
+              {`No model found for \u201C${searchText}\u201D`}
             </div>
-            <div className="flex flex-col gap-1">
-              <p className="system-sm-medium text-text-secondary">
-                {t('modelProvider.selector.noProviderConfigured', { ns: 'common' })}
-              </p>
-              <p className="system-xs-regular text-text-tertiary">
-                {t('modelProvider.selector.noProviderConfiguredDesc', { ns: 'common' })}
-              </p>
-            </div>
-            <Button
-              variant="primary"
-              className="w-[108px]"
-              onClick={() => {
-                onHide()
-                setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
-              }}
-            >
-              {t('modelProvider.selector.configure', { ns: 'common' })}
-              <span className="i-ri-arrow-right-line h-4 w-4" />
-            </Button>
-          </div>
-        )}
-        {!filteredModelList.length && installedModelList.length > 0 && (
-          <div className="px-3 py-1.5 text-center text-xs leading-[18px] break-all text-text-tertiary">
-            {`No model found for \u201C${searchText}\u201D`}
-          </div>
-        )}
-        {marketplaceProviders.length > 0 && (
-          <>
-            <div className="mx-2 my-1 border-t border-divider-subtle" />
-            <div className="mb-1">
-              <div className="flex h-[22px] items-center px-3">
-                <div
-                  className="flex flex-1 cursor-pointer items-center system-sm-medium text-text-primary"
-                  onClick={() => setMarketplaceCollapsed(prev => !prev)}
-                >
-                  {t('modelProvider.selector.fromMarketplace', { ns: 'common' })}
-                  <span className={cn('i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 text-text-quaternary', marketplaceCollapsed && '-rotate-90')} />
-                </div>
-              </div>
-              {!marketplaceCollapsed && (
-                <>
-                  {marketplaceProviders.map((key) => {
-                    const Icon = providerIconMap[key]
-                    const isInstalling = installingProvider === key
-                    return (
-                      <div
-                        key={key}
-                        className="group flex cursor-pointer items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-3 hover:bg-state-base-hover"
-                      >
-                        <div className="flex flex-1 items-center gap-2 py-0.5">
-                          <Icon className="h-5 w-5 shrink-0 rounded-md" />
-                          <span className="system-sm-regular text-text-secondary">{modelNameMap[key]}</span>
-                        </div>
-                        <Button
-                          variant="secondary"
-                          size="small"
-                          className={cn(
-                            'shrink-0 backdrop-blur-[5px]',
-                            !isInstalling && 'hidden group-hover:flex',
-                          )}
-                          disabled={isInstalling || isMarketplacePluginsLoading}
-                          onClick={() => handleInstallPlugin(key)}
-                        >
-                          {isInstalling && <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin" />}
-                          {isInstalling
-                            ? t('installModal.installing', { ns: 'plugin' })
-                            : t('modelProvider.selector.install', { ns: 'common' })}
-                        </Button>
-                      </div>
-                    )
-                  })}
-                  <a
-                    className="flex cursor-pointer items-center gap-0.5 px-3 pt-1.5"
-                    href={getMarketplaceUrl('', { theme })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <span className="flex-1 system-xs-regular text-text-accent">
-                      {t('modelProvider.selector.discoverMoreInMarketplace', { ns: 'common' })}
-                    </span>
-                    <span className="i-ri-arrow-right-up-line h-3! w-3! text-text-accent" />
-                  </a>
-                </>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-      <div
-        className="sticky bottom-0 flex cursor-pointer items-center gap-1 rounded-b-lg border-t border-divider-subtle bg-components-panel-bg px-3 py-2 text-text-tertiary hover:text-text-secondary"
-        onClick={() => {
-          onHide()
-          setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
-        }}
-      >
-        <span className="i-ri-equalizer-2-line h-4 w-4 shrink-0" />
-        <span className="system-xs-medium">{t('modelProvider.selector.modelProviderSettings', { ns: 'common' })}</span>
-      </div>
-    </div>
+          )}
+          {scopeFeatures.length > 0 && (
+            <CompatibleModelsNotice />
+          )}
+          <MarketplaceSection
+            marketplaceProviders={marketplaceProviders}
+            marketplaceCollapsed={marketplaceCollapsed}
+            installingProvider={installingProvider}
+            isMarketplacePluginsLoading={isMarketplacePluginsLoading}
+            theme={theme}
+            onMarketplaceCollapsedChange={setMarketplaceCollapsed}
+            onInstallPlugin={handleInstallPlugin}
+          />
+        </div>
+      </ModelSelectorScrollBody>
+      <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
+    </ModelSelectorPopupFrame>
   )
 }
 

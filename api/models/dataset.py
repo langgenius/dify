@@ -1036,7 +1036,7 @@ class DocumentSegment(Base):
         return attachment_list
 
 
-class ChildChunk(Base):
+class ChildChunk(TypeBase):
     __tablename__ = "child_chunks"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="child_chunk_pkey"),
@@ -1046,29 +1046,42 @@ class ChildChunk(Base):
     )
 
     # initial fields
-    id = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    document_id = mapped_column(StringUUID, nullable=False)
-    segment_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default_factory=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    segment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    content = mapped_column(LongText, nullable=False)
+    content: Mapped[str] = mapped_column(LongText, nullable=False)
     word_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     # indexing fields
-    index_node_id = mapped_column(String(255), nullable=True)
-    index_node_hash = mapped_column(String(255), nullable=True)
-    type: Mapped[SegmentType] = mapped_column(
-        EnumText(SegmentType, length=255), nullable=False, server_default=sa.text("'automatic'")
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
     )
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=sa.func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        nullable=False,
+        server_default=sa.func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
-    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    error = mapped_column(LongText, nullable=True)
+    indexing_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, insert_default=None, server_default=None, init=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, insert_default=None, server_default=None, init=False
+    )
+    index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    type: Mapped[SegmentType] = mapped_column(
+        EnumText(SegmentType, length=255),
+        nullable=False,
+        server_default=sa.text("'automatic'"),
+        default=SegmentType.AUTOMATIC,
+    )
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True, init=False)
 
     @property
     def dataset(self):

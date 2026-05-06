@@ -359,7 +359,7 @@ describe('CreateAppModal', () => {
       }
     })
 
-    it('should reset emoji icon to initial props when picker is cancelled', async () => {
+    it('should allow changing only the background for the current emoji icon', async () => {
       vi.useFakeTimers()
       try {
         const { onConfirm } = await setup({
@@ -370,21 +370,13 @@ describe('CreateAppModal', () => {
 
         fireEvent.click(getAppIconTrigger())
 
-        const categoryLabel = screen.getByText('people')
-        const emojiGrid = categoryLabel.nextElementSibling
-        const clickableEmojiWrapper = emojiGrid?.firstElementChild
-        if (!(clickableEmojiWrapper instanceof HTMLElement))
-          throw new Error('Failed to locate emoji wrapper')
-        fireEvent.click(clickableEmojiWrapper)
+        const colorOption = Array.from(document.querySelectorAll('[style^="background:"]'))
+          .find(element => element.getAttribute('style')?.includes('#E4FBCC'))
+        if (!(colorOption instanceof HTMLElement) || !(colorOption.parentElement instanceof HTMLElement))
+          throw new Error('Failed to locate background color option')
 
+        fireEvent.click(colorOption.parentElement)
         fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
-
-        expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
-
-        fireEvent.click(getAppIconTrigger())
-        fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
-
-        expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
 
         fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
         await act(async () => {
@@ -396,7 +388,7 @@ describe('CreateAppModal', () => {
         expect(payload).toMatchObject({
           icon_type: 'emoji',
           icon: '🤖',
-          icon_background: '#FFEAD5',
+          icon_background: '#E4FBCC',
         })
       }
       finally {

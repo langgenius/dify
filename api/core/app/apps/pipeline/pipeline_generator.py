@@ -27,7 +27,11 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
-from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.entities.task_entities import (
+    WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
+    WorkflowAppStreamResponse,
+)
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     OnlineDriveBrowseFilesRequest,
@@ -627,7 +631,11 @@ class PipelineGenerator(BaseAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> WorkflowAppBlockingResponse | Generator[WorkflowAppStreamResponse, None, None]:
+    ) -> (
+        WorkflowAppBlockingResponse
+        | WorkflowAppPausedBlockingResponse
+        | Generator[WorkflowAppStreamResponse, None, None]
+    ):
         """
         Handle response.
         :param application_generate_entity: application generate entity

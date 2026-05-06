@@ -121,7 +121,7 @@ export type ToolParameter = {
   max?: number
 }
 
-export type TriggerParameter = {
+type TriggerParameter = {
   name: string
   label: LocalizedText
   human_description: LocalizedText
@@ -186,7 +186,7 @@ export type CustomCollectionBackend = {
   labels?: string[]
 }
 
-export type ParamItem = {
+type ParamItem = {
   name: string
   label: LocalizedText
   human_description?: LocalizedText

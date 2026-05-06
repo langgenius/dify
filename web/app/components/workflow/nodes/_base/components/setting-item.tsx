@@ -1,7 +1,7 @@
 import type { ComponentProps, PropsWithChildren, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
-import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 
 type SettingItemProps = PropsWithChildren<{
@@ -18,10 +18,18 @@ export const SettingItem = memo(({ label, children, status, tooltip }: SettingIt
       <div className={cn('max-w-full shrink-0 truncate system-xs-medium-uppercase text-text-tertiary', !!children && 'max-w-[100px]')}>
         {label}
       </div>
-      <Tooltip popupContent={tooltip} disabled={!needTooltip}>
-        <div className="truncate text-right system-xs-medium text-text-secondary">
-          {children}
-        </div>
+      <Tooltip>
+        <TooltipTrigger
+          disabled={!needTooltip}
+          render={(
+            <div className="truncate text-right system-xs-medium text-text-secondary">
+              {children}
+            </div>
+          )}
+        />
+        <TooltipContent>
+          {tooltip}
+        </TooltipContent>
       </Tooltip>
       {indicator && <Indicator color={indicator} className="absolute -top-0.5 -right-0.5" />}
     </div>

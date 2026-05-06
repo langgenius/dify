@@ -1,6 +1,8 @@
 from collections.abc import Generator
 from typing import Any, cast
 
+from pydantic import JsonValue
+
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
     AppStreamResponse,
@@ -12,11 +14,9 @@ from core.app.entities.task_entities import (
 )
 
 
-class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
-    _blocking_response_type = ChatbotAppBlockingResponse
-
+class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBlockingResponse]):
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: ChatbotAppBlockingResponse):  # type: ignore[override]
+    def convert_blocking_full_response(cls, blocking_response: ChatbotAppBlockingResponse):
         """
         Convert blocking full response.
         :param blocking_response: blocking response
@@ -37,7 +37,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
         return response
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: ChatbotAppBlockingResponse):  # type: ignore[override]
+    def convert_blocking_simple_response(cls, blocking_response: ChatbotAppBlockingResponse):
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
@@ -70,7 +70,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 yield "ping"
                 continue
 
-            response_chunk = {
+            response_chunk: dict[str, JsonValue] = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,
@@ -101,7 +101,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 yield "ping"
                 continue
 
-            response_chunk = {
+            response_chunk: dict[str, JsonValue] = {
                 "event": sub_stream_response.event.value,
                 "conversation_id": chunk.conversation_id,
                 "message_id": chunk.message_id,

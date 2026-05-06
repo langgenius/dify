@@ -1,4 +1,5 @@
-import unittest
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import uuid4
@@ -16,7 +17,7 @@ from models.enums import CreatorUserRole
 
 
 @pytest.mark.usefixtures("flask_req_ctx_with_containers")
-class TestStorageKeyLoader(unittest.TestCase):
+class TestStorageKeyLoader:
     """
     Integration tests for StorageKeyLoader class.
 
@@ -24,110 +25,82 @@ class TestStorageKeyLoader(unittest.TestCase):
     with different transfer methods: LOCAL_FILE, REMOTE_URL, and TOOL_FILE.
     """
 
-    def setUp(self):
-        """Set up test data before each test method."""
-        self.session = db.session()
-        self.tenant_id = str(uuid4())
-        self.user_id = str(uuid4())
-        self.conversation_id = str(uuid4())
+    # ------------------------------------------------------------------
+    # Per-test helpers (use db_session_with_containers as parameter)
+    # ------------------------------------------------------------------
 
-        # Create test data that will be cleaned up after each test
-        self.test_upload_files = []
-        self.test_tool_files = []
-
-        # Create StorageKeyLoader instance
-        self.loader = StorageKeyLoader(
-            self.session,
-            self.tenant_id,
-            access_controller=DatabaseFileAccessController(),
-        )
-
-    def tearDown(self):
-        """Clean up test data after each test method."""
-        self.session.rollback()
-
+    @staticmethod
     def _create_upload_file(
-        self, file_id: str | None = None, storage_key: str | None = None, tenant_id: str | None = None
+        session: Session,
+        tenant_id: str,
+        user_id: str,
+        *,
+        file_id: str | None = None,
+        storage_key: str | None = None,
+        override_tenant_id: str | None = None,
     ) -> UploadFile:
-        """Helper method to create an UploadFile record for testing."""
-        if file_id is None:
-            file_id = str(uuid4())
-        if storage_key is None:
-            storage_key = f"test_storage_key_{uuid4()}"
-        if tenant_id is None:
-            tenant_id = self.tenant_id
-
+        """Create and flush an UploadFile record for testing."""
         upload_file = UploadFile(
-            tenant_id=tenant_id,
+            tenant_id=override_tenant_id if override_tenant_id is not None else tenant_id,
             storage_type=StorageType.LOCAL,
-            key=storage_key,
+            key=storage_key or f"test_storage_key_{uuid4()}",
             name="test_file.txt",
             size=1024,
             extension=".txt",
             mime_type="text/plain",
             created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=self.user_id,
+            created_by=user_id,
             created_at=datetime.now(UTC),
             used=False,
         )
-        upload_file.id = file_id
-
-        self.session.add(upload_file)
-        self.session.flush()
-        self.test_upload_files.append(upload_file)
-
+        upload_file.id = file_id or str(uuid4())
+        session.add(upload_file)
+        session.flush()
         return upload_file
 
+    @staticmethod
     def _create_tool_file(
-        self, file_id: str | None = None, file_key: str | None = None, tenant_id: str | None = None
+        session: Session,
+        tenant_id: str,
+        user_id: str,
+        conversation_id: str,
+        *,
+        file_id: str | None = None,
+        file_key: str | None = None,
+        override_tenant_id: str | None = None,
     ) -> ToolFile:
-        """Helper method to create a ToolFile record for testing."""
-        if file_id is None:
-            file_id = str(uuid4())
-        if file_key is None:
-            file_key = f"test_file_key_{uuid4()}"
-        if tenant_id is None:
-            tenant_id = self.tenant_id
-
+        """Create and flush a ToolFile record for testing."""
         tool_file = ToolFile(
-            user_id=self.user_id,
-            tenant_id=tenant_id,
-            conversation_id=self.conversation_id,
-            file_key=file_key,
+            user_id=user_id,
+            tenant_id=override_tenant_id if override_tenant_id is not None else tenant_id,
+            conversation_id=conversation_id,
+            file_key=file_key or f"test_file_key_{uuid4()}",
             mimetype="text/plain",
             original_url="http://example.com/file.txt",
             name="test_tool_file.txt",
             size=2048,
         )
-        tool_file.id = file_id
-
-        self.session.add(tool_file)
-        self.session.flush()
-        self.test_tool_files.append(tool_file)
-
+        tool_file.id = file_id or str(uuid4())
+        session.add(tool_file)
+        session.flush()
         return tool_file
 
-    def _create_file(self, related_id: str, transfer_method: FileTransferMethod, tenant_id: str | None = None) -> File:
-        """Helper method to create a File object for testing."""
-        if tenant_id is None:
-            tenant_id = self.tenant_id
-
-        # Set related_id for LOCAL_FILE and TOOL_FILE transfer methods
-        file_related_id = None
-        remote_url = None
-
-        if transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.TOOL_FILE):
-            file_related_id = related_id
-        elif transfer_method == FileTransferMethod.REMOTE_URL:
-            remote_url = "https://example.com/test_file.txt"
-            file_related_id = related_id
-
+    @staticmethod
+    def _create_file(
+        tenant_id: str,
+        related_id: str,
+        transfer_method: FileTransferMethod,
+        *,
+        override_tenant_id: str | None = None,
+    ) -> File:
+        """Build a File value-object for testing."""
+        remote_url = "https://example.com/test_file.txt" if transfer_method == FileTransferMethod.REMOTE_URL else None
         return File(
-            file_id=str(uuid4()),  # Generate new UUID for File.id
-            tenant_id=tenant_id,
+            file_id=str(uuid4()),
+            tenant_id=override_tenant_id if override_tenant_id is not None else tenant_id,
             file_type=FileType.DOCUMENT,
             transfer_method=transfer_method,
-            related_id=file_related_id,
+            related_id=related_id,
             remote_url=remote_url,
             filename="test_file.txt",
             extension=".txt",
@@ -136,240 +109,280 @@ class TestStorageKeyLoader(unittest.TestCase):
             storage_key="initial_key",
         )
 
-    def test_load_storage_keys_local_file(self):
+    # ------------------------------------------------------------------
+    # Tests
+    # ------------------------------------------------------------------
+
+    def test_load_storage_keys_local_file(self, db_session_with_containers: Session):
         """Test loading storage keys for LOCAL_FILE transfer method."""
-        # Create test data
-        upload_file = self._create_upload_file()
-        file = self._create_file(related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
 
-        # Load storage keys
-        self.loader.load_storage_keys([file])
+        upload_file = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
+        file = self._create_file(tenant_id, related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
 
-        # Verify storage key was loaded correctly
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
+        loader.load_storage_keys([file])
+
         assert file._storage_key == upload_file.key
 
-    def test_load_storage_keys_remote_url(self):
+    def test_load_storage_keys_remote_url(self, db_session_with_containers: Session):
         """Test loading storage keys for REMOTE_URL transfer method."""
-        # Create test data
-        upload_file = self._create_upload_file()
-        file = self._create_file(related_id=upload_file.id, transfer_method=FileTransferMethod.REMOTE_URL)
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
 
-        # Load storage keys
-        self.loader.load_storage_keys([file])
+        upload_file = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
+        file = self._create_file(tenant_id, related_id=upload_file.id, transfer_method=FileTransferMethod.REMOTE_URL)
 
-        # Verify storage key was loaded correctly
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
+        loader.load_storage_keys([file])
+
         assert file._storage_key == upload_file.key
 
-    def test_load_storage_keys_tool_file(self):
+    def test_load_storage_keys_tool_file(self, db_session_with_containers: Session):
         """Test loading storage keys for TOOL_FILE transfer method."""
-        # Create test data
-        tool_file = self._create_tool_file()
-        file = self._create_file(related_id=tool_file.id, transfer_method=FileTransferMethod.TOOL_FILE)
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
+        conversation_id = str(uuid4())
 
-        # Load storage keys
-        self.loader.load_storage_keys([file])
+        tool_file = self._create_tool_file(db_session_with_containers, tenant_id, user_id, conversation_id)
+        file = self._create_file(tenant_id, related_id=tool_file.id, transfer_method=FileTransferMethod.TOOL_FILE)
 
-        # Verify storage key was loaded correctly
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
+        loader.load_storage_keys([file])
+
         assert file._storage_key == tool_file.file_key
 
-    def test_load_storage_keys_mixed_methods(self):
+    def test_load_storage_keys_mixed_methods(self, db_session_with_containers: Session):
         """Test batch loading with mixed transfer methods."""
-        # Create test data for different transfer methods
-        upload_file1 = self._create_upload_file()
-        upload_file2 = self._create_upload_file()
-        tool_file = self._create_tool_file()
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
+        conversation_id = str(uuid4())
 
-        file1 = self._create_file(related_id=upload_file1.id, transfer_method=FileTransferMethod.LOCAL_FILE)
-        file2 = self._create_file(related_id=upload_file2.id, transfer_method=FileTransferMethod.REMOTE_URL)
-        file3 = self._create_file(related_id=tool_file.id, transfer_method=FileTransferMethod.TOOL_FILE)
+        upload_file1 = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
+        upload_file2 = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
+        tool_file = self._create_tool_file(db_session_with_containers, tenant_id, user_id, conversation_id)
 
-        files = [file1, file2, file3]
+        file1 = self._create_file(tenant_id, related_id=upload_file1.id, transfer_method=FileTransferMethod.LOCAL_FILE)
+        file2 = self._create_file(tenant_id, related_id=upload_file2.id, transfer_method=FileTransferMethod.REMOTE_URL)
+        file3 = self._create_file(tenant_id, related_id=tool_file.id, transfer_method=FileTransferMethod.TOOL_FILE)
 
-        # Load storage keys
-        self.loader.load_storage_keys(files)
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
+        loader.load_storage_keys([file1, file2, file3])
 
-        # Verify all storage keys were loaded correctly
         assert file1._storage_key == upload_file1.key
         assert file2._storage_key == upload_file2.key
         assert file3._storage_key == tool_file.file_key
 
-    def test_load_storage_keys_empty_list(self):
-        """Test with empty file list."""
-        # Should not raise any exceptions
-        self.loader.load_storage_keys([])
+    def test_load_storage_keys_empty_list(self, db_session_with_containers: Session):
+        """Test with empty file list — should not raise."""
+        tenant_id = str(uuid4())
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
+        loader.load_storage_keys([])
 
-    def test_load_storage_keys_ignores_legacy_file_tenant_id(self):
+    def test_load_storage_keys_ignores_legacy_file_tenant_id(self, db_session_with_containers: Session):
         """Legacy file tenant_id should not override the loader tenant scope."""
-        upload_file = self._create_upload_file()
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
+
+        upload_file = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
         file = self._create_file(
-            related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE, tenant_id=str(uuid4())
+            tenant_id,
+            related_id=upload_file.id,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            override_tenant_id=str(uuid4()),
         )
 
-        self.loader.load_storage_keys([file])
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
+        loader.load_storage_keys([file])
 
         assert file._storage_key == upload_file.key
 
-    def test_load_storage_keys_missing_file_id(self):
-        """Test with None file.related_id."""
-        # Create a file with valid parameters first, then manually set related_id to None
-        file = self._create_file(related_id=str(uuid4()), transfer_method=FileTransferMethod.LOCAL_FILE)
+    def test_load_storage_keys_missing_file_id(self, db_session_with_containers: Session):
+        """Test with None file.related_id — should raise ValueError."""
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
+
+        upload_file = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
+        file = self._create_file(tenant_id, related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
         file.related_id = None
 
-        # Should raise ValueError for None file related_id
-        with pytest.raises(ValueError) as context:
-            self.loader.load_storage_keys([file])
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
+        with pytest.raises(ValueError, match="file id should not be None."):
+            loader.load_storage_keys([file])
 
-        assert str(context.value) == "file id should not be None."
+    def test_load_storage_keys_nonexistent_upload_file_records(self, db_session_with_containers: Session):
+        """Test with missing UploadFile database records — should raise ValueError."""
+        tenant_id = str(uuid4())
+        file = self._create_file(tenant_id, related_id=str(uuid4()), transfer_method=FileTransferMethod.LOCAL_FILE)
 
-    def test_load_storage_keys_nonexistent_upload_file_records(self):
-        """Test with missing UploadFile database records."""
-        # Create file with non-existent upload file id
-        non_existent_id = str(uuid4())
-        file = self._create_file(related_id=non_existent_id, transfer_method=FileTransferMethod.LOCAL_FILE)
-
-        # Should raise ValueError for missing record
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
         with pytest.raises(ValueError):
-            self.loader.load_storage_keys([file])
+            loader.load_storage_keys([file])
 
-    def test_load_storage_keys_nonexistent_tool_file_records(self):
-        """Test with missing ToolFile database records."""
-        # Create file with non-existent tool file id
-        non_existent_id = str(uuid4())
-        file = self._create_file(related_id=non_existent_id, transfer_method=FileTransferMethod.TOOL_FILE)
+    def test_load_storage_keys_nonexistent_tool_file_records(self, db_session_with_containers: Session):
+        """Test with missing ToolFile database records — should raise ValueError."""
+        tenant_id = str(uuid4())
+        file = self._create_file(tenant_id, related_id=str(uuid4()), transfer_method=FileTransferMethod.TOOL_FILE)
 
-        # Should raise ValueError for missing record
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
         with pytest.raises(ValueError):
-            self.loader.load_storage_keys([file])
+            loader.load_storage_keys([file])
 
-    def test_load_storage_keys_invalid_uuid(self):
-        """Test with invalid UUID format."""
-        # Create a file with valid parameters first, then manually set invalid related_id
-        file = self._create_file(related_id=str(uuid4()), transfer_method=FileTransferMethod.LOCAL_FILE)
+    def test_load_storage_keys_invalid_uuid(self, db_session_with_containers: Session):
+        """Test with invalid UUID format — should raise ValueError."""
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
+
+        upload_file = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
+        file = self._create_file(tenant_id, related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
         file.related_id = "invalid-uuid-format"
 
-        # Should raise ValueError for invalid UUID
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
         with pytest.raises(ValueError):
-            self.loader.load_storage_keys([file])
+            loader.load_storage_keys([file])
 
-    def test_load_storage_keys_batch_efficiency(self):
-        """Test batched operations use efficient queries."""
-        # Create multiple files of different types
-        upload_files = [self._create_upload_file() for _ in range(3)]
-        tool_files = [self._create_tool_file() for _ in range(2)]
+    def test_load_storage_keys_batch_efficiency(self, db_session_with_containers: Session):
+        """Batched operations should issue exactly 2 queries for mixed file types."""
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
+        conversation_id = str(uuid4())
 
-        files = []
-        files.extend(
-            [self._create_file(related_id=uf.id, transfer_method=FileTransferMethod.LOCAL_FILE) for uf in upload_files]
+        upload_files = [self._create_upload_file(db_session_with_containers, tenant_id, user_id) for _ in range(3)]
+        tool_files = [
+            self._create_tool_file(db_session_with_containers, tenant_id, user_id, conversation_id) for _ in range(2)
+        ]
+
+        files = [
+            self._create_file(tenant_id, related_id=uf.id, transfer_method=FileTransferMethod.LOCAL_FILE)
+            for uf in upload_files
+        ] + [
+            self._create_file(tenant_id, related_id=tf.id, transfer_method=FileTransferMethod.TOOL_FILE)
+            for tf in tool_files
+        ]
+
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
         )
-        files.extend(
-            [self._create_file(related_id=tf.id, transfer_method=FileTransferMethod.TOOL_FILE) for tf in tool_files]
-        )
-
-        # Mock the session to count queries
-        with patch.object(self.session, "scalars", wraps=self.session.scalars) as mock_scalars:
-            self.loader.load_storage_keys(files)
-
-            # Should make exactly 2 queries (one for upload_files, one for tool_files)
+        with patch.object(
+            db_session_with_containers, "scalars", wraps=db_session_with_containers.scalars
+        ) as mock_scalars:
+            loader.load_storage_keys(files)
+            # Exactly 2 DB round-trips: one for UploadFile, one for ToolFile
             assert mock_scalars.call_count == 2
 
-        # Verify all storage keys were loaded correctly
         for i, file in enumerate(files[:3]):
             assert file._storage_key == upload_files[i].key
         for i, file in enumerate(files[3:]):
             assert file._storage_key == tool_files[i].file_key
 
-    def test_load_storage_keys_tenant_isolation(self):
-        """Test that tenant isolation works correctly."""
-        # Create files for different tenants
+    def test_load_storage_keys_tenant_isolation(self, db_session_with_containers: Session):
+        """Loader should not surface records belonging to a different tenant."""
+        tenant_id = str(uuid4())
         other_tenant_id = str(uuid4())
+        user_id = str(uuid4())
 
-        # Create upload file for current tenant
-        upload_file_current = self._create_upload_file()
+        upload_file_current = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
         file_current = self._create_file(
-            related_id=upload_file_current.id, transfer_method=FileTransferMethod.LOCAL_FILE
+            tenant_id, related_id=upload_file_current.id, transfer_method=FileTransferMethod.LOCAL_FILE
         )
 
-        # Create upload file for other tenant (but don't add to cleanup list)
-        upload_file_other = UploadFile(
-            tenant_id=other_tenant_id,
-            storage_type=StorageType.LOCAL,
-            key="other_tenant_key",
-            name="other_file.txt",
-            size=1024,
-            extension=".txt",
-            mime_type="text/plain",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by=self.user_id,
-            created_at=datetime.now(UTC),
-            used=False,
+        upload_file_other = self._create_upload_file(
+            db_session_with_containers,
+            tenant_id,
+            user_id,
+            override_tenant_id=other_tenant_id,
         )
-        upload_file_other.id = str(uuid4())
-        self.session.add(upload_file_other)
-        self.session.flush()
-
-        # Create file for other tenant but try to load with current tenant's loader
         file_other = self._create_file(
-            related_id=upload_file_other.id, transfer_method=FileTransferMethod.LOCAL_FILE, tenant_id=other_tenant_id
+            tenant_id,
+            related_id=upload_file_other.id,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            override_tenant_id=other_tenant_id,
         )
 
-        # Should raise ValueError due to tenant mismatch
-        with pytest.raises(ValueError) as context:
-            self.loader.load_storage_keys([file_other])
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
 
-        assert "Upload file not found for id:" in str(context.value)
+        with pytest.raises(ValueError, match="Upload file not found for id:"):
+            loader.load_storage_keys([file_other])
 
-        # Current tenant's file should still work
-        self.loader.load_storage_keys([file_current])
+        # Current-tenant file still resolves correctly
+        loader.load_storage_keys([file_current])
         assert file_current._storage_key == upload_file_current.key
 
-    def test_load_storage_keys_mixed_tenant_batch(self):
-        """Test batch with mixed tenant files (should fail on first mismatch)."""
-        # Create files for current tenant
-        upload_file_current = self._create_upload_file()
+    def test_load_storage_keys_mixed_tenant_batch(self, db_session_with_containers: Session):
+        """A batch containing a foreign-tenant file should fail on the mismatch."""
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
+
+        upload_file_current = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
         file_current = self._create_file(
-            related_id=upload_file_current.id, transfer_method=FileTransferMethod.LOCAL_FILE
+            tenant_id, related_id=upload_file_current.id, transfer_method=FileTransferMethod.LOCAL_FILE
         )
-
-        # Create file for different tenant
-        other_tenant_id = str(uuid4())
         file_other = self._create_file(
-            related_id=str(uuid4()), transfer_method=FileTransferMethod.LOCAL_FILE, tenant_id=other_tenant_id
+            tenant_id,
+            related_id=str(uuid4()),
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            override_tenant_id=str(uuid4()),
         )
 
-        # Should raise ValueError on tenant mismatch
-        with pytest.raises(ValueError) as context:
-            self.loader.load_storage_keys([file_current, file_other])
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
+        with pytest.raises(ValueError, match="Upload file not found for id:"):
+            loader.load_storage_keys([file_current, file_other])
 
-        assert "Upload file not found for id:" in str(context.value)
+    def test_load_storage_keys_duplicate_file_ids(self, db_session_with_containers: Session):
+        """Duplicate file IDs in the batch should be handled gracefully."""
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
 
-    def test_load_storage_keys_duplicate_file_ids(self):
-        """Test handling of duplicate file IDs in the batch."""
-        # Create upload file
-        upload_file = self._create_upload_file()
+        upload_file = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
+        file1 = self._create_file(tenant_id, related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
+        file2 = self._create_file(tenant_id, related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
 
-        # Create two File objects with same related_id
-        file1 = self._create_file(related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
-        file2 = self._create_file(related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
+        loader = StorageKeyLoader(
+            db_session_with_containers, tenant_id, access_controller=DatabaseFileAccessController()
+        )
+        loader.load_storage_keys([file1, file2])
 
-        # Should handle duplicates gracefully
-        self.loader.load_storage_keys([file1, file2])
-
-        # Both files should have the same storage key
         assert file1._storage_key == upload_file.key
         assert file2._storage_key == upload_file.key
 
-    def test_load_storage_keys_session_isolation(self):
-        """Test that the loader uses the provided session correctly."""
-        # Create test data
-        upload_file = self._create_upload_file()
-        file = self._create_file(related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
+    def test_load_storage_keys_session_isolation(self, db_session_with_containers: Session):
+        """A loader backed by an uncommitted session should not see data from another session."""
+        tenant_id = str(uuid4())
+        user_id = str(uuid4())
 
-        # Create loader with different session (same underlying connection)
+        upload_file = self._create_upload_file(db_session_with_containers, tenant_id, user_id)
+        file = self._create_file(tenant_id, related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
 
+        # A loader with a fresh, separate session cannot see uncommitted rows from db_session_with_containers
         with Session(bind=db.engine) as other_session:
             other_loader = StorageKeyLoader(
                 other_session,
-                self.tenant_id,
+                tenant_id,
                 access_controller=DatabaseFileAccessController(),
             )
             with pytest.raises(ValueError):

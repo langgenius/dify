@@ -1,9 +1,9 @@
 import type { ChangeEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Corner } from '@/app/components/base/icons/src/vender/solid/shapes'
-import Tooltip from '@/app/components/base/tooltip'
 
 type TextareaProps = {
   text: string
@@ -36,14 +36,19 @@ const Textarea = ({
         />
         {text.length > 200
           ? (
-              <Tooltip
-                popupContent={t('input.countWarning', { ns: 'datasetHitTesting' })}
-              >
-                <div
-                  className={cn('bg-util-colors-red-red-100 py-1 pr-2 system-2xs-medium-uppercase text-util-colors-red-red-600')}
-                >
-                  {`${text.length}/200`}
-                </div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <div
+                      className={cn('bg-util-colors-red-red-100 py-1 pr-2 system-2xs-medium-uppercase text-util-colors-red-red-600')}
+                    >
+                      {`${text.length}/200`}
+                    </div>
+                  )}
+                />
+                <TooltipContent>
+                  {t('input.countWarning', { ns: 'datasetHitTesting' })}
+                </TooltipContent>
               </Tooltip>
             )
           : (

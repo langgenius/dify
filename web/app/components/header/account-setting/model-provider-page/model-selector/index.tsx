@@ -88,7 +88,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
         placement="bottom-start"
         sideOffset={4}
         className={popupClassName}
-        popupClassName="overflow-hidden rounded-lg"
+        popupClassName="overflow-hidden rounded-xl"
         popupProps={{ style: { minWidth: '320px', width: 'var(--anchor-width, auto)' } }}
       >
         <Popup

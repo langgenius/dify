@@ -6,7 +6,7 @@ export type DataSourceNodeProcessingResponse = {
   completed: number
 }
 
-export type OnlineDriveFile = {
+type OnlineDriveFile = {
   id: string
   name: string
   size: number

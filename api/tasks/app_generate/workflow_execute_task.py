@@ -399,6 +399,8 @@ def _resume_advanced_chat(
     workflow_run_id: str,
     workflow_run: WorkflowRun,
 ) -> None:
+    resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
+
     try:
         triggered_from = WorkflowRunTriggeredFrom(workflow_run.triggered_from)
     except ValueError:
@@ -426,7 +428,7 @@ def _resume_advanced_chat(
             user=user,
             conversation=conversation,
             message=message,
-            application_generate_entity=generate_entity,
+            application_generate_entity=resumed_generate_entity,
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             graph_runtime_state=graph_runtime_state,
@@ -436,9 +438,8 @@ def _resume_advanced_chat(
         logger.exception("Failed to resume chatflow execution for workflow run %s", workflow_run_id)
         raise
 
-    if generate_entity.stream:
-        assert isinstance(response, Generator)
-        _publish_streaming_response(response, workflow_run_id, AppMode.ADVANCED_CHAT)
+    assert isinstance(response, Generator)
+    _publish_streaming_response(response, workflow_run_id, AppMode.ADVANCED_CHAT)
 
 
 def _resume_workflow(
@@ -455,6 +456,8 @@ def _resume_workflow(
     workflow_run_repo,
     pause_entity,
 ) -> None:
+    resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
+
     try:
         triggered_from = WorkflowRunTriggeredFrom(workflow_run.triggered_from)
     except ValueError:
@@ -480,7 +483,7 @@ def _resume_workflow(
             app_model=app_model,
             workflow=workflow,
             user=user,
-            application_generate_entity=generate_entity,
+            application_generate_entity=resumed_generate_entity,
             graph_runtime_state=graph_runtime_state,
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
@@ -490,11 +493,18 @@ def _resume_workflow(
         logger.exception("Failed to resume workflow execution for workflow run %s", workflow_run_id)
         raise
 
-    if generate_entity.stream:
-        assert isinstance(response, Generator)
-        _publish_streaming_response(response, workflow_run_id, AppMode.WORKFLOW)
+    assert isinstance(response, Generator)
+    _publish_streaming_response(response, workflow_run_id, AppMode.WORKFLOW)
 
-    workflow_run_repo.delete_workflow_pause(pause_entity)
+    try:
+        workflow_run_repo.delete_workflow_pause(pause_entity)
+    except Exception as exc:
+        if exc.__class__.__name__ != "_WorkflowRunError" or "WorkflowPause not found" not in str(exc):
+            raise
+        logger.info(
+            "Skipped deleting workflow pause %s after resume because it was already replaced or removed",
+            pause_entity.id,
+        )
 
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")

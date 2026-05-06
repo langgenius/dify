@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { InputVar } from '../../../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -17,7 +18,6 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -181,12 +181,25 @@ const FormItem: FC<Props> = ({
         {
           type === InputVarType.select && (
             <Select
-              className="w-full"
-              defaultValue={value || payload.default || ''}
-              items={payload.options?.map(option => ({ name: option, value: option })) || []}
-              onSelect={i => onChange(i.value)}
-              allowSearch={false}
-            />
+              value={value || payload.default || null}
+              onValueChange={(nextValue) => {
+                if (!nextValue)
+                  return
+                onChange(nextValue)
+              }}
+            >
+              <SelectTrigger className="w-full">
+                {String(value || payload.default || t('placeholder.select', { ns: 'common' }))}
+              </SelectTrigger>
+              <SelectContent popupClassName="w-(--anchor-width)">
+                {(payload.options || []).map(option => (
+                  <SelectItem key={option} value={option}>
+                    <SelectItemText>{option}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )
         }
 

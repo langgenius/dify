@@ -1,6 +1,6 @@
 import type { AppIconType, AppModeEnum } from '@/types/app'
 
-export type AppBasicInfo = {
+type AppBasicInfo = {
   id: string
   mode: AppModeEnum
   icon_type: AppIconType | null

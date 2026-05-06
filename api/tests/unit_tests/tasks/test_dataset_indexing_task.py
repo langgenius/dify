@@ -89,9 +89,6 @@ def mock_db_session():
         session = MagicMock()
         session._shared_data = {"dataset": None, "documents": []}
 
-        # Keep a pointer so repeated Document.first() calls iterate across provided docs
-        session._doc_first_idx = 0
-
         def _get_entity(stmt) -> type | None:
             """Extract the mapped entity class from a SQLAlchemy select statement."""
             try:
@@ -1591,18 +1588,7 @@ class TestDocumentIndexingTaskSummaryFlow:
             need_summary=True,
         )
 
-        dataset_query = MagicMock()
-        dataset_query.where.return_value = dataset_query
-        dataset_query.first.return_value = dataset
-
         phase1_docs = [SimpleNamespace(id="doc-1"), SimpleNamespace(id="doc-2"), SimpleNamespace(id="doc-3")]
-        phase1_document_query = MagicMock()
-        phase1_document_query.where.return_value = phase1_document_query
-        phase1_document_query.all.return_value = phase1_docs
-
-        summary_document_query = MagicMock()
-        summary_document_query.where.return_value = summary_document_query
-        summary_document_query.all.return_value = [doc_eligible, doc_skip_form, doc_skip_status]
 
         session1 = MagicMock()
         session2 = MagicMock()
@@ -1656,18 +1642,6 @@ class TestDocumentIndexingTaskSummaryFlow:
             doc_form="text",
             need_summary=True,
         )
-
-        dataset_query = MagicMock()
-        dataset_query.where.return_value = dataset_query
-        dataset_query.first.return_value = dataset
-
-        phase1_query = MagicMock()
-        phase1_query.where.return_value = phase1_query
-        phase1_query.all.return_value = [SimpleNamespace(id="doc-1")]
-
-        summary_query = MagicMock()
-        summary_query.where.return_value = summary_query
-        summary_query.all.return_value = [doc_eligible]
 
         session1 = MagicMock()
         session2 = MagicMock()

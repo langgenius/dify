@@ -3748,6 +3748,7 @@ class SegmentService:
                     ChildChunk.segment_id == segment.id,
                 )
             )
+            assert current_user.current_tenant_id
             child_chunk = ChildChunk(
                 tenant_id=current_user.current_tenant_id,
                 dataset_id=dataset.id,
@@ -3758,7 +3759,7 @@ class SegmentService:
                 index_node_hash=index_node_hash,
                 content=content,
                 word_count=len(content),
-                type="customized",
+                type=SegmentType.CUSTOMIZED,
                 created_by=current_user.id,
             )
             db.session.add(child_chunk)
@@ -3818,6 +3819,7 @@ class SegmentService:
             if new_child_chunks_args:
                 child_chunk_count = len(child_chunks)
                 for position, args in enumerate(new_child_chunks_args, start=child_chunk_count + 1):
+                    assert current_user.current_tenant_id
                     index_node_id = str(uuid.uuid4())
                     index_node_hash = helper.generate_text_hash(args.content)
                     child_chunk = ChildChunk(
@@ -3830,7 +3832,7 @@ class SegmentService:
                         index_node_hash=index_node_hash,
                         content=args.content,
                         word_count=len(args.content),
-                        type="customized",
+                        type=SegmentType.CUSTOMIZED,
                         created_by=current_user.id,
                     )
 
