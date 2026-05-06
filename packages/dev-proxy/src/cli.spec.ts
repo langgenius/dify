@@ -16,7 +16,7 @@ const tempDirs: string[] = []
 type DevProxyCliProcess = ChildProcessByStdio<null, Readable, Readable>
 
 const childProcesses: DevProxyCliProcess[] = []
-const cliPath = fileURLToPath(new URL('./cli.ts', import.meta.url))
+const binPath = fileURLToPath(new URL('../bin/dev-proxy.js', import.meta.url))
 
 const createTempDir = async () => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dev-proxy-cli-test-'))
@@ -87,7 +87,7 @@ const waitForOutput = (
 })
 
 const spawnCli = (args: readonly string[], cwd: string) => {
-  const child = spawn(process.execPath, [cliPath, ...args], {
+  const child = spawn(process.execPath, [binPath, ...args], {
     cwd,
     env: {
       ...process.env,

@@ -1,7 +1,7 @@
 import process from 'node:process'
 import { serve } from '@hono/node-server'
-import { loadDevProxyConfig, parseDevProxyCliArgs, resolveDevProxyServerOptions } from './config.ts'
-import { createDevProxyApp } from './server.ts'
+import { loadDevProxyConfig, parseDevProxyCliArgs, resolveDevProxyServerOptions } from './config'
+import { createDevProxyApp } from './server'
 
 function printUsage() {
   console.log(`Usage:

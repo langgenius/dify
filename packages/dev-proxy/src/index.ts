@@ -4,9 +4,9 @@ export {
   loadDevProxyConfig,
   parseDevProxyCliArgs,
   resolveDevProxyServerOptions,
-} from './config.ts'
-export { rewriteCookieHeaderForUpstream, rewriteSetCookieHeadersForLocal, toLocalCookieName } from './cookies.ts'
-export { buildUpstreamUrl, createDevProxyApp, isAllowedDevOrigin, isAllowedLocalDevOrigin } from './server.ts'
+} from './config'
+export { rewriteCookieHeaderForUpstream, rewriteSetCookieHeadersForLocal, toLocalCookieName } from './cookies'
+export { buildUpstreamUrl, createDevProxyApp, isAllowedDevOrigin, isAllowedLocalDevOrigin } from './server'
 export type {
   CookieRewriteOptions,
   CreateDevProxyAppOptions,
@@ -18,4 +18,4 @@ export type {
   DevProxyRoute,
   DevProxyServerConfig,
   ResolvedDevProxyServerOptions,
-} from './types.ts'
+} from './types'

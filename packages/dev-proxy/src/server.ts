@@ -1,7 +1,7 @@
 import type { Context, Hono } from 'hono'
-import type { CookieRewriteOptions, CreateDevProxyAppOptions, DevProxyCorsAllowedOrigins, DevProxyRoute } from './types.ts'
+import type { CookieRewriteOptions, CreateDevProxyAppOptions, DevProxyCorsAllowedOrigins, DevProxyRoute } from './types'
 import { Hono as HonoApp } from 'hono'
-import { rewriteCookieHeaderForUpstream, rewriteSetCookieHeadersForLocal } from './cookies.ts'
+import { rewriteCookieHeaderForUpstream, rewriteSetCookieHeadersForLocal } from './cookies'
 
 const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
 const ALLOW_METHODS = 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS'

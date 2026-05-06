@@ -1,5 +1,5 @@
 import type { DotenvOptions } from 'c12'
-import type { DevProxyCliOptions, DevProxyConfig, DevProxyConfigLoadOptions, DevProxyServerConfig, ResolvedDevProxyServerOptions } from './types.ts'
+import type { DevProxyCliOptions, DevProxyConfig, DevProxyConfigLoadOptions, DevProxyServerConfig, ResolvedDevProxyServerOptions } from './types'
 import path from 'node:path'
 import { loadConfig } from 'c12'
 

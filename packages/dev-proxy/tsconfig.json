@@ -4,8 +4,7 @@
     "types": [
       "node",
       "vitest/globals"
-    ],
-    "allowImportingTsExtensions": true
+    ]
   },
   "include": [
     "src/**/*.ts",

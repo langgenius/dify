@@ -1,4 +1,4 @@
-import type { CookieRewriteOptions } from './types.ts'
+import type { CookieRewriteOptions } from './types'
 
 const SECURE_COOKIE_PREFIX_PATTERN = /^__(Host|Secure)-/
 const SAME_SITE_NONE_PATTERN = /^samesite=none$/i
