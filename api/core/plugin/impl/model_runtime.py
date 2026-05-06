@@ -38,8 +38,19 @@ logger = logging.getLogger(__name__)
 TENANT_SCOPE_SCHEMA_CACHE_USER_ID = "__DIFY_TS__"
 
 
+# TODO(-LAN-): Move native structured-output invocation into Graphon's LLM node.
+# TODO(-LAN-): Remove this Dify-side adapter once Graphon owns structured output end-to-end.
 class _PluginStructuredOutputModelInstance:
-    """Reuse the shared structured-output helper without depending on `ModelInstance`."""
+    """Bind plugin model identity to the shared structured-output helper.
+
+    The structured-output parser is shared with legacy ``ModelInstance`` flows
+    and only needs an object exposing ``invoke_llm(...)``. ``PluginModelRuntime``
+    intentionally exposes a lower-level API where provider, model, and
+    credentials are passed per call. This adapter supplies the small bound
+    ``invoke_llm`` surface the helper needs without constructing a full
+    ``ModelInstance`` or reintroducing model-manager dependencies into the
+    plugin runtime path.
+    """
 
     def __init__(
         self,
