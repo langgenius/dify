@@ -13,7 +13,13 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.semconv._incubating.attributes.deployment_attributes import (  # type: ignore[import-untyped]
+    DEPLOYMENT_ENVIRONMENT,
+)
+from opentelemetry.semconv._incubating.attributes.host_attributes import (  # type: ignore[import-untyped]
+    HOST_NAME,
+)
+from opentelemetry.semconv.attributes import service_attributes
 from opentelemetry.trace import SpanKind, Status, TraceFlags
 from opentelemetry.util.types import AttributeValue
 
@@ -21,6 +27,31 @@ from configs import dify_config
 
 logger = logging.getLogger(__name__)
 MAX_SPAN_CONTEXTS = 1024
+DATADOG_OTLP_ENDPOINT_BY_SITE = {
+    "ddstaging.datadoghq.com": "https://otlp.datadoghq.com/v1/traces",
+}
+
+
+def _normalize_site(site: str) -> str:
+    return site.strip().removeprefix("https://").removeprefix("http://").rstrip("/").lower()
+
+
+# Bare domains like datadoghq.com need the app. prefix.
+# Regional or app-specific hosts like us5.datadoghq.com do not.
+def _is_bare_domain(site: str) -> bool:
+    return site.count(".") == 1
+
+
+def _get_app_host(site: str) -> str:
+    site = _normalize_site(site)
+    if _is_bare_domain(site):
+        return f"app.{site}"
+    return site
+
+
+def _get_otlp_endpoint(site: str) -> str:
+    site = _normalize_site(site)
+    return DATADOG_OTLP_ENDPOINT_BY_SITE.get(site, f"https://otlp.{site}/v1/traces")
 
 
 class DatadogTraceClient:
@@ -30,8 +61,8 @@ class DatadogTraceClient:
 
     def __init__(self, api_key: str, site: str, service_name: str):
         self.api_key = api_key
-        self.site = site
-        self.endpoint = f"https://otlp.{site}/v1/traces"
+        self.site = _normalize_site(site)
+        self.endpoint = _get_otlp_endpoint(self.site)
         self.service_name = service_name
         self.tracer_provider: TracerProvider | None = None
         self.span_processor: BatchSpanProcessor | None = None
@@ -44,12 +75,12 @@ class DatadogTraceClient:
 
         resource = Resource(
             attributes={
-                ResourceAttributes.SERVICE_NAME: self.service_name,
-                ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
-                ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
-                ResourceAttributes.HOST_NAME: socket.gethostname(),
-                ResourceAttributes.TELEMETRY_SDK_LANGUAGE: "python",
-                ResourceAttributes.TELEMETRY_SDK_NAME: "opentelemetry",
+                service_attributes.SERVICE_NAME: self.service_name,
+                service_attributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
+                DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
+                HOST_NAME: socket.gethostname(),
+                "telemetry.sdk.language": "python",
+                "telemetry.sdk.name": "opentelemetry",
             }
         )
         exporter = OTLPSpanExporter(
@@ -153,7 +184,7 @@ class DatadogTraceClient:
             return False
 
     def get_project_url(self) -> str:
-        return f"https://app.{self.site}/llm/traces"
+        return f"https://{_get_app_host(self.site)}/llm/traces"
 
     def shutdown(self) -> None:
         try:

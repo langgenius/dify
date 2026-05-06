@@ -29,7 +29,8 @@ from dify_trace_datadog import semconv, span_builder
 from dify_trace_datadog.client import DatadogTraceClient
 from dify_trace_datadog.config import DatadogConfig
 from extensions.ext_database import db
-from graphon.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
+from graphon.entities.workflow_node_execution import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionStatus
 from models import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
