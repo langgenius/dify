@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.uuid_utils import uuidv7
 
+from core.db.session_factory import session_factory
 from .base import TypeBase
 from .engine import db
 from .enums import CredentialSourceType, PaymentStatus, ProviderQuotaType
@@ -82,7 +83,8 @@ class Provider(TypeBase):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return db.session.scalar(select(ProviderCredential).where(ProviderCredential.id == self.credential_id))
+            with session_factory.create_session() as session:
+                return session.scalar(select(ProviderCredential).where(ProviderCredential.id == self.credential_id))
 
     @property
     def credential_name(self):
@@ -145,9 +147,10 @@ class ProviderModel(TypeBase):
     @cached_property
     def credential(self):
         if self.credential_id:
-            return db.session.scalar(
-                select(ProviderModelCredential).where(ProviderModelCredential.id == self.credential_id)
-            )
+            with session_factory.create_session() as session:
+                return session.scalar(
+                    select(ProviderModelCredential).where(ProviderModelCredential.id == self.credential_id)
+                )
 
     @property
     def credential_name(self):
