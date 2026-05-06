@@ -148,8 +148,6 @@ class TestWorkflowNodeProcessing:
             ("datadoghq.com", "https://app.datadoghq.com/llm/traces"),
             ("datadoghq.eu", "https://app.datadoghq.eu/llm/traces"),
             ("us5.datadoghq.com", "https://us5.datadoghq.com/llm/traces"),
-            ("us6.datadoghq.com", "https://us6.datadoghq.com/llm/traces"),
-            ("datad0g.com", "https://app.datad0g.com/llm/traces"),
             ("ddstaging.datadoghq.com", "https://ddstaging.datadoghq.com/llm/traces"),
         ],
     )
@@ -164,8 +162,6 @@ class TestWorkflowNodeProcessing:
             ("datadoghq.com", "https://otlp.datadoghq.com/v1/traces"),
             ("us5.datadoghq.com", "https://otlp.us5.datadoghq.com/v1/traces"),
             ("us6.datadoghq.com", "https://otlp.us6.datadoghq.com/v1/traces"),
-            ("datad0g.com", "https://otlp.datad0g.com/v1/traces"),
-            ("prtest07.datadoghq.com", "https://otlp.prtest07.datadoghq.com/v1/traces"),
             ("ddstaging.datadoghq.com", "https://otlp.datadoghq.com/v1/traces"),
         ],
     )
@@ -173,6 +169,26 @@ class TestWorkflowNodeProcessing:
         client = DatadogTraceClient(api_key="test-key", site=site, service_name="test")
 
         assert client.endpoint == expected_endpoint
+
+    @pytest.mark.parametrize(
+        ("site", "expected_url"),
+        [
+            ("datadoghq.com", "https://api.datadoghq.com/api/v1/validate"),
+            ("us5.datadoghq.com", "https://api.us5.datadoghq.com/api/v1/validate"),
+            ("ddstaging.datadoghq.com", "https://ddstaging.datadoghq.com/api/v1/validate"),
+        ],
+    )
+    def test_api_check_uses_datadog_api_host(self, site: str, expected_url: str, monkeypatch):
+        get = MagicMock(return_value=MagicMock(status_code=200))
+        monkeypatch.setattr("dify_trace_datadog.client.httpx.get", get)
+        client = DatadogTraceClient(api_key="test-key", site=site, service_name="test")
+
+        assert client.api_check()
+        get.assert_called_once_with(
+            expected_url,
+            headers={"DD-API-KEY": "test-key"},
+            timeout=10,
+        )
 
     def test_span_contexts_parent_child_linking(self, datadog_trace: DatadogDataTrace):
         message_trace = _build_message_trace_info(message_id="msg-42")

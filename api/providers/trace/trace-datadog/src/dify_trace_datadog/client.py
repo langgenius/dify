@@ -27,6 +27,9 @@ from configs import dify_config
 
 logger = logging.getLogger(__name__)
 MAX_SPAN_CONTEXTS = 1024
+DATADOG_API_HOST_BY_SITE = {
+    "ddstaging.datadoghq.com": "ddstaging.datadoghq.com",
+}
 DATADOG_OTLP_ENDPOINT_BY_SITE = {
     "ddstaging.datadoghq.com": "https://otlp.datadoghq.com/v1/traces",
 }
@@ -52,6 +55,11 @@ def _get_app_host(site: str) -> str:
 def _get_otlp_endpoint(site: str) -> str:
     site = _normalize_site(site)
     return DATADOG_OTLP_ENDPOINT_BY_SITE.get(site, f"https://otlp.{site}/v1/traces")
+
+
+def _get_api_host(site: str) -> str:
+    site = _normalize_site(site)
+    return DATADOG_API_HOST_BY_SITE.get(site, f"api.{site}")
 
 
 class DatadogTraceClient:
@@ -174,7 +182,7 @@ class DatadogTraceClient:
         """
         try:
             response = httpx.get(
-                f"https://api.{self.site}/api/v1/validate",
+                f"https://{_get_api_host(self.site)}/api/v1/validate",
                 headers={"DD-API-KEY": self.api_key},
                 timeout=10,
             )
