@@ -1,3 +1,4 @@
+import logging
 import threading
 from datetime import datetime
 from types import SimpleNamespace
@@ -111,17 +112,35 @@ def test_non_llm_node_is_ignored() -> None:
     mock_deduct.assert_not_called()
 
 
-def test_quota_error_is_handled_in_layer() -> None:
+def test_quota_error_is_handled_in_layer(caplog) -> None:
     layer = LLMQuotaLayer(tenant_id="tenant-id")
+    stop_event = threading.Event()
+    layer.command_channel = MagicMock()
+
     node = _build_node(node_type=BuiltinNodeTypes.LLM)
+    node.graph_runtime_state = MagicMock()
+    node.graph_runtime_state.stop_event = stop_event
     result_event = _build_succeeded_event()
 
-    with patch(
-        "core.app.workflow.layers.llm_quota.deduct_llm_quota_for_model",
-        autospec=True,
-        side_effect=ValueError("quota exceeded"),
+    with (
+        caplog.at_level(logging.ERROR, logger="core.app.workflow.layers.llm_quota"),
+        patch(
+            "core.app.workflow.layers.llm_quota.deduct_llm_quota_for_model",
+            autospec=True,
+            side_effect=ValueError("quota exceeded"),
+        ) as mock_deduct,
     ):
         layer.on_node_run_end(node=node, error=None, result_event=result_event)
+
+    mock_deduct.assert_called_once_with(
+        tenant_id="tenant-id",
+        provider="openai",
+        model="gpt-4o",
+        usage=result_event.node_run_result.llm_usage,
+    )
+    assert "LLM quota deduction failed, node_id=node-id" in caplog.text
+    assert not stop_event.is_set()
+    layer.command_channel.send_command.assert_not_called()
 
 
 def test_quota_deduction_exceeded_aborts_workflow_immediately() -> None:

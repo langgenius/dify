@@ -1,7 +1,8 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch, sentinel
+from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import create_engine, select
 
 from configs import dify_config
 from core.app.llm.quota import (
@@ -15,7 +16,7 @@ from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.errors.error import QuotaExceededError
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.model_entities import ModelType
-from models.provider import ProviderType
+from models.provider import Provider, ProviderType
 
 
 def test_ensure_llm_quota_available_for_model_raises_when_system_model_is_exhausted() -> None:
@@ -271,17 +272,58 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
     )
     provider_manager = MagicMock()
     provider_manager.get_configurations.return_value.get.return_value = provider_configuration
-    session = MagicMock()
-    session_context = MagicMock()
-    session_context.__enter__.return_value = session
-    session_context.__exit__.return_value = False
-    session_factory = MagicMock()
-    session_factory.begin.return_value = session_context
+    engine = create_engine("sqlite:///:memory:")
+    Provider.__table__.create(engine)
+    with engine.begin() as connection:
+        connection.execute(
+            Provider.__table__.insert(),
+            [
+                {
+                    "id": "matching-provider",
+                    "tenant_id": "tenant-id",
+                    "provider_name": "openai",
+                    "provider_type": ProviderType.SYSTEM,
+                    "quota_type": ProviderQuotaType.FREE,
+                    "quota_limit": 100,
+                    "quota_used": 10,
+                    "is_valid": True,
+                },
+                {
+                    "id": "other-tenant",
+                    "tenant_id": "other-tenant-id",
+                    "provider_name": "openai",
+                    "provider_type": ProviderType.SYSTEM,
+                    "quota_type": ProviderQuotaType.FREE,
+                    "quota_limit": 100,
+                    "quota_used": 20,
+                    "is_valid": True,
+                },
+                {
+                    "id": "other-provider",
+                    "tenant_id": "tenant-id",
+                    "provider_name": "anthropic",
+                    "provider_type": ProviderType.SYSTEM,
+                    "quota_type": ProviderQuotaType.FREE,
+                    "quota_limit": 100,
+                    "quota_used": 30,
+                    "is_valid": True,
+                },
+                {
+                    "id": "custom-provider",
+                    "tenant_id": "tenant-id",
+                    "provider_name": "openai",
+                    "provider_type": ProviderType.CUSTOM,
+                    "quota_type": ProviderQuotaType.FREE,
+                    "quota_limit": 100,
+                    "quota_used": 40,
+                    "is_valid": True,
+                },
+            ],
+        )
 
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
-        patch("core.app.llm.quota.db", SimpleNamespace(engine=sentinel.engine)),
-        patch("core.app.llm.quota.sessionmaker", return_value=session_factory),
+        patch("core.app.llm.quota.db", SimpleNamespace(engine=engine)),
     ):
         deduct_llm_quota_for_model(
             tenant_id="tenant-id",
@@ -290,7 +332,36 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
             usage=usage,
         )
 
-    session.execute.assert_called_once()
+    with engine.connect() as connection:
+        quota_used_by_id = dict(connection.execute(select(Provider.id, Provider.quota_used)).all())
+
+    assert quota_used_by_id == {
+        "matching-provider": 13,
+        "other-tenant": 20,
+        "other-provider": 30,
+        "custom-provider": 40,
+    }
+
+    with engine.begin() as connection:
+        connection.execute(
+            Provider.__table__.update().where(Provider.id == "matching-provider").values(quota_limit=13, quota_used=13)
+        )
+
+    with (
+        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
+        patch("core.app.llm.quota.db", SimpleNamespace(engine=engine)),
+    ):
+        deduct_llm_quota_for_model(
+            tenant_id="tenant-id",
+            provider="openai",
+            model="gpt-4o",
+            usage=usage,
+        )
+
+    with engine.connect() as connection:
+        exhausted_quota_used = connection.scalar(select(Provider.quota_used).where(Provider.id == "matching-provider"))
+
+    assert exhausted_quota_used == 13
 
 
 def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
@@ -355,42 +426,6 @@ def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> N
 
     mock_deduct_credits.assert_not_called()
     mock_sessionmaker.assert_not_called()
-
-
-def test_deduct_llm_quota_for_model_reuses_resolved_provider_configuration_for_deduction() -> None:
-    usage = LLMUsage.empty_usage()
-    usage.total_tokens = 42
-    provider_configuration = SimpleNamespace(
-        using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
-            current_quota_type=ProviderQuotaType.TRIAL,
-            quota_configurations=[
-                SimpleNamespace(
-                    quota_type=ProviderQuotaType.TRIAL,
-                    quota_unit=QuotaUnit.TOKENS,
-                    quota_limit=100,
-                )
-            ],
-        ),
-    )
-
-    with (
-        patch("core.app.llm.quota._get_provider_configuration", return_value=provider_configuration),
-        patch("core.app.llm.quota._deduct_used_llm_quota") as mock_deduct,
-    ):
-        deduct_llm_quota_for_model(
-            tenant_id="tenant-id",
-            provider="openai",
-            model="gpt-4o",
-            usage=usage,
-        )
-
-    mock_deduct.assert_called_once_with(
-        tenant_id="tenant-id",
-        provider="openai",
-        provider_configuration=provider_configuration,
-        used_quota=42,
-    )
 
 
 def test_ensure_llm_quota_available_wrapper_warns_and_delegates() -> None:
