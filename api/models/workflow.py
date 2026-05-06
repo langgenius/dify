@@ -80,9 +80,16 @@ SerializedWorkflowVariables = dict[str, SerializedWorkflowValue]
 
 
 def _resolve_workflow_app_tenant_id(app_id: str) -> str:
+    from .dataset import Pipeline
     from .model import App
 
     tenant_id = db.session.scalar(select(App.tenant_id).where(App.id == app_id))
+    if not tenant_id:
+        # ITX patch: rag-pipeline workflows reference the `pipelines` table, not
+        # `apps`. Without this fallback, every Test Run / sync that emits File
+        # outputs (Drive download, etc.) fails with "Unable to resolve tenant_id".
+        # Upstream bug; the same bug exists on Dify main as of the pin.
+        tenant_id = db.session.scalar(select(Pipeline.tenant_id).where(Pipeline.id == app_id))
     if not tenant_id:
         raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
     return tenant_id
