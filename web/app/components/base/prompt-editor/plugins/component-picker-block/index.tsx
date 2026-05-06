@@ -118,7 +118,15 @@ const ComponentPicker = ({
         BLUR_COMMAND,
         (event) => {
           clearBlurTimer()
-          const target = event?.relatedTarget as HTMLElement
+          const target = event?.relatedTarget as HTMLElement | null
+          // ITX patch: when focus moves into ANY element inside the picker
+          // popup (not just the search box), don't schedule the hide timer.
+          // Upstream only whitelisted `.var-search-input`, so clicking a
+          // variable item, scrolling the list, or moving onto a sibling
+          // input would race the 200ms blur timer and the picker would
+          // disappear before the user could pick. CLAUDE.md §10.
+          if (target?.closest?.('[data-prompt-editor-picker]'))
+            return false
           if (!target?.classList?.contains('var-search-input'))
             blurTimerRef.current = setTimeout(() => setBlurHidden(true), 200)
           return false
@@ -237,6 +245,11 @@ const ComponentPicker = ({
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
             <div className="h-0 w-0">
               <div
+                // ITX marker: the BLUR_COMMAND handler above checks for this
+                // attribute on the focus target so clicks/keyboard nav inside
+                // the picker don't trip the auto-hide timer. Don't rename
+                // without also updating the handler.
+                data-prompt-editor-picker
                 className="w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
                 style={{
                   ...floatingStyles,
