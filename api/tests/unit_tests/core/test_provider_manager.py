@@ -652,3 +652,49 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
     mock_setex.assert_called_once_with("tenant:tenant-id:model_load_balancing_enabled", 120, "True")
     assert list(result["openai"]) == [openai_config]
     assert list(result["anthropic"]) == [anthropic_config]
+
+
+def test_init_trial_provider_records_uses_session_factory_not_flask_context() -> None:
+    """Regression test for issue #35836.
+
+    _init_trial_provider_records must not use db.session (which requires a
+    Flask application context) because it is called from the parallel iteration
+    thread-pool where no Flask context is available.
+    """
+    from core.entities.provider_entities import ProviderQuotaType
+    from models.provider import Provider, ProviderType
+
+    session = Mock()
+    session.add = Mock()
+    session.commit = Mock()
+
+    hosting_configuration = SimpleNamespace(
+        provider_map={
+            "openai": SimpleNamespace(
+                enabled=True,
+                quotas=[
+                    SimpleNamespace(quota_type=ProviderQuotaType.TRIAL),
+                ],
+            )
+        }
+    )
+
+    with (
+        patch("core.provider_manager.ext_hosting_provider.hosting_configuration", hosting_configuration),
+        patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
+        patch("core.provider_manager.ModelProviderID", side_effect=lambda x: SimpleNamespace(provider_name=x)),
+    ):
+        # The dict must be a defaultdict(list) as returned by _get_all_providers.
+        from collections import defaultdict
+
+        result = ProviderManager._init_trial_provider_records("tenant-id", defaultdict(list))
+
+    # The session factory must have been called (not db.session).
+    session.add.assert_called_once()
+    session.commit.assert_called_once()
+    created_record = session.add.call_args.args[0]
+    assert isinstance(created_record, Provider)
+    assert created_record.tenant_id == "tenant-id"
+    assert created_record.provider_type == ProviderType.SYSTEM
+    assert created_record.quota_type == ProviderQuotaType.TRIAL
+    assert created_record in result.get("openai", [])
