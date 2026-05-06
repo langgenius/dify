@@ -570,30 +570,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/overview/customize/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/overview/embedded/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/overview/settings/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "react/set-state-in-effect": {
-      "count": 3
-    },
-    "regexp/no-unused-capturing-group": {
-      "count": 1
-    }
-  },
   "web/app/components/app/overview/trigger-card.tsx": {
     "ts/no-explicit-any": {
       "count": 1
