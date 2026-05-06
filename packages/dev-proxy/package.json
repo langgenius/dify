@@ -22,6 +22,7 @@
   },
   "scripts": {
     "build": "vp pack",
+    "prepare": "pnpm run build",
     "test": "vp test",
     "type-check": "tsgo",
     "prepublish": "pnpm run build"
