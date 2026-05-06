@@ -14,10 +14,6 @@ from opentelemetry.trace import Status, StatusCode
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
-from dify_trace_datadog.client import DatadogTraceClient
-from dify_trace_datadog import semconv
-from dify_trace_datadog import span_builder
-from dify_trace_datadog.config import DatadogConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -29,8 +25,11 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import DifyCoreRepositoryFactory
-from graphon.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
+from dify_trace_datadog import semconv, span_builder
+from dify_trace_datadog.client import DatadogTraceClient
+from dify_trace_datadog.config import DatadogConfig
 from extensions.ext_database import db
+from graphon.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from models import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
@@ -54,6 +53,44 @@ def _workflow_node_status_to_otel_status(node_execution: WorkflowNodeExecution) 
     if node_execution.status in (WorkflowNodeExecutionStatus.FAILED, WorkflowNodeExecutionStatus.EXCEPTION):
         return Status(StatusCode.ERROR, str(node_execution.error or "workflow node failed"))
     return Status(StatusCode.UNSET)
+
+
+def _message_key(message_id: str | None) -> str:
+    return f"message:{message_id}"
+
+
+def _workflow_key(workflow_run_id: str) -> str:
+    return f"workflow:{workflow_run_id}"
+
+
+def _node_key(node_execution_id: str) -> str:
+    return f"node:{node_execution_id}"
+
+
+def _trace_key(trace_info: BaseTraceInfo) -> str:
+    if trace_info.trace_id:
+        return f"trace:{trace_info.trace_id}"
+
+    parent_trace_id, _ = trace_info.resolved_parent_context
+    if parent_trace_id:
+        return _workflow_key(parent_trace_id)
+
+    if trace_info.message_id:
+        return _message_key(trace_info.message_id)
+
+    if workflow_run_id := getattr(trace_info, "workflow_run_id", None):
+        return _workflow_key(workflow_run_id)
+
+    return _message_key(trace_info.message_id)
+
+
+def _workflow_parent_key(trace_info: WorkflowTraceInfo) -> str | None:
+    _, parent_node_id = trace_info.resolved_parent_context
+    if parent_node_id:
+        return _node_key(parent_node_id)
+    if trace_info.message_id:
+        return _message_key(trace_info.message_id)
+    return None
 
 
 class DatadogDataTrace(BaseTraceInstance):
@@ -90,13 +127,9 @@ class DatadogDataTrace(BaseTraceInstance):
         try:
             attrs = span_builder.build_workflow_attrs(trace_info)
 
-            if trace_info.message_id:
-                trace_key = f"message:{trace_info.message_id}"
-            else:
-                trace_key = f"workflow:{trace_info.workflow_run_id}"
-
+            trace_key = _trace_key(trace_info)
             trace_id = DatadogTraceClient.compute_trace_id(trace_key)
-            workflow_store_key = f"workflow:{trace_info.workflow_run_id}"
+            workflow_store_key = _workflow_key(trace_info.workflow_run_id)
             self.trace_client.add_span(
                 name="workflow",
                 attributes=attrs,
@@ -104,7 +137,7 @@ class DatadogDataTrace(BaseTraceInstance):
                 end_time_ns=_datetime_to_ns(trace_info.end_time),
                 trace_id=trace_id,
                 store_key=workflow_store_key,
-                parent_key=trace_key if trace_info.message_id else None,
+                parent_key=_workflow_parent_key(trace_info),
                 status=_status_from_error(trace_info.error),
             )
 
@@ -115,14 +148,14 @@ class DatadogDataTrace(BaseTraceInstance):
     def message_trace(self, trace_info: MessageTraceInfo) -> None:
         try:
             attrs = span_builder.build_message_attrs(trace_info)
-            trace_key = f"message:{trace_info.message_id}"
+            trace_key = _trace_key(trace_info)
             self.trace_client.add_span(
                 name=str(attrs.get(semconv.OPERATION_NAME, "chat")),
                 attributes=attrs,
                 start_time_ns=_datetime_to_ns(trace_info.start_time),
                 end_time_ns=_datetime_to_ns(trace_info.end_time),
                 trace_id=DatadogTraceClient.compute_trace_id(trace_key),
-                store_key=trace_key,
+                store_key=_message_key(trace_info.message_id),
                 status=_status_from_error(trace_info.error),
             )
         except Exception:
@@ -134,14 +167,14 @@ class DatadogDataTrace(BaseTraceInstance):
                 return
 
             attrs = span_builder.build_tool_attrs(trace_info)
-            trace_key = f"message:{trace_info.message_id}"
+            trace_key = _trace_key(trace_info)
             self.trace_client.add_span(
                 name=trace_info.tool_name,
                 attributes=attrs,
                 start_time_ns=_datetime_to_ns(trace_info.start_time),
                 end_time_ns=_datetime_to_ns(trace_info.end_time),
                 trace_id=DatadogTraceClient.compute_trace_id(trace_key),
-                parent_key=trace_key,
+                parent_key=_message_key(trace_info.message_id),
                 status=_status_from_error(trace_info.error),
             )
         except Exception:
@@ -153,14 +186,14 @@ class DatadogDataTrace(BaseTraceInstance):
                 return
 
             attrs = span_builder.build_retrieval_attrs(trace_info)
-            trace_key = f"message:{trace_info.message_id}"
+            trace_key = _trace_key(trace_info)
             self.trace_client.add_span(
                 name="retrieval",
                 attributes=attrs,
                 start_time_ns=_datetime_to_ns(trace_info.start_time),
                 end_time_ns=_datetime_to_ns(trace_info.end_time),
                 trace_id=DatadogTraceClient.compute_trace_id(trace_key),
-                parent_key=trace_key,
+                parent_key=_message_key(trace_info.message_id),
                 status=_status_from_error(trace_info.error),
             )
         except Exception:
@@ -181,6 +214,7 @@ class DatadogDataTrace(BaseTraceInstance):
                         start_time_ns=_datetime_to_ns(node_execution.created_at),
                         end_time_ns=_datetime_to_ns(node_execution.finished_at),
                         trace_id=trace_id,
+                        store_key=_node_key(node_execution.id),
                         parent_key=workflow_store_key,
                         status=_workflow_node_status_to_otel_status(node_execution),
                     )

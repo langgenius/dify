@@ -20,6 +20,7 @@ RESPONSE_MODEL = "gen_ai.response.model"
 # Token usage (read directly from span attributes by Datadog)
 USAGE_INPUT_TOKENS = "gen_ai.usage.input_tokens"
 USAGE_OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
+USAGE_TOTAL_TOKENS = "gen_ai.usage.total_tokens"
 
 # IO - JSON arrays of OTel v1.37 ChatMessage objects
 # Each message: {"role": "...", "parts": [{"type": "text", "content": "..."}]}

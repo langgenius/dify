@@ -3,9 +3,8 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
+from dify_trace_datadog import semconv, span_builder
 
-from dify_trace_datadog import semconv
-from dify_trace_datadog import span_builder
 from core.ops.entities.trace_entity import DatasetRetrievalTraceInfo, MessageTraceInfo, WorkflowTraceInfo
 from core.rag.models.document import Document
 from graphon.entities.workflow_node_execution import WorkflowNodeExecution
@@ -73,6 +72,7 @@ class TestBuilderOutputFormat:
         assert attrs[semconv.REQUEST_MODEL] == "gpt-4"
         assert attrs[semconv.USAGE_INPUT_TOKENS] == 10
         assert attrs[semconv.USAGE_OUTPUT_TOKENS] == 20
+        assert attrs[semconv.USAGE_TOTAL_TOKENS] == 30
         assert json.loads(attrs[semconv.INPUT_MESSAGES])[0]["parts"][0]["content"] == "Hello"
         assert attrs[semconv.CONVERSATION_ID] == "conv-1"
 
@@ -146,7 +146,7 @@ class TestBuilderOutputFormat:
 
         assert semconv.INPUT_MESSAGES in attrs
         assert attrs[semconv.PROVIDER_NAME] == "openai"
-        assert json.loads(attrs[semconv.RESPONSE_FINISH_REASONS]) == ["stop"]
+        assert attrs[semconv.RESPONSE_FINISH_REASONS] == ["stop"]
         messages = json.loads(attrs[semconv.INPUT_MESSAGES])
         assert messages[0]["parts"][0]["content"] == "Hello"
 
@@ -175,6 +175,9 @@ class TestBuilderOutputFormat:
         trace_info.workflow_run_outputs = {"answer": "Hi"}
         trace_info.conversation_id = None
         trace_info.metadata = {}
+        trace_info.prompt_tokens = 3
+        trace_info.completion_tokens = 4
+        trace_info.total_tokens = 7
 
         attrs = span_builder.build_workflow_attrs(trace_info)
 
@@ -183,6 +186,9 @@ class TestBuilderOutputFormat:
         assert "sys.user_id" not in attrs[semconv.INPUT_MESSAGES]
         assert attrs["dify.app_id"] == "app-1"
         assert attrs["dify.workflow_id"] == "wf-1"
+        assert attrs[semconv.USAGE_INPUT_TOKENS] == 3
+        assert attrs[semconv.USAGE_OUTPUT_TOKENS] == 4
+        assert attrs[semconv.USAGE_TOTAL_TOKENS] == 7
 
     def test_build_workflow_attrs_uses_trace_info_and_metadata_fallbacks(self):
         trace_info = MagicMock(spec=WorkflowTraceInfo)
@@ -192,6 +198,9 @@ class TestBuilderOutputFormat:
         trace_info.query = ""
         trace_info.workflow_id = "wf-1"
         trace_info.metadata = {"app_id": "app-1"}
+        trace_info.prompt_tokens = None
+        trace_info.completion_tokens = None
+        trace_info.total_tokens = 0
 
         attrs = span_builder.build_workflow_attrs(trace_info)
 
