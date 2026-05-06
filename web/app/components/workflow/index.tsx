@@ -283,7 +283,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         ns: 'workflow',
         userName: data.initiatorName,
         versionName: data.versionName || data.versionId,
-      }), { timeout: 3000 })
+      }))
     })
   }, [t])
 
