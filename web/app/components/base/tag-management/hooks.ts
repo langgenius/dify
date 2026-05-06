@@ -1,17 +1,23 @@
-import type { TagType } from '@/contract/console/tags'
+import type { Tag, TagType } from '@/contract/console/tags'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { datasetListQueryKey } from '@/service/knowledge/use-dataset'
 
 export const useCreateTagMutation = () => {
   const queryClient = useQueryClient()
-  const invalidateTagList = () => queryClient.invalidateQueries({
-    queryKey: consoleQuery.tags.list.key(),
-  })
 
   return useMutation(consoleQuery.tags.create.mutationOptions({
-    onSuccess: () => {
-      return invalidateTagList()
+    onSuccess: (tag) => {
+      queryClient.setQueryData<Tag[]>(
+        consoleQuery.tags.list.queryKey({
+          input: {
+            query: {
+              type: tag.type,
+            },
+          },
+        }),
+        oldTags => oldTags ? [tag, ...oldTags] : oldTags,
+      )
     },
   }))
 }
@@ -19,13 +25,23 @@ export const useCreateTagMutation = () => {
 export const useUpdateTagMutation = () => {
   const queryClient = useQueryClient()
   const invalidateTagConsumers = () => Promise.all([
-    queryClient.invalidateQueries({ queryKey: consoleQuery.tags.list.key() }),
     queryClient.invalidateQueries({ queryKey: consoleQuery.apps.list.key() }),
     queryClient.invalidateQueries({ queryKey: datasetListQueryKey }),
   ])
 
   return useMutation(consoleQuery.tags.update.mutationOptions({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      queryClient.setQueriesData<Tag[]>(
+        {
+          queryKey: consoleQuery.tags.list.key(),
+        },
+        oldTags => oldTags?.map(tag => tag.id === variables.params.tagId
+          ? {
+              ...tag,
+              name: variables.body.name,
+            }
+          : tag),
+      )
       return invalidateTagConsumers()
     },
   }))
@@ -34,13 +50,18 @@ export const useUpdateTagMutation = () => {
 export const useDeleteTagMutation = () => {
   const queryClient = useQueryClient()
   const invalidateTagConsumers = () => Promise.all([
-    queryClient.invalidateQueries({ queryKey: consoleQuery.tags.list.key() }),
     queryClient.invalidateQueries({ queryKey: consoleQuery.apps.list.key() }),
     queryClient.invalidateQueries({ queryKey: datasetListQueryKey }),
   ])
 
   return useMutation(consoleQuery.tags.delete.mutationOptions({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      queryClient.setQueriesData<Tag[]>(
+        {
+          queryKey: consoleQuery.tags.list.key(),
+        },
+        oldTags => oldTags?.filter(tag => tag.id !== variables.params.tagId),
+      )
       return invalidateTagConsumers()
     },
   }))
@@ -91,7 +112,7 @@ export const useApplyTagBindingsMutation = () => {
         },
       })))
 
-      return Promise.allSettled(operations)
+      return Promise.all(operations)
     },
     onSuccess: (_data, variables) => {
       return invalidateTagConsumers(variables.type)
