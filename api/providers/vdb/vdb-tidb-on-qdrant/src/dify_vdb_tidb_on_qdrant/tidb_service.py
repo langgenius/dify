@@ -250,9 +250,7 @@ class TidbService:
                     if not cluster_info.qdrant_endpoint:
                         cluster_info.qdrant_endpoint = TidbService.extract_qdrant_endpoint(
                             item
-                        ) or TidbService.fetch_qdrant_endpoint(
-                            api_url, public_key, private_key, item["clusterId"]
-                        )
+                        ) or TidbService.fetch_qdrant_endpoint(api_url, public_key, private_key, item["clusterId"])
                     if cluster_info.qdrant_endpoint:
                         cluster_info.status = TidbAuthBindingStatus.ACTIVE
                     else:

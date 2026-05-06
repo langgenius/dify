@@ -267,9 +267,7 @@ class TestBatchUpdateTidbServerlessClusterStatus:
         )
         mock_http.get.return_value = MagicMock(
             status_code=200,
-            json=lambda: {
-                "clusters": [{"clusterId": "c-1", "state": "ACTIVE", "userPrefix": "pfx", "endpoints": {}}]
-            },
+            json=lambda: {"clusters": [{"clusterId": "c-1", "state": "ACTIVE", "userPrefix": "pfx", "endpoints": {}}]},
         )
 
         TidbService.batch_update_tidb_serverless_cluster_status([binding], "proj", "url", "iam", "pub", "priv")
@@ -293,9 +291,7 @@ class TestBatchUpdateTidbServerlessClusterStatus:
         )
         mock_http.get.return_value = MagicMock(
             status_code=200,
-            json=lambda: {
-                "clusters": [{"clusterId": "c-1", "state": "ACTIVE", "userPrefix": "pfx", "endpoints": {}}]
-            },
+            json=lambda: {"clusters": [{"clusterId": "c-1", "state": "ACTIVE", "userPrefix": "pfx", "endpoints": {}}]},
         )
 
         TidbService.batch_update_tidb_serverless_cluster_status([binding], "proj", "url", "iam", "pub", "priv")
