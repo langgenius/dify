@@ -16,6 +16,7 @@ import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
 import { createDatasetsDetailStore } from '../../../datasets-detail-store/store'
 import { BlockEnum, VarType } from '../../../types'
+import AddCondition from '../components/metadata/add-condition'
 import AddDataset from '../components/add-dataset'
 import DatasetItem from '../components/dataset-item'
 import DatasetList from '../components/dataset-list'
@@ -412,6 +413,38 @@ describe('knowledge-retrieval path', () => {
   })
 
   describe('Metadata controls', () => {
+    it('should call handleAddCondition with the correct metadata item when clicking any part of the row', async () => {
+      // Regression test for: https://github.com/langgenius/dify/issues/35844
+      // The onClick was previously on the inner text <div> only, causing clicks on the
+      // icon or type label to not register, which defaulted to the first field (document_name).
+      const user = userEvent.setup()
+      const handleAddCondition = vi.fn()
+      const permissionMetadata = createMetadata({ id: 'meta-perm', name: 'permission', type: MetadataFilteringVariableType.string })
+      const topicMetadata = createMetadata({ id: 'meta-topic', name: 'topic', type: MetadataFilteringVariableType.string })
+
+      const { unmount } = render(
+        <AddCondition
+          metadataList={[permissionMetadata, topicMetadata]}
+          handleAddCondition={handleAddCondition}
+        />,
+      )
+
+      // Open the dropdown
+      await user.click(screen.getByRole('button', { name: /workflow.nodes.knowledgeRetrieval.metadata.panel.add/i }))
+
+      // Click anywhere on the 'permission' row — clicking on the type label which was not covered before
+      const typeLabel = screen.getByText('string', { selector: 'div.shrink-0' })
+      await user.click(typeLabel)
+
+      expect(handleAddCondition).toHaveBeenCalledTimes(1)
+      expect(handleAddCondition).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'meta-perm',
+        name: 'permission',
+      }))
+
+      unmount()
+    })
+
     it('should select metadata filter mode from the dropdown', async () => {
       const user = userEvent.setup()
       const onSelect = vi.fn()
