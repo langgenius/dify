@@ -1921,11 +1921,6 @@
       "count": 4
     }
   },
-  "web/app/components/billing/plan/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/billing/pricing/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 12
@@ -5097,11 +5092,6 @@
   "web/app/education-apply/hooks.ts": {
     "react/set-state-in-effect": {
       "count": 5
-    }
-  },
-  "web/app/education-apply/verify-state-modal.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
     }
   },
   "web/app/forgot-password/ForgotPasswordForm.spec.tsx": {
