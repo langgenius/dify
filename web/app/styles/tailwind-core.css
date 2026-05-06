@@ -1,0 +1,141 @@
+/*
+ * Tailwind CSS v4 shared core for `web/`. CSS-first: no tailwind.config.ts.
+ *
+ * Layers, JS plugins, project-only design tokens, and app-level CSS are
+ * declared here. Environment-specific entry files declare source scanning.
+ */
+
+@layer theme, base, components, utilities;
+
+/* Tailwind core — selective layer imports skip preflight; we ship our own
+ * (see ./preflight.css) so cross-app baseline stays controlled. */
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+/* Local preflight (replaces v3 `corePlugins.preflight: false`). */
+@import './preflight.css' layer(base);
+
+/* Design system: palette overrides, semantic tokens, light/dark themes,
+ * project utilities and components. */
+@import '@langgenius/dify-ui/styles.css';
+
+/* Project-only runtime CSS variables (gradients and special masks). */
+@import '../../themes/manual-light.css' layer(base);
+@import '../../themes/manual-dark.css' layer(base);
+@import './monaco-sticky-fix.css' layer(base);
+
+/* Component CSS using @apply / @utility. */
+@import '../components/base/action-button/index.css';
+@import '../components/base/badge/index.css';
+@import '../components/base/premium-badge/index.css';
+@import '../components/base/segmented-control/index.css';
+
+/* ---------- JS plugins ------------------------------------------------ */
+@plugin './plugins/icons.ts';
+@plugin './plugins/typography.ts';
+
+/* ---------- Project-only theme tokens --------------------------------- */
+@theme {
+  /* Additional breakpoints layered on top of v4 defaults. */
+  --breakpoint-mobile: 100px;
+  --breakpoint-tablet: 640px;
+  --breakpoint-pc: 769px;
+  --breakpoint-2k: 2560px;
+
+  /* Custom animations. */
+  --animate-spin-slow: spin 2s linear infinite;
+}
+
+/* Background-image / gradient utilities. Values resolve at runtime from
+ * manual-light.css / manual-dark.css. Using @theme inline so the variable
+ * indirection survives without re-declaring values at :root. */
+@theme inline {
+  /* Flat color (used as `bg-background-gradient-bg-fill-chat-bubble-bg-3`). */
+  --color-background-gradient-bg-fill-chat-bubble-bg-3: var(--color-background-gradient-bg-fill-chat-bubble-bg-3);
+
+  /* Gradients — registered under v4's --background-image-* namespace. */
+  --background-image-chatbot-bg: var(--color-chatbot-bg);
+  --background-image-chat-bubble-bg: var(--color-chat-bubble-bg);
+  --background-image-chat-input-mask: var(--color-chat-input-mask);
+  --background-image-workflow-process-bg: var(--color-workflow-process-bg);
+  --background-image-workflow-process-paused-bg: var(--color-workflow-process-paused-bg);
+  --background-image-workflow-run-failed-bg: var(--color-workflow-run-failed-bg);
+  --background-image-workflow-batch-failed-bg: var(--color-workflow-batch-failed-bg);
+  --background-image-mask-top2bottom-gray-50-to-transparent: var(--mask-top2bottom-gray-50-to-transparent);
+  --background-image-marketplace-divider-bg: var(--color-marketplace-divider-bg);
+  --background-image-marketplace-plugin-empty: var(--color-marketplace-plugin-empty);
+  --background-image-toast-success-bg: var(--color-toast-success-bg);
+  --background-image-toast-warning-bg: var(--color-toast-warning-bg);
+  --background-image-toast-error-bg: var(--color-toast-error-bg);
+  --background-image-toast-info-bg: var(--color-toast-info-bg);
+  --background-image-app-detail-bg: var(--color-app-detail-bg);
+  --background-image-app-detail-overlay-bg: var(--color-app-detail-overlay-bg);
+  --background-image-dataset-chunk-process-success-bg: var(--color-dataset-chunk-process-success-bg);
+  --background-image-dataset-chunk-process-error-bg: var(--color-dataset-chunk-process-error-bg);
+  --background-image-dataset-chunk-detail-card-hover-bg: var(--color-dataset-chunk-detail-card-hover-bg);
+  --background-image-dataset-child-chunk-expand-btn-bg: var(--color-dataset-child-chunk-expand-btn-bg);
+  --background-image-dataset-option-card-blue-gradient: var(--color-dataset-option-card-blue-gradient);
+  --background-image-dataset-option-card-purple-gradient: var(--color-dataset-option-card-purple-gradient);
+  --background-image-dataset-option-card-orange-gradient: var(--color-dataset-option-card-orange-gradient);
+  --background-image-dataset-chunk-list-mask-bg: var(--color-dataset-chunk-list-mask-bg);
+  --background-image-line-divider-bg: var(--color-line-divider-bg);
+  --background-image-dataset-warning-message-bg: var(--color-dataset-warning-message-bg);
+  --background-image-price-premium-badge-background: var(--color-premium-badge-background);
+  --background-image-premium-yearly-tip-text-background: var(--color-premium-yearly-tip-text-background);
+  --background-image-price-premium-text-background: var(--color-premium-text-background);
+  --background-image-price-enterprise-background: var(--color-price-enterprise-background);
+  --background-image-grid-mask-background: var(--color-grid-mask-background);
+  --background-image-node-data-source-bg: var(--color-node-data-source-bg);
+  --background-image-tag-selector-mask-bg: var(--color-tag-selector-mask-bg);
+  --background-image-tag-selector-mask-hover-bg: var(--color-tag-selector-mask-hover-bg);
+  --background-image-pipeline-template-card-hover-bg: var(--color-pipeline-template-card-hover-bg);
+  --background-image-pipeline-add-documents-title-bg: var(--color-pipeline-add-documents-title-bg);
+  --background-image-billing-plan-title-bg: var(--color-billing-plan-title-bg);
+  --background-image-billing-plan-card-premium-bg: var(--color-billing-plan-card-premium-bg);
+  --background-image-billing-plan-card-enterprise-bg: var(--color-billing-plan-card-enterprise-bg);
+  --background-image-knowledge-pipeline-creation-footer-bg: var(--color-knowledge-pipeline-creation-footer-bg);
+  --background-image-progress-bar-indeterminate-stripe: var(--color-progress-bar-indeterminate-stripe);
+  --background-image-chat-answer-human-input-form-divider-bg: var(--color-chat-answer-human-input-form-divider-bg);
+}
+
+/* ---------- Backwards-compat: gray-200 default border color ----------- *
+ * v4 changed the default border color to `currentColor`. Preserve the v3
+ * baseline used throughout the codebase. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+/* ---------- App-level component CSS ----------------------------------- */
+@layer components {
+  [class*='code-'] {
+    @apply font-mono;
+  }
+
+  .text-gradient {
+    background: linear-gradient(91.58deg, #2250f2 -29.55%, #0ebcf3 75.22%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Shiki code block line numbers */
+  .shiki-line-numbers code {
+    counter-reset: line;
+  }
+  .shiki-line-numbers .line::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 1rem;
+    margin-right: 0.75rem;
+    text-align: right;
+    color: var(--color-text-quaternary);
+    user-select: none;
+  }
+}

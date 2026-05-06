@@ -2710,14 +2710,6 @@
       "count": 3
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-modal/Form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 6
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/model-modal/Input.tsx": {
     "unicorn/prefer-number-properties": {
       "count": 2

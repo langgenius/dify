@@ -651,7 +651,6 @@ describe('Workflow edge event wiring', () => {
     await waitFor(() => {
       expect(toastInfoMock).toHaveBeenCalledWith(
         'workflow.versionHistory.action.restoreInProgress:{"userName":"Alice","versionName":"Version One"}',
-        { timeout: 3000 },
       )
     })
   })

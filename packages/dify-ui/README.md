@@ -1,6 +1,6 @@
 # @langgenius/dify-ui
 
-Shared UI primitives, design tokens, Tailwind preset, and the `cn()` utility consumed by Dify's `web/` app.
+Shared UI primitives, design tokens, CSS-first Tailwind styles, and the `cn()` utility consumed by Dify's `web/` app.
 
 The primitives are thin, opinionated wrappers around [Base UI] headless components, styled with `cva` + `cn` and Dify design tokens.
 
@@ -46,8 +46,22 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 Utilities:
 
 - `./cn` — `clsx` + `tailwind-merge` wrapper. Use this for conditional class composition.
-- `./tailwind-preset` — Tailwind v4 preset with Dify tokens. Apps extend it from their own `tailwind.config.ts`.
-- `./styles.css` — the one CSS entry that ships the design tokens, theme variables, and base reset. Import it once from the app root.
+- `./styles.css` — the one CSS entry that ships the design tokens, theme variables, and project utilities/components. Import it once from the app root.
+
+## Tailwind CSS v4 integration
+
+This package uses Tailwind CSS v4's CSS-first configuration model. Consumers should import Tailwind from their own root stylesheet, then import this package's CSS entry:
+
+```css
+@import 'tailwindcss';
+@import '@langgenius/dify-ui/styles.css';
+```
+
+If a consumer uses Dify UI source files through the workspace, add an explicit source so Tailwind can detect utility classes:
+
+```css
+@source '../packages/dify-ui/src';
+```
 
 ## Overlay & portal contract
 
