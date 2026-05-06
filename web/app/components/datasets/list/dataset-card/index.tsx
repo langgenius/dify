@@ -31,8 +31,6 @@ const DatasetCard = ({
   const isHoveringTagSelector = useHover(tagSelectorRef)
 
   const {
-    tags,
-    setTags,
     modalState,
     openRenameModal,
     closeRenameModal,
@@ -75,8 +73,6 @@ const DatasetCard = ({
         <TagArea
           ref={tagSelectorRef}
           dataset={dataset}
-          tags={tags}
-          setTags={setTags}
           onSuccess={onSuccess}
           isHoveringTagSelector={isHoveringTagSelector}
           onClick={handleTagAreaClick}

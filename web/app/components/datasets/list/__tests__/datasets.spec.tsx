@@ -56,8 +56,6 @@ vi.mock('@/context/app-context', () => ({
 // Mock useDatasetCardState hook
 vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
   useDatasetCardState: () => ({
-    tags: [],
-    setTags: vi.fn(),
     modalState: {
       showRenameModal: false,
       showConfirmDelete: false,

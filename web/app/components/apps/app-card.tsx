@@ -29,7 +29,6 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useId, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -517,7 +516,6 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
                     targetID={app.id}
                     value={app.tags.map(tag => tag.id)}
                     selectedTags={app.tags}
-                    onCacheUpdate={noop}
                     onChange={onRefresh}
                   />
                 </div>

@@ -17,7 +17,7 @@ type PanelProps = {
 } & TagSelectorProps
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
-  const { targetID, type, value, selectedTags, onCacheUpdate, onChange, onCreate } = props
+  const { targetID, type, value, selectedTags, onChange, onCreate } = props
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
   const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
@@ -76,8 +76,6 @@ const Panel = (props: PanelProps) => {
   const handleValueChange = () => {
     const addTagIDs = selectedTagIDs.filter(v => !value.includes(v))
     const removeTagIDs = value.filter(v => !selectedTagIDs.includes(v))
-    const selectedTags = tagList.filter(tag => selectedTagIDs.includes(tag.id))
-    onCacheUpdate(selectedTags)
     const operations: Promise<unknown>[] = []
     if (addTagIDs.length)
       operations.push(bind(addTagIDs))

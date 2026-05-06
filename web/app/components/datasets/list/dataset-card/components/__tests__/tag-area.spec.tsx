@@ -9,10 +9,9 @@ import TagArea from '../tag-area'
 
 // Mock TagSelector as it's a complex component from base
 vi.mock('@/app/components/base/tag-management/selector', () => ({
-  default: ({ value, selectedTags, onCacheUpdate, onChange }: {
+  default: ({ value, selectedTags, onChange }: {
     value: string[]
     selectedTags: Tag[]
-    onCacheUpdate: (tags: Tag[]) => void
     onChange?: () => void
   }) => (
     <div data-testid="tag-selector">
@@ -22,9 +21,6 @@ vi.mock('@/app/components/base/tag-management/selector', () => ({
         {' '}
         tags
       </div>
-      <button onClick={() => onCacheUpdate([{ id: 'new-tag', name: 'New Tag', type: 'knowledge', binding_count: 0 }])}>
-        Update Tags
-      </button>
       <button onClick={onChange}>
         Trigger Change
       </button>
@@ -60,9 +56,7 @@ describe('TagArea', () => {
   ]
 
   const defaultProps = {
-    dataset: createMockDataset(),
-    tags: mockTags,
-    setTags: vi.fn(),
+    dataset: createMockDataset({ tags: mockTags }),
     onSuccess: vi.fn(),
     isHoveringTagSelector: false,
     onClick: vi.fn(),
@@ -97,7 +91,7 @@ describe('TagArea', () => {
     })
 
     it('should render with empty tags', () => {
-      render(<TagArea {...defaultProps} tags={[]} />)
+      render(<TagArea {...defaultProps} dataset={createMockDataset({ tags: [] })} />)
       expect(screen.getByTestId('selected-count')).toHaveTextContent('0 tags')
     })
 
@@ -120,15 +114,6 @@ describe('TagArea', () => {
       fireEvent.click(wrapper)
 
       expect(onClick).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call setTags when tags are updated', () => {
-      const setTags = vi.fn()
-      render(<TagArea {...defaultProps} setTags={setTags} />)
-
-      fireEvent.click(screen.getByText('Update Tags'))
-
-      expect(setTags).toHaveBeenCalledWith([{ id: 'new-tag', name: 'New Tag', type: 'knowledge', binding_count: 0 }])
     })
 
     it('should call onSuccess when onChange is triggered', () => {
@@ -157,7 +142,7 @@ describe('TagArea', () => {
     })
 
     it('should show mask when not hovering and has tags', () => {
-      const { container } = render(<TagArea {...defaultProps} isHoveringTagSelector={false} tags={mockTags} />)
+      const { container } = render(<TagArea {...defaultProps} isHoveringTagSelector={false} />)
       const maskDiv = container.querySelector('.bg-tag-selector-mask-bg')
       expect(maskDiv).toBeInTheDocument()
       expect(maskDiv).not.toHaveClass('hidden')
@@ -171,7 +156,7 @@ describe('TagArea', () => {
     })
 
     it('should make TagSelector visible when tags exist', () => {
-      const { container } = render(<TagArea {...defaultProps} tags={mockTags} />)
+      const { container } = render(<TagArea {...defaultProps} />)
       const tagSelectorWrapper = container.querySelector('.visible')
       expect(tagSelectorWrapper).toBeInTheDocument()
     })
@@ -191,7 +176,7 @@ describe('TagArea', () => {
         type: 'knowledge' as const,
         binding_count: 0,
       }))
-      render(<TagArea {...defaultProps} tags={manyTags} />)
+      render(<TagArea {...defaultProps} dataset={createMockDataset({ tags: manyTags })} />)
       expect(screen.getByTestId('selected-count')).toHaveTextContent('20 tags')
     })
   })

@@ -1,4 +1,3 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
@@ -6,8 +5,6 @@ import TagSelector from '@/app/components/base/tag-management/selector'
 
 type TagAreaProps = {
   dataset: DataSet
-  tags: Tag[]
-  setTags: (tags: Tag[]) => void
   onSuccess?: () => void
   isHoveringTagSelector: boolean
   onClick: (e: React.MouseEvent) => void
@@ -15,8 +12,6 @@ type TagAreaProps = {
 
 const TagArea = React.forwardRef<HTMLDivElement, TagAreaProps>(({
   dataset,
-  tags,
-  setTags,
   onSuccess,
   isHoveringTagSelector,
   onClick,
@@ -29,16 +24,15 @@ const TagArea = React.forwardRef<HTMLDivElement, TagAreaProps>(({
       ref={ref}
       className={cn(
         'invisible w-full group-hover:visible',
-        tags.length > 0 && 'visible',
+        dataset.tags.length > 0 && 'visible',
       )}
     >
       <TagSelector
         position="bl"
         type="knowledge"
         targetID={dataset.id}
-        value={tags.map(tag => tag.id)}
-        selectedTags={tags}
-        onCacheUpdate={setTags}
+        value={dataset.tags.map(tag => tag.id)}
+        selectedTags={dataset.tags}
         onChange={onSuccess}
       />
     </div>

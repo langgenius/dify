@@ -63,7 +63,6 @@ const defaultProps = {
   type: 'app' as const,
   value: ['tag-1'!], // tag-1 is already selected/bound
   selectedTags: [appTags[0]!], // pre-selected tags shown separately
-  onCacheUpdate: vi.fn<(tags: Tag[]) => void>(),
   onChange: vi.fn<() => void>(),
   onCreate: vi.fn<() => void>(),
 }
@@ -540,23 +539,6 @@ describe('Panel', () => {
       await waitFor(() => {
         expect(unBindTag).toHaveBeenCalledWith('tag-1', 'target-1', 'app')
       })
-    })
-
-    it('should call onCacheUpdate with selected tags on unmount when value changed', async () => {
-      const user = userEvent.setup()
-      const { unmount } = render(<Panel {...defaultProps} />)
-
-      // Select 'Backend' (tag-2)
-      await user.click(screen.getByText('Backend'))
-
-      unmount()
-
-      await waitFor(() => {
-        expect(defaultProps.onCacheUpdate).toHaveBeenCalledTimes(1)
-      })
-
-      const [updatedTags] = (vi.mocked(defaultProps.onCacheUpdate).mock.calls[0] ?? []) as [any]
-      expect(updatedTags.map((tag: any) => tag.id)).toEqual(['tag-1', 'tag-2'])
     })
 
     it('should not call bind/unbind when value has not changed', async () => {

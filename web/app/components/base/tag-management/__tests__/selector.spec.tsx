@@ -55,7 +55,6 @@ const defaultProps = {
   type: 'app' as const,
   value: ['tag-1'!],
   selectedTags: [appTags[0]!],
-  onCacheUpdate: vi.fn(),
   onChange: vi.fn(),
 }
 
@@ -176,7 +175,7 @@ describe('TagSelector', () => {
       })
     })
 
-    it('should bind a newly selected tag and update cache when closing the panel', async () => {
+    it('should bind a newly selected tag when closing the panel', async () => {
       const user = userEvent.setup()
       render(<TagSelector {...defaultProps} />)
 
@@ -192,12 +191,10 @@ describe('TagSelector', () => {
       await waitFor(() => {
         expect(bindTag).toHaveBeenCalledTimes(1)
         expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
-        expect(defaultProps.onCacheUpdate).toHaveBeenCalledTimes(1)
-        expect(defaultProps.onCacheUpdate).toHaveBeenCalledWith(appTags)
       })
     })
 
-    it('should unbind a deselected tag and update cache when closing the panel', async () => {
+    it('should unbind a deselected tag when closing the panel', async () => {
       const user = userEvent.setup()
       render(<TagSelector {...defaultProps} />)
 
@@ -213,8 +210,6 @@ describe('TagSelector', () => {
       await waitFor(() => {
         expect(unBindTag).toHaveBeenCalledTimes(1)
         expect(unBindTag).toHaveBeenCalledWith('tag-1', 'target-1', 'app')
-        expect(defaultProps.onCacheUpdate).toHaveBeenCalledTimes(1)
-        expect(defaultProps.onCacheUpdate).toHaveBeenCalledWith([])
       })
     })
   })

@@ -20,7 +20,6 @@ export type TagSelectorProps = {
   type: 'knowledge' | 'app'
   value: string[]
   selectedTags: Tag[]
-  onCacheUpdate: (tags: Tag[]) => void
   onChange?: () => void
   minWidth?: number | string
 }
@@ -32,7 +31,6 @@ const TagSelector: FC<TagSelectorProps> = ({
   type,
   value,
   selectedTags,
-  onCacheUpdate,
   onChange,
   minWidth,
 }) => {
@@ -104,7 +102,6 @@ const TagSelector: FC<TagSelectorProps> = ({
           targetID={targetID}
           value={value}
           selectedTags={selectedTags}
-          onCacheUpdate={onCacheUpdate}
           onChange={onChange}
           onCreate={getTagList}
         />
