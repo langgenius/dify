@@ -1636,9 +1636,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
     # must not produce 0 segments.
     # -------------------------------------------------------------------------
 
-    def test_save_document_with_dataset_id_hierarchical_automatic_reuses_latest_process_rule(
-        self, account_context
-    ):
+    def test_save_document_with_dataset_id_hierarchical_automatic_reuses_latest_process_rule(self, account_context):
         """Regression: automatic process rule on a hierarchical dataset must fall back to
         the dataset's existing process rule, not create a rule with AUTOMATIC_RULES (which
         lacks the required `parent_mode` field and causes 0 segments)."""
@@ -1676,9 +1674,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                 [],
             ]
 
-            documents, batch = DocumentService.save_document_with_dataset_id(
-                dataset, knowledge_config, account_context
-            )
+            documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account_context)
 
         assert documents == [created_document]
         # The DatasetProcessRule constructor must NOT have been called with AUTOMATIC_RULES,
@@ -1693,9 +1689,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                     "AUTOMATIC_RULES (without parent_mode) must not be used for hierarchical datasets"
                 )
 
-    def test_save_document_with_dataset_id_hierarchical_automatic_raises_when_no_existing_rule(
-        self, account_context
-    ):
+    def test_save_document_with_dataset_id_hierarchical_automatic_raises_when_no_existing_rule(self, account_context):
         """Regression: if no existing process rule exists for a hierarchical dataset and
         the API request uses mode=automatic, raise a clear ValueError rather than silently
         producing 0 segments with a broken AUTOMATIC_RULES rule."""
