@@ -141,7 +141,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
             className="
               absolute right-0 -left-11 mt-1.5 w-60 max-w-80
               origin-top-right divide-y divide-divider-regular rounded-lg bg-components-panel-bg-blur
-              shadow-lg outline-none
+              shadow-lg outline-hidden
             "
           >
             <div className="overflow-auto px-1 py-1" style={{ maxHeight: '50vh' }} onScroll={handleScroll}>

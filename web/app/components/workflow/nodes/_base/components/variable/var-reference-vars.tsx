@@ -211,7 +211,7 @@ const Item: FC<ItemProps> = ({
       className={cn(
         (isObj || isStructureOutput) ? 'pr-1' : 'pr-[18px]',
         (isHovering || isSelected) && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
-        'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3 outline-none focus:outline-none focus-visible:outline-none',
+        'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3 outline-hidden focus:outline-hidden focus-visible:outline-hidden',
         className,
       )}
       data-selected={isSelected ? 'true' : 'false'}
