@@ -1,0 +1,18 @@
+{
+  "extends": "@dify/tsconfig/node.json",
+  "compilerOptions": {
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "vite.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
