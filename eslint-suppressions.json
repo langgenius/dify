@@ -2441,17 +2441,6 @@
       "count": 2
     }
   },
-  "web/app/components/explore/create-app-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/item-operation/index.tsx": {
     "react/set-state-in-effect": {
       "count": 1
