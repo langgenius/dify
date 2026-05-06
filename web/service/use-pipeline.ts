@@ -32,7 +32,7 @@ import type {
 } from '@/models/pipeline'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { DatasourceType } from '@/models/pipeline'
-import { del, get, patch, post } from './base'
+import { del, get, patch, post, ssePost } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'pipeline'
@@ -204,6 +204,13 @@ export const usePublishedPipelineInfo = (pipelineId: string) => {
   })
 }
 
+// itx-patched: switched from response_mode: 'blocking' (which hangs the
+// browser for any non-trivial folder ingest — a single recursive Google Drive
+// listing of ~600 files takes 5-10 min and the request stays synchronous over
+// the wire) to response_mode: 'streaming' (SSE). The mutation Promise resolves
+// when the SSE stream emits workflow_finished. Other in-tree callers
+// (website-crawl, debug.ts, share.ts) already use the streaming pattern with
+// ssePost — this fixes the one place that diverged. See CLAUDE.md §8.3.3.
 export const useRunPublishedPipeline = (
   mutationOptions: MutationOptions<PublishedPipelineRunPreviewResponse | PublishedPipelineRunResponse, Error, PublishedPipelineRunRequest> = {},
 ) => {
@@ -211,13 +218,53 @@ export const useRunPublishedPipeline = (
     mutationKey: [NAME_SPACE, 'run-published-pipeline'],
     mutationFn: (request: PublishedPipelineRunRequest) => {
       const { pipeline_id: pipelineId, is_preview, ...rest } = request
-      return post<PublishedPipelineRunPreviewResponse | PublishedPipelineRunResponse>(`/rag/pipelines/${pipelineId}/workflows/published/run`, {
-        body: {
-          ...rest,
-          is_preview,
-          response_mode: 'blocking',
+      return new Promise<PublishedPipelineRunPreviewResponse | PublishedPipelineRunResponse>(
+        (resolve, reject) => {
+          let lastDataSourceCompleted: any = null
+          let lastWorkflowFinished: any = null
+          ssePost(
+            `/rag/pipelines/${pipelineId}/workflows/published/run`,
+            {
+              body: {
+                ...rest,
+                is_preview,
+                response_mode: 'streaming',
+              },
+            },
+            {
+              onDataSourceNodeCompleted: (data: any) => {
+                lastDataSourceCompleted = data
+              },
+              onWorkflowFinished: (data: any) => {
+                lastWorkflowFinished = data
+                // For preview runs the workflow_finished event carries the
+                // FileIndexingEstimateResponse on data.outputs — same shape
+                // as the old blocking PublishedPipelineRunPreviewResponse.
+                if (is_preview) {
+                  resolve(data as PublishedPipelineRunPreviewResponse)
+                  return
+                }
+                // For real ingest (is_preview=false) the legacy blocking
+                // response shape is { batch, dataset, documents } produced by
+                // the api before queuing the Celery task. The SSE workflow
+                // doesn't emit those fields directly — they live on
+                // data_source_node_completed.data, which we captured above.
+                if (lastDataSourceCompleted?.data) {
+                  resolve(lastDataSourceCompleted.data as PublishedPipelineRunResponse)
+                  return
+                }
+                resolve(data as PublishedPipelineRunResponse)
+              },
+              onError: (err: any) => {
+                reject(err instanceof Error ? err : new Error(String(err?.error ?? err ?? 'pipeline run failed')))
+              },
+              onDataSourceNodeError: (err: any) => {
+                reject(new Error(err?.error || 'data source error'))
+              },
+            },
+          )
         },
-      })
+      )
     },
     ...mutationOptions,
   })
