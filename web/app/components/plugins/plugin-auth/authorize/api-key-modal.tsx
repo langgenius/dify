@@ -3,7 +3,6 @@ import type {
   FormRefObject,
   FormSchema,
 } from '@/app/components/base/form/types'
-import type { Member } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   memo,
@@ -20,7 +19,6 @@ import Loading from '@/app/components/base/loading'
 // eslint-disable-next-line no-restricted-imports -- legacy modal, migration tracked in #32767
 import Modal from '@/app/components/base/modal/modal'
 import PermissionSelector from '@/app/components/base/permission-selector'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { PermissionLevel } from '@/models/permission'
 import { useMembers } from '@/service/use-common'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
@@ -64,10 +62,9 @@ const ApiKeyModal = ({
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
     (editValues?.__partial_member_list__ as string[]) ?? [],
   )
+  // Only need member list when creating (the permission selector is hidden on edit).
   const { data: membersData } = useMembers()
-  const memberList: Member[] = membersData?.accounts ?? []
-  const userProfile = useAppContextWithSelector(state => state.userProfile)
-  const isCreator = !editValues || !editValues.__created_by__ || editValues.__created_by__ === userProfile.id
+  const memberList = membersData?.accounts ?? []
   const mergedData = useMemo(() => {
     if (formSchemasFromProps?.length)
       return formSchemasFromProps
@@ -117,21 +114,21 @@ const ApiKeyModal = ({
       } = values
 
       handleSetDoingAction(true)
-      const permissionPayload = {
-        visibility: permission,
-        ...(permission === PermissionLevel.partialMembers
-          ? { partial_member_list: selectedMemberIDs.map(id => ({ user_id: id })) }
-          : {}),
-      }
+      // Visibility is settable only at creation. On edit we don't send it.
       if (editValues) {
         await updatePluginCredential({
           credentials: restValues,
           credential_id: __credential_id__,
           name: __name__ || '',
-          ...permissionPayload,
         })
       }
       else {
+        const permissionPayload = {
+          visibility: permission,
+          ...(permission === PermissionLevel.partialMembers
+            ? { partial_member_list: selectedMemberIDs.map(id => ({ user_id: id })) }
+            : {}),
+        }
         await addPluginCredential({
           credentials: restValues,
           type: CredentialTypeEnum.API_KEY,
@@ -187,24 +184,22 @@ const ApiKeyModal = ({
           />
         )
       }
-      {!isLoading && (
+      {!isLoading && !editValues && (
         <div className="mt-4 px-1">
           <div className="mb-1 system-sm-semibold text-text-secondary">
-            {t('form.permissions', { ns: 'datasetSettings' })}
+            {t('auth.whoCanUse', { ns: 'plugin' })}
           </div>
           <PermissionSelector
-            disabled={disabled || !isCreator}
+            disabled={disabled}
             permission={permission}
             value={selectedMemberIDs}
             memberList={memberList}
             onChange={v => setPermission(v)}
             onMemberSelect={setSelectedMemberIDs}
           />
-          {!isCreator && (
-            <div className="mt-1 system-xs-regular text-text-tertiary">
-              Only the credential creator can change permissions.
-            </div>
-          )}
+          <div className="mt-1 system-xs-regular text-text-tertiary">
+            {t('auth.onlyAtCreationHint', { ns: 'plugin' })}
+          </div>
         </div>
       )}
     </Modal>

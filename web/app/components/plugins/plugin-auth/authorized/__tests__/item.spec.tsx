@@ -53,15 +53,24 @@ describe('Item Component', () => {
 
       render(<Item credential={credential} />)
 
-      expect(screen.getByText('Enterprise')).toBeInTheDocument()
+      expect(screen.getByText('plugin.auth.enterprise')).toBeInTheDocument()
     })
 
-    it('should not render enterprise badge when from_enterprise is false', () => {
-      const credential = createCredential({ from_enterprise: false })
+    it('should render personal badge when visibility is only_me', () => {
+      const credential = createCredential({ from_enterprise: false, visibility: 'only_me' })
 
       render(<Item credential={credential} />)
 
-      expect(screen.queryByText('Enterprise')).not.toBeInTheDocument()
+      expect(screen.getByText('plugin.auth.personal')).toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.enterprise')).not.toBeInTheDocument()
+    })
+
+    it('should render shared badge when visibility is not only_me', () => {
+      const credential = createCredential({ from_enterprise: false, visibility: 'all_team_members' })
+
+      render(<Item credential={credential} />)
+
+      expect(screen.getByText('plugin.auth.shared')).toBeInTheDocument()
     })
 
     it('should render selected icon when showSelectedIcon is true and credential is selected', () => {
@@ -542,7 +551,6 @@ describe('Item Component', () => {
           disableEdit={true}
           disableDelete={true}
           disableSetDefault={true}
-          disableEditPermissions={true}
         />,
       )
 

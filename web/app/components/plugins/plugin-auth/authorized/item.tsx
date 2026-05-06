@@ -6,7 +6,6 @@ import {
   RiDeleteBinLine,
   RiEditLine,
   RiEqualizer2Line,
-  RiLock2Line,
 } from '@remixicon/react'
 import {
   memo,
@@ -27,7 +26,6 @@ type ItemProps = {
   disabled?: boolean
   onDelete?: (id: string) => void
   onEdit?: (id: string, values: Record<string, unknown>) => void
-  onEditPermissions?: (id: string, values: Record<string, unknown>) => void
   onSetDefault?: (id: string) => void
   onRename?: (payload: {
     credential_id: string
@@ -37,7 +35,6 @@ type ItemProps = {
   disableEdit?: boolean
   disableDelete?: boolean
   disableSetDefault?: boolean
-  disableEditPermissions?: boolean
   onItemClick?: (id: string) => void
   showSelectedIcon?: boolean
   selectedCredentialId?: string
@@ -47,14 +44,12 @@ const Item = ({
   disabled,
   onDelete,
   onEdit,
-  onEditPermissions,
   onSetDefault,
   onRename,
   disableRename,
   disableEdit,
   disableDelete,
   disableSetDefault,
-  disableEditPermissions,
   onItemClick,
   showSelectedIcon,
   selectedCredentialId,
@@ -63,9 +58,10 @@ const Item = ({
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credential.name)
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
+  const isPersonal = credential.visibility === 'only_me'
   const showAction = useMemo(() => {
-    return !(disableRename && disableEdit && disableDelete && disableSetDefault && disableEditPermissions)
-  }, [disableRename, disableEdit, disableDelete, disableSetDefault, disableEditPermissions])
+    return !(disableRename && disableEdit && disableDelete && disableSetDefault)
+  }, [disableRename, disableEdit, disableDelete, disableSetDefault])
 
   const CredentialItem = (
     <div
@@ -153,11 +149,26 @@ const Item = ({
         )
       }
       {
-        credential.from_enterprise && (
-          <Badge className="shrink-0">
-            Enterprise
-          </Badge>
-        )
+        credential.from_enterprise
+          ? (
+            <Badge className="shrink-0">
+              {t('auth.enterprise', { ns: 'plugin' })}
+            </Badge>
+          )
+          : (
+            <Badge
+              className={cn(
+                'shrink-0',
+                isPersonal
+                  ? 'border-components-badge-bg-gray-soft bg-components-badge-bg-gray-soft text-text-tertiary'
+                  : 'border-components-badge-bg-blue-soft bg-components-badge-bg-blue-soft text-text-accent',
+              )}
+            >
+              {isPersonal
+                ? t('auth.personal', { ns: 'plugin' })
+                : t('auth.shared', { ns: 'plugin' })}
+            </Badge>
+          )
       }
       {
         showAction && !renaming && (
@@ -205,38 +216,11 @@ const Item = ({
                           ...credential.credentials,
                           __name__: credential.name,
                           __credential_id__: credential.id,
-                          __visibility__: credential.visibility ?? 'all_team_members',
-                          __created_by__: credential.created_by ?? '',
-                          __partial_member_list__: credential.partial_member_list ?? [],
                         },
                       )
                     }}
                   >
                     <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
-                  </ActionButton>
-                </Tooltip>
-              )
-            }
-            {
-              !disableEditPermissions && !credential.from_enterprise && !credential.not_allowed_to_use && (
-                <Tooltip popupContent="Manage Permissions">
-                  <ActionButton
-                    disabled={disabled}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEditPermissions?.(
-                        credential.id,
-                        {
-                          __credential_id__: credential.id,
-                          __name__: credential.name,
-                          __visibility__: credential.visibility ?? 'all_team_members',
-                          __created_by__: credential.created_by ?? '',
-                          __partial_member_list__: credential.partial_member_list ?? [],
-                        },
-                      )
-                    }}
-                  >
-                    <RiLock2Line className="h-4 w-4 text-text-tertiary" />
                   </ActionButton>
                 </Tooltip>
               )
