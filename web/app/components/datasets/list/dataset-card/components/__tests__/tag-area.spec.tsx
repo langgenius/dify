@@ -154,10 +154,23 @@ describe('TagArea', () => {
       expect(maskDiv).toHaveClass('hidden')
     })
 
-    it('should make TagSelector visible when tags exist', () => {
-      const { container } = render(<TagArea {...defaultProps} />)
-      const tagSelectorWrapper = container.querySelector('.visible')
+    it('should keep TagSelector visible when tags are empty', () => {
+      const { container } = render(<TagArea {...defaultProps} dataset={createMockDataset({ tags: [] })} />)
+      const tagSelectorWrapper = screen.getByTestId('tag-selector').parentElement
+
       expect(tagSelectorWrapper).toBeInTheDocument()
+      expect(tagSelectorWrapper).toHaveClass('w-full')
+      expect(tagSelectorWrapper).not.toHaveClass('invisible')
+      expect(container.querySelector('.invisible')).not.toBeInTheDocument()
+    })
+
+    it('should keep TagSelector visible when tags exist', () => {
+      const { container } = render(<TagArea {...defaultProps} />)
+      const tagSelectorWrapper = screen.getByTestId('tag-selector').parentElement
+
+      expect(tagSelectorWrapper).toBeInTheDocument()
+      expect(tagSelectorWrapper).toHaveClass('w-full')
+      expect(container.querySelector('.invisible')).not.toBeInTheDocument()
     })
   })
 

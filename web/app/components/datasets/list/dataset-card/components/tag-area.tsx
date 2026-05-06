@@ -22,10 +22,7 @@ const TagArea = React.forwardRef<HTMLDivElement, TagAreaProps>(({
   >
     <div
       ref={ref}
-      className={cn(
-        'invisible w-full group-hover:visible',
-        dataset.tags.length > 0 && 'visible',
-      )}
+      className="w-full"
     >
       <TagSelector
         position="bl"
