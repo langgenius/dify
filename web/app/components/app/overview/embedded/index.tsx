@@ -125,7 +125,7 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
         onClose()
       }}
     >
-      <DialogContent className={cn('w-[640px]', className)}>
+      <DialogContent className={cn('max-h-[calc(100dvh-2rem)] w-[640px] overflow-visible', className)}>
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(`${prefixEmbedded}.title`, { ns: 'appOverview' })}
         </DialogTitle>
@@ -192,7 +192,7 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
               </TooltipContent>
             </Tooltip>
           </div>
-          <div className="flex w-full items-start justify-start gap-2 overflow-x-auto p-3">
+          <div className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] w-full items-start justify-start gap-2 overflow-auto p-3">
             <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
               <pre className="select-text">{OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv)}</pre>
             </div>
