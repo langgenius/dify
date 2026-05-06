@@ -42,7 +42,7 @@ export const useUpdateTagMutation = () => {
             }
           : tag),
       )
-      return invalidateTagConsumers()
+      void invalidateTagConsumers()
     },
   }))
 }
@@ -62,7 +62,7 @@ export const useDeleteTagMutation = () => {
         },
         oldTags => oldTags?.filter(tag => tag.id !== variables.params.tagId),
       )
-      return invalidateTagConsumers()
+      void invalidateTagConsumers()
     },
   }))
 }
@@ -115,7 +115,7 @@ export const useApplyTagBindingsMutation = () => {
       return Promise.all(operations)
     },
     onSuccess: (_data, variables) => {
-      return invalidateTagConsumers(variables.type)
+      void invalidateTagConsumers(variables.type)
     },
   })
 }
