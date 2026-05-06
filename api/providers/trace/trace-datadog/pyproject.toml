@@ -1,0 +1,14 @@
+[project]
+name = "dify-trace-datadog"
+version = "0.0.1"
+dependencies = [
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-exporter-otlp-proto-http",
+    "opentelemetry-semantic-conventions",
+    "httpx",
+]
+description = "Dify ops tracing provider (Datadog)."
+
+[tool.setuptools.packages.find]
+where = ["src"]
