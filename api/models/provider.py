@@ -9,12 +9,11 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select, text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.db.session_factory import session_factory
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.uuid_utils import uuidv7
 
-from core.db.session_factory import session_factory
 from .base import TypeBase
-from .engine import db
 from .enums import CredentialSourceType, PaymentStatus, ProviderQuotaType
 from .types import EnumText, LongText, StringUUID
 
