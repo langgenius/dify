@@ -23,9 +23,7 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 class PluginModelClient(BasePluginClient):
     @staticmethod
-    def _dispatch_payload(
-        *, user_id: str | None, data: dict[str, Any], app_id: str | None = None
-    ) -> dict[str, Any]:
+    def _dispatch_payload(*, user_id: str | None, data: dict[str, Any], app_id: str | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {"data": data}
         if user_id is not None:
             payload["user_id"] = user_id
