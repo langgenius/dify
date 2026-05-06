@@ -1821,11 +1821,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/tag-management/tag-item-editor.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/base/text-generation/hooks.ts": {
     "ts/no-explicit-any": {
       "count": 1
