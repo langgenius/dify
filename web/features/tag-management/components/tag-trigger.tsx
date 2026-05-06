@@ -1,11 +1,10 @@
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type TriggerProps = {
   tags: string[]
 }
 
-const Trigger = ({
+export const TagTrigger = ({
   tags,
 }: TriggerProps) => {
   const { t } = useTranslation()
@@ -24,12 +23,12 @@ const Trigger = ({
         : (
             <>
               {
-                tags.map((content, index) => {
+                tags.map((content) => {
                   return (
                     <div
-                      key={index}
+                      key={content}
                       className="flex items-center gap-x-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]"
-                      data-testid={`tag-badge-${index}`}
+                      data-testid={`tag-badge-${content}`}
                     >
                       <span className="i-ri-price-tag-3-line h-3 w-3 shrink-0 text-text-quaternary" />
                       <div className="system-2xs-medium-uppercase text-nowrap text-text-tertiary">
@@ -44,5 +43,3 @@ const Trigger = ({
     </div>
   )
 }
-
-export default React.memo(Trigger)

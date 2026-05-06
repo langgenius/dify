@@ -2,7 +2,7 @@ import type { Tag } from '@/contract/console/tags'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import TagItemEditor from '../tag-item-editor'
+import { TagItemEditor } from '../components/tag-item-editor'
 
 const tagMocks = vi.hoisted(() => {
   const record = vi.fn()
@@ -23,7 +23,7 @@ const tagMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/use-tag-mutations', () => ({
   useUpdateTagMutation: () => ({
     mutate: ({ params, body }: { params: { tagId: string }, body: { name: string } }, options?: { onSuccess?: () => void, onError?: () => void }) => {
       Promise.resolve(tagMocks.updateTag(params.tagId, body.name))

@@ -1,7 +1,7 @@
 import type { Tag } from '@/contract/console/tags'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import TagSelector from '../selector'
+import { TagSelector } from '../components/tag-selector'
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {
@@ -31,7 +31,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/use-tag-mutations', () => ({
   useCreateTagMutation: () => ({
     isPending: false,
     mutate: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }, options?: { onSuccess?: (tag: Tag) => void, onError?: () => void }) => {
@@ -47,16 +47,16 @@ vi.mock('../hooks', () => ({
   }),
   useApplyTagBindingsMutation: () => ({
     mutate: (
-      { currentTagIDs, nextTagIDs, targetID, type }: { currentTagIDs: string[], nextTagIDs: string[], targetID: string, type: 'app' | 'knowledge' },
+      { currentTagIds, nextTagIds, targetId, type }: { currentTagIds: string[], nextTagIds: string[], targetId: string, type: 'app' | 'knowledge' },
       options?: { onSuccess?: () => void, onError?: () => void },
     ) => {
-      const addTagIDs = nextTagIDs.filter(tagID => !currentTagIDs.includes(tagID))
-      const removeTagIDs = currentTagIDs.filter(tagID => !nextTagIDs.includes(tagID))
+      const addTagIds = nextTagIds.filter(tagId => !currentTagIds.includes(tagId))
+      const removeTagIds = currentTagIds.filter(tagId => !nextTagIds.includes(tagId))
       const operations: Promise<unknown>[] = []
 
-      if (addTagIDs.length)
-        operations.push(Promise.resolve(bindTag(addTagIDs, targetID, type)))
-      operations.push(...removeTagIDs.map(tagID => Promise.resolve(unBindTag(tagID, targetID, type))))
+      if (addTagIds.length)
+        operations.push(Promise.resolve(bindTag(addTagIds, targetId, type)))
+      operations.push(...removeTagIds.map(tagId => Promise.resolve(unBindTag(tagId, targetId, type))))
 
       Promise.all(operations)
         .then(() => options?.onSuccess?.())
@@ -81,9 +81,9 @@ const appTags: Tag[] = [
 ]
 
 const defaultProps = {
-  targetID: 'target-1',
+  targetId: 'target-1',
   type: 'app' as const,
-  value: ['tag-1'!],
+  selectedTagIds: ['tag-1'!],
   selectedTags: [appTags[0]!],
 }
 
@@ -109,7 +109,7 @@ describe('TagSelector', () => {
     })
 
     it('should render TagSelector add-tag placeholder when defaultProps are overridden with empty selectedTags and value', () => {
-      render(<TagSelector {...defaultProps} selectedTags={[]} value={[]} />)
+      render(<TagSelector {...defaultProps} selectedTags={[]} selectedTagIds={[]} />)
       expect(screen.getByText(i18n.addTag))!.toBeInTheDocument()
     })
 
@@ -140,7 +140,7 @@ describe('TagSelector', () => {
         <TagSelector
           {...defaultProps}
           selectedTags={[appTags[0]!, unknownTag]}
-          value={['tag-1', 'unknown']}
+          selectedTagIds={['tag-1', 'unknown']}
         />,
       )
       // 'Frontend' is in tagList, 'Unknown' is not
@@ -154,7 +154,7 @@ describe('TagSelector', () => {
         <TagSelector
           {...defaultProps}
           selectedTags={appTags}
-          value={['tag-1', 'tag-2']}
+          selectedTagIds={['tag-1', 'tag-2']}
         />,
       )
       expect(screen.getByText('Frontend'))!.toBeInTheDocument()
@@ -190,7 +190,7 @@ describe('TagSelector', () => {
     it('should show the no-tag message when tag list is empty', async () => {
       const user = userEvent.setup()
       mockUseQueryData.current = []
-      render(<TagSelector {...defaultProps} selectedTags={[]} value={[]} />)
+      render(<TagSelector {...defaultProps} selectedTags={[]} selectedTagIds={[]} />)
 
       await user.click(screen.getByRole('button'))
 
@@ -311,7 +311,7 @@ describe('TagSelector', () => {
         <TagSelector
           {...defaultProps}
           selectedTags={orphanTags}
-          value={['orphan-1']}
+          selectedTagIds={['orphan-1']}
         />,
       )
       // Orphan tag is not in store tagList, so tags memo returns []
@@ -362,7 +362,7 @@ describe('TagSelector', () => {
           {...defaultProps}
           type="knowledge"
           selectedTags={knowledgeTags}
-          value={['k-1']}
+          selectedTagIds={['k-1']}
         />,
       )
 

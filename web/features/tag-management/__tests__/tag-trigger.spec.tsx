@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import Trigger from '../trigger'
+import { TagTrigger } from '../components/tag-trigger'
 
 describe('Trigger', () => {
   beforeEach(() => {
@@ -9,13 +9,13 @@ describe('Trigger', () => {
   // Rendering behavior for empty and populated states.
   describe('Rendering', () => {
     it('should render add-tag placeholder when tags are empty', () => {
-      render(<Trigger tags={[]} />)
+      render(<TagTrigger tags={[]} />)
 
       expect(screen.getByText('common.tag.addTag')).toBeInTheDocument()
     })
 
     it('should render all tags when tags are provided', () => {
-      render(<Trigger tags={['Frontend', 'Backend']} />)
+      render(<TagTrigger tags={['Frontend', 'Backend']} />)
 
       expect(screen.getByText('Frontend')).toBeInTheDocument()
       expect(screen.getByText('Backend')).toBeInTheDocument()
@@ -26,10 +26,10 @@ describe('Trigger', () => {
   // Prop-driven rendering updates.
   describe('Props', () => {
     it('should update from placeholder to tag badges when tags prop changes', () => {
-      const { rerender } = render(<Trigger tags={[]} />)
+      const { rerender } = render(<TagTrigger tags={[]} />)
       expect(screen.getByText('common.tag.addTag')).toBeInTheDocument()
 
-      rerender(<Trigger tags={['Database']} />)
+      rerender(<TagTrigger tags={['Database']} />)
 
       expect(screen.getByText('Database')).toBeInTheDocument()
       expect(screen.queryByText('common.tag.addTag')).not.toBeInTheDocument()
@@ -39,7 +39,7 @@ describe('Trigger', () => {
   // Edge behavior for unusual but valid tag arrays.
   describe('Edge Cases', () => {
     it('should render a badge even when a tag label is an empty string', () => {
-      render(<Trigger tags={['']} />)
+      render(<TagTrigger tags={['']} />)
 
       // One outer container + one tag badge.
       expect(screen.getAllByTestId(/^tag-badge-/)).toHaveLength(1)
@@ -48,7 +48,7 @@ describe('Trigger', () => {
 
     it('should render one badge per tag for longer tag lists', () => {
       const tags = ['A', 'B', 'C', 'D', 'E']
-      render(<Trigger tags={tags} />)
+      render(<TagTrigger tags={tags} />)
 
       tags.forEach(tag => expect(screen.getByText(tag)).toBeInTheDocument())
       expect(screen.getAllByTestId(/^tag-badge-/)).toHaveLength(tags.length)

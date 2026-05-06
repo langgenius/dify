@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { Tag } from '@/contract/console/tags'
 import { ToastHost } from '@langgenius/dify-ui/toast'
-import { useEffect, useRef, useState } from 'react'
-import TagManagementModal from '.'
+import { useEffect, useState } from 'react'
+import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 
 const INITIAL_TAGS: Tag[] = [
   { id: 'tag-product', name: 'Product', type: 'app', binding_count: 12 },
@@ -17,12 +17,11 @@ const TagManagementPlayground = ({
 }: {
   type?: 'app' | 'knowledge'
 }) => {
-  const originalFetchRef = useRef<typeof globalThis.fetch>(null)
-  const tagsRef = useRef<Tag[]>(INITIAL_TAGS)
   const [showModal, setShowModal] = useState(true)
 
   useEffect(() => {
-    originalFetchRef.current = globalThis.fetch?.bind(globalThis)
+    const originalFetch = globalThis.fetch?.bind(globalThis)
+    let tags = [...INITIAL_TAGS]
 
     const handler = async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = input instanceof Request ? input : new Request(input, init)
@@ -33,7 +32,7 @@ const TagManagementPlayground = ({
       if (parsedUrl.pathname.endsWith('/tags')) {
         if (method === 'GET') {
           const tagType = parsedUrl.searchParams.get('type') || 'app'
-          const payload = tagsRef.current.filter(tag => tag.type === tagType)
+          const payload = tags.filter(tag => tag.type === tagType)
           return new Response(JSON.stringify(payload), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -47,7 +46,7 @@ const TagManagementPlayground = ({
             type: body.type,
             binding_count: 0,
           }
-          tagsRef.current = [newTag, ...tagsRef.current]
+          tags = [newTag, ...tags]
           return new Response(JSON.stringify(newTag), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -62,8 +61,8 @@ const TagManagementPlayground = ({
         })
       }
 
-      if (originalFetchRef.current)
-        return originalFetchRef.current(request)
+      if (originalFetch)
+        return originalFetch(request)
 
       throw new Error(`Unhandled request in mock fetch: ${url}`)
     }
@@ -71,8 +70,8 @@ const TagManagementPlayground = ({
     globalThis.fetch = handler as typeof globalThis.fetch
 
     return () => {
-      if (originalFetchRef.current)
-        globalThis.fetch = originalFetchRef.current
+      if (originalFetch)
+        globalThis.fetch = originalFetch
     }
   }, [])
 

@@ -1,28 +1,30 @@
-import type { TagSelectorProps } from './selector'
-import type { Tag } from '@/contract/console/tags'
+import type { Tag, TagType } from '@/contract/console/tags'
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
-import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { useCreateTagMutation } from './hooks'
+import { useCreateTagMutation } from '../hooks/use-tag-mutations'
 
-type PanelProps = TagSelectorProps & {
+type TagPanelProps = {
+  type: TagType
+  selectedTagIds: string[]
+  selectedTags: Tag[]
+  onOpenTagManagement?: () => void
   tagList: Tag[]
-  selectedTagIDs?: string[]
-  onSelectedTagIDsChange?: (tagIDs: string[]) => void
+  draftTagIds?: string[]
+  onDraftTagIdsChange?: (tagIds: string[]) => void
   onClose?: () => void
 }
-const Panel = (props: PanelProps) => {
+export const TagPanel = (props: TagPanelProps) => {
   const { t } = useTranslation()
-  const { type, value, selectedTags, tagList, onOpenTagManagement, onClose } = props
+  const { type, selectedTagIds, selectedTags, tagList, onOpenTagManagement, onClose } = props
   const createTagMutation = useCreateTagMutation()
-  const [localSelectedTagIDs, setLocalSelectedTagIDs] = useState<string[]>(value)
-  const selectedTagIDs = props.selectedTagIDs ?? localSelectedTagIDs
-  const onSelectedTagIDsChange = props.onSelectedTagIDsChange ?? setLocalSelectedTagIDs
+  const [localDraftTagIds, setLocalDraftTagIds] = useState<string[]>(selectedTagIds)
+  const draftTagIds = props.draftTagIds ?? localDraftTagIds
+  const onDraftTagIdsChange = props.onDraftTagIdsChange ?? setLocalDraftTagIds
   const [keywords, setKeywords] = useState('')
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
@@ -34,8 +36,8 @@ const Panel = (props: PanelProps) => {
     return selectedTags.filter(tag => tag.name.includes(keywords))
   }, [keywords, selectedTags])
   const filteredTagList = useMemo(() => {
-    return tagList.filter(tag => tag.type === type && !value.includes(tag.id) && tag.name.includes(keywords))
-  }, [type, tagList, value, keywords])
+    return tagList.filter(tag => tag.type === type && !selectedTagIds.includes(tag.id) && tag.name.includes(keywords))
+  }, [type, tagList, selectedTagIds, keywords])
   const createNewTag = () => {
     if (!keywords)
       return
@@ -57,11 +59,11 @@ const Panel = (props: PanelProps) => {
       },
     })
   }
-  const selectTag = (tagID: string) => {
-    if (selectedTagIDs.includes(tagID))
-      onSelectedTagIDsChange(selectedTagIDs.filter(v => v !== tagID))
+  const selectTag = (tagId: string) => {
+    if (draftTagIds.includes(tagId))
+      onDraftTagIdsChange(draftTagIds.filter(v => v !== tagId))
     else
-      onSelectedTagIDsChange([...selectedTagIDs, tagID])
+      onDraftTagIdsChange([...draftTagIds, tagId])
   }
   return (
     <div className="relative w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur">
@@ -84,7 +86,7 @@ const Panel = (props: PanelProps) => {
         <div className="max-h-[232px] overflow-y-auto p-1">
           {filteredSelectedTagList.map(tag => (
             <div key={tag.id} className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => selectTag(tag.id)} data-testid="tag-row">
-              <Checkbox className="shrink-0" checked={selectedTagIDs.includes(tag.id)} onCheck={noop} id={tag.id} />
+              <Checkbox className="shrink-0" checked={draftTagIds.includes(tag.id)} onCheck={noop} id={tag.id} />
               <div title={tag.name} className="grow truncate px-1 system-md-regular text-text-secondary">
                 {tag.name}
               </div>
@@ -92,7 +94,7 @@ const Panel = (props: PanelProps) => {
           ))}
           {filteredTagList.map(tag => (
             <div key={tag.id} className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => selectTag(tag.id)} data-testid="tag-row">
-              <Checkbox className="shrink-0" checked={selectedTagIDs.includes(tag.id)} onCheck={noop} id={tag.id} />
+              <Checkbox className="shrink-0" checked={draftTagIds.includes(tag.id)} onCheck={noop} id={tag.id} />
               <div title={tag.name} className="grow truncate px-1 system-md-regular text-text-secondary">
                 {tag.name}
               </div>
@@ -126,4 +128,3 @@ const Panel = (props: PanelProps) => {
     </div>
   )
 }
-export default React.memo(Panel)

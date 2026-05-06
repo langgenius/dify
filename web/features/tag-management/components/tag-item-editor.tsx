@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { Tag } from '@/contract/console/tags'
 import {
   AlertDialog,
@@ -11,22 +10,26 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import { useDeleteTagMutation, useUpdateTagMutation } from './hooks'
+import { useDeleteTagMutation, useUpdateTagMutation } from '../hooks/use-tag-mutations'
 
 type TagItemEditorProps = {
   tag: Tag
 }
-const TagItemEditor: FC<TagItemEditorProps> = ({ tag }) => {
+export const TagItemEditor = ({ tag }: TagItemEditorProps) => {
   const { t } = useTranslation()
   const updateTagMutation = useUpdateTagMutation()
   const deleteTagMutation = useDeleteTagMutation()
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(tag.name)
-  const editTag = (tagID: string, name: string) => {
+  const editTag = (tagId: string, name: string) => {
     if (name === tag.name) {
       setIsEditing(false)
       return
@@ -40,7 +43,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({ tag }) => {
 
     updateTagMutation.mutate({
       params: {
-        tagId: tagID,
+        tagId,
       },
       body: {
         name,
@@ -59,13 +62,13 @@ const TagItemEditor: FC<TagItemEditorProps> = ({ tag }) => {
     })
   }
   const [showRemoveModal, setShowRemoveModal] = useState(false)
-  const removeTag = (tagID: string) => {
+  const removeTag = (tagId: string) => {
     if (deleteTagMutation.isPending)
       return
 
     deleteTagMutation.mutate({
       params: {
-        tagId: tagID,
+        tagId,
       },
     }, {
       onSuccess: () => {
@@ -87,8 +90,11 @@ const TagItemEditor: FC<TagItemEditorProps> = ({ tag }) => {
             <div className="text-sm leading-5 text-text-secondary">
               {tag.name}
             </div>
-            <Tooltip popupContent={<div>{t('common.tagBound', { ns: 'workflow' })}</div>} needsDelay>
-              <div className="shrink-0 px-1 text-sm leading-4.5 font-medium text-text-tertiary">{tag.binding_count}</div>
+            <Tooltip>
+              <TooltipTrigger>
+                <div className="shrink-0 px-1 text-sm leading-4.5 font-medium text-text-tertiary">{tag.binding_count}</div>
+              </TooltipTrigger>
+              <TooltipContent>{t('common.tagBound', { ns: 'workflow' })}</TooltipContent>
             </Tooltip>
             <div className="group/edit shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover" onClick={() => setIsEditing(true)}>
               <span className="i-ri-edit-line h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary" data-testid="tag-item-editor-edit-button" />
@@ -139,4 +145,3 @@ const TagItemEditor: FC<TagItemEditorProps> = ({ tag }) => {
     </>
   )
 }
-export default TagItemEditor

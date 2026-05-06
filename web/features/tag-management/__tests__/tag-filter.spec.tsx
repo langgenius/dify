@@ -1,7 +1,7 @@
 import type { Tag } from '@/contract/console/tags'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import TagFilter from '../filter'
+import { TagFilter } from '../components/tag-filter'
 
 const { mockUseQueryData } = vi.hoisted(() => ({
   mockUseQueryData: { current: [] as Tag[] },

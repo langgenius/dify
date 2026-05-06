@@ -35,11 +35,11 @@ import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
-import TagSelector from '@/app/components/base/tag-management/selector'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
@@ -511,12 +511,9 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                 }}
               >
                 <div className="mr-[41px] w-full grow">
-                  <TagSelector
-                    position="bl"
-                    type="app"
-                    targetID={app.id}
-                    value={app.tags.map(tag => tag.id)}
-                    selectedTags={app.tags}
+                  <AppCardTags
+                    appId={app.id}
+                    tags={app.tags}
                     onOpenTagManagement={onOpenTagManagement}
                   />
                 </div>

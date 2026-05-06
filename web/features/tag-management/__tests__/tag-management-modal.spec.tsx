@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import * as ReactI18next from 'react-i18next'
-import TagManagementModal from '../index'
+import { TagManagementModal } from '../components/tag-management-modal'
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
   const mockNotify = vi.fn()
@@ -32,7 +32,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks/use-tag-mutations', () => ({
   useCreateTagMutation: () => ({
     isPending: false,
     mutate: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }, options?: { onSuccess?: (tag: Tag) => void, onError?: () => void }) => {

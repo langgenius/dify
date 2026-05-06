@@ -68,9 +68,9 @@ export const useDeleteTagMutation = () => {
 }
 
 type ApplyTagBindingsInput = {
-  currentTagIDs: string[]
-  nextTagIDs: string[]
-  targetID: string
+  currentTagIds: string[]
+  nextTagIds: string[]
+  targetId: string
   type: TagType
 }
 
@@ -89,25 +89,25 @@ export const useApplyTagBindingsMutation = () => {
 
   return useMutation({
     mutationKey: ['tag-bindings', 'apply'],
-    mutationFn: async ({ currentTagIDs, nextTagIDs, targetID, type }: ApplyTagBindingsInput) => {
-      const addTagIDs = nextTagIDs.filter(tagID => !currentTagIDs.includes(tagID))
-      const removeTagIDs = currentTagIDs.filter(tagID => !nextTagIDs.includes(tagID))
+    mutationFn: async ({ currentTagIds, nextTagIds, targetId, type }: ApplyTagBindingsInput) => {
+      const addTagIds = nextTagIds.filter(tagId => !currentTagIds.includes(tagId))
+      const removeTagIds = currentTagIds.filter(tagId => !nextTagIds.includes(tagId))
       const operations: Promise<unknown>[] = []
 
-      if (addTagIDs.length) {
+      if (addTagIds.length) {
         operations.push(consoleClient.tags.bind({
           body: {
-            tag_ids: addTagIDs,
-            target_id: targetID,
+            tag_ids: addTagIds,
+            target_id: targetId,
             type,
           },
         }))
       }
 
-      operations.push(...removeTagIDs.map(tagID => consoleClient.tags.unbind({
+      operations.push(...removeTagIds.map(tagId => consoleClient.tags.unbind({
         body: {
-          tag_id: tagID,
-          target_id: targetID,
+          tag_id: tagId,
+          target_id: targetId,
           type,
         },
       })))

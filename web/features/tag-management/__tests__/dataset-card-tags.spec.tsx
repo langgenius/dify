@@ -1,21 +1,17 @@
 import type { Tag } from '@/contract/console/tags'
-import type { DataSet } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import TagArea from '../tag-area'
+import { DatasetCardTags } from '../components/dataset-card-tags'
 
 // Mock TagSelector as it's a complex component from base
-vi.mock('@/app/components/base/tag-management/selector', () => ({
-  default: ({ value, selectedTags, onOpenTagManagement }: {
-    value: string[]
+vi.mock('@/features/tag-management/components/tag-selector', () => ({
+  TagSelector: ({ selectedTagIds, selectedTags, onOpenTagManagement }: {
+    selectedTagIds: string[]
     selectedTags: Tag[]
     onOpenTagManagement?: () => void
   }) => (
     <div data-testid="tag-selector">
-      <div data-testid="tag-values">{value.join(',')}</div>
+      <div data-testid="tag-values">{selectedTagIds.join(',')}</div>
       <div data-testid="selected-count">
         {selectedTags.length}
         {' '}
@@ -28,36 +24,16 @@ vi.mock('@/app/components/base/tag-management/selector', () => ({
   ),
 }))
 
-describe('TagArea', () => {
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-    id: 'dataset-1',
-    name: 'Test Dataset',
-    description: 'Test description',
-    provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
-    data_source_type: DataSourceType.FILE,
-    indexing_technique: IndexingType.QUALIFIED,
-    embedding_available: true,
-    app_count: 5,
-    document_count: 10,
-    word_count: 1000,
-    updated_at: 1609545600,
-    tags: [],
-    embedding_model: 'text-embedding-ada-002',
-    embedding_model_provider: 'openai',
-    created_by: 'user-1',
-    doc_form: ChunkingMode.text,
-    ...overrides,
-  } as DataSet)
-
+describe('DatasetCardTags', () => {
   const mockTags: Tag[] = [
     { id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: 0 },
     { id: 'tag-2', name: 'Tag 2', type: 'knowledge', binding_count: 0 },
   ]
 
   const defaultProps = {
-    dataset: createMockDataset({ tags: mockTags }),
-    isHoveringTagSelector: false,
+    datasetId: 'dataset-1',
+    embeddingAvailable: true,
+    tags: mockTags,
     onClick: vi.fn(),
   }
 
@@ -67,47 +43,37 @@ describe('TagArea', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<TagArea {...defaultProps} />)
+      render(<DatasetCardTags {...defaultProps} />)
       expect(screen.getByTestId('tag-selector')).toBeInTheDocument()
     })
 
     it('should render TagSelector with correct value', () => {
-      render(<TagArea {...defaultProps} />)
+      render(<DatasetCardTags {...defaultProps} />)
       expect(screen.getByTestId('tag-values')).toHaveTextContent('tag-1,tag-2')
     })
 
     it('should display selected tags count', () => {
-      render(<TagArea {...defaultProps} />)
+      render(<DatasetCardTags {...defaultProps} />)
       expect(screen.getByTestId('selected-count')).toHaveTextContent('2 tags')
     })
   })
 
   describe('Props', () => {
     it('should pass dataset id to TagSelector', () => {
-      const dataset = createMockDataset({ id: 'custom-dataset-id' })
-      render(<TagArea {...defaultProps} dataset={dataset} />)
+      render(<DatasetCardTags {...defaultProps} datasetId="custom-dataset-id" />)
       expect(screen.getByTestId('tag-selector')).toBeInTheDocument()
     })
 
     it('should render with empty tags', () => {
-      render(<TagArea {...defaultProps} dataset={createMockDataset({ tags: [] })} />)
+      render(<DatasetCardTags {...defaultProps} tags={[]} />)
       expect(screen.getByTestId('selected-count')).toHaveTextContent('0 tags')
-    })
-
-    it('should forward ref correctly', () => {
-      const TestComponent = () => {
-        const ref = useRef<HTMLDivElement>(null)
-        return <TagArea {...defaultProps} ref={ref} />
-      }
-      render(<TestComponent />)
-      expect(screen.getByTestId('tag-selector')).toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
     it('should call onClick when container is clicked', () => {
       const onClick = vi.fn()
-      const { container } = render(<TagArea {...defaultProps} onClick={onClick} />)
+      const { container } = render(<DatasetCardTags {...defaultProps} onClick={onClick} />)
 
       const wrapper = container.firstChild as HTMLElement
       fireEvent.click(wrapper)
@@ -117,7 +83,7 @@ describe('TagArea', () => {
 
     it('should open tag management when requested', () => {
       const onOpenTagManagement = vi.fn()
-      render(<TagArea {...defaultProps} onOpenTagManagement={onOpenTagManagement} />)
+      render(<DatasetCardTags {...defaultProps} onOpenTagManagement={onOpenTagManagement} />)
 
       fireEvent.click(screen.getByText('Open Management'))
 
@@ -127,35 +93,27 @@ describe('TagArea', () => {
 
   describe('Styles', () => {
     it('should have opacity class when embedding is not available', () => {
-      const dataset = createMockDataset({ embedding_available: false })
-      const { container } = render(<TagArea {...defaultProps} dataset={dataset} />)
+      const { container } = render(<DatasetCardTags {...defaultProps} embeddingAvailable={false} />)
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('opacity-30')
     })
 
     it('should not have opacity class when embedding is available', () => {
-      const dataset = createMockDataset({ embedding_available: true })
-      const { container } = render(<TagArea {...defaultProps} dataset={dataset} />)
+      const { container } = render(<DatasetCardTags {...defaultProps} embeddingAvailable={true} />)
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).not.toHaveClass('opacity-30')
     })
 
-    it('should show mask when not hovering and has tags', () => {
-      const { container } = render(<TagArea {...defaultProps} isHoveringTagSelector={false} />)
+    it('should hide mask with CSS when the tag area is hovered', () => {
+      const { container } = render(<DatasetCardTags {...defaultProps} />)
       const maskDiv = container.querySelector('.bg-tag-selector-mask-bg')
       expect(maskDiv).toBeInTheDocument()
-      expect(maskDiv).not.toHaveClass('hidden')
-    })
-
-    it('should hide mask when hovering', () => {
-      const { container } = render(<TagArea {...defaultProps} isHoveringTagSelector={true} />)
-      // When hovering, the mask div should have 'hidden' class
-      const maskDiv = container.querySelector('.absolute.right-0.top-0')
-      expect(maskDiv).toHaveClass('hidden')
+      expect(maskDiv).toHaveClass('group-hover/tag-area:hidden')
+      expect(maskDiv).toHaveClass('group-hover:bg-tag-selector-mask-hover-bg')
     })
 
     it('should keep TagSelector visible when tags are empty', () => {
-      const { container } = render(<TagArea {...defaultProps} dataset={createMockDataset({ tags: [] })} />)
+      const { container } = render(<DatasetCardTags {...defaultProps} tags={[]} />)
       const tagSelectorWrapper = screen.getByTestId('tag-selector').parentElement
 
       expect(tagSelectorWrapper).toBeInTheDocument()
@@ -165,7 +123,7 @@ describe('TagArea', () => {
     })
 
     it('should keep TagSelector visible when tags exist', () => {
-      const { container } = render(<TagArea {...defaultProps} />)
+      const { container } = render(<DatasetCardTags {...defaultProps} />)
       const tagSelectorWrapper = screen.getByTestId('tag-selector').parentElement
 
       expect(tagSelectorWrapper).toBeInTheDocument()
@@ -176,7 +134,7 @@ describe('TagArea', () => {
 
   describe('Edge Cases', () => {
     it('should handle undefined onOpenTagManagement', () => {
-      render(<TagArea {...defaultProps} onOpenTagManagement={undefined} />)
+      render(<DatasetCardTags {...defaultProps} onOpenTagManagement={undefined} />)
       expect(() => fireEvent.click(screen.getByText('Open Management'))).not.toThrow()
     })
 
@@ -187,7 +145,7 @@ describe('TagArea', () => {
         type: 'knowledge' as const,
         binding_count: 0,
       }))
-      render(<TagArea {...defaultProps} dataset={createMockDataset({ tags: manyTags })} />)
+      render(<DatasetCardTags {...defaultProps} tags={manyTags} />)
       expect(screen.getByTestId('selected-count')).toHaveTextContent('20 tags')
     })
   })

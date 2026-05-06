@@ -5,15 +5,15 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { useCreateTagMutation } from './hooks'
-import TagItemEditor from './tag-item-editor'
+import { useCreateTagMutation } from '../hooks/use-tag-mutations'
+import { TagItemEditor } from './tag-item-editor'
 
 type TagManagementModalProps = {
   type: 'knowledge' | 'app'
   show: boolean
   onClose: () => void
 }
-const TagManagementModal = ({ show, type, onClose }: TagManagementModalProps) => {
+export const TagManagementModal = ({ show, type, onClose }: TagManagementModalProps) => {
   const { t } = useTranslation()
   const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
     input: {
@@ -65,4 +65,3 @@ const TagManagementModal = ({ show, type, onClose }: TagManagementModalProps) =>
     </Dialog>
   )
 }
-export default TagManagementModal

@@ -301,10 +301,10 @@ vi.mock('@/app/components/base/tooltip', () => ({
   default: ({ children, popupContent }: { children: React.ReactNode, popupContent: React.ReactNode }) => React.createElement('div', { title: popupContent }, children),
 }))
 
-// TagSelector has API dependencies - mock for isolated testing
-vi.mock('@/app/components/base/tag-management/selector', () => ({
-  default: ({ selectedTags }: { selectedTags?: { id: string, name: string }[] }) => {
-    return React.createElement('div', { 'aria-label': 'tag-selector' }, selectedTags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)))
+// AppCardTags has tag API dependencies - mock for isolated testing
+vi.mock('@/features/tag-management/components/app-card-tags', () => ({
+  AppCardTags: ({ tags }: { tags?: { id: string, name: string }[] }) => {
+    return React.createElement('div', { 'aria-label': 'tag-selector' }, tags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)))
   },
 }))
 

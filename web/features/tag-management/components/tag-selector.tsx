@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { Tag } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -8,37 +7,37 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { useApplyTagBindingsMutation } from './hooks'
-import Panel from './panel'
-import Trigger from './trigger'
+import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
+import { TagPanel } from './tag-panel'
+import { TagTrigger } from './tag-trigger'
 
-export type TagSelectorProps = {
-  targetID: string
+type TagSelectorProps = {
+  targetId: string
   isPopover?: boolean
   position?: 'bl' | 'br'
   type: 'knowledge' | 'app'
-  value: string[]
+  selectedTagIds: string[]
   selectedTags: Tag[]
   onOpenTagManagement?: () => void
   minWidth?: number | string
 }
 
-const TagSelector: FC<TagSelectorProps> = ({
-  targetID,
+export const TagSelector = ({
+  targetId,
   isPopover = true,
   position,
   type,
-  value,
+  selectedTagIds,
   selectedTags,
   onOpenTagManagement = () => {},
   minWidth,
-}) => {
+}: TagSelectorProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [selectedTagIDs, setSelectedTagIDs] = useState<string[]>(value)
+  const [draftTagIds, setDraftTagIds] = useState<string[]>(selectedTagIds)
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
     input: {
@@ -48,52 +47,33 @@ const TagSelector: FC<TagSelectorProps> = ({
     },
   }))
 
-  const tags = useMemo(() => {
-    if (selectedTags?.length)
-      return selectedTags.filter(selectedTag => tagList.find(tag => tag.id === selectedTag.id)).map(tag => tag.name)
-    return []
-  }, [selectedTags, tagList])
-
-  const placement = useMemo(() => {
-    if (position === 'bl')
-      return 'bottom-start' as const
-    if (position === 'br')
-      return 'bottom-end' as const
-    return 'bottom' as const
-  }, [position])
-
-  const resolvedMinWidth = useMemo(() => {
-    if (minWidth == null)
-      return undefined
-
-    return typeof minWidth === 'number' ? `${minWidth}px` : minWidth
-  }, [minWidth])
-
-  const triggerLabel = useMemo(() => {
-    if (tags.length)
-      return tags.join(', ')
-
-    return t('tag.addTag', { ns: 'common' })
-  }, [tags, t])
-
-  const tagSelectionChanged = useMemo(() => {
-    if (value.length !== selectedTagIDs.length)
-      return true
-
-    const selectedTagIDSet = new Set(selectedTagIDs)
-    return value.some(tagID => !selectedTagIDSet.has(tagID))
-  }, [value, selectedTagIDs])
+  const tagNames = selectedTags.length
+    ? selectedTags.filter(selectedTag => tagList.find(tag => tag.id === selectedTag.id)).map(tag => tag.name)
+    : []
+  const placement = position === 'bl'
+    ? 'bottom-start'
+    : position === 'br'
+      ? 'bottom-end'
+      : 'bottom'
+  const resolvedMinWidth = minWidth == null
+    ? undefined
+    : typeof minWidth === 'number' ? `${minWidth}px` : minWidth
+  const triggerLabel = tagNames.length ? tagNames.join(', ') : t('tag.addTag', { ns: 'common' })
 
   const applyTagBindings = useCallback(() => {
+    const draftTagIdSet = new Set(draftTagIds)
+    const tagSelectionChanged = selectedTagIds.length !== draftTagIds.length
+      || selectedTagIds.some(tagId => !draftTagIdSet.has(tagId))
+
     if (!tagSelectionChanged)
       return
 
-    const toastId = `tag-bindings-${type}-${targetID}`
+    const toastId = `tag-bindings-${type}-${targetId}`
 
     applyTagBindingsMutation.mutate({
-      currentTagIDs: value,
-      nextTagIDs: selectedTagIDs,
-      targetID,
+      currentTagIds: selectedTagIds,
+      nextTagIds: draftTagIds,
+      targetId,
       type,
     }, {
       onSuccess: () => {
@@ -107,16 +87,16 @@ const TagSelector: FC<TagSelectorProps> = ({
         })
       },
     })
-  }, [applyTagBindingsMutation, selectedTagIDs, t, tagSelectionChanged, targetID, type, value])
+  }, [applyTagBindingsMutation, draftTagIds, selectedTagIds, t, targetId, type])
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (nextOpen)
-      setSelectedTagIDs(value)
+      setDraftTagIds(selectedTagIds)
     else
       applyTagBindings()
 
     setOpen(nextOpen)
-  }, [applyTagBindings, value])
+  }, [applyTagBindings, selectedTagIds])
 
   if (!isPopover)
     return null
@@ -127,10 +107,10 @@ const TagSelector: FC<TagSelectorProps> = ({
         aria-label={triggerLabel}
         className={cn(
           open ? 'bg-state-base-hover' : 'bg-transparent',
-          'block w-full rounded-lg border-0 p-0 text-left focus:outline-hidden',
+          'block w-full rounded-lg border-0 p-0 text-left focus:outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
         )}
       >
-        <Trigger tags={tags} />
+        <TagTrigger tags={tagNames} />
       </PopoverTrigger>
       <PopoverContent
         placement={placement}
@@ -143,13 +123,12 @@ const TagSelector: FC<TagSelectorProps> = ({
           },
         }}
       >
-        <Panel
+        <TagPanel
           type={type}
-          targetID={targetID}
-          value={value}
+          selectedTagIds={selectedTagIds}
           selectedTags={selectedTags}
-          selectedTagIDs={selectedTagIDs}
-          onSelectedTagIDsChange={setSelectedTagIDs}
+          draftTagIds={draftTagIds}
+          onDraftTagIdsChange={setDraftTagIds}
           tagList={tagList}
           onOpenTagManagement={onOpenTagManagement}
           onClose={() => handleOpenChange(false)}
@@ -158,5 +137,3 @@ const TagSelector: FC<TagSelectorProps> = ({
     </Popover>
   )
 }
-
-export default TagSelector

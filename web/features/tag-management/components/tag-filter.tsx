@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { Tag } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -9,7 +8,10 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import Tag01Icon from '@/app/components/base/icons/src/vender/line/financeAndECommerce/Tag01'
+import Tag03Icon from '@/app/components/base/icons/src/vender/line/financeAndECommerce/Tag03'
+import CheckIcon from '@/app/components/base/icons/src/vender/line/general/Check'
+import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XCircle'
 import Input from '@/app/components/base/input'
 import { consoleQuery } from '@/service/client'
 
@@ -19,12 +21,12 @@ type TagFilterProps = {
   onChange: (v: string[]) => void
   onOpenTagManagement?: () => void
 }
-const TagFilter: FC<TagFilterProps> = ({
+export const TagFilter = ({
   type,
   value,
   onChange,
   onOpenTagManagement = () => {},
-}) => {
+}: TagFilterProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -64,12 +66,12 @@ const TagFilter: FC<TagFilterProps> = ({
             <button
               type="button"
               className={cn(
-                'flex h-8 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-left select-none',
+                'flex h-8 max-w-[240px] min-w-[112px] cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-left select-none',
                 !!value.length && 'pr-6 shadow-xs',
               )}
             >
               <div className="p-px">
-                <Tag01 className="h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-trigger-icon" />
+                <Tag01Icon className="h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-trigger-icon" />
               </div>
               <div className="min-w-0 truncate text-[13px] leading-[18px] text-text-secondary">
                 {!value.length && t('tag.placeholder', { ns: 'common' })}
@@ -80,7 +82,7 @@ const TagFilter: FC<TagFilterProps> = ({
               )}
               {!value.length && (
                 <div className="shrink-0 p-px">
-                  <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-arrow-down-icon" />
+                  <span aria-hidden className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-arrow-down-icon" />
                 </div>
               )}
             </button>
@@ -89,11 +91,12 @@ const TagFilter: FC<TagFilterProps> = ({
         {!!value.length && (
           <button
             type="button"
+            aria-label={t('operation.clear', { ns: 'common' })}
             className="group/clear absolute top-1/2 right-2 -translate-y-1/2 p-px"
             onClick={() => onChange([])}
             data-testid="tag-filter-clear-button"
           >
-            <span className="i-custom-vender-solid-general-x-circle h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
+            <XCircleIcon className="h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
           </button>
         )}
         <PopoverContent
@@ -119,12 +122,12 @@ const TagFilter: FC<TagFilterProps> = ({
                   onClick={() => selectTag(tag)}
                 >
                   <div title={tag.name} className="grow truncate text-sm leading-5 text-text-tertiary">{tag.name}</div>
-                  {value.includes(tag.id) && <span className="i-custom-vender-line-general-check h-4 w-4 shrink-0 text-text-secondary" data-testid="tag-filter-selected-icon" />}
+                  {value.includes(tag.id) && <CheckIcon className="h-4 w-4 shrink-0 text-text-secondary" data-testid="tag-filter-selected-icon" />}
                 </div>
               ))}
               {!filteredTagList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
-                  <Tag03 className="h-6 w-6 text-text-tertiary" />
+                  <Tag03Icon className="h-6 w-6 text-text-tertiary" />
                   <div className="text-xs leading-[14px] text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
                 </div>
               )}
@@ -138,7 +141,7 @@ const TagFilter: FC<TagFilterProps> = ({
                   setOpen(false)
                 }}
               >
-                <Tag03 className="h-4 w-4 text-text-tertiary" />
+                <Tag03Icon className="h-4 w-4 text-text-tertiary" />
                 <div className="grow truncate text-sm leading-5 text-text-secondary">
                   {t('tag.manageTags', { ns: 'common' })}
                 </div>
@@ -151,5 +154,3 @@ const TagFilter: FC<TagFilterProps> = ({
 
   )
 }
-
-export default TagFilter

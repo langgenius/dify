@@ -103,13 +103,13 @@ vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
 }))
 
 // Mock TagManagementModal
-vi.mock('@/app/components/base/tag-management', () => ({
-  default: ({ show }: { show: boolean }) => show ? <div data-testid="tag-management-modal" /> : null,
+vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
+  TagManagementModal: ({ show }: { show: boolean }) => show ? <div data-testid="tag-management-modal" /> : null,
 }))
 
 // Mock TagFilter
-vi.mock('@/app/components/base/tag-management/filter', () => ({
-  default: ({ onChange, onOpenTagManagement }: { value: string[], onChange: (val: string[]) => void, onOpenTagManagement: () => void }) => (
+vi.mock('@/features/tag-management/components/tag-filter', () => ({
+  TagFilter: ({ onChange, onOpenTagManagement }: { value: string[], onChange: (val: string[]) => void, onOpenTagManagement: () => void }) => (
     <div data-testid="tag-filter">
       <button onClick={() => onChange(['tag-1', 'tag-2'])}>Select Tags</button>
       <button onClick={onOpenTagManagement}>Manage Tags</button>
@@ -222,7 +222,7 @@ describe('List', () => {
     it('should have correct container styling', () => {
       const { container } = render(<List />)
       const mainContainer = container.firstChild as HTMLElement
-      expect(mainContainer).toHaveClass('scroll-container', 'relative', 'flex', 'grow', 'flex-col')
+      expect(mainContainer).toHaveClass('relative', 'flex', 'grow', 'flex-col')
     })
   })
 

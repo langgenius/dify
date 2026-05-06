@@ -8,11 +8,11 @@ import { useBoolean, useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import TagManagementModal from '@/app/components/base/tag-management'
-import TagFilter from '@/app/components/base/tag-management/filter'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
+import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
@@ -54,7 +54,7 @@ const List = () => {
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
 
   return (
-    <div className="scroll-container relative flex grow flex-col overflow-y-auto bg-background-body">
+    <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
       <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pt-4 pb-2">
         <div className="flex items-center justify-center gap-2">
           {isCurrentWorkspaceOwner && (
