@@ -510,7 +510,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                   e.preventDefault()
                 }}
               >
-                <div className="mr-[41px] w-full grow">
+                <div className="mr-[41px] min-w-0 grow overflow-hidden">
                   <AppCardTags
                     appId={app.id}
                     tags={app.tags}
