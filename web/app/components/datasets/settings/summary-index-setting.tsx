@@ -40,11 +40,22 @@ const SummaryIndexSetting = ({
     }
   }, [summaryIndexSetting?.model_name, summaryIndexSetting?.model_provider_name])
 
+  // ITX patch: emit enable changes alongside default-safe values for
+  // model_name / summary_prompt. Without this, toggling the switch sends only
+  // {enable: value}; the upstream merge keeps whatever was there (often null
+  // when the user just enabled summarisation and hasn't yet picked a model
+  // or filled the textarea), and Dify's KnowledgeIndexNodeData pydantic
+  // schema then rejects publish with "summary_prompt: input should be a
+  // valid string" because null isn't a string. CLAUDE.md §8.5.
   const handleSummaryIndexEnableChange = useCallback((value: boolean) => {
     onSummaryIndexSettingChange?.({
       enable: value,
+      // Coerce nullish to empty string so the merged shape is always all-strings.
+      model_name: summaryIndexSetting?.model_name ?? '',
+      model_provider_name: summaryIndexSetting?.model_provider_name ?? '',
+      summary_prompt: summaryIndexSetting?.summary_prompt ?? '',
     })
-  }, [onSummaryIndexSettingChange])
+  }, [onSummaryIndexSettingChange, summaryIndexSetting])
 
   const handleSummaryIndexModelChange = useCallback((model: DefaultModel) => {
     onSummaryIndexSettingChange?.({
@@ -54,8 +65,9 @@ const SummaryIndexSetting = ({
   }, [onSummaryIndexSettingChange])
 
   const handleSummaryIndexPromptChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
+    // ITX patch: never emit null/undefined — same reason as enable handler above.
     onSummaryIndexSettingChange?.({
-      summary_prompt: e.target.value,
+      summary_prompt: e.target.value ?? '',
     })
   }, [onSummaryIndexSettingChange])
 
