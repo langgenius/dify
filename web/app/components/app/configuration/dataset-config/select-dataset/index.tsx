@@ -94,7 +94,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
 
       {hasNoData && (
         <div
-          className="mt-6 flex h-[128px] items-center justify-center space-x-1 rounded-lg border text-[13px]"
+          className="mt-6 flex h-[128px] items-center justify-center space-x-1 rounded-lg border border-divider-subtle text-[13px]"
           style={{
             background: 'rgba(0, 0, 0, 0.02)',
             borderColor: 'rgba(0, 0, 0, 0.02',

@@ -65,7 +65,7 @@ const DSLExportConfirmModal = ({
           <tbody>
             {envList.map((env, index) => (
               <tr key={env.name}>
-                <td className={cn('h-7 border-r pl-3 system-xs-medium', index + 1 !== envList.length && 'border-b')}>
+                <td className={cn('h-7 border-r border-divider-regular pl-3 system-xs-medium', index + 1 !== envList.length && 'border-b border-divider-regular')}>
                   <div className="flex w-[200px] items-center gap-1">
                     <Env className="h-4 w-4 shrink-0 text-util-colors-violet-violet-600" />
                     <div className="truncate text-text-primary">{env.name}</div>
@@ -73,7 +73,7 @@ const DSLExportConfirmModal = ({
                     <RiLock2Line className="h-3 w-3 shrink-0 text-text-tertiary" />
                   </div>
                 </td>
-                <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b')}>
+                <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b border-divider-regular')}>
                   <div className="truncate system-xs-regular text-text-secondary">{env.value}</div>
                 </td>
               </tr>

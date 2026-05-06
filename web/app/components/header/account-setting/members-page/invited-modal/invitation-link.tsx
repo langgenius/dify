@@ -47,7 +47,7 @@ const InvitationLink = ({
             </TooltipContent>
           </Tooltip>
         </div>
-        <div className="h-4 shrink-0 border bg-divider-regular" />
+        <div className="h-4 shrink-0 border border-divider-regular bg-divider-regular" />
         <Tooltip>
           <TooltipTrigger
             render={(
