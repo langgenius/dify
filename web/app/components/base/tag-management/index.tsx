@@ -1,62 +1,68 @@
 'use client'
+import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
-import { createTag, fetchTagList } from '@/service/tag'
-import { useStore as useTagStore } from './store'
+import { consoleQuery } from '@/service/client'
+import { useCreateTagMutation } from './hooks'
 import TagItemEditor from './tag-item-editor'
 
 type TagManagementModalProps = {
   type: 'knowledge' | 'app'
   show: boolean
+  onClose: () => void
 }
-const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
+const TagManagementModal = ({ show, type, onClose }: TagManagementModalProps) => {
   const { t } = useTranslation()
-  const tagList = useTagStore(s => s.tagList)
-  const setTagList = useTagStore(s => s.setTagList)
-  const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
-  const getTagList = async (type: 'knowledge' | 'app') => {
-    const res = await fetchTagList(type)
-    setTagList(res)
-  }
-  const [pending, setPending] = useState<boolean>(false)
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+    input: {
+      query: {
+        type,
+      },
+    },
+    enabled: show,
+  }))
+  const createTagMutation = useCreateTagMutation()
   const [name, setName] = useState<string>('')
-  const createNewTag = async () => {
+
+  const createNewTag = () => {
     if (!name)
       return
-    if (pending)
+    if (createTagMutation.isPending)
       return
-    try {
-      setPending(true)
-      const newTag = await createTag(name, type)
-      toast.success(t('tag.created', { ns: 'common' }))
-      setTagList([
-        newTag,
-        ...tagList,
-      ])
-      setName('')
-      setPending(false)
-    }
-    catch {
-      toast.error(t('tag.failed', { ns: 'common' }))
-      setPending(false)
-    }
+
+    createTagMutation.mutate({
+      body: {
+        name,
+        type,
+      },
+    }, {
+      onSuccess: () => {
+        toast.success(t('tag.created', { ns: 'common' }))
+        setName('')
+      },
+      onError: () => {
+        toast.error(t('tag.failed', { ns: 'common' }))
+      },
+    })
   }
-  useEffect(() => {
-    getTagList(type)
-  }, [type])
+  const handleClose = () => {
+    setName('')
+    onClose()
+  }
+
   return (
-    <Modal className="!w-[600px] !max-w-[600px] rounded-xl px-8 py-6" isShow={show} onClose={() => setShowTagManagementModal(false)}>
-      <div className="relative pb-2 text-xl leading-[30px] font-semibold text-text-primary">{t('tag.manageTags', { ns: 'common' })}</div>
-      <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={() => setShowTagManagementModal(false)}>
-        <span className="i-ri-close-line h-4 w-4 text-text-tertiary" data-testid="tag-management-modal-close-button" />
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <input className="w-[100px] shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm leading-5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid" placeholder={t('tag.addNew', { ns: 'common' }) || ''} autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && createNewTag()} onBlur={createNewTag} />
-        {tagList.map(tag => (<TagItemEditor key={tag.id} tag={tag} />))}
-      </div>
-    </Modal>
+    <Dialog open={show} onOpenChange={open => !open && handleClose()}>
+      <DialogContent className="w-[600px]! max-w-[600px]! rounded-xl! p-8!">
+        <div className="relative pb-2 text-xl leading-[30px] font-semibold text-text-primary">{t('tag.manageTags', { ns: 'common' })}</div>
+        <DialogCloseButton data-testid="tag-management-modal-close-button" className="top-4 right-4" />
+        <div className="mt-3 flex flex-wrap gap-2">
+          <input className="w-25 shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm leading-5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid" placeholder={t('tag.addNew', { ns: 'common' }) || ''} autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && createNewTag()} onBlur={createNewTag} />
+          {tagList.map(tag => (<TagItemEditor key={tag.id} tag={tag} />))}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 export default TagManagementModal

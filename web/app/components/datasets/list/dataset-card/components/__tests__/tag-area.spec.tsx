@@ -1,4 +1,4 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag } from '@/contract/console/tags'
 import type { DataSet } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useRef } from 'react'
@@ -9,10 +9,10 @@ import TagArea from '../tag-area'
 
 // Mock TagSelector as it's a complex component from base
 vi.mock('@/app/components/base/tag-management/selector', () => ({
-  default: ({ value, selectedTags, onChange }: {
+  default: ({ value, selectedTags, onOpenTagManagement }: {
     value: string[]
     selectedTags: Tag[]
-    onChange?: () => void
+    onOpenTagManagement?: () => void
   }) => (
     <div data-testid="tag-selector">
       <div data-testid="tag-values">{value.join(',')}</div>
@@ -21,8 +21,8 @@ vi.mock('@/app/components/base/tag-management/selector', () => ({
         {' '}
         tags
       </div>
-      <button onClick={onChange}>
-        Trigger Change
+      <button onClick={onOpenTagManagement}>
+        Open Management
       </button>
     </div>
   ),
@@ -57,7 +57,6 @@ describe('TagArea', () => {
 
   const defaultProps = {
     dataset: createMockDataset({ tags: mockTags }),
-    onSuccess: vi.fn(),
     isHoveringTagSelector: false,
     onClick: vi.fn(),
   }
@@ -116,13 +115,13 @@ describe('TagArea', () => {
       expect(onClick).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onSuccess when onChange is triggered', () => {
-      const onSuccess = vi.fn()
-      render(<TagArea {...defaultProps} onSuccess={onSuccess} />)
+    it('should open tag management when requested', () => {
+      const onOpenTagManagement = vi.fn()
+      render(<TagArea {...defaultProps} onOpenTagManagement={onOpenTagManagement} />)
 
-      fireEvent.click(screen.getByText('Trigger Change'))
+      fireEvent.click(screen.getByText('Open Management'))
 
-      expect(onSuccess).toHaveBeenCalledTimes(1)
+      expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -163,10 +162,9 @@ describe('TagArea', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle undefined onSuccess', () => {
-      render(<TagArea {...defaultProps} onSuccess={undefined} />)
-      // Should not throw when clicking Trigger Change
-      expect(() => fireEvent.click(screen.getByText('Trigger Change'))).not.toThrow()
+    it('should handle undefined onOpenTagManagement', () => {
+      render(<TagArea {...defaultProps} onOpenTagManagement={undefined} />)
+      expect(() => fireEvent.click(screen.getByText('Open Management'))).not.toThrow()
     })
 
     it('should handle many tags', () => {

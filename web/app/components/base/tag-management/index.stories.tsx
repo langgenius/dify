@@ -1,9 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type { Tag } from './constant'
+import type { Tag } from '@/contract/console/tags'
 import { ToastHost } from '@langgenius/dify-ui/toast'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import TagManagementModal from '.'
-import { useStore as useTagStore } from './store'
 
 const INITIAL_TAGS: Tag[] = [
   { id: 'tag-product', name: 'Product', type: 'app', binding_count: 12 },
@@ -20,14 +19,7 @@ const TagManagementPlayground = ({
 }) => {
   const originalFetchRef = useRef<typeof globalThis.fetch>(null)
   const tagsRef = useRef<Tag[]>(INITIAL_TAGS)
-  const setTagList = useTagStore(s => s.setTagList)
-  const showModal = useTagStore(s => s.showTagManagementModal)
-  const setShowModal = useTagStore(s => s.setShowTagManagementModal)
-
-  useEffect(() => {
-    setTagList(tagsRef.current)
-    setShowModal(true)
-  }, [setTagList, setShowModal])
+  const [showModal, setShowModal] = useState(true)
 
   useEffect(() => {
     originalFetchRef.current = globalThis.fetch?.bind(globalThis)
@@ -48,7 +40,7 @@ const TagManagementPlayground = ({
           })
         }
         if (method === 'POST') {
-          const body = await request.clone().json() as { name: string, type: string }
+          const body = await request.clone().json() as { name: string, type: Tag['type'] }
           const newTag: Tag = {
             id: `tag-${Date.now()}`,
             name: body.name,
@@ -56,7 +48,6 @@ const TagManagementPlayground = ({
             binding_count: 0,
           }
           tagsRef.current = [newTag, ...tagsRef.current]
-          setTagList(tagsRef.current)
           return new Response(JSON.stringify(newTag), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -83,7 +74,7 @@ const TagManagementPlayground = ({
       if (originalFetchRef.current)
         globalThis.fetch = originalFetchRef.current
     }
-  }, [setTagList])
+  }, [])
 
   return (
     <>
@@ -98,7 +89,7 @@ const TagManagementPlayground = ({
         </button>
         <p className="text-xs text-text-tertiary">Mocked tag management flows with create and bind actions.</p>
       </div>
-      <TagManagementModal show={showModal} type={type} />
+      <TagManagementModal show={showModal} type={type} onClose={() => setShowModal(false)} />
     </>
   )
 }

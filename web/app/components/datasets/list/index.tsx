@@ -10,8 +10,6 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
-// Hooks
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
@@ -28,7 +26,7 @@ const List = () => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceOwner } = useAppContext()
-  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
+  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
   useDocumentTitle(t('knowledge', { ns: 'dataset' }))
@@ -69,7 +67,7 @@ const List = () => {
               tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
             />
           )}
-          <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} />
+          <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} onOpenTagManagement={() => setShowTagManagementModal(true)} />
           <Input
             showLeftIcon
             showClearIcon
@@ -93,11 +91,9 @@ const List = () => {
           </Button>
         </div>
       </div>
-      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} />
+      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} onOpenTagManagement={() => setShowTagManagementModal(true)} />
       {!systemFeatures.branding.enabled && <DatasetFooter />}
-      {showTagManagementModal && (
-        <TagManagementModal type="knowledge" show={showTagManagementModal} />
-      )}
+      <TagManagementModal type="knowledge" show={showTagManagementModal} onClose={() => setShowTagManagementModal(false)} />
       {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
     </div>
   )

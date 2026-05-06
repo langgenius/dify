@@ -1,36 +1,40 @@
 import type { FC } from 'react'
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { useMount } from 'ahooks'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Input from '@/app/components/base/input'
-import { fetchTagList } from '@/service/tag'
-
-import { useStore as useTagStore } from './store'
+import { consoleQuery } from '@/service/client'
 
 type TagFilterProps = {
   type: 'knowledge' | 'app'
   value: string[]
   onChange: (v: string[]) => void
+  onOpenTagManagement?: () => void
 }
 const TagFilter: FC<TagFilterProps> = ({
   type,
   value,
   onChange,
+  onOpenTagManagement = () => {},
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const tagList = useTagStore(s => s.tagList)
-  const setTagList = useTagStore(s => s.setTagList)
-  const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+    input: {
+      query: {
+        type,
+      },
+    },
+  }))
 
   const [keywords, setKeywords] = useState('')
 
@@ -48,12 +52,6 @@ const TagFilter: FC<TagFilterProps> = ({
     else
       onChange([...value, tag.id])
   }
-
-  useMount(() => {
-    fetchTagList(type).then((res) => {
-      setTagList(res)
-    })
-  })
 
   return (
     <Popover
@@ -136,7 +134,7 @@ const TagFilter: FC<TagFilterProps> = ({
               <div
                 className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 select-none hover:bg-state-base-hover"
                 onClick={() => {
-                  setShowTagManagementModal(true)
+                  onOpenTagManagement()
                   setOpen(false)
                 }}
               >

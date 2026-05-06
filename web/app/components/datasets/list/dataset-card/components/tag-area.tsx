@@ -5,16 +5,16 @@ import TagSelector from '@/app/components/base/tag-management/selector'
 
 type TagAreaProps = {
   dataset: DataSet
-  onSuccess?: () => void
   isHoveringTagSelector: boolean
   onClick: (e: React.MouseEvent) => void
+  onOpenTagManagement?: () => void
 }
 
 const TagArea = React.forwardRef<HTMLDivElement, TagAreaProps>(({
   dataset,
-  onSuccess,
   isHoveringTagSelector,
   onClick,
+  onOpenTagManagement = () => {},
 }, ref) => (
   <div
     className={cn('relative w-full px-3', !dataset.embedding_available && 'opacity-30')}
@@ -33,7 +33,7 @@ const TagArea = React.forwardRef<HTMLDivElement, TagAreaProps>(({
         targetID={dataset.id}
         value={dataset.tags.map(tag => tag.id)}
         selectedTags={dataset.tags}
-        onChange={onSuccess}
+        onOpenTagManagement={onOpenTagManagement}
       />
     </div>
     <div

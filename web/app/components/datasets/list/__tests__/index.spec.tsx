@@ -36,11 +36,6 @@ vi.mock('@/context/external-api-panel-context', () => ({
   }),
 }))
 
-// Mock tag management store
-vi.mock('@/app/components/base/tag-management/store', () => ({
-  useStore: () => false,
-}))
-
 // Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
@@ -109,14 +104,15 @@ vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
 
 // Mock TagManagementModal
 vi.mock('@/app/components/base/tag-management', () => ({
-  default: () => <div data-testid="tag-management-modal" />,
+  default: ({ show }: { show: boolean }) => show ? <div data-testid="tag-management-modal" /> : null,
 }))
 
 // Mock TagFilter
 vi.mock('@/app/components/base/tag-management/filter', () => ({
-  default: ({ onChange }: { value: string[], onChange: (val: string[]) => void }) => (
+  default: ({ onChange, onOpenTagManagement }: { value: string[], onChange: (val: string[]) => void, onOpenTagManagement: () => void }) => (
     <div data-testid="tag-filter">
       <button onClick={() => onChange(['tag-1', 'tag-2'])}>Select Tags</button>
+      <button onClick={onOpenTagManagement}>Manage Tags</button>
     </div>
   ),
 }))
@@ -312,15 +308,9 @@ describe('List', () => {
       expect(mockSetShowExternalApiPanel).toHaveBeenCalledWith(false)
     })
 
-    it('should show TagManagementModal when showTagManagementModal is true', async () => {
-      vi.doMock('@/app/components/base/tag-management/store', () => ({
-        useStore: () => true, // showTagManagementModal is true
-      }))
-
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
+    it('should show TagManagementModal when tag management is opened', () => {
+      render(<List />)
+      fireEvent.click(screen.getByText('Manage Tags'))
 
       expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
     })

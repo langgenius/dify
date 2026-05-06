@@ -1,9 +1,7 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag } from '@/contract/console/tags'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { act } from 'react'
-import { useStore as useTagStore } from '../store'
 import TagItemEditor from '../tag-item-editor'
 
 const tagMocks = vi.hoisted(() => {
@@ -25,9 +23,22 @@ const tagMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/service/tag', () => ({
-  updateTag: tagMocks.updateTag,
-  deleteTag: tagMocks.deleteTag,
+vi.mock('../hooks', () => ({
+  useUpdateTagMutation: () => ({
+    mutate: ({ params, body }: { params: { tagId: string }, body: { name: string } }, options?: { onSuccess?: () => void, onError?: () => void }) => {
+      Promise.resolve(tagMocks.updateTag(params.tagId, body.name))
+        .then(() => options?.onSuccess?.())
+        .catch(() => options?.onError?.())
+    },
+  }),
+  useDeleteTagMutation: () => ({
+    isPending: false,
+    mutate: ({ params }: { params: { tagId: string } }, options?: { onSuccess?: () => void, onError?: () => void }) => {
+      Promise.resolve(tagMocks.deleteTag(params.tagId))
+        .then(() => options?.onSuccess?.())
+        .catch(() => options?.onError?.())
+    },
+  }),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -58,24 +69,11 @@ const baseTag: Tag = {
   binding_count: 3,
 }
 
-const anotherTag: Tag = {
-  id: 'tag-2',
-  name: 'Backend',
-  type: 'app',
-  binding_count: 1,
-}
-
 describe('TagItemEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(tagMocks.updateTag).mockResolvedValue(undefined)
     vi.mocked(tagMocks.deleteTag).mockResolvedValue(undefined)
-    act(() => {
-      useTagStore.setState({
-        tagList: [baseTag, anotherTag],
-        showTagManagementModal: false,
-      })
-    })
   })
 
   // Rendering behavior for initial tag display.
@@ -120,7 +118,6 @@ describe('TagItemEditor', () => {
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
       })
-      expect(useTagStore.getState().tagList.find(tag => tag.id === 'tag-1')?.name).toBe('Frontend V2')
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
 
@@ -177,7 +174,6 @@ describe('TagItemEditor', () => {
         type: 'error',
         message: 'common.actionMsg.modifiedUnsuccessfully',
       })
-      expect(useTagStore.getState().tagList.find(tag => tag.id === 'tag-1')?.name).toBe('Frontend')
     })
   })
 
@@ -186,9 +182,6 @@ describe('TagItemEditor', () => {
     it('should delete immediately when binding count is zero', async () => {
       const user = userEvent.setup()
       const removableTag: Tag = { ...baseTag, binding_count: 0 }
-      act(() => {
-        useTagStore.setState({ tagList: [removableTag, anotherTag] })
-      })
       render(<TagItemEditor tag={removableTag} />)
 
       const removeButton = screen.getByTestId('tag-item-editor-remove-button')
@@ -202,7 +195,6 @@ describe('TagItemEditor', () => {
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
       })
-      expect(useTagStore.getState().tagList.find(tag => tag.id === 'tag-1')).toBeUndefined()
     })
 
     it('should open confirm modal and delete on confirm when binding count is non-zero', async () => {
@@ -243,9 +235,6 @@ describe('TagItemEditor', () => {
       const user = userEvent.setup()
       vi.mocked(tagMocks.deleteTag).mockRejectedValueOnce(new Error('delete failed'))
       const removableTag: Tag = { ...baseTag, binding_count: 0 }
-      act(() => {
-        useTagStore.setState({ tagList: [removableTag, anotherTag] })
-      })
       render(<TagItemEditor tag={removableTag} />)
 
       const removeButton = screen.getByTestId('tag-item-editor-remove-button')
@@ -257,31 +246,6 @@ describe('TagItemEditor', () => {
       expect(tagMocks.record).toHaveBeenCalledWith({
         type: 'error',
         message: 'common.actionMsg.modifiedUnsuccessfully',
-      })
-      expect(useTagStore.getState().tagList.find(tag => tag.id === 'tag-1')).toBeDefined()
-    })
-
-    it('should prevent duplicate delete requests while pending', async () => {
-      const user = userEvent.setup()
-      let resolveDelete!: () => void
-      vi.mocked(tagMocks.deleteTag).mockImplementation(() => new Promise((resolve) => {
-        resolveDelete = () => resolve(undefined)
-      }))
-
-      const removableTag: Tag = { ...baseTag, binding_count: 0 }
-      act(() => {
-        useTagStore.setState({ tagList: [removableTag, anotherTag] })
-      })
-      render(<TagItemEditor tag={removableTag} />)
-
-      const removeButton = screen.getByTestId('tag-item-editor-remove-button')
-      await user.click(removeButton as HTMLElement)
-      await user.click(removeButton as HTMLElement)
-
-      expect(tagMocks.deleteTag).toHaveBeenCalledTimes(1)
-
-      await act(async () => {
-        resolveDelete()
       })
     })
   })

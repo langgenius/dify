@@ -301,7 +301,7 @@ vi.mock('@/app/components/base/tooltip', () => ({
   default: ({ children, popupContent }: { children: React.ReactNode, popupContent: React.ReactNode }) => React.createElement('div', { title: popupContent }, children),
 }))
 
-// TagSelector has API dependency (service/tag) - mock for isolated testing
+// TagSelector has API dependencies - mock for isolated testing
 vi.mock('@/app/components/base/tag-management/selector', () => ({
   default: ({ selectedTags }: { selectedTags?: { id: string, name: string }[] }) => {
     return React.createElement('div', { 'aria-label': 'tag-selector' }, selectedTags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)))
@@ -400,7 +400,7 @@ describe('AppCard', () => {
     it('should handle app with tags', () => {
       const appWithTags = {
         ...mockApp,
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
       }
       render(<AppCard app={appWithTags} />)
       // Verify the tag selector component renders
@@ -409,10 +409,10 @@ describe('AppCard', () => {
 
     it('should display refreshed tag names from app props when tag ids stay the same', () => {
       const firstApp = createMockApp({
-        tags: [{ id: 'tag1', name: 'Old Tag', type: 'app', binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Old Tag', type: 'app' as const, binding_count: 0 }],
       })
       const refreshedApp = createMockApp({
-        tags: [{ id: 'tag1', name: 'New Tag', type: 'app', binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'New Tag', type: 'app' as const, binding_count: 0 }],
       })
 
       const { rerender } = render(<AppCard app={firstApp} />)
@@ -1184,9 +1184,9 @@ describe('AppCard', () => {
       const multiTagApp = {
         ...mockApp,
         tags: [
-          { id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 0 },
-          { id: 'tag2', name: 'Tag 2', type: 'app', binding_count: 0 },
-          { id: 'tag3', name: 'Tag 3', type: 'app', binding_count: 0 },
+          { id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 },
+          { id: 'tag2', name: 'Tag 2', type: 'app' as const, binding_count: 0 },
+          { id: 'tag3', name: 'Tag 3', type: 'app' as const, binding_count: 0 },
         ],
       }
       render(<AppCard app={multiTagApp} />)
@@ -1341,7 +1341,7 @@ describe('AppCard', () => {
 
     it('should stop propagation when clicking tag selector area', () => {
       const multiTagApp = createMockApp({
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
       })
 
       render(<AppCard app={multiTagApp} />)

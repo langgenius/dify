@@ -1,16 +1,16 @@
 import type { FC } from 'react'
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { useCallback, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchTagList } from '@/service/tag'
+import { consoleQuery } from '@/service/client'
 import Panel from './panel'
-import { useStore as useTagStore } from './store'
 import Trigger from './trigger'
 
 export type TagSelectorProps = {
@@ -20,7 +20,7 @@ export type TagSelectorProps = {
   type: 'knowledge' | 'app'
   value: string[]
   selectedTags: Tag[]
-  onChange?: () => void
+  onOpenTagManagement?: () => void
   minWidth?: number | string
 }
 
@@ -31,18 +31,18 @@ const TagSelector: FC<TagSelectorProps> = ({
   type,
   value,
   selectedTags,
-  onChange,
+  onOpenTagManagement = () => {},
   minWidth,
 }) => {
   const { t } = useTranslation()
-  const tagList = useTagStore(s => s.tagList)
-  const setTagList = useTagStore(s => s.setTagList)
   const [open, setOpen] = useState(false)
-
-  const getTagList = useCallback(async () => {
-    const res = await fetchTagList(type)
-    setTagList(res)
-  }, [setTagList, type])
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+    input: {
+      query: {
+        type,
+      },
+    },
+  }))
 
   const tags = useMemo(() => {
     if (selectedTags?.length)
@@ -102,8 +102,9 @@ const TagSelector: FC<TagSelectorProps> = ({
           targetID={targetID}
           value={value}
           selectedTags={selectedTags}
-          onChange={onChange}
-          onCreate={getTagList}
+          tagList={tagList}
+          onOpenTagManagement={onOpenTagManagement}
+          onClose={() => setOpen(false)}
         />
       </PopoverContent>
     </Popover>

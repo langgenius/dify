@@ -1,11 +1,9 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag } from '@/contract/console/tags'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { act } from 'react'
 import * as ReactI18next from 'react-i18next'
 import TagManagementModal from '../index'
-import { useStore as useTagStore } from '../store'
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
   const mockNotify = vi.fn()
@@ -25,15 +23,36 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-// Hoisted mocks
-const { fetchTagList, createTag } = vi.hoisted(() => ({
-  fetchTagList: vi.fn(),
+const { mockUseQueryData, createTag } = vi.hoisted(() => ({
+  mockUseQueryData: { current: [] as Tag[] },
   createTag: vi.fn(),
 }))
 
-vi.mock('@/service/tag', () => ({
-  fetchTagList,
-  createTag,
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({ data: mockUseQueryData.current }),
+}))
+
+vi.mock('../hooks', () => ({
+  useCreateTagMutation: () => ({
+    isPending: false,
+    mutate: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }, options?: { onSuccess?: (tag: Tag) => void, onError?: () => void }) => {
+      const tag = { id: 'new-tag', name: body.name, type: body.type, binding_count: 0 } as Tag
+      Promise.resolve(createTag(body.name, body.type))
+        .then(() => options?.onSuccess?.(tag))
+        .catch(() => options?.onError?.())
+    },
+  }),
+  useUpdateTagMutation: () => ({
+    mutate: (_input: unknown, options?: { onSuccess?: () => void }) => {
+      options?.onSuccess?.()
+    },
+  }),
+  useDeleteTagMutation: () => ({
+    isPending: false,
+    mutate: (_input: unknown, options?: { onSuccess?: () => void }) => {
+      options?.onSuccess?.()
+    },
+  }),
 }))
 
 const mockTags: Tag[] = [
@@ -45,6 +64,7 @@ const mockTags: Tag[] = [
 const defaultProps = {
   type: 'app' as const,
   show: true,
+  onClose: vi.fn(),
 }
 
 // i18n mock renders "ns.key" format (dot-separated)
@@ -58,11 +78,8 @@ const i18n = {
 describe('TagManagementModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(fetchTagList).mockResolvedValue(mockTags)
+    mockUseQueryData.current = mockTags
     vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
-    act(() => {
-      useTagStore.setState({ tagList: mockTags, showTagManagementModal: false })
-    })
   })
 
   describe('Rendering', () => {
@@ -95,7 +112,7 @@ describe('TagManagementModal', () => {
       expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', '')
     })
 
-    it('should render existing tags from the store', () => {
+    it('should render existing tags from query data', () => {
       render(<TagManagementModal {...defaultProps} />)
       // TagItemEditor renders each tag's name
       expect(screen.getByText('Frontend')).toBeInTheDocument()
@@ -109,32 +126,15 @@ describe('TagManagementModal', () => {
     })
   })
 
-  describe('Props', () => {
-    it('should fetch tags for the given type on mount', async () => {
-      render(<TagManagementModal {...defaultProps} type="app" />)
-      await waitFor(() => {
-        expect(fetchTagList).toHaveBeenCalledWith('app')
-      })
-    })
-
-    it('should fetch knowledge tags when type is knowledge', async () => {
-      render(<TagManagementModal {...defaultProps} type="knowledge" />)
-      await waitFor(() => {
-        expect(fetchTagList).toHaveBeenCalledWith('knowledge')
-      })
-    })
-  })
-
   describe('User Interactions', () => {
     it('should close modal when close button is clicked', async () => {
       const user = userEvent.setup()
-      render(<TagManagementModal {...defaultProps} />)
+      const onClose = vi.fn()
+      render(<TagManagementModal {...defaultProps} onClose={onClose} />)
 
-      const closeIcon = screen.getByTestId('tag-management-modal-close-button')
-      const closeButton = closeIcon.parentElement!
-      await user.click(closeButton)
+      await user.click(screen.getByTestId('tag-management-modal-close-button'))
 
-      expect(useTagStore.getState().showTagManagementModal).toBe(false)
+      expect(onClose).toHaveBeenCalledTimes(1)
     })
 
     it('should update input value when typing', async () => {
@@ -189,40 +189,6 @@ describe('TagManagementModal', () => {
       })
     })
 
-    it('should add the new tag to the store tag list', async () => {
-      const user = userEvent.setup()
-      const newTag = { id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 }
-      vi.mocked(createTag).mockResolvedValue(newTag)
-
-      render(<TagManagementModal {...defaultProps} />)
-
-      const input = screen.getByPlaceholderText(i18n.addNew)
-      await user.type(input, 'NewTag')
-      await user.keyboard('{Enter}')
-
-      await waitFor(() => {
-        const storeTagList = useTagStore.getState().tagList
-        expect(storeTagList).toContainEqual(newTag)
-      })
-    })
-
-    it('should prepend the new tag to the beginning of the list', async () => {
-      const user = userEvent.setup()
-      const newTag = { id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 }
-      vi.mocked(createTag).mockResolvedValue(newTag)
-
-      render(<TagManagementModal {...defaultProps} />)
-
-      const input = screen.getByPlaceholderText(i18n.addNew)
-      await user.type(input, 'NewTag')
-      await user.keyboard('{Enter}')
-
-      await waitFor(() => {
-        const storeTagList = useTagStore.getState().tagList
-        expect(storeTagList[0]).toEqual(newTag)
-      })
-    })
-
     it('should create a tag on input blur-sm', async () => {
       const user = userEvent.setup()
       render(<TagManagementModal {...defaultProps} />)
@@ -268,74 +234,11 @@ describe('TagManagementModal', () => {
         })
       })
     })
-
-    it('should not allow duplicate creation while pending', async () => {
-      const user = userEvent.setup()
-      // Make createTag slow to simulate pending
-      let resolveCreate: (value: Tag) => void
-      vi.mocked(createTag).mockImplementation(() => new Promise((resolve) => {
-        resolveCreate = resolve
-      }))
-
-      render(<TagManagementModal {...defaultProps} />)
-
-      const input = screen.getByPlaceholderText(i18n.addNew)
-      await user.type(input, 'NewTag')
-      await user.keyboard('{Enter}')
-
-      // First call should go through
-      expect(createTag).toHaveBeenCalledTimes(1)
-
-      // Attempt second creation while first is pending — need to type again + enter
-      // But the component sets pending=true, so the second call is blocked.
-      // The input value was cleared? No — pending is set before clearing.
-      // Actually the component does: setPending(true) -> await createTag -> setName('') -> setPending(false)
-      // So while pending, name is still 'NewTag', but calling createNewTag again does nothing.
-      // We can trigger via blur
-      await user.click(document.body)
-
-      // Should still be only 1 call because pending guard blocks it
-      expect(createTag).toHaveBeenCalledTimes(1)
-
-      // Resolve the pending promise
-      await act(async () => {
-        resolveCreate!({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
-      })
-    })
-  })
-
-  describe('Data Fetching', () => {
-    it('should update store with fetched tags', async () => {
-      const freshTags: Tag[] = [
-        { id: 'fresh-1', name: 'FreshTag', type: 'app', binding_count: 0 },
-      ]
-      vi.mocked(fetchTagList).mockResolvedValue(freshTags)
-      act(() => {
-        useTagStore.setState({ tagList: [] })
-      })
-
-      render(<TagManagementModal {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(useTagStore.getState().tagList).toEqual(freshTags)
-      })
-    })
-
-    it('should refetch when type prop changes', () => {
-      const { rerender } = render(<TagManagementModal {...defaultProps} type="app" />)
-      expect(fetchTagList).toHaveBeenCalledWith('app')
-
-      vi.clearAllMocks()
-      rerender(<TagManagementModal {...defaultProps} type="knowledge" />)
-      expect(fetchTagList).toHaveBeenCalledWith('knowledge')
-    })
   })
 
   describe('Edge Cases', () => {
     it('should handle empty tag list', () => {
-      act(() => {
-        useTagStore.setState({ tagList: [] })
-      })
+      mockUseQueryData.current = []
 
       render(<TagManagementModal {...defaultProps} />)
 
@@ -360,13 +263,11 @@ describe('TagManagementModal', () => {
 
     it('should close modal via the Modal onClose callback', async () => {
       const user = userEvent.setup()
-      act(() => {
-        useTagStore.setState({ showTagManagementModal: true })
-      })
-      render(<TagManagementModal {...defaultProps} />)
+      const onClose = vi.fn()
+      render(<TagManagementModal {...defaultProps} onClose={onClose} />)
       await user.keyboard('{Escape}')
       await waitFor(() => {
-        expect(useTagStore.getState().showTagManagementModal).toBe(false)
+        expect(onClose).toHaveBeenCalled()
       })
     })
   })

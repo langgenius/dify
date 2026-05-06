@@ -1,9 +1,7 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag } from '@/contract/console/tags'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { act } from 'react'
 import TagSelector from '../selector'
-import { useStore as useTagStore } from '../store'
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {
@@ -22,19 +20,40 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-// Hoisted mocks
-const { fetchTagList, createTag, bindTag, unBindTag } = vi.hoisted(() => ({
-  fetchTagList: vi.fn(),
+const { mockUseQueryData, createTag, bindTag, unBindTag } = vi.hoisted(() => ({
+  mockUseQueryData: { current: [] as Tag[] },
   createTag: vi.fn(),
   bindTag: vi.fn(),
   unBindTag: vi.fn(),
 }))
 
-vi.mock('@/service/tag', () => ({
-  fetchTagList,
-  createTag,
-  bindTag,
-  unBindTag,
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({ data: mockUseQueryData.current }),
+}))
+
+vi.mock('../hooks', () => ({
+  useCreateTagMutation: () => ({
+    isPending: false,
+    mutate: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }, options?: { onSuccess?: (tag: Tag) => void, onError?: () => void }) => {
+      try {
+        const tag = { id: 'new-tag', name: body.name, type: body.type, binding_count: 0 } as Tag
+        createTag(body.name, body.type)
+        options?.onSuccess?.(tag)
+      }
+      catch {
+        options?.onError?.()
+      }
+    },
+  }),
+  useApplyTagBindingsMutation: () => ({
+    mutate: ({ currentTagIDs, nextTagIDs, targetID, type }: { currentTagIDs: string[], nextTagIDs: string[], targetID: string, type: 'app' | 'knowledge' }) => {
+      const addTagIDs = nextTagIDs.filter(tagID => !currentTagIDs.includes(tagID))
+      const removeTagIDs = currentTagIDs.filter(tagID => !nextTagIDs.includes(tagID))
+      if (addTagIDs.length)
+        bindTag(addTagIDs, targetID, type)
+      removeTagIDs.forEach(tagID => unBindTag(tagID, targetID, type))
+    },
+  }),
 }))
 
 // i18n keys rendered in "ns.key" format
@@ -55,7 +74,6 @@ const defaultProps = {
   type: 'app' as const,
   value: ['tag-1'!],
   selectedTags: [appTags[0]!],
-  onChange: vi.fn(),
 }
 
 describe('TagSelector', () => {
@@ -67,13 +85,10 @@ describe('TagSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(fetchTagList).mockResolvedValue(appTags)
+    mockUseQueryData.current = appTags
     vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
     vi.mocked(bindTag).mockResolvedValue(undefined)
     vi.mocked(unBindTag).mockResolvedValue(undefined)
-    act(() => {
-      useTagStore.setState({ tagList: appTags, showTagManagementModal: false })
-    })
   })
 
   describe('Rendering', () => {
@@ -163,9 +178,7 @@ describe('TagSelector', () => {
 
     it('should show the no-tag message when tag list is empty', async () => {
       const user = userEvent.setup()
-      act(() => {
-        useTagStore.setState({ tagList: [] })
-      })
+      mockUseQueryData.current = []
       render(<TagSelector {...defaultProps} selectedTags={[]} value={[]} />)
 
       await user.click(screen.getByRole('button'))
@@ -214,15 +227,10 @@ describe('TagSelector', () => {
     })
   })
 
-  describe('Data Fetching (getTagList / onCreate)', () => {
-    it('should update the store tagList after fetching', async () => {
+  describe('Data Fetching', () => {
+    it('should create tags through the mutation hook', async () => {
       const user = userEvent.setup()
-      const freshTags: Tag[] = [
-        ...appTags,
-        { id: 'new-tag', name: 'BrandNewTag', type: 'app', binding_count: 0 },
-      ]
       vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'BrandNewTag', type: 'app', binding_count: 0 })
-      vi.mocked(fetchTagList).mockResolvedValue(freshTags)
 
       render(<TagSelector {...defaultProps} />)
 
@@ -242,13 +250,7 @@ describe('TagSelector', () => {
         expect(createTag).toHaveBeenCalledWith('BrandNewTag', 'app')
       })
 
-      await waitFor(() => {
-        expect(fetchTagList).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
-        expect(useTagStore.getState().tagList).toEqual(freshTags)
-      })
+      expect(mockUseQueryData.current).toEqual(appTags)
     })
   })
 
@@ -305,10 +307,7 @@ describe('TagSelector', () => {
       const knowledgeTags: Tag[] = [
         { id: 'k-1', name: 'KnowledgeDB', type: 'knowledge', binding_count: 2 },
       ]
-      vi.mocked(fetchTagList).mockResolvedValue(knowledgeTags)
-      act(() => {
-        useTagStore.setState({ tagList: knowledgeTags })
-      })
+      mockUseQueryData.current = knowledgeTags
 
       render(
         <TagSelector

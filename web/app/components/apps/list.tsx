@@ -12,7 +12,6 @@ import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import TagFilter from '@/app/components/base/tag-management/filter'
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { CheckModal } from '@/hooks/use-pay'
@@ -57,7 +56,6 @@ const List: FC<Props> = ({
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
-  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useQueryState(
     'category',
     parseAsAppListCategory,
@@ -69,6 +67,7 @@ const List: FC<Props> = ({
   const [searchKeywords, setSearchKeywords] = useState(keywords)
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
   const setKeywords = useCallback((keywords: string) => {
@@ -245,7 +244,7 @@ const List: FC<Props> = ({
                 {t('showMyCreatedAppsOnly', { ns: 'app' })}
               </div>
             </label>
-            <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} />
+            <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} onOpenTagManagement={() => setShowTagManagementModal(true)} />
             <Input
               showLeftIcon
               showClearIcon
@@ -279,6 +278,7 @@ const List: FC<Props> = ({
                     app={app}
                     onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
                     onRefresh={refetch}
+                    onOpenTagManagement={() => setShowTagManagementModal(true)}
                   />
                 ))
               : <Empty />}
@@ -302,9 +302,7 @@ const List: FC<Props> = ({
         )}
         <CheckModal />
         <div ref={anchorRef} className="h-0"> </div>
-        {showTagManagementModal && (
-          <TagManagementModal type="app" show={showTagManagementModal} />
-        )}
+        <TagManagementModal type="app" show={showTagManagementModal} onClose={() => setShowTagManagementModal(false)} />
       </div>
 
       {showCreateFromDSLModal && (

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag } from '@/contract/console/tags'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -15,19 +15,18 @@ import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { deleteTag, updateTag } from '@/service/tag'
-import { useStore as useTagStore } from './store'
+import { useDeleteTagMutation, useUpdateTagMutation } from './hooks'
 
 type TagItemEditorProps = {
   tag: Tag
 }
 const TagItemEditor: FC<TagItemEditorProps> = ({ tag }) => {
   const { t } = useTranslation()
-  const tagList = useTagStore(s => s.tagList)
-  const setTagList = useTagStore(s => s.setTagList)
+  const updateTagMutation = useUpdateTagMutation()
+  const deleteTagMutation = useDeleteTagMutation()
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(tag.name)
-  const editTag = async (tagID: string, name: string) => {
+  const editTag = (tagID: string, name: string) => {
     if (name === tag.name) {
       setIsEditing(false)
       return
@@ -38,61 +37,44 @@ const TagItemEditor: FC<TagItemEditorProps> = ({ tag }) => {
       setIsEditing(false)
       return
     }
-    try {
-      const newList = tagList.map((tag) => {
-        if (tag.id === tagID) {
-          return {
-            ...tag,
-            name,
-          }
-        }
-        return tag
-      })
-      setTagList([
-        ...newList,
-      ])
-      setIsEditing(false)
-      await updateTag(tagID, name)
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-      setName(name)
-    }
-    catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-      setName(tag.name)
-      const recoverList = tagList.map((tag) => {
-        if (tag.id === tagID) {
-          return {
-            ...tag,
-            name: tag.name,
-          }
-        }
-        return tag
-      })
-      setTagList([
-        ...recoverList,
-      ])
-      setIsEditing(false)
-    }
+
+    updateTagMutation.mutate({
+      params: {
+        tagId: tagID,
+      },
+      body: {
+        name,
+      },
+    }, {
+      onSuccess: () => {
+        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        setName(name)
+        setIsEditing(false)
+      },
+      onError: () => {
+        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+        setName(tag.name)
+        setIsEditing(false)
+      },
+    })
   }
   const [showRemoveModal, setShowRemoveModal] = useState(false)
-  const [pending, setPending] = useState<boolean>(false)
-  const removeTag = async (tagID: string) => {
-    if (pending)
+  const removeTag = (tagID: string) => {
+    if (deleteTagMutation.isPending)
       return
-    try {
-      setPending(true)
-      await deleteTag(tagID)
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-      const newList = tagList.filter(tag => tag.id !== tagID)
-      setTagList([
-        ...newList,
-      ])
-      setPending(false)
-    }
-    catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-      setPending(false)
-    }
+
+    deleteTagMutation.mutate({
+      params: {
+        tagId: tagID,
+      },
+    }, {
+      onSuccess: () => {
+        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      },
+      onError: () => {
+        toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      },
+    })
   }
   const { run: handleRemove } = useDebounceFn(() => {
     removeTag(tag.id)

@@ -1,5 +1,5 @@
 import type { TagSelectorProps } from './selector'
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag } from '@/contract/console/tags'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useUnmount } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -9,18 +9,17 @@ import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { bindTag, createTag, unBindTag } from '@/service/tag'
-import { useStore as useTagStore } from './store'
+import { useApplyTagBindingsMutation, useCreateTagMutation } from './hooks'
 
-type PanelProps = {
-  onCreate: () => void
-} & TagSelectorProps
+type PanelProps = TagSelectorProps & {
+  tagList: Tag[]
+  onClose?: () => void
+}
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
-  const { targetID, type, value, selectedTags, onChange, onCreate } = props
-  const tagList = useTagStore(s => s.tagList)
-  const setTagList = useTagStore(s => s.setTagList)
-  const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
+  const { targetID, type, value, selectedTags, tagList, onOpenTagManagement, onClose } = props
+  const createTagMutation = useCreateTagMutation()
+  const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const [selectedTagIDs, setSelectedTagIDs] = useState<string[]>(value)
   const [keywords, setKeywords] = useState('')
   const handleKeywordsChange = (value: string) => {
@@ -35,55 +34,42 @@ const Panel = (props: PanelProps) => {
   const filteredTagList = useMemo(() => {
     return tagList.filter(tag => tag.type === type && !value.includes(tag.id) && tag.name.includes(keywords))
   }, [type, tagList, value, keywords])
-  const [creating, setCreating] = useState<boolean>(false)
-  const createNewTag = async () => {
+  const createNewTag = () => {
     if (!keywords)
       return
-    if (creating)
+    if (createTagMutation.isPending)
       return
-    try {
-      setCreating(true)
-      const newTag = await createTag(keywords, type)
-      toast.success(t('tag.created', { ns: 'common' }))
-      setTagList([
-        ...tagList,
-        newTag,
-      ])
-      setKeywords('')
-      setCreating(false)
-      onCreate()
-    }
-    catch {
-      toast.error(t('tag.failed', { ns: 'common' }))
-      setCreating(false)
-    }
+
+    createTagMutation.mutate({
+      body: {
+        name: keywords,
+        type,
+      },
+    }, {
+      onSuccess: () => {
+        toast.success(t('tag.created', { ns: 'common' }))
+        setKeywords('')
+      },
+      onError: () => {
+        toast.error(t('tag.failed', { ns: 'common' }))
+      },
+    })
   }
-  const bind = async (tagIDs: string[]) => {
-    await bindTag(tagIDs, targetID, type)
-  }
-  const unbind = async (tagID: string) => {
-    await unBindTag(tagID, targetID, type)
-  }
-  const selectTag = (tag: Tag) => {
-    if (selectedTagIDs.includes(tag.id))
-      setSelectedTagIDs(selectedTagIDs.filter(v => v !== tag.id))
+  const selectTag = (tagID: string) => {
+    if (selectedTagIDs.includes(tagID))
+      setSelectedTagIDs(selectedTagIDs.filter(v => v !== tagID))
     else
-      setSelectedTagIDs([...selectedTagIDs, tag.id])
+      setSelectedTagIDs([...selectedTagIDs, tagID])
   }
   const valueNotChanged = useMemo(() => {
     return value.length === selectedTagIDs.length && value.every(v => selectedTagIDs.includes(v)) && selectedTagIDs.every(v => value.includes(v))
   }, [value, selectedTagIDs])
   const handleValueChange = () => {
-    const addTagIDs = selectedTagIDs.filter(v => !value.includes(v))
-    const removeTagIDs = value.filter(v => !selectedTagIDs.includes(v))
-    const operations: Promise<unknown>[] = []
-    if (addTagIDs.length)
-      operations.push(bind(addTagIDs))
-    if (removeTagIDs.length)
-      operations.push(...removeTagIDs.map(tagID => unbind(tagID)))
-    Promise.allSettled(operations).finally(() => {
-      if (onChange)
-        onChange()
+    applyTagBindingsMutation.mutate({
+      currentTagIDs: value,
+      nextTagIDs: selectedTagIDs,
+      targetID,
+      type,
     })
   }
   useUnmount(() => {
@@ -111,7 +97,7 @@ const Panel = (props: PanelProps) => {
       {(filteredTagList.length > 0 || filteredSelectedTagList.length > 0) && (
         <div className="max-h-[232px] overflow-y-auto p-1">
           {filteredSelectedTagList.map(tag => (
-            <div key={tag.id} className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => selectTag(tag)} data-testid="tag-row">
+            <div key={tag.id} className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => selectTag(tag.id)} data-testid="tag-row">
               <Checkbox className="shrink-0" checked={selectedTagIDs.includes(tag.id)} onCheck={noop} id={tag.id} />
               <div title={tag.name} className="grow truncate px-1 system-md-regular text-text-secondary">
                 {tag.name}
@@ -119,7 +105,7 @@ const Panel = (props: PanelProps) => {
             </div>
           ))}
           {filteredTagList.map(tag => (
-            <div key={tag.id} className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => selectTag(tag)} data-testid="tag-row">
+            <div key={tag.id} className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => selectTag(tag.id)} data-testid="tag-row">
               <Checkbox className="shrink-0" checked={selectedTagIDs.includes(tag.id)} onCheck={noop} id={tag.id} />
               <div title={tag.name} className="grow truncate px-1 system-md-regular text-text-secondary">
                 {tag.name}
@@ -138,7 +124,13 @@ const Panel = (props: PanelProps) => {
       )}
       <Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />
       <div className="p-1">
-        <div className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => setShowTagManagementModal(true)}>
+        <div
+          className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
+          onClick={() => {
+            onOpenTagManagement?.()
+            onClose?.()
+          }}
+        >
           <span className="i-ri-price-tag-3-line h-4 w-4 text-text-tertiary" />
           <div className="grow truncate px-1 system-md-regular text-text-secondary">
             {t('tag.manageTags', { ns: 'common' })}

@@ -1,28 +1,15 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
-import { render, screen, waitFor } from '@testing-library/react'
+import type { Tag } from '@/contract/console/tags'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { act } from 'react'
-import * as React from 'react'
 import TagFilter from '../filter'
-import { useStore as useTagStore } from '../store'
 
-const { fetchTagList } = vi.hoisted(() => ({
-  fetchTagList: vi.fn(),
-}))
-// Mock the tag service (API layer)
-vi.mock('@/service/tag', () => ({
-  fetchTagList,
+const { mockUseQueryData } = vi.hoisted(() => ({
+  mockUseQueryData: { current: [] as Tag[] },
 }))
 
-vi.mock('ahooks', () => {
-  return {
-    useMount: (fn: () => void) => {
-      React.useEffect(() => {
-        fn()
-      }, [])
-    },
-  }
-})
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: () => ({ data: mockUseQueryData.current }),
+}))
 
 const mockTags: Tag[] = [
   { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
@@ -47,11 +34,7 @@ const i18n = {
 describe('TagFilter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(fetchTagList).mockResolvedValue(mockTags)
-    // Pre-populate the Zustand store with tags so dropdown content is available
-    act(() => {
-      useTagStore.setState({ tagList: mockTags, showTagManagementModal: false })
-    })
+    mockUseQueryData.current = mockTags
   })
 
   describe('Rendering', () => {
@@ -196,12 +179,13 @@ describe('TagFilter', () => {
 
     it('should open manage tags modal and close dropdown', async () => {
       const user = userEvent.setup()
-      render(<TagFilter {...defaultProps} />)
+      const onOpenTagManagement = vi.fn()
+      render(<TagFilter {...defaultProps} onOpenTagManagement={onOpenTagManagement} />)
 
       await user.click(screen.getByText(i18n.placeholder))
       await user.click(screen.getByText(i18n.manageTags))
 
-      expect(useTagStore.getState().showTagManagementModal).toBe(true)
+      expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -257,42 +241,10 @@ describe('TagFilter', () => {
     })
   })
 
-  describe('Data Fetching', () => {
-    it('should fetch tag list on mount', () => {
-      render(<TagFilter {...defaultProps} />)
-      expect(fetchTagList).toHaveBeenCalledWith('app')
-    })
-
-    it('should fetch with correct type parameter', () => {
-      render(<TagFilter {...defaultProps} type="knowledge" />)
-      expect(fetchTagList).toHaveBeenCalledWith('knowledge')
-    })
-
-    it('should update the store with fetched tags', async () => {
-      const freshTags: Tag[] = [
-        { id: 'new-1', name: 'NewTag', type: 'app', binding_count: 0 },
-      ]
-      vi.mocked(fetchTagList).mockResolvedValue(freshTags)
-      act(() => {
-        useTagStore.setState({ tagList: [] })
-      })
-
-      render(<TagFilter {...defaultProps} />)
-
-      await waitFor(() => {
-        expect(useTagStore.getState().tagList).toEqual(freshTags)
-      })
-    })
-  })
-
   describe('Edge Cases', () => {
     it('should show no tag message when tag list is completely empty', async () => {
       const user = userEvent.setup()
-      // Mock fetchTagList to return empty so useMount doesn't repopulate
-      vi.mocked(fetchTagList).mockResolvedValue([])
-      act(() => {
-        useTagStore.setState({ tagList: [] })
-      })
+      mockUseQueryData.current = []
 
       render(<TagFilter {...defaultProps} />)
 

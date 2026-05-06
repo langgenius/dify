@@ -1,11 +1,10 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag } from '@/contract/console/tags'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { act } from 'react'
 import * as ReactI18next from 'react-i18next'
 import Panel from '../panel'
-import { useStore as useTagStore } from '../store'
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
   const mockNotify = vi.fn()
@@ -32,10 +31,32 @@ const { createTag, bindTag, unBindTag } = vi.hoisted(() => ({
   unBindTag: vi.fn(),
 }))
 
-vi.mock('@/service/tag', () => ({
-  createTag,
-  bindTag,
-  unBindTag,
+vi.mock('../hooks', () => ({
+  useCreateTagMutation: () => {
+    const mutation = {
+      isPending: false,
+      mutate: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }, options?: { onSuccess?: (tag: Tag) => void, onError?: () => void }) => {
+        mutation.isPending = true
+        const tag = { id: 'new-tag', name: body.name, type: body.type, binding_count: 0 } as Tag
+        Promise.resolve(createTag(body.name, body.type))
+          .then(() => options?.onSuccess?.(tag))
+          .catch(() => options?.onError?.())
+          .finally(() => {
+            mutation.isPending = false
+          })
+      },
+    }
+    return mutation
+  },
+  useApplyTagBindingsMutation: () => ({
+    mutate: ({ currentTagIDs, nextTagIDs, targetID, type }: { currentTagIDs: string[], nextTagIDs: string[], targetID: string, type: 'app' | 'knowledge' }) => {
+      const addTagIDs = nextTagIDs.filter(tagID => !currentTagIDs.includes(tagID))
+      const removeTagIDs = currentTagIDs.filter(tagID => !nextTagIDs.includes(tagID))
+      if (addTagIDs.length)
+        bindTag(addTagIDs, targetID, type)
+      removeTagIDs.forEach(tagID => unBindTag(tagID, targetID, type))
+    },
+  }),
 }))
 
 // i18n mock renders "ns.key" format (dot-separated)
@@ -63,8 +84,7 @@ const defaultProps = {
   type: 'app' as const,
   value: ['tag-1'!], // tag-1 is already selected/bound
   selectedTags: [appTags[0]!], // pre-selected tags shown separately
-  onChange: vi.fn<() => void>(),
-  onCreate: vi.fn<() => void>(),
+  tagList: [...appTags, knowledgeTag],
 }
 
 describe('Panel', () => {
@@ -73,19 +93,16 @@ describe('Panel', () => {
     vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
     vi.mocked(bindTag).mockResolvedValue(undefined)
     vi.mocked(unBindTag).mockResolvedValue(undefined)
-    act(() => {
-      useTagStore.setState({ tagList: [...appTags, knowledgeTag], showTagManagementModal: false })
-    })
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
       expect(screen.getByPlaceholderText(i18n.selectorPlaceholder))!.toBeInTheDocument()
     })
 
     it('should render the search input', () => {
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       expect(input)!.toBeInTheDocument()
       expect(input.tagName).toBe('INPUT')
@@ -100,18 +117,18 @@ describe('Panel', () => {
 
       vi.spyOn(ReactI18next, 'useTranslation').mockReturnValueOnce(mockedTranslation)
 
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       expect(screen.getByRole('textbox'))!.toHaveAttribute('placeholder', '')
     })
 
     it('should render selected tags from selectedTags prop', () => {
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
       expect(screen.getByText('Frontend'))!.toBeInTheDocument()
     })
 
     it('should render unselected tags matching the type', () => {
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
       // tag-2 and tag-3 are app type and not in value[]
       // tag-2 and tag-3 are app type and not in value[]
       expect(screen.getByText('Backend'))!.toBeInTheDocument()
@@ -119,7 +136,7 @@ describe('Panel', () => {
     })
 
     it('should not render tags of a different type', () => {
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
       // knowledgeTag is type 'knowledge', should not appear
       // knowledgeTag is type 'knowledge', should not appear
       // knowledgeTag is type 'knowledge', should not appear
@@ -156,20 +173,17 @@ describe('Panel', () => {
     })
 
     it('should render the manage tags button', () => {
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
       expect(screen.getByText(i18n.manageTags))!.toBeInTheDocument()
     })
 
     it('should show no-tag message when there are no tags', () => {
-      act(() => {
-        useTagStore.setState({ tagList: [] })
-      })
-      render(<Panel {...defaultProps} value={[]} selectedTags={[]} />)
+      render(<Panel {...defaultProps} value={[]} selectedTags={[]} tagList={[]} />)
       expect(screen.getByText(i18n.noTag))!.toBeInTheDocument()
     })
 
     it('should not show no-tag message when tags exist', () => {
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
       expect(screen.queryByText(i18n.noTag)).not.toBeInTheDocument()
     })
   })
@@ -177,7 +191,7 @@ describe('Panel', () => {
   describe('Search / Filter', () => {
     it('should filter tags by keyword', async () => {
       const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'Back')
@@ -188,7 +202,7 @@ describe('Panel', () => {
 
     it('should filter selected tags by keyword', async () => {
       const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'Front')
@@ -201,10 +215,7 @@ describe('Panel', () => {
       const user = userEvent.setup()
       // notExisted uses .every(tag => tag.type === type && tag.name !== keywords)
       // so store must only contain same-type tags for notExisted to be true
-      act(() => {
-        useTagStore.setState({ tagList: appTags })
-      })
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
@@ -218,10 +229,7 @@ describe('Panel', () => {
     it('should not show create option when keyword matches an existing tag name', async () => {
       const user = userEvent.setup()
       // Use only same-type tags so we can verify name matching specifically
-      act(() => {
-        useTagStore.setState({ tagList: appTags })
-      })
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'Frontend')
@@ -263,7 +271,7 @@ describe('Panel', () => {
 
     it('should clear search when clear button is clicked', async () => {
       const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'Back')
@@ -290,7 +298,7 @@ describe('Panel', () => {
 
     it('should select an unselected tag when clicked', async () => {
       const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const backendRowBeforeSelect = getTagRow('Backend')
       expect(within(backendRowBeforeSelect).queryByTestId('check-icon-tag-2')).not.toBeInTheDocument()
@@ -303,7 +311,7 @@ describe('Panel', () => {
 
     it('should deselect a selected tag when clicked', async () => {
       const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const frontendRowBeforeDeselect = getTagRow('Frontend')
       expect(within(frontendRowBeforeDeselect).getByTestId('check-icon-tag-1'))!.toBeInTheDocument()
@@ -316,7 +324,7 @@ describe('Panel', () => {
 
     it('should toggle tag selection on multiple clicks', async () => {
       const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const backendRowBeforeToggle = getTagRow('Backend')
       expect(within(backendRowBeforeToggle).queryByTestId('check-icon-tag-2')).not.toBeInTheDocument()
@@ -336,14 +344,11 @@ describe('Panel', () => {
   describe('Tag Creation', () => {
     beforeEach(() => {
       // notExisted requires all tags to be same type, so remove knowledgeTag
-      act(() => {
-        useTagStore.setState({ tagList: appTags })
-      })
     })
 
     it('should create a new tag when clicking the create option', async () => {
       const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
@@ -358,7 +363,7 @@ describe('Panel', () => {
 
     it('should show success notification after tag creation', async () => {
       const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
@@ -376,7 +381,7 @@ describe('Panel', () => {
 
     it('should clear keywords after successful tag creation', async () => {
       const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'BrandNewTag')
@@ -389,45 +394,11 @@ describe('Panel', () => {
       })
     })
 
-    it('should call onCreate callback after successful tag creation', async () => {
-      const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
-
-      const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
-      await user.type(input, 'BrandNewTag')
-
-      const createOption = await screen.findByTestId('create-tag-option')
-      await user.click(createOption)
-
-      await waitFor(() => {
-        expect(defaultProps.onCreate).toHaveBeenCalled()
-      })
-    })
-
-    it('should add new tag to the store tag list', async () => {
-      const user = userEvent.setup()
-      const newTag: Tag = { id: 'new-tag', name: 'BrandNewTag', type: 'app', binding_count: 0 }
-      vi.mocked(createTag).mockResolvedValue(newTag)
-
-      render(<Panel {...defaultProps} />)
-
-      const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
-      await user.type(input, 'BrandNewTag')
-
-      const createOption = await screen.findByTestId('create-tag-option')
-      await user.click(createOption)
-
-      await waitFor(() => {
-        const storeTagList = useTagStore.getState().tagList
-        expect(storeTagList).toContainEqual(newTag)
-      })
-    })
-
     it('should show error notification when tag creation fails', async () => {
       const user = userEvent.setup()
       vi.mocked(createTag).mockRejectedValue(new Error('Creation failed'))
 
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'FailTag')
@@ -444,7 +415,7 @@ describe('Panel', () => {
     })
 
     it('should not create tag when keywords is empty', () => {
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
 
       // The create option should not appear when no keywords
       // The create option should not appear when no keywords
@@ -481,41 +452,12 @@ describe('Panel', () => {
       expect(screen.queryByText(i18n.create, { exact: false })).not.toBeInTheDocument()
       expect(createTag).not.toHaveBeenCalled()
     })
-
-    it('should not allow duplicate creation while pending', async () => {
-      const user = userEvent.setup()
-      let resolveCreate!: (value: Tag) => void
-      vi.mocked(createTag).mockImplementation(() => new Promise((resolve) => {
-        resolveCreate = resolve
-      }))
-
-      render(<Panel {...defaultProps} />)
-
-      const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
-      await user.type(input, 'BrandNewTag')
-
-      const createOption = await screen.findByTestId('create-tag-option')
-      await user.click(createOption)
-
-      expect(createTag).toHaveBeenCalledTimes(1)
-
-      // Try clicking again while still pending
-      await user.click(createOption)
-
-      // Should still be only 1 call because creating guard blocks it
-      expect(createTag).toHaveBeenCalledTimes(1)
-
-      // Resolve the pending promise
-      await act(async () => {
-        resolveCreate({ id: 'new-tag', name: 'BrandNewTag', type: 'app', binding_count: 0 })
-      })
-    })
   })
 
   describe('Bind/Unbind on Unmount', () => {
     it('should call bindTag for newly selected tags on unmount', async () => {
       const user = userEvent.setup()
-      const { unmount } = render(<Panel {...defaultProps} />)
+      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
 
       // Select 'Backend' (tag-2) — currently not in value[]
       await user.click(screen.getByText('Backend'))
@@ -529,7 +471,7 @@ describe('Panel', () => {
 
     it('should call unBindTag for deselected tags on unmount', async () => {
       const user = userEvent.setup()
-      const { unmount } = render(<Panel {...defaultProps} />)
+      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
 
       // Deselect 'Frontend' (tag-1) — currently in value[]
       await user.click(screen.getByText('Frontend'))
@@ -542,7 +484,7 @@ describe('Panel', () => {
     })
 
     it('should not call bind/unbind when value has not changed', async () => {
-      const { unmount } = render(<Panel {...defaultProps} />)
+      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
 
       unmount()
 
@@ -551,36 +493,9 @@ describe('Panel', () => {
       expect(unBindTag).not.toHaveBeenCalled()
     })
 
-    it('should call onChange after all operations complete on unmount', async () => {
-      const user = userEvent.setup()
-      const { unmount } = render(<Panel {...defaultProps} />)
-
-      await user.click(screen.getByText('Backend'))
-
-      unmount()
-
-      await waitFor(() => {
-        expect(defaultProps.onChange).toHaveBeenCalled()
-      })
-    })
-
-    it('should skip onChange callback when onChange prop is undefined', async () => {
-      const user = userEvent.setup()
-      const onChange = vi.fn()
-      const { unmount } = render(<Panel {...defaultProps} onChange={undefined} />)
-
-      await user.click(screen.getByText('Backend'))
-      unmount()
-
-      await waitFor(() => {
-        expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
-      })
-      expect(onChange).not.toHaveBeenCalled()
-    })
-
     it('should not show notification after successful bind', async () => {
       const user = userEvent.setup()
-      const { unmount } = render(<Panel {...defaultProps} />)
+      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
 
       await user.click(screen.getByText('Backend'))
 
@@ -597,7 +512,7 @@ describe('Panel', () => {
       const user = userEvent.setup()
       vi.mocked(bindTag).mockRejectedValue(new Error('Bind failed'))
 
-      const { unmount } = render(<Panel {...defaultProps} />)
+      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
 
       await user.click(screen.getByText('Backend'))
 
@@ -614,7 +529,7 @@ describe('Panel', () => {
       const user = userEvent.setup()
       vi.mocked(unBindTag).mockRejectedValue(new Error('Unbind failed'))
 
-      const { unmount } = render(<Panel {...defaultProps} />)
+      const { unmount } = render(<Panel {...defaultProps} tagList={appTags} />)
 
       await user.click(screen.getByText('Frontend'))
 
@@ -631,11 +546,12 @@ describe('Panel', () => {
   describe('Manage Tags Modal', () => {
     it('should open the tag management modal when manage tags is clicked', async () => {
       const user = userEvent.setup()
-      render(<Panel {...defaultProps} />)
+      const onOpenTagManagement = vi.fn()
+      render(<Panel {...defaultProps} onOpenTagManagement={onOpenTagManagement} />)
 
       await user.click(screen.getByText(i18n.manageTags))
 
-      expect(useTagStore.getState().showTagManagementModal).toBe(true)
+      expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -649,11 +565,8 @@ describe('Panel', () => {
       expect(screen.getByText('API'))!.toBeInTheDocument()
     })
 
-    it('should handle empty tagList in store', () => {
-      act(() => {
-        useTagStore.setState({ tagList: [] })
-      })
-      render(<Panel {...defaultProps} value={[]} selectedTags={[]} />)
+    it('should handle empty tagList', () => {
+      render(<Panel {...defaultProps} value={[]} selectedTags={[]} tagList={[]} />)
       expect(screen.getByText(i18n.noTag))!.toBeInTheDocument()
     })
 
@@ -675,10 +588,7 @@ describe('Panel', () => {
     it('should show divider between create option and tag list when both present', async () => {
       const user = userEvent.setup()
       // Only same-type tags for notExisted to work
-      act(() => {
-        useTagStore.setState({ tagList: appTags })
-      })
-      render(<Panel {...defaultProps} />)
+      render(<Panel {...defaultProps} tagList={appTags} />)
       const input = screen.getByPlaceholderText(i18n.selectorPlaceholder)
       await user.type(input, 'Back')
       // 'Back' matches Backend (unselected), notExisted is true (no tag named 'Back')
@@ -688,15 +598,13 @@ describe('Panel', () => {
     })
 
     it('should handle knowledge type tags correctly', () => {
-      act(() => {
-        useTagStore.setState({ tagList: [knowledgeTag] })
-      })
       render(
         <Panel
           {...defaultProps}
           type="knowledge"
           value={[]}
           selectedTags={[]}
+          tagList={[knowledgeTag]}
         />,
       )
       expect(screen.getByText('KnowledgeDB'))!.toBeInTheDocument()
