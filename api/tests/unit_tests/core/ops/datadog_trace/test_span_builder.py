@@ -76,6 +76,28 @@ class TestBuilderOutputFormat:
         assert json.loads(attrs[semconv.INPUT_MESSAGES])[0]["parts"][0]["content"] == "Hello"
         assert attrs[semconv.CONVERSATION_ID] == "conv-1"
 
+    def test_build_message_attrs_uses_completion_operation_for_completion_apps(self):
+        trace_info = MessageTraceInfo(
+            message_id="msg-1",
+            metadata={"conversation_id": "conv-1", "ls_provider": "openai", "ls_model_name": "gpt-4"},
+            inputs="Complete this",
+            outputs="Completed",
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            trace_id=None,
+            conversation_model="completion",
+            message_tokens=10,
+            answer_tokens=20,
+            total_tokens=30,
+            file_list=[],
+            message_file_data=None,
+            conversation_mode="completion",
+        )
+
+        attrs = span_builder.build_message_attrs(trace_info)
+
+        assert attrs[semconv.OPERATION_NAME] == "completion"
+
     def test_build_message_attrs_converts_dify_prompt_history_to_otel_messages(self):
         trace_info = MessageTraceInfo(
             message_id="msg-2",
@@ -152,6 +174,7 @@ class TestBuilderOutputFormat:
         }
         trace_info.workflow_run_outputs = {"answer": "Hi"}
         trace_info.conversation_id = None
+        trace_info.metadata = {}
 
         attrs = span_builder.build_workflow_attrs(trace_info)
 
@@ -160,6 +183,41 @@ class TestBuilderOutputFormat:
         assert "sys.user_id" not in attrs[semconv.INPUT_MESSAGES]
         assert attrs["dify.app_id"] == "app-1"
         assert attrs["dify.workflow_id"] == "wf-1"
+
+    def test_build_workflow_attrs_uses_trace_info_and_metadata_fallbacks(self):
+        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info.workflow_run_inputs = {"custom_input": "Hello"}
+        trace_info.workflow_run_outputs = {"answer": "Hi"}
+        trace_info.conversation_id = None
+        trace_info.query = ""
+        trace_info.workflow_id = "wf-1"
+        trace_info.metadata = {"app_id": "app-1"}
+
+        attrs = span_builder.build_workflow_attrs(trace_info)
+
+        messages = json.loads(attrs[semconv.INPUT_MESSAGES])
+        assert json.loads(messages[0]["parts"][0]["content"]) == {"custom_input": "Hello"}
+        assert attrs["dify.app_id"] == "app-1"
+        assert attrs["dify.workflow_id"] == "wf-1"
+
+    def test_build_llm_node_normalizes_non_list_prompts(self):
+        node = MagicMock(spec=WorkflowNodeExecution)
+        node.node_type = BuiltinNodeTypes.LLM
+        node.process_data = {
+            "model_provider": "openai",
+            "model_name": "gpt-4",
+            "model_mode": "chat",
+            "prompts": "hello",
+            "usage": {"prompt_tokens": 10, "completion_tokens": 20},
+        }
+        node.outputs = {"text": "Hi there", "finish_reason": "stop"}
+        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info.metadata = {}
+
+        attrs = span_builder.build_workflow_node_attrs(node, trace_info)
+
+        messages = json.loads(attrs[semconv.INPUT_MESSAGES])
+        assert messages[0]["parts"][0]["content"] == "hello"
 
     def test_build_retrieval_attrs_serializes_document_objects(self):
         trace_info = DatasetRetrievalTraceInfo(

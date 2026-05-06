@@ -150,6 +150,7 @@ def _build_llm_like_attrs(
 def build_message_attrs(trace_info: MessageTraceInfo) -> dict[str, Any]:
     metadata = trace_info.metadata or {}
     message_data = trace_info.message_data or {}
+    operation_name = "completion" if str(trace_info.conversation_mode) == "completion" else "chat"
 
     if isinstance(message_data, dict):
         provider = message_data.get("model_provider", "") or metadata.get("ls_provider", "")
@@ -159,7 +160,7 @@ def build_message_attrs(trace_info: MessageTraceInfo) -> dict[str, Any]:
         model = metadata.get("ls_model_name", "")
 
     return _build_llm_like_attrs(
-        operation_name="chat",
+        operation_name=operation_name,
         provider=_clean_provider_name(str(provider)),
         model=str(model),
         input_tokens=trace_info.message_tokens,
@@ -173,16 +174,20 @@ def build_message_attrs(trace_info: MessageTraceInfo) -> dict[str, Any]:
 def build_workflow_attrs(trace_info: WorkflowTraceInfo) -> dict[str, Any]:
     inputs = trace_info.workflow_run_inputs or {}
     outputs = trace_info.workflow_run_outputs or {}
+    metadata = trace_info.metadata or {}
 
-    query = inputs.get("sys.query", "") or inputs.get("query", "")
+    query = inputs.get("sys.query") or inputs.get("query") or trace_info.query
+    if not query:
+        user_inputs = {key: value for key, value in inputs.items() if not str(key).startswith("sys.")}
+        query = _safe_json(user_inputs) if user_inputs else ""
     answer = outputs.get("answer", "") or _safe_json(outputs)
 
     extra: dict[str, Any] = {}
     if trace_info.conversation_id:
         extra[semconv.CONVERSATION_ID] = trace_info.conversation_id
-    if app_id := inputs.get("sys.app_id"):
+    if app_id := inputs.get("sys.app_id") or metadata.get("app_id"):
         extra[semconv.DIFY_APP_ID] = app_id
-    if workflow_id := inputs.get("sys.workflow_id"):
+    if workflow_id := inputs.get("sys.workflow_id") or metadata.get("workflow_id") or trace_info.workflow_id:
         extra[semconv.DIFY_WORKFLOW_ID] = workflow_id
 
     return _single_exchange_attrs("workflow", str(query), str(answer), **extra)
@@ -270,7 +275,7 @@ def _build_prompt_model_node_attrs(
         model=str(process_data.get("model_name", "")),
         input_tokens=usage.get("prompt_tokens", 0) if isinstance(usage, dict) else 0,
         output_tokens=usage.get("completion_tokens", 0) if isinstance(usage, dict) else 0,
-        input_messages=[_convert_dify_prompt(p) for p in raw_prompts],
+        input_messages=_normalize_input_messages(raw_prompts),
         output_messages=[
             _to_otel_message("assistant", output_text, finish_reason=finish_reason)
         ],
