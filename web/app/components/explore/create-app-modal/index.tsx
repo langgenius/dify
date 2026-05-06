@@ -110,7 +110,7 @@ const CreateAppModal = ({
 
   return (
     <>
-      <Dialog open={show} onOpenChange={open => !open && onHide()}>
+      <Dialog open={show} onOpenChange={open => !open && onHide()} disablePointerDismissal>
         <DialogContent className="px-8">
           <DialogCloseButton />
           {isEditModal && (
