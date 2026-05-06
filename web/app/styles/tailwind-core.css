@@ -12,7 +12,7 @@
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
 
-/* Local preflight (replaces v3 `corePlugins.preflight: false`). */
+/* Local preflight keeps the browser baseline controlled across app entries. */
 @import './preflight.css' layer(base);
 
 /* Design system: palette overrides, semantic tokens, light/dark themes,
@@ -96,19 +96,6 @@
   --background-image-knowledge-pipeline-creation-footer-bg: var(--color-knowledge-pipeline-creation-footer-bg);
   --background-image-progress-bar-indeterminate-stripe: var(--color-progress-bar-indeterminate-stripe);
   --background-image-chat-answer-human-input-form-divider-bg: var(--color-chat-answer-human-input-form-divider-bg);
-}
-
-/* ---------- Backwards-compat: gray-200 default border color ----------- *
- * v4 changed the default border color to `currentColor`. Preserve the v3
- * baseline used throughout the codebase. */
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
 }
 
 /* ---------- App-level component CSS ----------------------------------- */

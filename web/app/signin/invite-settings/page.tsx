@@ -138,7 +138,7 @@ export default function InviteSettingsPage() {
               <SelectTrigger size="large">
                 {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
               </SelectTrigger>
-              <SelectContent popupClassName="w-(--anchor-width)">
+              <SelectContent>
                 {languageOptions.map(item => (
                   <SelectItem key={item.value} value={item.value}>
                     <SelectItemText>{item.name}</SelectItemText>

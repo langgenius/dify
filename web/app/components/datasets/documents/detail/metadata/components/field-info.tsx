@@ -55,7 +55,7 @@ const FieldInfo: FC<FieldInfoProps> = ({
           <SelectTrigger className={cn(s.select, s.selectWrapper)}>
             {selectedOption?.name ?? `${t('metadata.placeholder.select', { ns: 'datasetDocuments' })}${label}`}
           </SelectTrigger>
-          <SelectContent popupClassName="w-(--anchor-width)">
+          <SelectContent>
             {selectOptions.map(option => (
               <SelectItem key={option.value} value={option.value}>
                 <SelectItemText>{option.name}</SelectItemText>

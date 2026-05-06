@@ -438,11 +438,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/dataset-config/select-dataset/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
     "react/set-state-in-effect": {
       "count": 2
@@ -611,17 +606,6 @@
   "web/app/components/app/workflow-log/trigger-by-display.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/apps/app-card.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/apps/new-app-card.tsx": {
@@ -3567,11 +3551,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/dsl-export-confirm-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/header/run-mode.tsx": {
     "no-console": {
       "count": 1
@@ -4256,11 +4235,6 @@
   },
   "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-item.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/metadata/condition-list/condition-operator.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
