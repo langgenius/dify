@@ -5,6 +5,7 @@ import * as React from 'react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AccessMode } from '@/models/access-control'
 import * as appsService from '@/service/apps'
+import { consoleQuery } from '@/service/client'
 import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
@@ -303,8 +304,23 @@ vi.mock('@/app/components/base/tooltip', () => ({
 
 // TagSelector has API dependency (service/tag) - mock for isolated testing
 vi.mock('@/app/components/base/tag-management/selector', () => ({
-  default: ({ tags }: { tags?: { id: string, name: string }[] }) => {
-    return React.createElement('div', { 'aria-label': 'tag-selector' }, tags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)))
+  default: ({ selectedTags, onCacheUpdate }: {
+    selectedTags?: { id: string, name: string }[]
+    onCacheUpdate?: (tags: { id: string, name: string, type: string, binding_count: number }[]) => void
+  }) => {
+    return React.createElement(
+      'div',
+      { 'aria-label': 'tag-selector' },
+      selectedTags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)),
+      React.createElement(
+        'button',
+        {
+          'data-testid': 'update-tags',
+          'onClick': () => onCacheUpdate?.([{ id: 'tag1', name: 'Updated Tag', type: 'app', binding_count: 0 }]),
+        },
+        'Update tags',
+      ),
+    )
   },
 }))
 
@@ -405,6 +421,58 @@ describe('AppCard', () => {
       render(<AppCard app={appWithTags} />)
       // Verify the tag selector component renders
       expect(screen.getByLabelText('tag-selector')).toBeInTheDocument()
+    })
+
+    it('should display refreshed tag names from app props when tag ids stay the same', () => {
+      const firstApp = createMockApp({
+        tags: [{ id: 'tag1', name: 'Old Tag', type: 'app', binding_count: 0 }],
+      })
+      const refreshedApp = createMockApp({
+        tags: [{ id: 'tag1', name: 'New Tag', type: 'app', binding_count: 0 }],
+      })
+
+      const { rerender } = render(<AppCard app={firstApp} />)
+      expect(screen.getByText('Old Tag')).toBeInTheDocument()
+
+      rerender(<AppCard app={refreshedApp} />)
+
+      expect(screen.getByText('New Tag')).toBeInTheDocument()
+      expect(screen.queryByText('Old Tag')).not.toBeInTheDocument()
+    })
+
+    it('should write tag changes into app list query data instead of local component state', () => {
+      const appWithTags = createMockApp({
+        tags: [{ id: 'tag1', name: 'Old Tag', type: 'app', binding_count: 0 }],
+      })
+      const appListInput = {
+        query: {
+          page: 1,
+          limit: 30,
+        },
+      }
+      const appListQueryKey = consoleQuery.apps.list.queryKey({
+        input: appListInput,
+      })
+
+      const { queryClient } = render(<AppCard app={appWithTags} />)
+      queryClient.setQueryData(appListQueryKey, {
+        data: [appWithTags],
+        has_more: false,
+        limit: 30,
+        page: 1,
+        total: 1,
+      })
+
+      fireEvent.click(screen.getByTestId('update-tags'))
+
+      expect(queryClient.getQueryData(appListQueryKey)).toMatchObject({
+        data: [
+          {
+            id: appWithTags.id,
+            tags: [{ id: 'tag1', name: 'Updated Tag' }],
+          },
+        ],
+      })
     })
 
     it('should render with onRefresh callback', () => {
