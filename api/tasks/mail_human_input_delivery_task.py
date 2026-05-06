@@ -11,10 +11,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from dify_graph.nodes.human_input.entities import EmailDeliveryConfig, EmailDeliveryMethod
-from dify_graph.runtime import GraphRuntimeState, VariablePool
+from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailDeliveryMethod
 from extensions.ext_database import db
 from extensions.ext_mail import mail
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.human_input import (
     DeliveryMethodType,
     HumanInputDelivery,

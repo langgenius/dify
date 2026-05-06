@@ -1,3 +1,5 @@
+@reference "../../../styles/globals.css";
+
 .generateLogo {
   animation: 2s rotate linear infinite;
 }

@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment node
+ */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildUpstreamUrl, createDevProxyApp, isAllowedDevOrigin, resolveDevProxyTargets } from './server'
 
@@ -72,7 +75,7 @@ describe('dev proxy server', () => {
       }),
     )
 
-    const [, requestInit] = fetchImpl.mock.calls[0]
+    const [, requestInit] = (fetchImpl.mock.calls[0] ?? []) as [unknown, any]
     const requestHeaders = requestInit?.headers as Headers
     expect(requestHeaders.get('cookie')).toBe('__Host-access_token=abc')
     expect(requestHeaders.get('origin')).toBe('https://cloud.dify.ai')

@@ -9,15 +9,15 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from dify_graph.entities.graph_config import NodeConfigDictAdapter
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
+from core.workflow.system_variables import default_system_variables
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.workflow import Workflow
 
 
 def _make_graph_state():
     variable_pool = VariablePool(
-        system_variables=SystemVariable.default(),
+        system_variables=default_system_variables(),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
@@ -100,6 +100,7 @@ def test_run_uses_single_node_execution_branch(
         workflow=workflow,
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
+        user_id="user",
     )
     init_graph.assert_not_called()
 
@@ -158,6 +159,7 @@ def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
             graph_runtime_state=graph_runtime_state,
             node_type_filter_key="loop_id",
             node_type_label="loop",
+            user_id="00000000-0000-0000-0000-000000000001",
         )
 
     assert seen_configs == [workflow.graph_dict["nodes"][0]]

@@ -88,6 +88,7 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 1. **Redis Configuration**:
 
    - `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`: Redis server connection settings.
+   - `REDIS_KEY_PREFIX`: Optional global namespace prefix for Redis keys, topics, streams, and Celery Redis transport artifacts.
 
 1. **Celery Configuration**:
 

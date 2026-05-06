@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
 from controllers.console.auth.error import (
@@ -29,6 +30,7 @@ from controllers.console.workspace.error import (
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
 )
+from models.enums import CreatorUserRole
 from services.errors.account import CurrentPasswordIncorrectError as ServicePwdError
 
 
@@ -133,6 +135,131 @@ class TestAccountUpdateApis:
             result = method(api)
 
         assert result["id"] == "u1"
+
+
+class TestAccountAvatarApiGet:
+    """GET /account/avatar must not sign arbitrary upload_file IDs (IDOR)."""
+
+    def test_get_avatar_signed_url_when_upload_owned_by_current_account(self, app):
+        api = AccountAvatarApi()
+        method = unwrap(api.get)
+
+        user = MagicMock()
+        user.id = "acc-owner"
+        tenant_id = "tenant-1"
+        file_id = "550e8400-e29b-41d4-a716-446655440000"
+
+        upload_file = MagicMock()
+        upload_file.id = file_id
+        upload_file.tenant_id = tenant_id
+        upload_file.created_by = user.id
+        upload_file.created_by_role = CreatorUserRole.ACCOUNT
+
+        with (
+            app.test_request_context(f"/account/avatar?avatar={file_id}"),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant",
+                return_value=(user, tenant_id),
+            ),
+            patch("controllers.console.workspace.account.db.session.scalar", return_value=upload_file),
+            patch(
+                "controllers.console.workspace.account.file_helpers.get_signed_file_url",
+                return_value="https://signed/example",
+            ) as sign_mock,
+        ):
+            result = method(api)
+
+        assert result == {"avatar_url": "https://signed/example"}
+        sign_mock.assert_called_once_with(upload_file_id=file_id)
+
+    def test_get_avatar_not_found_when_upload_created_by_other_account_same_tenant(self, app):
+        api = AccountAvatarApi()
+        method = unwrap(api.get)
+
+        user = MagicMock()
+        user.id = "acc-a"
+        tenant_id = "tenant-1"
+        file_id = "550e8400-e29b-41d4-a716-446655440001"
+
+        upload_file = MagicMock()
+        upload_file.id = file_id
+        upload_file.tenant_id = tenant_id
+        upload_file.created_by = "acc-b"
+        upload_file.created_by_role = CreatorUserRole.ACCOUNT
+
+        with (
+            app.test_request_context(f"/account/avatar?avatar={file_id}"),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant",
+                return_value=(user, tenant_id),
+            ),
+            patch("controllers.console.workspace.account.db.session.scalar", return_value=upload_file),
+            patch(
+                "controllers.console.workspace.account.file_helpers.get_signed_file_url",
+                return_value="https://signed/leak",
+            ) as sign_mock,
+        ):
+            with pytest.raises(NotFound):
+                method(api)
+
+        sign_mock.assert_not_called()
+
+    def test_get_avatar_not_found_when_upload_belongs_to_other_tenant(self, app):
+        api = AccountAvatarApi()
+        method = unwrap(api.get)
+
+        user = MagicMock()
+        user.id = "acc-owner"
+        tenant_id = "tenant-1"
+        file_id = "550e8400-e29b-41d4-a716-446655440002"
+
+        upload_file = MagicMock()
+        upload_file.id = file_id
+        upload_file.tenant_id = "tenant-other"
+        upload_file.created_by = user.id
+        upload_file.created_by_role = CreatorUserRole.ACCOUNT
+
+        with (
+            app.test_request_context(f"/account/avatar?avatar={file_id}"),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant",
+                return_value=(user, tenant_id),
+            ),
+            patch("controllers.console.workspace.account.db.session.scalar", return_value=upload_file),
+            patch(
+                "controllers.console.workspace.account.file_helpers.get_signed_file_url",
+                return_value="https://signed/leak",
+            ) as sign_mock,
+        ):
+            with pytest.raises(NotFound):
+                method(api)
+
+        sign_mock.assert_not_called()
+
+    def test_get_avatar_https_pass_through_without_signing(self, app):
+        api = AccountAvatarApi()
+        method = unwrap(api.get)
+
+        user = MagicMock()
+        user.id = "acc-owner"
+        tenant_id = "tenant-1"
+        external = "https://cdn.example/avatar.png"
+
+        with (
+            app.test_request_context(f"/account/avatar?avatar={external}"),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant",
+                return_value=(user, tenant_id),
+            ),
+            patch(
+                "controllers.console.workspace.account.file_helpers.get_signed_file_url",
+                return_value="https://signed/should-not-use",
+            ) as sign_mock,
+        ):
+            result = method(api)
+
+        assert result == {"avatar_url": external}
+        sign_mock.assert_not_called()
 
 
 class TestAccountPasswordApi:

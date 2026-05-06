@@ -32,7 +32,7 @@ describe('AppSelector Component', () => {
     { id: '1', name: 'App 1' },
     { id: '2', name: 'App 2' },
   ] as unknown as AppDetailResponse[]
-  const mockCurApp = mockAppItems[0]
+  const mockCurApp = mockAppItems[0]!
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -47,7 +47,7 @@ describe('AppSelector Component', () => {
   describe('Rendering', () => {
     it('should render current app name', () => {
       render(<AppSelector appItems={mockAppItems} curApp={mockCurApp} />)
-      expect(screen.getByText('App 1')).toBeInTheDocument()
+      expect(screen.getByText('App 1'))!.toBeInTheDocument()
     })
   })
 
@@ -60,7 +60,7 @@ describe('AppSelector Component', () => {
         fireEvent.click(button)
       })
 
-      expect(screen.getByText('App 2')).toBeInTheDocument()
+      expect(screen.getByText('App 2'))!.toBeInTheDocument()
     })
 
     it('should navigate to configuration when an app is clicked and user is editor', async () => {
@@ -114,7 +114,7 @@ describe('AppSelector Component', () => {
         fireEvent.click(newAppBtn)
       })
 
-      expect(screen.getByTestId('create-app-dialog')).toBeInTheDocument()
+      expect(screen.getByTestId('create-app-dialog'))!.toBeInTheDocument()
     })
 
     it('should not show "New App" button for non-editor', async () => {
@@ -165,7 +165,8 @@ describe('AppSelector Component', () => {
 
       expect(screen.queryByText('App 2')).not.toBeInTheDocument()
       // "New App" should still be there if editor
-      expect(screen.getByText('common.menus.newApp')).toBeInTheDocument()
+      // "New App" should still be there if editor
+      expect(screen.getByText('common.menus.newApp'))!.toBeInTheDocument()
     })
   })
 })

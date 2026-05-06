@@ -555,6 +555,124 @@ class TestWorkflowService:
         assert len(result_workflows) == 2
         assert all(wf.marked_name for wf in result_workflows)
 
+    def test_get_all_published_workflow_no_workflow_id(self, db_session_with_containers: Session):
+        """Test that an app with no workflow_id returns empty results."""
+        # Arrange
+        fake = Faker()
+        app = self._create_test_app(db_session_with_containers, fake)
+        app.workflow_id = None
+        db_session_with_containers.commit()
+
+        workflow_service = WorkflowService()
+
+        # Act
+        result_workflows, has_more = workflow_service.get_all_published_workflow(
+            session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None
+        )
+
+        # Assert
+        assert result_workflows == []
+        assert has_more is False
+
+    def test_get_all_published_workflow_basic(self, db_session_with_containers: Session):
+        """Test basic retrieval of published workflows."""
+        # Arrange
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
+
+        workflow1 = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow1.version = "2024.01.01.001"
+        workflow2 = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow2.version = "2024.01.02.001"
+
+        app.workflow_id = workflow1.id
+        db_session_with_containers.commit()
+
+        workflow_service = WorkflowService()
+
+        # Act
+        result_workflows, has_more = workflow_service.get_all_published_workflow(
+            session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None
+        )
+
+        # Assert
+        assert len(result_workflows) == 2
+        assert has_more is False
+
+    def test_get_all_published_workflow_combined_filters(self, db_session_with_containers: Session):
+        """Test combined user_id and named_only filters."""
+        # Arrange
+        fake = Faker()
+        account1 = self._create_test_account(db_session_with_containers, fake)
+        account2 = self._create_test_account(db_session_with_containers, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
+
+        # account1 named
+        wf1 = self._create_test_workflow(db_session_with_containers, app, account1, fake)
+        wf1.version = "2024.01.01.001"
+        wf1.marked_name = "Named by user1"
+        wf1.created_by = account1.id
+
+        # account1 unnamed
+        wf2 = self._create_test_workflow(db_session_with_containers, app, account1, fake)
+        wf2.version = "2024.01.02.001"
+        wf2.marked_name = ""
+        wf2.created_by = account1.id
+
+        # account2 named
+        wf3 = self._create_test_workflow(db_session_with_containers, app, account2, fake)
+        wf3.version = "2024.01.03.001"
+        wf3.marked_name = "Named by user2"
+        wf3.created_by = account2.id
+
+        app.workflow_id = wf1.id
+        db_session_with_containers.commit()
+
+        workflow_service = WorkflowService()
+
+        # Act - Filter by account1 + named_only
+        result_workflows, has_more = workflow_service.get_all_published_workflow(
+            session=db_session_with_containers,
+            app_model=app,
+            page=1,
+            limit=10,
+            user_id=account1.id,
+            named_only=True,
+        )
+
+        # Assert - Only wf1 matches (account1 + named)
+        assert len(result_workflows) == 1
+        assert result_workflows[0].marked_name == "Named by user1"
+        assert result_workflows[0].created_by == account1.id
+
+    def test_get_all_published_workflow_empty_result(self, db_session_with_containers: Session):
+        """Test that querying with no matching workflows returns empty."""
+        # Arrange
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
+
+        # Create a draft workflow (no version set = draft)
+        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        app.workflow_id = workflow.id
+        db_session_with_containers.commit()
+
+        workflow_service = WorkflowService()
+
+        # Act - Filter by a user that has no workflows
+        result_workflows, has_more = workflow_service.get_all_published_workflow(
+            session=db_session_with_containers,
+            app_model=app,
+            page=1,
+            limit=10,
+            user_id="00000000-0000-0000-0000-000000000000",
+        )
+
+        # Assert
+        assert result_workflows == []
+        assert has_more is False
+
     def test_sync_draft_workflow_create_new(self, db_session_with_containers: Session):
         """
         Test creating a new draft workflow through sync operation.
@@ -1503,10 +1621,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-            from dify_graph.graph_events import NodeRunSucceededEvent
-            from dify_graph.node_events import NodeRunResult
-            from dify_graph.nodes.base.node import Node
+            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+            from graphon.graph_events import NodeRunSucceededEvent
+            from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
@@ -1548,12 +1666,12 @@ class TestWorkflowService:
         # Assert
         assert result is not None
         assert result.node_id == node_id
-        from dify_graph.enums import BuiltinNodeTypes
+        from graphon.enums import BuiltinNodeTypes
 
         assert result.node_type == BuiltinNodeTypes.START  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
-        from dify_graph.enums import WorkflowNodeExecutionStatus
+        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs is not None
@@ -1578,10 +1696,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-            from dify_graph.graph_events import NodeRunFailedEvent
-            from dify_graph.node_events import NodeRunResult
-            from dify_graph.nodes.base.node import Node
+            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+            from graphon.graph_events import NodeRunFailedEvent
+            from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node
             mock_node = MagicMock(spec=Node)
@@ -1623,7 +1741,7 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from dify_graph.enums import WorkflowNodeExecutionStatus
+        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert result.error is not None
@@ -1647,10 +1765,10 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from dify_graph.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
-            from dify_graph.graph_events import NodeRunFailedEvent
-            from dify_graph.node_events import NodeRunResult
-            from dify_graph.nodes.base.node import Node
+            from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
+            from graphon.graph_events import NodeRunFailedEvent
+            from graphon.node_events import NodeRunResult
+            from graphon.nodes.base.node import Node
 
             # Create mock node with continue_on_error
             mock_node = MagicMock(spec=Node)
@@ -1693,7 +1811,7 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from dify_graph.enums import WorkflowNodeExecutionStatus
+        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.EXCEPTION  # Should be EXCEPTION, not FAILED
         assert result.outputs is not None

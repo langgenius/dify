@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
-from services.advanced_prompt_template_service import AdvancedPromptTemplateService
+from services.advanced_prompt_template_service import AdvancedPromptTemplateArgs, AdvancedPromptTemplateService
 
 
 class AdvancedPromptTemplateQuery(BaseModel):
@@ -35,5 +35,10 @@ class AdvancedPromptTemplateList(Resource):
     @account_initialization_required
     def get(self):
         args = AdvancedPromptTemplateQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-
-        return AdvancedPromptTemplateService.get_prompt(args.model_dump())
+        prompt_args: AdvancedPromptTemplateArgs = {
+            "app_mode": args.app_mode,
+            "model_mode": args.model_mode,
+            "model_name": args.model_name,
+            "has_context": args.has_context,
+        }
+        return AdvancedPromptTemplateService.get_prompt(prompt_args)

@@ -19,6 +19,8 @@ describe('TopKItem', () => {
     vi.clearAllMocks()
   })
 
+  const getSlider = () => screen.getByLabelText('appDebug.datasetConfig.top_k')
+
   describe('Rendering', () => {
     it('should render the translated parameter name', () => {
       render(<TopKItem {...defaultProps} />)
@@ -27,17 +29,16 @@ describe('TopKItem', () => {
     })
 
     it('should render tooltip trigger', () => {
-      const { container } = render(<TopKItem {...defaultProps} />)
+      render(<TopKItem {...defaultProps} />)
 
-      // Tooltip trigger icon should be rendered
-      expect(container.querySelector('[data-state]')).toBeInTheDocument()
+      expect(screen.getByLabelText('appDebug.datasetConfig.top_kTip')).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {
       render(<TopKItem {...defaultProps} />)
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('slider')).toBeInTheDocument()
+      expect(getSlider()).toBeInTheDocument()
     })
   })
 
@@ -52,7 +53,7 @@ describe('TopKItem', () => {
       render(<TopKItem {...defaultProps} enable={false} />)
 
       expect(screen.getByRole('textbox')).toBeDisabled()
-      expect(screen.getByRole('slider')).toHaveAttribute('aria-disabled', 'true')
+      expect(getSlider()).toBeDisabled()
     })
   })
 
@@ -77,10 +78,10 @@ describe('TopKItem', () => {
 
     it('should render slider with max >= 5 so no scaling is applied', () => {
       render(<TopKItem {...defaultProps} />)
-      const slider = screen.getByRole('slider')
+      const slider = getSlider()
 
       // max=10 >= 5 so slider shows raw values
-      expect(slider).toHaveAttribute('aria-valuemax', '10')
+      expect(slider).toHaveAttribute('max', '10')
     })
 
     it('should not render a switch (no hasSwitch prop)', () => {
@@ -116,9 +117,9 @@ describe('TopKItem', () => {
     it('should call onChange with integer value when slider changes', async () => {
       const user = userEvent.setup()
       render(<TopKItem {...defaultProps} value={2} />)
-      const slider = screen.getByRole('slider')
+      const slider = getSlider()
 
-      await user.click(slider)
+      slider.focus()
       await user.keyboard('{ArrowRight}')
 
       expect(defaultProps.onChange).toHaveBeenLastCalledWith('top_k', 3)

@@ -33,7 +33,7 @@ const {
   }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
     (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
     {
@@ -72,12 +72,14 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
 }))
 
-vi.mock('../../../../install-plugin/hooks', () => ({
-  useGitHubReleases: () => ({
+vi.mock('../../../../install-plugin/hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../install-plugin/hooks')>()
+  return {
+    ...actual,
     checkForUpdates: mockCheckForUpdates,
     fetchReleases: mockFetchReleases,
-  }),
-}))
+  }
+})
 
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'test-id',

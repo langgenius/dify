@@ -3,20 +3,26 @@
 import type { FC } from 'react'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
-import CustomDialog from '@/app/components/base/dialog'
 import Divider from '@/app/components/base/divider'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useDocLink } from '@/context/i18n'
 import { ChunkingMode } from '@/models/datasets'
 import Link from '@/next/link'
-import { cn } from '@/utils/classnames'
 import { indexMethodIcon } from '../../icons'
 import { IndexingType } from '../hooks'
 import s from '../index.module.css'
@@ -65,14 +71,47 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
   const docLink = useDocLink()
 
   const getIndexingTechnique = () => indexType
+  const economicalDisabledReason = (() => {
+    if (docForm === ChunkingMode.qa)
+      return t('stepTwo.notAvailableForQA', { ns: 'datasetCreation' })
+
+    if (docForm !== ChunkingMode.text)
+      return t('stepTwo.notAvailableForParentChild', { ns: 'datasetCreation' })
+  })()
 
   return (
     <>
       {/* Index Mode */}
-      <div className="mb-1 text-text-secondary system-md-semibold">
+      <div className="mb-1 system-md-semibold text-text-secondary">
         {t('stepTwo.indexMode', { ns: 'datasetCreation' })}
       </div>
-      <div className="flex items-center gap-2">
+      <AlertDialog
+        open={isQAConfirmDialogOpen}
+        onOpenChange={(open) => {
+          if (!open)
+            onQAConfirmDialogClose()
+        }}
+      >
+        <AlertDialogContent className="w-[432px]">
+          <div className="flex flex-col gap-2 p-6 pb-4">
+            <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+              {t('stepTwo.qaSwitchHighQualityTipTitle', { ns: 'datasetCreation' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
+              {t('stepTwo.qaSwitchHighQualityTipContent', { ns: 'datasetCreation' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton variant="secondary">
+              {t('stepTwo.cancel', { ns: 'datasetCreation' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton tone="default" onClick={onQAConfirmDialogConfirm}>
+              {t('stepTwo.switch', { ns: 'datasetCreation' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+      <div className="flex items-stretch gap-2">
         {/* Qualified option */}
         {(!hasSetIndexType || (hasSetIndexType && indexType === IndexingType.QUALIFIED)) && (
           <OptionCard
@@ -106,60 +145,26 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
 
         {/* Economical option */}
         {(!hasSetIndexType || (hasSetIndexType && indexType === IndexingType.ECONOMICAL)) && (
-          <>
-            <CustomDialog show={isQAConfirmDialogOpen} onClose={onQAConfirmDialogClose} className="w-[432px]">
-              <header className="mb-4 pt-6">
-                <h2 className="text-lg font-semibold text-text-primary">
-                  {t('stepTwo.qaSwitchHighQualityTipTitle', { ns: 'datasetCreation' })}
-                </h2>
-                <p className="mt-2 text-sm font-normal text-text-secondary">
-                  {t('stepTwo.qaSwitchHighQualityTipContent', { ns: 'datasetCreation' })}
-                </p>
-              </header>
-              <div className="flex gap-2 pb-6">
-                <Button className="ml-auto" onClick={onQAConfirmDialogClose}>
-                  {t('stepTwo.cancel', { ns: 'datasetCreation' })}
-                </Button>
-                <Button variant="primary" onClick={onQAConfirmDialogConfirm}>
-                  {t('stepTwo.switch', { ns: 'datasetCreation' })}
-                </Button>
-              </div>
-            </CustomDialog>
-            <Tooltip
-              popupContent={(
-                <div className="rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg">
-                  {docForm === ChunkingMode.qa
-                    ? t('stepTwo.notAvailableForQA', { ns: 'datasetCreation' })
-                    : t('stepTwo.notAvailableForParentChild', { ns: 'datasetCreation' })}
-                </div>
-              )}
-              noDecoration
-              position="top"
-              asChild={false}
-              triggerClassName="flex-1 self-stretch"
-            >
-              <OptionCard
-                className="h-full"
-                title={t('stepTwo.economical', { ns: 'datasetCreation' })}
-                description={t('stepTwo.economicalTip', { ns: 'datasetCreation' })}
-                icon={<img src={indexMethodIcon.economical} alt="" />}
-                isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
-                disabled={hasSetIndexType || docForm !== ChunkingMode.text}
-                onSwitched={() => onIndexTypeChange(IndexingType.ECONOMICAL)}
-              />
-            </Tooltip>
-          </>
+          <OptionCard
+            className="flex-1 self-stretch"
+            title={t('stepTwo.economical', { ns: 'datasetCreation' })}
+            description={economicalDisabledReason || t('stepTwo.economicalTip', { ns: 'datasetCreation' })}
+            icon={<img src={indexMethodIcon.economical} alt="" />}
+            isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
+            disabled={hasSetIndexType || !!economicalDisabledReason}
+            onSwitched={() => onIndexTypeChange(IndexingType.ECONOMICAL)}
+          />
         )}
       </div>
 
       {/* High quality tip */}
       {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
         <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-          <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40"></div>
+          <div className="absolute top-0 right-0 bottom-0 left-0 bg-dataset-warning-message-bg opacity-40"></div>
           <div className="p-1">
             <AlertTriangle className="size-4 text-text-warning-secondary" />
           </div>
-          <span className="text-text-primary system-xs-medium">
+          <span className="system-xs-medium text-text-primary">
             {t('stepTwo.highQualityTip', { ns: 'datasetCreation' })}
           </span>
         </div>
@@ -167,7 +172,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
 
       {/* Economical index setting tip */}
       {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
-        <div className="mt-2 text-text-tertiary system-xs-medium">
+        <div className="mt-2 system-xs-medium text-text-tertiary">
           {t('stepTwo.indexSettingTip', { ns: 'datasetCreation' })}
           <Link className="text-text-accent" href={`/datasets/${datasetId}/settings`}>
             {t('stepTwo.datasetSettingLink', { ns: 'datasetCreation' })}
@@ -178,7 +183,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
       {/* Embedding model */}
       {indexType === IndexingType.QUALIFIED && (
         <div className="mt-5">
-          <div className={cn('mb-1 text-text-secondary system-md-semibold', datasetId && 'flex items-center justify-between')}>
+          <div className={cn('mb-1 system-md-semibold text-text-secondary', datasetId && 'flex items-center justify-between')}>
             {t('form.embeddingModel', { ns: 'datasetSettings' })}
           </div>
           <ModelSelector
@@ -189,7 +194,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
             onSelect={onEmbeddingModelChange}
           />
           {isModelAndRetrievalConfigDisabled && (
-            <div className="mt-2 text-text-tertiary system-xs-medium">
+            <div className="mt-2 system-xs-medium text-text-tertiary">
               {t('stepTwo.indexSettingTip', { ns: 'datasetCreation' })}
               <Link className="text-text-accent" href={`/datasets/${datasetId}/settings`}>
                 {t('stepTwo.datasetSettingLink', { ns: 'datasetCreation' })}
@@ -206,10 +211,10 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
         {!isModelAndRetrievalConfigDisabled
           ? (
               <div className="mb-1">
-                <div className="mb-0.5 text-text-secondary system-md-semibold">
+                <div className="mb-0.5 system-md-semibold text-text-secondary">
                   {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
                 </div>
-                <div className="text-text-tertiary body-xs-regular">
+                <div className="body-xs-regular text-text-tertiary">
                   <a
                     target="_blank"
                     rel="noopener noreferrer"
@@ -223,7 +228,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
               </div>
             )
           : (
-              <div className={cn('mb-0.5 text-text-secondary system-md-semibold', 'flex items-center justify-between')}>
+              <div className={cn('mb-0.5 system-md-semibold text-text-secondary', 'flex items-center justify-between')}>
                 <div>{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
               </div>
             )}

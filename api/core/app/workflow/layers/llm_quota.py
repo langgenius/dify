@@ -5,24 +5,22 @@ This layer centralizes model-quota deduction outside node implementations.
 """
 
 import logging
-from typing import TYPE_CHECKING, cast, final
+from typing import TYPE_CHECKING, cast, final, override
 
-from typing_extensions import override
-
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm import deduct_llm_quota, ensure_llm_quota_available
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
-from dify_graph.enums import BuiltinNodeTypes
-from dify_graph.graph_engine.entities.commands import AbortCommand, CommandType
-from dify_graph.graph_engine.layers.base import GraphEngineLayer
-from dify_graph.graph_events import GraphEngineEvent, GraphNodeEventBase
-from dify_graph.graph_events.node import NodeRunSucceededEvent
-from dify_graph.nodes.base.node import Node
+from graphon.enums import BuiltinNodeTypes
+from graphon.graph_engine.entities.commands import AbortCommand, CommandType
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, NodeRunSucceededEvent
+from graphon.nodes.base.node import Node
 
 if TYPE_CHECKING:
-    from dify_graph.nodes.llm.node import LLMNode
-    from dify_graph.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-    from dify_graph.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
+    from graphon.nodes.llm.node import LLMNode
+    from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+    from graphon.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +73,7 @@ class LLMQuotaLayer(GraphEngineLayer):
             return
 
         try:
-            dify_ctx = node.require_dify_context()
+            dify_ctx = DifyRunContext.model_validate(node.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
             deduct_llm_quota(
                 tenant_id=dify_ctx.tenant_id,
                 model_instance=model_instance,
@@ -114,11 +112,11 @@ class LLMQuotaLayer(GraphEngineLayer):
         try:
             match node.node_type:
                 case BuiltinNodeTypes.LLM:
-                    return cast("LLMNode", node).model_instance
+                    model_instance = cast("LLMNode", node).model_instance
                 case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
-                    return cast("ParameterExtractorNode", node).model_instance
+                    model_instance = cast("ParameterExtractorNode", node).model_instance
                 case BuiltinNodeTypes.QUESTION_CLASSIFIER:
-                    return cast("QuestionClassifierNode", node).model_instance
+                    model_instance = cast("QuestionClassifierNode", node).model_instance
                 case _:
                     return None
         except AttributeError:
@@ -127,3 +125,12 @@ class LLMQuotaLayer(GraphEngineLayer):
                 node.id,
             )
             return None
+
+        if isinstance(model_instance, ModelInstance):
+            return model_instance
+
+        raw_model_instance = getattr(model_instance, "_model_instance", None)
+        if isinstance(raw_model_instance, ModelInstance):
+            return raw_model_instance
+
+        return None

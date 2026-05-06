@@ -39,7 +39,7 @@ describe('IndexMethod', () => {
 
     fireEvent.change(container.querySelector('input') as HTMLInputElement, { target: { value: '7' } })
 
-    expect(onKeywordNumberChange).toHaveBeenCalledWith(7)
+    expect(onKeywordNumberChange).toHaveBeenCalledWith(7, expect.anything())
   })
 
   it('should disable keyword controls when readonly is enabled', () => {

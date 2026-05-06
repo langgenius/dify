@@ -37,22 +37,6 @@ export enum SelfHostedPlan {
   enterprise = 'enterprise',
 }
 
-export type SelfHostedPlanInfo = {
-  level: number
-  price: number
-  modelProviders: string
-  teamWorkspace: number
-  teamMembers: number
-  buildApps: number
-  documents: number
-  vectorSpace: string
-  documentsRequestQuota: number
-  documentProcessingPriority: Priority
-  logHistory: number
-  messageRequest: number
-  annotatedResponse: number
-}
-
 export type UsagePlanInfo = Pick<PlanInfo, 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota' | 'apiRateLimit' | 'triggerEvents'> & { vectorSpace: number }
 
 export type UsageResetInfo = {
@@ -119,11 +103,6 @@ export type CurrentPlanInfoBackend = {
     publish_enabled: boolean
   }
   human_input_email_delivery_enabled: boolean
-}
-
-export type SubscriptionItem = {
-  plan: Plan
-  url: string
 }
 
 export type SubscriptionUrlsBackend = {

@@ -1,7 +1,7 @@
 import datetime
 import logging
 import time
-from typing import Any
+from typing import TypedDict
 
 import click
 import sqlalchemy as sa
@@ -503,7 +503,19 @@ def _find_orphaned_draft_variables(batch_size: int = 1000) -> list[str]:
         return [row[0] for row in result]
 
 
-def _count_orphaned_draft_variables() -> dict[str, Any]:
+class _AppOrphanCounts(TypedDict):
+    variables: int
+    files: int
+
+
+class OrphanedDraftVariableStatsDict(TypedDict):
+    total_orphaned_variables: int
+    total_orphaned_files: int
+    orphaned_app_count: int
+    orphaned_by_app: dict[str, _AppOrphanCounts]
+
+
+def _count_orphaned_draft_variables() -> OrphanedDraftVariableStatsDict:
     """
     Count orphaned draft variables by app, including associated file counts.
 
@@ -526,7 +538,7 @@ def _count_orphaned_draft_variables() -> dict[str, Any]:
 
     with db.engine.connect() as conn:
         result = conn.execute(sa.text(variables_query))
-        orphaned_by_app = {}
+        orphaned_by_app: dict[str, _AppOrphanCounts] = {}
         total_files = 0
 
         for row in result:

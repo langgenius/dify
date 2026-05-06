@@ -1,4 +1,4 @@
-from typing_extensions import TypedDict
+from typing import TypedDict
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.data_post_processor.reorder import ReorderRunner
@@ -8,8 +8,8 @@ from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from core.rag.rerank.rerank_factory import RerankRunnerFactory
 from core.rag.rerank.rerank_type import RerankMode
-from dify_graph.model_runtime.entities.model_entities import ModelType
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 
 
 class RerankingModelDict(TypedDict):
@@ -52,11 +52,10 @@ class DataPostProcessor:
         documents: list[Document],
         score_threshold: float | None = None,
         top_n: int | None = None,
-        user: str | None = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         if self.rerank_runner:
-            documents = self.rerank_runner.run(query, documents, score_threshold, top_n, user, query_type)
+            documents = self.rerank_runner.run(query, documents, score_threshold, top_n, query_type)
 
         if self.reorder_runner:
             documents = self.reorder_runner.run(documents)
@@ -106,9 +105,9 @@ class DataPostProcessor:
     ) -> ModelInstance | None:
         if reranking_model:
             try:
-                model_manager = ModelManager()
-                reranking_provider_name = reranking_model["reranking_provider_name"]
-                reranking_model_name = reranking_model["reranking_model_name"]
+                model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+                reranking_provider_name = reranking_model.get("reranking_provider_name")
+                reranking_model_name = reranking_model.get("reranking_model_name")
                 if not reranking_provider_name or not reranking_model_name:
                     return None
                 rerank_model_instance = model_manager.get_model_instance(

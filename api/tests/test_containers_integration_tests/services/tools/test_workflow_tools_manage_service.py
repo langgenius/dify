@@ -25,7 +25,7 @@ class TestWorkflowToolManageService:
         with (
             patch("services.app_service.FeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.account_service.FeatureService") as mock_account_feature_service,
             patch(
                 "services.tools.workflow_tools_manage_service.WorkflowToolProviderController"

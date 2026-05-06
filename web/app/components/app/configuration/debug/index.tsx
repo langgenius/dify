@@ -5,6 +5,13 @@ import type { ModelAndParameter } from './types'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { Inputs } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
 import {
   RiAddLine,
   RiEqualizer2Line,
@@ -25,12 +32,9 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
-import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
-import { ToastContext } from '@/app/components/base/toast/context'
-import TooltipPlus from '@/app/components/base/tooltip'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
@@ -139,22 +143,20 @@ const Debug: FC<IDebug> = ({
     setIsShowFormattingChangeConfirm(false)
     setFormattingChanged(false)
   }
-
-  const { notify } = useContext(ToastContext)
   const logError = useCallback((message: string) => {
-    notify({ type: 'error', message })
-  }, [notify])
+    toast.error(message)
+  }, [])
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
   const checkCanSend = useCallback(() => {
     if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          notify({ type: 'error', message: t('otherError.historyNoBeEmpty', { ns: 'appDebug' }) })
+          toast.error(t('otherError.historyNoBeEmpty', { ns: 'appDebug' }))
           return false
         }
         if (!hasSetBlockStatus.query) {
-          notify({ type: 'error', message: t('otherError.queryNoBeEmpty', { ns: 'appDebug' }) })
+          toast.error(t('otherError.queryNoBeEmpty', { ns: 'appDebug' }))
           return false
         }
       }
@@ -180,7 +182,7 @@ const Debug: FC<IDebug> = ({
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+      toast.info(t('errorMessage.waitForFileUpload', { ns: 'appDebug' }))
       return false
     }
     return !hasEmptyInput
@@ -194,7 +196,6 @@ const Debug: FC<IDebug> = ({
     modelConfig.configs.prompt_variables,
     t,
     logError,
-    notify,
     modelModeType,
   ])
 
@@ -205,7 +206,7 @@ const Debug: FC<IDebug> = ({
 
   const sendTextCompletion = async () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return false
     }
 
@@ -393,8 +394,8 @@ const Debug: FC<IDebug> = ({
   return (
     <>
       <div className="shrink-0">
-        <div className="flex items-center justify-between px-4 pb-2 pt-3">
-          <div className="text-text-primary system-xl-semibold">{t('inputs.title', { ns: 'appDebug' })}</div>
+        <div className="flex items-center justify-between px-4 pt-3 pb-2">
+          <div className="system-xl-semibold text-text-primary">{t('inputs.title', { ns: 'appDebug' })}</div>
           <div className="flex items-center">
             {
               debugWithMultipleModel
@@ -411,7 +412,7 @@ const Debug: FC<IDebug> = ({
                         {multipleModelConfigs.length}
                         /4)
                       </Button>
-                      <div className="mx-2 h-[14px] w-[1px] bg-divider-regular" />
+                      <div className="mx-2 h-[14px] w-px bg-divider-regular" />
                     </>
                   )
                 : null
@@ -420,28 +421,25 @@ const Debug: FC<IDebug> = ({
               <>
                 {
                   !readonly && (
-                    <TooltipPlus
-                      popupContent={t('operation.refresh', { ns: 'common' })}
-                    >
-                      <ActionButton onClick={clearConversation}>
-                        <RefreshCcw01 className="h-4 w-4" />
-                      </ActionButton>
-
-                    </TooltipPlus>
+                    <Tooltip>
+                      <TooltipTrigger render={<ActionButton onClick={clearConversation}><RefreshCcw01 className="h-4 w-4" /></ActionButton>} />
+                      <TooltipContent>
+                        {t('operation.refresh', { ns: 'common' })}
+                      </TooltipContent>
+                    </Tooltip>
                   )
                 }
 
                 {
                   varList.length > 0 && (
-                    <div className="relative ml-1 mr-2">
-                      <TooltipPlus
-                        popupContent={t('panel.userInputField', { ns: 'workflow' })}
-                      >
-                        <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => !readonly && setExpanded(!expanded)}>
-                          <RiEqualizer2Line className="h-4 w-4" />
-                        </ActionButton>
-                      </TooltipPlus>
-                      {expanded && <div className="absolute bottom-[-14px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
+                    <div className="relative mr-2 ml-1">
+                      <Tooltip>
+                        <TooltipTrigger render={<ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => !readonly && setExpanded(!expanded)}><RiEqualizer2Line className="h-4 w-4" /></ActionButton>} />
+                        <TooltipContent>
+                          {t('panel.userInputField', { ns: 'workflow' })}
+                        </TooltipContent>
+                      </Tooltip>
+                      {expanded && <div className="absolute right-[5px] bottom-[-14px] z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
                     </div>
                   )
                 }
@@ -519,8 +517,8 @@ const Debug: FC<IDebug> = ({
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <div className="text-text-secondary system-md-semibold">{t('noModelSelected', { ns: 'appDebug' })}</div>
-                    <div className="text-text-tertiary system-xs-regular">{t('noModelSelectedTip', { ns: 'appDebug' })}</div>
+                    <div className="system-md-semibold text-text-secondary">{t('noModelSelected', { ns: 'appDebug' })}</div>
+                    <div className="system-xs-regular text-text-tertiary">{t('noModelSelectedTip', { ns: 'appDebug' })}</div>
                   </div>
                 </div>
               </div>
@@ -559,7 +557,7 @@ const Debug: FC<IDebug> = ({
                 {!completionRes && !isResponding && (
                   <div className="flex grow flex-col items-center justify-center gap-2">
                     <RiSparklingFill className="h-12 w-12 text-text-empty-state-icon" />
-                    <div className="text-text-quaternary system-sm-regular">{t('noResult', { ns: 'appDebug' })}</div>
+                    <div className="system-sm-regular text-text-quaternary">{t('noResult', { ns: 'appDebug' })}</div>
                   </div>
                 )}
               </>

@@ -73,8 +73,8 @@ export const getDefaultValue = (data: CommonNodeType) => {
     return Object.keys(outputs).map((key) => {
       return {
         key,
-        type: outputs[key].type,
-        value: getDefaultValueByType(outputs[key].type),
+        type: outputs[key]!.type,
+        value: getDefaultValueByType(outputs[key]!.type),
       }
     })
   }

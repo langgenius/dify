@@ -57,7 +57,7 @@ const createUpdatePayload = (overrides: Partial<UpdateFromGitHubPayload> = {}): 
 
 // Mock external dependencies
 const mockNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign((props: { type: string, message: string }) => mockNotify(props), {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -74,10 +74,16 @@ vi.mock('@/app/components/plugins/install-plugin/base/use-get-icon', () => ({
   default: () => ({ getIconUrl: mockGetIconUrl }),
 }))
 
-const mockFetchReleases = vi.fn()
-vi.mock('../../hooks', () => ({
-  useGitHubReleases: () => ({ fetchReleases: mockFetchReleases }),
+const { mockFetchReleases } = vi.hoisted(() => ({
+  mockFetchReleases: vi.fn(),
 }))
+vi.mock('../../hooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../hooks')>()
+  return {
+    ...actual,
+    fetchReleases: mockFetchReleases,
+  }
+})
 
 const mockRefreshPluginList = vi.fn()
 vi.mock('../../hooks/use-refresh-plugin-list', () => ({

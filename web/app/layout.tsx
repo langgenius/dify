@@ -1,22 +1,21 @@
 import type { Viewport } from '@/next'
+import { ToastHost } from '@langgenius/dify-ui/toast'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
-import GlobalPublicStoreProvider from '@/context/global-public-context'
+import AmplitudeProvider from '@/app/components/base/amplitude'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
-import { ToastProvider } from './components/base/toast'
-import { ToastHost } from './components/base/ui/toast'
-import { TooltipProvider } from './components/base/ui/tooltip'
-import BrowserInitializer from './components/browser-initializer'
+import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
+import CreateAppAttributionBootstrap from './components/create-app-attribution-bootstrap'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
-import LazySentryInitializer from './components/lazy-sentry-initializer'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
-import './styles/markdown.scss'
+import './styles/markdown.css'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -49,6 +48,7 @@ const LocaleLayout = async ({
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
+        <CreateAppAttributionBootstrap />
         {/* <ReactGrabLoader /> */}
         <ReactScanLoader />
       </head>
@@ -56,31 +56,25 @@ const LocaleLayout = async ({
         className="h-full select-auto"
         {...datasetMap}
       >
-        <LazySentryInitializer />
         <div className="isolate h-full">
+          <AmplitudeProvider />
           <JotaiProvider>
             <ThemeProvider
               attribute="data-theme"
               defaultTheme="system"
               enableSystem
               disableTransitionOnChange
-              enableColorScheme={false}
             >
               <NuqsAdapter>
-                <BrowserInitializer>
-                  <TanstackQueryInitializer>
-                    <I18nServerProvider>
-                      <ToastHost timeout={5000} limit={3} />
-                      <ToastProvider>
-                        <GlobalPublicStoreProvider>
-                          <TooltipProvider delay={300} closeDelay={200}>
-                            {children}
-                          </TooltipProvider>
-                        </GlobalPublicStoreProvider>
-                      </ToastProvider>
-                    </I18nServerProvider>
-                  </TanstackQueryInitializer>
-                </BrowserInitializer>
+                <TanstackQueryInitializer>
+                  <I18nServerProvider>
+                    <ToastHost timeout={5000} limit={3} />
+                    <PartnerStackCookieRecorder />
+                    <TooltipProvider delay={300} closeDelay={200}>
+                      {children}
+                    </TooltipProvider>
+                  </I18nServerProvider>
+                </TanstackQueryInitializer>
               </NuqsAdapter>
             </ThemeProvider>
           </JotaiProvider>

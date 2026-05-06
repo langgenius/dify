@@ -129,12 +129,6 @@ class TestMessageSuggestedQuestionApi:
             with pytest.raises(NotChatAppError):
                 MessageSuggestedQuestionApi().get(_completion_app(), _end_user(), msg_id)
 
-    def test_wrong_mode_raises(self, app: Flask) -> None:
-        msg_id = uuid4()
-        with app.test_request_context(f"/messages/{msg_id}/suggested-questions"):
-            with pytest.raises(NotChatAppError):
-                MessageSuggestedQuestionApi().get(_completion_app(), _end_user(), msg_id)
-
     @patch("controllers.web.message.MessageService.get_suggested_questions_after_answer")
     def test_happy_path(self, mock_suggest: MagicMock, app: Flask) -> None:
         msg_id = uuid4()

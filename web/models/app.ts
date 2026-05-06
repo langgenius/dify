@@ -13,7 +13,7 @@ import type {
   WeaveConfig,
 } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type { Dependency } from '@/app/components/plugins/types'
-import type { App, AppModeEnum, AppTemplate, SiteConfig } from '@/types/app'
+import type { App, AppModeEnum, SiteConfig } from '@/types/app'
 
 export enum DSLImportMode {
   YAML_CONTENT = 'yaml-content',
@@ -48,12 +48,6 @@ export type DSLImportResponse = {
   leaked_dependencies: Dependency[]
 }
 
-export type AppTemplatesResponse = {
-  data: AppTemplate[]
-}
-
-export type CreateAppResponse = App
-
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
 
 export type AppDailyMessagesResponse = {
@@ -82,7 +76,7 @@ export type AppTokenCostsResponse = {
 
 export type UpdateAppModelConfigResponse = { result: string }
 
-export type ApiKeyItemResponse = {
+type ApiKeyItemResponse = {
   id: string
   token: string
   last_used_at: string
@@ -106,14 +100,24 @@ export type ValidateOpenAIKeyResponse = {
 
 export type UpdateOpenAIKeyResponse = ValidateOpenAIKeyResponse
 
-export type GenerationIntroductionResponse = {
-  introduction: string
-}
-
 export type AppVoicesListResponse = [{
   name: string
   value: string
 }]
+
+export type WorkflowOnlineUser = {
+  user_id?: string
+  username?: string
+  avatar?: string | null
+  sid?: string
+}
+
+export type WorkflowOnlineUsersResponse = {
+  data: Record<string, WorkflowOnlineUser[]> | Array<{
+    app_id: string
+    users: WorkflowOnlineUser[]
+  }>
+}
 
 export type TracingStatus = {
   enabled: boolean

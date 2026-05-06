@@ -28,7 +28,7 @@ class TestAgentService:
             patch("services.agent_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
             patch("services.app_service.FeatureService", autospec=True) as mock_feature_service,
             patch("services.app_service.EnterpriseService", autospec=True) as mock_enterprise_service,
-            patch("services.app_service.ModelManager", autospec=True) as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant", autospec=True) as mock_model_manager,
             patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
         ):
             # Setup default mock returns for agent service
@@ -841,7 +841,7 @@ class TestAgentService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
 
-        from dify_graph.file import FileTransferMethod, FileType
+        from graphon.file import FileTransferMethod, FileType
         from models.enums import CreatorUserRole
 
         # Add files to message

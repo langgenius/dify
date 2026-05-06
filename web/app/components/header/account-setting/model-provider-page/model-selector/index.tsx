@@ -5,12 +5,12 @@ import type {
   ModelFeatureEnum,
   ModelItem,
 } from '../declarations'
-import { useState } from 'react'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import { useState } from 'react'
 import { useCurrentProviderAndModel } from '../hooks'
 import ModelSelectorTrigger from './model-selector-trigger'
 import Popup from './popup'
@@ -88,7 +88,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
         placement="bottom-start"
         sideOffset={4}
         className={popupClassName}
-        popupClassName="overflow-hidden rounded-lg"
+        popupClassName="overflow-hidden rounded-xl"
         popupProps={{ style: { minWidth: '320px', width: 'var(--anchor-width, auto)' } }}
       >
         <Popup

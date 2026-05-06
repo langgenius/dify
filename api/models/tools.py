@@ -11,6 +11,7 @@ from deprecated import deprecated
 from sqlalchemy import ForeignKey, String, func, select
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
@@ -109,8 +110,11 @@ class BuiltinToolProvider(TypeBase):
     )
     is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
     # credential type, e.g., "api-key", "oauth2"
-    credential_type: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=sa.text("'api-key'"), default="api-key"
+    credential_type: Mapped[CredentialType] = mapped_column(
+        EnumText(CredentialType, length=32),
+        nullable=False,
+        server_default=sa.text("'api-key'"),
+        default=CredentialType.API_KEY,
     )
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
 
@@ -352,7 +356,7 @@ class MCPToolProvider(TypeBase):
             return {}
 
     @property
-    def headers(self) -> dict[str, Any]:
+    def headers(self) -> dict[str, str]:
         if self.encrypted_headers is None:
             return {}
         try:

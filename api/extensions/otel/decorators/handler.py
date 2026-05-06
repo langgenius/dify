@@ -1,10 +1,8 @@
 import inspect
-from collections.abc import Callable, Mapping
-from typing import Any, TypeVar
+from collections.abc import Callable
+from typing import Any
 
-from opentelemetry.trace import SpanKind, Status, StatusCode
-
-R = TypeVar("R")
+from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
 
 
 class SpanHandler:
@@ -18,9 +16,9 @@ class SpanHandler:
     exceptions. Handlers can override the wrapper method to customize behavior.
     """
 
-    _signature_cache: dict[Callable[..., Any], inspect.Signature] = {}
+    _signature_cache: dict[Callable[..., object], inspect.Signature] = {}
 
-    def _build_span_name(self, wrapped: Callable[..., Any]) -> str:
+    def _build_span_name[**P, R](self, wrapped: Callable[P, R]) -> str:
         """
         Build the span name from the wrapped function.
 
@@ -31,11 +29,11 @@ class SpanHandler:
         """
         return f"{wrapped.__module__}.{wrapped.__qualname__}"
 
-    def _extract_arguments(
+    def _extract_arguments[**P, R](
         self,
-        wrapped: Callable[..., R],
-        args: tuple[object, ...],
-        kwargs: Mapping[str, object],
+        wrapped: Callable[P, R],
+        *args: P.args,
+        **kwargs: P.kwargs,
     ) -> dict[str, Any] | None:
         """
         Extract function arguments using inspect.signature.
@@ -61,12 +59,12 @@ class SpanHandler:
         except Exception:
             return None
 
-    def wrapper(
+    def wrapper[**P, R](
         self,
-        tracer: Any,
-        wrapped: Callable[..., R],
-        args: tuple[object, ...],
-        kwargs: Mapping[str, object],
+        tracer: Tracer,
+        wrapped: Callable[P, R],
+        *args: P.args,
+        **kwargs: P.kwargs,
     ) -> R:
         """
         Fully control the wrapper behavior.

@@ -1,20 +1,20 @@
 'use client'
 /**
- * @deprecated Use `@/app/components/base/ui/tooltip` instead.
+ * @deprecated Use `@langgenius/dify-ui/tooltip` instead.
  * This component will be removed after migration is complete.
  * See: https://github.com/langgenius/dify/issues/32767
  */
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiQuestionLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { tooltipManager } from './TooltipManager'
 
-export type TooltipProps = {
+type TooltipProps = {
   position?: Placement
   triggerMethod?: 'hover' | 'click'
   triggerClassName?: string
@@ -127,15 +127,15 @@ const Tooltip: FC<TooltipProps> = ({
         asChild={asChild}
         className={!asChild ? triggerClassName : ''}
       >
-        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className="h-full w-full text-text-quaternary hover:text-text-tertiary" /></div>}
+        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-px'}><RiQuestionLine className="h-full w-full text-text-quaternary hover:text-text-tertiary" /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
-        className={cn('z-[9999]', portalContentClassName || '')}
+        className={cn('z-9999', portalContentClassName || '')}
       >
         {!!popupContent && (
           <div
             className={cn(
-              !noDecoration && 'relative max-w-[300px] break-words rounded-md bg-components-panel-bg px-3 py-2 text-left text-text-tertiary shadow-lg system-xs-regular',
+              !noDecoration && 'relative max-w-[300px] rounded-md bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
               popupClassName,
             )}
             onMouseEnter={() => {

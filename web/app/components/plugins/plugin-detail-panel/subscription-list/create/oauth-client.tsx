@@ -1,14 +1,14 @@
 'use client'
 import type { TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiClipboardLine,
   RiInformation2Fill,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import Modal from '@/app/components/base/modal/modal'
-import { toast } from '@/app/components/base/ui/toast'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { usePluginStore } from '../../store'
 import { ClientTypeEnum, useOAuthClientState } from './hooks/use-oauth-client-state'
@@ -76,7 +76,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
         </div>
       )}
     >
-      <div className="system-sm-medium mb-2 text-text-secondary">
+      <div className="mb-2 system-sm-medium text-text-secondary">
         {t('subscription.addType.options.oauth.clientTitle', { ns: 'pluginTrigger' })}
       </div>
 
@@ -100,10 +100,10 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
             <RiInformation2Fill className="h-5 w-5 shrink-0 text-text-accent" />
           </div>
           <div className="flex-1 text-text-secondary">
-            <div className="system-sm-regular whitespace-pre-wrap leading-4">
+            <div className="system-sm-regular leading-4 whitespace-pre-wrap">
               {t('modal.oauthRedirectInfo', { ns: 'pluginTrigger' })}
             </div>
-            <div className="system-sm-medium my-1.5 break-all leading-4">
+            <div className="my-1.5 system-sm-medium leading-4 break-all">
               {oauthConfig?.redirect_uri}
             </div>
             <Button

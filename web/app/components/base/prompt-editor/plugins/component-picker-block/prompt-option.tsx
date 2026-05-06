@@ -22,8 +22,8 @@ export const PromptMenuItem = memo(({
     <div
       className={`
         flex h-6 cursor-pointer items-center rounded-md px-3 hover:bg-state-base-hover
-        ${isSelected && !disabled && '!bg-state-base-hover'}
-        ${disabled ? 'cursor-not-allowed opacity-30' : 'cursor-pointer hover:bg-state-base-hover'}
+        ${isSelected && !disabled && 'bg-state-base-hover!'}
+        ${disabled ? 'cursor-not-allowed opacity-30' : ''}
       `}
       tabIndex={-1}
       ref={setRefElement}

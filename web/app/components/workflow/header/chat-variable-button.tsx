@@ -1,9 +1,9 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import Button from '@/app/components/base/button'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
 
 const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
@@ -24,7 +24,7 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
     <Button
       className={cn(
         'rounded-lg border border-transparent p-2',
-        theme === 'dark' && showChatVariablePanel && 'border-black/5 bg-white/10 backdrop-blur-sm',
+        theme === 'dark' && showChatVariablePanel && 'border-black/5 bg-white/10 backdrop-blur-xs',
       )}
       disabled={disabled}
       onClick={handleClick}

@@ -768,6 +768,7 @@ class TestSegmentApiGet:
     ``current_account_with_tenant()`` and ``marshal``.
     """
 
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
     @patch("controllers.service_api.dataset.segment.marshal")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
@@ -780,6 +781,7 @@ class TestSegmentApiGet:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
+        mock_summary_svc,
         app,
         mock_tenant,
         mock_dataset,
@@ -788,10 +790,11 @@ class TestSegmentApiGet:
         """Test successful segment list retrieval."""
         # Arrange
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_seg_svc.get_segments.return_value = ([mock_segment], 1)
-        mock_marshal.return_value = [{"id": mock_segment.id}]
+        mock_marshal.return_value = {"id": mock_segment.id}
+        mock_summary_svc.get_segments_summaries.return_value = {}
 
         # Act
         with app.test_request_context(
@@ -813,7 +816,7 @@ class TestSegmentApiGet:
         """Test 404 when dataset not found."""
         # Arrange
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         # Act & Assert
         with app.test_request_context(
@@ -833,7 +836,7 @@ class TestSegmentApiGet:
         """Test 404 when document not found."""
         # Arrange
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = None
 
         # Act & Assert
@@ -872,6 +875,7 @@ class TestSegmentApiPost:
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
     @patch("controllers.service_api.dataset.segment.marshal")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
@@ -888,6 +892,7 @@ class TestSegmentApiPost:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
+        mock_summary_svc,
         app,
         mock_tenant,
         mock_dataset,
@@ -899,7 +904,7 @@ class TestSegmentApiPost:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
 
         mock_dataset.indexing_technique = "economy"
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
 
         mock_doc = Mock()
         mock_doc.indexing_status = "completed"
@@ -909,7 +914,8 @@ class TestSegmentApiPost:
 
         mock_seg_svc.segment_create_args_validate.return_value = None
         mock_seg_svc.multi_create_segment.return_value = [mock_segment]
-        mock_marshal.return_value = [{"id": mock_segment.id}]
+        mock_marshal.return_value = {"id": mock_segment.id}
+        mock_summary_svc.get_segments_summaries.return_value = {}
 
         segments_data = [{"content": "Test segment content", "answer": "Test answer"}]
 
@@ -950,7 +956,7 @@ class TestSegmentApiPost:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
 
         mock_dataset.indexing_technique = "economy"
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
 
         mock_doc = Mock()
         mock_doc.indexing_status = "completed"
@@ -992,7 +998,7 @@ class TestSegmentApiPost:
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
 
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
 
         mock_doc = Mock()
         mock_doc.indexing_status = "indexing"  # Not completed
@@ -1043,7 +1049,7 @@ class TestDatasetSegmentApiDelete:
         """Test successful segment deletion."""
         # Arrange
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
 
         mock_doc = Mock()
@@ -1087,7 +1093,7 @@ class TestDatasetSegmentApiDelete:
         """Test 404 when segment not found."""
         # Arrange
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
 
         mock_doc = Mock()
         mock_doc.indexing_status = "completed"
@@ -1129,7 +1135,7 @@ class TestDatasetSegmentApiDelete:
         """Test 404 when dataset not found for delete."""
         # Arrange
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         # Act & Assert
         with app.test_request_context(
@@ -1163,7 +1169,7 @@ class TestDatasetSegmentApiDelete:
         """Test 404 when document not found for delete."""
         # Arrange
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = None
 
@@ -1206,6 +1212,7 @@ class TestDatasetSegmentApiUpdate:
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
     @patch("controllers.service_api.dataset.segment.marshal")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
@@ -1224,6 +1231,7 @@ class TestDatasetSegmentApiUpdate:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
+        mock_summary_svc,
         app,
         mock_tenant,
         mock_dataset,
@@ -1233,13 +1241,14 @@ class TestDatasetSegmentApiUpdate:
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_dataset.indexing_technique = "economy"
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = mock_segment
         updated = Mock()
         mock_seg_svc.update_segment.return_value = updated
         mock_marshal.return_value = {"id": mock_segment.id}
+        mock_summary_svc.get_segment_summary.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
@@ -1280,7 +1289,7 @@ class TestDatasetSegmentApiUpdate:
         """Test 404 when dataset not found for update."""
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
@@ -1321,7 +1330,7 @@ class TestDatasetSegmentApiUpdate:
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_dataset.indexing_technique = "economy"
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = None
@@ -1349,6 +1358,7 @@ class TestDatasetSegmentApiGetSingle:
     ``current_account_with_tenant()`` and ``marshal``.
     """
 
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
     @patch("controllers.service_api.dataset.segment.marshal")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
@@ -1363,6 +1373,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
+        mock_summary_svc,
         app,
         mock_tenant,
         mock_dataset,
@@ -1370,12 +1381,13 @@ class TestDatasetSegmentApiGetSingle:
     ):
         """Test successful single segment retrieval."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_doc_svc.get_document.return_value = mock_doc
         mock_seg_svc.get_segment_by_id.return_value = mock_segment
         mock_marshal.return_value = {"id": mock_segment.id}
+        mock_summary_svc.get_segment_summary.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
@@ -1393,6 +1405,55 @@ class TestDatasetSegmentApiGetSingle:
         assert "data" in response
         assert response["doc_form"] == IndexStructureType.PARAGRAPH_INDEX
 
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
+    @patch("controllers.service_api.dataset.segment.marshal")
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.DatasetService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    @patch("controllers.service_api.dataset.segment.db")
+    def test_get_single_segment_includes_summary(
+        self,
+        mock_db,
+        mock_account_fn,
+        mock_dataset_svc,
+        mock_doc_svc,
+        mock_seg_svc,
+        mock_marshal,
+        mock_summary_svc,
+        app,
+        mock_tenant,
+        mock_dataset,
+        mock_segment,
+    ):
+        """Test that single segment response includes summary content from SummaryIndexService."""
+        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        mock_db.session.scalar.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_model_setting.return_value = None
+        mock_doc = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        mock_doc_svc.get_document.return_value = mock_doc
+        mock_seg_svc.get_segment_by_id.return_value = mock_segment
+        mock_marshal.return_value = {"id": mock_segment.id, "summary": None}
+
+        mock_summary_record = Mock()
+        mock_summary_record.summary_content = "This is the segment summary"
+        mock_summary_svc.get_segment_summary.return_value = mock_summary_record
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
+            method="GET",
+        ):
+            api = DatasetSegmentApi()
+            response, status = api.get(
+                tenant_id=mock_tenant.id,
+                dataset_id=mock_dataset.id,
+                document_id="doc-id",
+                segment_id=mock_segment.id,
+            )
+
+        assert status == 200
+        assert response["data"]["summary"] == "This is the segment summary"
+
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     @patch("controllers.service_api.dataset.segment.db")
     def test_get_single_segment_dataset_not_found(
@@ -1405,7 +1466,7 @@ class TestDatasetSegmentApiGetSingle:
     ):
         """Test 404 when dataset not found."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
@@ -1436,7 +1497,7 @@ class TestDatasetSegmentApiGetSingle:
     ):
         """Test 404 when document not found."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = None
 
@@ -1471,7 +1532,7 @@ class TestDatasetSegmentApiGetSingle:
     ):
         """Test 404 when segment not found."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = None
@@ -1515,7 +1576,7 @@ class TestChildChunkApiGet:
     ):
         """Test successful child chunk list retrieval."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = Mock()
 
@@ -1554,7 +1615,7 @@ class TestChildChunkApiGet:
     ):
         """Test 404 when dataset not found."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
@@ -1583,7 +1644,7 @@ class TestChildChunkApiGet:
     ):
         """Test 404 when document not found."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = None
 
         with app.test_request_context(
@@ -1615,7 +1676,7 @@ class TestChildChunkApiGet:
     ):
         """Test 404 when segment not found."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = None
 
@@ -1676,7 +1737,7 @@ class TestChildChunkApiPost:
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_dataset.indexing_technique = "economy"
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = Mock()
         mock_child = Mock()
@@ -1717,7 +1778,7 @@ class TestChildChunkApiPost:
         """Test 404 when dataset not found."""
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
+        mock_db.session.scalar.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
@@ -1755,7 +1816,7 @@ class TestChildChunkApiPost:
         """Test 404 when segment not found."""
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock()
         mock_seg_svc.get_segment_by_id.return_value = None
 
@@ -1808,7 +1869,7 @@ class TestDatasetChildChunkApiDelete:
     ):
         """Test successful child chunk deletion."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
 
         mock_doc = Mock()
         mock_doc_svc.get_document.return_value = mock_doc
@@ -1858,7 +1919,7 @@ class TestDatasetChildChunkApiDelete:
     ):
         """Test 404 when child chunk not found."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock()
 
         segment_id = str(uuid.uuid4())
@@ -1899,7 +1960,7 @@ class TestDatasetChildChunkApiDelete:
     ):
         """Test 404 when segment does not belong to the document."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock()
 
         segment_id = str(uuid.uuid4())
@@ -1939,7 +2000,7 @@ class TestDatasetChildChunkApiDelete:
     ):
         """Test 404 when child chunk does not belong to the segment."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
-        mock_db.session.query.return_value.where.return_value.first.return_value = mock_dataset
+        mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock()
 
         segment_id = str(uuid.uuid4())

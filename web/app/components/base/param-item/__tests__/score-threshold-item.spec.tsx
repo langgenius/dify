@@ -14,6 +14,8 @@ describe('ScoreThresholdItem', () => {
     vi.clearAllMocks()
   })
 
+  const getSlider = () => screen.getByLabelText('appDebug.datasetConfig.score_threshold')
+
   describe('Rendering', () => {
     it('should render the translated parameter name', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
@@ -22,17 +24,16 @@ describe('ScoreThresholdItem', () => {
     })
 
     it('should render tooltip trigger', () => {
-      const { container } = render(<ScoreThresholdItem {...defaultProps} />)
+      render(<ScoreThresholdItem {...defaultProps} />)
 
-      // Tooltip trigger icon should be rendered
-      expect(container.querySelector('[data-state]')).toBeInTheDocument()
+      expect(screen.getByLabelText('appDebug.datasetConfig.score_thresholdTip')).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {
       render(<ScoreThresholdItem {...defaultProps} />)
 
       expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('slider')).toBeInTheDocument()
+      expect(getSlider()).toBeInTheDocument()
     })
   })
 
@@ -63,7 +64,7 @@ describe('ScoreThresholdItem', () => {
       render(<ScoreThresholdItem {...defaultProps} enable={false} />)
 
       expect(screen.getByRole('textbox')).toBeDisabled()
-      expect(screen.getByRole('slider')).toHaveAttribute('aria-disabled', 'true')
+      expect(getSlider()).toBeDisabled()
     })
   })
 
@@ -85,7 +86,7 @@ describe('ScoreThresholdItem', () => {
       expect(screen.getByRole('textbox')).toHaveValue('0.5')
     })
 
-    it('should call onChange with rounded value when input changes', async () => {
+    it('should call onChange with rounded-sm value when input changes', async () => {
       const user = userEvent.setup()
       const StatefulScoreThresholdItem = () => {
         const [value, setValue] = useState(defaultProps.value)

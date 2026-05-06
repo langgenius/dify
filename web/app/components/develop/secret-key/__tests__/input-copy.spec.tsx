@@ -35,7 +35,7 @@ describe('InputCopy', () => {
 
     it('should render with empty value by default', async () => {
       await renderAndFlush(<InputCopy />)
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
     })
 
     it('should render children when provided', async () => {
@@ -273,12 +273,12 @@ describe('InputCopy', () => {
   describe('edge cases', () => {
     it('should handle undefined value', async () => {
       await renderAndFlush(<InputCopy value={undefined} />)
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
     })
 
     it('should handle empty string value', async () => {
       await renderAndFlush(<InputCopy value="" />)
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
     })
 
     it('should handle very long values', async () => {

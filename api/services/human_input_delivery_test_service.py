@@ -8,16 +8,16 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from dify_graph.nodes.human_input.entities import (
+from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     ExternalRecipient,
     MemberRecipient,
 )
-from dify_graph.runtime import VariablePool
 from extensions.ext_database import db
 from extensions.ext_mail import mail
+from graphon.runtime import VariablePool
 from libs.email_template_renderer import render_email_template
 from models import Account, TenantAccountJoin
 from services.feature_service import FeatureService
@@ -177,21 +177,21 @@ class EmailDeliveryTestHandler:
     def _resolve_recipients(self, *, tenant_id: str, method: EmailDeliveryMethod) -> list[str]:
         recipients = method.config.recipients
         emails: list[str] = []
-        member_user_ids: list[str] = []
+        bound_reference_ids: list[str] = []
         for recipient in recipients.items:
             if isinstance(recipient, MemberRecipient):
-                member_user_ids.append(recipient.user_id)
+                bound_reference_ids.append(recipient.reference_id)
             elif isinstance(recipient, ExternalRecipient):
                 if recipient.email:
                     emails.append(recipient.email)
 
-        if recipients.whole_workspace:
-            member_user_ids = []
+        if recipients.include_bound_group:
+            bound_reference_ids = []
             member_emails = self._query_workspace_member_emails(tenant_id=tenant_id, user_ids=None)
             emails.extend(member_emails.values())
-        elif member_user_ids:
-            member_emails = self._query_workspace_member_emails(tenant_id=tenant_id, user_ids=member_user_ids)
-            for user_id in member_user_ids:
+        elif bound_reference_ids:
+            member_emails = self._query_workspace_member_emails(tenant_id=tenant_id, user_ids=bound_reference_ids)
+            for user_id in bound_reference_ids:
                 email = member_emails.get(user_id)
                 if email:
                     emails.append(email)
@@ -220,7 +220,7 @@ class EmailDeliveryTestHandler:
             stmt = stmt.where(Account.id.in_(unique_ids))
 
         with self._session_factory() as session:
-            rows = session.execute(stmt).all()
+            rows = session.execute(stmt).tuples().all()
         return dict(rows)
 
     @staticmethod

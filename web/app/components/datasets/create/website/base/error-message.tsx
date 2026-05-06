@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -22,7 +22,7 @@ const ErrorMessage: FC<Props> = ({
         <div className="system-md-medium text-text-warning">{title}</div>
       </div>
       {errorMsg && (
-        <div className="system-xs-regular mt-1 pl-6 text-text-secondary">{errorMsg}</div>
+        <div className="mt-1 pl-6 system-xs-regular text-text-secondary">{errorMsg}</div>
       )}
     </div>
   )

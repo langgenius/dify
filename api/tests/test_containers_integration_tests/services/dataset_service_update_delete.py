@@ -13,6 +13,7 @@ import pytest
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermissionEnum
 from models.enums import DataSourceType
@@ -74,7 +75,7 @@ class DatasetUpdateDeleteTestDataFactory:
             name=name,
             description="Test description",
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=created_by,
             permission=permission,
             provider="vendor",

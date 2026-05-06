@@ -4,18 +4,22 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+} from '@langgenius/dify-ui/popover'
+import {
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+} from '@langgenius/dify-ui/preview-card'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -77,7 +81,7 @@ const PopupItem: FC<PopupItemProps> = ({
       onSaveCallback: () => {
         updateModelProviders()
 
-        const modelType = model.models[0].model_type
+        const modelType = model.models[0]!.model_type
 
         if (modelType)
           updateModelList(modelType)
@@ -103,7 +107,8 @@ const PopupItem: FC<PopupItemProps> = ({
 
   return (
     <div className="mb-1">
-      <div className="sticky top-12 z-[2] flex h-[22px] items-center justify-between bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
+      {/* Keep the sticky provider header above model rows while the list scrolls. */}
+      <div className="sticky top-0 z-1 flex h-[22px] items-center justify-between bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
         <div
           className="flex cursor-pointer items-center"
           onClick={() => setCollapsed(prev => !prev)}
@@ -114,7 +119,7 @@ const PopupItem: FC<PopupItemProps> = ({
         <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <PopoverTrigger
             render={(
-              <button type="button" className="flex cursor-pointer items-center rounded-md px-1.5 py-1 text-text-tertiary system-xs-medium hover:bg-components-button-ghost-bg-hover">
+              <button type="button" className="flex cursor-pointer items-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover">
                 {isUsingCredits
                   ? (
                       hasCredits
@@ -134,17 +139,17 @@ const PopupItem: FC<PopupItemProps> = ({
                   : credentialName
                     ? (
                         <>
-                          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-[2px] border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
+                          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-xs border', isApiKeyActive ? 'border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg' : 'border-components-badge-status-light-error-border-inner bg-components-badge-status-light-error-bg')} />
                           <span className="ml-1 text-text-tertiary">{credentialName}</span>
                         </>
                       )
                     : (
                         <>
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-[2px] border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg" />
                           <span className="ml-1 text-text-tertiary">{t('modelProvider.selector.configureRequired', { ns: 'common' })}</span>
                         </>
                       )}
-                <span className="i-ri-arrow-down-s-line !h-[14px] !w-[14px] translate-y-px text-text-tertiary" />
+                <span className="i-ri-arrow-down-s-line h-[14px]! w-[14px]! translate-y-px text-text-tertiary" />
               </button>
             )}
           />
@@ -160,8 +165,13 @@ const PopupItem: FC<PopupItemProps> = ({
         </Popover>
       </div>
       {!collapsed && model.models.map(modelItem => (
-        <Tooltip key={modelItem.model}>
-          <TooltipTrigger
+        // Preview is supplementary: every field in it (name / type / mode / context size / capabilities)
+        // is reachable from the model's own configuration surface once the row is selected.
+        // Touch + screen reader users rely on the button's primary onClick, not the preview.
+        <PreviewCard key={modelItem.model}>
+          <PreviewCardTrigger
+            delay={150}
+            closeDelay={150}
             render={(
               <button
                 type="button"
@@ -175,7 +185,7 @@ const PopupItem: FC<PopupItemProps> = ({
                     modelName={modelItem.model}
                   />
                   <ModelName
-                    className={cn('text-text-secondary system-sm-medium', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
+                    className={cn('system-sm-medium text-text-secondary', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
                     modelItem={modelItem}
                   />
                 </div>
@@ -197,10 +207,9 @@ const PopupItem: FC<PopupItemProps> = ({
               </button>
             )}
           />
-          <TooltipContent
+          <PreviewCardContent
             placement="right"
-            variant="plain"
-            popupClassName="w-[206px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 backdrop-blur-sm"
+            popupClassName="w-[206px] bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
           >
             <div className="flex flex-col gap-1">
               <div className="flex flex-col items-start gap-2">
@@ -209,7 +218,7 @@ const PopupItem: FC<PopupItemProps> = ({
                   provider={model}
                   modelName={modelItem.model}
                 />
-                <div className="text-wrap break-words text-text-primary system-md-medium">{modelItem.label[language] || modelItem.label.en_US}</div>
+                <div className="system-md-medium text-wrap wrap-break-word text-text-primary">{modelItem.label[language] || modelItem.label.en_US}</div>
               </div>
               <div className="flex flex-wrap gap-1">
                 {!!modelItem.model_type && (
@@ -232,7 +241,7 @@ const PopupItem: FC<PopupItemProps> = ({
                 && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature))
                 && (
                   <div className="pt-2">
-                    <div className="mb-1 text-text-tertiary system-2xs-medium-uppercase">{t('model.capabilities', { ns: 'common' })}</div>
+                    <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">{t('model.capabilities', { ns: 'common' })}</div>
                     <div className="flex flex-wrap gap-1">
                       {modelItem.features?.map(feature => (
                         <FeatureIcon
@@ -245,8 +254,8 @@ const PopupItem: FC<PopupItemProps> = ({
                   </div>
                 )}
             </div>
-          </TooltipContent>
-        </Tooltip>
+          </PreviewCardContent>
+        </PreviewCard>
       ))}
     </div>
   )

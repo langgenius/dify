@@ -3,8 +3,8 @@ from typing import Any, Literal, Union
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from dify_graph.entities.base_node_data import BaseNodeData
-from dify_graph.enums import BuiltinNodeTypes, NodeType
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes, NodeType
 
 
 class DatasourceEntity(BaseModel):

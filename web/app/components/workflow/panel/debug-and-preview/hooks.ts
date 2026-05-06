@@ -6,6 +6,7 @@ import type {
 } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { IOtherOptions } from '@/service/base'
+import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
 import {
@@ -26,7 +27,6 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast/context'
 import {
   CUSTOM_NODE,
 } from '@/app/components/workflow/constants'
@@ -57,7 +57,6 @@ export const useChat = (
   stopChat?: (taskId: string) => void,
 ) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { handleRun } = useWorkflowRun()
   const hasStopResponded = useRef(false)
   const workflowStore = useWorkflowStore()
@@ -259,7 +258,7 @@ export const useChat = (
     }: SendCallback,
   ) => {
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return false
     }
 
@@ -557,27 +556,27 @@ export const useChat = (
         onAgentLog: ({ data }) => {
           const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
           if (currentNodeIndex > -1) {
-            const current = responseItem.workflowProcess!.tracing![currentNodeIndex]
+            const current = responseItem.workflowProcess!.tracing![currentNodeIndex]!
 
-            if (current.execution_metadata) {
-              if (current.execution_metadata.agent_log) {
-                const currentLogIndex = current.execution_metadata.agent_log.findIndex(log => log.message_id === data.message_id)
+            if (current!.execution_metadata) {
+              if (current!.execution_metadata.agent_log) {
+                const currentLogIndex = current!.execution_metadata.agent_log.findIndex(log => log.message_id === data.message_id)
                 if (currentLogIndex > -1) {
-                  current.execution_metadata.agent_log[currentLogIndex] = {
-                    ...current.execution_metadata.agent_log[currentLogIndex],
+                  current!.execution_metadata.agent_log[currentLogIndex] = {
+                    ...current!.execution_metadata.agent_log[currentLogIndex],
                     ...data,
                   }
                 }
                 else {
-                  current.execution_metadata.agent_log.push(data)
+                  current!.execution_metadata.agent_log.push(data)
                 }
               }
               else {
-                current.execution_metadata.agent_log = [data]
+                current!.execution_metadata.agent_log = [data]
               }
             }
             else {
-              current.execution_metadata = {
+              current!.execution_metadata = {
                 agent_log: [data],
               } as any
             }
@@ -609,7 +608,7 @@ export const useChat = (
           }
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
           if (currentTracingIndex > -1) {
-            responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+            responseItem.workflowProcess!.tracing[currentTracingIndex]!.status = NodeRunningStatus.Paused
             updateCurrentQAOnTree({
               placeholderQuestionId,
               questionItem,
@@ -639,7 +638,7 @@ export const useChat = (
         onHumanInputFormTimeout: ({ data }) => {
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
-            responseItem.humanInputFormDataList[currentFormIndex].expiration_time = data.expiration_time
+            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time = data.expiration_time
           }
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -659,7 +658,7 @@ export const useChat = (
         },
       },
     )
-  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
+  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
 
   const handleSubmitHumanInputForm = async (formToken: string, formData: any) => {
     await submitHumanInputForm(formToken, formData)
@@ -880,7 +879,7 @@ export const useChat = (
           if (responseItem.workflowProcess?.tracing) {
             const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === humanInputRequiredData.node_id)
             if (currentTracingIndex > -1)
-              responseItem.workflowProcess.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+              responseItem.workflowProcess.tracing[currentTracingIndex]!.status = NodeRunningStatus.Paused
           }
         })
       },
@@ -903,7 +902,7 @@ export const useChat = (
         updateChatTreeNode(messageId, (responseItem) => {
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
-            responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time = humanInputFormTimeoutData.expiration_time
           }
         })
       },

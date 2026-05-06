@@ -181,10 +181,12 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
-  default: {
-    notify: (payload: unknown) => mockToastNotify(payload),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: (message: string) => mockToastNotify({ type: 'success', message }),
+    error: (message: string) => mockToastNotify({ type: 'error', message }),
+    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+    info: (message: string) => mockToastNotify({ type: 'info', message }),
   },
 }))
 
@@ -561,7 +563,7 @@ describe('loop path', () => {
               id: 'loop-var-object',
               var_type: VarType.arrayObject,
               value_type: ValueType.constant,
-              value: '[{\"id\":1}]',
+              value: '[{"id":1}]',
             })}
             onChange={onObjectChange}
           />
@@ -569,7 +571,7 @@ describe('loop path', () => {
       )
 
       fireEvent.change(screen.getByDisplayValue('draft'), { target: { value: 'published' } })
-      fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '[{\"id\":2}]' } })
+      fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '[{"id":2}]' } })
 
       expect(onStringChange).toHaveBeenCalledWith('published')
       expect(onObjectChange).toHaveBeenCalledWith('[{"id":2}]')

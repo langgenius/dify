@@ -25,7 +25,7 @@ from core.plugin.entities.request import (
 )
 from core.plugin.utils.http_parser import serialize_response
 from core.tools.entities.common_entities import I18nObject
-from dify_graph.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     SystemPromptMessage,
     ToolPromptMessage,

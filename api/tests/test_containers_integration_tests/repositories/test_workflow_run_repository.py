@@ -11,8 +11,8 @@ from sqlalchemy import Engine, delete
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import Session, sessionmaker
 
-from dify_graph.entities import WorkflowExecution
-from dify_graph.enums import WorkflowExecutionStatus
+from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowType

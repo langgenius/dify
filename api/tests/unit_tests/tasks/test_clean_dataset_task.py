@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.enums import DataSourceType
 from tasks.clean_dataset_task import clean_dataset_task
 
@@ -59,12 +59,6 @@ def mock_db_session():
         cm.__enter__.return_value = mock_session
         cm.__exit__.return_value = None
         mock_sf.create_session.return_value = cm
-
-        # Setup query chain
-        mock_query = MagicMock()
-        mock_session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.delete.return_value = 0
 
         # Setup scalars for select queries
         mock_session.scalars.return_value.all.return_value = []
@@ -184,7 +178,7 @@ class TestErrorHandling:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
@@ -220,25 +214,20 @@ class TestPipelineAndWorkflowDeletion:
         - Pipeline record is deleted
         - Related workflow record is deleted
         """
-        # Arrange
-        mock_query = mock_db_session.session.query.return_value
-        mock_query.where.return_value = mock_query
-        mock_query.delete.return_value = 1
-
         # Act
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
             pipeline_id=pipeline_id,
         )
 
-        # Assert - verify delete was called for pipeline-related queries
-        # The actual count depends on total queries, but pipeline deletion should add 2 more
-        assert mock_query.delete.call_count >= 7  # 5 base + 2 pipeline/workflow
+        # Assert - verify execute was called for delete operations
+        # 1 attachment JOIN query + 5 base deletes + 2 pipeline/workflow deletes = 8
+        assert mock_db_session.session.execute.call_count >= 8
 
     def test_clean_dataset_task_without_pipeline_id(
         self,
@@ -256,24 +245,20 @@ class TestPipelineAndWorkflowDeletion:
         Expected behavior:
         - Pipeline and workflow deletion queries are not executed
         """
-        # Arrange
-        mock_query = mock_db_session.session.query.return_value
-        mock_query.where.return_value = mock_query
-        mock_query.delete.return_value = 1
-
         # Act
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
             pipeline_id=None,
         )
 
-        # Assert - verify delete was called only for base queries (5 times)
-        assert mock_query.delete.call_count == 5
+        # Assert - verify execute was called for delete operations
+        # 1 attachment JOIN query + 5 base deletes = 6
+        assert mock_db_session.session.execute.call_count == 6
 
 
 # ============================================================================
@@ -321,7 +306,7 @@ class TestSegmentAttachmentCleanup:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
@@ -366,7 +351,7 @@ class TestSegmentAttachmentCleanup:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
@@ -408,7 +393,7 @@ class TestEdgeCases:
         clean_dataset_task(
             dataset_id=dataset_id,
             tenant_id=tenant_id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=collection_binding_id,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
@@ -445,7 +430,7 @@ class TestIndexProcessorParameters:
         - Dataset object with correct attributes is passed
         """
         # Arrange
-        indexing_technique = "high_quality"
+        indexing_technique = IndexTechniqueType.HIGH_QUALITY
         index_struct = '{"type": "paragraph"}'
 
         # Act

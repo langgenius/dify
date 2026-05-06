@@ -1,0 +1,272 @@
+@utility system-kbd {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+@utility system-2xs-regular-uppercase {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 12px;
+}
+
+@utility system-2xs-regular {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 12px;
+}
+
+@utility system-2xs-medium {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 12px;
+}
+
+@utility system-2xs-medium-uppercase {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 12px;
+}
+
+@utility system-2xs-semibold-uppercase {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 12px;
+}
+
+@utility system-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+@utility system-xs-regular-uppercase {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+@utility system-xs-medium {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+@utility system-xs-medium-uppercase {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+@utility system-xs-semibold {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+@utility system-xs-semibold-uppercase {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+@utility system-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+@utility system-sm-medium {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+@utility system-sm-medium-uppercase {
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+@utility system-sm-semibold {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+@utility system-sm-semibold-uppercase {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+@utility system-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+@utility system-md-medium {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+@utility system-md-semibold {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+@utility system-md-semibold-uppercase {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 20px;
+}
+
+@utility system-xl-medium {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+@utility system-xl-semibold {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+@utility code-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+@utility code-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+@utility code-sm-semibold {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+@utility body-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+@utility body-xs-medium {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+@utility body-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+@utility body-sm-medium {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+@utility body-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+@utility body-md-medium {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+@utility body-lg-regular {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+@utility body-2xl-regular {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+@utility title-xs-semi-bold {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+@utility title-sm-semi-bold {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+@utility title-md-semi-bold {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+@utility title-lg-bold {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+@utility title-xl-semi-bold {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+@utility title-2xl-semi-bold {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+@utility title-3xl-semi-bold {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+@utility title-3xl-bold {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+@utility title-4xl-semi-bold {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+@utility title-5xl-bold {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+}

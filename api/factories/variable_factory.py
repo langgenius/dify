@@ -1,75 +1,51 @@
+"""Compatibility factory for non-graph variable bootstrapping.
+
+Graph runtime segment/variable conversions live under `graphon.variables`.
+This module keeps the application-layer mapping helpers and re-exports the
+shared conversion functions for legacy callers and tests.
+"""
+
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
-from uuid import uuid4
 
 from configs import dify_config
-from dify_graph.constants import (
+from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
-from dify_graph.file import File
-from dify_graph.variables.exc import VariableError
-from dify_graph.variables.segments import (
-    ArrayAnySegment,
-    ArrayBooleanSegment,
-    ArrayFileSegment,
-    ArrayNumberSegment,
-    ArrayObjectSegment,
-    ArraySegment,
-    ArrayStringSegment,
-    BooleanSegment,
-    FileSegment,
-    FloatSegment,
-    IntegerSegment,
-    NoneSegment,
-    ObjectSegment,
-    Segment,
-    StringSegment,
+from graphon.variables.exc import VariableError
+from graphon.variables.factory import (
+    TypeMismatchError,
+    UnsupportedSegmentTypeError,
+    build_segment,
+    build_segment_with_type,
+    segment_to_variable,
 )
-from dify_graph.variables.types import SegmentType
-from dify_graph.variables.variables import (
-    ArrayAnyVariable,
+from graphon.variables.types import SegmentType
+from graphon.variables.variables import (
     ArrayBooleanVariable,
-    ArrayFileVariable,
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
     BooleanVariable,
-    FileVariable,
     FloatVariable,
     IntegerVariable,
-    NoneVariable,
     ObjectVariable,
     SecretVariable,
     StringVariable,
     VariableBase,
 )
 
-
-class UnsupportedSegmentTypeError(Exception):
-    pass
-
-
-class TypeMismatchError(Exception):
-    pass
-
-
-# Define the constant
-SEGMENT_TO_VARIABLE_MAP: Mapping[type[Segment], type[VariableBase]] = {
-    ArrayAnySegment: ArrayAnyVariable,
-    ArrayBooleanSegment: ArrayBooleanVariable,
-    ArrayFileSegment: ArrayFileVariable,
-    ArrayNumberSegment: ArrayNumberVariable,
-    ArrayObjectSegment: ArrayObjectVariable,
-    ArrayStringSegment: ArrayStringVariable,
-    BooleanSegment: BooleanVariable,
-    FileSegment: FileVariable,
-    FloatSegment: FloatVariable,
-    IntegerSegment: IntegerVariable,
-    NoneSegment: NoneVariable,
-    ObjectSegment: ObjectVariable,
-    StringSegment: StringVariable,
-}
+__all__ = [
+    "TypeMismatchError",
+    "UnsupportedSegmentTypeError",
+    "build_conversation_variable_from_mapping",
+    "build_environment_variable_from_mapping",
+    "build_pipeline_variable_from_mapping",
+    "build_segment",
+    "build_segment_with_type",
+    "segment_to_variable",
+]
 
 
 def build_conversation_variable_from_mapping(mapping: Mapping[str, Any], /) -> VariableBase:
@@ -135,172 +111,3 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
     if not result.selector:
         result = result.model_copy(update={"selector": selector})
     return cast(VariableBase, result)
-
-
-def build_segment(value: Any, /) -> Segment:
-    # NOTE: If you have runtime type information available, consider using the `build_segment_with_type`
-    # below
-    if value is None:
-        return NoneSegment()
-    if isinstance(value, Segment):
-        return value
-    if isinstance(value, str):
-        return StringSegment(value=value)
-    if isinstance(value, bool):
-        return BooleanSegment(value=value)
-    if isinstance(value, int):
-        return IntegerSegment(value=value)
-    if isinstance(value, float):
-        return FloatSegment(value=value)
-    if isinstance(value, dict):
-        return ObjectSegment(value=value)
-    if isinstance(value, File):
-        return FileSegment(value=value)
-    if isinstance(value, list):
-        items = [build_segment(item) for item in value]
-        types = {item.value_type for item in items}
-        if all(isinstance(item, ArraySegment) for item in items):
-            return ArrayAnySegment(value=value)
-        elif len(types) != 1:
-            if types.issubset({SegmentType.NUMBER, SegmentType.INTEGER, SegmentType.FLOAT}):
-                return ArrayNumberSegment(value=value)
-            return ArrayAnySegment(value=value)
-
-        match types.pop():
-            case SegmentType.STRING:
-                return ArrayStringSegment(value=value)
-            case SegmentType.NUMBER | SegmentType.INTEGER | SegmentType.FLOAT:
-                return ArrayNumberSegment(value=value)
-            case SegmentType.BOOLEAN:
-                return ArrayBooleanSegment(value=value)
-            case SegmentType.OBJECT:
-                return ArrayObjectSegment(value=value)
-            case SegmentType.FILE:
-                return ArrayFileSegment(value=value)
-            case SegmentType.NONE:
-                return ArrayAnySegment(value=value)
-            case _:
-                # This should be unreachable.
-                raise ValueError(f"not supported value {value}")
-    raise ValueError(f"not supported value {value}")
-
-
-_segment_factory: Mapping[SegmentType, type[Segment]] = {
-    SegmentType.NONE: NoneSegment,
-    SegmentType.STRING: StringSegment,
-    SegmentType.INTEGER: IntegerSegment,
-    SegmentType.FLOAT: FloatSegment,
-    SegmentType.FILE: FileSegment,
-    SegmentType.BOOLEAN: BooleanSegment,
-    SegmentType.OBJECT: ObjectSegment,
-    # Array types
-    SegmentType.ARRAY_ANY: ArrayAnySegment,
-    SegmentType.ARRAY_STRING: ArrayStringSegment,
-    SegmentType.ARRAY_NUMBER: ArrayNumberSegment,
-    SegmentType.ARRAY_OBJECT: ArrayObjectSegment,
-    SegmentType.ARRAY_FILE: ArrayFileSegment,
-    SegmentType.ARRAY_BOOLEAN: ArrayBooleanSegment,
-}
-
-
-def build_segment_with_type(segment_type: SegmentType, value: Any) -> Segment:
-    """
-    Build a segment with explicit type checking.
-
-    This function creates a segment from a value while enforcing type compatibility
-    with the specified segment_type. It provides stricter type validation compared
-    to the standard build_segment function.
-
-    Args:
-        segment_type: The expected SegmentType for the resulting segment
-        value: The value to be converted into a segment
-
-    Returns:
-        Segment: A segment instance of the appropriate type
-
-    Raises:
-        TypeMismatchError: If the value type doesn't match the expected segment_type
-
-    Special Cases:
-        - For empty list [] values, if segment_type is array[*], returns the corresponding array type
-        - Type validation is performed before segment creation
-
-    Examples:
-        >>> build_segment_with_type(SegmentType.STRING, "hello")
-        StringSegment(value="hello")
-
-        >>> build_segment_with_type(SegmentType.ARRAY_STRING, [])
-        ArrayStringSegment(value=[])
-
-        >>> build_segment_with_type(SegmentType.STRING, 123)
-        # Raises TypeMismatchError
-    """
-    # Handle None values
-    if value is None:
-        if segment_type == SegmentType.NONE:
-            return NoneSegment()
-        else:
-            raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got None")
-
-    # Handle empty list special case for array types
-    if isinstance(value, list) and len(value) == 0:
-        if segment_type == SegmentType.ARRAY_ANY:
-            return ArrayAnySegment(value=value)
-        elif segment_type == SegmentType.ARRAY_STRING:
-            return ArrayStringSegment(value=value)
-        elif segment_type == SegmentType.ARRAY_BOOLEAN:
-            return ArrayBooleanSegment(value=value)
-        elif segment_type == SegmentType.ARRAY_NUMBER:
-            return ArrayNumberSegment(value=value)
-        elif segment_type == SegmentType.ARRAY_OBJECT:
-            return ArrayObjectSegment(value=value)
-        elif segment_type == SegmentType.ARRAY_FILE:
-            return ArrayFileSegment(value=value)
-        else:
-            raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got empty list")
-
-    inferred_type = SegmentType.infer_segment_type(value)
-    # Type compatibility checking
-    if inferred_type is None:
-        raise TypeMismatchError(
-            f"Type mismatch: expected {segment_type}, but got python object, type={type(value)}, value={value}"
-        )
-    if inferred_type == segment_type:
-        segment_class = _segment_factory[segment_type]
-        return segment_class(value_type=segment_type, value=value)
-    elif segment_type == SegmentType.NUMBER and inferred_type in (
-        SegmentType.INTEGER,
-        SegmentType.FLOAT,
-    ):
-        segment_class = _segment_factory[inferred_type]
-        return segment_class(value_type=inferred_type, value=value)
-    else:
-        raise TypeMismatchError(f"Type mismatch: expected {segment_type}, but got {inferred_type}, value={value}")
-
-
-def segment_to_variable(
-    *,
-    segment: Segment,
-    selector: Sequence[str],
-    id: str | None = None,
-    name: str | None = None,
-    description: str = "",
-) -> VariableBase:
-    if isinstance(segment, VariableBase):
-        return segment
-    name = name or selector[-1]
-    id = id or str(uuid4())
-
-    segment_type = type(segment)
-    if segment_type not in SEGMENT_TO_VARIABLE_MAP:
-        raise UnsupportedSegmentTypeError(f"not supported segment type {segment_type}")
-
-    variable_class = SEGMENT_TO_VARIABLE_MAP[segment_type]
-    return variable_class(
-        id=id,
-        name=name,
-        description=description,
-        value_type=segment.value_type,
-        value=segment.value,
-        selector=list(selector),
-    )

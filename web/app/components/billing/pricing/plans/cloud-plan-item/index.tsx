@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { BasicPlan } from '../../../type'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
@@ -103,38 +103,38 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           {ICON_MAP[plan]}
           <div className="flex min-h-[104px] flex-col gap-y-2">
             <div className="flex items-center gap-x-2.5">
-              <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
+              <div className="text-[30px] leading-[1.2] font-medium text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
               {
                 isMostPopularPlan && (
                   <div className="flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1">
-                    <span className="text-text-primary-on-surface system-2xs-semibold-uppercase">
+                    <span className="system-2xs-semibold-uppercase text-text-primary-on-surface">
                       {t('plansCommon.mostPopular', { ns: 'billing' })}
                     </span>
                   </div>
                 )
               }
             </div>
-            <div className="text-text-secondary system-sm-regular">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
+            <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
           </div>
         </div>
         {/* Price */}
-        <div className="flex items-end gap-x-2 px-1 pb-8 pt-4">
+        <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
           {isFreePlan && (
-            <span className="text-text-primary title-4xl-semi-bold">{t('plansCommon.free', { ns: 'billing' })}</span>
+            <span className="title-4xl-semi-bold text-text-primary">{t('plansCommon.free', { ns: 'billing' })}</span>
           )}
           {!isFreePlan && (
             <>
               {isYear && (
-                <span className="text-text-quaternary line-through title-4xl-semi-bold">
+                <span className="title-4xl-semi-bold text-text-quaternary line-through">
                   $
                   {planInfo.price * 12}
                 </span>
               )}
-              <span className="text-text-primary title-4xl-semi-bold">
+              <span className="title-4xl-semi-bold text-text-primary">
                 $
                 {isYear ? planInfo.price * 10 : planInfo.price}
               </span>
-              <span className="pb-0.5 text-text-tertiary system-md-regular">
+              <span className="pb-0.5 system-md-regular text-text-tertiary">
                 {t('plansCommon.priceTip', { ns: 'billing' })}
                 {t(`plansCommon.${!isYear ? 'month' : 'year'}`, { ns: 'billing' })}
               </span>

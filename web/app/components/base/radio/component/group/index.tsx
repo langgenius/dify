@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import RadioGroupContext from '../../context'
 import s from '../../style.module.css'
 
-export type TRadioGroupProps = {
+type TRadioGroupProps = {
   children?: ReactNode | ReactNode[]
   value?: string | number | boolean
   className?: string

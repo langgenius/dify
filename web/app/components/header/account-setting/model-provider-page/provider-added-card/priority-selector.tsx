@@ -1,13 +1,13 @@
 import type { FC } from 'react'
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCheckLine,
   RiMoreFill,
 } from '@remixicon/react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
 import { PreferredProviderTypeEnum } from '../declarations'
 
 type SelectorProps = {
@@ -51,9 +51,9 @@ const Selector: FC<SelectorProps> = ({
         leaveFrom="opacity-100"
         leaveTo="opacity-0"
       >
-        <PopoverPanel className="absolute right-0 top-7 z-10 w-[144px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
+        <PopoverPanel className="absolute top-7 right-0 z-10 w-[144px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
           <div className="p-1">
-            <div className="px-3 pb-1 pt-2 text-sm font-medium text-text-secondary">{t('modelProvider.card.priorityUse', { ns: 'common' })}</div>
+            <div className="px-3 pt-2 pb-1 text-sm font-medium text-text-secondary">{t('modelProvider.card.priorityUse', { ns: 'common' })}</div>
             {
               options.map(option => (
                 <PopoverButton as={Fragment} key={option.key}>

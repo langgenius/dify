@@ -1,16 +1,17 @@
-import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
 import Inspect from 'vite-plugin-inspect'
 import { defineConfig } from 'vite-plus'
-import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
-import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
-import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test'
+import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector.ts'
+import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
+import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
+import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test.ts'
 
-const projectRoot = path.dirname(fileURLToPath(import.meta.url))
+const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
-const browserInitializerInjectTarget = path.resolve(projectRoot, 'app/components/browser-initializer.tsx')
+const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
@@ -39,22 +40,27 @@ export default defineConfig(({ mode }) => {
         : [
             Inspect(),
             createCodeInspectorPlugin({
-              injectTarget: browserInitializerInjectTarget,
+              injectTarget: rootClientInjectTarget,
             }),
             createForceInspectorClientInjectionPlugin({
-              injectTarget: browserInitializerInjectTarget,
+              injectTarget: rootClientInjectTarget,
               projectRoot,
             }),
+            tailwindcss(),
             react(),
             vinext({ react: false }),
-            customI18nHmrPlugin({ injectTarget: browserInitializerInjectTarget }),
+            customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
             // reactGrabOpenFilePlugin({
-            //   injectTarget: browserInitializerInjectTarget,
+            //   injectTarget: rootClientInjectTarget,
             //   projectRoot,
             // }),
           ],
     resolve: {
       tsconfigPaths: true,
+      alias: [
+        // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
+        { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
+      ],
     },
 
     // vinext related config
@@ -75,7 +81,8 @@ export default defineConfig(({ mode }) => {
 
     // Vitest config
     test: {
-      environment: 'jsdom',
+      pool: 'threads',
+      environment: 'happy-dom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],
       coverage: {

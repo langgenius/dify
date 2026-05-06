@@ -145,7 +145,7 @@ describe('AgentStrategy', () => {
       />,
     )
 
-    expect(screen.getByRole('slider')).toBeInTheDocument()
+    expect(screen.getByLabelText('Count')).toBeInTheDocument()
     expect(screen.getByRole('textbox')).toBeInTheDocument()
   })
 

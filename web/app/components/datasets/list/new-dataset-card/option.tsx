@@ -19,7 +19,7 @@ const Option = ({
       href={href}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      <span className="system-sm-medium grow text-left">{text}</span>
+      <span className="grow text-left system-sm-medium">{text}</span>
     </Link>
   )
 }

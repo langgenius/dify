@@ -9,7 +9,7 @@ from celery import shared_task
 from sqlalchemy import or_, select
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, DocumentSegment, DocumentSegmentSummary
 from models.dataset import Document as DatasetDocument
 from services.summary_index_service import SummaryIndexService
@@ -47,13 +47,13 @@ def regenerate_summary_index_task(
 
     try:
         with session_factory.create_session() as session:
-            dataset = session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 logger.error(click.style(f"Dataset not found: {dataset_id}", fg="red"))
                 return
 
             # Only regenerate summary index for high_quality indexing technique
-            if dataset.indexing_technique != "high_quality":
+            if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
                 logger.info(
                     click.style(
                         f"Skipping summary regeneration for dataset {dataset_id}: "
@@ -84,8 +84,8 @@ def regenerate_summary_index_task(
                 # For embedding_model change: directly query all segments with existing summaries
                 # Don't require document indexing_status == "completed"
                 # Include summaries with status "completed" or "error" (if they have content)
-                segments_with_summaries = (
-                    session.query(DocumentSegment, DocumentSegmentSummary)
+                segments_with_summaries = session.execute(
+                    select(DocumentSegment, DocumentSegmentSummary)
                     .join(
                         DocumentSegmentSummary,
                         DocumentSegment.id == DocumentSegmentSummary.chunk_id,
@@ -110,8 +110,7 @@ def regenerate_summary_index_task(
                         DatasetDocument.doc_form != IndexStructureType.QA_INDEX,  # Skip qa_model documents
                     )
                     .order_by(DocumentSegment.document_id.asc(), DocumentSegment.position.asc())
-                    .all()
-                )
+                ).all()
 
                 if not segments_with_summaries:
                     logger.info(
@@ -215,8 +214,8 @@ def regenerate_summary_index_task(
 
                     try:
                         # Get all segments with existing summaries
-                        segments = (
-                            session.query(DocumentSegment)
+                        segments = session.scalars(
+                            select(DocumentSegment)
                             .join(
                                 DocumentSegmentSummary,
                                 DocumentSegment.id == DocumentSegmentSummary.chunk_id,
@@ -229,8 +228,7 @@ def regenerate_summary_index_task(
                                 DocumentSegmentSummary.dataset_id == dataset_id,
                             )
                             .order_by(DocumentSegment.position.asc())
-                            .all()
-                        )
+                        ).all()
 
                         if not segments:
                             continue
@@ -245,13 +243,13 @@ def regenerate_summary_index_task(
                             summary_record = None
                             try:
                                 # Get existing summary record
-                                summary_record = (
-                                    session.query(DocumentSegmentSummary)
-                                    .filter_by(
-                                        chunk_id=segment.id,
-                                        dataset_id=dataset_id,
+                                summary_record = session.scalar(
+                                    select(DocumentSegmentSummary)
+                                    .where(
+                                        DocumentSegmentSummary.chunk_id == segment.id,
+                                        DocumentSegmentSummary.dataset_id == dataset_id,
                                     )
-                                    .first()
+                                    .limit(1)
                                 )
 
                                 if not summary_record:

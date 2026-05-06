@@ -105,7 +105,7 @@ describe('NavSelector Component', () => {
     },
   ]
 
-  const { link: _link, ...curNavWithoutLink } = navigationItems[0]
+  const { link: _link, ...curNavWithoutLink } = navigationItems[0]!
 
   const defaultProps: INavSelectorProps = {
     curNav: curNavWithoutLink,
@@ -131,7 +131,7 @@ describe('NavSelector Component', () => {
   describe('Rendering', () => {
     it('should render current nav name', () => {
       render(<NavSelector {...defaultProps} />)
-      expect(screen.getByText('Item 1')).toBeInTheDocument()
+      expect(screen.getByText('Item 1'))!.toBeInTheDocument()
     })
 
     it('should show loading indicator when isLoadingMore is true', async () => {
@@ -140,7 +140,7 @@ describe('NavSelector Component', () => {
       await act(async () => {
         fireEvent.click(button)
       })
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('status'))!.toBeInTheDocument()
     })
   })
 
@@ -151,7 +151,7 @@ describe('NavSelector Component', () => {
       await act(async () => {
         fireEvent.click(button)
       })
-      expect(screen.getByText('Item 2')).toBeInTheDocument()
+      expect(screen.getByText('Item 2'))!.toBeInTheDocument()
     })
 
     it('should navigate and call setAppDetail when an item is clicked', async () => {
@@ -203,28 +203,50 @@ describe('NavSelector Component', () => {
       await act(async () => {
         fireEvent.click(button)
       })
-      const createBtn = screen.getByText('Create New')
-      await act(async () => {
-        fireEvent.click(createBtn)
-      })
 
+      const openCreateMenu = async () => {
+        const createBtn = screen.getByText('Create New')
+        await act(async () => {
+          fireEvent.click(createBtn)
+        })
+        return screen.findByText(/app\.newApp\.startFromBlank/i)
+      }
+
+      await openCreateMenu()
       const blank = await screen.findByText(/app\.newApp\.startFromBlank/i)
       await act(async () => {
         fireEvent.click(blank)
       })
       expect(mockOnCreate).toHaveBeenCalledWith('blank')
 
+      await openCreateMenu()
       const template = await screen.findByText(/app\.newApp\.startFromTemplate/i)
       await act(async () => {
         fireEvent.click(template)
       })
       expect(mockOnCreate).toHaveBeenCalledWith('template')
 
+      await openCreateMenu()
       const dsl = await screen.findByText(/app\.importDSL/i)
       await act(async () => {
         fireEvent.click(dsl)
       })
       expect(mockOnCreate).toHaveBeenCalledWith('dsl')
+    })
+
+    it('should open extended create menu on hover in app mode', async () => {
+      render(<NavSelector {...defaultProps} isApp />)
+      const button = screen.getByRole('button')
+      await act(async () => {
+        fireEvent.click(button)
+      })
+
+      const createBtn = screen.getByText('Create New')
+      await act(async () => {
+        fireEvent.mouseEnter(createBtn)
+      })
+
+      expect(await screen.findByText(/app\.newApp\.startFromBlank/i))!.toBeInTheDocument()
     })
 
     it('should not show create button for non-editors', async () => {

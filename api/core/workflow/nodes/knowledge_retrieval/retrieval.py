@@ -3,8 +3,8 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, Field
 
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
-from dify_graph.model_runtime.entities import LLMUsage
-from dify_graph.nodes.llm.entities import ModelConfig
+from graphon.model_runtime.entities import LLMUsage
+from graphon.nodes.llm.entities import ModelConfig
 
 from .entities import MetadataFilteringCondition
 
@@ -54,7 +54,7 @@ class KnowledgeRetrievalRequest(BaseModel):
     tenant_id: str = Field(description="Tenant unique identifier")
     user_id: str = Field(description="User unique identifier")
     app_id: str = Field(description="Application unique identifier")
-    user_from: str = Field(description="Source of the user request (e.g., 'workflow', 'api')")
+    user_from: str = Field(description="User identity source for audit logging (e.g., 'account', 'end-user')")
     dataset_ids: list[str] = Field(description="List of dataset IDs to retrieve from")
     query: str | None = Field(default=None, description="Query text for knowledge retrieval")
     retrieval_mode: str = Field(description="Retrieval strategy: 'single' or 'multiple'")

@@ -1,7 +1,7 @@
 import type { ChunkStructureEnum } from '../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import OptionCard from '../option-card'
 import { useChunkStructure } from './hooks'
@@ -64,7 +64,7 @@ const ChunkStructure = ({
                   className="w-full"
                   variant="secondary-accent"
                 >
-                  <span className="i-ri-add-line mr-1 h-4 w-4" />
+                  <span className="mr-1 i-ri-add-line h-4 w-4" />
                   {t('nodes.knowledgeBase.chooseChunkStructure', { ns: 'workflow' })}
                 </Button>
               )}

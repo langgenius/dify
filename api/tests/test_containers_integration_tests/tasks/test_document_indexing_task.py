@@ -5,6 +5,7 @@ import pytest
 from faker import Faker
 
 from core.entities.document_task import DocumentTask
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from enums.cloud_plan import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
@@ -99,7 +100,7 @@ class TestDocumentIndexingTasks:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)
@@ -181,7 +182,7 @@ class TestDocumentIndexingTasks:
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             data_source_type=DataSourceType.UPLOAD_FILE,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
         db_session_with_containers.add(dataset)

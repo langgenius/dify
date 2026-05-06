@@ -2,6 +2,8 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
@@ -11,7 +13,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import {
   PortalToFollowElem,
@@ -21,7 +22,6 @@ import {
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'
 import { variableTransformer } from '@/app/components/workflow/utils'
-import { cn } from '@/utils/classnames'
 import VariableTag from '../../_base/components/variable-tag'
 import { VarType as NumberVarType } from '../../tool/types'
 
@@ -76,10 +76,10 @@ const ConditionNumberInput = ({
             size="small"
           >
             {capitalize(numberVarType)}
-            <RiArrowDownSLine className="ml-[1px] h-3.5 w-3.5" />
+            <RiArrowDownSLine className="ml-px h-3.5 w-3.5" />
           </Button>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1000]">
+        <PortalToFollowElemContent className="z-1000">
           <div className="w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
             {
               options.map(option => (
@@ -102,7 +102,7 @@ const ConditionNumberInput = ({
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
-      <div className="mx-1 h-4 w-[1px] bg-divider-regular"></div>
+      <div className="mx-1 h-4 w-px bg-divider-regular"></div>
       <div className="ml-0.5 w-0 grow">
         {
           numberVarType === NumberVarType.variable && (
@@ -134,7 +134,7 @@ const ConditionNumberInput = ({
                   )
                 }
               </PortalToFollowElemTrigger>
-              <PortalToFollowElemContent className="z-[1000]">
+              <PortalToFollowElemContent className="z-1000">
                 <div className={cn('w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-1 shadow-lg', isShort && 'w-[200px]')}>
                   <VarReferenceVars
                     vars={variables}
@@ -147,9 +147,9 @@ const ConditionNumberInput = ({
         }
         {
           numberVarType === NumberVarType.constant && (
-            <div className=" relative">
+            <div className="relative">
               <input
-                className={cn('block w-full appearance-none bg-transparent px-2 text-[13px] text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder', unit && 'pr-6')}
+                className={cn('block w-full appearance-none bg-transparent px-2 text-[13px] text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder', unit && 'pr-6')}
                 type="number"
                 value={value}
                 onChange={e => onValueChange(e.target.value)}
@@ -157,7 +157,7 @@ const ConditionNumberInput = ({
                 onFocus={setFocus}
                 onBlur={setBlur}
               />
-              {!isFocus && unit && <div className="system-sm-regular absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary">{unit}</div>}
+              {!isFocus && unit && <div className="absolute top-[50%] right-2 translate-y-[-50%] system-sm-regular text-text-tertiary">{unit}</div>}
             </div>
           )
         }

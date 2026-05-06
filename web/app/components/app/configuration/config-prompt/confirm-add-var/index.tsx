@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import VarHighlight from '../../base/var-highlight'
 
-export type IConfirmAddVarProps = {
+type IConfirmAddVarProps = {
   varNameArr: string[]
   onConfirm: () => void
   onCancel: () => void
@@ -35,7 +35,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
   // }, mainContentRef)
   return (
     <div
-      className="absolute inset-0  flex items-center justify-center rounded-xl"
+      className="absolute inset-0 flex items-center justify-center rounded-xl"
       style={{
         backgroundColor: 'rgba(35, 56, 118, 0.2)',
       }}
@@ -53,7 +53,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
           >
             {VarIcon}
           </div>
-          <div className="grow-1">
+          <div className="grow">
             <div className="text-sm font-medium text-text-primary">{t('autoAddVar', { ns: 'appDebug' })}</div>
             <div className="mt-[15px] flex max-h-[66px] flex-wrap space-x-1 overflow-y-auto px-1">
               {varNameArr.map(name => (

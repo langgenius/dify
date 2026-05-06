@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import {
@@ -28,7 +29,6 @@ import {
   WebhookLine,
 } from '@/app/components/base/icons/src/vender/workflow'
 import { API_PREFIX } from '@/config'
-import { cn } from '@/utils/classnames'
 import { BlockEnum } from './types'
 
 type BlockIconProps = {
@@ -141,7 +141,7 @@ const BlockIcon: FC<BlockIconProps> = ({
         'flex items-center justify-center border-[0.5px] border-white/2 text-white',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
         showDefaultIcon && ICON_CONTAINER_BG_COLOR_MAP[type],
-        toolIcon && '!shadow-none',
+        toolIcon && 'shadow-none!',
         className,
       )
     }
@@ -169,7 +169,7 @@ const BlockIcon: FC<BlockIconProps> = ({
                   )
                 : (
                     <AppIcon
-                      className="!h-full !w-full shrink-0"
+                      className="h-full! w-full! shrink-0"
                       size="tiny"
                       icon={resolvedToolIcon?.content}
                       background={resolvedToolIcon?.background}

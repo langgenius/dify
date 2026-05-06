@@ -2,6 +2,8 @@ import logging
 import time
 from typing import cast
 
+from sqlalchemy import select
+
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -12,19 +14,18 @@ from core.app.entities.app_invoke_entities import (
     build_dify_run_context,
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from dify_graph.entities.graph_init_params import GraphInitParams
-from dify_graph.enums import WorkflowType
-from dify_graph.graph import Graph
-from dify_graph.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from dify_graph.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from dify_graph.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from dify_graph.runtime import GraphRuntimeState, VariablePool
-from dify_graph.system_variable import SystemVariable
-from dify_graph.variable_loader import VariableLoader
-from dify_graph.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from extensions.ext_database import db
+from graphon.enums import WorkflowType
+from graphon.graph import Graph
+from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import VariableLoader
+from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Document, Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
@@ -83,13 +84,13 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         user_id = None
         if invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
-            end_user = db.session.query(EndUser).where(EndUser.id == self.application_generate_entity.user_id).first()
+            end_user = db.session.get(EndUser, self.application_generate_entity.user_id)
             if end_user:
                 user_id = end_user.session_id
         else:
             user_id = self.application_generate_entity.user_id
 
-        pipeline = db.session.query(Pipeline).where(Pipeline.id == app_config.app_id).first()
+        pipeline = db.session.get(Pipeline, app_config.app_id)
         if not pipeline:
             raise ValueError("Pipeline not found")
 
@@ -106,13 +107,14 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow=workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
+                user_id=self.application_generate_entity.user_id,
             )
         else:
             inputs = self.application_generate_entity.inputs
             files = self.application_generate_entity.files
 
             # Create a variable pool.
-            system_inputs = SystemVariable(
+            system_inputs = build_system_variables(
                 files=files,
                 user_id=user_id,
                 app_id=app_config.app_id,
@@ -142,19 +144,25 @@ class PipelineRunner(WorkflowBasedAppRunner):
                             )
                         )
 
-            variable_pool = VariablePool(
-                system_variables=system_inputs,
-                user_inputs=inputs,
-                environment_variables=workflow.environment_variables,
-                conversation_variables=[],
-                rag_pipeline_variables=rag_pipeline_variables,
+            variable_pool = VariablePool()
+            add_variables_to_pool(
+                variable_pool,
+                build_bootstrap_variables(
+                    system_variables=system_inputs,
+                    environment_variables=workflow.environment_variables,
+                    rag_pipeline_variables=rag_pipeline_variables,
+                ),
             )
+            root_node_id = self.application_generate_entity.start_node_id or get_default_root_node_id(
+                workflow.graph_dict
+            )
+            add_node_inputs_to_pool(variable_pool, node_id=root_node_id, inputs=inputs)
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
             # init graph
             graph = self._init_rag_pipeline_graph(
                 graph_runtime_state=graph_runtime_state,
-                start_node_id=self.application_generate_entity.start_node_id,
+                start_node_id=root_node_id,
                 workflow=workflow,
                 user_from=user_from,
                 invoke_from=invoke_from,
@@ -205,10 +213,10 @@ class PipelineRunner(WorkflowBasedAppRunner):
         Get workflow
         """
         # fetch workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
+        workflow = db.session.scalar(
+            select(Workflow)
             .where(Workflow.tenant_id == pipeline.tenant_id, Workflow.app_id == pipeline.id, Workflow.id == workflow_id)
-            .first()
+            .limit(1)
         )
 
         # return workflow
@@ -256,22 +264,23 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # graph_config["nodes"] = real_run_nodes
         # graph_config["edges"] = real_edges
         # init graph
-        # Create required parameters for Graph.init
-        graph_init_params = GraphInitParams(
+        # Create explicit graph init context for Graph.init.
+        run_context = build_dify_run_context(
+            tenant_id=workflow.tenant_id,
+            app_id=self._app_id,
+            user_id=self.application_generate_entity.user_id,
+            user_from=user_from,
+            invoke_from=invoke_from,
+        )
+        graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
             graph_config=graph_config,
-            run_context=build_dify_run_context(
-                tenant_id=workflow.tenant_id,
-                app_id=self._app_id,
-                user_id=self.application_generate_entity.user_id,
-                user_from=user_from,
-                invoke_from=invoke_from,
-            ),
+            run_context=run_context,
             call_depth=0,
         )
 
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
+        node_factory = DifyNodeFactory.from_graph_init_context(
+            graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
         )
         if start_node_id is None:
@@ -289,10 +298,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
         """
         if isinstance(event, GraphRunFailedEvent):
             if document_id and dataset_id:
-                document = (
-                    db.session.query(Document)
-                    .where(Document.id == document_id, Document.dataset_id == dataset_id)
-                    .first()
+                document = db.session.scalar(
+                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
                 )
                 if document:
                     document.indexing_status = "error"

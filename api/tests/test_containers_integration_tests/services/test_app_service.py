@@ -23,7 +23,7 @@ class TestAppService:
         with (
             patch("services.app_service.FeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
-            patch("services.app_service.ModelManager") as mock_model_manager,
+            patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.account_service.FeatureService") as mock_account_feature_service,
         ):
             # Setup default mock returns for app service
@@ -658,15 +658,17 @@ class TestAppService:
         # Update app icon
         new_icon = "🌟"
         new_icon_background = "#FFD93D"
+        new_icon_type = "image"
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.id = account.id
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_icon(app, new_icon, new_icon_background)
+            updated_app = app_service.update_app_icon(app, new_icon, new_icon_background, new_icon_type)
 
         assert updated_app.icon == new_icon
         assert updated_app.icon_background == new_icon_background
+        assert str(updated_app.icon_type).lower() == new_icon_type
         assert updated_app.updated_by == account.id
 
         # Verify other fields remain unchanged
@@ -1245,3 +1247,51 @@ class TestAppService:
         assert paginated_apps is not None
         assert paginated_apps.total == 1
         assert all("50%" in app.name for app in paginated_apps.items)
+
+    def test_get_app_code_by_id_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test get_app_code_by_id raises ValueError when site is missing."""
+        from uuid import uuid4
+
+        from services.app_service import AppService
+
+        with pytest.raises(ValueError, match="not found"):
+            AppService.get_app_code_by_id(str(uuid4()))
+
+    def test_get_app_id_by_code_not_found(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test get_app_id_by_code raises ValueError when code does not exist."""
+        from services.app_service import AppService
+
+        with pytest.raises(ValueError, match="not found"):
+            AppService.get_app_id_by_code("nonexistent-code")
+
+    def test_get_app_meta_returns_empty_when_workflow_missing(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test get_app_meta returns empty tool_icons when workflow is None."""
+        from types import SimpleNamespace
+
+        from services.app_service import AppService
+
+        app_service = AppService()
+        workflow_app = SimpleNamespace(mode="workflow", workflow=None)
+
+        meta = app_service.get_app_meta(workflow_app)
+        assert meta == {"tool_icons": {}}
+
+    def test_get_app_meta_returns_empty_when_model_config_missing(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Test get_app_meta returns empty tool_icons when app_model_config is None."""
+        from types import SimpleNamespace
+
+        from services.app_service import AppService
+
+        app_service = AppService()
+        chat_app = SimpleNamespace(mode="chat", app_model_config=None)
+
+        meta = app_service.get_app_meta(chat_app)
+        assert meta == {"tool_icons": {}}

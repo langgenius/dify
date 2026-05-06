@@ -14,12 +14,14 @@ describe('ParamItem Slider onChange', () => {
     vi.clearAllMocks()
   })
 
+  const getSlider = () => screen.getByLabelText('Test Param')
+
   it('should divide slider value by 100 when max < 5', async () => {
     const user = userEvent.setup()
     render(<ParamItem {...defaultProps} value={0.5} min={0} max={1} />)
-    const slider = screen.getByRole('slider')
+    const slider = getSlider()
 
-    await user.click(slider)
+    slider.focus()
     await user.keyboard('{ArrowRight}')
 
     // max=1 < 5, so slider value change (50->51) becomes 0.51
@@ -29,9 +31,9 @@ describe('ParamItem Slider onChange', () => {
   it('should not divide slider value when max >= 5', async () => {
     const user = userEvent.setup()
     render(<ParamItem {...defaultProps} value={5} min={1} max={10} />)
-    const slider = screen.getByRole('slider')
+    const slider = getSlider()
 
-    await user.click(slider)
+    slider.focus()
     await user.keyboard('{ArrowRight}')
 
     // max=10 >= 5, so value remains raw (5->6)

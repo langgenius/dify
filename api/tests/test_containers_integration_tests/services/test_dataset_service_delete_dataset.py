@@ -3,7 +3,7 @@
 from unittest.mock import patch
 from uuid import uuid4
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom
@@ -109,7 +109,7 @@ class TestDatasetServiceDeleteDataset:
             db_session_with_containers,
             tenant_id=tenant.id,
             created_by=owner.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             chunk_structure=None,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=str(uuid4()),
@@ -208,7 +208,7 @@ class TestDatasetServiceDeleteDataset:
             db_session_with_containers,
             tenant_id=tenant.id,
             created_by=owner.id,
-            indexing_technique="high_quality",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             chunk_structure=None,
             index_struct='{"type": "paragraph"}',
             collection_binding_id=str(uuid4()),
