@@ -302,7 +302,7 @@ function Form<
             <SelectTrigger size="medium" className={cn(inputClassName)}>
               {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
             </SelectTrigger>
-            <SelectContent popupClassName="w-(--anchor-width)">
+            <SelectContent>
               {filteredOptions.map(option => (
                 <SelectItem key={option.value} value={option.value}>
                   <SelectItemText>{option.name}</SelectItemText>

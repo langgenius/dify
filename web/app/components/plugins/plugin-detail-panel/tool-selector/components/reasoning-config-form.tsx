@@ -233,7 +233,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 <SelectTrigger className="h-8 grow">
                   {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
                 </SelectTrigger>
-                <SelectContent popupClassName="w-(--anchor-width)">
+                <SelectContent>
                   {pickerProps.selectItems.map(item => (
                     <SelectItem key={item.value} value={String(item.value)}>
                       <SelectItemText>{item.name}</SelectItemText>

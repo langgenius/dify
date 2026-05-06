@@ -267,7 +267,7 @@ const BaseField = ({
                           : translatedPlaceholder}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent popupClassName="max-h-[320px] w-(--anchor-width) bg-components-panel-bg-blur">
+                    <SelectContent popupClassName="max-h-[320px] bg-components-panel-bg-blur">
                       {memorizedOptions.map(option => (
                         <SelectItem key={option.value} value={option.value}>
                           <SelectItemText>{option.label}</SelectItemText>
@@ -293,7 +293,7 @@ const BaseField = ({
                         {nextValue => getSingleSelectLabel(nextValue, memorizedOptions, translatedPlaceholder)}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent popupClassName="max-h-[320px] w-(--anchor-width) bg-components-panel-bg-blur">
+                    <SelectContent popupClassName="max-h-[320px] bg-components-panel-bg-blur">
                       {memorizedOptions.map(option => (
                         <SelectItem key={option.value} value={option.value}>
                           <SelectItemText>{option.label}</SelectItemText>
@@ -332,7 +332,7 @@ const BaseField = ({
                           : dynamicPlaceholder}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent popupClassName="w-(--anchor-width) bg-components-panel-bg-blur">
+                    <SelectContent popupClassName="bg-components-panel-bg-blur">
                       {dynamicNoticeTitle && (
                         <div className={cn(
                           'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
@@ -367,7 +367,7 @@ const BaseField = ({
                         {nextValue => getSingleSelectLabel(nextValue, dynamicOptions, dynamicPlaceholder)}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent popupClassName="w-(--anchor-width) bg-components-panel-bg-blur">
+                    <SelectContent popupClassName="bg-components-panel-bg-blur">
                       {dynamicNoticeTitle && (
                         <div className={cn(
                           'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',

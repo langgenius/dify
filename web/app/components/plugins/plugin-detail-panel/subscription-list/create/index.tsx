@@ -273,7 +273,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                 </Tooltip>
               )}
         </SelectTrigger>
-        <SelectContent placement="bottom-start" sideOffset={4} popupClassName={cn(buttonType === CreateButtonType.FULL_BUTTON && 'min-w-(--anchor-width)')}>
+        <SelectContent placement="bottom-start" sideOffset={4}>
           {visibleOptions.map(option => (
             <SelectItem key={option.value} value={option.value}>
               <div className="mr-8 flex grow items-center gap-1 truncate px-1">
