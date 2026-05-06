@@ -1,7 +1,7 @@
 {
   "name": "@langgenius/dev-proxy",
   "type": "module",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -22,7 +22,8 @@
   "scripts": {
     "build": "vp pack",
     "test": "vp test",
-    "type-check": "tsgo"
+    "type-check": "tsgo",
+    "prepublish": "pnpm run build"
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
