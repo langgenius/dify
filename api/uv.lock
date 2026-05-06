@@ -13,6 +13,7 @@ members = [
     "dify-api",
     "dify-trace-aliyun",
     "dify-trace-arize-phoenix",
+    "dify-trace-datadog",
     "dify-trace-langfuse",
     "dify-trace-langsmith",
     "dify-trace-mlflow",
@@ -1419,6 +1420,7 @@ trace-aliyun = [
 trace-all = [
     { name = "dify-trace-aliyun" },
     { name = "dify-trace-arize-phoenix" },
+    { name = "dify-trace-datadog" },
     { name = "dify-trace-langfuse" },
     { name = "dify-trace-langsmith" },
     { name = "dify-trace-mlflow" },
@@ -1428,6 +1430,9 @@ trace-all = [
 ]
 trace-arize-phoenix = [
     { name = "dify-trace-arize-phoenix" },
+]
+trace-datadog = [
+    { name = "dify-trace-datadog" },
 ]
 trace-langfuse = [
     { name = "dify-trace-langfuse" },
@@ -1700,6 +1705,7 @@ trace-aliyun = [{ name = "dify-trace-aliyun", editable = "providers/trace/trace-
 trace-all = [
     { name = "dify-trace-aliyun", editable = "providers/trace/trace-aliyun" },
     { name = "dify-trace-arize-phoenix", editable = "providers/trace/trace-arize-phoenix" },
+    { name = "dify-trace-datadog", editable = "providers/trace/trace-datadog" },
     { name = "dify-trace-langfuse", editable = "providers/trace/trace-langfuse" },
     { name = "dify-trace-langsmith", editable = "providers/trace/trace-langsmith" },
     { name = "dify-trace-mlflow", editable = "providers/trace/trace-mlflow" },
@@ -1708,6 +1714,7 @@ trace-all = [
     { name = "dify-trace-weave", editable = "providers/trace/trace-weave" },
 ]
 trace-arize-phoenix = [{ name = "dify-trace-arize-phoenix", editable = "providers/trace/trace-arize-phoenix" }]
+trace-datadog = [{ name = "dify-trace-datadog", editable = "providers/trace/trace-datadog" }]
 trace-langfuse = [{ name = "dify-trace-langfuse", editable = "providers/trace/trace-langfuse" }]
 trace-langsmith = [{ name = "dify-trace-langsmith", editable = "providers/trace/trace-langsmith" }]
 trace-mlflow = [{ name = "dify-trace-mlflow", editable = "providers/trace/trace-mlflow" }]
@@ -1807,6 +1814,27 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "arize-phoenix-otel", specifier = "~=0.15.0" }]
+
+[[package]]
+name = "dify-trace-datadog"
+version = "0.0.1"
+source = { editable = "providers/trace/trace-datadog" }
+dependencies = [
+    { name = "httpx" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
 
 [[package]]
 name = "dify-trace-langfuse"

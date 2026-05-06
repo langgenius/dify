@@ -14,9 +14,9 @@ from opentelemetry.trace import Status, StatusCode
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
-from core.ops.datadog_trace.client import DatadogTraceClient
-from core.ops.datadog_trace import span_builder
-from core.ops.entities.config_entity import DatadogConfig
+from dify_trace_datadog.client import DatadogTraceClient
+from dify_trace_datadog import span_builder
+from dify_trace_datadog.config import DatadogConfig
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,

@@ -92,6 +92,7 @@ dify-vdb-vikingdb = { workspace = true }
 dify-vdb-weaviate = { workspace = true }
 dify-trace-aliyun = { workspace = true }
 dify-trace-arize-phoenix = { workspace = true }
+dify-trace-datadog = { workspace = true }
 dify-trace-langfuse = { workspace = true }
 dify-trace-langsmith = { workspace = true }
 dify-trace-mlflow = { workspace = true }
@@ -272,6 +273,7 @@ vdb-xinference = ["xinference-client>=2.7.0"]
 trace-all = [
     "dify-trace-aliyun",
     "dify-trace-arize-phoenix",
+    "dify-trace-datadog",
     "dify-trace-langfuse",
     "dify-trace-langsmith",
     "dify-trace-mlflow",
@@ -281,6 +283,7 @@ trace-all = [
 ]
 trace-aliyun = ["dify-trace-aliyun"]
 trace-arize-phoenix = ["dify-trace-arize-phoenix"]
+trace-datadog = ["dify-trace-datadog"]
 trace-langfuse = ["dify-trace-langfuse"]
 trace-langsmith = ["dify-trace-langsmith"]
 trace-mlflow = ["dify-trace-mlflow"]

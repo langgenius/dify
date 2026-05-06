@@ -4,13 +4,13 @@ from unittest.mock import MagicMock
 import pytest
 from opentelemetry.trace import StatusCode
 
-from core.ops.datadog_trace.client import DatadogTraceClient
-from core.ops.datadog_trace.datadog_trace import (
+from dify_trace_datadog.client import DatadogTraceClient
+from dify_trace_datadog.datadog_trace import (
     DatadogDataTrace,
     _datetime_to_ns,
     _workflow_node_status_to_otel_status,
 )
-from core.ops.entities.config_entity import DatadogConfig
+from dify_trace_datadog.config import DatadogConfig
 from core.ops.entities.trace_entity import DatasetRetrievalTraceInfo, MessageTraceInfo, ToolTraceInfo, WorkflowTraceInfo
 from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 
@@ -19,7 +19,7 @@ from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 def datadog_trace(monkeypatch):
     mock_cls = MagicMock()
     mock_cls.compute_trace_id.side_effect = DatadogTraceClient.compute_trace_id
-    monkeypatch.setattr("core.ops.datadog_trace.datadog_trace.DatadogTraceClient", mock_cls)
+    monkeypatch.setattr("dify_trace_datadog.datadog_trace.DatadogTraceClient", mock_cls)
     config = DatadogConfig(api_key="test-key", site="datadoghq.com", service_name="test")
     return DatadogDataTrace(config)
 
@@ -98,7 +98,7 @@ class TestWorkflowNodeProcessing:
 
         mock_builder = MagicMock(side_effect=[{"node": 1}, RuntimeError("boom"), {"node": 3}])
         monkeypatch.setattr(
-            "core.ops.datadog_trace.span_builder.build_workflow_node_attrs",
+            "dify_trace_datadog.span_builder.build_workflow_node_attrs",
             mock_builder,
         )
         trace_id = DatadogTraceClient.compute_trace_id("message:msg-1")

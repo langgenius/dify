@@ -5,7 +5,7 @@ Datadog span attribute builder for Dify ops tracing.
 import json
 from typing import Any
 
-from core.ops.datadog_trace import semconv
+from dify_trace_datadog import semconv
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     MessageTraceInfo,

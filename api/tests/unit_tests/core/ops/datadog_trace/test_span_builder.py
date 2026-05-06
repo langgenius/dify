@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.ops.datadog_trace import semconv
-from core.ops.datadog_trace import span_builder
+from dify_trace_datadog import semconv
+from dify_trace_datadog import span_builder
 from core.ops.entities.trace_entity import DatasetRetrievalTraceInfo, MessageTraceInfo, WorkflowTraceInfo
 from core.rag.models.document import Document
 from graphon.entities.workflow_node_execution import WorkflowNodeExecution

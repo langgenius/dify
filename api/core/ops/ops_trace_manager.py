@@ -312,8 +312,8 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
                     }
 
                 case TracingProviderEnum.DATADOG:
-                    from core.ops.datadog_trace.datadog_trace import DatadogDataTrace
-                    from core.ops.entities.config_entity import DatadogConfig
+                    from dify_trace_datadog.config import DatadogConfig
+                    from dify_trace_datadog.datadog_trace import DatadogDataTrace
 
                     return {
                         "config_class": DatadogConfig,
