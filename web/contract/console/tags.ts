@@ -64,7 +64,7 @@ export const tagDeleteContract = base
 
 export const tagBindingCreateContract = base
   .route({
-    path: '/tag-bindings/create',
+    path: '/tag-bindings',
     method: 'POST',
   })
   .input(type<{
@@ -83,7 +83,7 @@ export const tagBindingRemoveContract = base
   })
   .input(type<{
     body: {
-      tag_id: string
+      tag_ids: string[]
       target_id: string
       type: TagType
     }

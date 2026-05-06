@@ -29,7 +29,7 @@ class TagBindingCreatePayload(BaseModel):
 
 
 class TagBindingDeletePayload(BaseModel):
-    tag_id: str
+    tag_ids: list[str] = Field(min_length=1)
     target_id: str
     type: TagType
 
@@ -178,13 +178,17 @@ class TagService:
     @staticmethod
     def delete_tag_binding(payload: TagBindingDeletePayload):
         TagService.check_target_exists(payload.type, payload.target_id)
-        tag_binding = db.session.scalar(
-            select(TagBinding)
-            .where(TagBinding.target_id == payload.target_id, TagBinding.tag_id == payload.tag_id)
-            .limit(1)
-        )
-        if tag_binding:
+        tag_bindings = db.session.scalars(
+            select(TagBinding).where(
+                TagBinding.target_id == payload.target_id,
+                TagBinding.tag_id.in_(payload.tag_ids),
+                TagBinding.tenant_id == current_user.current_tenant_id,
+            )
+        ).all()
+        for tag_binding in tag_bindings:
             db.session.delete(tag_binding)
+
+        if tag_bindings:
             db.session.commit()
 
     @staticmethod

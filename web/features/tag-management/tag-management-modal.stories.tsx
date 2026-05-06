@@ -54,7 +54,7 @@ const TagManagementPlayground = ({
         }
       }
 
-      if (parsedUrl.pathname.endsWith('/tag-bindings/create') || parsedUrl.pathname.endsWith('/tag-bindings/remove')) {
+      if (parsedUrl.pathname.endsWith('/tag-bindings') || parsedUrl.pathname.endsWith('/tag-bindings/remove')) {
         return new Response(JSON.stringify({ ok: true }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },

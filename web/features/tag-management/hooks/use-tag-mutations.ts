@@ -104,13 +104,15 @@ export const useApplyTagBindingsMutation = () => {
         }))
       }
 
-      operations.push(...removeTagIds.map(tagId => consoleClient.tags.unbind({
-        body: {
-          tag_id: tagId,
-          target_id: targetId,
-          type,
-        },
-      })))
+      if (removeTagIds.length) {
+        operations.push(consoleClient.tags.unbind({
+          body: {
+            tag_ids: removeTagIds,
+            target_id: targetId,
+            type,
+          },
+        }))
+      }
 
       return Promise.all(operations)
     },
