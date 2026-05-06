@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 from opentelemetry.trace import StatusCode
 
+from dify_trace_datadog import semconv
 from dify_trace_datadog.client import DatadogTraceClient
 from dify_trace_datadog.datadog_trace import (
     DatadogDataTrace,
@@ -40,6 +41,31 @@ def _build_message_trace_info(message_id: str | None = "msg-1") -> MessageTraceI
         file_list=[],
         message_file_data=None,
         conversation_mode="chat",
+    )
+
+
+def _build_workflow_trace_info(message_id: str | None = "msg-1") -> WorkflowTraceInfo:
+    return WorkflowTraceInfo(
+        message_id=message_id,
+        metadata={"conversation_id": "conv-1", "app_id": "app-1"},
+        inputs=None,
+        outputs=None,
+        start_time=datetime.now(),
+        end_time=datetime.now(),
+        trace_id=None,
+        workflow_id="wf-1",
+        tenant_id="tenant-1",
+        workflow_run_id="run-1",
+        workflow_run_elapsed_time=1,
+        workflow_run_status="succeeded",
+        workflow_run_inputs={"sys.query": "Hello"},
+        workflow_run_outputs={"answer": "Hi"},
+        workflow_run_version="1",
+        total_tokens=0,
+        file_list=[],
+        query="Hello",
+        conversation_id="conv-1",
+        workflow_app_log_id=None,
     )
 
 
@@ -135,6 +161,30 @@ class TestWorkflowNodeProcessing:
         assert message_call.kwargs["store_key"] == "message:msg-42"
         assert tool_call.kwargs["parent_key"] == "message:msg-42"
 
+    def test_workflow_with_message_id_is_parented_to_message(self, datadog_trace: DatadogDataTrace):
+        trace_info = _build_workflow_trace_info(message_id="msg-42")
+        datadog_trace._process_workflow_nodes = MagicMock()  # type: ignore[method-assign]
+
+        datadog_trace.workflow_trace(trace_info)
+
+        workflow_call = datadog_trace.trace_client.add_span.call_args
+        assert workflow_call.kwargs["trace_id"] == DatadogTraceClient.compute_trace_id("message:msg-42")
+        assert workflow_call.kwargs["store_key"] == "workflow:run-1"
+        assert workflow_call.kwargs["parent_key"] == "message:msg-42"
+
+    def test_message_span_name_uses_operation_name(self, datadog_trace: DatadogDataTrace, monkeypatch):
+        monkeypatch.setattr(
+            "dify_trace_datadog.span_builder.build_message_attrs",
+            MagicMock(return_value={semconv.OPERATION_NAME: "completion"}),
+        )
+        message_trace = _build_message_trace_info(message_id="msg-42")
+        message_trace.conversation_mode = "completion"
+
+        datadog_trace.message_trace(message_trace)
+
+        message_call = datadog_trace.trace_client.add_span.call_args
+        assert message_call.kwargs["name"] == "completion"
+
     def test_tool_before_message_uses_deterministic_trace_id(self, datadog_trace: DatadogDataTrace):
         tool_trace = _build_tool_trace_info(message_id="msg-99")
         message_trace = _build_message_trace_info(message_id="msg-99")
@@ -168,3 +218,20 @@ class TestWorkflowNodeProcessing:
 
         assert result.status_code is expected_code
         assert result.description == expected_description
+
+    def test_get_workflow_node_executions_uses_repository_workflow_execution_api(
+        self, datadog_trace: DatadogDataTrace, monkeypatch
+    ):
+        trace_info = _build_workflow_trace_info(message_id=None)
+        repository = MagicMock()
+        repository.get_by_workflow_execution.return_value = ["node-1"]
+        factory = MagicMock()
+        factory.create_workflow_node_execution_repository.return_value = repository
+        monkeypatch.setattr("dify_trace_datadog.datadog_trace.DifyCoreRepositoryFactory", factory)
+        datadog_trace.get_service_account_with_tenant = MagicMock(return_value=MagicMock())  # type: ignore[method-assign]
+        datadog_trace._session_factory = MagicMock()
+
+        result = datadog_trace._get_workflow_node_executions(trace_info)
+
+        assert result == ["node-1"]
+        repository.get_by_workflow_execution.assert_called_once_with(workflow_execution_id="run-1")

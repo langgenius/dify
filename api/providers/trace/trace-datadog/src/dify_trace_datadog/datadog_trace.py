@@ -15,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from dify_trace_datadog.client import DatadogTraceClient
+from dify_trace_datadog import semconv
 from dify_trace_datadog import span_builder
 from dify_trace_datadog.config import DatadogConfig
 from core.ops.entities.trace_entity import (
@@ -103,6 +104,7 @@ class DatadogDataTrace(BaseTraceInstance):
                 end_time_ns=_datetime_to_ns(trace_info.end_time),
                 trace_id=trace_id,
                 store_key=workflow_store_key,
+                parent_key=trace_key if trace_info.message_id else None,
                 status=_status_from_error(trace_info.error),
             )
 
@@ -115,7 +117,7 @@ class DatadogDataTrace(BaseTraceInstance):
             attrs = span_builder.build_message_attrs(trace_info)
             trace_key = f"message:{trace_info.message_id}"
             self.trace_client.add_span(
-                name="chat",
+                name=str(attrs.get(semconv.OPERATION_NAME, "chat")),
                 attributes=attrs,
                 start_time_ns=_datetime_to_ns(trace_info.start_time),
                 end_time_ns=_datetime_to_ns(trace_info.end_time),
@@ -202,7 +204,7 @@ class DatadogDataTrace(BaseTraceInstance):
             app_id=app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
-        return repository.get_by_workflow_run(workflow_run_id=trace_info.workflow_run_id)
+        return repository.get_by_workflow_execution(workflow_execution_id=trace_info.workflow_run_id)
 
     def api_check(self) -> bool:
         return self.trace_client.api_check()
