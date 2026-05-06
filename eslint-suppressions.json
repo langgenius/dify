@@ -155,9 +155,6 @@
     }
   },
   "web/app/account/(commonLayout)/account-page/email-change-modal.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -1824,11 +1821,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/tag-management/__tests__/panel.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/base/tag-management/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -2356,11 +2348,6 @@
   },
   "web/app/components/datasets/hit-testing/index.tsx": {
     "react/unsupported-syntax": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/list/dataset-card/hooks/use-dataset-card-state.ts": {
-    "react/set-state-in-effect": {
       "count": 1
     }
   },
