@@ -24,10 +24,9 @@ describe('ScoreThresholdItem', () => {
     })
 
     it('should render tooltip trigger', () => {
-      const { container } = render(<ScoreThresholdItem {...defaultProps} />)
+      render(<ScoreThresholdItem {...defaultProps} />)
 
-      // Tooltip trigger icon should be rendered
-      expect(container.querySelector('[data-state]')).toBeInTheDocument()
+      expect(screen.getByLabelText('appDebug.datasetConfig.score_thresholdTip')).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {

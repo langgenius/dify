@@ -137,7 +137,7 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    expect(screen.getByText('importFromDSL'))!.toBeInTheDocument()
+    expect(screen.getByText('importApp'))!.toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
@@ -161,7 +161,7 @@ describe('CreateFromDSLModal', () => {
     })
     expect(screen.getByPlaceholderText('importFromDSLUrlPlaceholder'))!.toBeInTheDocument()
 
-    const closeTrigger = screen.getByText('importFromDSL').parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
+    const closeTrigger = screen.getByText('importApp').parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
     fireEvent.click(closeTrigger)
     expect(handleClose).toHaveBeenCalledTimes(1)
   })

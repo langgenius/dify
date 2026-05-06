@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { UserProfile } from '@/service/workflow-comment'
+import type { UserProfile } from '@/contract/console/workflow-comment'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import EnterKey from '@/app/components/base/icons/src/public/common/EnterKey'
 import { useParams } from '@/next/navigation'
-import { fetchMentionableUsers } from '@/service/workflow-comment'
+import { consoleClient } from '@/service/client'
 import { useStore, useWorkflowStore } from '../store'
 
 type MentionInputProps = {
@@ -37,6 +37,8 @@ type MentionInputProps = {
   isEditing?: boolean
   autoFocus?: boolean
 }
+
+const EMPTY_USERS: UserProfile[] = []
 
 const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   value,
@@ -66,7 +68,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   const mentionUsersFromStore = useStore(state => (
     appId ? state.mentionableUsersCache[appId] : undefined
   ))
-  const mentionUsers = mentionUsersFromStore ?? []
+  const mentionUsers = useMemo(() => mentionUsersFromStore ?? EMPTY_USERS, [mentionUsersFromStore])
 
   const [showMentionDropdown, setShowMentionDropdown] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
@@ -163,8 +165,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
     state.setMentionableUsersLoading(appId, true)
     try {
-      const users = await fetchMentionableUsers(appId)
-      workflowStore.getState().setMentionableUsersCache(appId, users)
+      const response = await consoleClient.workflowComments.mentionUsers({
+        params: { appId },
+      })
+      workflowStore.getState().setMentionableUsersCache(appId, response.users)
     }
     catch (error) {
       console.error('Failed to load mentionable users:', error)
@@ -495,14 +499,17 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   }, [value, resetMentionState])
 
   useEffect(() => {
-    if (autoFocus && textareaRef.current) {
-      const textarea = textareaRef.current
-      setTimeout(() => {
-        textarea.focus()
-        const length = textarea.value.length
-        textarea.setSelectionRange(length, length)
-      }, 0)
-    }
+    if (!autoFocus || !textareaRef.current)
+      return
+
+    const textarea = textareaRef.current
+    const timeout = window.setTimeout(() => {
+      textarea.focus()
+      const length = textarea.value.length
+      textarea.setSelectionRange(length, length)
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
   }, [autoFocus])
 
   return (

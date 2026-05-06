@@ -29,6 +29,7 @@ import {
 } from 'lexical'
 import * as React from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { VAR_REFERENCE_CHILD_POPUP_CLASS_NAME } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
@@ -926,6 +927,47 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
 
       expect(screen.queryByText('common.promptEditor.context.item.title')).toBeInTheDocument()
 
+      vi.useRealTimers()
+    })
+
+    it('does not hide the menu when focus moves into a variable child popup', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      render((
+        <MinimalEditor
+          triggerString="/"
+          workflowVariableBlock={makeWorkflowVariableBlock({}, [
+            makeWorkflowVarNode('node-1', 'Node 1', [
+              makeWorkflowNodeVar('payload', VarType.object, [makeWorkflowNodeVar('child', VarType.string)]),
+            ]),
+          ])}
+          captures={captures}
+        />
+      ))
+
+      const editor = await waitForEditor(captures)
+      await setEditorText(editor, '/', true)
+      expect(await screen.findByText('payload')).toBeInTheDocument()
+
+      vi.useFakeTimers()
+
+      const popupTarget = document.createElement('button')
+      const popup = document.createElement('div')
+      popup.classList.add(VAR_REFERENCE_CHILD_POPUP_CLASS_NAME)
+      popup.appendChild(popupTarget)
+      document.body.appendChild(popup)
+
+      act(() => {
+        editor.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur-sm', { relatedTarget: popupTarget }))
+      })
+
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+
+      expect(screen.queryByText('payload')).toBeInTheDocument()
+
+      popup.remove()
       vi.useRealTimers()
     })
   })

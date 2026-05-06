@@ -36,18 +36,6 @@ class _FakeSession:
 
     def __init__(self, mapping: dict[str, Any]):
         self._mapping = mapping
-        self._model_name: str | None = None
-
-    def query(self, model):
-        self._model_name = model.__name__
-        return self
-
-    def where(self, *args, **kwargs):
-        return self
-
-    def first(self):
-        assert self._model_name is not None
-        return self._mapping.get(self._model_name)
 
     def get(self, model, ident):
         return self._mapping.get(model.__name__)

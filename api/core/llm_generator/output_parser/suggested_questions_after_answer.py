@@ -10,7 +10,14 @@ logger = logging.getLogger(__name__)
 
 class SuggestedQuestionsAfterAnswerOutputParser:
     def __init__(self, instruction_prompt: str | None = None) -> None:
-        self._instruction_prompt = instruction_prompt or DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
+        self._instruction_prompt = self._build_instruction_prompt(instruction_prompt)
+
+    @staticmethod
+    def _build_instruction_prompt(instruction_prompt: str | None) -> str:
+        if not instruction_prompt or not instruction_prompt.strip():
+            return DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
+
+        return f'{instruction_prompt}\nYou must output a JSON array like ["question1", "question2", "question3"].'
 
     def get_format_instructions(self) -> str:
         return self._instruction_prompt

@@ -2,12 +2,12 @@ import type { PluginPayload } from '../types'
 import type { AddApiKeyButtonProps } from './add-api-key-button'
 import type { AddOAuthButtonProps } from './add-oauth-button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import AddApiKeyButton from './add-api-key-button'
 import AddOAuthButton from './add-oauth-button'
 
@@ -79,8 +79,11 @@ const Authorize = ({
 
     if (notAllowCustomCredential) {
       return (
-        <Tooltip popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}>
-          {Item}
+        <Tooltip>
+          <TooltipTrigger render={Item} />
+          <TooltipContent>
+            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+          </TooltipContent>
         </Tooltip>
       )
     }
@@ -100,8 +103,11 @@ const Authorize = ({
 
     if (notAllowCustomCredential) {
       return (
-        <Tooltip popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}>
-          {Item}
+        <Tooltip>
+          <TooltipTrigger render={Item} />
+          <TooltipContent>
+            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+          </TooltipContent>
         </Tooltip>
       )
     }

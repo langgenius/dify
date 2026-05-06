@@ -4,10 +4,10 @@ import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
 import Inspect from 'vite-plugin-inspect'
 import { defineConfig } from 'vite-plus'
-import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector'
-import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr'
-import { getRootClientInjectTarget } from './plugins/vite/inject-target'
-import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test'
+import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector.ts'
+import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
+import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
+import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test.ts'
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI

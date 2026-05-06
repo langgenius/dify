@@ -13,7 +13,7 @@ permissions:
 jobs:
   autofix:
     if: github.repository == 'langgenius/dify'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - name: Complete merge group check
         if: github.event_name == 'merge_group'
@@ -43,7 +43,6 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
-            .npmrc
             .nvmrc
       - name: Check api inputs
         if: github.event_name != 'merge_group'
@@ -114,7 +113,7 @@ jobs:
           find . -name "*.py.bak" -type f -delete
 
       - name: Setup web environment
-        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
+        if: github.event_name != 'merge_group'
         uses: ./.github/actions/setup-web
 
       - name: ESLint autofix

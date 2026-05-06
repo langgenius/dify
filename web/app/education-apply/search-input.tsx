@@ -77,6 +77,7 @@ const SearchInput = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
+        nativeButton={false}
         render={(
           <Input
             className="w-full"
@@ -86,7 +87,7 @@ const SearchInput = ({
           />
         )}
       />
-      {!!schools.length && !!value && (
+      {open && !!schools.length && !!value && (
         <PopoverContent
           placement="bottom"
           sideOffset={4}

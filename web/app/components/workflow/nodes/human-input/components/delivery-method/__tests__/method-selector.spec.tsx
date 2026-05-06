@@ -67,7 +67,7 @@ describe('human-input/delivery-method/method-selector', () => {
     })
     expect(handleShowUpgradeTip).not.toHaveBeenCalled()
     expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.contactTip1')).toBeInTheDocument()
-    expect(screen.getByRole('tooltip')).toHaveTextContent('nodes.humanInput.deliveryMethod.contactTip2')
+    expect(screen.getByText('nodes.humanInput.deliveryMethod.contactTip2')).toBeInTheDocument()
   })
 
   it('should disable webapp in trigger mode and show added states without creating duplicates', () => {

@@ -1,6 +1,6 @@
 import type { ShortcutMapping } from './test-run-menu-helpers'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useState } from 'react'
+import { forwardRef, isValidElement, useCallback, useImperativeHandle, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { OptionRow, SingleOptionTrigger, useShortcutMenu } from './test-run-menu-helpers'
 
@@ -145,9 +145,18 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
       open={open}
       onOpenChange={setOpen}
     >
-      <DropdownMenuTrigger render={<div style={{ userSelect: 'none' }} />}>
-        {children}
-      </DropdownMenuTrigger>
+      {isValidElement(children)
+        ? (
+            <DropdownMenuTrigger
+              render={children}
+              style={{ userSelect: 'none' }}
+            />
+          )
+        : (
+            <DropdownMenuTrigger style={{ userSelect: 'none' }}>
+              {children}
+            </DropdownMenuTrigger>
+          )}
       <DropdownMenuContent
         placement="bottom-start"
         sideOffset={8}

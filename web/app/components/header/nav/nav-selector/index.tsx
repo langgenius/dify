@@ -1,6 +1,6 @@
 'use client'
 import type { AppIconType, AppModeEnum } from '@/types/app'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
@@ -8,7 +8,7 @@ import {
   RiArrowRightSLine,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
-import { Fragment, useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
@@ -36,6 +36,75 @@ export type INavSelectorProps = {
   onCreate: (state: string) => void
   onLoadMore?: () => void
   isLoadingMore?: boolean
+}
+
+type AppCreateMenuProps = {
+  createText: string
+  startFromBlankText: string
+  startFromTemplateText: string
+  importDSLText: string
+  onCreate: (state: string) => void
+}
+
+const AppCreateMenu = ({
+  createText,
+  startFromBlankText,
+  startFromTemplateText,
+  importDSLText,
+  onCreate,
+}: AppCreateMenuProps) => {
+  const [open, setOpen] = useState(false)
+
+  const handleCreate = (state: string) => {
+    setOpen(false)
+    onCreate(state)
+  }
+
+  return (
+    <div className="relative h-full w-full" onMouseLeave={() => setOpen(false)}>
+      <button
+        type="button"
+        className="w-full p-1 text-left"
+        onClick={() => setOpen(value => !value)}
+        onMouseEnter={() => setOpen(true)}
+      >
+        <div className={cn(
+          'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover',
+          open && 'bg-state-base-hover!',
+        )}
+        >
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
+            <RiAddLine className="h-4 w-4 text-text-primary" />
+          </div>
+          <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>
+          <RiArrowRightSLine className="h-3.5 w-3.5 shrink-0 text-text-primary" />
+        </div>
+      </button>
+      {open && (
+        <div
+          className="absolute top-[3px] right-[-198px] z-10 min-w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg"
+          onMouseEnter={() => setOpen(true)}
+        >
+          <div className="p-1">
+            <button type="button" className={cn('flex w-full cursor-pointer items-center rounded-lg px-3 py-[6px] text-left font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => handleCreate('blank')}>
+              <FilePlus01 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
+              {startFromBlankText}
+            </button>
+            <button type="button" className={cn('flex w-full cursor-pointer items-center rounded-lg px-3 py-[6px] text-left font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => handleCreate('template')}>
+              <FilePlus02 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
+              {startFromTemplateText}
+            </button>
+          </div>
+          <div className="border-t border-divider-regular p-1">
+            <button type="button" className={cn('flex w-full cursor-pointer items-center rounded-lg px-3 py-[6px] text-left font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => handleCreate('dsl')}>
+              <FileArrow01 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
+              {importDSLText}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore, isLoadingMore }: INavSelectorProps) => {
@@ -72,7 +141,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
             className="
               absolute right-0 -left-11 mt-1.5 w-60 max-w-80
               origin-top-right divide-y divide-divider-regular rounded-lg bg-components-panel-bg-blur
-              shadow-lg
+              shadow-lg outline-none
             "
           >
             <div className="overflow-auto px-1 py-1" style={{ maxHeight: '50vh' }} onScroll={handleScroll}>
@@ -130,56 +199,13 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
               </MenuItem>
             )}
             {isApp && isCurrentWorkspaceEditor && (
-              <Menu as="div" className="relative h-full w-full">
-                {({ open }) => (
-                  <>
-                    <MenuButton className="w-full p-1">
-                      <div className={cn(
-                        'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover',
-                        open && 'bg-state-base-hover!',
-                      )}
-                      >
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
-                          <RiAddLine className="h-4 w-4 text-text-primary" />
-                        </div>
-                        <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>
-                        <RiArrowRightSLine className="h-3.5 w-3.5 shrink-0 text-text-primary" />
-                      </div>
-                    </MenuButton>
-                    <Transition
-                      as={Fragment}
-                      enter="transition ease-out duration-100"
-                      enterFrom="transform opacity-0 scale-95"
-                      enterTo="transform opacity-100 scale-100"
-                      leave="transition ease-in duration-75"
-                      leaveFrom="transform opacity-100 scale-100"
-                      leaveTo="transform opacity-0 scale-95"
-                    >
-                      <MenuItems className={cn(
-                        'absolute top-[3px] right-[-198px] z-10 min-w-[200px] rounded-lg bg-components-panel-bg-blur shadow-lg',
-                      )}
-                      >
-                        <div className="p-1">
-                          <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('blank')}>
-                            <FilePlus01 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
-                            {t('newApp.startFromBlank', { ns: 'app' })}
-                          </div>
-                          <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('template')}>
-                            <FilePlus02 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
-                            {t('newApp.startFromTemplate', { ns: 'app' })}
-                          </div>
-                        </div>
-                        <div className="border-t border-divider-regular p-1">
-                          <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('dsl')}>
-                            <FileArrow01 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
-                            {t('importDSL', { ns: 'app' })}
-                          </div>
-                        </div>
-                      </MenuItems>
-                    </Transition>
-                  </>
-                )}
-              </Menu>
+              <AppCreateMenu
+                createText={createText}
+                startFromBlankText={t('newApp.startFromBlank', { ns: 'app' })}
+                startFromTemplateText={t('newApp.startFromTemplate', { ns: 'app' })}
+                importDSLText={t('importDSL', { ns: 'app' })}
+                onCreate={onCreate}
+              />
             )}
           </MenuItems>
         </>

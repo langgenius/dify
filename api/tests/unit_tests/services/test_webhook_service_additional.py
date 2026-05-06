@@ -17,23 +17,6 @@ from services.trigger import webhook_service as service_module
 from services.trigger.webhook_service import WebhookService
 
 
-class _FakeQuery:
-    def __init__(self, result: Any) -> None:
-        self._result = result
-
-    def where(self, *args: Any, **kwargs: Any) -> "_FakeQuery":
-        return self
-
-    def filter(self, *args: Any, **kwargs: Any) -> "_FakeQuery":
-        return self
-
-    def order_by(self, *args: Any, **kwargs: Any) -> "_FakeQuery":
-        return self
-
-    def first(self) -> Any:
-        return self._result
-
-
 @pytest.fixture
 def flask_app() -> Flask:
     return Flask(__name__)

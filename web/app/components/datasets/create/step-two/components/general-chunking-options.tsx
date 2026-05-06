@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import type { PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiAlertFill,
   RiSearchEyeLine,
@@ -10,7 +11,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { IS_CE_EDITION } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
@@ -191,7 +191,18 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     onSelect={onDocLanguageChange}
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
-                  <Tooltip popupContent={t('stepTwo.QATip', { ns: 'datasetCreation' })} />
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={(
+                        <span className="flex h-3.5 w-3.5 shrink-0 p-px">
+                          <span aria-hidden className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" />
+                        </span>
+                      )}
+                    />
+                    <TooltipContent>
+                      {t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
                 {currentDocForm === ChunkingMode.qa && (
                   <div

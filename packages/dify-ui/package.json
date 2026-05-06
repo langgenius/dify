@@ -5,10 +5,6 @@
   "private": true,
   "exports": {
     "./styles.css": "./src/styles/styles.css",
-    "./tailwind-preset": {
-      "types": "./src/tailwind-preset.ts",
-      "import": "./src/tailwind-preset.ts"
-    },
     "./cn": {
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"

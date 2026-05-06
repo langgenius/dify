@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -129,7 +130,7 @@ def test_set_span_status():
             return "SilentErrorRepr"
 
     span.reset_mock()
-    set_span_status(span, SilentError())
+    set_span_status(span, cast(Exception | str | None, SilentError()))
     assert span.add_event.call_args[1]["attributes"][OTELSpanAttributes.EXCEPTION_MESSAGE] == "SilentErrorRepr"
 
 
