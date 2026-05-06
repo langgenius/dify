@@ -1,4 +1,4 @@
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from '../type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, DatadogConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from '../type'
 import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -17,7 +17,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: vi.fn(),
 }))
 
-type ProviderPayload = AliyunConfig | ArizeConfig | DatabricksConfig | LangFuseConfig | LangSmithConfig | MLflowConfig | OpikConfig | PhoenixConfig | TencentConfig | WeaveConfig
+type ProviderPayload = AliyunConfig | ArizeConfig | DatabricksConfig | DatadogConfig | LangFuseConfig | LangSmithConfig | MLflowConfig | OpikConfig | PhoenixConfig | TencentConfig | WeaveConfig
 
 const validConfigs = {
   [TracingProvider.arize]: {
@@ -72,6 +72,11 @@ const validConfigs = {
     client_secret: 'client-secret',
     personal_access_token: 'personal-access-token',
   },
+  [TracingProvider.datadog]: {
+    api_key: 'datadog-api-key',
+    site: 'datadoghq.com',
+    service_name: 'dify_app',
+  },
   [TracingProvider.tencent]: {
     token: 'tencent-token',
     endpoint: 'https://your-region.cls.tencentcs.com',
@@ -89,6 +94,7 @@ const providerFieldLabels = [
   [TracingProvider.aliyun, ['License Key', 'Endpoint', 'App Name']],
   [TracingProvider.mlflow, ['app.tracing.configProvider.trackingUri', 'app.tracing.configProvider.experimentId', 'app.tracing.configProvider.username', 'app.tracing.configProvider.password']],
   [TracingProvider.databricks, ['app.tracing.configProvider.experimentId', 'app.tracing.configProvider.databricksHost', 'app.tracing.configProvider.clientId', 'app.tracing.configProvider.clientSecret', 'app.tracing.configProvider.personalAccessToken']],
+  [TracingProvider.datadog, ['API Key', 'app.tracing.configProvider.site', 'app.tracing.configProvider.serviceName']],
   [TracingProvider.tencent, ['Token', 'Endpoint', 'Service Name']],
 ] as const
 
@@ -115,6 +121,7 @@ const invalidConfigCases: Array<{
   { provider: TracingProvider.mlflow, payload: { ...validConfigs[TracingProvider.mlflow], tracking_uri: '' }, missingField: 'Tracking URI' },
   { provider: TracingProvider.databricks, payload: { ...validConfigs[TracingProvider.databricks], experiment_id: '' }, missingField: 'Experiment ID' },
   { provider: TracingProvider.databricks, payload: { ...validConfigs[TracingProvider.databricks], host: '' }, missingField: 'Host' },
+  { provider: TracingProvider.datadog, payload: { ...validConfigs[TracingProvider.datadog], api_key: '' }, missingField: 'API Key' },
   { provider: TracingProvider.tencent, payload: { ...validConfigs[TracingProvider.tencent], token: '' }, missingField: 'Token' },
   { provider: TracingProvider.tencent, payload: { ...validConfigs[TracingProvider.tencent], endpoint: '' }, missingField: 'Endpoint' },
   { provider: TracingProvider.tencent, payload: { ...validConfigs[TracingProvider.tencent], service_name: '' }, missingField: 'Service Name' },
@@ -139,6 +146,7 @@ const renderConfigButton = () => {
       aliyunConfig={null}
       mlflowConfig={null}
       databricksConfig={null}
+      datadogConfig={null}
       tencentConfig={null}
       onConfigUpdated={vi.fn()}
       onConfigRemoved={vi.fn()}
