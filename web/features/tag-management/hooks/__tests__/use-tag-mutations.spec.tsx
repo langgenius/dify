@@ -14,16 +14,16 @@ const {
   bindTag,
   createTagMutationOptions,
   deleteTagMutationOptions,
-  listKey,
-  listQueryKey,
+  listQueryOptions,
   unbindTag,
   updateTagMutationOptions,
 } = vi.hoisted(() => ({
   bindTag: vi.fn(),
   createTagMutationOptions: vi.fn(),
   deleteTagMutationOptions: vi.fn(),
-  listKey: vi.fn(() => ['console', 'tags', 'list']),
-  listQueryKey: vi.fn((options: { input: { query: { type: string } } }) => ['console', 'tags', 'list', options.input.query.type]),
+  listQueryOptions: vi.fn((options: { input: { query: { type: string } } }) => ({
+    queryKey: ['console', 'tags', 'list', options.input.query.type],
+  })),
   unbindTag: vi.fn(),
   updateTagMutationOptions: vi.fn(),
 }))
@@ -47,8 +47,7 @@ vi.mock('@/service/client', () => ({
         mutationOptions: deleteTagMutationOptions,
       },
       list: {
-        key: listKey,
-        queryKey: listQueryKey,
+        queryOptions: listQueryOptions,
       },
     },
   },
@@ -132,7 +131,7 @@ describe('useTagMutations', () => {
         appTag({ id: 'created-tag', name: 'Created', binding_count: 0 }),
         appTag({ id: 'existing-tag', name: 'Existing' }),
       ])
-      expect(listQueryKey).toHaveBeenCalledWith({
+      expect(listQueryOptions).toHaveBeenCalledWith({
         input: {
           query: {
             type: 'app',
@@ -159,8 +158,8 @@ describe('useTagMutations', () => {
   })
 
   describe('Update Tag', () => {
-    it('should rename only the matching tag across tag list caches', async () => {
-      const { queryClient, result } = renderMutationHook(() => useUpdateTagMutation())
+    it('should rename only the matching tag in the matching tag list cache', async () => {
+      const { queryClient, result } = renderMutationHook(() => useUpdateTagMutation('app'))
       const appCacheKey = ['console', 'tags', 'list', 'app']
       const knowledgeCacheKey = ['console', 'tags', 'list', 'knowledge']
       queryClient.setQueryData<Tag[]>(appCacheKey, [
@@ -187,14 +186,14 @@ describe('useTagMutations', () => {
         appTag({ id: 'tag-2', name: 'Unchanged' }),
       ])
       expect(queryClient.getQueryData<Tag[]>(knowledgeCacheKey)).toEqual([
-        appTag({ id: 'tag-1', name: 'Renamed', type: 'knowledge' }),
+        appTag({ id: 'tag-1', name: 'Old knowledge name', type: 'knowledge' }),
       ])
     })
   })
 
   describe('Delete Tag', () => {
-    it('should remove the deleted tag from every tag list cache', async () => {
-      const { queryClient, result } = renderMutationHook(() => useDeleteTagMutation())
+    it('should remove the deleted tag from the matching tag list cache', async () => {
+      const { queryClient, result } = renderMutationHook(() => useDeleteTagMutation('app'))
       const cacheKey = ['console', 'tags', 'list', 'app']
       queryClient.setQueryData<Tag[]>(cacheKey, [
         appTag({ id: 'tag-1' }),
@@ -245,7 +244,7 @@ describe('useTagMutations', () => {
       })
       await waitFor(() => {
         expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['console', 'tags', 'list'],
+          queryKey: ['console', 'tags', 'list', 'app'],
         })
       })
     })
@@ -267,7 +266,7 @@ describe('useTagMutations', () => {
       expect(unbindTag).not.toHaveBeenCalled()
       await waitFor(() => {
         expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['console', 'tags', 'list'],
+          queryKey: ['console', 'tags', 'list', 'knowledge'],
         })
       })
     })

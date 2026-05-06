@@ -1,35 +1,35 @@
-import type { Tag, TagType } from '@/contract/console/tags'
+import type { TagType } from '@/contract/console/tags'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
+
+const getTagsListQueryOptions = (tagType: TagType) => consoleQuery.tags.list.queryOptions({
+  input: {
+    query: {
+      type: tagType,
+    },
+  },
+})
 
 export const useCreateTagMutation = () => {
   const queryClient = useQueryClient()
 
   return useMutation(consoleQuery.tags.create.mutationOptions({
     onSuccess: (tag) => {
-      queryClient.setQueryData<Tag[]>(
-        consoleQuery.tags.list.queryKey({
-          input: {
-            query: {
-              type: tag.type,
-            },
-          },
-        }),
+      queryClient.setQueryData(
+        getTagsListQueryOptions(tag.type).queryKey,
         oldTags => oldTags ? [tag, ...oldTags] : oldTags,
       )
     },
   }))
 }
 
-export const useUpdateTagMutation = () => {
+export const useUpdateTagMutation = (tagType: TagType) => {
   const queryClient = useQueryClient()
 
   return useMutation(consoleQuery.tags.update.mutationOptions({
     onSuccess: (_data, variables) => {
-      queryClient.setQueriesData<Tag[]>(
-        {
-          queryKey: consoleQuery.tags.list.key(),
-        },
+      queryClient.setQueryData(
+        getTagsListQueryOptions(tagType).queryKey,
         oldTags => oldTags?.map(tag => tag.id === variables.params.tagId
           ? {
               ...tag,
@@ -41,15 +41,13 @@ export const useUpdateTagMutation = () => {
   }))
 }
 
-export const useDeleteTagMutation = () => {
+export const useDeleteTagMutation = (tagType: TagType) => {
   const queryClient = useQueryClient()
 
   return useMutation(consoleQuery.tags.delete.mutationOptions({
     onSuccess: (_data, variables) => {
-      queryClient.setQueriesData<Tag[]>(
-        {
-          queryKey: consoleQuery.tags.list.key(),
-        },
+      queryClient.setQueryData(
+        getTagsListQueryOptions(tagType).queryKey,
         oldTags => oldTags?.filter(tag => tag.id !== variables.params.tagId),
       )
     },
@@ -95,8 +93,10 @@ export const useApplyTagBindingsMutation = () => {
 
       return Promise.all(operations)
     },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: consoleQuery.tags.list.key() })
+    onSettled: (_data, _error, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: getTagsListQueryOptions(variables.type).queryKey,
+      })
     },
   })
 }
