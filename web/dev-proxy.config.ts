@@ -39,12 +39,10 @@ export default {
       cookieRewrite: difyCookieRewrite,
     },
     {
-      paths: '/console/api',
-      target: DEV_PROXY_TARGET,
-      cookieRewrite: difyCookieRewrite,
-    },
-    {
-      paths: '/api',
+      paths: [
+        '/console/api',
+        '/api',
+      ],
       target: DEV_PROXY_TARGET,
       cookieRewrite: difyCookieRewrite,
     },
