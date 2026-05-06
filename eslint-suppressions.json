@@ -3642,7 +3642,7 @@
   },
   "web/app/components/workflow/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 26
+      "count": 25
     }
   },
   "web/app/components/workflow/hooks/use-checklist.ts": {
