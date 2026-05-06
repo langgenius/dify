@@ -278,7 +278,6 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {showVariableSelector && (
               <VarReferencePicker
-                zIndex={1001}
                 className="h-8 grow"
                 readonly={false}
                 isShowNodeName

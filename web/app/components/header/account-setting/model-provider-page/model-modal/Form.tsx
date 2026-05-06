@@ -494,7 +494,6 @@ function Form<
             {infotipContent}
           </div>
           <VarReferencePicker
-            zIndex={1001}
             readonly={false}
             isShowNodeName
             nodeId={nodeId || ''}

@@ -78,7 +78,6 @@ type ItemProps = {
   isLoopVar?: boolean
   isFlat?: boolean
   isInCodeGeneratorInstructionEditor?: boolean
-  zIndex?: number
   className?: string
   preferSchemaType?: boolean
   isSelected?: boolean
@@ -97,7 +96,6 @@ const Item: FC<ItemProps> = ({
   isLoopVar,
   isFlat,
   isInCodeGeneratorInstructionEditor,
-  zIndex,
   className,
   preferSchemaType,
   isSelected,
@@ -265,11 +263,6 @@ const Item: FC<ItemProps> = ({
         placement="left-start"
         sideOffset={0}
         popupClassName={cn(VAR_REFERENCE_CHILD_POPUP_CLASS_NAME, 'border-none bg-transparent p-0 shadow-none backdrop-blur-none')}
-        positionerProps={{
-          style: {
-            zIndex: zIndex || 100,
-          },
-        }}
       >
         {(isStructureOutput || isObj) && (
           <PickerStructurePanel
@@ -297,7 +290,6 @@ type Props = {
   maxHeightClass?: string
   onClose?: () => void
   onBlur?: () => void
-  zIndex?: number
   isInCodeGeneratorInstructionEditor?: boolean
   showManageInputField?: boolean
   onManageInputField?: () => void
@@ -315,7 +307,6 @@ const VarReferenceVars: FC<Props> = ({
   maxHeightClass,
   onClose,
   onBlur,
-  zIndex,
   isInCodeGeneratorInstructionEditor,
   showManageInputField,
   onManageInputField,
@@ -490,7 +481,6 @@ const VarReferenceVars: FC<Props> = ({
                         isLoopVar={item.isLoop}
                         isFlat={item.isFlat}
                         isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
-                        zIndex={zIndex}
                         preferSchemaType={preferSchemaType}
                         isSelected={effectiveSelectedIndex === optionIndex}
                         onActivate={() => setSelectedIndex(optionIndex)}

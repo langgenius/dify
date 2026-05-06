@@ -65,7 +65,6 @@ const FormInputItem: FC<Props> = ({
   schema,
   value,
   onChange,
-  inPanel,
   currentTool,
   currentProvider,
   showManageInputField,
@@ -413,7 +412,6 @@ const FormInputItem: FC<Props> = ({
       )}
       {showVariableSelector && (
         <VarReferencePicker
-          zIndex={inPanel ? 1000 : undefined}
           className="h-8 grow"
           readonly={readOnly}
           isShowNodeName
