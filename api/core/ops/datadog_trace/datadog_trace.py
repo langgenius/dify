@@ -28,7 +28,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import DifyCoreRepositoryFactory
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
+from graphon.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from extensions.ext_database import db
 from models import WorkflowNodeExecutionTriggeredFrom
 

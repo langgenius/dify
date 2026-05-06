@@ -8,8 +8,8 @@ from core.ops.datadog_trace import semconv
 from core.ops.datadog_trace import span_builder
 from core.ops.entities.trace_entity import DatasetRetrievalTraceInfo, MessageTraceInfo, WorkflowTraceInfo
 from core.rag.models.document import Document
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecution
-from dify_graph.nodes import BuiltinNodeTypes
+from graphon.entities.workflow_node_execution import WorkflowNodeExecution
+from graphon.nodes import BuiltinNodeTypes
 
 
 class TestOTelMessageFormat:

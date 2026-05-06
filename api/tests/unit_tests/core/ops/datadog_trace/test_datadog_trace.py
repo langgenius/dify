@@ -12,7 +12,7 @@ from core.ops.datadog_trace.datadog_trace import (
 )
 from core.ops.entities.config_entity import DatadogConfig
 from core.ops.entities.trace_entity import DatasetRetrievalTraceInfo, MessageTraceInfo, ToolTraceInfo, WorkflowTraceInfo
-from dify_graph.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 
 
 @pytest.fixture
