@@ -34,7 +34,7 @@ describe('dev proxy server', () => {
     // Assert
     expect(targets.consoleApiTarget).toBe('https://console.example.com')
     expect(targets.publicApiTarget).toBe('https://console.example.com')
-    expect(targets.enterpriseApiTarget).toBe('https://enterprise-platform-dev.dify.dev')
+    expect(targets.enterpriseApiTarget).toBeUndefined()
   })
 
   // Scenario: target paths should not be duplicated when the incoming route already includes them.
