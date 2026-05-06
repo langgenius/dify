@@ -12,8 +12,6 @@ handling is never silently skipped.
 """
 
 import logging
-from collections.abc import Generator
-from datetime import UTC, datetime
 from typing import final, override
 
 from core.app.llm import deduct_llm_quota_for_model, ensure_llm_quota_available_for_model
@@ -21,13 +19,7 @@ from core.errors.error import QuotaExceededError
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.graph_engine.entities.commands import AbortCommand, CommandType
 from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import (
-    GraphEngineEvent,
-    GraphNodeEventBase,
-    NodeRunFailedEvent,
-    NodeRunStartedEvent,
-    NodeRunSucceededEvent,
-)
+from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 
@@ -130,70 +122,23 @@ class LLMQuotaLayer(GraphEngineLayer):
 
     def _abort_before_node_run(self, *, node: Node, reason: str, error_type: str) -> None:
         self._set_stop_event(node)
-        self._force_node_failure_to_abort(node)
-        self._block_current_node_run(node=node, reason=reason, error_type=error_type)
+        node.node_data.error_strategy = None
+        node.node_data.retry_config.retry_enabled = False
+
+        def quota_aborted_run() -> NodeRunResult:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=reason,
+                error_type=error_type,
+            )
+
+        node._run = quota_aborted_run  # type: ignore[method-assign]
         self._send_abort_command(reason=reason)
 
     def _abort_for_missing_model_identity(self, *, node: Node, reason: str) -> None:
         self._set_stop_event(node)
         self._send_abort_command(reason=reason)
         logger.error("LLM quota handling aborted, node_id=%s, reason=%s", node.id, reason)
-
-    @staticmethod
-    def _force_node_failure_to_abort(node: Node) -> None:
-        node_data = getattr(node, "node_data", None)
-        if node_data is None:
-            return
-
-        # Quota aborts must not be converted into retry, default-value, or fail-branch execution.
-        try:
-            if hasattr(node_data, "error_strategy"):
-                node_data.error_strategy = None
-
-            retry_config = getattr(node_data, "retry_config", None)
-            if retry_config is not None and hasattr(retry_config, "retry_enabled"):
-                retry_config.retry_enabled = False
-        except Exception:
-            logger.warning("Failed to force quota-aborted node into abort strategy, node_id=%s", node.id, exc_info=True)
-
-    @staticmethod
-    def _block_current_node_run(*, node: Node, reason: str, error_type: str) -> None:
-        def blocked_run() -> Generator[GraphNodeEventBase, None, None]:
-            execution_id = node.ensure_execution_id()
-            start_at = datetime.now(UTC).replace(tzinfo=None)
-            start_event = NodeRunStartedEvent(
-                id=execution_id,
-                node_id=node.id,
-                node_type=node.node_type,
-                node_title=str(getattr(node, "title", node.id)),
-                in_iteration_id=None,
-                start_at=start_at,
-            )
-            populate_start_event = getattr(node, "populate_start_event", None)
-            if callable(populate_start_event):
-                try:
-                    populate_start_event(start_event)
-                except Exception:
-                    logger.warning("Failed to populate quota-aborted start event, node_id=%s", node.id, exc_info=True)
-
-            yield start_event
-
-            finished_at = datetime.now(UTC).replace(tzinfo=None)
-            yield NodeRunFailedEvent(
-                id=execution_id,
-                node_id=node.id,
-                node_type=node.node_type,
-                start_at=start_at,
-                finished_at=finished_at,
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    error=reason,
-                    error_type=error_type,
-                ),
-                error=reason,
-            )
-
-        object.__setattr__(node, "run", blocked_run)
 
     def _send_abort_command(self, *, reason: str) -> None:
         if not self.command_channel or self._abort_sent:
