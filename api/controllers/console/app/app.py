@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 from datetime import datetime
 from typing import Any, Literal
@@ -8,6 +9,7 @@ from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.helpers import FileInfo
@@ -57,6 +59,7 @@ ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "co
 register_enum_models(console_ns, IconType)
 
 _logger = logging.getLogger(__name__)
+_TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 
 
 class AppListQuery(BaseModel):
@@ -66,22 +69,19 @@ class AppListQuery(BaseModel):
         default="all", description="App mode filter"
     )
     name: str | None = Field(default=None, description="Filter by app name")
-    tag_ids: list[str] | None = Field(default=None, description="Comma-separated tag IDs")
+    tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     is_created_by_me: bool | None = Field(default=None, description="Filter by creator")
 
     @field_validator("tag_ids", mode="before")
     @classmethod
-    def validate_tag_ids(cls, value: str | list[str] | None) -> list[str] | None:
+    def validate_tag_ids(cls, value: list[str] | None) -> list[str] | None:
         if not value:
             return None
 
-        if isinstance(value, str):
-            items = [item.strip() for item in value.split(",") if item.strip()]
-        elif isinstance(value, list):
-            items = [str(item).strip() for item in value if item and str(item).strip()]
-        else:
-            raise TypeError("Unsupported tag_ids type.")
+        if not isinstance(value, list):
+            raise ValueError("Unsupported tag_ids type.")
 
+        items = [str(item).strip() for item in value if item and str(item).strip()]
         if not items:
             return None
 
@@ -89,6 +89,26 @@ class AppListQuery(BaseModel):
             return [str(uuid.UUID(item)) for item in items]
         except ValueError as exc:
             raise ValueError("Invalid UUID format in tag_ids.") from exc
+
+
+def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
+    normalized: dict[str, str | list[str]] = {}
+    indexed_tag_ids: list[tuple[int, str]] = []
+
+    for key in query_args:
+        match = _TAG_IDS_BRACKET_PATTERN.fullmatch(key)
+        if match:
+            indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
+            continue
+
+        value = query_args.get(key)
+        if value is not None:
+            normalized[key] = value
+
+    if indexed_tag_ids:
+        normalized["tag_ids"] = [value for _, value in sorted(indexed_tag_ids)]
+
+    return normalized
 
 
 class CreateAppPayload(BaseModel):
@@ -455,7 +475,7 @@ class AppListApi(Resource):
         """Get app list"""
         current_user, current_tenant_id = current_account_with_tenant()
 
-        args = AppListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
         args_dict = args.model_dump()
 
         # get app list

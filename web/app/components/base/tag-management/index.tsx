@@ -53,7 +53,7 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
         <span className="i-ri-close-line h-4 w-4 text-text-tertiary" data-testid="tag-management-modal-close-button" />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <input className="w-[100px] shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm leading-5 text-text-secondary caret-primary-600 outline-none placeholder:text-text-quaternary focus:border-solid" placeholder={t('tag.addNew', { ns: 'common' }) || ''} autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && createNewTag()} onBlur={createNewTag} />
+        <input className="w-[100px] shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm leading-5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid" placeholder={t('tag.addNew', { ns: 'common' }) || ''} autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && createNewTag()} onBlur={createNewTag} />
         {tagList.map(tag => (<TagItemEditor key={tag.id} tag={tag} />))}
       </div>
     </Modal>

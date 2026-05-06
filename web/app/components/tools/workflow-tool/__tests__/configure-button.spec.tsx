@@ -9,6 +9,8 @@ import WorkflowToolConfigureButton from '../configure-button'
 import WorkflowToolAsModal from '../index'
 import MethodSelector from '../method-selector'
 
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
+
 // Mock Next.js navigation
 const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -83,12 +85,11 @@ vi.mock('@/app/components/base/drawer-plus', () => ({
   },
 }))
 
-// Mock EmojiPicker - simplified for testing
-vi.mock('@/app/components/base/emoji-picker', () => ({
-  default: ({ onSelect, onClose }: { onSelect: (icon: string, background: string) => void, onClose: () => void }) => (
+// Mock EmojiPickerInner - simplified for testing
+vi.mock('@/app/components/base/emoji-picker/Inner', () => ({
+  default: ({ onSelect }: { onSelect: (icon: string, background: string) => void }) => (
     <div data-testid="emoji-picker">
       <button data-testid="select-emoji" onClick={() => onSelect('🚀', '#f0f0f0')}>Select Emoji</button>
-      <button data-testid="close-emoji-picker" onClick={onClose}>Close</button>
     </div>
   ),
 }))
@@ -978,6 +979,7 @@ describe('WorkflowToolAsModal', () => {
 
       // Select emoji
       await user.click(screen.getByTestId('select-emoji'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
 
       // Assert
       const updatedIcon = screen.getByTestId('app-icon')
@@ -1002,7 +1004,7 @@ describe('WorkflowToolAsModal', () => {
 
       expect(screen.getByTestId('emoji-picker'))!.toBeInTheDocument()
 
-      await user.click(screen.getByTestId('close-emoji-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
 
       // Assert
       // Assert
@@ -1501,7 +1503,7 @@ describe('MethodSelector', () => {
 
       // Assert
       // Assert
-      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
 
     it('should display parameter method text when value is llm', () => {
@@ -1562,11 +1564,11 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       // Assert
       // Assert
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
 
     it('should call onChange with llm when parameter option clicked', async () => {
@@ -1580,7 +1582,7 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       const paramOption = screen.getAllByText('tools.createTool.toolInput.methodParameter')[0]
       await user.click(paramOption!)
@@ -1600,7 +1602,7 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       const settingOption = screen.getByText('tools.createTool.toolInput.methodSetting')
       await user.click(settingOption)
@@ -1621,12 +1623,12 @@ describe('MethodSelector', () => {
       render(<MethodSelector {...props} />)
 
       // First click - open
-      await user.click(screen.getByTestId('portal-trigger'))
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      await user.click(screen.getByTestId('popover-trigger'))
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
 
       // Second click - close
-      await user.click(screen.getByTestId('portal-trigger'))
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      await user.click(screen.getByTestId('popover-trigger'))
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
   })
 
@@ -1642,10 +1644,10 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       // Assert - the first option (llm) should have a check icon container
-      const content = screen.getByTestId('portal-content')
+      const content = screen.getByTestId('popover-content')
       expect(content)!.toBeInTheDocument()
     })
 
@@ -1659,10 +1661,10 @@ describe('MethodSelector', () => {
 
       // Act
       render(<MethodSelector {...props} />)
-      await user.click(screen.getByTestId('portal-trigger'))
+      await user.click(screen.getByTestId('popover-trigger'))
 
       // Assert
-      const content = screen.getByTestId('portal-content')
+      const content = screen.getByTestId('popover-content')
       expect(content)!.toBeInTheDocument()
     })
   })

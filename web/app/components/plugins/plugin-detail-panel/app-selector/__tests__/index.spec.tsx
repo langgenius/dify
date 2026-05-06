@@ -15,6 +15,8 @@ import AppSelector from '../index'
 
 // ==================== Mock Setup ====================
 
+const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
+
 // Mock IntersectionObserver globally using class syntax
 let intersectionObserverCallback: IntersectionObserverCallback | null = null
 const mockIntersectionObserver = {
@@ -163,18 +165,35 @@ const getAppDetailData = (appId: string) => {
 }
 
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: mockAppListData,
-    isLoading: mockIsLoading,
-    isFetchingNextPage: mockIsFetchingNextPage,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockHasNextPage,
-  }),
   useAppDetail: (appId: string) => ({
     data: getAppDetailData(appId),
     isFetching: mockAppDetailLoading,
   }),
 }))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      list: {
+        infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
+      },
+    },
+  },
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: mockAppListData,
+      isLoading: mockIsLoading,
+      isFetchingNextPage: mockIsFetchingNextPage,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: mockHasNextPage,
+    }),
+  }
+})
 
 // Allow configurable mock data for useAppWorkflow
 let mockWorkflowData: Record<string, unknown> | undefined | null
@@ -321,6 +340,11 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
       {ui}
     </QueryClientProvider>,
   )
+}
+
+type AppSelectorInfiniteOptions = {
+  input: (pageParam: number) => { query: Record<string, unknown> }
+  getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
 }
 
 // Mock data factories
@@ -1537,6 +1561,22 @@ describe('AppSelector', () => {
     it('should render trigger component', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
       expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
+    })
+
+    it('should configure paged app list query options', () => {
+      renderWithQueryClient(<AppSelector {...defaultProps} />)
+
+      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppSelectorInfiniteOptions
+
+      expect(options.input(4)).toEqual({
+        query: {
+          page: 4,
+          limit: 20,
+          name: '',
+        },
+      })
+      expect(options.getNextPageParam({ has_more: true, page: 4 })).toBe(5)
+      expect(options.getNextPageParam({ has_more: false, page: 4 })).toBeUndefined()
     })
 
     it('should show selected app info when value is provided', () => {

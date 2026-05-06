@@ -32,7 +32,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 
-export type PortalToFollowElemOptions = {
+type PortalToFollowElemOptions = {
   /*
   * top, bottom, left, right
   * start, end. Default is middle

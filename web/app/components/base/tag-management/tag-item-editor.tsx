@@ -124,7 +124,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({ tag }) => {
             </div>
           </>
         )}
-        {isEditing && (<input className="shrink-0 appearance-none caret-primary-600 outline-none placeholder:text-text-quaternary" autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && editTag(tag.id, name)} onBlur={() => editTag(tag.id, name)} />)}
+        {isEditing && (<input className="shrink-0 appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary" autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && editTag(tag.id, name)} onBlur={() => editTag(tag.id, name)} />)}
       </div>
       <AlertDialog open={showRemoveModal} onOpenChange={open => !open && setShowRemoveModal(false)}>
         <AlertDialogContent>

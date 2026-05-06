@@ -1,6 +1,7 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
+import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
 import { accountAvatarContract } from './console/account'
-import { appDeleteContract, workflowOnlineUsersContract } from './console/apps'
+import { appDeleteContract, appListContract, workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -54,11 +55,13 @@ export const marketplaceRouterContract = {
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
 export const consoleRouterContract = {
+  enterprise: enterpriseContract,
   account: {
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
   apps: {
+    list: appListContract,
     deleteApp: appDeleteContract,
     workflowOnlineUsers: workflowOnlineUsersContract,
   },

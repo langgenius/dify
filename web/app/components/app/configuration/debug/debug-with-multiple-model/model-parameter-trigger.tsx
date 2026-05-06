@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { ModelAndParameter } from '../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   DERIVED_MODEL_STATUS_BADGE_I18N,
   DERIVED_MODEL_STATUS_TOOLTIP_I18N,
@@ -132,8 +132,18 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
             <span className={`i-ri-arrow-down-s-line h-3 w-3 ${isEmpty ? 'text-text-accent' : 'text-text-tertiary'}`} />
             {
               !isEmpty && !isActive && statusLabelKey && (
-                <Tooltip popupContent={t((statusTooltipKey || statusLabelKey) as 'modelProvider.selector.incompatible', { ns: 'common' })}>
-                  <span className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]" />
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <span
+                        aria-label={t((statusTooltipKey || statusLabelKey) as 'modelProvider.selector.incompatible', { ns: 'common' })}
+                        className="i-custom-vender-line-alertsAndFeedback-alert-triangle h-4 w-4 text-[#F79009]"
+                      />
+                    )}
+                  />
+                  <TooltipContent>
+                    {t((statusTooltipKey || statusLabelKey) as 'modelProvider.selector.incompatible', { ns: 'common' })}
+                  </TooltipContent>
                 </Tooltip>
               )
             }

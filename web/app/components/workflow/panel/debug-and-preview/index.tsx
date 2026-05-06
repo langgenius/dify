@@ -1,6 +1,7 @@
 import type { StartNodeType } from '../../nodes/start/types'
 
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
@@ -15,7 +16,6 @@ import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import Tooltip from '@/app/components/base/tooltip'
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { useStore } from '@/app/components/workflow/store'
@@ -99,21 +99,31 @@ const DebugAndPreview = () => {
         <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-2 system-xl-semibold text-text-primary">
           <div className="h-8">{t('common.debugAndPreview', { ns: 'workflow' }).toLocaleUpperCase()}</div>
           <div className="flex items-center gap-1">
-            <Tooltip
-              popupContent={t('operation.refresh', { ns: 'common' })}
-            >
-              <ActionButton onClick={() => handleRestartChat()}>
-                <RefreshCcw01 className="h-4 w-4" />
-              </ActionButton>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <ActionButton onClick={() => handleRestartChat()}>
+                    <RefreshCcw01 className="h-4 w-4" />
+                  </ActionButton>
+                )}
+              />
+              <TooltipContent>
+                {t('operation.refresh', { ns: 'common' })}
+              </TooltipContent>
             </Tooltip>
             {visibleVariables.length > 0 && (
               <div className="relative">
-                <Tooltip
-                  popupContent={t('panel.userInputField', { ns: 'workflow' })}
-                >
-                  <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                    <RiEqualizer2Line className="h-4 w-4" />
-                  </ActionButton>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
+                        <RiEqualizer2Line className="h-4 w-4" />
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('panel.userInputField', { ns: 'workflow' })}
+                  </TooltipContent>
                 </Tooltip>
                 {expanded && <div className="absolute right-[5px] bottom-[-17px] z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />}
               </div>

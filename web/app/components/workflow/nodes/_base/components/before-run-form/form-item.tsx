@@ -191,7 +191,7 @@ const FormItem: FC<Props> = ({
               <SelectTrigger className="w-full">
                 {String(value || payload.default || t('placeholder.select', { ns: 'common' }))}
               </SelectTrigger>
-              <SelectContent popupClassName="w-(--anchor-width)">
+              <SelectContent>
                 {(payload.options || []).map(option => (
                   <SelectItem key={option} value={option}>
                     <SelectItemText>{option}</SelectItemText>

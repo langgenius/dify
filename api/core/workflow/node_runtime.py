@@ -501,11 +501,15 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
     @staticmethod
     def _build_tool_runtime_spec(node_data: ToolNodeData) -> _WorkflowToolRuntimeSpec:
+        tool_configurations = dict(node_data.tool_configurations)
+        tool_configurations.update(
+            {name: tool_input.model_dump(mode="python") for name, tool_input in node_data.tool_parameters.items()}
+        )
         return _WorkflowToolRuntimeSpec(
             provider_type=CoreToolProviderType(node_data.provider_type.value),
             provider_id=node_data.provider_id,
             tool_name=node_data.tool_name,
-            tool_configurations=dict(node_data.tool_configurations),
+            tool_configurations=tool_configurations,
             credential_id=node_data.credential_id,
         )
 

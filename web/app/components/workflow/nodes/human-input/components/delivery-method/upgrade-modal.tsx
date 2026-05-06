@@ -1,76 +1,60 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiMailSendFill,
-} from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
-import Modal from '@/app/components/base/modal'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import { UpgradeModal as BaseUpgradeModal } from '@/app/components/base/upgrade-modal'
 import { useModalContextSelector } from '@/context/modal-context'
 
 type UpgradeModalProps = {
-  isShow: boolean
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-const UpgradeModal: React.FC<UpgradeModalProps> = ({
-  isShow,
-  onClose,
-}) => {
+export function UpgradeModal({
+  open,
+  onOpenChange,
+}: UpgradeModalProps) {
   const { t } = useTranslation()
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
+  const handleUpgrade = () => {
+    setShowPricingModal()
+  }
 
   return (
-    <Modal
-      isShow={isShow}
-      onClose={noop}
-      className="relative w-[580px]! max-w-[580px]! p-8!"
-    >
-      <div className="pb-6">
-        <div
-          className={cn(
-            'mb-6 inline-flex rounded-xl border border-divider-regular bg-util-colors-blue-brand-blue-brand-500 p-2',
-          )}
-        >
-          <RiMailSendFill className="h-6 w-6 text-text-primary-on-surface" />
-        </div>
-        <p
-          className="bg-[linear-gradient(271deg,var(--components-input-border-active-prompt-1,#155AEF)_-12.85%,var(--components-input-border-active-prompt-2,#0BA5EC)_95.4%)] bg-clip-text title-3xl-semi-bold text-transparent"
-        >
-          {t('nodes.humanInput.deliveryMethod.upgradeTip', { ns: 'workflow' })}
-        </p>
-        <p className="mt-2 system-md-regular text-text-tertiary">
-          {t('nodes.humanInput.deliveryMethod.upgradeTipContent', { ns: 'workflow' })}
-        </p>
-      </div>
-      <div className="flex justify-end pt-5">
-        <Button
-          className="w-[72px]"
-          onClick={onClose}
-        >
-          {t('nodes.humanInput.deliveryMethod.upgradeTipHide', { ns: 'workflow' })}
-        </Button>
-        <PremiumBadge
-          size="custom"
-          color="blue"
-          allowHover={true}
-          className="ml-3 h-8 w-[93px]"
-          onClick={() => {
-            setShowPricingModal()
-          }}
-        >
-          <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
-          <div className="system-sm-medium">
-            <span className="p-1">
-              {t('upgradeBtn.encourageShort', { ns: 'billing' })}
-            </span>
-          </div>
-        </PremiumBadge>
-      </div>
-    </Modal>
+    <BaseUpgradeModal
+      open={open}
+      onOpenChange={onOpenChange}
+      Icon={RiMailSendFill}
+      title={t('nodes.humanInput.deliveryMethod.upgradeTip', { ns: 'workflow' })}
+      description={t('nodes.humanInput.deliveryMethod.upgradeTipContent', { ns: 'workflow' })}
+      classNames={{
+        content: 'max-w-[580px]',
+      }}
+      footer={(
+        <>
+          <Button
+            className="w-[72px]"
+            onClick={() => onOpenChange(false)}
+          >
+            {t('nodes.humanInput.deliveryMethod.upgradeTipHide', { ns: 'workflow' })}
+          </Button>
+          <PremiumBadge
+            size="custom"
+            color="blue"
+            allowHover={true}
+            className="h-8 w-[93px]"
+            onClick={handleUpgrade}
+          >
+            <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+            <div className="system-sm-medium">
+              <span className="p-1">
+                {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+              </span>
+            </div>
+          </PremiumBadge>
+        </>
+      )}
+    />
   )
 }
-
-export default UpgradeModal

@@ -22,15 +22,13 @@ export const usePanelInteractions = () => {
         workflowStore.getState().setClipboardData({ nodes, edges })
     })
 
-    const container = document.querySelector('#workflow-container')
-    const { x, y } = container!.getBoundingClientRect()
     workflowStore.setState({
       nodeMenu: undefined,
       selectionMenu: undefined,
       edgeMenu: undefined,
       panelMenu: {
-        top: e.clientY - y,
-        left: e.clientX - x,
+        clientX: e.clientX,
+        clientY: e.clientY,
       },
     })
   }, [workflowStore, appDslVersion])

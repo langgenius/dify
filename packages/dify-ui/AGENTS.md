@@ -1,6 +1,6 @@
 # @langgenius/dify-ui
 
-Shared design tokens, the `cn()` utility, a Tailwind CSS preset, and headless primitive components consumed by `web/`.
+Shared design tokens, the `cn()` utility, CSS-first Tailwind styles, and headless primitive components consumed by `web/`.
 
 ## Component Authoring Rules
 
@@ -51,7 +51,7 @@ The Figma design system uses `--radius/*` tokens whose scale is **offset by one 
 
 ### Rules
 
-- **Do not** add custom `borderRadius` values to `tailwind-preset.ts`. We use Tailwind v4 defaults and arbitrary values (`rounded-[Npx]`) for sizes without a standard equivalent.
+- **Do not** add custom `borderRadius` theme values. We use Tailwind v4 defaults and arbitrary values (`rounded-[Npx]`) for sizes without a standard equivalent.
 - **Do not** use `radius-*` as CSS class names. The old `@utility radius-*` definitions have been removed.
 - When the Figma MCP returns `rounded-[var(--radius/sm, 6px)]`, convert it to the standard Tailwind class from the table above (e.g. `rounded-md`).
 - For values without a standard Tailwind equivalent (10px, 20px, 28px), use arbitrary values like `rounded-[10px]`.

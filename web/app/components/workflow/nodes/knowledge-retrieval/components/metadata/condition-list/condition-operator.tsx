@@ -4,17 +4,17 @@ import type {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import {
   getOperators,
   isComparisonOperatorNeedTranslate,
@@ -49,31 +49,32 @@ const ConditionOperator = ({
   }, [t, variableType])
   const selectedOption = options.find(o => Array.isArray(value) ? o.value === value[0] : o.value === value)
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 0,
-      }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <Button
-          className={cn('shrink-0', !selectedOption && 'opacity-50', className)}
-          size="small"
-          variant="ghost"
-          disabled={disabled}
-        >
-          {
-            selectedOption
-              ? selectedOption.label
-              : t(`${i18nPrefix}.select`, { ns: 'workflow' })
-          }
-          <RiArrowDownSLine className="ml-1 h-3.5 w-3.5" />
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-10">
+      <PopoverTrigger
+        render={(
+          <Button
+            className={cn('shrink-0', !selectedOption && 'opacity-50', className)}
+            size="small"
+            variant="ghost"
+            disabled={disabled}
+          >
+            {
+              selectedOption
+                ? selectedOption.label
+                : t(`${i18nPrefix}.select`, { ns: 'workflow' })
+            }
+            <RiArrowDownSLine className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
         <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {
             options.map(option => (
@@ -90,8 +91,8 @@ const ConditionOperator = ({
             ))
           }
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 
