@@ -16,9 +16,9 @@ networks:
   default:
   ssrf_proxy_network:
     internal: true
-  sacahan-network:
+  ttri-network:
     external: true
-    name: sacahan-network
+    name: ttri-network
 
 services:
 
@@ -63,7 +63,7 @@ services:
     networks:
       - default
       - ssrf_proxy_network
-      - sacahan-network
+      - ttri-network
 
   # Celery Worker（處理所有任務佇列）
   worker:
@@ -80,7 +80,7 @@ services:
     networks:
       - default
       - ssrf_proxy_network
-      - sacahan-network
+      - ttri-network
 
   # Celery Beat（排程週期性任務）
   worker_beat:
@@ -95,7 +95,7 @@ services:
     networks:
       - default
       - ssrf_proxy_network
-      - sacahan-network
+      - ttri-network
 
   # 前端 Web 應用
   web:
@@ -199,7 +199,7 @@ services:
       - ./plugin_daemon:/app/storage
     networks:
       - default
-      - sacahan-network
+      - ttri-network
 
   # Weaviate 向量資料庫
   weaviate:
