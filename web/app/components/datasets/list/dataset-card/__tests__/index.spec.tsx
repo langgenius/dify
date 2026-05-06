@@ -53,8 +53,8 @@ vi.mock('../components/dataset-card-header', () => ({
 vi.mock('../components/dataset-card-modals', () => ({
   default: () => <div data-testid="card-modals" />,
 }))
-vi.mock('../components/tag-area', () => ({
-  default: ({ onClick }: { onClick: (e: React.MouseEvent) => void, ref?: React.Ref<HTMLDivElement> }) => (
+vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
+  DatasetCardTags: ({ onClick }: { onClick: (e: React.MouseEvent) => void }) => (
     <div data-testid="tag-area" onClick={onClick} />
   ),
 }))
