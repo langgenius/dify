@@ -597,6 +597,9 @@ class TestDifyNodeFactoryCreateNode:
     def test_create_node_passes_typed_llm_data_to_constructor(self, monkeypatch, factory):
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
+        constructor.validate_node_data.side_effect = lambda node_data: LLMNodeData.model_validate(
+            node_data.model_dump(mode="python") if isinstance(node_data, BaseNodeData) else node_data
+        )
         monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
         monkeypatch.setattr(factory, "_build_llm_compatible_node_init_kwargs", MagicMock(return_value={}))
 
