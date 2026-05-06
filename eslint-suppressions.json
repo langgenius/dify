@@ -5325,11 +5325,6 @@
       "count": 1
     }
   },
-  "web/plugins/dev-proxy/server.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/scripts/component-analyzer.js": {
     "regexp/no-unused-capturing-group": {
       "count": 6
