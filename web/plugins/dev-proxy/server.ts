@@ -4,13 +4,15 @@ import { DEFAULT_PROXY_TARGET, rewriteCookieHeaderForUpstream, rewriteSetCookieH
 
 type DevProxyEnv = Partial<Record<
   | 'HONO_CONSOLE_API_PROXY_TARGET'
-  | 'HONO_PUBLIC_API_PROXY_TARGET',
+  | 'HONO_PUBLIC_API_PROXY_TARGET'
+  | 'HONO_ENTERPRISE_API_PROXY_TARGET',
   string
 >>
 
 type DevProxyTargets = {
   consoleApiTarget: string
   publicApiTarget: string
+  enterpriseApiTarget?: string
 }
 
 type DevProxyAppOptions = DevProxyTargets & {
@@ -20,6 +22,7 @@ type DevProxyAppOptions = DevProxyTargets & {
 const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 const ALLOW_METHODS = 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS'
 const DEFAULT_ALLOW_HEADERS = 'Authorization, Content-Type, X-CSRF-Token'
+const UPSTREAM_ACCEPT_ENCODING = 'identity'
 const RESPONSE_HEADERS_TO_DROP = [
   'connection',
   'content-encoding',
@@ -28,6 +31,27 @@ const RESPONSE_HEADERS_TO_DROP = [
   'set-cookie',
   'transfer-encoding',
 ] as const
+
+const ENTERPRISE_API_ROUTES = [
+  '/console/api/enterprise',
+  '/api/enterprise',
+  '/admin-api',
+  '/inner/api',
+  '/mfa',
+  '/scim',
+  '/v1/audit',
+  '/v1/dashboard',
+  '/v1/healthz',
+  '/v1/plugin-manager',
+] as const
+
+const CONSOLE_API_ROUTES = ['/console/api'] as const
+const PUBLIC_API_ROUTES = ['/api'] as const
+
+type ProxyRoutePath
+  = | typeof ENTERPRISE_API_ROUTES[number]
+    | typeof CONSOLE_API_ROUTES[number]
+    | typeof PUBLIC_API_ROUTES[number]
 
 const appendHeaderValue = (headers: Headers, name: string, value: string) => {
   const currentValue = headers.get(name)
@@ -82,11 +106,14 @@ export const buildUpstreamUrl = (target: string, requestPath: string, search = '
 const createProxyRequestHeaders = (request: Request, targetUrl: URL) => {
   const headers = new Headers(request.headers)
   headers.delete('host')
+  headers.set('accept-encoding', UPSTREAM_ACCEPT_ENCODING)
 
   if (headers.has('origin'))
     headers.set('origin', targetUrl.origin)
 
-  const rewrittenCookieHeader = rewriteCookieHeaderForUpstream(headers.get('cookie') || undefined)
+  const rewrittenCookieHeader = rewriteCookieHeaderForUpstream(headers.get('cookie') || undefined, {
+    useHostPrefix: targetUrl.protocol === 'https:',
+  })
   if (rewrittenCookieHeader)
     headers.set('cookie', rewrittenCookieHeader)
 
@@ -137,7 +164,7 @@ const proxyRequest = async (
 
 const registerProxyRoute = (
   app: Hono,
-  path: '/console/api' | '/api',
+  path: ProxyRoutePath,
   target: string,
   fetchImpl: typeof globalThis.fetch,
 ) => {
@@ -145,15 +172,26 @@ const registerProxyRoute = (
   app.all(`${path}/*`, context => proxyRequest(context, target, fetchImpl))
 }
 
+const registerProxyRoutes = (
+  app: Hono,
+  routes: readonly ProxyRoutePath[],
+  target: string,
+  fetchImpl: typeof globalThis.fetch,
+) => {
+  routes.forEach(route => registerProxyRoute(app, route, target, fetchImpl))
+}
+
 export const resolveDevProxyTargets = (env: DevProxyEnv = {}): DevProxyTargets => {
   const consoleApiTarget = env.HONO_CONSOLE_API_PROXY_TARGET
     || DEFAULT_PROXY_TARGET
   const publicApiTarget = env.HONO_PUBLIC_API_PROXY_TARGET
     || consoleApiTarget
+  const enterpriseApiTarget = env.HONO_ENTERPRISE_API_PROXY_TARGET
 
   return {
     consoleApiTarget,
     publicApiTarget,
+    enterpriseApiTarget,
   }
 }
 
@@ -195,8 +233,10 @@ export const createDevProxyApp = (options: DevProxyAppOptions) => {
     applyCorsHeaders(context.res.headers, context.req.header('origin'))
   })
 
-  registerProxyRoute(app, '/console/api', options.consoleApiTarget, fetchImpl)
-  registerProxyRoute(app, '/api', options.publicApiTarget, fetchImpl)
+  if (options.enterpriseApiTarget)
+    registerProxyRoutes(app, ENTERPRISE_API_ROUTES, options.enterpriseApiTarget, fetchImpl)
+  registerProxyRoutes(app, CONSOLE_API_ROUTES, options.consoleApiTarget, fetchImpl)
+  registerProxyRoutes(app, PUBLIC_API_ROUTES, options.publicApiTarget, fetchImpl)
 
   return app
 }

@@ -36,9 +36,14 @@ const toUpstreamCookieName = (cookieName: string) => {
 
 const toLocalCookieName = (cookieName: string) => cookieName.replace(SECURE_COOKIE_PREFIX_PATTERN, '')
 
-export const rewriteCookieHeaderForUpstream = (cookieHeader?: string) => {
+export const rewriteCookieHeaderForUpstream = (
+  cookieHeader?: string,
+  options: { useHostPrefix?: boolean } = {},
+) => {
   if (!cookieHeader)
     return cookieHeader
+
+  const { useHostPrefix = true } = options
 
   return cookieHeader
     .split(/;\s*/)
@@ -50,7 +55,7 @@ export const rewriteCookieHeaderForUpstream = (cookieHeader?: string) => {
 
       const cookieName = cookie.slice(0, separatorIndex).trim()
       const cookieValue = cookie.slice(separatorIndex + 1)
-      return `${toUpstreamCookieName(cookieName)}=${cookieValue}`
+      return `${useHostPrefix ? toUpstreamCookieName(cookieName) : cookieName}=${cookieValue}`
     })
     .join('; ')
 }
