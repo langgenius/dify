@@ -140,6 +140,23 @@ class TestBuilderOutputFormat:
         messages = json.loads(attrs[semconv.INPUT_MESSAGES])
         assert messages[0]["parts"][0]["content"] == "Hello"
 
+    def test_build_llm_node_defaults_missing_finish_reason(self):
+        node = MagicMock(spec=WorkflowNodeExecution)
+        node.node_type = BuiltinNodeTypes.LLM
+        node.process_data = {
+            "model_provider": "openai",
+            "model_name": "gpt-4",
+            "model_mode": "chat",
+            "prompts": [{"role": "user", "text": "Hello"}],
+        }
+        node.outputs = {"text": "Hi there", "finish_reason": None}
+        trace_info = MagicMock(spec=WorkflowTraceInfo)
+        trace_info.metadata = {}
+
+        attrs = span_builder.build_workflow_node_attrs(node, trace_info)
+
+        assert attrs[semconv.RESPONSE_FINISH_REASONS] == ["stop"]
+
     def test_build_tool_node_uses_tool_attrs_not_messages(self):
         node = MagicMock(spec=WorkflowNodeExecution)
         node.node_type = BuiltinNodeTypes.TOOL

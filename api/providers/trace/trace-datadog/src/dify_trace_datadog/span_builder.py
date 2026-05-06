@@ -284,7 +284,7 @@ def _build_prompt_model_node_attrs(
 
     if node_type == BuiltinNodeTypes.LLM:
         output_text = str(outputs.get("text", ""))
-        finish_reason = str(outputs.get("finish_reason", "stop"))
+        finish_reason = str(outputs.get("finish_reason") or "stop")
         mode = process_data.get("model_mode", "chat")
         operation_name = mode if mode in ("chat", "completion") else "chat"
     elif node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
