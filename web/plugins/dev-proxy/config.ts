@@ -1,6 +1,6 @@
-export const DEV_PROXY_TARGETS = ['dify', 'enterprise'] as const
+const DEV_PROXY_TARGETS = ['dify', 'enterprise'] as const
 
-export type DevProxyTarget = typeof DEV_PROXY_TARGETS[number]
+type DevProxyTarget = typeof DEV_PROXY_TARGETS[number]
 
 type DevProxyConfigEnv = Partial<Record<
   | 'HONO_PROXY_HOST'
