@@ -9,9 +9,10 @@ export type DevProxyCorsConfig = {
   allowedOrigins?: DevProxyCorsAllowedOrigins
 }
 
+export type CookieNameMatcher = string | RegExp
+
 export type CookieRewriteOptions = {
-  hostPrefixCookieNames?: readonly string[]
-  hostPrefixCookieNamePatterns?: readonly RegExp[]
+  hostPrefixCookies?: readonly CookieNameMatcher[]
 }
 
 export type DevProxyRoute = {

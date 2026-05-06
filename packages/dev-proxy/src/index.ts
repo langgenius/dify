@@ -8,6 +8,7 @@ export {
 export { rewriteCookieHeaderForUpstream, rewriteSetCookieHeadersForLocal, toLocalCookieName } from './cookies'
 export { buildUpstreamUrl, createDevProxyApp, isAllowedDevOrigin, isAllowedLocalDevOrigin } from './server'
 export type {
+  CookieNameMatcher,
   CookieRewriteOptions,
   CreateDevProxyAppOptions,
   DevProxyCliOptions,

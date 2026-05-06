@@ -9,12 +9,15 @@ const COOKIE_PARTITIONED_PATTERN = /^partitioned$/i
 
 const stripSecureCookiePrefix = (cookieName: string) => cookieName.replace(SECURE_COOKIE_PREFIX_PATTERN, '')
 
+const matchesCookieName = (cookieName: string, matcher: string | RegExp) =>
+  typeof matcher === 'string'
+    ? matcher === cookieName
+    : matcher.test(cookieName)
+
 const shouldUseHostPrefix = (cookieName: string, options: CookieRewriteOptions) => {
   const normalizedCookieName = stripSecureCookiePrefix(cookieName)
 
-  return options.hostPrefixCookieNames?.includes(normalizedCookieName)
-    || options.hostPrefixCookieNamePatterns?.some(pattern => pattern.test(normalizedCookieName))
-    || false
+  return options.hostPrefixCookies?.some(matcher => matchesCookieName(normalizedCookieName, matcher)) || false
 }
 
 const toUpstreamCookieName = (cookieName: string, options: CookieRewriteOptions) => {

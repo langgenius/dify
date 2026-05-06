@@ -9,8 +9,7 @@ describe('dev proxy cookies', () => {
   it('should rewrite configured cookie names for HTTPS upstream requests', () => {
     // Act
     const cookieHeader = rewriteCookieHeaderForUpstream('access_token=abc; theme=dark; passport-app=def', {
-      hostPrefixCookieNames: ['access_token'],
-      hostPrefixCookieNamePatterns: [/^passport-/],
+      hostPrefixCookies: ['access_token', /^passport-/],
       useHostPrefix: true,
     })
 
@@ -22,7 +21,7 @@ describe('dev proxy cookies', () => {
   it('should keep local cookie names for HTTP upstream requests', () => {
     // Act
     const cookieHeader = rewriteCookieHeaderForUpstream('access_token=abc; refresh_token=def', {
-      hostPrefixCookieNames: ['access_token', 'refresh_token'],
+      hostPrefixCookies: ['access_token', 'refresh_token'],
       useHostPrefix: false,
     })
 

@@ -51,7 +51,7 @@ describe('dev proxy server', () => {
           paths: '/console/api',
           target: 'https://cloud.example.com',
           cookieRewrite: {
-            hostPrefixCookieNames: ['access_token'],
+            hostPrefixCookies: ['access_token'],
           },
         },
       ],
@@ -133,7 +133,7 @@ describe('dev proxy server', () => {
           paths: '/console/api',
           target: 'http://127.0.0.1:5001',
           cookieRewrite: {
-            hostPrefixCookieNames: ['access_token', 'refresh_token'],
+            hostPrefixCookies: ['access_token', 'refresh_token'],
           },
         },
       ],

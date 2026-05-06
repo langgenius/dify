@@ -7,13 +7,13 @@ const DEV_PROXY_HOST = process.env.DEV_PROXY_HOST || '127.0.0.1'
 const DEV_PROXY_PORT = Number(process.env.DEV_PROXY_PORT || 5001)
 
 const difyCookieRewrite: CookieRewriteOptions = {
-  hostPrefixCookieNames: [
+  hostPrefixCookies: [
     'access_token',
     'csrf_token',
     'refresh_token',
     'webapp_access_token',
+    /^passport-/,
   ],
-  hostPrefixCookieNamePatterns: [/^passport-/],
 }
 
 export default {
