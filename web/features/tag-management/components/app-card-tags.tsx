@@ -5,12 +5,14 @@ type AppCardTagsProps = {
   appId: string
   tags: Tag[]
   onOpenTagManagement?: () => void
+  onTagsChange?: () => void
 }
 
 export const AppCardTags = ({
   appId,
   tags,
   onOpenTagManagement = () => {},
+  onTagsChange,
 }: AppCardTagsProps) => {
   return (
     <TagSelector
@@ -20,6 +22,7 @@ export const AppCardTags = ({
       selectedTagIds={tags.map(tag => tag.id)}
       selectedTags={tags}
       onOpenTagManagement={onOpenTagManagement}
+      onTagsChange={onTagsChange}
     />
   )
 }

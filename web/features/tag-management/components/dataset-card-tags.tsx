@@ -9,6 +9,7 @@ type DatasetCardTagsProps = {
   tags: Tag[]
   onClick: (e: MouseEvent) => void
   onOpenTagManagement?: () => void
+  onTagsChange?: () => void
 }
 
 export const DatasetCardTags = ({
@@ -17,6 +18,7 @@ export const DatasetCardTags = ({
   tags,
   onClick,
   onOpenTagManagement = () => {},
+  onTagsChange,
 }: DatasetCardTagsProps) => (
   <div
     className={cn('group/tag-area relative w-full px-3', !embeddingAvailable && 'opacity-30')}
@@ -30,6 +32,7 @@ export const DatasetCardTags = ({
         selectedTagIds={tags.map(tag => tag.id)}
         selectedTags={tags}
         onOpenTagManagement={onOpenTagManagement}
+        onTagsChange={onTagsChange}
       />
     </div>
     <div

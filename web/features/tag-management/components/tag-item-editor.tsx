@@ -22,8 +22,9 @@ import { useDeleteTagMutation, useUpdateTagMutation } from '../hooks/use-tag-mut
 
 type TagItemEditorProps = {
   tag: Tag
+  onTagsChange?: () => void
 }
-export const TagItemEditor = ({ tag }: TagItemEditorProps) => {
+export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
   const { t } = useTranslation()
   const updateTagMutation = useUpdateTagMutation()
   const deleteTagMutation = useDeleteTagMutation()
@@ -53,6 +54,7 @@ export const TagItemEditor = ({ tag }: TagItemEditorProps) => {
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
         setName(name)
         setIsEditing(false)
+        onTagsChange?.()
       },
       onError: () => {
         toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
@@ -73,6 +75,7 @@ export const TagItemEditor = ({ tag }: TagItemEditorProps) => {
     }, {
       onSuccess: () => {
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        onTagsChange?.()
       },
       onError: () => {
         toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))

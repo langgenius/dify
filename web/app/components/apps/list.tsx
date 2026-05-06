@@ -304,7 +304,12 @@ const List: FC<Props> = ({
         )}
         <CheckModal />
         <div ref={anchorRef} className="h-0"> </div>
-        <TagManagementModal type="app" show={showTagManagementModal} onClose={() => setShowTagManagementModal(false)} />
+        <TagManagementModal
+          type="app"
+          show={showTagManagementModal}
+          onClose={() => setShowTagManagementModal(false)}
+          onTagsChange={refetch}
+        />
       </div>
 
       {showCreateFromDSLModal && (

@@ -27,7 +27,7 @@ import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'dataset'
 
-export const datasetListQueryKey = [NAME_SPACE, 'list']
+const datasetListQueryKey = [NAME_SPACE, 'list']
 
 const normalizeDatasetsParams = (params: Partial<FetchDatasetsParams['params']> = {}) => {
   const {
@@ -62,17 +62,16 @@ export const useInfiniteDatasets = (
   options?: UseInfiniteDatasetsOptions,
 ) => {
   const normalizedParams = normalizeDatasetsParams(params)
-  const buildUrl = (pageParam: number | undefined) => {
-    const queryString = qs.stringify({
-      ...normalizedParams,
-      page: pageParam ?? normalizedParams.page,
-    }, { indices: false })
-    return `/datasets?${queryString}`
-  }
 
   return useInfiniteQuery<DataSetListResponse>({
     queryKey: [...datasetListQueryKey, 'infinite', normalizedParams],
-    queryFn: ({ pageParam = normalizedParams.page }) => get<DataSetListResponse>(buildUrl(pageParam as number | undefined)),
+    queryFn: ({ pageParam = normalizedParams.page }) => {
+      const queryString = qs.stringify({
+        ...normalizedParams,
+        page: pageParam as number | undefined,
+      }, { indices: false })
+      return get<DataSetListResponse>(`/datasets?${queryString}`)
+    },
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: normalizedParams.page,
     staleTime: 0,

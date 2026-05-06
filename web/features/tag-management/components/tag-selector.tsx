@@ -22,6 +22,7 @@ type TagSelectorProps = {
   selectedTagIds: string[]
   selectedTags: Tag[]
   onOpenTagManagement?: () => void
+  onTagsChange?: () => void
   minWidth?: number | string
 }
 
@@ -33,6 +34,7 @@ export const TagSelector = ({
   selectedTagIds,
   selectedTags,
   onOpenTagManagement = () => {},
+  onTagsChange,
   minWidth,
 }: TagSelectorProps) => {
   const { t } = useTranslation()
@@ -86,8 +88,11 @@ export const TagSelector = ({
           id: toastId,
         })
       },
+      onSettled: () => {
+        onTagsChange?.()
+      },
     })
-  }, [applyTagBindingsMutation, draftTagIds, selectedTagIds, t, targetId, type])
+  }, [applyTagBindingsMutation, draftTagIds, onTagsChange, selectedTagIds, t, targetId, type])
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (nextOpen)

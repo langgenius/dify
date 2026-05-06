@@ -76,6 +76,7 @@ const DatasetCard = ({
           tags={dataset.tags}
           onClick={handleTagAreaClick}
           onOpenTagManagement={onOpenTagManagement}
+          onTagsChange={onSuccess}
         />
         <DatasetCardFooter dataset={dataset} />
         <OperationsDropdown

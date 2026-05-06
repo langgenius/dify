@@ -515,6 +515,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                     appId={app.id}
                     tags={app.tags}
                     onOpenTagManagement={onOpenTagManagement}
+                    onTagsChange={onRefresh}
                   />
                 </div>
               </div>

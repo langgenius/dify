@@ -14,7 +14,7 @@ import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
+import { useDatasetApiBaseUrl, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
@@ -29,6 +29,7 @@ const List = () => {
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
+  const invalidDatasetList = useInvalidDatasetList()
   useDocumentTitle(t('knowledge', { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
@@ -93,7 +94,12 @@ const List = () => {
       </div>
       <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} onOpenTagManagement={() => setShowTagManagementModal(true)} />
       {!systemFeatures.branding.enabled && <DatasetFooter />}
-      <TagManagementModal type="knowledge" show={showTagManagementModal} onClose={() => setShowTagManagementModal(false)} />
+      <TagManagementModal
+        type="knowledge"
+        show={showTagManagementModal}
+        onClose={() => setShowTagManagementModal(false)}
+        onTagsChange={invalidDatasetList}
+      />
       {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
     </div>
   )
