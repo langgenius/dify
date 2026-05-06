@@ -149,6 +149,7 @@ html[data-theme="light"] {
   --color-components-panel-on-panel-item-bg-destructive-hover-transparent: rgb(254 243 242 / 0);
 
   --color-components-panel-bg-transparent: rgb(255 255 255 / 0);
+
   --color-components-main-nav-nav-button-text: #495464;
   --color-components-main-nav-nav-button-text-active: #155aef;
   --color-components-main-nav-nav-button-bg: rgb(255 255 255 / 0);
@@ -417,6 +418,7 @@ html[data-theme="light"] {
   --color-background-overlay-backdrop: rgb(242 244 247 / 0.95);
   --color-background-body-transparent: rgb(242 244 247 / 0);
   --color-background-section-burn-inverted: #f2f4f7;
+
   --color-shadow-shadow-1: rgb(9 9 11 / 0.03);
   --color-shadow-shadow-3: rgb(9 9 11 / 0.05);
   --color-shadow-shadow-4: rgb(9 9 11 / 0.06);
@@ -543,6 +545,7 @@ html[data-theme="light"] {
   --color-effects-highlight-lightmode-off: rgb(255 255 255 / 0);
   --color-effects-image-frame: #ffffff;
   --color-effects-icon-border: rgb(16 24 40 / 0.08);
+
   --color-util-colors-orange-dark-orange-dark-50: #fff4ed;
   --color-util-colors-orange-dark-orange-dark-100: #ffe6d5;
   --color-util-colors-orange-dark-orange-dark-200: #ffd6ae;

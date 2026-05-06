@@ -6,7 +6,6 @@ html[data-theme="dark"] {
   --color-components-input-bg-active: rgb(255 255 255 / 0.05);
   --color-components-input-border-active: #747481;
   --color-components-input-border-destructive: #f97066;
-
   --color-components-input-text-filled: #f4f4f5;
   --color-components-input-bg-destructive: rgb(255 255 255 / 0.01);
   --color-components-input-bg-disabled: rgb(255 255 255 / 0.03);
@@ -150,6 +149,7 @@ html[data-theme="dark"] {
   --color-components-panel-on-panel-item-bg-destructive-hover-transparent: rgb(255 251 250 / 0);
 
   --color-components-panel-bg-transparent: rgb(34 34 37 / 0);
+
   --color-components-main-nav-nav-button-text: rgb(200 206 218 / 0.6);
   --color-components-main-nav-nav-button-text-active: #f4f4f5;
   --color-components-main-nav-nav-button-bg: rgb(255 255 255 / 0);
@@ -418,6 +418,7 @@ html[data-theme="dark"] {
   --color-background-overlay-backdrop: rgb(24 24 27 / 0.95);
   --color-background-body-transparent: rgb(29 29 32 / 0);
   --color-background-section-burn-inverted: #27272b;
+
   --color-shadow-shadow-1: rgb(0 0 0 / 0.05);
   --color-shadow-shadow-3: rgb(0 0 0 / 0.1);
   --color-shadow-shadow-4: rgb(0 0 0 / 0.12);
@@ -544,6 +545,7 @@ html[data-theme="dark"] {
   --color-effects-highlight-lightmode-off: rgb(200 206 218 / 0.08);
   --color-effects-image-frame: #ffffff;
   --color-effects-icon-border: rgb(255 255 255 / 0.15);
+
   --color-util-colors-orange-dark-orange-dark-50: #57130a;
   --color-util-colors-orange-dark-orange-dark-100: #771a0d;
   --color-util-colors-orange-dark-orange-dark-200: #97180c;

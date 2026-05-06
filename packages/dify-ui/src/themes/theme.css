@@ -156,6 +156,7 @@
   --color-components-panel-on-panel-item-bg-destructive-hover-transparent: var(--color-components-panel-on-panel-item-bg-destructive-hover-transparent);
 
   --color-components-panel-bg-transparent: var(--color-components-panel-bg-transparent);
+
   --color-components-main-nav-nav-button-text: var(--color-components-main-nav-nav-button-text);
   --color-components-main-nav-nav-button-text-active: var(--color-components-main-nav-nav-button-text-active);
   --color-components-main-nav-nav-button-bg: var(--color-components-main-nav-nav-button-bg);
@@ -424,6 +425,7 @@
   --color-background-overlay-backdrop: var(--color-background-overlay-backdrop);
   --color-background-body-transparent: var(--color-background-body-transparent);
   --color-background-section-burn-inverted: var(--color-background-section-burn-inverted);
+
   --color-shadow-shadow-1: var(--color-shadow-shadow-1);
   --color-shadow-shadow-3: var(--color-shadow-shadow-3);
   --color-shadow-shadow-4: var(--color-shadow-shadow-4);
@@ -550,6 +552,7 @@
   --color-effects-highlight-lightmode-off: var(--color-effects-highlight-lightmode-off);
   --color-effects-image-frame: var(--color-effects-image-frame);
   --color-effects-icon-border: var(--color-effects-icon-border);
+
   --color-util-colors-orange-dark-orange-dark-50: var(--color-util-colors-orange-dark-orange-dark-50);
   --color-util-colors-orange-dark-orange-dark-100: var(--color-util-colors-orange-dark-orange-dark-100);
   --color-util-colors-orange-dark-orange-dark-200: var(--color-util-colors-orange-dark-orange-dark-200);
