@@ -2,16 +2,16 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
-from opentelemetry.trace import StatusCode
-
 from dify_trace_datadog import semconv
 from dify_trace_datadog.client import DatadogTraceClient
+from dify_trace_datadog.config import DatadogConfig
 from dify_trace_datadog.datadog_trace import (
     DatadogDataTrace,
     _datetime_to_ns,
     _workflow_node_status_to_otel_status,
 )
-from dify_trace_datadog.config import DatadogConfig
+from opentelemetry.trace import StatusCode
+
 from core.ops.entities.trace_entity import DatasetRetrievalTraceInfo, MessageTraceInfo, ToolTraceInfo, WorkflowTraceInfo
 from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 
@@ -133,7 +133,9 @@ class TestWorkflowNodeProcessing:
         add_span_calls = datadog_trace.trace_client.add_span.call_args_list
         assert len(add_span_calls) == 2
         assert add_span_calls[0].kwargs["name"] == "node-1"
+        assert add_span_calls[0].kwargs["store_key"] == "node:node-1"
         assert add_span_calls[1].kwargs["name"] == "node-3"
+        assert add_span_calls[1].kwargs["store_key"] == "node:node-3"
 
     def test_tool_trace_and_retrieval_trace_skip_when_no_message_id(self, datadog_trace: DatadogDataTrace):
         datadog_trace.tool_trace(_build_tool_trace_info(message_id=None))
@@ -171,6 +173,37 @@ class TestWorkflowNodeProcessing:
         assert workflow_call.kwargs["trace_id"] == DatadogTraceClient.compute_trace_id("message:msg-42")
         assert workflow_call.kwargs["store_key"] == "workflow:run-1"
         assert workflow_call.kwargs["parent_key"] == "message:msg-42"
+
+    def test_external_trace_id_controls_trace_correlation(self, datadog_trace: DatadogDataTrace):
+        message_trace = _build_message_trace_info(message_id="msg-42")
+        tool_trace = _build_tool_trace_info(message_id="msg-42")
+        message_trace.trace_id = "external-trace"
+        tool_trace.trace_id = "external-trace"
+        expected_trace_id = DatadogTraceClient.compute_trace_id("trace:external-trace")
+
+        datadog_trace.message_trace(message_trace)
+        datadog_trace.tool_trace(tool_trace)
+
+        message_call = datadog_trace.trace_client.add_span.call_args_list[0]
+        tool_call = datadog_trace.trace_client.add_span.call_args_list[1]
+        assert message_call.kwargs["trace_id"] == expected_trace_id
+        assert tool_call.kwargs["trace_id"] == expected_trace_id
+        assert tool_call.kwargs["parent_key"] == "message:msg-42"
+
+    def test_nested_workflow_uses_parent_context(self, datadog_trace: DatadogDataTrace):
+        trace_info = _build_workflow_trace_info(message_id=None)
+        trace_info.metadata["parent_trace_context"] = {
+            "parent_workflow_run_id": "parent-run",
+            "parent_node_execution_id": "parent-node",
+        }
+        datadog_trace._process_workflow_nodes = MagicMock()  # type: ignore[method-assign]
+
+        datadog_trace.workflow_trace(trace_info)
+
+        workflow_call = datadog_trace.trace_client.add_span.call_args
+        assert workflow_call.kwargs["trace_id"] == DatadogTraceClient.compute_trace_id("workflow:parent-run")
+        assert workflow_call.kwargs["parent_key"] == "node:parent-node"
+        assert workflow_call.kwargs["store_key"] == "workflow:run-1"
 
     def test_message_span_name_uses_operation_name(self, datadog_trace: DatadogDataTrace, monkeypatch):
         monkeypatch.setattr(

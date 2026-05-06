@@ -5,13 +5,13 @@ Datadog span attribute builder for Dify ops tracing.
 import json
 from typing import Any
 
-from dify_trace_datadog import semconv
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     MessageTraceInfo,
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
+from dify_trace_datadog import semconv
 from graphon.entities.workflow_node_execution import WorkflowNodeExecution
 from graphon.nodes import BuiltinNodeTypes
 
@@ -48,6 +48,12 @@ def _safe_json(obj: Any) -> str:
         return json.dumps(obj, ensure_ascii=False, default=str)
     except Exception:
         return str(obj)
+
+
+def _token_count(value: Any) -> int | None:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return None
 
 
 def _normalize_input_messages(value: Any) -> list[dict[str, Any]]:
@@ -112,6 +118,21 @@ def _single_exchange_attrs(
     return attrs
 
 
+def _add_token_attrs(
+    attrs: dict[str, Any],
+    *,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    total_tokens: int | None = None,
+) -> None:
+    if input_tokens is not None:
+        attrs[semconv.USAGE_INPUT_TOKENS] = input_tokens
+    if output_tokens is not None:
+        attrs[semconv.USAGE_OUTPUT_TOKENS] = output_tokens
+    if total_tokens is not None:
+        attrs[semconv.USAGE_TOTAL_TOKENS] = total_tokens
+
+
 def _build_llm_like_attrs(
     *,
     operation_name: str,
@@ -119,6 +140,7 @@ def _build_llm_like_attrs(
     model: str,
     input_tokens: int,
     output_tokens: int,
+    total_tokens: int | None = None,
     input_messages: list[dict[str, Any]],
     output_messages: list[dict[str, Any]],
     conversation_id: str | None = None,
@@ -130,14 +152,13 @@ def _build_llm_like_attrs(
         semconv.PROVIDER_NAME: provider,
         semconv.REQUEST_MODEL: model,
         semconv.RESPONSE_MODEL: model,
-        semconv.USAGE_INPUT_TOKENS: input_tokens,
-        semconv.USAGE_OUTPUT_TOKENS: output_tokens,
         semconv.INPUT_MESSAGES: json.dumps(input_messages, ensure_ascii=False),
         semconv.OUTPUT_MESSAGES: json.dumps(output_messages, ensure_ascii=False),
     }
+    _add_token_attrs(attrs, input_tokens=input_tokens, output_tokens=output_tokens, total_tokens=total_tokens)
 
     if finish_reason is not None:
-        attrs[semconv.RESPONSE_FINISH_REASONS] = json.dumps([finish_reason], ensure_ascii=False)
+        attrs[semconv.RESPONSE_FINISH_REASONS] = [finish_reason]
     if conversation_id:
         attrs[semconv.CONVERSATION_ID] = conversation_id
 
@@ -165,6 +186,7 @@ def build_message_attrs(trace_info: MessageTraceInfo) -> dict[str, Any]:
         model=str(model),
         input_tokens=trace_info.message_tokens,
         output_tokens=trace_info.answer_tokens,
+        total_tokens=trace_info.total_tokens,
         input_messages=_normalize_input_messages(trace_info.inputs),
         output_messages=_normalize_output_messages(trace_info.outputs),
         conversation_id=metadata.get("conversation_id"),
@@ -190,7 +212,14 @@ def build_workflow_attrs(trace_info: WorkflowTraceInfo) -> dict[str, Any]:
     if workflow_id := inputs.get("sys.workflow_id") or metadata.get("workflow_id") or trace_info.workflow_id:
         extra[semconv.DIFY_WORKFLOW_ID] = workflow_id
 
-    return _single_exchange_attrs("workflow", str(query), str(answer), **extra)
+    attrs = _single_exchange_attrs("workflow", str(query), str(answer), **extra)
+    _add_token_attrs(
+        attrs,
+        input_tokens=_token_count(trace_info.prompt_tokens),
+        output_tokens=_token_count(trace_info.completion_tokens),
+        total_tokens=_token_count(trace_info.total_tokens),
+    )
+    return attrs
 
 
 def build_workflow_node_attrs(
@@ -275,6 +304,7 @@ def _build_prompt_model_node_attrs(
         model=str(process_data.get("model_name", "")),
         input_tokens=usage.get("prompt_tokens", 0) if isinstance(usage, dict) else 0,
         output_tokens=usage.get("completion_tokens", 0) if isinstance(usage, dict) else 0,
+        total_tokens=usage.get("total_tokens") if isinstance(usage, dict) else None,
         input_messages=_normalize_input_messages(raw_prompts),
         output_messages=[
             _to_otel_message("assistant", output_text, finish_reason=finish_reason)
