@@ -224,6 +224,10 @@ class AgentChatAppRunner(AppRunner):
             model_instance=model_instance,
         )
 
+        from core.app.app_context import reset_current_app_id, set_current_app_id
+
+        _app_id_token = set_current_app_id(app_config.app_id)
+
         invoke_result = runner.run(
             message=message,
             query=query,
@@ -240,3 +244,5 @@ class AgentChatAppRunner(AppRunner):
             user_id=application_generate_entity.user_id,
             tenant_id=app_config.tenant_id,
         )
+
+        reset_current_app_id(_app_id_token)
