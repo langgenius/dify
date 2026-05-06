@@ -12,7 +12,7 @@ from dify_trace_datadog.datadog_trace import (
 from opentelemetry.trace import StatusCode
 
 from core.ops.entities.trace_entity import DatasetRetrievalTraceInfo, MessageTraceInfo, ToolTraceInfo, WorkflowTraceInfo
-from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowNodeExecutionStatus
 
 
 @pytest.fixture
@@ -141,6 +141,38 @@ class TestWorkflowNodeProcessing:
         datadog_trace.dataset_retrieval_trace(_build_retrieval_trace_info(message_id=None))
 
         datadog_trace.trace_client.add_span.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("site", "expected_url"),
+        [
+            ("datadoghq.com", "https://app.datadoghq.com/llm/traces"),
+            ("datadoghq.eu", "https://app.datadoghq.eu/llm/traces"),
+            ("us5.datadoghq.com", "https://us5.datadoghq.com/llm/traces"),
+            ("us6.datadoghq.com", "https://us6.datadoghq.com/llm/traces"),
+            ("datad0g.com", "https://app.datad0g.com/llm/traces"),
+            ("ddstaging.datadoghq.com", "https://ddstaging.datadoghq.com/llm/traces"),
+        ],
+    )
+    def test_project_url_uses_datadog_app_site(self, site: str, expected_url: str):
+        client = DatadogTraceClient(api_key="test-key", site=site, service_name="test")
+
+        assert client.get_project_url() == expected_url
+
+    @pytest.mark.parametrize(
+        ("site", "expected_endpoint"),
+        [
+            ("datadoghq.com", "https://otlp.datadoghq.com/v1/traces"),
+            ("us5.datadoghq.com", "https://otlp.us5.datadoghq.com/v1/traces"),
+            ("us6.datadoghq.com", "https://otlp.us6.datadoghq.com/v1/traces"),
+            ("datad0g.com", "https://otlp.datad0g.com/v1/traces"),
+            ("prtest07.datadoghq.com", "https://otlp.prtest07.datadoghq.com/v1/traces"),
+            ("ddstaging.datadoghq.com", "https://otlp.datadoghq.com/v1/traces"),
+        ],
+    )
+    def test_trace_endpoint_uses_datadog_otlp_host(self, site: str, expected_endpoint: str):
+        client = DatadogTraceClient(api_key="test-key", site=site, service_name="test")
+
+        assert client.endpoint == expected_endpoint
 
     def test_span_contexts_parent_child_linking(self, datadog_trace: DatadogDataTrace):
         message_trace = _build_message_trace_info(message_id="msg-42")
