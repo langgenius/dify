@@ -59,22 +59,10 @@ const Panel = (props: PanelProps) => {
     }
   }
   const bind = async (tagIDs: string[]) => {
-    try {
-      await bindTag(tagIDs, targetID, type)
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-    }
-    catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-    }
+    await bindTag(tagIDs, targetID, type)
   }
   const unbind = async (tagID: string) => {
-    try {
-      await unBindTag(tagID, targetID, type)
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-    }
-    catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-    }
+    await unBindTag(tagID, targetID, type)
   }
   const selectTag = (tag: Tag) => {
     if (selectedTagIDs.includes(tag.id))
@@ -95,7 +83,7 @@ const Panel = (props: PanelProps) => {
       operations.push(bind(addTagIDs))
     if (removeTagIDs.length)
       operations.push(...removeTagIDs.map(tagID => unbind(tagID)))
-    Promise.all(operations).finally(() => {
+    Promise.allSettled(operations).finally(() => {
       if (onChange)
         onChange()
     })

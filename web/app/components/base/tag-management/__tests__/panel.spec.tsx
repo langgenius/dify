@@ -596,7 +596,7 @@ describe('Panel', () => {
       expect(onChange).not.toHaveBeenCalled()
     })
 
-    it('should show success notification after successful bind', async () => {
+    it('should not show notification after successful bind', async () => {
       const user = userEvent.setup()
       const { unmount } = render(<Panel {...defaultProps} />)
 
@@ -605,14 +605,13 @@ describe('Panel', () => {
       unmount()
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: i18n.modifiedSuccessfully,
-        })
+        expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
       })
+
+      expect(mockNotify).not.toHaveBeenCalled()
     })
 
-    it('should show error notification when bind fails', async () => {
+    it('should not show notification when bind fails', async () => {
       const user = userEvent.setup()
       vi.mocked(bindTag).mockRejectedValue(new Error('Bind failed'))
 
@@ -623,14 +622,13 @@ describe('Panel', () => {
       unmount()
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: i18n.modifiedUnsuccessfully,
-        })
+        expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
       })
+
+      expect(mockNotify).not.toHaveBeenCalled()
     })
 
-    it('should show error notification when unbind fails', async () => {
+    it('should not show notification when unbind fails', async () => {
       const user = userEvent.setup()
       vi.mocked(unBindTag).mockRejectedValue(new Error('Unbind failed'))
 
@@ -641,11 +639,10 @@ describe('Panel', () => {
       unmount()
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: i18n.modifiedUnsuccessfully,
-        })
+        expect(unBindTag).toHaveBeenCalledWith('tag-1', 'target-1', 'app')
       })
+
+      expect(mockNotify).not.toHaveBeenCalled()
     })
   })
 
