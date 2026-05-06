@@ -3397,6 +3397,8 @@
   "web/app/components/tools/workflow-tool/method-selector.tsx": {
     "no-restricted-imports": {
       "count": 1
+    }
+  },
   "web/app/components/tools/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 4
