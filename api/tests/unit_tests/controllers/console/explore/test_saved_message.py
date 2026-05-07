@@ -1,3 +1,4 @@
+from flask import Flask
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
@@ -42,7 +43,7 @@ def payload_patch():
 
 
 class TestSavedMessageListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = module.SavedMessageListApi()
         method = unwrap(api.get)
 

@@ -1,3 +1,4 @@
+from flask import Flask
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -12,7 +13,7 @@ def unwrap(func):
 
 
 class TestBannerApi:
-    def test_get_banners_with_requested_language(self, app):
+    def test_get_banners_with_requested_language(self, app: Flask):
         api = banner_module.BannerApi()
         method = unwrap(api.get)
 
@@ -41,7 +42,7 @@ class TestBannerApi:
             }
         ]
 
-    def test_get_banners_fallback_to_en_us(self, app):
+    def test_get_banners_fallback_to_en_us(self, app: Flask):
         api = banner_module.BannerApi()
         method = unwrap(api.get)
 
@@ -76,7 +77,7 @@ class TestBannerApi:
             }
         ]
 
-    def test_get_banners_default_language_en_us(self, app):
+    def test_get_banners_default_language_en_us(self, app: Flask):
         api = banner_module.BannerApi()
         method = unwrap(api.get)
 

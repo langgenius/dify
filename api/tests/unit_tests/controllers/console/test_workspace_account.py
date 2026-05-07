@@ -547,7 +547,7 @@ class TestAccountServiceSendChangeEmailEmail:
 class TestAccountDeletionFeedback:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.workspace.account.BillingService.update_account_deletion_feedback")
-    def test_should_normalize_feedback_email(self, mock_update, mock_db, app):
+    def test_should_normalize_feedback_email(self, mock_update, mock_db, app: Flask):
         with app.test_request_context(
             "/account/delete/feedback",
             method="POST",
@@ -563,7 +563,7 @@ class TestCheckEmailUnique:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.workspace.account.AccountService.check_email_unique")
     @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
-    def test_should_normalize_email(self, mock_is_freeze, mock_check_unique, mock_db, app):
+    def test_should_normalize_email(self, mock_is_freeze, mock_check_unique, mock_db, app: Flask):
         mock_is_freeze.return_value = False
         mock_check_unique.return_value = True
 

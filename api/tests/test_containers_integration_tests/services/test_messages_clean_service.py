@@ -1,4 +1,5 @@
 from __future__ import annotations
+from flask import Flask
 
 import datetime
 import json
@@ -165,7 +166,7 @@ class TestMessagesCleanServiceIntegration:
 
         return app
 
-    def _create_conversation(self, db_session_with_containers: Session, app):
+    def _create_conversation(self, db_session_with_containers: Session, app: App):
         """Helper to create a conversation."""
         conversation = Conversation(
             app_id=app.id,

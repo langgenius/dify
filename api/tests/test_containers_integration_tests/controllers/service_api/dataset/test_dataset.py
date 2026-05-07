@@ -797,7 +797,7 @@ class TestDatasetTagsApiPost:
         mock_tag_svc.save_tags.assert_called_once()
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_create_tag_forbidden(self, mock_current_user, app):
+    def test_create_tag_forbidden(self, mock_current_user, app: Flask):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         mock_current_user.__class__ = Account
@@ -852,7 +852,7 @@ class TestDatasetTagsApiPatch:
         mock_tag_svc.update_tags.assert_called_once_with({"name": "Updated Tag", "type": "knowledge"}, "tag-1")
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_update_tag_forbidden(self, mock_current_user, app):
+    def test_update_tag_forbidden(self, mock_current_user, app: Flask):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         mock_current_user.__class__ = Account
@@ -905,7 +905,7 @@ class TestDatasetTagsApiDelete:
         mock_tag_svc.delete_tag.assert_called_once_with("tag-1")
 
     @patch("libs.login.current_user")
-    def test_delete_tag_forbidden(self, mock_current_user, app):
+    def test_delete_tag_forbidden(self, mock_current_user, app: Flask):
         from controllers.service_api.dataset.dataset import DatasetTagsApi
 
         user_obj = Mock(spec=Account)
@@ -988,7 +988,7 @@ class TestDatasetTagBindingApiPost:
         )
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_bind_tags_forbidden(self, mock_current_user, app):
+    def test_bind_tags_forbidden(self, mock_current_user, app: Flask):
         from controllers.service_api.dataset.dataset import DatasetTagBindingApi
 
         mock_current_user.__class__ = Account
@@ -1069,7 +1069,7 @@ class TestDatasetTagUnbindingApiPost:
         )
 
     @patch("controllers.service_api.dataset.dataset.current_user")
-    def test_unbind_tag_forbidden(self, mock_current_user, app):
+    def test_unbind_tag_forbidden(self, mock_current_user, app: Flask):
         from controllers.service_api.dataset.dataset import DatasetTagUnbindingApi
 
         mock_current_user.__class__ = Account
