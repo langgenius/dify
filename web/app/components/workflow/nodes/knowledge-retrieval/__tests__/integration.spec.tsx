@@ -19,6 +19,7 @@ import { BlockEnum, VarType } from '../../../types'
 import AddDataset from '../components/add-dataset'
 import DatasetItem from '../components/dataset-item'
 import DatasetList from '../components/dataset-list'
+import AddCondition from '../components/metadata/add-condition'
 import ConditionCommonVariableSelector from '../components/metadata/condition-list/condition-common-variable-selector'
 import ConditionDate from '../components/metadata/condition-list/condition-date'
 import ConditionItem from '../components/metadata/condition-list/condition-item'
@@ -462,6 +463,29 @@ describe('knowledge-retrieval path', () => {
       expect(screen.getByText('metadata-panel')).toBeInTheDocument()
     })
 
+    it('should call handleAddCondition with the correct metadata item when clicking any part of the row', async () => {
+      const user = userEvent.setup()
+      const handleAddCondition = vi.fn()
+      const permissionMetadata = createMetadata({ id: 'meta-perm', name: 'permission', type: MetadataFilteringVariableType.string })
+      const topicMetadata = createMetadata({ id: 'meta-topic', name: 'topic', type: MetadataFilteringVariableType.string })
+
+      render(
+        <AddCondition
+          metadataList={[permissionMetadata, topicMetadata]}
+          handleAddCondition={handleAddCondition}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /workflow.nodes.knowledgeRetrieval.metadata.panel.add/i }))
+      await user.click(screen.getAllByText('string', { selector: 'div.shrink-0' })[0]!)
+
+      expect(handleAddCondition).toHaveBeenCalledTimes(1)
+      expect(handleAddCondition).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'meta-perm',
+        name: 'permission',
+      }))
+    })
+
     it('should render automatic and manual metadata filter states', async () => {
       const user = userEvent.setup()
       const baseProps: MetadataShape = {
@@ -590,6 +614,24 @@ describe('knowledge-retrieval path', () => {
       expect(onDateChange).toHaveBeenCalledWith()
       expect(onUpdateCondition).toHaveBeenCalledWith('condition-1', expect.objectContaining({ value: 'updated-agent' }))
       expect(onRemoveCondition).toHaveBeenCalledWith('condition-1')
+    })
+
+    it('should resolve built-in metadata fields by name because their ids are shared', () => {
+      render(
+        <ConditionItem
+          metadataList={[
+            createMetadata({ id: 'built-in', name: 'document_name' }),
+            createMetadata({ id: 'built-in', name: 'uploader' }),
+          ]}
+          condition={createCondition({
+            metadata_id: 'built-in',
+            name: 'uploader',
+          })}
+        />,
+      )
+
+      expect(screen.getByText('uploader')).toBeInTheDocument()
+      expect(screen.queryByText('document_name')).not.toBeInTheDocument()
     })
   })
 
