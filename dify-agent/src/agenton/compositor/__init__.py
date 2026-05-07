@@ -12,9 +12,10 @@ not to the shared layer instances, so different sessions can enter the same
 compositor without leaking generated ids or handles through ``self``.
 
 Dependency mappings use layer-local dependency names as keys and compositor
-layer names as values. Prompt aggregation depends on insertion order: prefix
-prompts are collected from first to last layer, while suffix prompts are
-collected in reverse.
+layer names as values. System prompt aggregation depends on insertion order:
+prefix prompts are collected from first to last layer, while suffix prompts are
+collected in reverse. User prompts are collected from first to last layer so the
+composed user message preserves graph order.
 
 Serializable graph config uses registry type ids rather than import paths.
 ``CompositorBuilder`` resolves config nodes through ``LayerRegistry`` and can
@@ -26,11 +27,11 @@ whose layer controls must match the compositor layer names and order. When
 omitted, a fresh session is created. Reusing a suspended session resumes its
 layer contexts; closed sessions must be replaced.
 
-Optional prompt and tool transformers run after layer aggregation. The
-compositor asks each layer to ``wrap_prompt`` and ``wrap_tool`` its native
-values, so typed layer families can tag prompt/tool values without changing
-their authoring contracts. When transformers are omitted, the compositor
-returns those wrapped items unchanged.
+Optional prompt, user prompt, and tool transformers run after layer aggregation.
+The compositor asks each layer to ``wrap_prompt``, ``wrap_user_prompt``, and
+``wrap_tool`` its native values, so typed layer families can tag values without
+changing their authoring contracts. When transformers are omitted, the
+compositor returns those wrapped items unchanged.
 """
 
 from collections import OrderedDict
@@ -43,21 +44,31 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from typing_extensions import Self, TypeVar
 
 from agenton.layers.base import Layer, LayerControl, LifecycleState
-from agenton.layers.types import AllPromptTypes, AllToolTypes
+from agenton.layers.types import AllPromptTypes, AllToolTypes, AllUserPromptTypes
 
 PromptT = TypeVar("PromptT", default=AllPromptTypes)
 ToolT = TypeVar("ToolT", default=AllToolTypes)
 LayerPromptT = TypeVar("LayerPromptT", default=AllPromptTypes)
 LayerToolT = TypeVar("LayerToolT", default=AllToolTypes)
+UserPromptT = TypeVar("UserPromptT", default=AllUserPromptTypes)
+LayerUserPromptT = TypeVar("LayerUserPromptT", default=AllUserPromptTypes)
 
 
 type CompositorTransformer[InputT, OutputT] = Callable[[Sequence[InputT]], Sequence[OutputT]]
 
 
-class CompositorTransformerKwargs[PromptT, ToolT, LayerPromptT, LayerToolT](TypedDict):
-    """Keyword arguments that install prompt and tool transformers together."""
+class CompositorTransformerKwargs[
+    PromptT,
+    ToolT,
+    LayerPromptT,
+    LayerToolT,
+    UserPromptT,
+    LayerUserPromptT,
+](TypedDict):
+    """Keyword arguments that install prompt, user prompt, and tool transformers."""
 
     prompt_transformer: CompositorTransformer[LayerPromptT, PromptT]
+    user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT]
     tool_transformer: CompositorTransformer[LayerToolT, ToolT]
 
 
@@ -114,7 +125,7 @@ class LayerDescriptor:
     """Registry descriptor inferred from a layer class."""
 
     type_id: str
-    layer_type: type[Layer[Any, Any, Any, Any, Any, Any]]
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]]
     config_type: type[BaseModel]
     runtime_state_type: type[BaseModel]
     runtime_handles_type: type[BaseModel]
@@ -137,7 +148,7 @@ class LayerRegistry:
 
     def register_layer(
         self,
-        layer_type: type[Layer[Any, Any, Any, Any, Any, Any]],
+        layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
         *,
         type_id: str | None = None,
     ) -> None:
@@ -233,7 +244,7 @@ class CompositorSessionSnapshot(BaseModel):
 @dataclass(frozen=True, slots=True)
 class _LayerBuildEntry:
     name: str
-    layer: Layer[Any, Any, Any, Any, Any, Any]
+    layer: Layer[Any, Any, Any, Any, Any, Any, Any]
     deps: Mapping[str, str]
 
 
@@ -283,21 +294,22 @@ class CompositorBuilder:
         self,
         *,
         name: str,
-        layer: Layer[Any, Any, Any, Any, Any, Any],
+        layer: Layer[Any, Any, Any, Any, Any, Any, Any],
         deps: Mapping[str, str] | None = None,
     ) -> Self:
         """Add a live layer instance, useful for Python objects and callables."""
         self._entries.append(_LayerBuildEntry(name=name, layer=layer, deps=dict(deps or {})))
         return self
 
-    def build[PromptT, ToolT, LayerPromptT, LayerToolT](
+    def build[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT](
         self,
         *,
         prompt_transformer: CompositorTransformer[LayerPromptT, PromptT] | None = None,
+        user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] | None = None,
         tool_transformer: CompositorTransformer[LayerToolT, ToolT] | None = None,
-    ) -> "Compositor[PromptT, ToolT, LayerPromptT, LayerToolT]":
+    ) -> "Compositor[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT]":
         """Validate names/dependencies, bind deps, and return a compositor."""
-        layers: OrderedDict[str, Layer[Any, Any, Any, Any, Any, Any]] = OrderedDict()
+        layers: OrderedDict[str, Layer[Any, Any, Any, Any, Any, Any, Any]] = OrderedDict()
         deps_name_mapping: dict[str, Mapping[str, str]] = {}
         for entry in self._entries:
             if entry.name in layers:
@@ -321,24 +333,28 @@ class CompositorBuilder:
             layers=layers,
             deps_name_mapping=deps_name_mapping,
             prompt_transformer=prompt_transformer,
+            user_prompt_transformer=user_prompt_transformer,
             tool_transformer=tool_transformer,
         )
 
 
 @dataclass(kw_only=True)
-class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT]):
+class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT]):
     """Framework-neutral ordered layer graph with lifecycle and aggregation.
 
-    ``prompt_transformer`` and ``tool_transformer`` are post-aggregation hooks:
-    they run whenever ``prompts`` or ``tools`` is read, after layer
+    ``prompt_transformer``, ``user_prompt_transformer``, and
+    ``tool_transformer`` are post-aggregation hooks: they run whenever
+    ``prompts``, ``user_prompts``, or ``tools`` is read, after layer
     contributions have been collected in compositor order. Use two type
-    arguments for identity aggregation, or all four when layer item types differ
-    from exposed item types.
+    arguments for identity aggregation, four when prompt/tool layer item types
+    differ from exposed item types, or all six when user prompt item types also
+    differ.
     """
 
-    layers: OrderedDict[str, Layer[Any, Any, Any, Any, Any, Any]]
+    layers: OrderedDict[str, Layer[Any, Any, Any, Any, Any, Any, Any]]
     deps_name_mapping: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
     prompt_transformer: CompositorTransformer[LayerPromptT, PromptT] | None = None
+    user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] | None = None
     tool_transformer: CompositorTransformer[LayerToolT, ToolT] | None = None
     _deps_bound: bool = field(default=False, init=False)
 
@@ -352,11 +368,13 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT]):
         *,
         registry: LayerRegistry,
         prompt_transformer: CompositorTransformer[LayerPromptT, PromptT] | None = None,
+        user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] | None = None,
         tool_transformer: CompositorTransformer[LayerToolT, ToolT] | None = None,
-    ) -> "Compositor[PromptT, ToolT, LayerPromptT, LayerToolT]":
+    ) -> "Compositor[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT]":
         """Create a compositor from registry-backed serializable config."""
         return CompositorBuilder(registry).add_config(conf).build(
             prompt_transformer=prompt_transformer,
+            user_prompt_transformer=user_prompt_transformer,
             tool_transformer=tool_transformer,
         )
 
@@ -512,6 +530,18 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT]):
         if self.prompt_transformer is None:
             return cast(list[PromptT], result)
         return list(self.prompt_transformer(result))
+
+    @property
+    def user_prompts(self) -> list[UserPromptT]:
+        result: list[LayerUserPromptT] = []
+        for layer in self.layers.values():
+            result.extend(
+                cast(LayerUserPromptT, layer.wrap_user_prompt(prompt))
+                for prompt in layer.user_prompts
+            )
+        if self.user_prompt_transformer is None:
+            return cast(list[UserPromptT], result)
+        return list(self.user_prompt_transformer(result))
 
     @property
     def tools(self) -> list[ToolT]:

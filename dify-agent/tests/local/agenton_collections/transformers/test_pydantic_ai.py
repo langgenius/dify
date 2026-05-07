@@ -6,8 +6,10 @@ from pydantic_ai import Tool
 from agenton.layers.types import (
     PlainPromptType,
     PlainToolType,
+    PlainUserPromptType,
     PydanticAIPromptType,
     PydanticAIToolType,
+    PydanticAIUserPromptType,
 )
 from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMERS
 
@@ -44,6 +46,14 @@ def test_pydantic_ai_transformers_accept_mixed_tagged_prompt_types() -> None:
     plain_prompt = cast(Callable[[], str], result[0])
     assert plain_prompt() == "plain prompt"
     assert result[1] is dynamic_prompt
+
+
+def test_pydantic_ai_transformers_accept_tagged_user_prompt_types() -> None:
+    result = PYDANTIC_AI_TRANSFORMERS["user_prompt_transformer"](
+        [PlainUserPromptType("plain user"), PydanticAIUserPromptType("pydantic user")]
+    )
+
+    assert result == ["plain user", "pydantic user"]
 
 
 def test_pydantic_ai_transformers_wrap_tagged_plain_tools() -> None:

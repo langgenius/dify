@@ -86,6 +86,7 @@ async def main() -> None:
                         "type": "plain.prompt",
                         "config": {
                             "prefix": "Use config dicts for serializable layers.",
+                            "user": "Explain how the composed agent should use its layers.",
                             "suffix": "Before finalizing, make the result easy to scan.",
                         },
                     },
@@ -113,6 +114,10 @@ async def main() -> None:
 
     print("Prompts:")
     for prompt in compositor.prompts:
+        print(f"- {prompt.value}")
+
+    print("\nUser prompts:")
+    for prompt in compositor.user_prompts:
         print(f"- {prompt.value}")
 
     print("\nTools:")

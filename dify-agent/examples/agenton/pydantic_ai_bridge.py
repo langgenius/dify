@@ -51,6 +51,7 @@ async def main() -> None:
     )
     pydantic_ai_bridge = PydanticAIBridgeLayer[AgentProfile](
         prefix=("Prefer concrete details.", profile_prompt, tone_prompt),
+        user="Use the tools for 'layer composition'.",
         tool_entries=(write_tagline,),
     )
 
@@ -96,10 +97,7 @@ async def main() -> None:
         for prompt in compositor.prompts:
             _ = agent.system_prompt(prompt)
 
-        result = await agent.run(
-            "Use the tools for 'layer composition'.",
-            deps=pydantic_ai_bridge.run_deps,
-        )
+        result = await agent.run(compositor.user_prompts, deps=pydantic_ai_bridge.run_deps)
 
     for line in _format_messages(result.all_messages()):
         print(line)

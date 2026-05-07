@@ -40,7 +40,17 @@ Use `CompositorBuilder` to mix serializable config nodes with live instances:
 ```python
 compositor = (
     CompositorBuilder(registry)
-    .add_config({"layers": [{"name": "prompt", "type": "plain.prompt", "config": {"prefix": "Hi"}}]})
+    .add_config(
+        {
+            "layers": [
+                {
+                    "name": "prompt",
+                    "type": "plain.prompt",
+                    "config": {"prefix": "Hi", "user": "Answer with examples."},
+                }
+            ]
+        }
+    )
     .add_instance(name="profile", layer=ObjectLayer(profile))
     .build()
 )
@@ -48,6 +58,19 @@ compositor = (
 
 Use `.add_instance()` for layers that require Python objects or callables, such
 as `ObjectLayer`, `ToolsLayer`, and dynamic tool layers.
+
+## System prompts and user prompts
+
+Layers expose three prompt surfaces:
+
+- `prefix_prompts`: system prompt fragments collected in layer order.
+- `suffix_prompts`: system prompt fragments collected in reverse layer order.
+- `user_prompts`: user-message fragments collected in layer order.
+
+`PromptLayer` accepts `prefix`, `user`, and `suffix` config fields. For
+pydantic-ai, `PYDANTIC_AI_TRANSFORMERS` maps `compositor.prompts` to system
+prompt functions and `compositor.user_prompts` to values suitable for
+`Agent.run(user_prompt=...)`.
 
 ## Session snapshot and restore
 

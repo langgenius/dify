@@ -54,12 +54,13 @@ def test_builder_creates_config_layers_with_typed_validation() -> None:
         .add_config_layer(
             name="prompt",
             type="plain.prompt",
-            config={"prefix": "hello", "suffix": ["bye"]},
+            config={"prefix": "hello", "user": "ask politely", "suffix": ["bye"]},
         )
         .build()
     )
 
     assert [prompt.value for prompt in compositor.prompts] == ["hello", "bye"]
+    assert [prompt.value for prompt in compositor.user_prompts] == ["ask politely"]
 
     try:
         CompositorBuilder(registry).add_config_layer(

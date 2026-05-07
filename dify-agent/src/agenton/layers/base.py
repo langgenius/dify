@@ -24,11 +24,12 @@ other snapshot data belong in ``LayerControl.runtime_state``; live clients,
 connections, and process handles belong in ``LayerControl.runtime_handles``.
 Neither category should be stored on ``self`` when it is session-local.
 
-``Layer`` is framework-neutral over prompt and tool item types. The native
-``prefix_prompts``, ``suffix_prompts``, and ``tools`` properties are the layer
-authoring surface. ``wrap_prompt`` and ``wrap_tool`` are the compositor
-aggregation surface; typed families such as ``agenton.layers.types.PlainLayer``
-implement them to tag native values without changing layer implementations.
+``Layer`` is framework-neutral over system prompt, user prompt, and tool item
+types. The native ``prefix_prompts``, ``suffix_prompts``, ``user_prompts``, and
+``tools`` properties are the layer authoring surface. ``wrap_prompt``,
+``wrap_user_prompt``, and ``wrap_tool`` are the compositor aggregation surface;
+typed families such as ``agenton.layers.types.PlainLayer`` implement them to tag
+native values without changing layer implementations.
 """
 
 from abc import ABC, abstractmethod
@@ -45,6 +46,7 @@ from typing_extensions import Self, TypeVar
 
 _DepsT = TypeVar("_DepsT", bound="LayerDeps")
 _PromptT = TypeVar("_PromptT")
+_UserPromptT = TypeVar("_UserPromptT")
 _ToolT = TypeVar("_ToolT")
 _ConfigT = TypeVar("_ConfigT", bound=BaseModel, default="EmptyLayerConfig")
 _RuntimeStateT = TypeVar("_RuntimeStateT", bound=BaseModel, default="EmptyRuntimeState")
@@ -59,7 +61,7 @@ class LayerDeps:
     are always assigned as attributes; missing optional values become ``None``.
     """
 
-    def __init__(self, **deps: "Layer[Any, Any, Any, Any, Any, Any] | None") -> None:
+    def __init__(self, **deps: "Layer[Any, Any, Any, Any, Any, Any, Any] | None") -> None:
         dep_specs = _get_dep_specs(type(self))
         missing_names = {name for name, spec in dep_specs.items() if not spec.optional} - deps.keys()
         if missing_names:
@@ -169,13 +171,13 @@ class LayerControl(Generic[_RuntimeStateT, _RuntimeHandlesT]):
 class LayerDepSpec:
     """Runtime dependency specification derived from a deps annotation."""
 
-    layer_type: type["Layer[Any, Any, Any, Any, Any, Any]"]
+    layer_type: type["Layer[Any, Any, Any, Any, Any, Any, Any]"]
     optional: bool = False
 
 
 class Layer(
     ABC,
-    Generic[_DepsT, _PromptT, _ToolT, _ConfigT, _RuntimeStateT, _RuntimeHandlesT],
+    Generic[_DepsT, _PromptT, _UserPromptT, _ToolT, _ConfigT, _RuntimeStateT, _RuntimeHandlesT],
 ):
     """Framework-neutral base class for prompt/tool layers.
 
@@ -211,17 +213,17 @@ class Layer(
         if not isinstance(deps_type, type) or not issubclass(deps_type, LayerDeps):
             raise TypeError(f"{cls.__name__}.deps_type must be a LayerDeps subclass.")
         _get_dep_specs(deps_type)
-        _init_schema_type(cls, "config_type", _infer_schema_type(cls, 3, "config_type"), EmptyLayerConfig)
+        _init_schema_type(cls, "config_type", _infer_schema_type(cls, 4, "config_type"), EmptyLayerConfig)
         _init_schema_type(
             cls,
             "runtime_state_type",
-            _infer_schema_type(cls, 4, "runtime_state_type"),
+            _infer_schema_type(cls, 5, "runtime_state_type"),
             EmptyRuntimeState,
         )
         _init_schema_type(
             cls,
             "runtime_handles_type",
-            _infer_schema_type(cls, 5, "runtime_handles_type"),
+            _infer_schema_type(cls, 6, "runtime_handles_type"),
             EmptyRuntimeHandles,
         )
 
@@ -260,14 +262,14 @@ class Layer(
             runtime_handles=cast(_RuntimeHandlesT, self.runtime_handles_type.model_validate({})),
         )
 
-    def bind_deps(self, deps: Mapping[str, "Layer[Any, Any, Any, Any, Any, Any] | None"]) -> None:
+    def bind_deps(self, deps: Mapping[str, "Layer[Any, Any, Any, Any, Any, Any, Any] | None"]) -> None:
         """Bind this layer's declared dependencies from a name-to-layer mapping.
 
         The mapping may include more layers than the declared dependency fields.
         Only names declared by ``deps_type`` are selected and validated. Missing
         optional deps are bound as ``None``.
         """
-        resolved_deps: dict[str, Layer[Any, Any, Any, Any, Any, Any] | None] = {}
+        resolved_deps: dict[str, Layer[Any, Any, Any, Any, Any, Any, Any] | None] = {}
         for name, spec in _get_dep_specs(self.deps_type).items():
             if name not in deps:
                 if spec.optional:
@@ -339,12 +341,21 @@ class Layer(
         return []
 
     @property
+    def user_prompts(self) -> Sequence[_UserPromptT]:
+        return []
+
+    @property
     def tools(self) -> Sequence[_ToolT]:
         return []
 
     @abstractmethod
     def wrap_prompt(self, prompt: _PromptT) -> object:
         """Wrap a native prompt item for compositor aggregation."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def wrap_user_prompt(self, prompt: _UserPromptT) -> object:
+        """Wrap a native user prompt item for compositor aggregation."""
         raise NotImplementedError
 
     @abstractmethod
@@ -382,14 +393,14 @@ def _as_dep_spec(annotation: object) -> LayerDepSpec | None:
     return LayerDepSpec(layer_type=layer_type)
 
 
-def _as_layer_type(annotation: object) -> type[Layer[Any, Any, Any, Any, Any, Any]] | None:
+def _as_layer_type(annotation: object) -> type[Layer[Any, Any, Any, Any, Any, Any, Any]] | None:
     runtime_type = get_origin(annotation) or annotation
     if isinstance(runtime_type, type) and issubclass(runtime_type, Layer):
-        return cast(type[Layer[Any, Any, Any, Any, Any, Any]], runtime_type)
+        return cast(type[Layer[Any, Any, Any, Any, Any, Any, Any]], runtime_type)
     return None
 
 
-def _infer_deps_type(layer_type: type[Layer[Any, Any, Any, Any, Any, Any]]) -> type[LayerDeps] | None:
+def _infer_deps_type(layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]]) -> type[LayerDeps] | None:
     inferred = _infer_layer_generic_arg(layer_type, 0, {})
     if inferred is None:
         return None
@@ -397,7 +408,7 @@ def _infer_deps_type(layer_type: type[Layer[Any, Any, Any, Any, Any, Any]]) -> t
 
 
 def _infer_schema_type(
-    layer_type: type[Layer[Any, Any, Any, Any, Any, Any]],
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
     index: int,
     attr_name: str,
 ) -> type[BaseModel] | None:
@@ -411,7 +422,7 @@ def _infer_schema_type(
 
 
 def _infer_schema_generic_arg(
-    layer_type: type[Layer[Any, Any, Any, Any, Any, Any]],
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
     attr_name: str,
     substitutions: Mapping[object, object],
 ) -> object | None:
@@ -441,7 +452,7 @@ def _infer_schema_generic_arg(
 
 
 def _infer_layer_generic_arg(
-    layer_type: type[Layer[Any, Any, Any, Any, Any, Any]],
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
     index: int,
     substitutions: Mapping[object, object],
 ) -> object | None:
@@ -470,7 +481,7 @@ def _infer_layer_generic_arg(
 
 
 def _init_schema_type(
-    layer_type: type[Layer[Any, Any, Any, Any, Any, Any]],
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
     attr_name: str,
     inferred_schema_type: type[BaseModel] | None,
     default_schema_type: type[BaseModel],
@@ -531,7 +542,7 @@ def _as_model_type(value: object) -> type[BaseModel] | None:
     return None
 
 
-def _is_generic_layer_template(layer_type: type[Layer[Any, Any, Any, Any, Any, Any]]) -> bool:
+def _is_generic_layer_template(layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]]) -> bool:
     return bool(getattr(layer_type, "__type_params__", ())) or bool(
         getattr(layer_type, "__parameters__", ())
     )

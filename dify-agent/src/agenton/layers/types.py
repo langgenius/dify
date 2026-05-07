@@ -1,11 +1,12 @@
 """Typed layer family definitions.
 
 ``Layer`` itself is framework-neutral. This module defines typed layer families
-that bind its prompt/tool generic slots to concrete contracts, such as ordinary
-string prompts with plain callable tools or pydantic-ai prompt/tool shapes. The
-families keep the trailing schema generic slots open so concrete layers can have
-``config_type``, ``runtime_state_type``, and ``runtime_handles_type`` inferred
-from type arguments instead of repeated class attributes.
+that bind its system prompt, user prompt, and tool generic slots to concrete
+contracts, such as ordinary strings with plain callable tools or pydantic-ai
+prompt/tool shapes. The families keep the trailing schema generic slots open so
+concrete layers can have ``config_type``, ``runtime_state_type``, and
+``runtime_handles_type`` inferred from type arguments instead of repeated class
+attributes.
 Tagged aggregate aliases cover code paths that can accept any supported
 prompt/tool family without changing the plain and pydantic-ai layer contracts.
 Pydantic-ai names are imported for static analysis only, so ``agenton`` can be
@@ -23,6 +24,7 @@ from typing_extensions import TypeVar, final, override
 
 if TYPE_CHECKING:
     from pydantic_ai import Tool
+    from pydantic_ai.messages import UserContent
     from pydantic_ai.tools import SystemPromptFunc
 
 from pydantic import BaseModel
@@ -30,10 +32,12 @@ from pydantic import BaseModel
 from agenton.layers.base import EmptyLayerConfig, EmptyRuntimeHandles, EmptyRuntimeState, Layer, LayerDeps
 
 type PlainPrompt = str
+type PlainUserPrompt = str
 type PlainTool = Callable[..., Any]
 
 
 type PydanticAIPrompt[AgentDepsT] = SystemPromptFunc[AgentDepsT]
+type PydanticAIUserPrompt = UserContent
 type PydanticAITool[AgentDepsT] = Tool[AgentDepsT]
 
 
@@ -54,10 +58,26 @@ class PlainToolType:
 
 
 @dataclass(frozen=True, slots=True)
+class PlainUserPromptType:
+    """Tagged plain user prompt item for aggregate user prompt transformations."""
+
+    value: PlainUserPrompt
+    kind: Literal["plain"] = field(default="plain", init=False)
+
+
+@dataclass(frozen=True, slots=True)
 class PydanticAIPromptType[AgentDepsT]:
     """Tagged pydantic-ai prompt item for aggregate prompt transformations."""
 
     value: PydanticAIPrompt[AgentDepsT]
+    kind: Literal["pydantic_ai"] = field(default="pydantic_ai", init=False)
+
+
+@dataclass(frozen=True, slots=True)
+class PydanticAIUserPromptType:
+    """Tagged pydantic-ai user prompt item for aggregate user prompts."""
+
+    value: PydanticAIUserPrompt
     kind: Literal["pydantic_ai"] = field(default="pydantic_ai", init=False)
 
 
@@ -70,6 +90,7 @@ class PydanticAIToolType[AgentDepsT]:
 
 
 type AllPromptTypes = PlainPromptType | PydanticAIPromptType[Any]
+type AllUserPromptTypes = PlainUserPromptType | PydanticAIUserPromptType
 type AllToolTypes = PlainToolType | PydanticAIToolType[Any]
 
 
@@ -82,7 +103,15 @@ _AgentDepsT = TypeVar("_AgentDepsT")
 
 class PlainLayer(
     Generic[_DepsT, _ConfigT, _RuntimeStateT, _RuntimeHandlesT],
-    Layer[_DepsT, PlainPrompt, PlainTool, _ConfigT, _RuntimeStateT, _RuntimeHandlesT],
+    Layer[
+        _DepsT,
+        PlainPrompt,
+        PlainUserPrompt,
+        PlainTool,
+        _ConfigT,
+        _RuntimeStateT,
+        _RuntimeHandlesT,
+    ],
 ):
     """Layer base for ordinary string prompts and plain-callable tools."""
 
@@ -90,6 +119,11 @@ class PlainLayer(
     @override
     def wrap_prompt(self, prompt: PlainPrompt) -> PlainPromptType:
         return PlainPromptType(prompt)
+
+    @final
+    @override
+    def wrap_user_prompt(self, prompt: PlainUserPrompt) -> PlainUserPromptType:
+        return PlainUserPromptType(prompt)
 
     @final
     @override
@@ -102,6 +136,7 @@ class PydanticAILayer(
     Layer[
         _DepsT,
         PydanticAIPrompt[_AgentDepsT],
+        PydanticAIUserPrompt,
         PydanticAITool[_AgentDepsT],
         _ConfigT,
         _RuntimeStateT,
@@ -120,21 +155,31 @@ class PydanticAILayer(
 
     @final
     @override
+    def wrap_user_prompt(self, prompt: PydanticAIUserPrompt) -> PydanticAIUserPromptType:
+        return PydanticAIUserPromptType(prompt)
+
+    @final
+    @override
     def wrap_tool(self, tool: PydanticAITool[_AgentDepsT]) -> PydanticAIToolType[_AgentDepsT]:
         return PydanticAIToolType(tool)
 
 
 __all__ = [
     "AllPromptTypes",
+    "AllUserPromptTypes",
     "AllToolTypes",
     "PlainLayer",
     "PlainPrompt",
     "PlainPromptType",
+    "PlainUserPrompt",
+    "PlainUserPromptType",
     "PlainTool",
     "PlainToolType",
     "PydanticAILayer",
     "PydanticAIPrompt",
     "PydanticAIPromptType",
+    "PydanticAIUserPrompt",
+    "PydanticAIUserPromptType",
     "PydanticAITool",
     "PydanticAIToolType",
 ]

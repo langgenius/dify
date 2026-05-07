@@ -20,6 +20,7 @@ class PromptLayerConfig(BaseModel):
     """Serializable config schema for ``PromptLayer``."""
 
     prefix: list[str] | str = Field(default_factory=list)
+    user: list[str] | str = Field(default_factory=list)
     suffix: list[str] | str = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
@@ -38,18 +39,19 @@ class ObjectLayer[ObjectT](PlainLayer[NoLayerDeps]):
 
 @dataclass
 class PromptLayer(PlainLayer[NoLayerDeps, PromptLayerConfig]):
-    """Layer that contributes configured prefix and suffix prompt fragments."""
+    """Layer that contributes configured system and user prompt fragments."""
 
     type_id = "plain.prompt"
 
     prefix: list[str] | str = field(default_factory=list)
+    user: list[str] | str = field(default_factory=list)
     suffix: list[str] | str = field(default_factory=list)
 
     @classmethod
     def from_config(cls, config: BaseModel):
         """Create a prompt layer from validated prompt config."""
         validated_config = PromptLayerConfig.model_validate(config)
-        return cls(prefix=validated_config.prefix, suffix=validated_config.suffix)
+        return cls(prefix=validated_config.prefix, user=validated_config.user, suffix=validated_config.suffix)
 
     @property
     def prefix_prompts(self) -> list[str]:
@@ -62,6 +64,12 @@ class PromptLayer(PlainLayer[NoLayerDeps, PromptLayerConfig]):
         if isinstance(self.suffix, str):
             return [self.suffix]
         return self.suffix
+
+    @property
+    def user_prompts(self) -> list[str]:
+        if isinstance(self.user, str):
+            return [self.user]
+        return self.user
 
 
 @dataclass

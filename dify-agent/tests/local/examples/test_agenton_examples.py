@@ -26,6 +26,7 @@ def test_agenton_basics_example_smoke() -> None:
 
     assert result.returncode == 0, result.stderr
     assert "Prompts:" in result.stdout
+    assert "User prompts:" in result.stdout
     assert "Tools:" in result.stdout
     assert "Lifecycle: ['create', 'suspend', 'resume', 'delete']" in result.stdout
 
@@ -35,6 +36,7 @@ def test_agenton_pydantic_ai_example_smoke() -> None:
 
     assert result.returncode == 0, result.stderr
     assert "SystemPromptPart: Prefer concrete details." in result.stdout
+    assert "UserPromptPart: [\"Use the tools for 'layer composition'.\"]" in result.stdout
     assert "ToolCallPart: count_words(" in result.stdout
     assert "ToolCallPart: write_tagline(" in result.stdout
     assert "TextPart:" in result.stdout

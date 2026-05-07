@@ -1,7 +1,8 @@
 """Pydantic AI compositor transformer presets.
 
 This module owns the pydantic-ai runtime dependency for transforming tagged
-agenton prompt/tool items into pydantic-ai-compatible items.
+agenton system prompt, user prompt, and tool items into pydantic-ai-compatible
+items.
 """
 
 from collections.abc import Sequence
@@ -13,8 +14,10 @@ from agenton.compositor import CompositorTransformerKwargs
 from agenton.layers.types import (
     AllPromptTypes,
     AllToolTypes,
+    AllUserPromptTypes,
     PydanticAIPrompt,
     PydanticAITool,
+    PydanticAIUserPrompt,
 )
 
 type PydanticAICompositorTransformerKwargs = CompositorTransformerKwargs[
@@ -22,6 +25,8 @@ type PydanticAICompositorTransformerKwargs = CompositorTransformerKwargs[
     PydanticAITool[object],
     AllPromptTypes,
     AllToolTypes,
+    PydanticAIUserPrompt,
+    AllUserPromptTypes,
 ]
 
 
@@ -36,6 +41,20 @@ def _pydantic_ai_prompt_transformer(
             result.append(prompt.value)
         else:
             raise NotImplementedError(f"Unsupported prompt type: {type(prompt).__qualname__}.")
+    return result
+
+
+def _pydantic_ai_user_prompt_transformer(
+    prompts: Sequence[AllUserPromptTypes],
+) -> list[PydanticAIUserPrompt]:
+    result: list[PydanticAIUserPrompt] = []
+    for prompt in prompts:
+        if prompt.kind == "plain":
+            result.append(prompt.value)
+        elif prompt.kind == "pydantic_ai":
+            result.append(prompt.value)
+        else:
+            raise NotImplementedError(f"Unsupported user prompt type: {type(prompt).__qualname__}.")
     return result
 
 
@@ -55,6 +74,7 @@ def _pydantic_ai_tool_transformer(
 
 PYDANTIC_AI_TRANSFORMERS: Final[PydanticAICompositorTransformerKwargs] = {
     "prompt_transformer": _pydantic_ai_prompt_transformer,
+    "user_prompt_transformer": _pydantic_ai_user_prompt_transformer,
     "tool_transformer": _pydantic_ai_tool_transformer,
 }
 
