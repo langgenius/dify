@@ -61,7 +61,6 @@ class RBACRole(_RBACModel):
     tenant_id: str | None = None
     type: str
     category: str = ""
-    role_key: str
     name: str
     description: str = ""
     is_builtin: bool = False
@@ -88,7 +87,7 @@ class AccessPolicyRoleBinding(_RBACModel):
     access_policy_id: str
     resource_type: str
     resource_id: str = ""
-    role_key: str
+    role_id: str
     created_at: int = 0
 
 
@@ -104,7 +103,7 @@ class AccessPolicyMemberBinding(_RBACModel):
 
 class AccessMatrixItem(_RBACModel):
     policy: AccessPolicy | None = None
-    role_keys: list[str] = Field(default_factory=list)
+    role_ids: list[str] = Field(default_factory=list)
     account_ids: list[str] = Field(default_factory=list)
 
 
@@ -120,6 +119,7 @@ class DatasetAccessMatrix(_RBACModel):
 
 class WorkspaceAccessMatrix(_RBACModel):
     items: list[AccessMatrixItem] = Field(default_factory=list)
+    pagination: Pagination | None = None
 
 
 class RoleBindingsResponse(_RBACModel):
@@ -135,6 +135,26 @@ class MemberRolesResponse(_RBACModel):
     roles: list[RBACRole] = Field(default_factory=list)
 
 
+class ResourcePermissionKeys(_RBACModel):
+    resource_id: str
+    permission_keys: list[str] = Field(default_factory=list)
+
+
+class WorkspacePermissionSnapshot(_RBACModel):
+    permission_keys: list[str] = Field(default_factory=list)
+
+
+class ResourcePermissionSnapshot(_RBACModel):
+    default_permission_keys: list[str] = Field(default_factory=list)
+    overrides: list[ResourcePermissionKeys] = Field(default_factory=list)
+
+
+class MyPermissionsResponse(_RBACModel):
+    workspace: WorkspacePermissionSnapshot = Field(default_factory=WorkspacePermissionSnapshot)
+    app: ResourcePermissionSnapshot = Field(default_factory=ResourcePermissionSnapshot)
+    dataset: ResourcePermissionSnapshot = Field(default_factory=ResourcePermissionSnapshot)
+
+
 # ---------- Mutation request models ----------
 
 
@@ -146,7 +166,6 @@ class RoleMutation(_RBACModel):
     """
 
     name: str
-    role_key: str
     description: str = ""
     permission_keys: list[str] = Field(default_factory=list)
     type: RBACRoleType = RBACRoleType.WORKSPACE
@@ -166,7 +185,7 @@ class AccessPolicyUpdate(_RBACModel):
 
 
 class ReplaceRoleBindings(_RBACModel):
-    role_keys: list[str] = Field(default_factory=list)
+    role_ids: list[str] = Field(default_factory=list)
 
 
 class ReplaceMemberBindings(_RBACModel):
@@ -594,22 +613,34 @@ class RBACService:
     # ------------------------------------------------------------------
     class WorkspaceAccess:
         @staticmethod
-        def app_matrix(tenant_id: str, account_id: str | None = None) -> WorkspaceAccessMatrix:
+        def app_matrix(
+            tenant_id: str,
+            account_id: str | None = None,
+            *,
+            options: ListOption | None = None,
+        ) -> WorkspaceAccessMatrix:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/workspace/apps/access-policy",
                 tenant_id=tenant_id,
                 account_id=account_id,
+                params=(options or ListOption()).to_params() or None,
             )
             return WorkspaceAccessMatrix.model_validate(data or {})
 
         @staticmethod
-        def dataset_matrix(tenant_id: str, account_id: str | None = None) -> WorkspaceAccessMatrix:
+        def dataset_matrix(
+            tenant_id: str,
+            account_id: str | None = None,
+            *,
+            options: ListOption | None = None,
+        ) -> WorkspaceAccessMatrix:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/workspace/datasets/access-policy",
                 tenant_id=tenant_id,
                 account_id=account_id,
+                params=(options or ListOption()).to_params() or None,
             )
             return WorkspaceAccessMatrix.model_validate(data or {})
 
@@ -761,7 +792,7 @@ class RBACService:
             tenant_id: str,
             account_id: str | None,
             member_account_id: str,
-            role_keys: list[str],
+            role_ids: list[str],
         ) -> MemberRolesResponse:
             data = _inner_call(
                 "PUT",
@@ -769,6 +800,32 @@ class RBACService:
                 tenant_id=tenant_id,
                 account_id=account_id,
                 params={"account_id": member_account_id},
-                json={"role_keys": role_keys},
+                json={"role_ids": role_ids},
             )
             return MemberRolesResponse.model_validate(data or {})
+
+    class MyPermissions:
+        @staticmethod
+        def get(
+            tenant_id: str,
+            account_id: str | None,
+            *,
+            app_id: str | None = None,
+            dataset_id: str | None = None,
+        ) -> MyPermissionsResponse:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/my-permissions",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={
+                    k: v
+                    for k, v in {
+                        "app_id": app_id,
+                        "dataset_id": dataset_id,
+                    }.items()
+                    if v is not None
+                }
+                or None,
+            )
+            return MyPermissionsResponse.model_validate(data or {})

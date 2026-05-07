@@ -11,6 +11,7 @@ dataset_fields = {
     "indexing_technique": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
+    "permission_keys": fields.List(fields.String),
 }
 
 reranking_model_fields = {"reranking_provider_name": fields.String, "reranking_model_name": fields.String}
@@ -107,6 +108,7 @@ dataset_detail_fields = {
     "total_available_documents": fields.Integer,
     "enable_api": fields.Boolean,
     "is_multimodal": fields.Boolean,
+    "permission_keys": fields.List(fields.String),
 }
 
 file_info_fields = {

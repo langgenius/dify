@@ -19,6 +19,7 @@ changes.
 from __future__ import annotations
 
 from types import SimpleNamespace
+import inspect
 from unittest.mock import patch
 
 import pytest
@@ -78,7 +79,7 @@ class TestPydanticModels:
     missing required fields) — trivial `str` fields are not worth asserting.
     """
 
-    def test_role_upsert_requires_name_and_key(self):
+    def test_role_upsert_requires_name(self):
         with pytest.raises(ValidationError):
             rbac_mod._RoleUpsertRequest.model_validate({})
 
@@ -86,13 +87,11 @@ class TestPydanticModels:
         payload = rbac_mod._RoleUpsertRequest.model_validate(
             {
                 "name": "Owner",
-                "role_key": "workspace.owner",
                 "description": "full access",
                 "permission_keys": ["workspace.member.manage"],
             }
         )
         mutation = payload.to_mutation()
-        assert mutation.role_key == "workspace.owner"
         assert mutation.description == "full access"
         assert mutation.permission_keys == ["workspace.member.manage"]
 
@@ -113,12 +112,98 @@ class TestPydanticModels:
 
     def test_replace_role_bindings_defaults_empty(self):
         parsed = rbac_mod._ReplaceRoleBindingsRequest.model_validate({})
-        assert parsed.role_keys == []
+        assert parsed.role_ids == []
+
+    def test_pagination_query_accepts_page_and_limit_aliases(self):
+        parsed = rbac_mod._PaginationQuery.model_validate({"page": 3, "limit": 25, "reverse": True})
+        assert parsed.page_number == 3
+        assert parsed.results_per_page == 25
+        assert parsed.reverse is True
+
+    def test_pagination_query_accepts_legacy_inner_names(self):
+        parsed = rbac_mod._PaginationQuery.model_validate(
+            {"page_number": 4, "results_per_page": 30, "reverse": False}
+        )
+        assert parsed.page_number == 4
+        assert parsed.results_per_page == 30
+        assert parsed.reverse is False
+
+
+class TestPaginationMapping:
+    def test_roles_get_forwards_outer_pagination_params(self, app):
+        with (
+            app.test_request_context("/workspaces/current/rbac/roles?page=2&limit=50&reverse=true"),
+            _enabled(True),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+
+        _, kwargs = mock_list.call_args
+        options = kwargs["options"]
+        assert options.page_number == 2
+        assert options.results_per_page == 50
+        assert options.reverse is True
+
+    def test_access_policies_get_forwards_outer_pagination_params(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/access-policies?resource_type=app&page=3&limit=25&reverse=false"
+            ),
+            _enabled(True),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.list") as mock_list,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACAccessPoliciesApi.get)(rbac_mod.RBACAccessPoliciesApi())
+
+        _, kwargs = mock_list.call_args
+        assert kwargs["resource_type"] == "app"
+        options = kwargs["options"]
+        assert options.page_number == 3
+        assert options.results_per_page == 25
+        assert options.reverse is False
+
+    def test_workspace_app_matrix_forwards_outer_pagination_params(self, app):
+        with (
+            app.test_request_context("/workspaces/current/rbac/workspace/apps/access-policy?page=4&limit=10"),
+            _enabled(True),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.app_matrix") as mock_list,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACWorkspaceAppMatrixApi.get)(rbac_mod.RBACWorkspaceAppMatrixApi())
+
+        _, kwargs = mock_list.call_args
+        options = kwargs["options"]
+        assert options.page_number == 4
+        assert options.results_per_page == 10
+        assert options.reverse is None
+
+    def test_workspace_dataset_matrix_forwards_outer_pagination_params(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/workspace/datasets/access-policy?page=5&limit=15&reverse=true"
+            ),
+            _enabled(True),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.dataset_matrix")
+            as mock_list,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACWorkspaceDatasetMatrixApi.get)(rbac_mod.RBACWorkspaceDatasetMatrixApi())
+
+        _, kwargs = mock_list.call_args
+        options = kwargs["options"]
+        assert options.page_number == 5
+        assert options.results_per_page == 15
+        assert options.reverse is True
 
 
 class TestDumpHelper:
     def test_dump_returns_plain_dict(self):
-        role = rbac_mod.svc.RBACRole(id="role-1", type="workspace", role_key="workspace.owner", name="Owner")
+        role = rbac_mod.svc.RBACRole(id="role-1", type="workspace", name="Owner")
         dumped = rbac_mod._dump(role)
         assert isinstance(dumped, dict)
-        assert dumped["role_key"] == "workspace.owner"
+        assert "role_id" not in dumped

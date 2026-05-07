@@ -69,7 +69,6 @@ class TestRoles:
                     "tenant_id": "tenant-1",
                     "type": "workspace",
                     "category": "global_custom",
-                    "role_key": "workspace.owner",
                     "name": "Owner",
                     "permission_keys": ["workspace.member.manage"],
                 }
@@ -88,7 +87,6 @@ class TestRoles:
         assert call.endpoint == "/rbac/roles"
         assert call.params == {"page_number": 2, "results_per_page": 50, "reverse": "true"}
         assert out.pagination and out.pagination.total_count == 1
-        assert out.data[0].role_key == "workspace.owner"
 
     def test_list_omits_params_when_default(self, mock_send: MagicMock):
         mock_send.return_value = {"data": [], "pagination": None}
@@ -96,12 +94,7 @@ class TestRoles:
         assert _call_args(mock_send).params is None
 
     def test_get_passes_id_query_param(self, mock_send: MagicMock):
-        mock_send.return_value = {
-            "id": "role-1",
-            "type": "workspace",
-            "role_key": "workspace.owner",
-            "name": "Owner",
-        }
+        mock_send.return_value = {"id": "role-1", "type": "workspace", "name": "Owner"}
         svc.RBACService.Roles.get("tenant-1", "acct-1", "role-1")
         call = _call_args(mock_send)
         assert call.method == "GET"
@@ -109,18 +102,8 @@ class TestRoles:
         assert call.params == {"id": "role-1"}
 
     def test_create_sends_body(self, mock_send: MagicMock):
-        mock_send.return_value = {
-            "id": "role-1",
-            "type": "workspace",
-            "role_key": "workspace.owner",
-            "name": "Owner",
-        }
-        payload = svc.RoleMutation(
-            name="Owner",
-            role_key="workspace.owner",
-            description="full access",
-            permission_keys=["workspace.member.manage"],
-        )
+        mock_send.return_value = {"id": "role-1", "type": "workspace", "name": "Owner"}
+        payload = svc.RoleMutation(name="Owner", description="full access", permission_keys=["workspace.member.manage"])
         svc.RBACService.Roles.create("tenant-1", "acct-1", payload)
 
         call = _call_args(mock_send)
@@ -128,27 +111,21 @@ class TestRoles:
         assert call.endpoint == "/rbac/roles"
         assert call.json == {
             "name": "Owner",
-            "role_key": "workspace.owner",
             "description": "full access",
             "permission_keys": ["workspace.member.manage"],
             "type": "workspace",
         }
 
     def test_update_sends_id_param_and_body(self, mock_send: MagicMock):
-        mock_send.return_value = {
-            "id": "role-1",
-            "type": "workspace",
-            "role_key": "workspace.owner",
-            "name": "Owner",
-        }
-        payload = svc.RoleMutation(name="Owner", role_key="workspace.owner", permission_keys=["x"])
+        mock_send.return_value = {"id": "role-1", "type": "workspace", "name": "Owner"}
+        payload = svc.RoleMutation(name="Owner", permission_keys=["x"])
         svc.RBACService.Roles.update("tenant-1", "acct-1", "role-1", payload)
 
         call = _call_args(mock_send)
         assert call.method == "PUT"
         assert call.endpoint == "/rbac/roles/item"
         assert call.params == {"id": "role-1"}
-        assert call.json["role_key"] == "workspace.owner"
+        assert call.json == {"name": "Owner", "description": "", "permission_keys": ["x"], "type": "workspace"}
 
     def test_delete_uses_delete_method(self, mock_send: MagicMock):
         mock_send.return_value = {"message": "success"}
@@ -216,13 +193,13 @@ class TestResourceAccess:
 
     def test_app_replace_role_bindings(self, mock_send: MagicMock):
         mock_send.return_value = {"data": []}
-        payload = svc.ReplaceRoleBindings(role_keys=["workspace.owner"])
+        payload = svc.ReplaceRoleBindings(role_ids=["workspace.owner"])
         svc.RBACService.AppAccess.replace_role_bindings("tenant-1", "acct-1", "app-1", "policy-1", payload)
         call = _call_args(mock_send)
         assert call.method == "PUT"
         assert call.endpoint == "/rbac/apps/access-policy/role-bindings"
         assert call.params == {"app_id": "app-1", "policy_id": "policy-1"}
-        assert call.json == {"role_keys": ["workspace.owner"]}
+        assert call.json == {"role_ids": ["workspace.owner"]}
 
     def test_dataset_replace_member_bindings(self, mock_send: MagicMock):
         mock_send.return_value = {"data": []}
@@ -239,12 +216,16 @@ class TestResourceAccess:
 
 class TestWorkspaceAccess:
     def test_app_matrix(self, mock_send: MagicMock):
-        mock_send.return_value = {"items": []}
-        svc.RBACService.WorkspaceAccess.app_matrix("tenant-1")
+        mock_send.return_value = {"items": [], "pagination": {"total_count": 1, "per_page": 20, "current_page": 2, "total_pages": 1}}
+        out = svc.RBACService.WorkspaceAccess.app_matrix(
+            "tenant-1",
+            options=svc.ListOption(page_number=2, results_per_page=20),
+        )
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/workspace/apps/access-policy"
-        assert call.params is None
+        assert call.params == {"page_number": 2, "results_per_page": 20}
+        assert out.pagination and out.pagination.current_page == 2
 
     def test_dataset_matrix(self, mock_send: MagicMock):
         mock_send.return_value = {"items": []}
@@ -256,7 +237,7 @@ class TestWorkspaceAccess:
 
     def test_dataset_replace_role_bindings(self, mock_send: MagicMock):
         mock_send.return_value = {"data": []}
-        payload = svc.ReplaceRoleBindings(role_keys=["workspace.editor"])
+        payload = svc.ReplaceRoleBindings(role_ids=["workspace.editor"])
         svc.RBACService.WorkspaceAccess.replace_dataset_role_bindings(
             "tenant-1", "acct-1", "policy-1", payload
         )
@@ -264,7 +245,40 @@ class TestWorkspaceAccess:
         assert call.method == "PUT"
         assert call.endpoint == "/rbac/workspace/datasets/access-policy/role-bindings"
         assert call.params == {"policy_id": "policy-1"}
-        assert call.json == {"role_keys": ["workspace.editor"]}
+        assert call.json == {"role_ids": ["workspace.editor"]}
+
+
+class TestMyPermissions:
+    def test_get_without_payload_uses_get(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "workspace": {"permission_keys": ["workspace.member.manage"]},
+            "app": {"default_permission_keys": ["app.acl.test_and_run"], "overrides": []},
+            "dataset": {"default_permission_keys": [], "overrides": []},
+        }
+
+        out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/my-permissions"
+        assert call.json is None
+        assert call.params is None
+        assert out.workspace.permission_keys == ["workspace.member.manage"]
+
+    def test_get_with_single_resource_filters(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "workspace": {"permission_keys": []},
+            "app": {"default_permission_keys": [], "overrides": [{"resource_id": "app-1", "permission_keys": ["app.acl.edit"]}]},
+            "dataset": {"default_permission_keys": [], "overrides": []},
+        }
+
+        out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", app_id="app-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/my-permissions"
+        assert call.params == {"app_id": "app-1"}
+        assert out.app.overrides[0].resource_id == "app-1"
 
 
 class TestMemberRoles:
@@ -275,7 +289,6 @@ class TestMemberRoles:
                 {
                     "id": "role-1",
                     "type": "workspace",
-                    "role_key": "workspace.member",
                     "name": "Member",
                 }
             ],
@@ -286,18 +299,18 @@ class TestMemberRoles:
         assert call.endpoint == "/rbac/members/rbac-roles"
         assert call.params == {"account_id": "acct-2"}
         assert out.account_id == "acct-2"
-        assert out.roles[0].role_key == "workspace.member"
+        assert out.roles[0].name == "Member"
 
     def test_replace(self, mock_send: MagicMock):
         mock_send.return_value = {"account_id": "acct-2", "roles": []}
         svc.RBACService.MemberRoles.replace(
-            "tenant-1", "acct-1", "acct-2", role_keys=["workspace.owner", "workspace.editor"]
+            "tenant-1", "acct-1", "acct-2", role_ids=["workspace.owner", "workspace.editor"]
         )
         call = _call_args(mock_send)
         assert call.method == "PUT"
         assert call.endpoint == "/rbac/members/rbac-roles"
         assert call.params == {"account_id": "acct-2"}
-        assert call.json == {"role_keys": ["workspace.owner", "workspace.editor"]}
+        assert call.json == {"role_ids": ["workspace.owner", "workspace.editor"]}
 
 
 class TestListOption:
