@@ -1,129 +1,112 @@
-import type { Tag, TagType } from '@/contract/console/tags'
-import { toast } from '@langgenius/dify-ui/toast'
-import { noop } from 'es-toolkit/function'
-import { useMemo, useState } from 'react'
+import type { TagComboboxItem } from './tag-combobox-item'
+import type { TagType } from '@/contract/console/tags'
+import { ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemText, ComboboxList, ComboboxSeparator, useComboboxFilteredItems } from '@langgenius/dify-ui/combobox'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
-import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
-import { useCreateTagMutation } from '../hooks/use-tag-mutations'
+import { isCreateTagOption } from './tag-combobox-item'
 
 type TagPanelProps = {
   type: TagType
-  selectedTagIds: string[]
-  selectedTags: Tag[]
+  inputValue: string
+  onInputValueChange: (value: string) => void
   onOpenTagManagement?: () => void
-  tagList: Tag[]
-  draftTagIds?: string[]
-  onDraftTagIdsChange?: (tagIds: string[]) => void
   onClose?: () => void
 }
-export const TagPanel = (props: TagPanelProps) => {
-  const { t } = useTranslation()
-  const { type, selectedTagIds, selectedTags, tagList, onOpenTagManagement, onClose } = props
-  const createTagMutation = useCreateTagMutation()
-  const [localDraftTagIds, setLocalDraftTagIds] = useState<string[]>(selectedTagIds)
-  const draftTagIds = props.draftTagIds ?? localDraftTagIds
-  const onDraftTagIdsChange = props.onDraftTagIdsChange ?? setLocalDraftTagIds
-  const [keywords, setKeywords] = useState('')
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-  }
-  const notExisted = useMemo(() => {
-    return tagList.every(tag => tag.type === type && tag.name !== keywords)
-  }, [type, tagList, keywords])
-  const filteredSelectedTagList = useMemo(() => {
-    return selectedTags.filter(tag => tag.name.includes(keywords))
-  }, [keywords, selectedTags])
-  const filteredTagList = useMemo(() => {
-    return tagList.filter(tag => tag.type === type && !selectedTagIds.includes(tag.id) && tag.name.includes(keywords))
-  }, [type, tagList, selectedTagIds, keywords])
-  const createNewTag = () => {
-    if (!keywords)
-      return
-    if (createTagMutation.isPending)
-      return
 
-    createTagMutation.mutate({
-      body: {
-        name: keywords,
-        type,
-      },
-    }, {
-      onSuccess: () => {
-        toast.success(t('tag.created', { ns: 'common' }))
-        setKeywords('')
-      },
-      onError: () => {
-        toast.error(t('tag.failed', { ns: 'common' }))
-      },
-    })
-  }
-  const selectTag = (tagId: string) => {
-    if (draftTagIds.includes(tagId))
-      onDraftTagIdsChange(draftTagIds.filter(v => v !== tagId))
-    else
-      onDraftTagIdsChange([...draftTagIds, tagId])
-  }
+export const TagPanel = ({
+  type,
+  inputValue,
+  onInputValueChange,
+  onOpenTagManagement,
+  onClose,
+}: TagPanelProps) => {
+  const { t } = useTranslation()
+  const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
+  const realItemCount = filteredItems.filter(tag => !isCreateTagOption(tag)).length
+  const hasCreateOption = filteredItems.some(isCreateTagOption)
+  const placeholder = t('tag.selectorPlaceholder', { ns: 'common' }) || ''
+
   return (
-    <div className="relative w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur">
+    <div className="relative w-full">
       <div className="p-2 pb-1">
-        <Input showLeftIcon showClearIcon value={keywords} placeholder={t('tag.selectorPlaceholder', { ns: 'common' }) || ''} onChange={e => handleKeywordsChange(e.target.value)} onClear={() => handleKeywordsChange('')} />
+        <ComboboxInputGroup className="border-divider-subtle bg-components-input-bg-normal">
+          <span aria-hidden="true" className="ml-2 i-ri-search-line h-4 w-4 shrink-0 text-text-tertiary" />
+          <ComboboxInput
+            aria-label={placeholder}
+            name={`tag-search-${type}`}
+            placeholder={placeholder}
+            className="pl-2"
+          />
+          {inputValue && (
+            <button
+              type="button"
+              aria-label={t('operation.clear', { ns: 'common' })}
+              className="mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset"
+              onClick={() => onInputValueChange('')}
+              onPointerDown={event => event.preventDefault()}
+              data-testid="tag-search-clear-button"
+            >
+              <span className="i-ri-close-line size-4" aria-hidden="true" />
+            </button>
+          )}
+        </ComboboxInputGroup>
       </div>
-      {keywords && notExisted && (
-        <div className="p-1">
-          <div className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" data-testid="create-tag-option" onClick={createNewTag}>
-            <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-            <div className="grow truncate px-1 system-md-regular text-text-secondary">
-              {`${t('tag.create', { ns: 'common' })} `}
-              <span className="system-md-medium">{`'${keywords}'`}</span>
-            </div>
-          </div>
-        </div>
+      {filteredItems.length > 0 && (
+        <ComboboxList className="max-h-58">
+          {(tag: TagComboboxItem, index) => {
+            if (isCreateTagOption(tag)) {
+              return (
+                <Fragment key={tag.id}>
+                  <ComboboxItem
+                    value={tag}
+                    index={index}
+                    data-testid="create-tag-option"
+                  >
+                    <ComboboxItemText className="flex items-center gap-x-1 px-0">
+                      <span aria-hidden="true" className="i-ri-add-line h-4 w-4 shrink-0 text-text-tertiary" />
+                      <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
+                        {`${t('tag.create', { ns: 'common' })} `}
+                        <span className="system-md-medium">{`'${tag.name}'`}</span>
+                      </span>
+                    </ComboboxItemText>
+                  </ComboboxItem>
+                  {realItemCount > 0 && <ComboboxSeparator />}
+                </Fragment>
+              )
+            }
+
+            return (
+              <ComboboxItem key={tag.id} value={tag} index={index}>
+                <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
+                <ComboboxItemIndicator />
+              </ComboboxItem>
+            )
+          }}
+        </ComboboxList>
       )}
-      {keywords && notExisted && filteredTagList.length > 0 && (<Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />)}
-      {(filteredTagList.length > 0 || filteredSelectedTagList.length > 0) && (
-        <div className="max-h-[232px] overflow-y-auto p-1">
-          {filteredSelectedTagList.map(tag => (
-            <div key={tag.id} className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => selectTag(tag.id)} data-testid="tag-row">
-              <Checkbox className="shrink-0" checked={draftTagIds.includes(tag.id)} onCheck={noop} id={tag.id} />
-              <div title={tag.name} className="grow truncate px-1 system-md-regular text-text-secondary">
-                {tag.name}
-              </div>
-            </div>
-          ))}
-          {filteredTagList.map(tag => (
-            <div key={tag.id} className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover" onClick={() => selectTag(tag.id)} data-testid="tag-row">
-              <Checkbox className="shrink-0" checked={draftTagIds.includes(tag.id)} onCheck={noop} id={tag.id} />
-              <div title={tag.name} className="grow truncate px-1 system-md-regular text-text-secondary">
-                {tag.name}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {!keywords && !filteredTagList.length && !filteredSelectedTagList.length && (
+      {!hasCreateOption && realItemCount === 0 && (
         <div className="p-1">
           <div className="flex flex-col items-center gap-y-1 p-3">
-            <span className="i-ri-price-tag-3-line h-6 w-6 text-text-quaternary" />
+            <span aria-hidden="true" className="i-ri-price-tag-3-line h-6 w-6 text-text-quaternary" />
             <div className="system-xs-regular text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
           </div>
         </div>
       )}
-      <Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />
+      <ComboboxSeparator />
       <div className="p-1">
-        <div
-          className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
+        <button
+          type="button"
+          className="flex w-full cursor-pointer touch-manipulation items-center gap-x-1 rounded-lg px-2 py-1.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active"
           onClick={() => {
             onOpenTagManagement?.()
             onClose?.()
           }}
         >
-          <span className="i-ri-price-tag-3-line h-4 w-4 text-text-tertiary" />
-          <div className="grow truncate px-1 system-md-regular text-text-secondary">
+          <span aria-hidden="true" className="i-ri-price-tag-3-line h-4 w-4 text-text-tertiary" />
+          <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
             {t('tag.manageTags', { ns: 'common' })}
-          </div>
-        </div>
+          </span>
+        </button>
       </div>
     </div>
   )
