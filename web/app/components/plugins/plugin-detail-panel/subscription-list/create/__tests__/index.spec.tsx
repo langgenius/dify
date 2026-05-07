@@ -486,6 +486,38 @@ describe('CreateSubscriptionButton', () => {
       })
     })
 
+    it('should close dropdown when oauth settings is clicked from option extra action', async () => {
+      // Arrange
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [
+            SupportedCreationMethods.OAUTH,
+            SupportedCreationMethods.APIKEY,
+            SupportedCreationMethods.MANUAL,
+          ],
+        }),
+        oauthConfig: createOAuthConfig({ configured: false }),
+      })
+      const props = createDefaultProps()
+
+      // Act
+      render(<CreateSubscriptionButton {...props} />)
+
+      fireEvent.click(screen.getByTestId('custom-trigger'))
+      expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-open', 'true')
+
+      fireEvent.click(screen.getByRole('button', {
+        name: 'pluginTrigger.subscription.addType.options.oauth.clientSettings',
+      }))
+
+      // Assert
+      await waitFor(() => {
+        expect(screen.getByTestId('oauth-client-modal'))!.toBeInTheDocument()
+        expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-open', 'false')
+      })
+    })
+
     it('should close OAuthClientSettingsModal and refetch config when closed', async () => {
       // Arrange
       const mockRefetchOAuth = vi.fn()
