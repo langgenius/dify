@@ -4522,9 +4522,6 @@
     }
   },
   "web/app/components/workflow/nodes/tool/components/tool-form/item.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
