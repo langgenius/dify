@@ -1816,8 +1816,8 @@ export type GetAppsByAppIdAnnotationsExportResponse
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdData = {
   body?: never
   path: {
-    annotation_id: string
     app_id: string
+    annotation_id: string
   }
   query?: never
   url: '/apps/{app_id}/annotations/{annotation_id}'

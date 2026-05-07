@@ -1717,8 +1717,8 @@ export const zGetAppsByAppIdAnnotationsExportPath = z.object({
 export const zGetAppsByAppIdAnnotationsExportResponse = zAnnotationExportList
 
 export const zDeleteAppsByAppIdAnnotationsByAnnotationIdPath = z.object({
-  annotation_id: z.string(),
   app_id: z.string(),
+  annotation_id: z.string(),
 })
 
 /**
