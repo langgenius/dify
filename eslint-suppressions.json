@@ -2579,11 +2579,8 @@
     "erasable-syntax-only/enums": {
       "count": 1
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/header/account-setting/model-provider-page/declarations.ts": {
