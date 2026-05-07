@@ -280,6 +280,7 @@ class _ReplaceRoleBindingsRequest(BaseModel):
     role_ids: list[str] = []
 
 
+
 class _ReplaceMemberBindingsRequest(BaseModel):
     account_ids: list[str] = []
 

@@ -188,6 +188,7 @@ class ReplaceRoleBindings(_RBACModel):
     role_ids: list[str] = Field(default_factory=list)
 
 
+
 class ReplaceMemberBindings(_RBACModel):
     account_ids: list[str] = Field(default_factory=list)
 
