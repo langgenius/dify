@@ -88,13 +88,10 @@ def clean_dataset_queries_task() -> None:
 
     except LockError:
         end_at = time.perf_counter()
-        logger.warning(
-            "clean_dataset_queries_task: lock already held, skip current execution"
-        )
+        logger.warning("clean_dataset_queries_task: lock already held, skip current execution")
         click.echo(
             click.style(
-                f"clean_dataset_queries_task: skipped (lock already held), "
-                f"latency: {end_at - start_at:.2f}s",
+                f"clean_dataset_queries_task: skipped (lock already held), latency: {end_at - start_at:.2f}s",
                 fg="yellow",
             )
         )

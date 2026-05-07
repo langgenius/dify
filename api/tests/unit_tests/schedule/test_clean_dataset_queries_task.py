@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
 from redis.exceptions import LockError
 
 from schedule.clean_dataset_queries_task import _effective_retention_days, clean_dataset_queries_task
