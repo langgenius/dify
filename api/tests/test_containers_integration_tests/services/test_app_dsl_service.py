@@ -70,7 +70,7 @@ def _pending_yaml_content(version: str = "99.0.0") -> bytes:
     return (f'version: "{version}"\nkind: app\napp:\n  name: Loop Test\n  mode: workflow\n').encode()
 
 
-def _app_stub(**overrides: Any) -> App:
+def _app_stub(**overrides: Any) -> MagicMock:
     defaults = {
         "id": str(uuid4()),
         "tenant_id": _DEFAULT_TENANT_ID,
@@ -83,7 +83,10 @@ def _app_stub(**overrides: Any) -> App:
         "use_icon_as_answer_icon": False,
         "app_model_config": None,
     }
-    return cast(App, SimpleNamespace(**(defaults | overrides)))
+    mock_app = MagicMock(spec=App)
+    for key, value in (defaults | overrides).items():
+        setattr(mock_app, key, value)  # type: ignore[attr-defined]
+    return mock_app
 
 
 class TestAppDslService:
@@ -505,11 +508,10 @@ class TestAppDslService:
             lambda deps: [SimpleNamespace(model_dump=lambda: {"dep": deps[0]})],
         )
 
-        created_app = SimpleNamespace(
-            id=str(uuid4()),
-            mode=AppMode.WORKFLOW.value,
-            tenant_id=_DEFAULT_TENANT_ID,
-        )
+        created_app = MagicMock(spec=App)
+        created_app.id = str(uuid4())
+        created_app.mode = AppMode.WORKFLOW.value
+        created_app.tenant_id = _DEFAULT_TENANT_ID
         monkeypatch.setattr(
             AppDslService,
             "_create_or_update_app",
@@ -566,11 +568,10 @@ class TestAppDslService:
         )
         redis_client.setex(redis_key, IMPORT_INFO_REDIS_EXPIRY, pending.model_dump_json())
 
-        created_app = SimpleNamespace(
-            id=str(uuid4()),
-            mode=AppMode.WORKFLOW.value,
-            tenant_id=_DEFAULT_TENANT_ID,
-        )
+        created_app = MagicMock(spec=App)
+        created_app.id = str(uuid4())
+        created_app.mode = AppMode.WORKFLOW.value
+        created_app.tenant_id = _DEFAULT_TENANT_ID
         monkeypatch.setattr(
             AppDslService,
             "_create_or_update_app",
@@ -834,7 +835,7 @@ class TestAppDslService:
         chat_app = _app_stub(
             mode=AppMode.CHAT.value,
             icon_type="emoji",
-            app_model_config=SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": []}}),
+            app_model_config=MagicMock(spec=AppModelConfig, to_dict=lambda: {"agent_mode": {"tools": []}}),
         )
         AppDslService.export_dsl(chat_app)
         assert model_calls == [True]
@@ -1142,7 +1143,7 @@ class TestAppDslService:
         )
         monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
 
-        app_model_config = SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}})
+        app_model_config = MagicMock(spec=AppModelConfig, to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}})
         app_model = _app_stub(app_model_config=app_model_config)
         export_data: dict = {}
 
