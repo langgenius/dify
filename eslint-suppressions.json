@@ -779,11 +779,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/chat/chat/answer/operation.tsx": {
-    "no-restricted-imports": {
-      "count": 2
-    }
-  },
   "web/app/components/base/chat/chat/answer/workflow-process.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -1564,14 +1559,6 @@
     }
   },
   "web/app/components/base/modal/index.stories.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/modal/modal.stories.tsx": {
-    "no-console": {
-      "count": 4
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -2886,31 +2873,8 @@
       "count": 3
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/oauth-client.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/edit/apikey-edit-modal.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/edit/manual-edit-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/edit/oauth-edit-modal.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },

@@ -110,48 +110,6 @@ Object.defineProperty(navigator, 'clipboard', {
   writable: true,
 })
 
-vi.mock('@/app/components/base/modal/modal', () => ({
-  default: ({
-    children,
-    onClose,
-    onConfirm,
-    onCancel,
-    title,
-    confirmButtonText,
-    cancelButtonText,
-    footerSlot,
-    onExtraButtonClick,
-    extraButtonText,
-  }: {
-    children: React.ReactNode
-    onClose: () => void
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-    confirmButtonText: string
-    cancelButtonText?: string
-    footerSlot?: React.ReactNode
-    onExtraButtonClick?: () => void
-    extraButtonText?: string
-  }) => (
-    <div data-testid="modal">
-      <div data-testid="modal-title">{title}</div>
-      <div data-testid="modal-content">{children}</div>
-      <div data-testid="modal-footer">
-        {footerSlot}
-        {extraButtonText && (
-          <button data-testid="modal-extra" onClick={onExtraButtonClick}>{extraButtonText}</button>
-        )}
-        {cancelButtonText && (
-          <button data-testid="modal-cancel" onClick={onCancel}>{cancelButtonText}</button>
-        )}
-        <button data-testid="modal-confirm" onClick={onConfirm}>{confirmButtonText}</button>
-        <button data-testid="modal-close" onClick={onClose}>Close</button>
-      </div>
-    </div>
-  ),
-}))
-
 let mockFormValues: { values: Record<string, string>, isCheckValidated: boolean } = {
   values: { client_id: 'test-client-id', client_secret: 'test-client-secret' },
   isCheckValidated: true,
@@ -161,10 +119,13 @@ const setMockFormValues = (values: typeof mockFormValues) => {
 }
 
 vi.mock('@/app/components/base/form/components/base', () => ({
-  BaseForm: React.forwardRef((
-    { formSchemas }: { formSchemas: Array<{ name: string, default?: string }> },
-    ref: React.ForwardedRef<{ getFormValues: () => { values: Record<string, string>, isCheckValidated: boolean } }>,
-  ) => {
+  BaseForm: ({
+    formSchemas,
+    ref,
+  }: {
+    formSchemas: Array<{ name: string, default?: string }>
+    ref?: React.Ref<{ getFormValues: () => { values: Record<string, string>, isCheckValidated: boolean } }>
+  }) => {
     React.useImperativeHandle(ref, () => ({
       getFormValues: () => mockFormValues,
     }))
@@ -180,7 +141,7 @@ vi.mock('@/app/components/base/form/components/base', () => ({
         ))}
       </div>
     )
-  }),
+  },
 }))
 
 describe('OAuthClientSettingsModal', () => {
