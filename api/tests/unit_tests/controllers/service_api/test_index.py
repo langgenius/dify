@@ -2,10 +2,10 @@
 Unit tests for Service API Index endpoint
 """
 
-from flask import Flask
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.service_api.index import IndexApi
 

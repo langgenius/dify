@@ -1,9 +1,9 @@
-from flask import Flask
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import controllers.console.explore.trial as module

@@ -1,7 +1,7 @@
-from flask import Flask
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.console import console_ns
 from controllers.console.workspace.endpoint import (

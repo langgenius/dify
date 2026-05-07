@@ -1,10 +1,10 @@
-from flask import Flask
 import uuid
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 import sqlalchemy as sa
 from faker import Faker
+from flask import Flask
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom

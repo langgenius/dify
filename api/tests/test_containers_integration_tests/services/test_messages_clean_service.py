@@ -1,5 +1,4 @@
 from __future__ import annotations
-from flask import Flask
 
 import datetime
 import json

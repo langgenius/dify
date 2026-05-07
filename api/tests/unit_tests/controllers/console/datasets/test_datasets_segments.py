@@ -1,8 +1,8 @@
-from flask import Flask
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services

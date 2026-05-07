@@ -402,7 +402,9 @@ class TestAppInfoApi:
     @patch("controllers.service_api.wraps.current_app")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.db")
-    def test_get_app_info_with_no_tags(self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask):
+    def test_get_app_info_with_no_tags(
+        self, mock_db, mock_validate_token, mock_current_app, mock_user_logged_in, app: Flask
+    ):
         """Test retrieving app info when app has no tags."""
         # Arrange
         mock_current_app.login_manager = Mock()

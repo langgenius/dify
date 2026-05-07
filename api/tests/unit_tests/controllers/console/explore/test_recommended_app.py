@@ -1,5 +1,6 @@
-from flask import Flask
 from unittest.mock import MagicMock, patch
+
+from flask import Flask
 
 import controllers.console.explore.recommended_app as module
 from models.model import AppMode, IconType

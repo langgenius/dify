@@ -78,7 +78,7 @@ class TestExternalApiTemplateListApi:
         assert resp["total"] == 1
         assert resp["data"][0]["id"] == "1"
 
-    def test_post_forbidden(self, app:Flask, current_user):
+    def test_post_forbidden(self, app: Flask, current_user):
         current_user.is_dataset_editor = False
         api = ExternalApiTemplateListApi()
         method = unwrap(api.post)
@@ -129,7 +129,7 @@ class TestExternalApiTemplateApi:
             with pytest.raises(NotFound):
                 method(api, "api-id")
 
-    def test_delete_forbidden(self, app:Flask, current_user):
+    def test_delete_forbidden(self, app: Flask, current_user):
         current_user.has_edit_permission = False
         current_user.is_dataset_operator = False
 
@@ -206,7 +206,7 @@ class TestExternalDatasetCreateApi:
 
         assert status == 201
 
-    def test_create_forbidden(self, app:Flask, current_user):
+    def test_create_forbidden(self, app: Flask, current_user):
         current_user.is_dataset_editor = False
         api = ExternalDatasetCreateApi()
         method = unwrap(api.post)

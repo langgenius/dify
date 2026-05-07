@@ -13,7 +13,6 @@ Focus on:
 - Service method interfaces
 """
 
-from flask import Flask
 import sys
 import uuid
 from datetime import UTC, datetime
@@ -21,6 +20,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.service_api.app.error import NotWorkflowAppError
@@ -367,7 +367,7 @@ class TestWorkflowRunRepository:
 
 
 class TestWorkflowRunDetailApi:
-    def test_not_workflow_app(self, app:Flask) -> None:
+    def test_not_workflow_app(self, app: Flask) -> None:
         api = WorkflowRunDetailApi()
         handler = _unwrap(api.get)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
@@ -398,7 +398,7 @@ class TestWorkflowRunDetailApi:
 
 
 class TestWorkflowRunApi:
-    def test_not_workflow_app(self, app:Flask) -> None:
+    def test_not_workflow_app(self, app: Flask) -> None:
         api = WorkflowRunApi()
         handler = _unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
@@ -408,7 +408,7 @@ class TestWorkflowRunApi:
             with pytest.raises(NotWorkflowAppError):
                 handler(api, app_model=app_model, end_user=end_user)
 
-    def test_rate_limit(self, app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_rate_limit(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -426,7 +426,7 @@ class TestWorkflowRunApi:
 
 
 class TestWorkflowRunByIdApi:
-    def test_not_found(self, app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -442,7 +442,7 @@ class TestWorkflowRunByIdApi:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, workflow_id="w1")
 
-    def test_draft_workflow(self, app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
@@ -460,7 +460,7 @@ class TestWorkflowRunByIdApi:
 
 
 class TestWorkflowTaskStopApi:
-    def test_wrong_mode(self, app:Flask) -> None:
+    def test_wrong_mode(self, app: Flask) -> None:
         api = WorkflowTaskStopApi()
         handler = _unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
@@ -470,7 +470,7 @@ class TestWorkflowTaskStopApi:
             with pytest.raises(NotWorkflowAppError):
                 handler(api, app_model=app_model, end_user=end_user, task_id="t1")
 
-    def test_success(self, app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         stop_mock = Mock()
         send_mock = Mock()
         monkeypatch.setattr(AppQueueManager, "set_stop_flag_no_user_check", stop_mock)
@@ -490,7 +490,7 @@ class TestWorkflowTaskStopApi:
 
 
 class TestWorkflowAppLogApi:
-    def test_success(self, app:Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         class _BeginStub:
             def __enter__(self):
                 return SimpleNamespace()
@@ -558,7 +558,7 @@ class TestWorkflowRunDetailApiGet:
         self,
         mock_db,
         mock_repo_factory,
-        app:Flask,
+        app: Flask,
         mock_workflow_app,
     ):
         """Test successful workflow run detail retrieval."""
@@ -605,7 +605,7 @@ class TestWorkflowTaskStopApiPost:
         self,
         mock_queue_mgr,
         mock_graph_mgr,
-        app:Flask,
+        app: Flask,
         mock_workflow_app,
     ):
         """Test successful workflow task stop."""
@@ -650,7 +650,7 @@ class TestWorkflowAppLogApiGet:
         self,
         mock_db,
         mock_wf_svc_cls,
-        app:Flask,
+        app: Flask,
         mock_workflow_app,
     ):
         """Test successful workflow log retrieval."""

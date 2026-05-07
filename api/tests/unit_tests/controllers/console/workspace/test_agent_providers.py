@@ -1,7 +1,7 @@
-from flask import Flask
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.console.error import AccountNotFound
 from controllers.console.workspace.agent_providers import (

@@ -17,13 +17,13 @@ Strategy:
   (via ``FileService(db.engine)``); the other endpoints delegate to services.
 """
 
-from flask import Flask
 import io
 import uuid
 from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden, NotFound
 

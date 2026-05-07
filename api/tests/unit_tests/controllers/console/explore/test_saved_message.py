@@ -1,8 +1,8 @@
-from flask import Flask
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.saved_message as module

@@ -11,12 +11,12 @@ Focus on:
 - Error types and their mappings
 """
 
-from flask import Flask
 import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, NotFound
 

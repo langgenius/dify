@@ -1,7 +1,7 @@
-from flask import Flask
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import HTTPException
 
 import services

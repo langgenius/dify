@@ -1,8 +1,8 @@
-from flask import Flask
 import datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services

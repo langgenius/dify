@@ -1,8 +1,8 @@
-from flask import Flask
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

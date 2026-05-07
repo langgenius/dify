@@ -1,11 +1,11 @@
-from models import CreatorUserRole
-from flask import Flask
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from flask import Flask
 from sqlalchemy.orm import Session
 
+from models import CreatorUserRole
 from models.enums import ConversationFromSource
 from models.model import EndUser, Message
 from models.web import SavedMessage

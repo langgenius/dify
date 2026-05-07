@@ -1,7 +1,7 @@
-from flask import Flask
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns

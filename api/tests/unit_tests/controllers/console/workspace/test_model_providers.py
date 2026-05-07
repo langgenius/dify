@@ -1,7 +1,7 @@
-from flask import Flask
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from pydantic_core import ValidationError
 from werkzeug.exceptions import Forbidden
 

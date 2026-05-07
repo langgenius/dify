@@ -1,8 +1,8 @@
-from flask import Flask
 import io
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
