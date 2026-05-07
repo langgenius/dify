@@ -1576,7 +1576,7 @@ class WorkflowDraftVariable(Base):
 
     # WorkflowDraftVariableFile uses TypeBase while WorkflowDraftVariable uses Base, so the relationship
     # must resolve the class object lazily instead of relying on string lookup across registries.
-    variable_file: Mapped[Optional["WorkflowDraftVariableFile"]] = orm.relationship(
+    variable_file: Mapped[WorkflowDraftVariableFile | None] = orm.relationship(
         lambda: WorkflowDraftVariableFile,
         foreign_keys=[file_id],
         lazy="raise",
@@ -1967,7 +1967,7 @@ class WorkflowDraftVariableFile(TypeBase):
     )
 
     # Rows are created with `upload_file_id`; callers should load this relationship explicitly when needed.
-    upload_file: Mapped["UploadFile"] = orm.relationship(
+    upload_file: Mapped[UploadFile] = orm.relationship(
         UploadFile,
         foreign_keys=[upload_file_id],
         lazy="raise",
