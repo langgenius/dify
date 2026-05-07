@@ -206,12 +206,13 @@ class TestAccessPolicies:
 
 class TestResourceAccess:
     def test_app_matrix(self, mock_send: MagicMock):
-        mock_send.return_value = {"resource_type": "app", "resource_id": "app-1", "items": []}
-        svc.RBACService.AppAccess.matrix("tenant-1", "acct-1", "app-1")
+        mock_send.return_value = {"app_id": "app-1", "items": []}
+        out = svc.RBACService.AppAccess.matrix("tenant-1", "acct-1", "app-1")
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/apps/access-policy"
         assert call.params == {"app_id": "app-1"}
+        assert out.app_id == "app-1"
 
     def test_app_replace_role_bindings(self, mock_send: MagicMock):
         mock_send.return_value = {"data": []}
@@ -238,11 +239,19 @@ class TestResourceAccess:
 
 class TestWorkspaceAccess:
     def test_app_matrix(self, mock_send: MagicMock):
-        mock_send.return_value = {"resource_type": "app", "items": []}
+        mock_send.return_value = {"items": []}
         svc.RBACService.WorkspaceAccess.app_matrix("tenant-1")
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/workspace/apps/access-policy"
+        assert call.params is None
+
+    def test_dataset_matrix(self, mock_send: MagicMock):
+        mock_send.return_value = {"items": []}
+        svc.RBACService.WorkspaceAccess.dataset_matrix("tenant-1")
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/workspace/datasets/access-policy"
         assert call.params is None
 
     def test_dataset_replace_role_bindings(self, mock_send: MagicMock):

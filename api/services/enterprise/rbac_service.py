@@ -108,14 +108,17 @@ class AccessMatrixItem(_RBACModel):
     account_ids: list[str] = Field(default_factory=list)
 
 
-class ResourceAccessMatrix(_RBACModel):
-    resource_type: str
-    resource_id: str = ""
+class AppAccessMatrix(_RBACModel):
+    app_id: str = ""
+    items: list[AccessMatrixItem] = Field(default_factory=list)
+
+
+class DatasetAccessMatrix(_RBACModel):
+    dataset_id: str = ""
     items: list[AccessMatrixItem] = Field(default_factory=list)
 
 
 class WorkspaceAccessMatrix(_RBACModel):
-    resource_type: str
     items: list[AccessMatrixItem] = Field(default_factory=list)
 
 
@@ -425,7 +428,7 @@ class RBACService:
     # ------------------------------------------------------------------
     class AppAccess:
         @staticmethod
-        def matrix(tenant_id: str, account_id: str | None, app_id: str) -> ResourceAccessMatrix:
+        def matrix(tenant_id: str, account_id: str | None, app_id: str) -> AppAccessMatrix:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/apps/access-policy",
@@ -433,7 +436,7 @@ class RBACService:
                 account_id=account_id,
                 params={"app_id": app_id},
             )
-            return ResourceAccessMatrix.model_validate(data or {})
+            return AppAccessMatrix.model_validate(data or {})
 
         @staticmethod
         def list_role_bindings(
@@ -508,7 +511,7 @@ class RBACService:
     # ------------------------------------------------------------------
     class DatasetAccess:
         @staticmethod
-        def matrix(tenant_id: str, account_id: str | None, dataset_id: str) -> ResourceAccessMatrix:
+        def matrix(tenant_id: str, account_id: str | None, dataset_id: str) -> DatasetAccessMatrix:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/datasets/access-policy",
@@ -516,7 +519,7 @@ class RBACService:
                 account_id=account_id,
                 params={"dataset_id": dataset_id},
             )
-            return ResourceAccessMatrix.model_validate(data or {})
+            return DatasetAccessMatrix.model_validate(data or {})
 
         @staticmethod
         def list_role_bindings(
