@@ -1,0 +1,128 @@
+"""Redis Streams-backed run persistence.
+
+The store writes run records as JSON strings and events/jobs as Redis streams.
+HTTP event cursors are Redis stream ids; ``0-0`` means replay from the beginning
+for polling and SSE. The worker uses the jobs stream directly and updates the run
+record through the same status/event sink protocol as tests.
+"""
+
+from collections.abc import AsyncIterator
+from typing import cast
+
+from pydantic import JsonValue
+from redis.asyncio import Redis
+
+from dify_agent.runtime.event_sink import RunEventSink
+from dify_agent.server.schemas import (
+    CreateRunRequest,
+    RunEvent,
+    RunEventsResponse,
+    RunRecord,
+    RunStatus,
+    RunnerJob,
+    new_run_id,
+    utc_now,
+)
+from dify_agent.storage.redis_keys import run_events_key, run_jobs_key, run_record_key
+
+
+class RunNotFoundError(LookupError):
+    """Raised when a requested run record does not exist."""
+
+
+class RedisRunStore(RunEventSink):
+    """Async Redis implementation for run records, jobs, and events."""
+
+    redis: Redis
+    prefix: str
+
+    def __init__(self, redis: Redis, *, prefix: str = "dify-agent") -> None:
+        self.redis = redis
+        self.prefix = prefix
+
+    async def create_run(self, request: CreateRunRequest) -> RunRecord:
+        """Persist a queued run and enqueue its worker job atomically.
+
+        The run record and jobs stream entry are one durability boundary: either
+        both are committed by Redis ``MULTI/EXEC`` or neither is visible. This
+        prevents permanently queued records with no corresponding worker job.
+        """
+        run_id = new_run_id()
+        record = RunRecord(run_id=run_id, status="queued", request=request)
+        job = RunnerJob(run_id=run_id, request=request)
+        async with self.redis.pipeline(transaction=True) as pipe:
+            pipe.set(run_record_key(self.prefix, run_id), record.model_dump_json())
+            pipe.xadd(run_jobs_key(self.prefix), {"payload": job.model_dump_json()})
+            await pipe.execute()
+        return record
+
+    async def get_run(self, run_id: str) -> RunRecord:
+        """Return one run record or raise ``RunNotFoundError``."""
+        value = await self.redis.get(run_record_key(self.prefix, run_id))
+        if value is None:
+            raise RunNotFoundError(run_id)
+        if isinstance(value, bytes):
+            value = value.decode()
+        return RunRecord.model_validate_json(value)
+
+    async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
+        """Update the status fields of an existing run record."""
+        record = await self.get_run(run_id)
+        updated = record.model_copy(update={"status": status, "updated_at": utc_now(), "error": error})
+        await self.redis.set(run_record_key(self.prefix, run_id), updated.model_dump_json())
+
+    async def append_event(self, event: RunEvent) -> str:
+        """Append an event JSON payload to the run's Redis stream."""
+        event_id = await self.redis.xadd(
+            run_events_key(self.prefix, event.run_id),
+            {"payload": event.model_dump_json(exclude={"id"})},
+        )
+        return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
+
+    async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
+        """Read a bounded page of events after ``after`` cursor."""
+        await self.get_run(run_id)
+        raw_events = await self.redis.xrange(run_events_key(self.prefix, run_id), min=f"({after}", count=limit)
+        events = [self._decode_event(run_id, raw_id, fields) for raw_id, fields in raw_events]
+        next_cursor = events[-1].id if events else after
+        return RunEventsResponse(run_id=run_id, events=events, next_cursor=next_cursor)
+
+    async def iter_events(self, run_id: str, *, after: str = "0-0") -> AsyncIterator[RunEvent]:
+        """Yield replayed and future events for SSE clients."""
+        await self.get_run(run_id)
+        cursor = after
+        while True:
+            page = await self.get_events(run_id, after=cursor, limit=100)
+            for event in page.events:
+                if event.id is not None:
+                    cursor = event.id
+                yield event
+            if not page.events:
+                break
+        while True:
+            response = await self.redis.xread({run_events_key(self.prefix, run_id): cursor}, block=30_000, count=100)
+            if not response:
+                continue
+            for _stream_name, entries in response:
+                for raw_id, fields in entries:
+                    event = self._decode_event(run_id, raw_id, fields)
+                    if event.id is not None:
+                        cursor = event.id
+                    yield event
+
+    @staticmethod
+    def _decode_event(run_id: str, raw_id: object, fields: dict[object, object]) -> RunEvent:
+        """Decode one Redis stream entry into a public event."""
+        payload = fields.get(b"payload") or fields.get("payload")
+        if isinstance(payload, bytes):
+            payload = payload.decode()
+        event_id = raw_id.decode() if isinstance(raw_id, bytes) else str(raw_id)
+        return RunEvent.model_validate_json(cast(str, payload)).model_copy(update={"id": event_id, "run_id": run_id})
+
+
+def json_field(value: object) -> JsonValue:
+    """Narrow helper for dynamic Redis payloads."""
+    return cast(JsonValue, value)
+
+
+__all__ = ["RedisRunStore", "RunNotFoundError"]

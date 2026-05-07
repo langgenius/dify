@@ -12,8 +12,10 @@ dependencies = [
     "logfire>=4.32.1",
     "pydantic>=2.13.3",
     "pydantic-ai-slim[anthropic,google,openai]>=1.85.1",
+    "pydantic-settings>=2.12.0",
+    "redis>=5",
     "sqlmodel>=0.0.38",
-    "unicorn>=2.1.4",
+    "uvicorn[standard]>=0.38.0",
     "uvloop>=0.22.1",
 ]
 
