@@ -291,7 +291,7 @@ class TestDatasetListApiGet:
         mock_current_user,
         mock_provider_mgr,
         mock_marshal,
-        app,
+        app:Flask,
         mock_tenant,
     ):
         from controllers.service_api.dataset.dataset import DatasetListApi
@@ -326,7 +326,7 @@ class TestDatasetListApiPost:
         mock_dataset_svc,
         mock_current_user,
         mock_marshal,
-        app,
+        app:Flask,
         mock_tenant,
     ):
         from controllers.service_api.dataset.dataset import DatasetListApi
@@ -352,7 +352,7 @@ class TestDatasetListApiPost:
         self,
         mock_dataset_svc,
         mock_current_user,
-        app,
+        app:Flask,
         mock_tenant,
     ):
         from controllers.service_api.dataset.dataset import DatasetListApi
