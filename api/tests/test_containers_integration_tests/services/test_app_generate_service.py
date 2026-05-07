@@ -165,19 +165,19 @@ class TestAppGenerateService:
         tenant = account.current_tenant
 
         # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": mode,
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-            "max_active_requests": 5,
-        }
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode=mode,
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+            max_active_requests=5,
+        )
 
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
