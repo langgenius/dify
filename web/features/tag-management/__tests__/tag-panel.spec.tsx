@@ -1,50 +1,19 @@
 import type { TagComboboxItem } from '../components/tag-combobox-item'
 import type { Tag, TagType } from '@/contract/console/tags'
 import { Combobox } from '@langgenius/dify-ui/combobox'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMemo, useState } from 'react'
 import { isCreateTagOption } from '../components/tag-combobox-item'
 import { TagPanel } from '../components/tag-panel'
 
-const { mockNotify, mockToast } = vi.hoisted(() => {
-  const mockNotify = vi.fn()
-  const mockToast = Object.assign(mockNotify, {
-    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
-    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockNotify, mockToast }
-})
-
-vi.mock('@langgenius/dify-ui/toast', () => ({ toast: mockToast }))
-
-const { createTag, onValueChangeSpy } = vi.hoisted(() => ({
-  createTag: vi.fn(),
+const { onValueChangeSpy } = vi.hoisted(() => ({
   onValueChangeSpy: vi.fn(),
-}))
-
-vi.mock('../hooks/use-tag-mutations', () => ({
-  useCreateTagMutation: () => ({
-    isPending: false,
-    mutate: ({ body }: { body: { name: string, type: TagType } }, options?: { onSuccess?: (tag: Tag) => void, onError?: () => void }) => {
-      const tag: Tag = { id: 'new-tag', name: body.name, type: body.type, binding_count: 0 }
-      Promise.resolve(createTag(body.name, body.type))
-        .then(() => options?.onSuccess?.(tag))
-        .catch(() => options?.onError?.())
-    },
-  }),
 }))
 
 const i18n = {
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
   create: 'common.tag.create',
-  created: 'common.tag.created',
-  failed: 'common.tag.failed',
   noTag: 'common.tag.noTag',
   manageTags: 'common.tag.manageTags',
 }
@@ -111,7 +80,6 @@ const PanelHarness = ({
       <TagPanel
         type={type}
         inputValue={inputValue}
-        onInputValueChange={setInputValue}
         onOpenTagManagement={onOpenTagManagement}
       />
     </Combobox>
@@ -121,7 +89,6 @@ const PanelHarness = ({
 describe('TagPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
   })
 
   it('renders search, selected tags, unselected tags, and management action', () => {
@@ -174,7 +141,7 @@ describe('TagPanel', () => {
     expect(onValueChangeSpy).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'tag-1' })])
   })
 
-  it('creates a tag without selecting it and clears the search value on success', async () => {
+  it('routes create option activation through the combobox value change API', async () => {
     const user = userEvent.setup()
     render(<PanelHarness />)
 
@@ -182,26 +149,12 @@ describe('TagPanel', () => {
     await user.type(input, 'BrandNewTag')
     await user.click(screen.getByTestId('create-tag-option'))
 
-    await waitFor(() => {
-      expect(createTag).toHaveBeenCalledWith('BrandNewTag', 'app')
-    })
-    expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: i18n.created })
-    await waitFor(() => {
-      expect(input).toHaveValue('')
-    })
-  })
-
-  it('shows an error notification when tag creation fails', async () => {
-    const user = userEvent.setup()
-    vi.mocked(createTag).mockRejectedValueOnce(new Error('Creation failed'))
-    render(<PanelHarness />)
-
-    await user.type(screen.getByRole('combobox', { name: i18n.selectorPlaceholder }), 'FailTag')
-    await user.click(screen.getByTestId('create-tag-option'))
-
-    await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: i18n.failed })
-    })
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining([
+      expect.objectContaining({
+        isCreateOption: true,
+        name: 'BrandNewTag',
+      }),
+    ]))
   })
 
   it('renders the empty state when no tags exist and no search is active', () => {

@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
+import { useApplyTagBindingsMutation, useCreateTagMutation } from '../hooks/use-tag-mutations'
 import { isCreateTagOption } from './tag-combobox-item'
 import { TagPanel } from './tag-panel'
 import { TagTrigger } from './tag-trigger'
@@ -67,6 +67,7 @@ export const TagSelector = ({
   const [draftTags, setDraftTags] = useState<Tag[]>(value)
   const [inputValue, setInputValue] = useState('')
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
+  const createTagMutation = useCreateTagMutation()
   const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
     input: {
       query: {
@@ -162,13 +163,35 @@ export const TagSelector = ({
     setOpen(nextOpen)
   }, [applyTagBindings, value])
 
-  const handleValueChange = useCallback((nextTags: TagComboboxItem[]) => {
-    const createOption = nextTags.find(isCreateTagOption)
-    if (createOption)
+  const createNewTag = useCallback((name: string) => {
+    if (!name || createTagMutation.isPending)
       return
 
+    createTagMutation.mutate({
+      body: {
+        name,
+        type,
+      },
+    }, {
+      onSuccess: () => {
+        toast.success(t('tag.created', { ns: 'common' }))
+        setInputValue('')
+      },
+      onError: () => {
+        toast.error(t('tag.failed', { ns: 'common' }))
+      },
+    })
+  }, [createTagMutation, t, type])
+
+  const handleValueChange = useCallback((nextTags: TagComboboxItem[]) => {
+    const createOption = nextTags.find(isCreateTagOption)
+    if (createOption) {
+      createNewTag(createOption.name)
+      return
+    }
+
     setDraftTags(nextTags.filter(tag => !isCreateTagOption(tag)))
-  }, [])
+  }, [createNewTag])
 
   return (
     <Combobox
@@ -189,7 +212,7 @@ export const TagSelector = ({
         aria-label={triggerLabel}
         className={cn(
           open ? 'bg-state-base-hover' : 'bg-transparent',
-          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-open:bg-state-base-hover data-open:hover:bg-state-base-hover',
+          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset data-open:bg-state-base-hover data-open:hover:bg-state-base-hover',
         )}
         icon={false}
       >
@@ -207,7 +230,6 @@ export const TagSelector = ({
         <TagPanel
           type={type}
           inputValue={inputValue}
-          onInputValueChange={setInputValue}
           onOpenTagManagement={onOpenTagManagement}
           onClose={() => handleOpenChange(false)}
         />

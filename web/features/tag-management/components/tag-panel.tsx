@@ -1,16 +1,13 @@
 import type { TagComboboxItem } from './tag-combobox-item'
 import type { TagType } from '@/contract/console/tags'
 import { ComboboxClear, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemText, ComboboxList, ComboboxSeparator, useComboboxFilteredItems } from '@langgenius/dify-ui/combobox'
-import { toast } from '@langgenius/dify-ui/toast'
-import { Fragment, useCallback } from 'react'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useCreateTagMutation } from '../hooks/use-tag-mutations'
 import { isCreateTagOption } from './tag-combobox-item'
 
 type TagPanelProps = {
   type: TagType
   inputValue: string
-  onInputValueChange: (value: string) => void
   onOpenTagManagement?: () => void
   onClose?: () => void
 }
@@ -18,36 +15,14 @@ type TagPanelProps = {
 export const TagPanel = ({
   type,
   inputValue,
-  onInputValueChange,
   onOpenTagManagement,
   onClose,
 }: TagPanelProps) => {
   const { t } = useTranslation()
-  const createTagMutation = useCreateTagMutation()
   const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
   const realItemCount = filteredItems.filter(tag => !isCreateTagOption(tag)).length
   const hasCreateOption = filteredItems.some(isCreateTagOption)
   const placeholder = t('tag.selectorPlaceholder', { ns: 'common' }) || ''
-
-  const createNewTag = useCallback((name: string) => {
-    if (!name || createTagMutation.isPending)
-      return
-
-    createTagMutation.mutate({
-      body: {
-        name,
-        type,
-      },
-    }, {
-      onSuccess: () => {
-        toast.success(t('tag.created', { ns: 'common' }))
-        onInputValueChange('')
-      },
-      onError: () => {
-        toast.error(t('tag.failed', { ns: 'common' }))
-      },
-    })
-  }, [createTagMutation, onInputValueChange, t, type])
 
   return (
     <div className="relative w-full">
@@ -60,11 +35,11 @@ export const TagPanel = ({
             placeholder={placeholder}
             className="pl-2"
           />
-          <ComboboxClear />
+          <ComboboxClear aria-label={t('operation.clear', { ns: 'common' })} />
         </ComboboxInputGroup>
       </div>
       {filteredItems.length > 0 && (
-        <ComboboxList className="max-h-[232px]">
+        <ComboboxList className="max-h-58">
           {(tag: TagComboboxItem, index) => {
             if (isCreateTagOption(tag)) {
               return (
@@ -73,7 +48,6 @@ export const TagPanel = ({
                     value={tag}
                     index={index}
                     data-testid="create-tag-option"
-                    onClick={() => createNewTag(tag.name)}
                   >
                     <ComboboxItemText className="flex items-center gap-x-1 px-0">
                       <span aria-hidden="true" className="i-ri-add-line h-4 w-4 shrink-0 text-text-tertiary" />
