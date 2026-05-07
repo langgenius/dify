@@ -36,12 +36,12 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category | Subpath                                                                                                            | Notes                                             |
-| -------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| Overlay  | `./alert-dialog`, `./context-menu`, `./dialog`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below. |
-| Form     | `./number-field`, `./slider`, `./switch`                                                                           | Controlled / uncontrolled per Base UI defaults.   |
-| Layout   | `./scroll-area`                                                                                                    | Custom-styled scrollbar over the host viewport.   |
-| Media    | `./avatar`, `./button`                                                                                             | Button exposes `cva` variants.                    |
+| Category | Subpath                                                                                                                                            | Notes                                             |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Overlay  | `./alert-dialog`, `./autocomplete`, `./combobox`, `./context-menu`, `./dialog`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below. |
+| Form     | `./autocomplete`, `./combobox`, `./number-field`, `./slider`, `./switch`                                                                           | Controlled / uncontrolled per Base UI defaults.   |
+| Layout   | `./scroll-area`                                                                                                                                    | Custom-styled scrollbar over the host viewport.   |
+| Media    | `./avatar`, `./button`                                                                                                                             | Button exposes `cva` variants.                    |
 
 Utilities:
 
@@ -65,7 +65,7 @@ If a consumer uses Dify UI source files through the workspace, add an explicit s
 
 ## Overlay & portal contract
 
-All overlay primitives (`dialog`, `alert-dialog`, `popover`, `dropdown-menu`, `context-menu`, `select`, `tooltip`, `toast`) render their content inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Consumers **do not** need to wrap anything in a portal manually.
+All overlay primitives (`dialog`, `alert-dialog`, `autocomplete`, `combobox`, `popover`, `dropdown-menu`, `context-menu`, `select`, `tooltip`, `toast`) render their content inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Consumers **do not** need to wrap anything in a portal manually.
 
 ### Root isolation requirement
 
@@ -83,10 +83,10 @@ Equivalent: any root element with `isolation: isolate` in CSS. Without it, overl
 
 Every overlay primitive uses a single, shared z-index. Do **not** override it at call sites.
 
-| Layer                                                                               | z-index  | Where                                                                      |
-| ----------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
-| Overlays (Dialog, AlertDialog, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-1002` | Positioner / Backdrop                                                      |
-| Toast viewport                                                                      | `z-1003` | One layer above overlays so notifications are never hidden under a dialog. |
+| Layer                                                                                                       | z-index  | Where                                                                      |
+| ----------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
+| Overlays (Dialog, AlertDialog, Autocomplete, Combobox, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-1002` | Positioner / Backdrop                                                      |
+| Toast viewport                                                                                              | `z-1003` | One layer above overlays so notifications are never hidden under a dialog. |
 
 Rationale: during Dify's migration from legacy `portal-to-follow-elem` / `base/modal` / `base/dialog` overlays to this package, new and old overlays coexist in the DOM. `z-1002` sits above any common legacy layer, eliminating per-call-site z-index hacks. Among themselves, new primitives share the same z-index and **rely on DOM order** for stacking — the portal mounted later wins.
 
