@@ -1,7 +1,6 @@
 """Dedicated tests for HITL behavior exposed through the Service API."""
 
 from __future__ import annotations
-from flask import Flask
 
 import json
 import sys
@@ -12,6 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, Mock
 
 import pytest
+from flask import Flask
 
 import services.app_generate_service as ags_module
 from controllers.service_api.app.workflow_events import WorkflowEventsApi
@@ -282,7 +282,7 @@ class TestHitlServiceApi:
         workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
     def test_workflow_events_snapshot_continue_on_pause_keeps_pause_open(
-        self, app:Flask, monkeypatch: pytest.MonkeyPatch
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         workflow_run = SimpleNamespace(
             id="run-1",
