@@ -24,15 +24,10 @@ from opentelemetry.trace import SpanKind, Status, TraceFlags
 from opentelemetry.util.types import AttributeValue
 
 from configs import dify_config
+from dify_trace_datadog.constants import UNSUPPORTED_DD_SITES
 
 logger = logging.getLogger(__name__)
 MAX_SPAN_CONTEXTS = 1024
-DATADOG_API_HOST_BY_SITE = {
-    "ddstaging.datadoghq.com": "ddstaging.datadoghq.com",
-}
-DATADOG_OTLP_ENDPOINT_BY_SITE = {
-    "ddstaging.datadoghq.com": "https://otlp.datadoghq.com/v1/traces",
-}
 
 
 def _normalize_site(site: str) -> str:
@@ -54,12 +49,12 @@ def _get_app_host(site: str) -> str:
 
 def _get_otlp_endpoint(site: str) -> str:
     site = _normalize_site(site)
-    return DATADOG_OTLP_ENDPOINT_BY_SITE.get(site, f"https://otlp.{site}/v1/traces")
+    return f"https://otlp.{site}/v1/traces"
 
 
 def _get_api_host(site: str) -> str:
     site = _normalize_site(site)
-    return DATADOG_API_HOST_BY_SITE.get(site, f"api.{site}")
+    return f"api.{site}"
 
 
 class DatadogTraceClient:
@@ -70,6 +65,8 @@ class DatadogTraceClient:
     def __init__(self, api_key: str, site: str, service_name: str):
         self.api_key = api_key
         self.site = _normalize_site(site)
+        if self.site in UNSUPPORTED_DD_SITES:
+            raise ValueError(f"Datadog site is not supported: {self.site}")
         self.endpoint = _get_otlp_endpoint(self.site)
         self.service_name = service_name
         self.tracer_provider: TracerProvider | None = None

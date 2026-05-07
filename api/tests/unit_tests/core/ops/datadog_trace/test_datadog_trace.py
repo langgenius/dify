@@ -148,7 +148,6 @@ class TestWorkflowNodeProcessing:
             ("datadoghq.com", "https://app.datadoghq.com/llm/traces"),
             ("datadoghq.eu", "https://app.datadoghq.eu/llm/traces"),
             ("us5.datadoghq.com", "https://us5.datadoghq.com/llm/traces"),
-            ("ddstaging.datadoghq.com", "https://ddstaging.datadoghq.com/llm/traces"),
         ],
     )
     def test_project_url_uses_datadog_app_site(self, site: str, expected_url: str):
@@ -162,7 +161,6 @@ class TestWorkflowNodeProcessing:
             ("datadoghq.com", "https://otlp.datadoghq.com/v1/traces"),
             ("us5.datadoghq.com", "https://otlp.us5.datadoghq.com/v1/traces"),
             ("us6.datadoghq.com", "https://otlp.us6.datadoghq.com/v1/traces"),
-            ("ddstaging.datadoghq.com", "https://otlp.datadoghq.com/v1/traces"),
         ],
     )
     def test_trace_endpoint_uses_datadog_otlp_host(self, site: str, expected_endpoint: str):
@@ -175,7 +173,6 @@ class TestWorkflowNodeProcessing:
         [
             ("datadoghq.com", "https://api.datadoghq.com/api/v1/validate"),
             ("us5.datadoghq.com", "https://api.us5.datadoghq.com/api/v1/validate"),
-            ("ddstaging.datadoghq.com", "https://ddstaging.datadoghq.com/api/v1/validate"),
         ],
     )
     def test_api_check_uses_datadog_api_host(self, site: str, expected_url: str, monkeypatch):
