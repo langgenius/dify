@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import json
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -1143,7 +1143,9 @@ class TestAppDslService:
         )
         monkeypatch.setattr(app_dsl_service, "jsonable_encoder", lambda x: x)
 
-        app_model_config = MagicMock(spec=AppModelConfig, to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}})
+        app_model_config = MagicMock(
+            spec=AppModelConfig, to_dict=lambda: {"agent_mode": {"tools": [{"credential_id": "secret"}]}}
+        )
         app_model = _app_stub(app_model_config=app_model_config)
         export_data: dict = {}
 
