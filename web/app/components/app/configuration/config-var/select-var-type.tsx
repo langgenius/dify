@@ -29,6 +29,7 @@ type ItemProps = {
 const SelectItem: FC<ItemProps> = ({ text, type, value, Icon, onClick }) => {
   return (
     <DropdownMenuItem
+      closeOnClick
       className="h-8 rounded-lg px-3 text-text-primary"
       onClick={() => onClick(value)}
     >
