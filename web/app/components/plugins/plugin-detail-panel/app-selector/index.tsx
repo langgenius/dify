@@ -1,59 +1,51 @@
 'use client'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import type { FC } from 'react'
-import type { AppListQuery } from '@/contract/console/apps'
+
+import type { Placement } from '@langgenius/dify-ui/combobox'
 import type { App } from '@/types/app'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+  Combobox,
+  ComboboxContent,
+  ComboboxTrigger,
+} from '@langgenius/dify-ui/combobox'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
-import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
-import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
-import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
+import { AppPicker } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
+import { AppTrigger } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
 import { consoleQuery } from '@/service/client'
 import { useAppDetail } from '@/service/use-apps'
 
 const PAGE_SIZE = 20
 
-type Props = {
-  value?: {
-    app_id: string
-    inputs: Record<string, unknown>
-    files?: unknown[]
-  }
+export type AppSelectorValue = {
+  app_id: string
+  inputs: Record<string, unknown>
+  files?: unknown[]
+}
+
+export type AppSelectorProps = {
+  value?: AppSelectorValue
   scope?: string
   disabled?: boolean
   placement?: Placement
-  offset?: OffsetOptions
-  onSelect: (app: {
-    app_id: string
-    inputs: Record<string, unknown>
-    files?: unknown[]
-  }) => void
-  supportAddCustomTool?: boolean
+  offset?: number
+  onSelect: (app: AppSelectorValue) => void
 }
 
-const AppSelector: FC<Props> = ({
+export function AppSelector({
   value,
-  scope,
   disabled,
   placement = 'bottom',
   offset = 4,
   onSelect,
-}) => {
+}: AppSelectorProps) {
   const { t } = useTranslation()
   const [isShow, setIsShow] = useState(false)
+  const [isShowChooseApp, setIsShowChooseApp] = useState(false)
   const [searchText, setSearchText] = useState('')
 
-  const appListQuery = useMemo<AppListQuery>(() => ({
+  const appListQuery = useMemo(() => ({
     page: 1,
     limit: PAGE_SIZE,
     name: searchText,
@@ -80,150 +72,123 @@ const AppSelector: FC<Props> = ({
   })
 
   const displayedApps = useMemo(() => {
-    const pages = data?.pages ?? []
-    if (!pages.length)
-      return []
-    return pages.flatMap(({ data: apps }) => apps)
+    return data?.pages.flatMap(({ data: apps }) => apps) ?? []
   }, [data?.pages])
 
-  // fetch selected app by id to avoid pagination gaps
   const { data: selectedAppDetail } = useAppDetail(value?.app_id || '')
 
-  // Ensure the currently selected app is available for display and in the picker options
   const currentAppInfo = useMemo(() => {
     if (!value?.app_id)
       return undefined
+
     return selectedAppDetail || displayedApps.find(app => app.id === value.app_id)
-  }, [value?.app_id, selectedAppDetail, displayedApps])
+  }, [displayedApps, selectedAppDetail, value?.app_id])
 
   const appsForPicker = useMemo(() => {
     if (!currentAppInfo)
       return displayedApps
 
-    const appIndex = displayedApps.findIndex(a => a.id === currentAppInfo.id)
-
+    const appIndex = displayedApps.findIndex(app => app.id === currentAppInfo.id)
     if (appIndex === -1)
       return [currentAppInfo, ...displayedApps]
 
-    const updatedApps = [...displayedApps]
-    updatedApps[appIndex] = currentAppInfo
-    return updatedApps
+    const nextApps = [...displayedApps]
+    nextApps[appIndex] = currentAppInfo
+    return nextApps
   }, [currentAppInfo, displayedApps])
 
   const hasMore = hasNextPage ?? true
-  const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
-  const sideOffset = typeof offset === 'number' ? offset : resolvedOffset?.mainAxis ?? 0
-  const alignOffset = typeof offset === 'number' ? 0 : resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0
 
-  const handleLoadMore = useCallback(async () => {
-    if (isFetchingNextPage || !hasMore)
-      return
+  const handleSelectApp = useCallback((app: App) => {
+    const shouldClearValue = app.id !== value?.app_id
 
-    await fetchNextPage()
-  }, [fetchNextPage, hasMore, isFetchingNextPage])
-
-  const handleTriggerClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
-    event.preventDefault()
-    if (disabled || isShow)
-      return
-
-    setIsShow(true)
-  }, [disabled, isShow])
-
-  const [isShowChooseApp, setIsShowChooseApp] = useState(false)
-  const handleSelectApp = (app: App) => {
-    const clearValue = app.id !== value?.app_id
-    const appValue = {
+    onSelect({
       app_id: app.id,
-      inputs: clearValue ? {} : value?.inputs || {},
-      files: clearValue ? [] : value?.files || [],
-    }
-    onSelect(appValue)
-    setIsShowChooseApp(false)
-  }
+      inputs: shouldClearValue ? {} : value?.inputs || {},
+      files: shouldClearValue ? [] : value?.files || [],
+    })
+  }, [onSelect, value?.app_id, value?.files, value?.inputs])
 
-  const handleFormChange = (inputs: Record<string, unknown>) => {
+  const handleFormChange = useCallback((inputs: Record<string, unknown>) => {
     const newFiles = inputs['#image#']
-    delete inputs['#image#']
-    const newValue = {
-      app_id: value?.app_id || '',
-      inputs,
-      files: newFiles ? [newFiles] : value?.files || [],
-    }
-    onSelect(newValue)
-  }
+    const nextInputs = { ...inputs }
+    delete nextInputs['#image#']
 
-  const formattedValue = useMemo(() => {
-    return {
+    onSelect({
       app_id: value?.app_id || '',
-      inputs: {
-        ...value?.inputs,
-        ...(value?.files?.length ? { '#image#': value.files[0] } : {}),
-      },
-    }
-  }, [value])
+      inputs: nextInputs,
+      files: newFiles ? [newFiles] : value?.files || [],
+    })
+  }, [onSelect, value?.app_id, value?.files])
+
+  const formattedValue = useMemo(() => ({
+    app_id: value?.app_id || '',
+    inputs: {
+      ...value?.inputs,
+      ...(value?.files?.length ? { '#image#': value.files[0] } : {}),
+    },
+  }), [value])
 
   return (
-    <>
-      <Popover
-        open={isShow}
-        onOpenChange={setIsShow}
+    <Combobox<App>
+      items={appsForPicker}
+      value={currentAppInfo ?? null}
+      open={isShow}
+      onOpenChange={setIsShow}
+      itemToStringLabel={app => app?.name ?? ''}
+      itemToStringValue={app => app?.id ?? ''}
+      disabled={disabled}
+    >
+      <ComboboxTrigger
+        aria-label={t('appSelector.label', { ns: 'app' })}
+        icon={false}
+        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
       >
-        <PopoverTrigger
-          render={(
-            <div className="w-full">
-              <AppTrigger
-                open={isShow}
-                appDetail={currentAppInfo}
-              />
-            </div>
-          )}
-          onClick={handleTriggerClick}
+        <AppTrigger
+          open={isShow}
+          appDetail={currentAppInfo}
         />
-        <PopoverContent
-          placement={placement}
-          sideOffset={sideOffset}
-          alignOffset={alignOffset}
-          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-        >
-          <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
-            <div className="flex flex-col gap-1 px-4 py-3">
-              <div className="flex h-6 items-center system-sm-semibold text-text-secondary">{t('appSelector.label', { ns: 'app' })}</div>
-              <AppPicker
-                placement="bottom"
-                offset={offset}
-                trigger={(
-                  <AppTrigger
-                    open={isShowChooseApp}
-                    appDetail={currentAppInfo}
-                  />
-                )}
-                isShow={isShowChooseApp}
-                onShowChange={setIsShowChooseApp}
-                disabled={false}
-                onSelect={handleSelectApp}
-                scope={scope || 'all'}
-                apps={appsForPicker}
-                isLoading={isLoading || isFetchingNextPage}
-                hasMore={hasMore}
-                onLoadMore={handleLoadMore}
-                searchText={searchText}
-                onSearchChange={setSearchText}
-              />
-            </div>
-            {/* app inputs config panel */}
-            {currentAppInfo && (
-              <AppInputsPanel
-                value={formattedValue}
-                appDetail={currentAppInfo}
-                onFormChange={handleFormChange}
-              />
-            )}
+      </ComboboxTrigger>
+      <ComboboxContent
+        placement={placement}
+        sideOffset={offset}
+        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
+        <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+          <div className="flex flex-col gap-1 px-4 py-3">
+            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">{t('appSelector.label', { ns: 'app' })}</div>
+            <AppPicker
+              placement="bottom"
+              offset={offset}
+              trigger={(
+                <AppTrigger
+                  open={isShowChooseApp}
+                  appDetail={currentAppInfo}
+                />
+              )}
+              isShow={isShowChooseApp}
+              onShowChange={setIsShowChooseApp}
+              disabled={false}
+              onSelect={handleSelectApp}
+              apps={appsForPicker}
+              isLoading={isLoading || isFetchingNextPage}
+              hasMore={hasMore}
+              onLoadMore={() => {
+                void fetchNextPage()
+              }}
+              searchText={searchText}
+              onSearchChange={setSearchText}
+            />
           </div>
-        </PopoverContent>
-      </Popover>
-    </>
+          {currentAppInfo && (
+            <AppInputsPanel
+              value={formattedValue}
+              appDetail={currentAppInfo}
+              onFormChange={handleFormChange}
+            />
+          )}
+        </div>
+      </ComboboxContent>
+    </Combobox>
   )
 }
-
-export default React.memo(AppSelector)
