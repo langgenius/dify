@@ -1,3 +1,4 @@
+from models import App
 import uuid
 from unittest.mock import ANY, MagicMock, patch
 
@@ -185,7 +186,7 @@ class TestAppGenerateService:
 
         return app, account
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app: Flask):
+    def _create_test_workflow(self, db_session_with_containers: Session, app: App):
         """
         Helper method to create a test workflow for testing.
 
