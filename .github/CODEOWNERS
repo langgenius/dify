@@ -6,6 +6,9 @@
 
 * @crazywoola @laipz8200 @Yeuoly
 
+# ESLint suppression file is maintained by autofix.ci pruning.
+/eslint-suppressions.json
+
 # CODEOWNERS file
 /.github/CODEOWNERS @laipz8200 @crazywoola
 

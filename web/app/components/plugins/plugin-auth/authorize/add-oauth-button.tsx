@@ -4,11 +4,6 @@ import type { FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiClipboardLine,
-  RiEqualizer2Line,
-  RiInformation2Fill,
-} from '@remixicon/react'
-import {
   memo,
   useCallback,
   useMemo,
@@ -40,10 +35,12 @@ export type AddOAuthButtonProps = {
     schema?: FormSchema[]
     is_oauth_custom_client_enabled?: boolean
     is_system_oauth_params_exists?: boolean
-    client_params?: Record<string, any>
+    client_params?: Record<string, unknown>
     redirect_uri?: string
   }
 }
+type OAuthData = NonNullable<AddOAuthButtonProps['oAuthData']>
+
 const AddOAuthButton = ({
   pluginPayload,
   buttonVariant = 'primary',
@@ -59,22 +56,27 @@ const AddOAuthButton = ({
   const { t } = useTranslation()
   const renderI18nObject = useRenderI18nObject()
   const [isOAuthSettingsOpen, setIsOAuthSettingsOpen] = useState(false)
+  const [isOAuthSettingsMounted, setIsOAuthSettingsMounted] = useState(false)
   const { mutateAsync: getPluginOAuthUrl } = useGetPluginOAuthUrlHook(pluginPayload)
   const { data, isLoading } = useGetPluginOAuthClientSchemaHook(pluginPayload)
-  const mergedOAuthData = useMemo(() => {
+  const mergedOAuthData = useMemo<OAuthData>(() => {
     if (oAuthData)
       return oAuthData
 
-    return data
+    return data || {}
   }, [oAuthData, data])
   const {
     schema = [],
     is_oauth_custom_client_enabled,
     is_system_oauth_params_exists,
-    client_params,
+    client_params = {},
     redirect_uri,
-  } = mergedOAuthData as any || {}
+  } = mergedOAuthData
   const isConfigured = is_system_oauth_params_exists || is_oauth_custom_client_enabled
+  const openOAuthSettings = useCallback(() => {
+    setIsOAuthSettingsMounted(true)
+    setIsOAuthSettingsOpen(true)
+  }, [])
   const handleOAuth = useCallback(async () => {
     const { authorization_url } = await getPluginOAuthUrl()
 
@@ -91,7 +93,7 @@ const AddOAuthButton = ({
       <div className="w-full">
         <div className="mb-4 flex rounded-xl bg-background-section-burn p-4">
           <div className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
-            <RiInformation2Fill className="h-5 w-5 text-text-accent" />
+            <span className="i-ri-information-2-fill h-5 w-5 text-text-accent" />
           </div>
           <div className="w-0 grow">
             <div className="mb-1.5 system-sm-regular">
@@ -107,7 +109,7 @@ const AddOAuthButton = ({
                       navigator.clipboard.writeText(redirect_uri || '')
                     }}
                   >
-                    <RiClipboardLine className="h-4 w-4" />
+                    <span className="i-ri-clipboard-line h-4 w-4" />
                   </ActionButton>
                 </div>
               )
@@ -232,10 +234,10 @@ const AddOAuthButton = ({
               )}
               onClick={(e) => {
                 e.stopPropagation()
-                setIsOAuthSettingsOpen(true)
+                openOAuthSettings()
               }}
             >
-              <RiEqualizer2Line className="h-4 w-4" />
+              <span className="i-ri-equalizer-2-line h-4 w-4" />
             </div>
           </Button>
         )
@@ -244,18 +246,20 @@ const AddOAuthButton = ({
         !isConfigured && (
           <Button
             variant={buttonVariant}
-            onClick={() => setIsOAuthSettingsOpen(true)}
+            onClick={openOAuthSettings}
             disabled={disabled}
             className="w-full"
           >
-            <RiEqualizer2Line className="mr-0.5 h-4 w-4" />
+            <span className="mr-0.5 i-ri-equalizer-2-line h-4 w-4" />
             {t('auth.setupOAuth', { ns: 'plugin' })}
           </Button>
         )
       }
       {
-        isOAuthSettingsOpen && (
+        isOAuthSettingsMounted && (
           <OAuthClientSettings
+            open={isOAuthSettingsOpen}
+            onOpenChange={setIsOAuthSettingsOpen}
             pluginPayload={pluginPayload}
             onClose={() => setIsOAuthSettingsOpen(false)}
             disabled={disabled || isLoading}

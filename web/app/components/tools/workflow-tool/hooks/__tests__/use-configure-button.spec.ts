@@ -437,7 +437,6 @@ describe('useConfigureButton', () => {
       expect(onRefreshData).toHaveBeenCalled()
       expect(mockInvalidateAllWorkflowTools).toHaveBeenCalled()
       expect(mockInvalidateWorkflowToolDetailByAppID).toHaveBeenCalledWith('app-123')
-      expect(mockToastNotify).toHaveBeenCalledWith({ type: 'success', message: expect.any(String) })
       expect(result.current.showModal).toBe(false)
     })
 

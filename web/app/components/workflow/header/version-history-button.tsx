@@ -1,21 +1,21 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiHistoryLine } from '@remixicon/react'
-import { useKeyPress } from 'ahooks'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
-import Tooltip from '../../base/tooltip'
-import ShortcutsName from '../shortcuts-name'
-import { getKeyboardKeyCodeBySystem } from '../utils'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
+import { useWorkflowShortcut } from '../shortcuts/use-workflow-hotkeys'
 
 type VersionHistoryButtonProps = {
   onClick: () => Promise<unknown> | unknown
 }
-
-const VERSION_HISTORY_SHORTCUT = ['ctrl', '⇧', 'H']
 
 const PopupContent = React.memo(() => {
   const { t } = useTranslation()
@@ -24,7 +24,7 @@ const PopupContent = React.memo(() => {
       <div className="px-0.5 system-xs-medium text-text-secondary">
         {t('common.versionHistory', { ns: 'workflow' })}
       </div>
-      <ShortcutsName keys={VERSION_HISTORY_SHORTCUT} bgColor="gray" textColor="secondary" />
+      <ShortcutKbd shortcut="workflow.version-history" bgColor="gray" textColor="secondary" />
     </div>
   )
 })
@@ -39,27 +39,30 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
     await onClick?.()
   }, [onClick])
 
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.h`, (e) => {
-    e.preventDefault()
+  useWorkflowShortcut('workflow.version-history', () => {
     handleViewVersionHistory()
-  }, { exactMatch: true, useCapture: true })
+  })
 
   return (
-    <Tooltip
-      popupContent={<PopupContent />}
-      noDecoration
-      popupClassName="rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg
-    shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px] p-1.5"
-    >
-      <Button
-        className={cn(
-          'rounded-lg border border-transparent p-2',
-          theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <Button
+            className={cn(
+              'rounded-lg border border-transparent p-2',
+              theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+            )}
+            onClick={handleViewVersionHistory}
+          >
+            <span className="i-ri-history-line h-4 w-4 text-components-button-secondary-text" />
+          </Button>
         )}
-        onClick={handleViewVersionHistory}
+      />
+      <TooltipContent
+        className="rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
       >
-        <RiHistoryLine className="h-4 w-4 text-components-button-secondary-text" />
-      </Button>
+        <PopupContent />
+      </TooltipContent>
     </Tooltip>
   )
 }

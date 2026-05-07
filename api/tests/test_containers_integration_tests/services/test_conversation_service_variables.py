@@ -5,7 +5,8 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import sessionmaker
+from flask import Flask
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
@@ -149,7 +150,7 @@ class ConversationServiceVariableIntegrationFactory:
 
 
 @pytest.fixture
-def real_conversation_service_session_factory(flask_app_with_containers):
+def real_conversation_service_session_factory(flask_app_with_containers: Flask):
     del flask_app_with_containers
     real_session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
 
@@ -162,7 +163,7 @@ def real_conversation_service_session_factory(flask_app_with_containers):
 
 class TestConversationServiceVariables:
     def test_get_conversational_variable_success(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers: Session, real_conversation_service_session_factory
     ):
         del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
@@ -200,7 +201,7 @@ class TestConversationServiceVariables:
         assert result.has_more is False
 
     def test_get_conversational_variable_with_last_id(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers: Session, real_conversation_service_session_factory
     ):
         del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
@@ -242,7 +243,7 @@ class TestConversationServiceVariables:
         assert result.has_more is False
 
     def test_get_conversational_variable_last_id_not_found_raises_error(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers: Session, real_conversation_service_session_factory
     ):
         del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
@@ -259,7 +260,7 @@ class TestConversationServiceVariables:
             )
 
     def test_get_conversational_variable_sets_has_more(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers: Session, real_conversation_service_session_factory
     ):
         del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
@@ -287,7 +288,7 @@ class TestConversationServiceVariables:
         assert result.has_more is True
 
     def test_update_conversation_variable_success(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers: Session, real_conversation_service_session_factory
     ):
         del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
@@ -320,7 +321,7 @@ class TestConversationServiceVariables:
         assert result["updated_at"] == updated_at
 
     def test_update_conversation_variable_not_found_raises_error(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers: Session, real_conversation_service_session_factory
     ):
         del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
@@ -337,7 +338,7 @@ class TestConversationServiceVariables:
             )
 
     def test_update_conversation_variable_type_mismatch_raises_error(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers: Session, real_conversation_service_session_factory
     ):
         del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
@@ -360,7 +361,7 @@ class TestConversationServiceVariables:
             )
 
     def test_update_conversation_variable_integer_number_compatibility(
-        self, db_session_with_containers, real_conversation_service_session_factory
+        self, db_session_with_containers: Session, real_conversation_service_session_factory
     ):
         del real_conversation_service_session_factory
         factory = ConversationServiceVariableIntegrationFactory
@@ -390,7 +391,7 @@ class TestConversationServiceVariables:
 
 
 class TestConversationServicePaginationWithContainers:
-    def test_pagination_by_last_id_raises_error_when_last_id_missing(self, db_session_with_containers):
+    def test_pagination_by_last_id_raises_error_when_last_id_missing(self, db_session_with_containers: Session):
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
 
@@ -404,7 +405,7 @@ class TestConversationServicePaginationWithContainers:
                 invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_pagination_by_last_id_with_default_desc_updated_at(self, db_session_with_containers):
+    def test_pagination_by_last_id_with_default_desc_updated_at(self, db_session_with_containers: Session):
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         base_time = datetime(2024, 1, 1, 8, 0, 0)
@@ -442,7 +443,7 @@ class TestConversationServicePaginationWithContainers:
         assert newest.id != middle.id
         assert [conversation.id for conversation in result.data] == [oldest.id]
 
-    def test_pagination_by_last_id_with_name_sort(self, db_session_with_containers):
+    def test_pagination_by_last_id_with_name_sort(self, db_session_with_containers: Session):
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         alpha = factory.create_conversation(db_session_with_containers, app, account, name="Alpha")
@@ -462,7 +463,7 @@ class TestConversationServicePaginationWithContainers:
         assert alpha.id != beta.id
         assert [conversation.id for conversation in result.data] == [gamma.id]
 
-    def test_pagination_filters_to_end_user_api_source(self, db_session_with_containers):
+    def test_pagination_filters_to_end_user_api_source(self, db_session_with_containers: Session):
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         end_user = factory.create_end_user(db_session_with_containers, app)
@@ -493,7 +494,7 @@ class TestConversationServicePaginationWithContainers:
         assert account_conversation.id != end_user_conversation.id
         assert [conversation.id for conversation in result.data] == [end_user_conversation.id]
 
-    def test_pagination_filters_to_account_console_source(self, db_session_with_containers):
+    def test_pagination_filters_to_account_console_source(self, db_session_with_containers: Session):
         factory = ConversationServiceVariableIntegrationFactory
         app, account = factory.create_app_and_account(db_session_with_containers)
         end_user = factory.create_end_user(db_session_with_containers, app)

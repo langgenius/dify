@@ -19,8 +19,8 @@ export type NodeSliceShape = {
   candidateNode?: Node
   setCandidateNode: (candidateNode?: Node) => void
   nodeMenu?: {
-    top: number
-    left: number
+    clientX: number
+    clientY: number
     nodeId: string
   }
   setNodeMenu: (nodeMenu: NodeSliceShape['nodeMenu']) => void

@@ -21,7 +21,7 @@ export const SelectGroup = BaseSelect.Group
 const selectTriggerVariants = cva(
   [
     'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
-    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
+    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-open:bg-state-base-hover-alt',
     'data-placeholder:text-components-input-text-placeholder',
     'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',

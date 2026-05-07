@@ -1,4 +1,6 @@
+import type { ReactElement, ReactNode } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../../declarations'
+import { Combobox } from '@langgenius/dify-ui/combobox'
 import { fireEvent, render, screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
@@ -25,7 +27,7 @@ vi.mock('../../hooks', async () => {
 })
 
 vi.mock('../../model-badge', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  default: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }))
 
 vi.mock('../../model-icon', () => ({
@@ -41,13 +43,7 @@ vi.mock('../feature-icon', () => ({
 }))
 
 vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('@langgenius/dify-ui/popover', () => ({
-  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  PopoverTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
-  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 const mockCredentialPanelState = vi.hoisted(() => vi.fn())
@@ -114,6 +110,24 @@ const makeProvider = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
+const createComboboxNode = (
+  node: ReactElement,
+  onValueChange = vi.fn(),
+) => (
+  <Combobox filter={null} open onValueChange={onValueChange}>
+    {node}
+  </Combobox>
+)
+
+const renderWithCombobox = (
+  node: ReactElement,
+  onValueChange = vi.fn(),
+) => {
+  return render(
+    createComboboxNode(node, onValueChange),
+  )
+}
+
 describe('PopupItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -141,48 +155,51 @@ describe('PopupItem', () => {
       modelProviders: [],
     })
 
-    const { container } = render(
-      <PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />,
+    const { container } = renderWithCombobox(
+      <PopupItem model={makeModel()} onHide={vi.fn()} />,
     )
 
-    expect(container.innerHTML).toBe('')
+    expect(container.textContent).toBe('')
   })
 
-  it('should call onSelect when clicking an active model', () => {
-    const onSelect = vi.fn()
-    render(<PopupItem model={makeModel()} onSelect={onSelect} onHide={vi.fn()} />)
+  it('should select the combobox value when clicking an active model', () => {
+    const onValueChange = vi.fn()
+    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />, onValueChange)
 
     fireEvent.click(screen.getByText('GPT-4'))
 
-    expect(onSelect).toHaveBeenCalledWith('openai', expect.objectContaining({ model: 'gpt-4' }))
+    expect(onValueChange).toHaveBeenCalledWith(
+      { provider: 'openai', model: 'gpt-4' },
+      expect.objectContaining({ reason: 'item-press' }),
+    )
   })
 
-  it('should not call onSelect when model is not active', () => {
-    const onSelect = vi.fn()
-    render(
+  it('should not select the combobox value when model is not active', () => {
+    const onValueChange = vi.fn()
+    renderWithCombobox(
       <PopupItem
         model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.disabled })] })}
-        onSelect={onSelect}
         onHide={vi.fn()}
       />,
+      onValueChange,
     )
 
     fireEvent.click(screen.getByText('GPT-4'))
 
-    expect(onSelect).not.toHaveBeenCalled()
+    expect(onValueChange).not.toHaveBeenCalled()
   })
 
   it('should open model modal when clicking add on unconfigured model', () => {
-    const { rerender } = render(
-      <PopupItem
-        model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })}
-        onSelect={vi.fn()}
-        onHide={vi.fn()}
-      />,
+    const onValueChange = vi.fn()
+    const { rerender } = renderWithCombobox(
+      <PopupItem model={makeModel({ models: [makeModelItem({ status: ModelStatusEnum.noConfigure })] })} onHide={vi.fn()} />,
+      onValueChange,
     )
 
+    fireEvent.click(screen.getByText('GPT-4'))
     fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
 
+    expect(onValueChange).not.toHaveBeenCalled()
     expect(mockSetShowModelModal).toHaveBeenCalled()
 
     const call = mockSetShowModelModal.mock.calls[0]![0] as { onSaveCallback?: () => void }
@@ -191,15 +208,14 @@ describe('PopupItem', () => {
     expect(mockUpdateModelProviders).toHaveBeenCalled()
     expect(mockUpdateModelList).toHaveBeenCalledWith(ModelTypeEnum.textGeneration)
 
-    rerender(
+    rerender(createComboboxNode(
       <PopupItem
         model={makeModel({
           models: [makeModelItem({ status: ModelStatusEnum.noConfigure, model_type: undefined as unknown as ModelTypeEnum })],
         })}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
-    )
+    ))
 
     fireEvent.click(screen.getByText('COMMON.OPERATION.ADD'))
     const call2 = mockSetShowModelModal.mock.calls.at(-1)?.[0] as { onSaveCallback?: () => void } | undefined
@@ -211,11 +227,10 @@ describe('PopupItem', () => {
 
   it('should show selected state when defaultModel matches', () => {
     const defaultModel: DefaultModel = { provider: 'openai', model: 'gpt-4' }
-    render(
+    renderWithCombobox(
       <PopupItem
         defaultModel={defaultModel}
         model={makeModel()}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -226,13 +241,12 @@ describe('PopupItem', () => {
   it('should fall back to english labels when the current language is unavailable', () => {
     mockUseLanguage.mockReturnValue('zh_Hans')
 
-    render(
+    renderWithCombobox(
       <PopupItem
         model={makeModel({
           label: { en_US: 'OpenAI only' } as Model['label'],
           models: [makeModelItem({ label: { en_US: 'GPT-4 only' } as ModelItem['label'] })],
         })}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -242,7 +256,7 @@ describe('PopupItem', () => {
   })
 
   it('should toggle collapsed state when clicking provider header', () => {
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText('GPT-4'))!.toBeInTheDocument()
 
@@ -256,7 +270,7 @@ describe('PopupItem', () => {
   })
 
   it('should show credential name when using custom provider', () => {
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText('my-api-key'))!.toBeInTheDocument()
   })
@@ -273,7 +287,7 @@ describe('PopupItem', () => {
       credits: 200,
     })
 
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText('stale-key'))!.toBeInTheDocument()
     expect(document.querySelector('.bg-components-badge-status-light-error-bg')).not.toBeNull()
@@ -299,7 +313,7 @@ describe('PopupItem', () => {
       credits: 0,
     })
 
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.configureRequired/))!.toBeInTheDocument()
   })
@@ -321,7 +335,7 @@ describe('PopupItem', () => {
       credits: 200,
     })
 
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.aiCredits/))!.toBeInTheDocument()
   })
@@ -346,7 +360,7 @@ describe('PopupItem', () => {
       credits: 0,
     })
 
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={vi.fn()} />)
+    renderWithCombobox(<PopupItem model={makeModel()} onHide={vi.fn()} />)
 
     expect(screen.getByText(/modelProvider\.selector\.creditsExhausted/))!.toBeInTheDocument()
   })
@@ -354,8 +368,9 @@ describe('PopupItem', () => {
   it('should close the dropdown through dropdown content callbacks', () => {
     const onHide = vi.fn()
 
-    render(<PopupItem model={makeModel()} onSelect={vi.fn()} onHide={onHide} />)
+    renderWithCombobox(<PopupItem model={makeModel()} onHide={onHide} />)
 
+    fireEvent.click(screen.getByRole('button', { name: /my-api-key/ }))
     fireEvent.click(screen.getByRole('button', { name: 'close dropdown' }))
 
     expect(onHide).toHaveBeenCalled()

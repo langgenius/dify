@@ -134,12 +134,6 @@ vi.mock('@langgenius/dify-ui/switch', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ popupContent }: { popupContent: React.ReactNode }) => (
-    <div data-testid="tooltip">{popupContent}</div>
-  ),
-}))
-
 describe('RetrievalParamConfig', () => {
   const createDefaultConfig = (overrides?: Partial<RetrievalConfig>): RetrievalConfig => ({
     search_method: RETRIEVE_METHOD.semantic,
@@ -799,7 +793,7 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByTestId('tooltip'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('common.modelProvider.rerankModel.tip'))!.toBeInTheDocument()
     })
   })
 

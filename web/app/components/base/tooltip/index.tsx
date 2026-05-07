@@ -1,18 +1,27 @@
 'use client'
+import type { Placement } from '@langgenius/dify-ui/popover'
 /**
  * @deprecated Use `@langgenius/dify-ui/tooltip` instead.
  * This component will be removed after migration is complete.
  * See: https://github.com/langgenius/dify/issues/32767
  */
-import type { OffsetOptions, Placement } from '@floating-ui/react'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiQuestionLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { tooltipManager } from './TooltipManager'
+
+type TooltipOffset = number | {
+  mainAxis?: number
+  crossAxis?: number
+}
 
 type TooltipProps = {
   position?: Placement
@@ -25,7 +34,7 @@ type TooltipProps = {
   popupClassName?: string
   portalContentClassName?: string
   noDecoration?: boolean
-  offset?: OffsetOptions
+  offset?: TooltipOffset
   needsDelay?: boolean
   asChild?: boolean
 }
@@ -46,6 +55,9 @@ const Tooltip: FC<TooltipProps> = ({
   needsDelay = true,
 }) => {
   const [open, setOpen] = useState(false)
+  const resolvedOffset = offset ?? 8
+  const sideOffset = typeof resolvedOffset === 'number' ? resolvedOffset : (resolvedOffset.mainAxis ?? 0)
+  const alignOffset = typeof resolvedOffset === 'number' ? 0 : (resolvedOffset.crossAxis ?? 0)
   const [isHoverPopup, {
     setTrue: setHoverPopup,
     setFalse: setNotHoverPopup,
@@ -81,6 +93,16 @@ const Tooltip: FC<TooltipProps> = ({
   }, [clearCloseTimeout])
 
   const close = () => setOpen(false)
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (disabled) {
+      setOpen(false)
+      return
+    }
+    if (triggerMethod === 'click')
+      setOpen(nextOpen)
+    else if (!nextOpen)
+      setOpen(false)
+  }
 
   const handleLeave = (isTrigger: boolean) => {
     if (isTrigger)
@@ -105,52 +127,104 @@ const Tooltip: FC<TooltipProps> = ({
       tooltipManager.clear(close)
     }
   }
+  const handleTriggerMouseEnter = () => {
+    if (triggerMethod === 'hover') {
+      clearCloseTimeout()
+      setHoverTrigger()
+      tooltipManager.register(close)
+      setOpen(true)
+    }
+  }
+  const handleTriggerMouseLeave = () => {
+    if (triggerMethod === 'hover')
+      handleLeave(true)
+  }
+  const handlePopupMouseEnter = () => {
+    if (triggerMethod === 'hover') {
+      clearCloseTimeout()
+      setHoverPopup()
+    }
+  }
+  const handlePopupMouseLeave = () => {
+    if (triggerMethod === 'hover')
+      handleLeave(false)
+  }
+
+  const fallbackTrigger = (
+    <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-px'}>
+      <RiQuestionLine className="h-full w-full text-text-quaternary hover:text-text-tertiary" />
+    </div>
+  )
+  const triggerContent = children || fallbackTrigger
+  const childElement = React.isValidElement<React.HTMLAttributes<HTMLElement>>(triggerContent)
+    ? triggerContent
+    : fallbackTrigger
+  const nativeButton = typeof childElement.type !== 'string' || childElement.type === 'button'
+
+  const renderAsChildTrigger = () => {
+    const childProps = childElement.props
+    return React.cloneElement(childElement, {
+      onMouseEnter: (event: React.MouseEvent<HTMLElement>) => {
+        childProps.onMouseEnter?.(event)
+        handleTriggerMouseEnter()
+      },
+      onMouseLeave: (event: React.MouseEvent<HTMLElement>) => {
+        childProps.onMouseLeave?.(event)
+        handleTriggerMouseLeave()
+      },
+    })
+  }
+  const effectiveOpen = !disabled && open
 
   return (
-    <PortalToFollowElem
-      open={disabled ? false : open}
-      onOpenChange={setOpen}
-      placement={position}
-      offset={offset ?? 8}
+    <Popover
+      open={effectiveOpen}
+      onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger
-        onClick={() => triggerMethod === 'click' && setOpen(v => !v)}
-        onMouseEnter={() => {
-          if (triggerMethod === 'hover') {
-            clearCloseTimeout()
-            setHoverTrigger()
-            tooltipManager.register(close)
-            setOpen(true)
-          }
-        }}
-        onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
-        asChild={asChild}
-        className={!asChild ? triggerClassName : ''}
-      >
-        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-px'}><RiQuestionLine className="h-full w-full text-text-quaternary hover:text-text-tertiary" /></div>}
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent
-        className={cn('z-9999', portalContentClassName || '')}
-      >
-        {!!popupContent && (
-          <div
-            className={cn(
-              !noDecoration && 'relative max-w-[300px] rounded-md bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
-              popupClassName,
-            )}
-            onMouseEnter={() => {
-              if (triggerMethod === 'hover') {
-                clearCloseTimeout()
-                setHoverPopup()
-              }
-            }}
-            onMouseLeave={() => triggerMethod === 'hover' && handleLeave(false)}
-          >
-            {popupContent}
-          </div>
-        )}
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      {asChild
+        ? (
+            <PopoverTrigger
+              nativeButton={nativeButton}
+              disabled={disabled}
+              render={renderAsChildTrigger()}
+            />
+          )
+        : (
+            <PopoverTrigger
+              nativeButton={false}
+              disabled={disabled}
+              render={(
+                <div
+                  className={triggerClassName}
+                  onMouseEnter={handleTriggerMouseEnter}
+                  onMouseLeave={handleTriggerMouseLeave}
+                />
+              )}
+            >
+              {triggerContent}
+            </PopoverTrigger>
+          )}
+      {effectiveOpen && !!popupContent && (
+        <PopoverContent
+          placement={position}
+          sideOffset={sideOffset}
+          alignOffset={alignOffset}
+          className={portalContentClassName}
+          popupClassName={cn(
+            noDecoration
+              ? 'border-0 bg-transparent p-0 shadow-none'
+              : 'relative max-w-[300px] rounded-md border-0 bg-components-panel-bg px-3 py-2 text-left system-xs-regular wrap-break-word text-text-tertiary shadow-lg',
+            popupClassName,
+          )}
+          popupProps={{
+            onMouseEnter: handlePopupMouseEnter,
+            onMouseLeave: handlePopupMouseLeave,
+          }}
+        >
+          {popupContent}
+        </PopoverContent>
+      )}
+    </Popover>
   )
 }
 

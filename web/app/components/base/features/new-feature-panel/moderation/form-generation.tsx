@@ -69,7 +69,7 @@ const FormGeneration: FC<FormGenerationProps> = ({
                     <SelectTrigger className="w-full">
                       {selectedOption?.name ?? form.placeholder}
                     </SelectTrigger>
-                    <SelectContent popupClassName="z-102 w-(--anchor-width)">
+                    <SelectContent>
                       {selectOptions.map(option => (
                         <SelectItem key={option.value} value={option.value}>
                           <SelectItemText>{option.name}</SelectItemText>

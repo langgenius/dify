@@ -217,10 +217,11 @@ class RetrievalService:
         """Deduplicate documents in O(n) while preserving first-seen order.
 
         Rules:
-        - For provider == "dify" and metadata["doc_id"] exists: keep the doc with the highest
-          metadata["score"] among duplicates; if a later duplicate has no score, ignore it.
-        - For non-dify documents (or dify without doc_id): deduplicate by content key
-          (provider, page_content), keeping the first occurrence.
+        - If metadata["doc_id"] exists (any provider): deduplicate by (provider, doc_id) key;
+          keep the doc with the highest metadata["score"] among duplicates. If a later duplicate
+          has no score, ignore it.
+        - If metadata["doc_id"] is absent: deduplicate by content key (provider, page_content),
+          keeping the first occurrence.
         """
         if not documents:
             return documents
@@ -231,11 +232,10 @@ class RetrievalService:
         order: list[tuple] = []
 
         for doc in documents:
-            is_dify = doc.provider == "dify"
-            doc_id = (doc.metadata or {}).get("doc_id") if is_dify else None
+            doc_id = (doc.metadata or {}).get("doc_id")
 
-            if is_dify and doc_id:
-                key = ("dify", doc_id)
+            if doc_id:
+                key = (doc.provider or "dify", doc_id)
                 if key not in chosen:
                     chosen[key] = doc
                     order.append(key)

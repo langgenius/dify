@@ -58,7 +58,6 @@ const StrategyPicker = ({
       <DropdownMenuContent
         placement="top-end"
         sideOffset={4}
-        className="z-99"
         popupClassName="w-[280px] p-1"
       >
         <DropdownMenuRadioGroup
