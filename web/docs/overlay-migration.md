@@ -18,6 +18,8 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
   - `@langgenius/dify-ui/popover`
   - `@langgenius/dify-ui/dialog`
   - `@langgenius/dify-ui/alert-dialog`
+  - `@langgenius/dify-ui/autocomplete`
+  - `@langgenius/dify-ui/combobox`
   - `@langgenius/dify-ui/select`
   - `@langgenius/dify-ui/toast`
 - Tracking issue: <https://github.com/langgenius/dify/issues/32767>
@@ -56,13 +58,13 @@ All new overlay primitives in `@langgenius/dify-ui/*` share a single z-index val
 During the migration period, legacy and new overlays coexist. Legacy overlays
 portal to `document.body` with explicit z-index values:
 
-| Layer                             | z-index        | Components                                               |
-| --------------------------------- | -------------- | -------------------------------------------------------- |
-| Legacy Drawer                     | `z-30`         | `base/drawer`                                            |
-| Legacy Modal                      | `z-60`         | `base/modal` (default)                                   |
-| Legacy PortalToFollowElem callers | up to `z-1001` | various business components                              |
-| **New UI primitives**             | **`z-1002`**   | `@langgenius/dify-ui/*` (Popover, Dialog, Tooltip, etc.) |
-| Toast                             | `z-1003`       | `@langgenius/dify-ui/toast`                              |
+| Layer                             | z-index        | Components                                                                       |
+| --------------------------------- | -------------- | -------------------------------------------------------------------------------- |
+| Legacy Drawer                     | `z-30`         | `base/drawer`                                                                    |
+| Legacy Modal                      | `z-60`         | `base/modal` (default)                                                           |
+| Legacy PortalToFollowElem callers | up to `z-1001` | various business components                                                      |
+| **New UI primitives**             | **`z-1002`**   | `@langgenius/dify-ui/*` (Popover, Dialog, Autocomplete, Combobox, Tooltip, etc.) |
+| Toast                             | `z-1003`       | `@langgenius/dify-ui/toast`                                                      |
 
 `z-1002` sits above all common legacy overlays, so new primitives always
 render on top without needing per-call-site z-index hacks. Among themselves,
