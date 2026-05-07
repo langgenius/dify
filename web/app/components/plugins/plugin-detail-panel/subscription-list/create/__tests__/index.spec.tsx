@@ -5,7 +5,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
-import { CreateButtonType, CreateSubscriptionButton, DEFAULT_METHOD } from '../index'
+import { CreateSubscriptionButton } from '../index'
+import { CreateButtonType, DEFAULT_METHOD } from '../types'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(vi.fn(), {
@@ -80,34 +81,40 @@ vi.mock('../common-modal', () => ({
 }))
 
 vi.mock('../oauth-client', () => ({
-  OAuthClientSettingsModal: ({ oauthConfig, onClose, showOAuthCreateModal }: {
+  OAuthClientSettingsModal: ({ open, oauthConfig, onOpenChange, showOAuthCreateModal }: {
+    open: boolean
     oauthConfig?: TriggerOAuthConfig
-    onClose: () => void
+    onOpenChange: (open: boolean) => void
     showOAuthCreateModal: (builder: TriggerSubscriptionBuilder) => void
-  }) => (
-    <div
-      data-testid="oauth-client-modal"
-      data-has-config={!!oauthConfig}
-    >
-      <button data-testid="close-oauth-modal" onClick={onClose}>Close</button>
-      <button
-        data-testid="show-create-modal"
-        onClick={() => showOAuthCreateModal({
-          id: 'test-builder',
-          name: 'test',
-          provider: 'test-provider',
-          credential_type: TriggerCredentialTypeEnum.Oauth2,
-          credentials: {},
-          endpoint: 'https://test.com',
-          parameters: {},
-          properties: {},
-          workflows_in_use: 0,
-        })}
+  }) => {
+    if (!open)
+      return null
+
+    return (
+      <div
+        data-testid="oauth-client-modal"
+        data-has-config={!!oauthConfig}
       >
-        Show Create Modal
-      </button>
-    </div>
-  ),
+        <button data-testid="close-oauth-modal" onClick={() => onOpenChange(false)}>Close</button>
+        <button
+          data-testid="show-create-modal"
+          onClick={() => showOAuthCreateModal({
+            id: 'test-builder',
+            name: 'test',
+            provider: 'test-provider',
+            credential_type: TriggerCredentialTypeEnum.Oauth2,
+            credentials: {},
+            endpoint: 'https://test.com',
+            parameters: {},
+            properties: {},
+            workflows_in_use: 0,
+          })}
+        >
+          Show Create Modal
+        </button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/select', async () => {

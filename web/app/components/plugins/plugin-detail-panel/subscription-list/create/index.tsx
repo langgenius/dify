@@ -71,6 +71,16 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     showClientSettingsModal()
   }, [showClientSettingsModal])
 
+  const handleClientSettingsOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      showClientSettingsModal()
+      return
+    }
+
+    hideClientSettingsModal()
+    refetchOAuthConfig()
+  }, [hideClientSettingsModal, refetchOAuthConfig, showClientSettingsModal])
+
   const allOptions = useMemo<CreateTypeOption[]>(() => {
     const showCustomBadge = oauthConfig?.custom_enabled && oauthConfig?.custom_configured
 
@@ -299,11 +309,9 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       {isShowClientSettingsModal
         ? (
             <OAuthClientSettingsModal
+              open={isShowClientSettingsModal}
               oauthConfig={oauthConfig}
-              onClose={() => {
-                hideClientSettingsModal()
-                refetchOAuthConfig()
-              }}
+              onOpenChange={handleClientSettingsOpenChange}
               showOAuthCreateModal={(builder) => {
                 showCreateModal({
                   type: SupportedCreationMethods.OAUTH,
@@ -316,5 +324,3 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     </>
   )
 }
-
-export { CreateButtonType, DEFAULT_METHOD } from './types'

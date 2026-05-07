@@ -3,6 +3,7 @@ import type { TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/compo
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
@@ -10,22 +11,24 @@ import { usePluginStore } from '../../store'
 import { ClientTypeEnum, useOAuthClientState as useOAuthClientSettings } from './hooks/use-oauth-client-state'
 
 type Props = {
+  open: boolean
   oauthConfig?: TriggerOAuthConfig
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
   showOAuthCreateModal: (builder: TriggerSubscriptionBuilder) => void
 }
 
 const CLIENT_TYPE_OPTIONS = [ClientTypeEnum.Default, ClientTypeEnum.Custom] as const
 
-export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreateModal }: Props) => {
+export const OAuthClientSettingsModal = ({ open, oauthConfig, onOpenChange, showOAuthCreateModal }: Props) => {
   const { t } = useTranslation()
   const detail = usePluginStore(state => state.detail)
   const providerName = detail?.provider || ''
+  const closeModal = useCallback(() => onOpenChange(false), [onOpenChange])
 
   const oauthClientSettings = useOAuthClientSettings({
     oauthConfig,
     providerName,
-    onClose,
+    onOpenChange,
     showOAuthCreateModal,
   })
   const {
@@ -52,12 +55,9 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
 
   return (
     <Dialog
-      open
+      open={open}
       disablePointerDismissal
-      onOpenChange={(open) => {
-        if (!open)
-          onClose()
-      }}
+      onOpenChange={onOpenChange}
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
@@ -138,7 +138,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
               <Button
                 data-testid="modal-extra"
                 variant="secondary"
-                onClick={onClose}
+                onClick={closeModal}
               >
                 {t('operation.cancel', { ns: 'common' })}
               </Button>
