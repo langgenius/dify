@@ -3,9 +3,9 @@ from __future__ import annotations
 from unittest.mock import patch
 from uuid import uuid4
 
-from models.enums import CustomizeTokenStrategy
 from sqlalchemy.orm import Session
 
+from models.enums import CustomizeTokenStrategy
 from models.model import App, RecommendedApp, Site
 from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
 from services.recommend_app.recommend_app_type import RecommendAppType
