@@ -467,15 +467,21 @@ class TestHitTestingServiceExternalRetrieve:
         """
         Test external retrieval with metadata filtering conditions.
 
-        Verifies that metadata filtering conditions are properly passed
-        to the external retrieval service.
+        Verifies that metadata filtering conditions are validated into a
+        MetadataFilteringCondition instance at the service boundary before
+        being forwarded to the external retrieval service.
         """
+        from core.rag.entities import MetadataFilteringCondition
+
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
         external_retrieval_model = {"top_k": 3}
-        metadata_filtering_conditions = {"category": "test"}
+        metadata_filtering_conditions = {
+            "logical_operator": "and",
+            "conditions": [{"name": "category", "comparison_operator": "contains", "value": "test"}],
+        }
 
         external_documents = [{"content": "Doc 1", "title": "Title", "score": 0.9, "metadata": {}}]
 
@@ -497,7 +503,9 @@ class TestHitTestingServiceExternalRetrieve:
             assert result["query"]["content"] == query
             assert len(result["records"]) == 1
             call_kwargs = mock_external_retrieve.call_args[1]
-            assert call_kwargs["metadata_filtering_conditions"] == metadata_filtering_conditions
+            forwarded_condition = call_kwargs["metadata_filtering_conditions"]
+            assert isinstance(forwarded_condition, MetadataFilteringCondition)
+            assert forwarded_condition == MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
 
     def test_external_retrieve_empty_documents(self, mock_db_session):
         """

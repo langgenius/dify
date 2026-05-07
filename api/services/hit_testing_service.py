@@ -142,11 +142,19 @@ class HitTestingService:
 
         start = time.perf_counter()
 
+        from core.rag.entities import MetadataFilteringCondition
+
+        validated_metadata_conditions = (
+            MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
+            if metadata_filtering_conditions
+            else None
+        )
+
         all_documents = RetrievalService.external_retrieve(
             dataset_id=dataset.id,
             query=cls.escape_query_for_search(query),
             external_retrieval_model=external_retrieval_model,
-            metadata_filtering_conditions=metadata_filtering_conditions,
+            metadata_filtering_conditions=validated_metadata_conditions,
         )
 
         end = time.perf_counter()

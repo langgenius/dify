@@ -175,23 +175,18 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         external_retrieval_model: dict[str, Any] | None = None,
-        metadata_filtering_conditions: dict[str, Any] | None = None,
+        metadata_filtering_conditions: MetadataFilteringCondition | None = None,
     ):
         stmt = select(Dataset).where(Dataset.id == dataset_id)
         dataset = db.session.scalar(stmt)
         if not dataset:
             return []
-        metadata_condition = (
-            MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
-            if metadata_filtering_conditions
-            else None
-        )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
             dataset.tenant_id,
             dataset_id,
             query,
             external_retrieval_model or {},
-            metadata_condition=metadata_condition,
+            metadata_condition=metadata_filtering_conditions,
         )
         return all_documents
 

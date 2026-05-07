@@ -226,11 +226,35 @@ class TestRetrievalServiceInternals:
         assert mock_retrieve.call_count == 2
 
     @patch("core.rag.datasource.retrieval_service.ExternalDatasetService.fetch_external_knowledge_retrieval")
-    @patch("core.rag.datasource.retrieval_service.MetadataFilteringCondition.model_validate")
     @patch("core.rag.datasource.retrieval_service.db.session.scalar")
-    def test_external_retrieve_with_metadata_conditions(self, mock_scalar, mock_validate, mock_fetch):
+    def test_external_retrieve_with_metadata_conditions(self, mock_scalar, mock_fetch):
+        from core.rag.entities import MetadataFilteringCondition
+
         mock_scalar.return_value = SimpleNamespace(tenant_id="tenant-1")
-        mock_validate.return_value = "validated-condition"
+        expected_documents = [create_mock_document("external-doc", "external-1", 0.8, provider="external")]
+        mock_fetch.return_value = expected_documents
+        metadata_condition = MetadataFilteringCondition(logical_operator="and", conditions=[])
+
+        results = RetrievalService.external_retrieve(
+            dataset_id="dataset-1",
+            query="test query",
+            external_retrieval_model={"top_k": 3},
+            metadata_filtering_conditions=metadata_condition,
+        )
+
+        assert results == expected_documents
+        mock_fetch.assert_called_once_with(
+            "tenant-1",
+            "dataset-1",
+            "test query",
+            {"top_k": 3},
+            metadata_condition=metadata_condition,
+        )
+
+    @patch("core.rag.datasource.retrieval_service.ExternalDatasetService.fetch_external_knowledge_retrieval")
+    @patch("core.rag.datasource.retrieval_service.db.session.scalar")
+    def test_external_retrieve_without_metadata_conditions(self, mock_scalar, mock_fetch):
+        mock_scalar.return_value = SimpleNamespace(tenant_id="tenant-1")
         expected_documents = [create_mock_document("external-doc", "external-1", 0.8, provider="external")]
         mock_fetch.return_value = expected_documents
 
@@ -238,17 +262,15 @@ class TestRetrievalServiceInternals:
             dataset_id="dataset-1",
             query="test query",
             external_retrieval_model={"top_k": 3},
-            metadata_filtering_conditions={"field": "source", "operator": "contains", "value": "manual"},
         )
 
         assert results == expected_documents
-        mock_validate.assert_called_once()
         mock_fetch.assert_called_once_with(
             "tenant-1",
             "dataset-1",
             "test query",
             {"top_k": 3},
-            metadata_condition="validated-condition",
+            metadata_condition=None,
         )
 
     @patch("core.rag.datasource.retrieval_service.db.session.scalar")
