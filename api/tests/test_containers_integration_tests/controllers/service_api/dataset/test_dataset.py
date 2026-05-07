@@ -18,6 +18,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -246,7 +247,7 @@ def _unwrap(method):
 
 
 @pytest.fixture
-def app(flask_app_with_containers):
+def app(flask_app_with_containers: Flask):
     # Uses the full containerised app so that Flask config, extensions, and
     # blueprint registrations match production.  Most tests mock the service
     # layer to isolate controller logic; a few (e.g. test_list_tags_from_db)
