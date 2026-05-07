@@ -16,7 +16,7 @@ const Trigger = ({
         ? (
             <div className="flex items-center gap-x-0.5 rounded-[5px] border border-dashed border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
               <span className="i-ri-price-tag-3-line h-3 w-3 shrink-0 text-text-quaternary" />
-              <div className="text-nowrap text-text-tertiary system-2xs-medium-uppercase">
+              <div className="system-2xs-medium-uppercase text-nowrap text-text-tertiary">
                 {t('tag.addTag', { ns: 'common' })}
               </div>
             </div>
@@ -32,7 +32,7 @@ const Trigger = ({
                       data-testid={`tag-badge-${index}`}
                     >
                       <span className="i-ri-price-tag-3-line h-3 w-3 shrink-0 text-text-quaternary" />
-                      <div className="text-nowrap text-text-tertiary system-2xs-medium-uppercase">
+                      <div className="system-2xs-medium-uppercase text-nowrap text-text-tertiary">
                         {content}
                       </div>
                     </div>

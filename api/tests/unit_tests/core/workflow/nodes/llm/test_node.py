@@ -1,4 +1,5 @@
 import base64
+import logging
 import uuid
 from collections.abc import Sequence
 from unittest import mock
@@ -139,8 +140,8 @@ def _build_image_file(
     mime_type: str = "image/png",
 ) -> File:
     return File(
-        id=file_id,
-        type=FileType.IMAGE,
+        file_id=file_id,
+        file_type=FileType.IMAGE,
         filename=f"{file_id}{extension}",
         transfer_method=FileTransferMethod.REMOTE_URL,
         remote_url=remote_url,
@@ -204,14 +205,10 @@ def llm_node(
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
     mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
-    node_config = {
-        "id": "1",
-        "data": llm_node_data.model_dump(),
-    }
     http_client = mock.MagicMock()
     node = LLMNode(
-        id="1",
-        config=node_config,
+        node_id="1",
+        config=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
@@ -402,8 +399,8 @@ def test_dify_model_access_adapters_call_managers():
 
 def test_fetch_files_with_file_segment():
     file = File(
-        id="1",
-        type=FileType.IMAGE,
+        file_id="1",
+        file_type=FileType.IMAGE,
         filename="test.jpg",
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="1",
@@ -419,16 +416,16 @@ def test_fetch_files_with_file_segment():
 def test_fetch_files_with_array_file_segment():
     files = [
         File(
-            id="1",
-            type=FileType.IMAGE,
+            file_id="1",
+            file_type=FileType.IMAGE,
             filename="test1.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="1",
             storage_key="",
         ),
         File(
-            id="2",
-            type=FileType.IMAGE,
+            file_id="2",
+            file_type=FileType.IMAGE,
             filename="test2.jpg",
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="2",
@@ -1173,14 +1170,10 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
     mock_credentials_provider = mock.MagicMock(spec=CredentialsProvider)
     mock_model_factory = mock.MagicMock(spec=ModelFactory)
     mock_prompt_message_serializer = mock.MagicMock(spec=PromptMessageSerializerProtocol)
-    node_config = {
-        "id": "1",
-        "data": llm_node_data.model_dump(),
-    }
     http_client = mock.MagicMock()
     node = LLMNode(
-        id="1",
-        config=node_config,
+        node_id="1",
+        config=llm_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
         credentials_provider=mock_credentials_provider,
@@ -1202,8 +1195,8 @@ class TestLLMNodeSaveMultiModalImageOutput:
             mime_type="image/png",
         )
         mock_file = File(
-            id=str(uuid.uuid4()),
-            type=FileType.IMAGE,
+            file_id=str(uuid.uuid4()),
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             related_id=str(uuid.uuid4()),
             filename="test-file.png",
@@ -1232,8 +1225,8 @@ class TestLLMNodeSaveMultiModalImageOutput:
             mime_type="image/jpg",
         )
         mock_file = File(
-            id=str(uuid.uuid4()),
-            type=FileType.IMAGE,
+            file_id=str(uuid.uuid4()),
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             related_id=str(uuid.uuid4()),
             filename="test-file.png",
@@ -1261,6 +1254,10 @@ def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
 
 
 class TestSaveMultimodalOutputAndConvertResultToMarkdown:
+    class _UnknownItem:
+        def __str__(self) -> str:
+            return "<unknown-item>"
+
     def test_str_content(self, llm_node_for_multimodal):
         llm_node, mock_file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
@@ -1286,8 +1283,8 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         image_b64_data = base64.b64encode(image_raw_data).decode()
 
         mock_saved_file = File(
-            id=str(uuid.uuid4()),
-            type=FileType.IMAGE,
+            file_id=str(uuid.uuid4()),
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.TOOL_FILE,
             filename="test.png",
             extension=".png",
@@ -1330,18 +1327,23 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
     def test_unknown_content_type(self, llm_node_for_multimodal):
         llm_node, mock_file_saver = llm_node_for_multimodal
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=frozenset(["hello world"]), file_saver=mock_file_saver, file_outputs=[]
+            contents=frozenset(("hello world",)), file_saver=mock_file_saver, file_outputs=[]
         )
         assert list(gen) == ["hello world"]
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
-    def test_unknown_item_type(self, llm_node_for_multimodal):
+    def test_unknown_item_type(self, llm_node_for_multimodal, caplog):
         llm_node, mock_file_saver = llm_node_for_multimodal
-        gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
-            contents=[frozenset(["hello world"])], file_saver=mock_file_saver, file_outputs=[]
-        )
-        assert list(gen) == ["frozenset({'hello world'})"]
+        unknown_item = self._UnknownItem()
+
+        with caplog.at_level(logging.WARNING, logger="graphon.nodes.llm.node"):
+            gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
+                contents=[unknown_item], file_saver=mock_file_saver, file_outputs=[]
+            )
+            assert list(gen) == [str(unknown_item)]
+
+        assert "unknown item type encountered" in caplog.text
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
@@ -1447,7 +1449,6 @@ def test_invoke_llm_dispatches_to_expected_model_method(structured_output_enable
                 file_saver=file_saver,
                 file_outputs=[],
                 node_id="node-1",
-                node_type=LLMNode.node_type,
                 reasoning_format="separated",
             )
         )
@@ -1504,7 +1505,6 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
                 file_saver=mock.MagicMock(spec=LLMFileSaver),
                 file_outputs=[],
                 node_id="node-1",
-                node_type=LLMNode.node_type,
                 model_instance=_build_prepared_llm_mock(),
                 reasoning_format="separated",
                 request_start_time=1.0,
@@ -1542,7 +1542,6 @@ def test_handle_invoke_result_wraps_structured_output_parse_errors():
                 file_saver=mock.MagicMock(spec=LLMFileSaver),
                 file_outputs=[],
                 node_id="node-1",
-                node_type=LLMNode.node_type,
                 model_instance=model_instance,
             )
         )

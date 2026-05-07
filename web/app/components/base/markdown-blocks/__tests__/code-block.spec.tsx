@@ -1,21 +1,34 @@
-import { createRequire } from 'node:module'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as echarts from 'echarts'
 import { Theme } from '@/types/app'
 
 import CodeBlock from '../code-block'
+
+const { mockHighlightCode } = vi.hoisted(() => ({
+  mockHighlightCode: vi.fn(),
+}))
 
 type UseThemeReturn = {
   theme: Theme
 }
 
 const mockUseTheme = vi.fn<() => UseThemeReturn>(() => ({ theme: Theme.light }))
-const require = createRequire(import.meta.url)
-const echartsCjs = require('echarts') as {
-  getInstanceByDom: (dom: HTMLDivElement | null) => {
-    resize: (opts?: { width?: string, height?: string }) => void
-  } | null
-}
+const mockEcharts = vi.hoisted(() => {
+  const state = {
+    finishedHandler: undefined as undefined | ((event?: unknown) => void),
+    echartsInstance: {
+      resize: vi.fn<(opts?: { width?: string, height?: string }) => void>(),
+      trigger: vi.fn((eventName: string, event?: unknown) => {
+        if (eventName === 'finished')
+          state.finishedHandler?.(event)
+      }),
+    },
+    getInstanceByDom: vi.fn(() => state.echartsInstance),
+  }
+
+  return state
+})
 
 let clientWidthSpy: { mockRestore: () => void } | null = null
 let clientHeightSpy: { mockRestore: () => void } | null = null
@@ -61,6 +74,46 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => mockUseTheme(),
 }))
 
+vi.mock('../shiki-highlight', () => ({
+  highlightCode: mockHighlightCode,
+}))
+
+vi.mock('echarts', () => ({
+  getInstanceByDom: mockEcharts.getInstanceByDom,
+}))
+
+vi.mock('echarts-for-react', async () => {
+  const React = await vi.importActual<typeof import('react')>('react')
+
+  const MockReactEcharts = React.forwardRef(({
+    onChartReady,
+    onEvents,
+  }: {
+    onChartReady?: (instance: typeof mockEcharts.echartsInstance) => void
+    onEvents?: { finished?: (event?: unknown) => void }
+  }, ref: React.ForwardedRef<{ getEchartsInstance: () => typeof mockEcharts.echartsInstance }>) => {
+    React.useImperativeHandle(ref, () => ({
+      getEchartsInstance: () => mockEcharts.echartsInstance,
+    }))
+
+    React.useEffect(() => {
+      mockEcharts.finishedHandler = onEvents?.finished
+      onChartReady?.(mockEcharts.echartsInstance)
+      onEvents?.finished?.({})
+      return () => {
+        mockEcharts.finishedHandler = undefined
+      }
+    }, [onChartReady, onEvents])
+
+    return <div className="echarts-for-react" />
+  })
+
+  return {
+    __esModule: true,
+    default: MockReactEcharts,
+  }
+})
+
 vi.mock('@/app/components/base/mermaid', () => ({
   __esModule: true,
   default: ({ PrimitiveCode }: { PrimitiveCode: string }) => <div data-testid="mock-mermaid">{PrimitiveCode}</div>,
@@ -68,7 +121,7 @@ vi.mock('@/app/components/base/mermaid', () => ({
 
 const findEchartsHost = async () => {
   await waitFor(() => {
-    expect(document.querySelector('.echarts-for-react')).toBeInTheDocument()
+    expect(document.querySelector('.echarts-for-react'))!.toBeInTheDocument()
   })
   return document.querySelector('.echarts-for-react') as HTMLDivElement
 }
@@ -76,15 +129,20 @@ const findEchartsHost = async () => {
 const findEchartsInstance = async () => {
   const host = await findEchartsHost()
   await waitFor(() => {
-    expect(echartsCjs.getInstanceByDom(host)).toBeTruthy()
+    expect(echarts.getInstanceByDom(host)).toBeTruthy()
   })
-  return echartsCjs.getInstanceByDom(host)!
+  return echarts.getInstanceByDom(host)!
 }
 
 describe('CodeBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseTheme.mockReturnValue({ theme: Theme.light })
+    mockHighlightCode.mockImplementation(async ({ code, language }) => (
+      <pre className="shiki">
+        <code className={`language-${language}`}>{code}</code>
+      </pre>
+    ))
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     clientWidthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(900)
@@ -153,17 +211,19 @@ describe('CodeBlock', () => {
       expect(container.querySelector('code')?.textContent).toBe('plain text')
     })
 
-    it('should render syntax-highlighted output when language is standard', () => {
+    it('should render syntax-highlighted output when language is standard', async () => {
       render(<CodeBlock className="language-javascript">const x = 1;</CodeBlock>)
 
-      expect(screen.getByText('JavaScript')).toBeInTheDocument()
-      expect(document.querySelector('code.language-javascript')?.textContent).toContain('const x = 1;')
+      expect(screen.getByText('JavaScript'))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(document.querySelector('code.language-javascript')?.textContent).toContain('const x = 1;')
+      })
     })
 
     it('should format unknown language labels with capitalized fallback when language is not in map', () => {
       render(<CodeBlock className="language-ruby">puts "ok"</CodeBlock>)
 
-      expect(screen.getByText('Ruby')).toBeInTheDocument()
+      expect(screen.getByText('Ruby'))!.toBeInTheDocument()
     })
 
     // it('should render mermaid controls when language is mermaid', async () => {
@@ -175,35 +235,48 @@ describe('CodeBlock', () => {
     it('should render mermaid block when language is mermaid', async () => {
       render(<CodeBlock className="language-mermaid">{'graph TD; A-->B;'}</CodeBlock>)
 
-      expect(screen.getByText('Mermaid')).toBeInTheDocument()
-      expect(await screen.findByTestId('mock-mermaid')).toHaveTextContent('graph TD; A-->B;')
+      expect(screen.getByText('Mermaid'))!.toBeInTheDocument()
+      expect(await screen.findByTestId('mock-mermaid'))!.toHaveTextContent('graph TD; A-->B;')
     })
 
     it('should render abc section header when language is abc', () => {
       render(<CodeBlock className="language-abc">X:1\nT:test</CodeBlock>)
 
-      expect(screen.getByText('ABC')).toBeInTheDocument()
+      expect(screen.getByText('ABC'))!.toBeInTheDocument()
     })
 
     it('should hide svg renderer when toggle is clicked for svg language', async () => {
       const user = userEvent.setup()
       render(<CodeBlock className="language-svg">{'<svg/>'}</CodeBlock>)
 
-      expect(await screen.findByText(/Error rendering SVG/i)).toBeInTheDocument()
+      expect(await screen.findByText(/Error rendering SVG/i))!.toBeInTheDocument()
 
       const svgToggleButton = screen.getAllByRole('button')[0]
-      await user.click(svgToggleButton)
+      await user.click(svgToggleButton!)
 
       expect(screen.queryByText(/Error rendering SVG/i)).not.toBeInTheDocument()
     })
 
-    it('should render syntax-highlighted output when language is standard and app theme is dark', () => {
+    it('should render syntax-highlighted output when language is standard and app theme is dark', async () => {
       mockUseTheme.mockReturnValue({ theme: Theme.dark })
 
       render(<CodeBlock className="language-javascript">const y = 2;</CodeBlock>)
 
-      expect(screen.getByText('JavaScript')).toBeInTheDocument()
-      expect(document.querySelector('code.language-javascript')?.textContent).toContain('const y = 2;')
+      expect(screen.getByText('JavaScript'))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(document.querySelector('code.language-javascript')?.textContent).toContain('const y = 2;')
+      })
+    })
+
+    it('should fall back to plain code block when shiki highlighting fails', async () => {
+      mockHighlightCode.mockRejectedValueOnce(new Error('highlight failed'))
+
+      render(<CodeBlock className="language-javascript">const z = 3;</CodeBlock>)
+
+      await waitFor(() => {
+        expect(screen.getByText('const z = 3;'))!.toBeInTheDocument()
+      })
+      expect(document.querySelector('code.language-javascript')).toBeNull()
     })
   })
 
@@ -212,53 +285,53 @@ describe('CodeBlock', () => {
     it('should show loading indicator when echarts content is empty', () => {
       render(<CodeBlock className="language-echarts"></CodeBlock>)
 
-      expect(screen.getByText(/Chart loading.../i)).toBeInTheDocument()
+      expect(screen.getByText(/Chart loading.../i))!.toBeInTheDocument()
     })
 
     it('should keep loading when echarts content is whitespace only', () => {
       render(<CodeBlock className="language-echarts">{'   '}</CodeBlock>)
 
-      expect(screen.getByText(/Chart loading.../i)).toBeInTheDocument()
+      expect(screen.getByText(/Chart loading.../i))!.toBeInTheDocument()
     })
 
     it('should render echarts with parsed option when JSON is valid', async () => {
       const option = { title: [{ text: 'Hello' }] }
       render(<CodeBlock className="language-echarts">{JSON.stringify(option)}</CodeBlock>)
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
       expect(screen.queryByText(/Chart loading.../i)).not.toBeInTheDocument()
     })
 
     it('should use error option when echarts content is invalid but structurally complete', async () => {
       render(<CodeBlock className="language-echarts">{'{a:1}'}</CodeBlock>)
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
       expect(screen.queryByText(/Chart loading.../i)).not.toBeInTheDocument()
     })
 
     it('should use error option when echarts content is invalid non-structured text', async () => {
       render(<CodeBlock className="language-echarts">{'not a json {'}</CodeBlock>)
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
       expect(screen.queryByText(/Chart loading.../i)).not.toBeInTheDocument()
     })
 
     it('should keep loading when option is valid JSON but not an object', async () => {
       render(<CodeBlock className="language-echarts">"text-value"</CodeBlock>)
 
-      expect(await screen.findByText(/Chart loading.../i)).toBeInTheDocument()
+      expect(await screen.findByText(/Chart loading.../i))!.toBeInTheDocument()
     })
 
     it('should keep loading when echarts content matches incomplete quote-pattern guard', async () => {
       render(<CodeBlock className="language-echarts">{'x{"a":1'}</CodeBlock>)
 
-      expect(await screen.findByText(/Chart loading.../i)).toBeInTheDocument()
+      expect(await screen.findByText(/Chart loading.../i))!.toBeInTheDocument()
     })
 
     it('should keep loading when echarts content has unmatched opening array bracket', async () => {
       render(<CodeBlock className="language-echarts">[[1,2]</CodeBlock>)
 
-      expect(await screen.findByText(/Chart loading.../i)).toBeInTheDocument()
+      expect(await screen.findByText(/Chart loading.../i))!.toBeInTheDocument()
     })
 
     it('should keep chart instance stable when window resize is triggered', async () => {
@@ -270,7 +343,7 @@ describe('CodeBlock', () => {
         window.dispatchEvent(new Event('resize'))
       })
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
     })
 
     it('should keep rendering when echarts content updates repeatedly', async () => {
@@ -282,7 +355,7 @@ describe('CodeBlock', () => {
       rerender(<CodeBlock className="language-echarts">{'{"a":4}'}</CodeBlock>)
       rerender(<CodeBlock className="language-echarts">{'{"a":5}'}</CodeBlock>)
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
     })
 
     it('should stop processing extra finished events when chart finished callback fires repeatedly', async () => {
@@ -301,27 +374,27 @@ describe('CodeBlock', () => {
         await new Promise(resolve => setTimeout(resolve, 500))
       })
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
     })
 
     it('should switch from loading to chart when streaming content becomes valid JSON', async () => {
       const { rerender } = render(<CodeBlock className="language-echarts">{'{ "a":'}</CodeBlock>)
-      expect(screen.getByText(/Chart loading.../i)).toBeInTheDocument()
+      expect(screen.getByText(/Chart loading.../i))!.toBeInTheDocument()
 
       rerender(<CodeBlock className="language-echarts">{'{ "a": 1 }'}</CodeBlock>)
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
     })
 
     it('should parse array JSON after previously incomplete streaming content', async () => {
       const parseSpy = vi.spyOn(JSON, 'parse')
       parseSpy.mockImplementationOnce(() => ({ series: [] }) as unknown as object)
       const { rerender } = render(<CodeBlock className="language-echarts">[1, 2</CodeBlock>)
-      expect(screen.getByText(/Chart loading.../i)).toBeInTheDocument()
+      expect(screen.getByText(/Chart loading.../i))!.toBeInTheDocument()
 
       rerender(<CodeBlock className="language-echarts">[1, 2]</CodeBlock>)
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
       parseSpy.mockRestore()
     })
 
@@ -331,7 +404,7 @@ describe('CodeBlock', () => {
 
       render(<CodeBlock className="language-echarts">abcde</CodeBlock>)
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
       parseSpy.mockRestore()
     })
 
@@ -339,14 +412,14 @@ describe('CodeBlock', () => {
       mockUseTheme.mockReturnValue({ theme: Theme.dark })
       render(<CodeBlock className="language-echarts">{'{"series":[]}'}</CodeBlock>)
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
     })
 
     it('should render dark mode error option when app theme is dark and echarts content is invalid', async () => {
       mockUseTheme.mockReturnValue({ theme: Theme.dark })
       render(<CodeBlock className="language-echarts">{'{a:1}'}</CodeBlock>)
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
     })
 
     it('should wire resize listener when echarts view re-enters with a ready chart instance', async () => {
@@ -360,7 +433,7 @@ describe('CodeBlock', () => {
         window.dispatchEvent(new Event('resize'))
       })
 
-      expect(await findEchartsHost()).toBeInTheDocument()
+      expect(await findEchartsHost())!.toBeInTheDocument()
       unmount()
     })
 

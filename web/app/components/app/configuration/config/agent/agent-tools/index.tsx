@@ -4,6 +4,11 @@ import type { Collection } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentTool } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -18,11 +23,8 @@ import { useContext } from 'use-context-selector'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import { CollectionType } from '@/app/components/tools/types'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -32,7 +34,6 @@ import ConfigContext from '@/context/debug-configuration'
 import { useMittContextSelector } from '@/context/mitt-context'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
-import { cn } from '@/utils/classnames'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
 import SettingBuiltInTool from './setting-built-in-tool'
 
@@ -154,18 +155,28 @@ const AgentTools: FC = () => {
         title={(
           <div className="flex items-center">
             <div className="mr-1">{t('agent.tools.name', { ns: 'appDebug' })}</div>
-            <Tooltip
-              popupContent={(
-                <div className="w-[180px]">
-                  {t('agent.tools.description', { ns: 'appDebug' })}
-                </div>
-              )}
-            />
+            <Popover>
+              <PopoverTrigger
+                openOnHover
+                aria-label={t('agent.tools.description', { ns: 'appDebug' })}
+                render={(
+                  <button
+                    type="button"
+                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm p-px outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                  >
+                    <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
+                  </button>
+                )}
+              />
+              <PopoverContent popupClassName="w-[180px] px-3 py-2 system-xs-regular text-text-tertiary">
+                {t('agent.tools.description', { ns: 'appDebug' })}
+              </PopoverContent>
+            </Popover>
           </div>
         )}
         headerRight={(
           <div className="flex items-center">
-            <div className="text-xs font-normal leading-[18px] text-text-tertiary">
+            <div className="text-xs leading-[18px] font-normal text-text-tertiary">
               {tools.filter(item => !!item.enabled).length}
               /
               {tools.length}
@@ -174,7 +185,7 @@ const AgentTools: FC = () => {
             </div>
             {tools.length < MAX_TOOLS_NUM && !readonly && (
               <>
-                <div className="ml-3 mr-1 h-3.5 w-px bg-divider-regular"></div>
+                <div className="mr-1 ml-3 h-3.5 w-px bg-divider-regular"></div>
                 <ToolPicker
                   trigger={<OperationBtn type="add" />}
                   isShow={isShowChooseTool}
@@ -209,41 +220,66 @@ const AgentTools: FC = () => {
                 )}
                 <div
                   className={cn(
-                    'system-xs-regular ml-1.5 flex w-0 grow items-center truncate',
+                    'ml-1.5 flex w-0 grow items-center truncate system-xs-regular',
                     (item.isDeleted || item.notAuthor || !item.enabled) ? 'opacity-50' : '',
                   )}
                 >
-                  <span className="system-xs-medium pr-1.5 text-text-secondary">{getProviderShowName(item)}</span>
+                  <span className="pr-1.5 system-xs-medium text-text-secondary">{getProviderShowName(item)}</span>
                   <span className="text-text-tertiary">{item.tool_label}</span>
                   {!item.isDeleted && !readonly && (
-                    <Tooltip
-                      popupContent={(
+                    <Popover>
+                      <span className="h-4 w-4">
+                        <PopoverTrigger
+                          openOnHover
+                          aria-label={item.tool_name}
+                          render={(
+                            <button
+                              type="button"
+                              className="ml-0.5 hidden h-4 w-4 items-center justify-center rounded-sm outline-hidden group-hover:inline-flex hover:bg-state-base-hover focus-visible:inline-flex focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                              data-testid="tool-info-tooltip"
+                            >
+                              <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
+                            </button>
+                          )}
+                        />
+                      </span>
+                      <PopoverContent popupClassName="w-[180px] px-3 py-2 system-xs-regular">
                         <div className="w-[180px]">
                           <div className="mb-1.5 text-text-secondary">{item.tool_name}</div>
                           <div className="mb-1.5 text-text-tertiary">{t('toolNameUsageTip', { ns: 'tools' })}</div>
-                          <div className="cursor-pointer text-text-accent" onClick={() => copy(item.tool_name)}>{t('copyToolName', { ns: 'tools' })}</div>
+                          <button
+                            type="button"
+                            className="cursor-pointer rounded-sm text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                            onClick={() => copy(item.tool_name)}
+                          >
+                            {t('copyToolName', { ns: 'tools' })}
+                          </button>
                         </div>
-                      )}
-                    >
-                      <div className="h-4 w-4">
-                        <div className="ml-0.5 hidden group-hover:inline-block" data-testid="tool-info-tooltip">
-                          <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
-                        </div>
-                      </div>
-                    </Tooltip>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
               </div>
               <div className="ml-1 flex shrink-0 items-center">
                 {item.isDeleted && (
                   <div className="mr-2 flex items-center">
-                    <Tooltip
-                      popupContent={t('toolRemoved', { ns: 'tools' })}
-                    >
-                      <div className="mr-1 cursor-pointer rounded-md p-1 hover:bg-black/5">
-                        <AlertTriangle className="h-4 w-4 text-[#F79009]" />
-                      </div>
-                    </Tooltip>
+                    <Popover>
+                      <PopoverTrigger
+                        openOnHover
+                        aria-label={t('toolRemoved', { ns: 'tools' })}
+                        render={(
+                          <button
+                            type="button"
+                            className="mr-1 cursor-pointer rounded-md p-1 outline-hidden hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                          >
+                            <AlertTriangle className="h-4 w-4 text-[#F79009]" />
+                          </button>
+                        )}
+                      />
+                      <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                        {t('toolRemoved', { ns: 'tools' })}
+                      </PopoverContent>
+                    </Popover>
                     <div
                       className="cursor-pointer rounded-md p-1 text-text-tertiary hover:text-text-destructive"
                       onClick={() => {
@@ -263,19 +299,25 @@ const AgentTools: FC = () => {
                 {!item.isDeleted && !readonly && (
                   <div className="mr-2 hidden items-center gap-1 group-hover:flex">
                     {!item.notAuthor && (
-                      <Tooltip
-                        popupContent={t('setBuiltInTools.infoAndSetting', { ns: 'tools' })}
-                        needsDelay={false}
-                      >
-                        <div
-                          className="cursor-pointer rounded-md p-1  hover:bg-black/5"
-                          onClick={() => {
-                            setCurrentTool(item)
-                            setIsShowSettingTool(true)
-                          }}
-                        >
-                          <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
-                        </div>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={(
+                            <button
+                              type="button"
+                              className="cursor-pointer rounded-md p-1 outline-hidden hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                              aria-label={t('setBuiltInTools.infoAndSetting', { ns: 'tools' })}
+                              onClick={() => {
+                                setCurrentTool(item)
+                                setIsShowSettingTool(true)
+                              }}
+                            >
+                              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                            </button>
+                          )}
+                        />
+                        <TooltipContent>
+                          {t('setBuiltInTools.infoAndSetting', { ns: 'tools' })}
+                        </TooltipContent>
                       </Tooltip>
                     )}
                     <div
@@ -298,10 +340,10 @@ const AgentTools: FC = () => {
                 <div className={cn(item.isDeleted && 'opacity-50')}>
                   {!item.notAuthor && (
                     <Switch
-                      value={item.isDeleted ? false : item.enabled}
+                      checked={item.isDeleted ? false : item.enabled}
                       disabled={item.isDeleted || readonly}
                       size="md"
-                      onChange={(enabled) => {
+                      onCheckedChange={(enabled) => {
                         const newModelConfig = produce(modelConfig, (draft) => {
                           (draft.agentConfig.tools[index] as any).enabled = enabled
                         })

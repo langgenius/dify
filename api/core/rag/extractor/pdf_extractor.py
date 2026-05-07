@@ -35,7 +35,7 @@ class PdfExtractor(BaseExtractor):
     """
 
     # Magic bytes for image format detection: (magic_bytes, extension, mime_type)
-    IMAGE_FORMATS = [
+    IMAGE_FORMATS: tuple[tuple[bytes, str, str], ...] = (
         (b"\xff\xd8\xff", "jpg", "image/jpeg"),
         (b"\x89PNG\r\n\x1a\n", "png", "image/png"),
         (b"\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a", "jp2", "image/jp2"),
@@ -45,7 +45,7 @@ class PdfExtractor(BaseExtractor):
         (b"MM\x00*", "tiff", "image/tiff"),
         (b"II+\x00", "tiff", "image/tiff"),
         (b"MM\x00+", "tiff", "image/tiff"),
-    ]
+    )
     MAX_MAGIC_LEN = max(len(m) for m, _, _ in IMAGE_FORMATS)
 
     def __init__(self, file_path: str, tenant_id: str, user_id: str, file_cache_key: str | None = None):

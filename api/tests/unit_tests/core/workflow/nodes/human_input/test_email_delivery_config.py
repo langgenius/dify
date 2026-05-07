@@ -1,4 +1,4 @@
-from core.workflow.human_input_compat import EmailDeliveryConfig, EmailRecipients
+from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailRecipients
 from graphon.runtime import VariablePool
 
 

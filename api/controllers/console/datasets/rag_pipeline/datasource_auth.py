@@ -120,7 +120,8 @@ class DatasourceOAuthCallback(Resource):
         if context is None:
             raise Forbidden("Invalid context_id")
 
-        user_id, tenant_id = context.get("user_id"), context.get("tenant_id")
+        user_id: str = context["user_id"]
+        tenant_id: str = context["tenant_id"]
         datasource_provider_id = DatasourceProviderID(provider_id)
         plugin_id = datasource_provider_id.plugin_id
         datasource_provider_service = DatasourceProviderService()
@@ -141,7 +142,7 @@ class DatasourceOAuthCallback(Resource):
             system_credentials=oauth_client_params,
             request=request,
         )
-        credential_id = context.get("credential_id")
+        credential_id: str | None = context.get("credential_id")
         if credential_id:
             datasource_provider_service.reauthorize_datasource_oauth_provider(
                 tenant_id=tenant_id,
@@ -150,7 +151,7 @@ class DatasourceOAuthCallback(Resource):
                 name=oauth_response.metadata.get("name") or None,
                 expire_at=oauth_response.expires_at,
                 credentials=dict(oauth_response.credentials),
-                credential_id=context.get("credential_id"),
+                credential_id=credential_id,
             )
         else:
             datasource_provider_service.add_datasource_oauth_provider(

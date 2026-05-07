@@ -1,10 +1,10 @@
 import type { VarInInspect } from '@/types/workflow'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import { useStore } from '@/app/components/workflow/store'
-import { cn } from '@/utils/classnames'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 import {
   BoolArraySection,
@@ -119,7 +119,7 @@ const ValueContent = ({
     if (contentContainerRef.current && errorMessageRef.current) {
       const errorMessageObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          const { inlineSize } = entry.borderBoxSize[0]
+          const { inlineSize } = entry.borderBoxSize[0]!
           const height = (contentContainerRef.current as any).clientHeight - inlineSize
           setEditorHeight(height)
         }

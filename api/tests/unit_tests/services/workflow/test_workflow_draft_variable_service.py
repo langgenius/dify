@@ -14,8 +14,7 @@ from core.workflow.variable_prefixes import (
     SYSTEM_VARIABLE_NODE_ID,
 )
 from graphon.enums import BuiltinNodeTypes
-from graphon.file.enums import FileTransferMethod, FileType
-from graphon.file.models import File
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
 from libs.uuid_utils import uuidv7
@@ -146,8 +145,8 @@ class TestDraftVariableSaver:
             user=mock_user,
         )
         rebuilt_file = File(
-            id="file-1",
-            type=FileType.DOCUMENT,
+            file_id="file-1",
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             reference="upload-1",
             filename="test.txt",
@@ -201,7 +200,7 @@ class TestDraftVariableSaver:
             user=mock_user,
         )
 
-    def test_draft_saver_with_small_variables(self, draft_saver, mock_session):
+    def test_draft_saver_with_small_variables(self, draft_saver: DraftVariableSaver, mock_session):
         with patch(
             "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
@@ -213,18 +212,21 @@ class TestDraftVariableSaver:
             assert draft_var.file_id is None
             _mock_try_offload.return_value = None
 
-    def test_draft_saver_with_large_variables(self, draft_saver, mock_session):
+    def test_draft_saver_with_large_variables(self, draft_saver: DraftVariableSaver, mock_session):
         with patch(
             "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
             mock_segment = StringSegment(value="small value")
             mock_draft_var_file = WorkflowDraftVariableFile(
-                id=str(uuidv7()),
+                tenant_id=str(uuidv7()),
+                app_id=str(uuidv7()),
+                user_id=str(uuidv7()),
                 size=1024,
                 length=10,
                 value_type=SegmentType.ARRAY_STRING,
-                upload_file_id=str(uuid.uuid4()),
+                upload_file_id=str(uuidv7()),
             )
+            mock_draft_var_file.id = str(uuidv7())
 
             _mock_try_offload.return_value = mock_segment, mock_draft_var_file
             draft_var = draft_saver._create_draft_variable(name="small_var", value=mock_segment, visible=True)

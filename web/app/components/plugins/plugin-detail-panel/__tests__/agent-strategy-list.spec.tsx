@@ -81,15 +81,15 @@ describe('AgentStrategyList', () => {
     it('should render strategy items when data is available', () => {
       render(<AgentStrategyList detail={createPluginDetail()} />)
 
-      expect(screen.getByText('plugin.detailPanel.strategyNum:{"num":1,"strategy":"strategy"}')).toBeInTheDocument()
-      expect(screen.getByTestId('strategy-item')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.strategyNum:{"num":1,"strategy":"strategy"}'))!.toBeInTheDocument()
+      expect(screen.getByTestId('strategy-item'))!.toBeInTheDocument()
     })
 
     it('should return null when no strategy provider detail', () => {
       mockStrategyProviderDetail = undefined
       const { container } = render(<AgentStrategyList detail={createPluginDetail()} />)
 
-      expect(container).toBeEmptyDOMElement()
+      expect(container)!.toBeEmptyDOMElement()
     })
 
     it('should render multiple strategies', () => {
@@ -98,13 +98,13 @@ describe('AgentStrategyList', () => {
           identity: { author: 'test', name: 'test' },
           strategies: [
             ...mockStrategies,
-            { ...mockStrategies[0], identity: { ...mockStrategies[0].identity, name: 'strategy-2' } },
+            { ...mockStrategies[0]!, identity: { ...mockStrategies[0]!.identity, name: 'strategy-2' } },
           ],
         },
       }
       render(<AgentStrategyList detail={createPluginDetail()} />)
 
-      expect(screen.getByText('plugin.detailPanel.strategyNum:{"num":2,"strategy":"strategies"}')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.strategyNum:{"num":2,"strategy":"strategies"}'))!.toBeInTheDocument()
       expect(screen.getAllByTestId('strategy-item')).toHaveLength(2)
     })
   })
@@ -115,7 +115,7 @@ describe('AgentStrategyList', () => {
       detail.tenant_id = 'custom-tenant'
       render(<AgentStrategyList detail={detail} />)
 
-      expect(screen.getByTestId('strategy-item')).toBeInTheDocument()
+      expect(screen.getByTestId('strategy-item'))!.toBeInTheDocument()
     })
   })
 })

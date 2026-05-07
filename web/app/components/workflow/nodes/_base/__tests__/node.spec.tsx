@@ -10,10 +10,15 @@ const mockUseNodePluginInstallation = vi.fn()
 const mockHandleNodeIterationChildSizeChange = vi.fn()
 const mockHandleNodeLoopChildSizeChange = vi.fn()
 const mockUseNodeResizeObserver = vi.fn()
+const mockUseCollaboration = vi.fn()
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: false }),
   useToolIcon: () => undefined,
+}))
+
+vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
+  useCollaboration: (...args: unknown[]) => mockUseCollaboration(...args),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
@@ -98,6 +103,7 @@ describe('BaseNode', () => {
     vi.clearAllMocks()
     mockHasNodeInspectVars.mockReturnValue(false)
     mockUseNodeResizeObserver.mockReset()
+    mockUseCollaboration.mockReturnValue({ nodePanelPresence: {} })
     mockUseNodePluginInstallation.mockReturnValue({
       shouldDim: false,
       isChecking: false,
@@ -214,5 +220,33 @@ describe('BaseNode', () => {
 
     expect(mockHandleNodeLoopChildSizeChange).toHaveBeenCalledWith('node-2')
     expect(mockUseNodeResizeObserver).toHaveBeenCalledTimes(2)
+  })
+
+  it('should keep viewer avatars outside the truncated title area', () => {
+    const longTitle = 'This is a very long node title that should truncate before it clips the viewer avatars'
+    mockUseCollaboration.mockReturnValue({
+      nodePanelPresence: {
+        'node-1': {
+          'client-1': {
+            userId: 'viewer-1',
+            username: 'Zed',
+            avatar: null,
+            clientId: 'client-1',
+            timestamp: Date.now(),
+          },
+        },
+      },
+    })
+
+    renderWorkflowComponent(
+      <BaseNode id="node-1" data={toNodeData(createData({ title: longTitle }))}>
+        <div>Body</div>
+      </BaseNode>,
+    )
+
+    const titleContainer = screen.getByTitle(longTitle)
+    expect(titleContainer).toHaveClass('min-w-0', 'grow', 'truncate')
+    expect(titleContainer?.nextElementSibling).toHaveClass('shrink-0')
+    expect(screen.getByText('Z')).toBeInTheDocument()
   })
 })

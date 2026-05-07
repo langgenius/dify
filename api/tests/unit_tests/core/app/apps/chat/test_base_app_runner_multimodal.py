@@ -9,7 +9,7 @@ from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueMessageFileEvent
-from graphon.file.enums import FileTransferMethod, FileType
+from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.enums import CreatorUserRole
 

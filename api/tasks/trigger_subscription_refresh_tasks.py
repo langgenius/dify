@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from celery import shared_task
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -22,7 +23,11 @@ def _now_ts() -> int:
 
 
 def _load_subscription(session: Session, tenant_id: str, subscription_id: str) -> TriggerSubscription | None:
-    return session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
+    return session.scalar(
+        select(TriggerSubscription)
+        .where(TriggerSubscription.tenant_id == tenant_id, TriggerSubscription.id == subscription_id)
+        .limit(1)
+    )
 
 
 def _refresh_oauth_if_expired(tenant_id: str, subscription: TriggerSubscription, now: int) -> None:

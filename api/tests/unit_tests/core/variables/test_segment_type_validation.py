@@ -10,8 +10,7 @@ from typing import Any
 
 import pytest
 
-from graphon.file.enums import FileTransferMethod, FileType
-from graphon.file.models import File
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import (
     ArrayFileSegment,
@@ -36,7 +35,7 @@ def create_test_file(
     """Factory function to create File objects for testing."""
     return File(
         tenant_id="test-tenant",
-        type=file_type,
+        file_type=file_type,
         transfer_method=transfer_method,
         filename=filename,
         extension=extension,

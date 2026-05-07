@@ -26,9 +26,15 @@ export const updateNestedVarGroupItem = (
   groupId: string,
   payload: VarGroupItem,
 ) => produce(inputs, (draft) => {
+  if (!draft.advanced_settings)
+    return
+
   const index = draft.advanced_settings.groups.findIndex(item => item.groupId === groupId)
+  if (index < 0)
+    return
+
   draft.advanced_settings.groups[index] = {
-    ...draft.advanced_settings.groups[index],
+    ...draft.advanced_settings.groups[index]!,
     ...payload,
   }
 })
@@ -37,6 +43,11 @@ export const removeGroupByIndex = (
   inputs: VariableAssignerNodeType,
   index: number,
 ) => produce(inputs, (draft) => {
+  if (!draft.advanced_settings)
+    return
+  if (index < 0 || index >= draft.advanced_settings.groups.length)
+    return
+
   draft.advanced_settings.groups.splice(index, 1)
 })
 
@@ -61,8 +72,8 @@ export const toggleGroupEnabled = ({
     }
   }
   else if (draft.advanced_settings.groups.length > 0) {
-    draft.output_type = draft.advanced_settings.groups[0].output_type
-    draft.variables = draft.advanced_settings.groups[0].variables
+    draft.output_type = draft.advanced_settings.groups[0]!.output_type
+    draft.variables = draft.advanced_settings.groups[0]!.variables
   }
 
   draft.advanced_settings.group_enabled = enabled
@@ -70,16 +81,20 @@ export const toggleGroupEnabled = ({
 
 export const addGroup = (inputs: VariableAssignerNodeType) => {
   let maxInGroupName = 1
-  inputs.advanced_settings.groups.forEach((item) => {
+  const groups = inputs.advanced_settings?.groups ?? []
+  groups.forEach((item) => {
     const match = /(\d+)$/.exec(item.group_name)
     if (match) {
-      const num = Number.parseInt(match[1], 10)
+      const num = Number.parseInt(match[1]!, 10)
       if (num > maxInGroupName)
         maxInGroupName = num
     }
   })
 
   return produce(inputs, (draft) => {
+    if (!draft.advanced_settings)
+      draft.advanced_settings = { group_enabled: false, groups: [] }
+
     draft.advanced_settings.groups.push({
       output_type: VarType.any,
       variables: [],
@@ -94,6 +109,12 @@ export const renameGroup = (
   groupId: string,
   name: string,
 ) => produce(inputs, (draft) => {
+  if (!draft.advanced_settings)
+    return
+
   const index = draft.advanced_settings.groups.findIndex(item => item.groupId === groupId)
-  draft.advanced_settings.groups[index].group_name = name
+  if (index < 0)
+    return
+
+  draft.advanced_settings.groups[index]!.group_name = name
 })

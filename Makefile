@@ -24,8 +24,8 @@ prepare-docker:
 # Step 2: Prepare web environment
 prepare-web:
 	@echo "🌐 Setting up web environment..."
-	@cp -n web/.env.example web/.env 2>/dev/null || echo "Web .env already exists"
-	@cd web && pnpm install
+	@cp -n web/.env.example web/.env.local 2>/dev/null || echo "Web .env.local already exists"
+	@pnpm install
 	@echo "✅ Web environment prepared (not started)"
 
 # Step 3: Prepare API environment
@@ -74,6 +74,12 @@ type-check:
 	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Type checks complete"
 
+type-check-core:
+	@echo "📝 Running core type checks (basedpyright + mypy)..."
+	@./dev/basedpyright-check $(PATH_TO_CHECK)
+	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+	@echo "✅ Core type checks complete"
+
 test:
 	@echo "🧪 Running backend unit tests..."
 	@if [ -n "$(TARGET_TESTS)" ]; then \
@@ -87,7 +93,7 @@ test:
 # Build Docker images
 build-web:
 	@echo "Building web Docker image: $(WEB_IMAGE):$(VERSION)..."
-	docker build -t $(WEB_IMAGE):$(VERSION) ./web
+	docker build -f web/Dockerfile -t $(WEB_IMAGE):$(VERSION) .
 	@echo "Web Docker image built successfully: $(WEB_IMAGE):$(VERSION)"
 
 build-api:
@@ -133,6 +139,7 @@ help:
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
 	@echo "  make type-check     - Run type checks (basedpyright, pyrefly, mypy)"
+	@echo "  make type-check-core - Run core type checks (basedpyright, mypy)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
 	@echo ""
 	@echo "Docker Build Targets:"

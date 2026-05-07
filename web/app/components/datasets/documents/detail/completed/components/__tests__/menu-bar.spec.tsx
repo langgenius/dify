@@ -82,7 +82,7 @@ describe('MenuBar', () => {
   it('should call renderOption for each item when dropdown is opened', async () => {
     render(<MenuBar {...defaultProps} />)
 
-    const selectButton = screen.getByRole('button', { name: /All/i })
+    const selectButton = screen.getByRole('combobox')
     fireEvent.click(selectButton)
 
     // After opening, renderOption is called for each item, rendering the mocked StatusItem

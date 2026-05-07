@@ -56,7 +56,7 @@ class TestPluginModelRuntime:
         assert len(providers) == 1
         assert providers[0].provider == "langgenius/openai/openai"
         assert providers[0].provider_name == "openai"
-        assert providers[0].label.en_US == "OpenAI"
+        assert providers[0].label.en_us == "OpenAI"
         client.fetch_model_providers.assert_called_once_with("tenant")
 
     def test_fetch_model_providers_only_exposes_short_name_for_canonical_provider(self) -> None:

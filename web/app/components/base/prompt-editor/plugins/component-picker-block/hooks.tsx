@@ -239,7 +239,7 @@ export const useExternalToolOptions = (
               title={item.name}
               icon={(
                 <AppIcon
-                  className="!h-[14px] !w-[14px]"
+                  className="h-[14px]! w-[14px]!"
                   icon={item.icon}
                   background={item.icon_background}
                 />

@@ -1,4 +1,4 @@
-import type { Option } from '../../../select/pure'
+import type { Option } from '../../components/field/select'
 import type { CustomActionsProps } from '../../components/form/actions'
 import type { TransferMethod } from '@/types/app'
 
@@ -33,7 +33,7 @@ export type SelectConfiguration = {
   }
 }
 
-export type FileConfiguration = {
+type FileConfiguration = {
   allowedFileTypes: string[]
   allowedFileExtensions: string[]
   allowedFileUploadMethods: TransferMethod[]

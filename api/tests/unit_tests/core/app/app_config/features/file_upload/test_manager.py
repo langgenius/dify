@@ -1,5 +1,5 @@
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from graphon.file.models import FileTransferMethod, FileUploadConfig, ImageConfig
+from graphon.file import FileTransferMethod, FileUploadConfig, ImageConfig
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 
 

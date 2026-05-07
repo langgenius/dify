@@ -80,7 +80,7 @@ describe('CrawledResult', () => {
         />,
       )
 
-      expect(screen.getByTestId('select-all')).toBeInTheDocument()
+      expect(screen.getByTestId('select-all'))!.toBeInTheDocument()
     })
 
     it('should render all items from list', () => {
@@ -95,9 +95,9 @@ describe('CrawledResult', () => {
         />,
       )
 
-      expect(screen.getByTestId('item-0')).toBeInTheDocument()
-      expect(screen.getByTestId('item-1')).toBeInTheDocument()
-      expect(screen.getByTestId('item-2')).toBeInTheDocument()
+      expect(screen.getByTestId('item-0'))!.toBeInTheDocument()
+      expect(screen.getByTestId('item-1'))!.toBeInTheDocument()
+      expect(screen.getByTestId('item-2'))!.toBeInTheDocument()
     })
 
     it('should render scrap time info', () => {
@@ -112,7 +112,7 @@ describe('CrawledResult', () => {
         />,
       )
 
-      expect(screen.getByText(/scrapTimeInfo/i)).toBeInTheDocument()
+      expect(screen.getByText(/scrapTimeInfo/i))!.toBeInTheDocument()
     })
 
     it('should apply custom className', () => {
@@ -129,7 +129,7 @@ describe('CrawledResult', () => {
       )
 
       const rootElement = container.firstChild as HTMLElement
-      expect(rootElement).toHaveClass('custom-class')
+      expect(rootElement)!.toHaveClass('custom-class')
     })
   })
 
@@ -139,7 +139,7 @@ describe('CrawledResult', () => {
       render(
         <CrawledResult
           list={list}
-          checkedList={[list[0]]}
+          checkedList={[list[0]!]}
           onSelectedChange={mockOnSelectedChange}
           onPreview={mockOnPreview}
           usedTime={1.5}
@@ -175,14 +175,14 @@ describe('CrawledResult', () => {
       render(
         <CrawledResult
           list={list}
-          checkedList={[list[0]]}
+          checkedList={[list[0]!]}
           onSelectedChange={mockOnSelectedChange}
           onPreview={mockOnPreview}
           usedTime={1.5}
         />,
       )
 
-      expect(screen.getByText(/selectAll/i)).toBeInTheDocument()
+      expect(screen.getByText(/selectAll/i))!.toBeInTheDocument()
     })
 
     it('should show resetAll label when all checked', () => {
@@ -197,14 +197,14 @@ describe('CrawledResult', () => {
         />,
       )
 
-      expect(screen.getByText(/resetAll/i)).toBeInTheDocument()
+      expect(screen.getByText(/resetAll/i))!.toBeInTheDocument()
     })
   })
 
   describe('Individual Item Check', () => {
     it('should call onSelectedChange with added item when checking', () => {
       const list = createMockList()
-      const checkedList = [list[0]]
+      const checkedList = [list[0]!]
       render(
         <CrawledResult
           list={list}
@@ -223,7 +223,7 @@ describe('CrawledResult', () => {
 
     it('should call onSelectedChange with removed item when unchecking', () => {
       const list = createMockList()
-      const checkedList = [list[0], list[1]]
+      const checkedList = [list[0]!, list[1]!]
       render(
         <CrawledResult
           list={list}
@@ -276,7 +276,7 @@ describe('CrawledResult', () => {
       fireEvent.click(previewButton)
 
       const item0 = screen.getByTestId('item-0')
-      expect(item0).toHaveAttribute('data-preview', 'true')
+      expect(item0)!.toHaveAttribute('data-preview', 'true')
     })
   })
 
@@ -292,7 +292,7 @@ describe('CrawledResult', () => {
         />,
       )
 
-      expect(screen.getByTestId('select-all')).toBeInTheDocument()
+      expect(screen.getByTestId('select-all'))!.toBeInTheDocument()
     })
 
     it('should handle single item list', () => {
@@ -307,7 +307,7 @@ describe('CrawledResult', () => {
         />,
       )
 
-      expect(screen.getByTestId('item-0')).toBeInTheDocument()
+      expect(screen.getByTestId('item-0'))!.toBeInTheDocument()
     })
   })
 })

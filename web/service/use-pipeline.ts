@@ -1,5 +1,4 @@
 import type { MutationOptions } from '@tanstack/react-query'
-import type { ToolCredential } from '@/app/components/tools/types'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import type { IconInfo } from '@/models/datasets'
 import type {
@@ -31,14 +30,14 @@ import type {
   UpdateTemplateInfoRequest,
   UpdateTemplateInfoResponse,
 } from '@/models/pipeline'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { DatasourceType } from '@/models/pipeline'
 import { del, get, patch, post } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'pipeline'
 
-export const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
+const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
 export const usePipelineTemplateList = (params: PipelineTemplateListParams, enabled = true) => {
   return useQuery<PipelineTemplateListResponse>({
     queryKey: [...PipelineTemplateListQueryKeyPrefix, params],
@@ -221,46 +220,6 @@ export const useRunPublishedPipeline = (
       })
     },
     ...mutationOptions,
-  })
-}
-
-export const useDataSourceCredentials = (provider: string, pluginId: string, onSuccess: (value: ToolCredential[]) => void) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'datasource-credentials', provider, pluginId],
-    queryFn: async () => {
-      const result = await get<{ result: ToolCredential[] }>(`/auth/plugin/datasource?provider=${provider}&plugin_id=${pluginId}`)
-      onSuccess(result.result)
-      return result.result
-    },
-    enabled: !!provider && !!pluginId,
-    retry: 2,
-  })
-}
-
-export const useUpdateDataSourceCredentials = (
-) => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'update-datasource-credentials'],
-    mutationFn: ({
-      provider,
-      pluginId,
-      credentials,
-      name,
-    }: { provider: string, pluginId: string, credentials: Record<string, any>, name: string }) => {
-      return post('/auth/plugin/datasource', {
-        body: {
-          provider,
-          plugin_id: pluginId,
-          credentials,
-          name,
-        },
-      }).then(() => {
-        queryClient.invalidateQueries({
-          queryKey: [NAME_SPACE, 'datasource'],
-        })
-      })
-    },
   })
 }
 

@@ -2,6 +2,7 @@ import threading
 from typing import Any
 
 import pytz
+from sqlalchemy import select
 
 import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
@@ -23,25 +24,25 @@ class AgentService:
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
-        conversation: Conversation | None = (
-            db.session.query(Conversation)
+        conversation: Conversation | None = db.session.scalar(
+            select(Conversation)
             .where(
                 Conversation.id == conversation_id,
                 Conversation.app_id == app_model.id,
             )
-            .first()
+            .limit(1)
         )
 
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Message | None = (
-            db.session.query(Message)
+        message: Message | None = db.session.scalar(
+            select(Message)
             .where(
                 Message.id == message_id,
                 Message.conversation_id == conversation_id,
             )
-            .first()
+            .limit(1)
         )
 
         if not message:
@@ -51,16 +52,11 @@ class AgentService:
 
         if conversation.from_end_user_id:
             # only select name field
-            executor = (
-                db.session.query(EndUser, EndUser.name).where(EndUser.id == conversation.from_end_user_id).first()
-            )
+            executor_name = db.session.scalar(select(EndUser.name).where(EndUser.id == conversation.from_end_user_id))
         else:
-            executor = db.session.query(Account, Account.name).where(Account.id == conversation.from_account_id).first()
+            executor_name = db.session.scalar(select(Account.name).where(Account.id == conversation.from_account_id))
 
-        if executor:
-            executor = executor.name
-        else:
-            executor = "Unknown"
+        executor = executor_name or "Unknown"
         assert isinstance(current_user, Account)
         assert current_user.timezone is not None
         timezone = pytz.timezone(current_user.timezone)

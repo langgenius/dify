@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.system_variables import build_system_variables
-from graphon.entities.workflow_start_reason import WorkflowStartReason
+from graphon.entities import WorkflowStartReason
 from graphon.runtime import GraphRuntimeState, VariablePool
 
 

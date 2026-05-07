@@ -1,4 +1,5 @@
 import type { NavIcon } from './nav-link'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useHover, useKeyPress } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -7,7 +8,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { usePathname } from '@/next/navigation'
-import { cn } from '@/utils/classnames'
 import Divider from '../base/divider'
 import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
 import AppInfo from './app-info'
@@ -17,7 +17,16 @@ import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
 import NavLink from './nav-link'
 import ToggleButton from './toggle-button'
 
-export type IAppDetailNavProps = {
+const isShortcutFromInputArea = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement))
+    return false
+
+  return target.tagName === 'INPUT'
+    || target.tagName === 'TEXTAREA'
+    || target.isContentEditable
+}
+
+type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset'
   navigation: Array<{
     name: string
@@ -70,6 +79,9 @@ const AppDetailNav = ({
   }, [appSidebarExpand, setAppSidebarExpand])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.b`, (e) => {
+    if (isShortcutFromInputArea(e.target))
+      return
+
     e.preventDefault()
     handleToggle()
   }, { exactMatch: true, useCapture: true })
@@ -118,13 +130,13 @@ const AppDetailNav = ({
           className={cn(
             'my-0 h-px',
             expand
-              ? 'bg-gradient-to-r from-divider-subtle to-background-gradient-mask-transparent'
+              ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
               : 'bg-divider-subtle',
           )}
         />
         {!isMobile && isHoveringSidebar && (
           <ToggleButton
-            className="absolute -right-3 top-[-3.5px] z-20"
+            className="absolute top-[-3.5px] -right-3 z-20"
             expand={expand}
             handleToggle={handleToggle}
           />

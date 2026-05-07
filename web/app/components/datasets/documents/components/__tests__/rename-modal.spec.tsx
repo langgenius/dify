@@ -15,7 +15,7 @@ vi.mock('@/service/datasets', () => ({
   renameDocumentName: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,

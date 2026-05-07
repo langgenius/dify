@@ -144,7 +144,7 @@ class TestObservabilityLayerParserIntegration:
         self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node, mock_result_event
     ):
         """Test that LLM parser is used for LLM nodes and extracts LLM-specific attributes."""
-        from graphon.node_events.base import NodeRunResult
+        from graphon.node_events import NodeRunResult
 
         mock_result_event.node_run_result = NodeRunResult(
             inputs={},
@@ -182,7 +182,7 @@ class TestObservabilityLayerParserIntegration:
         self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_retrieval_node, mock_result_event
     ):
         """Test that retrieval parser is used for retrieval nodes and extracts retrieval-specific attributes."""
-        from graphon.node_events.base import NodeRunResult
+        from graphon.node_events import NodeRunResult
 
         mock_result_event.node_run_result = NodeRunResult(
             inputs={"query": "test query"},
@@ -210,7 +210,7 @@ class TestObservabilityLayerParserIntegration:
         self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_start_node, mock_result_event
     ):
         """Test that result_event parameter allows parsers to extract inputs and outputs."""
-        from graphon.node_events.base import NodeRunResult
+        from graphon.node_events import NodeRunResult
 
         mock_result_event.node_run_result = NodeRunResult(
             inputs={"input_key": "input_value"},

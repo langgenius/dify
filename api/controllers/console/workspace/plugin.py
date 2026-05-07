@@ -200,7 +200,7 @@ class PluginDebuggingKeyApi(Resource):
                 "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
             }
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/list")
@@ -215,7 +215,7 @@ class PluginListApi(Resource):
         try:
             plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
@@ -232,7 +232,7 @@ class PluginListLatestVersionsApi(Resource):
         try:
             versions = PluginService.list_latest_versions(args.plugin_ids)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"versions": versions})
 
@@ -251,7 +251,7 @@ class PluginListInstallationsFromIdsApi(Resource):
         try:
             plugins = PluginService.list_installations_from_ids(tenant_id, args.plugin_ids)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"plugins": plugins})
 
@@ -266,7 +266,7 @@ class PluginIconApi(Resource):
         try:
             icon_bytes, mimetype = PluginService.get_asset(args.tenant_id, args.filename)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
@@ -286,7 +286,7 @@ class PluginAssetApi(Resource):
             binary = PluginService.extract_asset(tenant_id, args.plugin_unique_identifier, args.file_name)
             return send_file(io.BytesIO(binary), mimetype="application/octet-stream")
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/upload/pkg")
@@ -303,7 +303,7 @@ class PluginUploadFromPkgApi(Resource):
         try:
             response = PluginService.upload_pkg(tenant_id, content)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
@@ -323,7 +323,7 @@ class PluginUploadFromGithubApi(Resource):
         try:
             response = PluginService.upload_pkg_from_github(tenant_id, args.repo, args.version, args.package)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
@@ -361,7 +361,7 @@ class PluginInstallFromPkgApi(Resource):
         try:
             response = PluginService.install_from_local_pkg(tenant_id, args.plugin_unique_identifiers)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
@@ -387,7 +387,7 @@ class PluginInstallFromGithubApi(Resource):
                 args.package,
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
@@ -407,7 +407,7 @@ class PluginInstallFromMarketplaceApi(Resource):
         try:
             response = PluginService.install_from_marketplace_pkg(tenant_id, args.plugin_unique_identifiers)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
@@ -433,7 +433,7 @@ class PluginFetchMarketplacePkgApi(Resource):
                 }
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/fetch-manifest")
@@ -453,7 +453,7 @@ class PluginFetchManifestApi(Resource):
                 {"manifest": PluginService.fetch_plugin_manifest(tenant_id, args.plugin_unique_identifier).model_dump()}
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/tasks")
@@ -471,7 +471,7 @@ class PluginFetchInstallTasksApi(Resource):
         try:
             return jsonable_encoder({"tasks": PluginService.fetch_install_tasks(tenant_id, args.page, args.page_size)})
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>")
@@ -486,7 +486,7 @@ class PluginFetchInstallTaskApi(Resource):
         try:
             return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete")
@@ -501,7 +501,7 @@ class PluginDeleteInstallTaskApi(Resource):
         try:
             return {"success": PluginService.delete_install_task(tenant_id, task_id)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/delete_all")
@@ -516,7 +516,7 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
         try:
             return {"success": PluginService.delete_all_install_task_items(tenant_id)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
@@ -531,7 +531,7 @@ class PluginDeleteInstallTaskItemApi(Resource):
         try:
             return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/upgrade/marketplace")
@@ -553,7 +553,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
                 )
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/upgrade/github")
@@ -580,7 +580,7 @@ class PluginUpgradeFromGithubApi(Resource):
                 )
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/uninstall")
@@ -598,7 +598,7 @@ class PluginUninstallApi(Resource):
         try:
             return {"success": PluginService.uninstall(tenant_id, args.plugin_installation_id)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
 @console_ns.route("/workspaces/current/plugin/permission/change")
@@ -674,7 +674,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 provider_type=args.provider_type,
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"options": options})
 
@@ -705,7 +705,7 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
                 credentials=args.credentials,
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"options": options})
 

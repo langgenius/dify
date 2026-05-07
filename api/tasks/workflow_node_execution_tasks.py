@@ -7,6 +7,7 @@ improving performance by offloading storage operations to background workers.
 
 import json
 import logging
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import select
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 @shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
 def save_workflow_node_execution_task(
     self,
-    execution_data: dict,
+    execution_data: dict[str, Any],
     tenant_id: str,
     app_id: str,
     triggered_from: str,
@@ -125,7 +126,7 @@ def _create_node_execution_from_domain(
     else:
         node_execution.execution_metadata = "{}"
 
-    node_execution.status = execution.status.value
+    node_execution.status = execution.status
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
     node_execution.created_by_role = creator_user_role
@@ -159,7 +160,7 @@ def _update_node_execution_from_domain(node_execution: WorkflowNodeExecutionMode
         node_execution.execution_metadata = "{}"
 
     # Update other fields
-    node_execution.status = execution.status.value
+    node_execution.status = execution.status
     node_execution.error = execution.error
     node_execution.elapsed_time = execution.elapsed_time
     node_execution.finished_at = execution.finished_at

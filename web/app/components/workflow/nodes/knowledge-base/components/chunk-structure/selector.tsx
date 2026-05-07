@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { ChunkStructureEnum } from '../../types'
 import type { Option } from './type'
+import { Button } from '@langgenius/dify-ui/button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -64,7 +64,7 @@ const Selector = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-10">
         <div className="w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
-          <div className="system-sm-semibold px-3 pt-3.5 text-text-primary">
+          <div className="px-3 pt-3.5 system-sm-semibold text-text-primary">
             {t('nodes.knowledgeBase.changeChunkStructure', { ns: 'workflow' })}
           </div>
           <div className="space-y-1 p-3 pt-2">

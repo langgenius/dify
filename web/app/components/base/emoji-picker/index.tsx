@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
-import { cn } from '@/utils/classnames'
 import EmojiPickerInner from './Inner'
 
 type IEmojiPickerProps = {
@@ -45,7 +45,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
             className="pt-3"
             onSelect={handleSelectEmoji}
           />
-          <Divider className="mb-0 mt-3" />
+          <Divider className="mt-3 mb-0" />
           <div className="flex w-full items-center justify-center gap-2 p-3">
             <Button
               className="w-full"

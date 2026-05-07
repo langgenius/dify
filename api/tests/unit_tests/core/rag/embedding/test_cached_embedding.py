@@ -69,7 +69,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         documents = [{"file_id": "file123", "content": "test content"}]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = sample_multimodal_result
 
             result = cache_embedding.embed_multimodal_documents(documents)
@@ -114,7 +114,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = embedding_result
 
             result = cache_embedding.embed_multimodal_documents(documents)
@@ -134,7 +134,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         mock_cached_embedding.get_embedding.return_value = normalized_cached
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = mock_cached_embedding
+            mock_session.scalar.return_value = mock_cached_embedding
 
             result = cache_embedding.embed_multimodal_documents(documents)
 
@@ -180,18 +180,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            call_count = [0]
-
-            def mock_filter_by(**kwargs):
-                call_count[0] += 1
-                mock_query = Mock()
-                if call_count[0] == 1:
-                    mock_query.first.return_value = mock_cached_embedding
-                else:
-                    mock_query.first.return_value = None
-                return mock_query
-
-            mock_session.query.return_value.filter_by = mock_filter_by
+            mock_session.scalar.side_effect = [mock_cached_embedding, None, None]
             mock_model_instance.invoke_multimodal_embedding.return_value = embedding_result
 
             result = cache_embedding.embed_multimodal_documents(documents)
@@ -224,7 +213,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = embedding_result
 
             with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
@@ -265,7 +254,7 @@ class TestCacheEmbeddingMultimodalDocuments:
             )
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
 
             batch_results = [create_batch_result(10), create_batch_result(10), create_batch_result(5)]
             mock_model_instance.invoke_multimodal_embedding.side_effect = batch_results
@@ -281,7 +270,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         documents = [{"file_id": "file123"}]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_multimodal_embedding.side_effect = Exception("API Error")
 
             with pytest.raises(Exception) as exc_info:
@@ -298,7 +287,7 @@ class TestCacheEmbeddingMultimodalDocuments:
         documents = [{"file_id": "file123"}]
 
         with patch("core.rag.embedding.cached_embedding.db.session") as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
+            mock_session.scalar.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = sample_multimodal_result
 
             mock_session.commit.side_effect = IntegrityError("Duplicate key", None, None)

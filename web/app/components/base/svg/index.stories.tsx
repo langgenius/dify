@@ -7,12 +7,12 @@ const SvgToggleDemo = () => {
 
   return (
     <div className="flex w-full max-w-xs flex-col items-center gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">SVG toggle</p>
+      <p className="text-xs tracking-[0.18em] text-text-tertiary uppercase">SVG toggle</p>
       <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />
       <span className="text-xs text-text-secondary">
         Mode:
         {' '}
-        <code className="rounded bg-background-default px-2 py-1 text-[11px]">{isSVG ? 'SVG' : 'PNG'}</code>
+        <code className="rounded-sm bg-background-default px-2 py-1 text-[11px]">{isSVG ? 'SVG' : 'PNG'}</code>
       </span>
     </div>
   )

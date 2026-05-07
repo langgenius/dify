@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { ToolTypeEnum } from '../../workflow/block-selector/types'
 import ProviderList from '../provider-list'
@@ -14,10 +16,6 @@ vi.mock('@/app/components/plugins/hooks', () => ({
 }))
 
 let mockEnableMarketplace = false
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ systemFeatures: { enable_marketplace: mockEnableMarketplace } }),
-}))
 
 const createDefaultCollections = () => [
   {
@@ -206,8 +204,14 @@ describe('getToolType', () => {
 })
 
 const renderProviderList = (searchParams?: Record<string, string>) => {
+  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: { enable_marketplace: mockEnableMarketplace },
+  })
+  const Wrapped = ({ children }: { children: ReactNode }) => (
+    <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
+  )
   return renderWithNuqs(
-    <ProviderList />,
+    <Wrapped><ProviderList /></Wrapped>,
     { searchParams },
   )
 }

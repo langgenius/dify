@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -71,7 +72,9 @@ class TestParagraphIndexProcessor:
         with pytest.raises(ValueError, match="No rules found in process rule"):
             processor.transform([Document(page_content="text", metadata={})], process_rule={"mode": "custom"})
 
-    def test_transform_validates_segmentation(self, processor: ParagraphIndexProcessor, process_rule: dict) -> None:
+    def test_transform_validates_segmentation(
+        self, processor: ParagraphIndexProcessor, process_rule: dict[str, Any]
+    ) -> None:
         rules_without_segmentation = SimpleNamespace(segmentation=None)
 
         with patch(
@@ -84,7 +87,9 @@ class TestParagraphIndexProcessor:
                     process_rule={"mode": "custom", "rules": {"enabled": True}},
                 )
 
-    def test_transform_builds_split_documents(self, processor: ParagraphIndexProcessor, process_rule: dict) -> None:
+    def test_transform_builds_split_documents(
+        self, processor: ParagraphIndexProcessor, process_rule: dict[str, Any]
+    ) -> None:
         source_document = Document(page_content="source", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
         splitter = Mock()
         splitter.split_documents.return_value = [
@@ -188,10 +193,10 @@ class TestParagraphIndexProcessor:
         mock_keyword_cls.return_value.add_texts.assert_called_once_with(docs)
 
     def test_clean_deletes_summaries_and_vector(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
-        segment_query = Mock()
-        segment_query.filter.return_value.all.return_value = [SimpleNamespace(id="seg-1")]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(id="seg-1")]
         session = Mock()
-        session.query.return_value = segment_query
+        session.scalars.return_value = scalars_result
 
         with (
             patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
@@ -531,10 +536,10 @@ class TestParagraphIndexProcessor:
             size=1,
             key="key",
         )
-        query = Mock()
-        query.where.return_value.all.return_value = [image_upload, non_image_upload]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [image_upload, non_image_upload]
         session = Mock()
-        session.query.return_value = query
+        session.scalars.return_value = scalars_result
 
         with (
             patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
@@ -565,10 +570,10 @@ class TestParagraphIndexProcessor:
             size=1,
             key="key",
         )
-        query = Mock()
-        query.where.return_value.all.return_value = [image_upload]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [image_upload]
         session = Mock()
-        session.query.return_value = query
+        session.scalars.return_value = scalars_result
 
         with (
             patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),

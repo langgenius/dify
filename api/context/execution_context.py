@@ -10,7 +10,7 @@ import threading
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import AbstractContextManager, contextmanager
-from typing import Any, Protocol, TypeVar, final, runtime_checkable
+from typing import Any, Protocol, final, runtime_checkable
 
 from pydantic import BaseModel
 
@@ -187,8 +187,6 @@ class ExecutionContextBuilder:
 
 _capturer: Callable[[], IExecutionContext] | None = None
 _tenant_context_providers: dict[tuple[str, str], Callable[[], BaseModel]] = {}
-
-T = TypeVar("T", bound=BaseModel)
 
 
 class ContextProviderNotFoundError(KeyError):

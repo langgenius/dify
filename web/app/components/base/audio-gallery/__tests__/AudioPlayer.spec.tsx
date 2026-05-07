@@ -1,6 +1,5 @@
-import type { ToastHandle } from '@/app/components/base/toast'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import Toast from '@/app/components/base/toast'
 import useThemeMock from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import AudioPlayer from '../AudioPlayer'
@@ -48,7 +47,7 @@ async function advanceWaveformTimer() {
 type ReactEventHandler = ((...args: any[]) => void) | undefined
 function getReactProps<T extends Element>(el: T): Record<string, ReactEventHandler> {
   const key = Object.keys(el).find(k => k.startsWith('__reactProps$'))
-  return key ? (el as unknown as Record<string, Record<string, ReactEventHandler>>)[key] : {}
+  return key ? (el as unknown as Record<string, Record<string, ReactEventHandler>>)[key]! : {}
 }
 
 // ─── Setup / teardown ─────────────────────────────────────────────────────────
@@ -78,8 +77,8 @@ describe('AudioPlayer — rendering', () => {
   it('should render the play button and audio element when given a src', () => {
     render(<AudioPlayer src="https://example.com/a.mp3" />)
 
-    expect(screen.getByTestId('play-pause-btn')).toBeInTheDocument()
-    expect(document.querySelector('audio')).toBeInTheDocument()
+    expect(screen.getByTestId('play-pause-btn'))!.toBeInTheDocument()
+    expect(document.querySelector('audio'))!.toBeInTheDocument()
     expect(document.querySelector('audio')?.getAttribute('src')).toBe('https://example.com/a.mp3')
   })
 
@@ -94,7 +93,7 @@ describe('AudioPlayer — rendering', () => {
 
   it('should render without crashing when no props are supplied', () => {
     render(<AudioPlayer />)
-    expect(screen.getByTestId('play-pause-btn')).toBeInTheDocument()
+    expect(screen.getByTestId('play-pause-btn'))!.toBeInTheDocument()
   })
 })
 
@@ -130,14 +129,14 @@ describe('AudioPlayer — play/pause', () => {
     render(<AudioPlayer src="https://example.com/a.mp3" />)
     const btn = screen.getByTestId('play-pause-btn')
 
-    expect(btn.querySelector('.i-ri-play-large-fill')).toBeInTheDocument()
+    expect(btn.querySelector('.i-ri-play-large-fill'))!.toBeInTheDocument()
     expect(btn.querySelector('.i-ri-pause-circle-fill')).not.toBeInTheDocument()
 
     await act(async () => {
       fireEvent.click(btn)
     })
 
-    expect(btn.querySelector('.i-ri-pause-circle-fill')).toBeInTheDocument()
+    expect(btn.querySelector('.i-ri-pause-circle-fill'))!.toBeInTheDocument()
     expect(btn.querySelector('.i-ri-play-large-fill')).not.toBeInTheDocument()
   })
 
@@ -148,14 +147,14 @@ describe('AudioPlayer — play/pause', () => {
     await act(async () => {
       fireEvent.click(btn)
     })
-    expect(btn.querySelector('.i-ri-pause-circle-fill')).toBeInTheDocument()
+    expect(btn.querySelector('.i-ri-pause-circle-fill'))!.toBeInTheDocument()
 
     const audio = document.querySelector('audio') as HTMLAudioElement
     await act(async () => {
       audio.dispatchEvent(new Event('ended'))
     })
 
-    expect(btn.querySelector('.i-ri-play-large-fill')).toBeInTheDocument()
+    expect(btn.querySelector('.i-ri-play-large-fill'))!.toBeInTheDocument()
   })
 
   it('should disable the play button when an audio error occurs', async () => {
@@ -166,7 +165,7 @@ describe('AudioPlayer — play/pause', () => {
       audio.dispatchEvent(new Event('error'))
     })
 
-    expect(screen.getByTestId('play-pause-btn')).toBeDisabled()
+    expect(screen.getByTestId('play-pause-btn'))!.toBeDisabled()
   })
 })
 
@@ -182,7 +181,7 @@ describe('AudioPlayer — audio events', () => {
       audio.dispatchEvent(new Event('loadedmetadata'))
     })
 
-    expect(screen.getByText('1:30')).toBeInTheDocument()
+    expect(screen.getByText('1:30'))!.toBeInTheDocument()
   })
 
   it('should update bufferedTime on progress event', async () => {
@@ -217,7 +216,7 @@ describe('AudioPlayer — audio events', () => {
       audio.dispatchEvent(new Event('error'))
     })
 
-    expect(screen.getByTestId('play-pause-btn')).toBeDisabled()
+    expect(screen.getByTestId('play-pause-btn'))!.toBeDisabled()
   })
 })
 
@@ -231,7 +230,7 @@ describe('AudioPlayer — waveform generation', () => {
     render(<AudioPlayer src="https://cdn.example/audio.mp3" />)
     await advanceWaveformTimer()
 
-    expect(screen.getByTestId('waveform-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('waveform-canvas'))!.toBeInTheDocument()
   })
 
   it('should use fallback random waveform when fetch returns not-ok', async () => {
@@ -241,7 +240,7 @@ describe('AudioPlayer — waveform generation', () => {
     render(<AudioPlayer src="https://cdn.example/audio.mp3" />)
     await advanceWaveformTimer()
 
-    expect(screen.getByTestId('waveform-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('waveform-canvas'))!.toBeInTheDocument()
   })
 
   it('should use fallback waveform when decodeAudioData rejects', async () => {
@@ -258,19 +257,17 @@ describe('AudioPlayer — waveform generation', () => {
     render(<AudioPlayer src="https://cdn.example/audio.mp3" />)
     await advanceWaveformTimer()
 
-    expect(screen.getByTestId('waveform-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('waveform-canvas'))!.toBeInTheDocument()
   })
 
   it('should show Toast when AudioContext is not available', async () => {
     vi.stubGlobal('AudioContext', undefined)
+    const toastSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
     render(<AudioPlayer src="https://example.com/audio.mp3" />)
     await advanceWaveformTimer()
 
-    const toastFound = Array.from(document.body.querySelectorAll('div')).some(
-      d => d.textContent?.includes('Web Audio API is not supported in this browser'),
-    )
-    expect(toastFound).toBe(true)
+    expect(toastSpy).toHaveBeenCalledWith('Web Audio API is not supported in this browser')
   })
 
   it('should set audio unavailable when URL is not http/https', async () => {
@@ -279,7 +276,7 @@ describe('AudioPlayer — waveform generation', () => {
     render(<AudioPlayer srcs={['blob:something']} />)
     await advanceWaveformTimer()
 
-    expect(screen.getByTestId('play-pause-btn')).toBeDisabled()
+    expect(screen.getByTestId('play-pause-btn'))!.toBeDisabled()
   })
 
   it('should not trigger waveform generation when no src or srcs provided', async () => {
@@ -308,7 +305,7 @@ describe('AudioPlayer — waveform generation', () => {
     render(<AudioPlayer src="https://cdn.example/audio.mp3" />)
     await advanceWaveformTimer()
 
-    expect(screen.getByTestId('waveform-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('waveform-canvas'))!.toBeInTheDocument()
   })
 
   it('should use webkitAudioContext when AudioContext is unavailable', async () => {
@@ -319,7 +316,7 @@ describe('AudioPlayer — waveform generation', () => {
     render(<AudioPlayer src="https://cdn.example/audio.mp3" />)
     await advanceWaveformTimer()
 
-    expect(screen.getByTestId('waveform-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('waveform-canvas'))!.toBeInTheDocument()
   })
 })
 
@@ -428,7 +425,7 @@ describe('AudioPlayer — missing coverage', () => {
     HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(null)
 
     render(<AudioPlayer src="https://example.com/audio.mp3" />)
-    expect(screen.getByTestId('waveform-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('waveform-canvas'))!.toBeInTheDocument()
 
     HTMLCanvasElement.prototype.getContext = originalGetContext
   })
@@ -529,7 +526,7 @@ describe('AudioPlayer — missing coverage', () => {
 
   it('should keep play button disabled when source is unavailable', async () => {
     vi.stubGlobal('AudioContext', buildAudioContext(300))
-    const toastSpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({} as unknown as ToastHandle))
+    const toastSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
     render(<AudioPlayer src="blob:https://example.com" />)
     await advanceWaveformTimer() // sets isAudioAvailable to false (invalid protocol)
 
@@ -538,14 +535,14 @@ describe('AudioPlayer — missing coverage', () => {
       fireEvent.click(btn)
     })
 
-    expect(btn).toBeDisabled()
+    expect(btn)!.toBeDisabled()
     expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled()
     expect(toastSpy).not.toHaveBeenCalled()
     toastSpy.mockRestore()
   })
 
   it('should notify when toggle is invoked while audio is unavailable', async () => {
-    const toastSpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({} as unknown as ToastHandle))
+    const toastSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
     render(<AudioPlayer src="https://example.com/a.mp3" />)
     const audio = document.querySelector('audio') as HTMLAudioElement
     await act(async () => {
@@ -559,10 +556,7 @@ describe('AudioPlayer — missing coverage', () => {
       props.onClick?.()
     })
 
-    expect(toastSpy).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'Audio element not found',
-    }))
+    expect(toastSpy).toHaveBeenCalledWith('Audio element not found')
     toastSpy.mockRestore()
   })
 })
@@ -612,7 +606,7 @@ describe('AudioPlayer — additional branch coverage', () => {
       audio.dispatchEvent(new Event('error'))
     })
 
-    expect(screen.queryByTestId('play-pause-btn')).toBeDisabled()
+    expect(screen.queryByTestId('play-pause-btn'))!.toBeDisabled()
   })
 
   it('should update current time on timeupdate event', async () => {
@@ -626,7 +620,7 @@ describe('AudioPlayer — additional branch coverage', () => {
   })
 
   it('should ignore toggle click after audio error marks source unavailable', async () => {
-    const toastSpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({} as unknown as ToastHandle))
+    const toastSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
     render(<AudioPlayer src="https://example.com/a.mp3" />)
     const audio = document.querySelector('audio') as HTMLAudioElement
     await act(async () => {
@@ -638,7 +632,7 @@ describe('AudioPlayer — additional branch coverage', () => {
       fireEvent.click(btn)
     })
 
-    expect(btn).toBeDisabled()
+    expect(btn)!.toBeDisabled()
     expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled()
     expect(toastSpy).not.toHaveBeenCalled()
     toastSpy.mockRestore()
@@ -660,7 +654,7 @@ describe('AudioPlayer — additional branch coverage', () => {
     })
     await advanceWaveformTimer()
 
-    expect(screen.getByTestId('waveform-canvas')).toBeInTheDocument()
+    expect(screen.getByTestId('waveform-canvas'))!.toBeInTheDocument()
   })
 
   it('should handle missing canvas/audio in handleCanvasInteraction/handleMouseMove', async () => {
@@ -689,7 +683,7 @@ describe('AudioPlayer — additional branch coverage', () => {
       audio.dispatchEvent(new Event('timeupdate'))
     })
 
-    expect(canvas).toBeInTheDocument()
+    expect(canvas)!.toBeInTheDocument()
   })
 
   it('should hit null-ref guards in canvas handlers after unmount', async () => {
@@ -716,6 +710,6 @@ describe('AudioPlayer — additional branch coverage', () => {
       fireEvent.mouseMove(canvas, { clientX: 180 }) // time near 90, outside 0-10
     })
 
-    expect(canvas).toBeInTheDocument()
+    expect(canvas)!.toBeInTheDocument()
   })
 })

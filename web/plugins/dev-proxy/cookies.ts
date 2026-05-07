@@ -36,9 +36,14 @@ const toUpstreamCookieName = (cookieName: string) => {
 
 const toLocalCookieName = (cookieName: string) => cookieName.replace(SECURE_COOKIE_PREFIX_PATTERN, '')
 
-export const rewriteCookieHeaderForUpstream = (cookieHeader?: string) => {
+export const rewriteCookieHeaderForUpstream = (
+  cookieHeader?: string,
+  options: { useHostPrefix?: boolean } = {},
+) => {
   if (!cookieHeader)
     return cookieHeader
+
+  const { useHostPrefix = true } = options
 
   return cookieHeader
     .split(/;\s*/)
@@ -50,20 +55,20 @@ export const rewriteCookieHeaderForUpstream = (cookieHeader?: string) => {
 
       const cookieName = cookie.slice(0, separatorIndex).trim()
       const cookieValue = cookie.slice(separatorIndex + 1)
-      return `${toUpstreamCookieName(cookieName)}=${cookieValue}`
+      return `${useHostPrefix ? toUpstreamCookieName(cookieName) : cookieName}=${cookieValue}`
     })
     .join('; ')
 }
 
 const rewriteSetCookieValueForLocal = (setCookieValue: string) => {
   const [rawCookiePair, ...rawAttributes] = setCookieValue.split(';')
-  const separatorIndex = rawCookiePair.indexOf('=')
+  const separatorIndex = rawCookiePair!.indexOf('=')
 
   if (separatorIndex === -1)
     return setCookieValue
 
-  const cookieName = rawCookiePair.slice(0, separatorIndex).trim()
-  const cookieValue = rawCookiePair.slice(separatorIndex + 1)
+  const cookieName = rawCookiePair!.slice(0, separatorIndex).trim()
+  const cookieValue = rawCookiePair!.slice(separatorIndex + 1)
   const rewrittenAttributes = rawAttributes
     .map(attribute => attribute.trim())
     .filter(attribute =>

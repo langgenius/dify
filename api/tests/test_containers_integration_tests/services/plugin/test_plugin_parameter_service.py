@@ -12,6 +12,7 @@ from uuid import uuid4
 
 import pytest
 
+from core.plugin.entities.plugin_daemon import CredentialType
 from models.tools import BuiltinToolProvider
 from services.plugin.plugin_parameter_service import PluginParameterService
 
@@ -66,7 +67,7 @@ class TestGetDynamicSelectOptionsTool:
             provider="google",
             name="API KEY 1",
             encrypted_credentials=json.dumps({"api_key": "encrypted"}),
-            credential_type="api_key",
+            credential_type=CredentialType.API_KEY,
         )
         db_session_with_containers.add(db_record)
         db_session_with_containers.commit()

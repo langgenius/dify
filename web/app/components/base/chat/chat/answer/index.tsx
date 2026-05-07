@@ -7,6 +7,7 @@ import type {
   ChatItem,
 } from '../../types'
 import type { AppData } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
@@ -14,7 +15,6 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import Citation from '@/app/components/base/chat/chat/citation'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'
-import { cn } from '@/utils/classnames'
 import ContentSwitch from '../content-switch'
 import { useChatContext } from '../context'
 import AgentContent from './agent-content'
@@ -146,7 +146,7 @@ const Answer: FC<AnswerProps> = ({
         <div className="relative h-10 w-10 shrink-0">
           {answerIcon || <AnswerIcon />}
           {responding && (
-            <div className="absolute left-[-3px] top-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs">
+            <div className="absolute top-[-3px] left-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs">
               <LoadingAnim type="avatar" />
             </div>
           )}
@@ -158,7 +158,7 @@ const Answer: FC<AnswerProps> = ({
           <div className={cn('group relative pr-10', chatAnswerContainerInner)} data-testid="chat-answer-container-humaninput">
             <div
               ref={humanInputFormContainerRef}
-              className={cn('relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary body-lg-regular')}
+              className={cn('relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary')}
             >
               {
                 !responding && contentIsEmpty && !hasAgentThoughts && (
@@ -227,7 +227,7 @@ const Answer: FC<AnswerProps> = ({
             <div className="absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
             <div
               ref={contentRef}
-              className="relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary body-lg-regular"
+              className="relative inline-block w-full max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary"
             >
               {
                 !responding && (
@@ -322,7 +322,7 @@ const Answer: FC<AnswerProps> = ({
           <div className={cn('group relative pr-10', chatAnswerContainerInner)} data-testid="chat-answer-container-inner">
             <div
               ref={contentRef}
-              className={cn('relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary body-lg-regular', workflowProcess && 'w-full')}
+              className={cn('relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary', workflowProcess && 'w-full')}
             >
               {
                 !responding && (

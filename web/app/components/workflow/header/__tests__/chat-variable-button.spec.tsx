@@ -41,7 +41,7 @@ describe('ChatVariableButton', () => {
       },
     })
 
-    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-sm')
+    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-xs')
   })
 
   it('stays disabled without mutating panel state', () => {

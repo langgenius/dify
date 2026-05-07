@@ -196,10 +196,10 @@ describe('ModelModal', () => {
 
     const predefined = renderModal()
 
-    expect(screen.getByText('common.modelProvider.auth.apiKeyModal.title')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.auth.apiKeyModal.desc')).toBeInTheDocument()
-    expect(screen.getByRole('status')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+    expect(screen.getByText('common.modelProvider.auth.apiKeyModal.title'))!.toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.auth.apiKeyModal.desc'))!.toBeInTheDocument()
+    expect(screen.getByRole('status'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeDisabled()
 
     predefined.unmount()
     const customizable = renderModal({ configurateMethod: ConfigurationMethodEnum.customizableModel })
@@ -208,7 +208,7 @@ describe('ModelModal', () => {
 
     mockState.credentialData = { credentials: {}, available_credentials: [] }
     renderModal({ mode: ModelModalModeEnum.configModelCredential, model: { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration } })
-    expect(screen.getByText('common.modelProvider.auth.addModelCredential')).toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.auth.addModelCredential'))!.toBeInTheDocument()
   })
 
   it('should reveal the credential label when adding a new credential', () => {
@@ -218,7 +218,7 @@ describe('ModelModal', () => {
 
     fireEvent.click(screen.getByText('Add New'))
 
-    expect(screen.getByText('common.modelProvider.auth.modelCredential')).toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.auth.modelCredential'))!.toBeInTheDocument()
   })
 
   it('should call onCancel when the cancel button is clicked', () => {
@@ -245,7 +245,7 @@ describe('ModelModal', () => {
     const { onCancel } = renderModal({ credential })
 
     const alertDialog = screen.getByRole('alertdialog', { hidden: true })
-    expect(alertDialog).toHaveTextContent('common.modelProvider.confirmDelete')
+    expect(alertDialog)!.toHaveTextContent('common.modelProvider.confirmDelete')
 
     fireEvent.click(within(alertDialog).getByRole('button', { hidden: true, name: 'common.operation.confirm' }))
 
@@ -261,7 +261,7 @@ describe('ModelModal', () => {
       { isCheckValidated: true, values: { __authorization_name__: 'Auth Name', api_key: 'secret' } },
     ]
     const configCustomModel = renderModal({ mode: ModelModalModeEnum.configCustomModel })
-    fireEvent.click(screen.getAllByText('Model Name Change')[0])
+    fireEvent.click(screen.getAllByText('Model Name Change')[0]!)
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     expect(mockFormState.setFieldValue).toHaveBeenCalledWith('__model_name', 'updated-model')

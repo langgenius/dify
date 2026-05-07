@@ -28,7 +28,7 @@ const mockHandleEdgeCancelRunningStatus = vi.hoisted(() => vi.fn())
 const mockHandleSyncWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockSaveStateToHistory = vi.hoisted(() => vi.fn())
 const mockGetLayoutForChildNodes = vi.hoisted(() => vi.fn())
-const mockGetLayoutByDagre = vi.hoisted(() => vi.fn())
+const mockGetLayoutByELK = vi.hoisted(() => vi.fn())
 const mockInitialNodes = vi.hoisted(() => vi.fn((nodes: unknown[], _edges: unknown[]) => nodes))
 const mockInitialEdges = vi.hoisted(() => vi.fn((edges: unknown[], _nodes: unknown[]) => edges))
 
@@ -111,10 +111,14 @@ vi.mock('../use-workflow-history', () => ({
 
 vi.mock('../../utils', async importOriginal => ({
   ...(await importOriginal<typeof import('../../utils')>()),
-  getLayoutForChildNodes: (...args: unknown[]) => mockGetLayoutForChildNodes(...args),
-  getLayoutByDagre: (...args: unknown[]) => mockGetLayoutByDagre(...args),
   initialNodes: (nodes: unknown[], edges: unknown[]) => mockInitialNodes(nodes, edges),
   initialEdges: (edges: unknown[], nodes: unknown[]) => mockInitialEdges(edges, nodes),
+}))
+
+vi.mock('../../utils/elk-layout', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../utils/elk-layout')>()),
+  getLayoutForChildNodes: (...args: unknown[]) => mockGetLayoutForChildNodes(...args),
+  getLayoutByELK: (...args: unknown[]) => mockGetLayoutByELK(...args),
 }))
 
 describe('use-workflow-interactions exports', () => {
@@ -203,7 +207,7 @@ describe('use-workflow-interactions exports', () => {
         ['loop-child', { x: 40, y: 60, width: 100, height: 60 }],
       ]),
     })
-    mockGetLayoutByDagre.mockResolvedValue({
+    mockGetLayoutByELK.mockResolvedValue({
       nodes: new Map([
         ['loop-node', { x: 10, y: 20, width: 360, height: 260, layer: 0 }],
         ['top-node', { x: 500, y: 30, width: 240, height: 100, layer: 0 }],
@@ -220,7 +224,7 @@ describe('use-workflow-interactions exports', () => {
     })
 
     expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    const nextNodes = mockSetNodes.mock.calls[0][0]
+    const nextNodes = mockSetNodes.mock.calls[0]![0]
     expect(nextNodes.find((node: { id: string }) => node.id === 'loop-node')).toEqual(expect.objectContaining({
       width: expect.any(Number),
       height: expect.any(Number),

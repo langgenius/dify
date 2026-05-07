@@ -16,8 +16,8 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from graphon.enums import WorkflowType
-from graphon.graph_engine.command_channels.redis_channel import RedisChannel
-from graphon.graph_engine.layers.base import GraphEngineLayer
+from graphon.graph_engine.command_channels import RedisChannel
+from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from libs.datetime_utils import naive_utc_now

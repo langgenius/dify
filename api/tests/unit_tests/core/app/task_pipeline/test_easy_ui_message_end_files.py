@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.task_entities import MessageEndStreamResponse
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
-from graphon.file.enums import FileTransferMethod, FileType
+from graphon.file import FileTransferMethod, FileType
 from models.model import MessageFile, UploadFile
 
 

@@ -1,5 +1,6 @@
 import type { DataSourceCredential } from '../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import Operator from '../operator'
 
@@ -9,10 +10,6 @@ import Operator from '../operator'
  */
 
 // Helper to open dropdown
-const openDropdown = () => {
-  fireEvent.click(screen.getByRole('button'))
-}
-
 describe('Operator Component', () => {
   const mockOnAction = vi.fn()
   const mockOnRename = vi.fn()
@@ -37,7 +34,7 @@ describe('Operator Component', () => {
 
       // Act
       render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
-      openDropdown()
+      await userEvent.setup().click(screen.getByRole('button'))
 
       // Assert
       expect(await screen.findByText('plugin.auth.setDefault')).toBeInTheDocument()
@@ -53,7 +50,7 @@ describe('Operator Component', () => {
 
       // Act
       render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
-      openDropdown()
+      await userEvent.setup().click(screen.getByRole('button'))
 
       // Assert
       expect(await screen.findByText('plugin.auth.setDefault')).toBeInTheDocument()
@@ -71,11 +68,13 @@ describe('Operator Component', () => {
       render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
 
       // Act
-      openDropdown()
+      await userEvent.setup().click(screen.getByRole('button'))
       fireEvent.click(await screen.findByText('common.operation.rename'))
 
       // Assert
-      expect(mockOnRename).toHaveBeenCalledTimes(1)
+      await waitFor(() => {
+        expect(mockOnRename).toHaveBeenCalledTimes(1)
+      })
       expect(mockOnAction).not.toHaveBeenCalled()
     })
 
@@ -85,7 +84,7 @@ describe('Operator Component', () => {
       render(<Operator credentialItem={credential} onAction={mockOnAction} />)
 
       // Act & Assert
-      openDropdown()
+      await userEvent.setup().click(screen.getByRole('button'))
       const renameBtn = await screen.findByText('common.operation.rename')
       expect(() => fireEvent.click(renameBtn)).not.toThrow()
     })
@@ -96,11 +95,13 @@ describe('Operator Component', () => {
       render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
 
       // Act
-      openDropdown()
+      await userEvent.setup().click(screen.getByRole('button'))
       fireEvent.click(await screen.findByText('plugin.auth.setDefault'))
 
       // Assert
-      expect(mockOnAction).toHaveBeenCalledWith('setDefault', credential)
+      await waitFor(() => {
+        expect(mockOnAction).toHaveBeenCalledWith('setDefault', credential)
+      })
     })
 
     it('should call onAction for "edit" action', async () => {
@@ -109,11 +110,13 @@ describe('Operator Component', () => {
       render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
 
       // Act
-      openDropdown()
+      await userEvent.setup().click(screen.getByRole('button'))
       fireEvent.click(await screen.findByText('common.operation.edit'))
 
       // Assert
-      expect(mockOnAction).toHaveBeenCalledWith('edit', credential)
+      await waitFor(() => {
+        expect(mockOnAction).toHaveBeenCalledWith('edit', credential)
+      })
     })
 
     it('should call onAction for "change" action', async () => {
@@ -122,11 +125,13 @@ describe('Operator Component', () => {
       render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
 
       // Act
-      openDropdown()
+      await userEvent.setup().click(screen.getByRole('button'))
       fireEvent.click(await screen.findByText('common.dataSource.notion.changeAuthorizedPages'))
 
       // Assert
-      expect(mockOnAction).toHaveBeenCalledWith('change', credential)
+      await waitFor(() => {
+        expect(mockOnAction).toHaveBeenCalledWith('change', credential)
+      })
     })
 
     it('should call onAction for "delete" action', async () => {
@@ -135,11 +140,13 @@ describe('Operator Component', () => {
       render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
 
       // Act
-      openDropdown()
+      await userEvent.setup().click(screen.getByRole('button'))
       fireEvent.click(await screen.findByText('common.operation.remove'))
 
       // Assert
-      expect(mockOnAction).toHaveBeenCalledWith('delete', credential)
+      await waitFor(() => {
+        expect(mockOnAction).toHaveBeenCalledWith('delete', credential)
+      })
     })
   })
 })

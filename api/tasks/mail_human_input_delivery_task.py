@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.workflow.human_input_compat import EmailDeliveryConfig, EmailDeliveryMethod
+from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailDeliveryMethod
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from graphon.runtime import GraphRuntimeState, VariablePool

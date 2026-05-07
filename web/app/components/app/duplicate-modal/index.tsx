@@ -1,18 +1,18 @@
 'use client'
 import type { AppIconType } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import AppIconPicker from '../../base/app-icon-picker'
 
 export type DuplicateAppModalProps = {
@@ -57,7 +57,7 @@ const DuplicateAppModal = ({
 
   const submit = () => {
     if (!name.trim()) {
-      Toast.notify({ type: 'error', message: t('appCustomize.nameRequired', { ns: 'explore' }) })
+      toast.error(t('appCustomize.nameRequired', { ns: 'explore' }))
       return
     }
     onConfirm({
@@ -74,14 +74,14 @@ const DuplicateAppModal = ({
       <Modal
         isShow={show}
         onClose={noop}
-        className={cn('relative !max-w-[480px]', 'px-8')}
+        className={cn('relative max-w-[480px]!', 'px-8')}
       >
-        <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
+        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onHide}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
-        <div className="relative mb-9 mt-3 text-xl font-semibold leading-[30px] text-text-primary">{t('duplicateTitle', { ns: 'app' })}</div>
-        <div className="system-sm-regular mb-9 text-text-secondary">
-          <div className="system-md-medium mb-2">{t('appCustomize.subTitle', { ns: 'explore' })}</div>
+        <div className="relative mt-3 mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('duplicateTitle', { ns: 'app' })}</div>
+        <div className="mb-9 system-sm-regular text-text-secondary">
+          <div className="mb-2 system-md-medium">{t('appCustomize.subTitle', { ns: 'explore' })}</div>
           <div className="flex items-center justify-between space-x-2">
             <AppIcon
               size="large"

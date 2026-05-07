@@ -5,16 +5,16 @@ import type {
 } from '@floating-ui/react'
 import type { FC } from 'react'
 import type { App } from '@/types/app'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { AppModeEnum } from '@/types/app'
 
 type Props = {
@@ -78,7 +78,7 @@ const AppPicker: FC<Props> = ({
 
   const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
     const target = entries[0]
-    if (!target.isIntersecting || loadingRef.current || !hasMore || isLoading)
+    if (!target!.isIntersecting || loadingRef.current || !hasMore || isLoading)
       return
 
     loadingRef.current = true
@@ -154,27 +154,34 @@ const AppPicker: FC<Props> = ({
     }
   }
 
-  const handleTriggerClick = () => {
-    if (disabled)
+  const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
+  const sideOffset = typeof offset === 'number' ? offset : resolvedOffset?.mainAxis ?? 0
+  const alignOffset = typeof offset === 'number' ? 0 : resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0
+  const handleTriggerClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault()
+    if (disabled || isShow)
       return
+
     onShowChange(true)
-  }
+  }, [disabled, isShow, onShowChange])
 
   return (
-    <PortalToFollowElem
-      placement={placement}
-      offset={offset}
+    <Popover
       open={isShow}
       onOpenChange={onShowChange}
     >
-      <PortalToFollowElemTrigger
+      <PopoverTrigger
+        render={<div>{trigger}</div>}
         onClick={handleTriggerClick}
-      >
-        {trigger}
-      </PortalToFollowElemTrigger>
+      />
 
-      <PortalToFollowElemContent className="z-[1000]">
-        <div className="relative flex max-h-[400px] min-h-20 w-[356px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+      <PopoverContent
+        placement={placement}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
+        <div className="relative flex max-h-[400px] min-h-20 w-[356px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
             <Input
               showLeftIcon
@@ -188,7 +195,7 @@ const AppPicker: FC<Props> = ({
             {apps.map(app => (
               <div
                 key={app.id}
-                className="flex cursor-pointer items-center gap-3 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover"
+                className="flex cursor-pointer items-center gap-3 rounded-lg py-1 pr-3 pl-2 hover:bg-state-base-hover"
                 onClick={() => onSelect(app)}
               >
                 <AppIcon
@@ -199,7 +206,7 @@ const AppPicker: FC<Props> = ({
                   background={app.icon_background}
                   imageUrl={app.icon_url}
                 />
-                <div title={`${app.name} (${app.id})`} className="grow text-components-input-text-filled system-sm-medium">
+                <div title={`${app.name} (${app.id})`} className="grow system-sm-medium text-components-input-text-filled">
                   <span className="mr-1">{app.name}</span>
                   <span className="text-text-tertiary">
                     (
@@ -207,7 +214,7 @@ const AppPicker: FC<Props> = ({
                     )
                   </span>
                 </div>
-                <div className="shrink-0 text-text-tertiary system-2xs-medium-uppercase">{getAppType(app)}</div>
+                <div className="shrink-0 system-2xs-medium-uppercase text-text-tertiary">{getAppType(app)}</div>
               </div>
             ))}
             <div ref={observerTargetRef} className="h-4 w-full">
@@ -219,8 +226,8 @@ const AppPicker: FC<Props> = ({
             </div>
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

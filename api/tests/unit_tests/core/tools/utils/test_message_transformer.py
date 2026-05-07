@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 import core.tools.utils.message_transformer as mt
@@ -13,7 +15,7 @@ class _FakeToolFile:
 class _FakeToolFileManager:
     """Fake ToolFileManager to capture the mimetype passed in."""
 
-    last_call: dict | None = None
+    last_call: dict[str, Any] | None = None
 
     def __init__(self, *args, **kwargs):
         pass

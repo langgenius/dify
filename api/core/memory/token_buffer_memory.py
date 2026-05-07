@@ -61,27 +61,28 @@ class TokenBufferMemory:
         :param is_user_message: whether this is a user message
         :return: PromptMessage
         """
-        if self.conversation.mode in {AppMode.AGENT_CHAT, AppMode.COMPLETION, AppMode.CHAT}:
-            file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
-        elif self.conversation.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            app = self.conversation.app
-            if not app:
-                raise ValueError("App not found for conversation")
+        match self.conversation.mode:
+            case AppMode.AGENT_CHAT | AppMode.COMPLETION | AppMode.CHAT:
+                file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
+            case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
+                app = self.conversation.app
+                if not app:
+                    raise ValueError("App not found for conversation")
 
-            if not message.workflow_run_id:
-                raise ValueError("Workflow run ID not found")
+                if not message.workflow_run_id:
+                    raise ValueError("Workflow run ID not found")
 
-            workflow_run = self.workflow_run_repo.get_workflow_run_by_id(
-                tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
-            )
-            if not workflow_run:
-                raise ValueError(f"Workflow run not found: {message.workflow_run_id}")
-            workflow = db.session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
-            if not workflow:
-                raise ValueError(f"Workflow not found: {workflow_run.workflow_id}")
-            file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
-        else:
-            raise AssertionError(f"Invalid app mode: {self.conversation.mode}")
+                workflow_run = self.workflow_run_repo.get_workflow_run_by_id(
+                    tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
+                )
+                if not workflow_run:
+                    raise ValueError(f"Workflow run not found: {message.workflow_run_id}")
+                workflow = db.session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
+                if not workflow:
+                    raise ValueError(f"Workflow not found: {workflow_run.workflow_id}")
+                file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+            case _:
+                raise AssertionError(f"Invalid app mode: {self.conversation.mode}")
 
         detail = ImagePromptMessageContent.DETAIL.HIGH
         if file_extra_config and app_record:

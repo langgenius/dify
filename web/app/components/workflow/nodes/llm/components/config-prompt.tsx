@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ModelConfig, PromptItem, ValueSelector, Var, Variable } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -10,7 +11,6 @@ import { v4 as uuid4 } from 'uuid'
 import { DragHandle } from '@/app/components/base/icons/src/vender/line/others'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import { cn } from '@/utils/classnames'
 import { useWorkflowStore } from '../../../store'
 import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
@@ -79,7 +79,7 @@ const ConfigPrompt: FC<Props> = ({
   const handleChatModePromptChange = useCallback((index: number) => {
     return (prompt: string) => {
       const newPrompt = produce(payload as PromptItem[], (draft) => {
-        draft[index][draft[index].edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'] = prompt
+        draft[index]![draft[index]!.edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'] = prompt
       })
       onChange(newPrompt)
     }
@@ -88,7 +88,7 @@ const ConfigPrompt: FC<Props> = ({
   const handleChatModeEditionTypeChange = useCallback((index: number) => {
     return (editionType: EditionType) => {
       const newPrompt = produce(payload as PromptItem[], (draft) => {
-        draft[index].edition_type = editionType
+        draft[index]!.edition_type = editionType
       })
       onChange(newPrompt)
     }
@@ -97,7 +97,7 @@ const ConfigPrompt: FC<Props> = ({
   const handleChatModeMessageRoleChange = useCallback((index: number) => {
     return (role: PromptRole) => {
       const newPrompt = produce(payload as PromptItem[], (draft) => {
-        draft[index].role = role
+        draft[index]!.role = role
       })
       onChange(newPrompt)
     }
@@ -110,7 +110,7 @@ const ConfigPrompt: FC<Props> = ({
 
         return
       }
-      const isLastItemUser = draft[draft.length - 1].role === PromptRole.user
+      const isLastItemUser = draft[draft.length - 1]!.role === PromptRole.user
       draft.push({ role: isLastItemUser ? PromptRole.assistant : PromptRole.user, text: '', id: uuid4() })
     })
     onChange(newPrompt)
@@ -160,7 +160,7 @@ const ConfigPrompt: FC<Props> = ({
                   className="space-y-1"
                   list={payloadWithIds}
                   setList={(list) => {
-                    if ((payload as PromptItem[])?.[0]?.role === PromptRole.system && list[0].p?.role !== PromptRole.system)
+                    if ((payload as PromptItem[])?.[0]?.role === PromptRole.system && list[0]!.p?.role !== PromptRole.system)
                       return
 
                     onChange(list.map(item => item.p))
@@ -182,7 +182,7 @@ const ConfigPrompt: FC<Props> = ({
                       })()
                       return (
                         <div key={item.id || index} className="group relative">
-                          {canDrag && <DragHandle className="absolute left-[-14px] top-2 hidden h-3.5 w-3.5 text-text-quaternary group-hover:block" />}
+                          {canDrag && <DragHandle className="absolute top-2 left-[-14px] hidden h-3.5 w-3.5 text-text-quaternary group-hover:block" />}
                           <ConfigPromptItem
                             instanceId={item.role === PromptRole.system ? `${nodeId}-chat-workflow-llm-prompt-editor` : `${nodeId}-chat-workflow-llm-prompt-editor-${index}`}
                             className={cn(canDrag && 'handle')}

@@ -91,7 +91,7 @@ function buildDirectiveRehypePlugins(): PluggableList {
   ])
 
   const attributes: Record<string, AttributeDefinition[]> = {
-    ...(defaultSanitizeSchema.attributes ?? {}),
+    ...defaultSanitizeSchema.attributes,
   }
 
   for (const [tagName, allowedAttributes] of Object.entries(DIRECTIVE_ALLOWED_TAGS))
@@ -104,9 +104,9 @@ function buildDirectiveRehypePlugins(): PluggableList {
   }
 
   return [
-    defaultRehypePlugins.raw,
+    defaultRehypePlugins.raw!,
     [sanitizePlugin, sanitizeSchema] as Pluggable,
-    defaultRehypePlugins.harden,
+    defaultRehypePlugins.harden!,
   ]
 }
 
@@ -122,12 +122,12 @@ function normalizeDirectiveAttributeBlocks(markdown: string): string {
 
     const directivePrefix = match[1]
     const attributeBlocks = match[2]
-    const attrMatches = [...attributeBlocks.matchAll(ATTRIBUTE_BLOCK_REGEX)]
+    const attrMatches = [...attributeBlocks!.matchAll(ATTRIBUTE_BLOCK_REGEX)]
     if (attrMatches.length === 0)
       return line
 
     const mergedAttributes = attrMatches
-      .map(result => result[1].trim())
+      .map(result => result[1]!.trim())
       .filter(Boolean)
       .join(' ')
 

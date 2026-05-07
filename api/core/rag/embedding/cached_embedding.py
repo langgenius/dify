@@ -4,6 +4,7 @@ import pickle
 from typing import Any, cast
 
 import numpy as np
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
@@ -13,7 +14,7 @@ from core.rag.embedding.embedding_base import Embeddings
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
-from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from libs import helper
 from models.dataset import Embedding
 
@@ -31,14 +32,14 @@ class CacheEmbedding(Embeddings):
         embedding_queue_indices = []
         for i, text in enumerate(texts):
             hash = helper.generate_text_hash(text)
-            embedding = (
-                db.session.query(Embedding)
-                .filter_by(
-                    model_name=self._model_instance.model_name,
-                    hash=hash,
-                    provider_name=self._model_instance.provider,
+            embedding = db.session.scalar(
+                select(Embedding)
+                .where(
+                    Embedding.model_name == self._model_instance.model_name,
+                    Embedding.hash == hash,
+                    Embedding.provider_name == self._model_instance.provider,
                 )
-                .first()
+                .limit(1)
             )
             if embedding:
                 text_embeddings[i] = embedding.get_embedding()
@@ -105,21 +106,21 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
-    def embed_multimodal_documents(self, multimodel_documents: list[dict]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         """Embed file documents."""
         # use doc embedding cache or store if not exists
         multimodel_embeddings: list[Any] = [None for _ in range(len(multimodel_documents))]
         embedding_queue_indices = []
         for i, multimodel_document in enumerate(multimodel_documents):
             file_id = multimodel_document["file_id"]
-            embedding = (
-                db.session.query(Embedding)
-                .filter_by(
-                    model_name=self._model_instance.model_name,
-                    hash=file_id,
-                    provider_name=self._model_instance.provider,
+            embedding = db.session.scalar(
+                select(Embedding)
+                .where(
+                    Embedding.model_name == self._model_instance.model_name,
+                    Embedding.hash == file_id,
+                    Embedding.provider_name == self._model_instance.provider,
                 )
-                .first()
+                .limit(1)
             )
             if embedding:
                 multimodel_embeddings[i] = embedding.get_embedding()
@@ -231,7 +232,7 @@ class CacheEmbedding(Embeddings):
 
         return embedding_results  # type: ignore
 
-    def embed_multimodal_query(self, multimodel_document: dict) -> list[float]:
+    def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         """Embed multimodal documents."""
         # use doc embedding cache or store if not exists
         file_id = multimodel_document["file_id"]

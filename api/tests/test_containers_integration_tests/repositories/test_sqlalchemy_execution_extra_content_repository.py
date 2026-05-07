@@ -271,7 +271,7 @@ def _create_recipient(
 
 
 def _create_delivery(session: Session, *, form_id: str) -> HumanInputDelivery:
-    from core.workflow.human_input_compat import DeliveryMethodType
+    from core.workflow.human_input_adapter import DeliveryMethodType
     from models.human_input import ConsoleDeliveryPayload
 
     delivery = HumanInputDelivery(
