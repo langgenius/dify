@@ -24,7 +24,8 @@ const AccountSection = ({
         <button
           type="button"
           aria-label={ariaLabel}
-          className={cn('flex max-w-[188px] min-w-0 shrink items-center gap-3 rounded-full py-1 pr-4 pl-1 text-left text-components-main-nav-text transition-colors hover:bg-state-base-hover', isOpen && 'bg-state-base-hover')}
+          title={userProfile.name}
+          className={cn('text-components-main-nav-text flex max-w-[180px] min-w-0 shrink items-center gap-3 rounded-full py-1 pr-4 pl-1 text-left transition-colors hover:bg-state-base-hover', isOpen && 'bg-state-base-hover')}
         >
           <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="md" className="size-7" />
           <span className="min-w-0 flex-1 truncate system-md-medium">{userProfile.name}</span>

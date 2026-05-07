@@ -52,60 +52,70 @@ export default function AccountSetting({
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
-  const workplaceGroupItems: GroupItem[] = (() => {
+  const settingItems: GroupItem[] = [
+    {
+      key: ACCOUNT_SETTING_TAB.PROVIDER,
+      name: t('settings.provider', { ns: 'common' }),
+      icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.MEMBERS,
+      name: t('settings.members', { ns: 'common' }),
+      icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.BILLING,
+      name: t('settings.billing', { ns: 'common' }),
+      description: t('plansCommon.receiptInfo', { ns: 'billing' }),
+      icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
+      name: t('settings.dataSource', { ns: 'common' }),
+      icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
+      name: t('settings.apiBasedExtension', { ns: 'common' }),
+      icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.CUSTOM,
+      name: t('custom', { ns: 'custom' }),
+      icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.LANGUAGE,
+      name: t('settings.language', { ns: 'common' }),
+      icon: <span className={cn('i-ri-translate-2', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-translate-2', iconClassName)} />,
+    },
+  ]
+  const activeItem = settingItems.find(item => item.key === activeMenu)
+
+  const visibleSettingItems: GroupItem[] = (() => {
     if (isCurrentWorkspaceDatasetOperator)
       return []
 
-    const items: GroupItem[] = [
-      {
-        key: ACCOUNT_SETTING_TAB.PROVIDER,
-        name: t('settings.provider', { ns: 'common' }),
-        icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
-      },
-      {
-        key: ACCOUNT_SETTING_TAB.MEMBERS,
-        name: t('settings.members', { ns: 'common' }),
-        icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
-      },
-    ]
+    const visibleTabs: AccountSettingTab[] = []
 
-    if (enableBilling) {
-      items.push({
-        key: ACCOUNT_SETTING_TAB.BILLING,
-        name: t('settings.billing', { ns: 'common' }),
-        description: t('plansCommon.receiptInfo', { ns: 'billing' }),
-        icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
-      })
-    }
+    if (enableBilling)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
 
-    items.push(
-      {
-        key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-        name: t('settings.dataSource', { ns: 'common' }),
-        icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
-      },
-      {
-        key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-        name: t('settings.apiBasedExtension', { ns: 'common' }),
-        icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
-      },
-    )
+    visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
 
-    if (enableReplaceWebAppLogo || enableBilling) {
-      items.push({
-        key: ACCOUNT_SETTING_TAB.CUSTOM,
-        name: t('custom', { ns: 'custom' }),
-        icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
-      })
-    }
+    if (enableReplaceWebAppLogo || enableBilling)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
 
-    return items
+    return visibleTabs
+      .map(tab => settingItems.find(item => item.key === tab))
+      .filter((item): item is GroupItem => Boolean(item))
   })()
 
   const media = useBreakpoints()
@@ -115,22 +125,9 @@ export default function AccountSetting({
     {
       key: 'workspace-group',
       name: t('settings.workplaceGroup', { ns: 'common' }),
-      items: workplaceGroupItems,
-    },
-    {
-      key: 'account-group',
-      name: t('settings.generalGroup', { ns: 'common' }),
-      items: [
-        {
-          key: ACCOUNT_SETTING_TAB.LANGUAGE,
-          name: t('settings.language', { ns: 'common' }),
-          icon: <span className={cn('i-ri-translate-2', iconClassName)} />,
-          activeIcon: <span className={cn('i-ri-translate-2', iconClassName)} />,
-        },
-      ],
+      items: visibleSettingItems,
     },
   ]
-  const activeItem = [...menuItems[0]!.items, ...menuItems[1]!.items].find(item => item.key === activeMenu)
 
   const [searchValue, setSearchValue] = useState<string>('')
 
@@ -215,7 +212,7 @@ export default function AccountSetting({
                   <div className="mt-1 system-sm-regular text-text-tertiary">{activeItem?.description}</div>
                 )}
               </div>
-              {activeItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
+              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <div className="flex grow justify-end">
                   <SearchInput
                     className="w-[200px]"

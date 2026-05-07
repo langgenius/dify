@@ -4,6 +4,11 @@ import {
   DEFAULT_ACCOUNT_SETTING_TAB,
   isValidAccountSettingTab,
 } from '../constants'
+import {
+  enableMovedAccountSettingDestinations,
+  getMovedAccountSettingDestination,
+  movedAccountSettingDestinations,
+} from '../destinations'
 
 describe('AccountSetting Constants', () => {
   it('should have correct ACCOUNT_SETTING_MODAL_ACTION', () => {
@@ -38,5 +43,16 @@ describe('AccountSetting Constants', () => {
     expect(isValidAccountSettingTab(null)).toBe(false)
     expect(isValidAccountSettingTab('')).toBe(false)
     expect(isValidAccountSettingTab('invalid')).toBe(false)
+  })
+
+  it('should keep migrated setting destinations disabled until integrations sections are ready', () => {
+    expect(enableMovedAccountSettingDestinations).toBe(false)
+    expect(movedAccountSettingDestinations[ACCOUNT_SETTING_TAB.PROVIDER]).toBe('/tools?section=provider')
+    expect(movedAccountSettingDestinations[ACCOUNT_SETTING_TAB.DATA_SOURCE]).toBe('/tools?section=data-source')
+    expect(movedAccountSettingDestinations[ACCOUNT_SETTING_TAB.API_BASED_EXTENSION]).toBe('/tools?section=api-based-extension')
+    expect(getMovedAccountSettingDestination(ACCOUNT_SETTING_TAB.PROVIDER)).toBeUndefined()
+    expect(getMovedAccountSettingDestination(ACCOUNT_SETTING_TAB.DATA_SOURCE)).toBeUndefined()
+    expect(getMovedAccountSettingDestination(ACCOUNT_SETTING_TAB.API_BASED_EXTENSION)).toBeUndefined()
+    expect(getMovedAccountSettingDestination(ACCOUNT_SETTING_TAB.BILLING)).toBeUndefined()
   })
 })

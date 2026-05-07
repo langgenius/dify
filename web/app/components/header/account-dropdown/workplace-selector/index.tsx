@@ -97,7 +97,7 @@ const WorkplaceSelector = () => {
               {currentWorkspace?.name[0]?.toLocaleUpperCase()}
             </span>
           </div>
-          <div className="max-w-[149px] min-w-0 truncate system-sm-medium text-text-secondary max-[800px]:hidden">
+          <div className="max-w-[149px] min-w-0 truncate system-sm-medium text-text-secondary max-[800px]:hidden" title={currentWorkspace?.name}>
             {currentWorkspace?.name}
           </div>
         </div>

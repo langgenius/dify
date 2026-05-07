@@ -140,6 +140,7 @@ function ComplianceDocRowItem({
     [Plan.team]: '',
     [Plan.enterprise]: '',
   }
+  const labelTitle = typeof label === 'string' ? label : undefined
 
   return (
     <DropdownMenuItem
@@ -148,7 +149,7 @@ function ComplianceDocRowItem({
       onClick={handleSelect}
     >
       {icon}
-      <div className="grow truncate px-1 system-md-regular text-text-secondary">{label}</div>
+      <div className="grow truncate px-1 system-md-regular text-text-secondary" title={labelTitle}>{label}</div>
       <ComplianceDocActionVisual
         isCurrentPlanCanDownload={isCurrentPlanCanDownload}
         isPending={isPending}

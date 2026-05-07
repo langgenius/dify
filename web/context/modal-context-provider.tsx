@@ -17,6 +17,7 @@ import {
   DEFAULT_ACCOUNT_SETTING_TAB,
   isValidAccountSettingTab,
 } from '@/app/components/header/account-setting/constants'
+import { getMovedAccountSettingDestination } from '@/app/components/header/account-setting/destinations'
 import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
@@ -27,6 +28,7 @@ import {
   usePricingModal,
 } from '@/hooks/use-query-params'
 import dynamic from '@/next/dynamic'
+import { useRouter } from '@/next/navigation'
 import { useTriggerEventsLimitModal } from './hooks/use-trigger-events-limit-modal'
 import {
   ModalContext,
@@ -79,6 +81,7 @@ export const ModalContextProvider = ({
   // Use nuqs hooks for URL-based modal state management
   const [showPricingModal, setPricingModalOpen] = usePricingModal()
   const [urlAccountModalState, setUrlAccountModalState] = useAccountSettingModal()
+  const router = useRouter()
 
   const accountSettingCallbacksRef = useRef<Omit<ModalState<AccountSettingTab>, 'payload'> | null>(null)
   const accountSettingTab = urlAccountModalState.isOpen
@@ -127,14 +130,35 @@ export const ModalContextProvider = ({
       return
     }
     const { payload, ...callbacks } = resolvedState
+    const movedDestination = getMovedAccountSettingDestination(payload)
+    if (movedDestination) {
+      accountSettingCallbacksRef.current = null
+      setUrlAccountModalState(null)
+      router.push(movedDestination)
+      return
+    }
+
     accountSettingCallbacksRef.current = callbacks
     setUrlAccountModalState({ payload })
-  }, [accountSettingTab, setUrlAccountModalState])
+  }, [accountSettingTab, router, setUrlAccountModalState])
 
   useEffect(() => {
     if (!urlAccountModalState.isOpen)
       accountSettingCallbacksRef.current = null
   }, [urlAccountModalState.isOpen])
+
+  useEffect(() => {
+    if (!accountSettingTab)
+      return
+
+    const movedDestination = getMovedAccountSettingDestination(accountSettingTab)
+    if (!movedDestination)
+      return
+
+    accountSettingCallbacksRef.current = null
+    setUrlAccountModalState(null)
+    router.push(movedDestination)
+  }, [accountSettingTab, router, setUrlAccountModalState])
 
   const { plan, isFetchedPlan } = useProviderContext()
   const {

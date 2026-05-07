@@ -222,8 +222,9 @@ describe('MainNav', () => {
     expect(homeLink).toHaveClass(
       'border-transparent',
       'backdrop-blur-[5px]',
+      'text-saas-dify-blue-inverted',
       activeEdgeClassName,
-      'after:border-components-main-nav-glass-edge-highlight-first',
+      'after:border-[rgba(255,255,255,0.98)]',
     )
     expect(homeLink.className).toContain('bg-[linear-gradient(98.077deg')
   })

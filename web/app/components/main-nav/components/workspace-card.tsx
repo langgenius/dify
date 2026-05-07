@@ -36,13 +36,17 @@ const WorkspaceMenuItemContent = ({
   icon: ReactNode
   label: ReactNode
   trailing?: ReactNode
-}) => (
-  <>
-    <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary">{icon}</span>
-    <span className="min-w-0 grow truncate text-left system-md-regular text-text-secondary">{label}</span>
-    {trailing}
-  </>
-)
+}) => {
+  const labelTitle = typeof label === 'string' ? label : undefined
+
+  return (
+    <>
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary">{icon}</span>
+      <span className="min-w-0 grow truncate text-left system-md-regular text-text-secondary" title={labelTitle}>{label}</span>
+      {trailing}
+    </>
+  )
+}
 
 const WorkspaceCard = () => {
   const { t } = useTranslation()
@@ -103,7 +107,7 @@ const WorkspaceCard = () => {
           <WorkspaceIcon name={currentWorkspace.name} className="h-6 w-6 rounded-lg" />
           <div className="min-w-0 grow">
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className="max-w-[120px] truncate system-sm-medium text-text-primary">{currentWorkspace.name}</span>
+              <span className="max-w-[120px] truncate system-sm-medium text-text-primary" title={currentWorkspace.name}>{currentWorkspace.name}</span>
               <WorkspacePlanBadge plan={workspacePlan} />
             </div>
           </div>
@@ -120,13 +124,14 @@ const WorkspaceCard = () => {
             }}
           >
             <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
-            <span className="truncate system-xs-medium">{formattedCredits}</span>
+            <span className="truncate system-xs-medium" title={formattedCredits}>{formattedCredits}</span>
             <span className="shrink-0 system-xs-regular">{t('mainNav.workspace.creditsUnit', { ns: 'common' })}</span>
           </button>
           {enableBilling && (
             <button
               type="button"
               className="max-w-[120px] shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover"
+              title={t('upgradeBtn.encourageShort', { ns: 'billing' })}
               onClick={(e) => {
                 e.stopPropagation()
                 handlePlanClick()
@@ -148,7 +153,7 @@ const WorkspaceCard = () => {
               onClick={() => setOpen(false)}
             >
               <div className="flex min-w-0 grow flex-col items-start justify-center gap-1">
-                <div className="max-w-[120px] shrink-0 truncate system-xl-medium leading-5 text-text-primary">{currentWorkspace.name}</div>
+                <div className="max-w-[120px] shrink-0 truncate system-xl-medium leading-5 text-text-primary" title={currentWorkspace.name}>{currentWorkspace.name}</div>
                 <WorkspacePlanBadge plan={workspacePlan} />
               </div>
               <WorkspaceIcon name={currentWorkspace.name} className="h-9 w-9" />
@@ -183,6 +188,7 @@ const WorkspaceCard = () => {
                 <button
                   type="button"
                   key={workspace.id}
+                  title={workspace.name}
                   className={cn(
                     'flex h-8 w-full items-center gap-2 rounded-lg px-3 py-1 text-left transition-colors hover:bg-state-base-hover',
                     workspace.current && 'text-text-secondary',
