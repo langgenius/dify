@@ -7,6 +7,9 @@ cd "$SCRIPT_DIR"
 
 DEFAULT_ENV_FILE=".env.default"
 USER_ENV_FILE=".env"
+CONFIG_VOLUME_NAME="${DIFY_CONFIG_VOLUME_NAME:-dify_config}"
+CONFIG_VOLUME_ENV_FILE=".dify-generated.env"
+VOLUME_ENV_TEMP_FILE=""
 
 log() {
   printf '%s\n' "$*" >&2
@@ -46,6 +49,21 @@ generate_secret_key() {
   return 1
 }
 
+generate_random_value() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -base64 32
+    return
+  fi
+
+  if command -v dd >/dev/null 2>&1 && command -v base64 >/dev/null 2>&1; then
+    dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d '\n'
+    printf '\n'
+    return
+  fi
+
+  return 1
+}
+
 ensure_env_files() {
   [[ -f "$DEFAULT_ENV_FILE" ]] || die "$DEFAULT_ENV_FILE is missing."
 
@@ -76,7 +94,18 @@ EOF
 }
 
 user_env_value() {
+  env_file_value "$USER_ENV_FILE" "$1"
+}
+
+env_file_value() {
+  local source_file="$1"
   local key="$1"
+  if [[ "$#" -gt 1 ]]; then
+    key="$2"
+  fi
+
+  [[ -f "$source_file" ]] || return 0
+
   awk -F= -v target="$key" '
     /^[[:space:]]*#/ || !/=/{ next }
     {
@@ -92,14 +121,20 @@ user_env_value() {
       }
     }
     END { print result }
-  ' "$USER_ENV_FILE"
+  ' "$source_file"
 }
 
-set_user_env_value() {
+set_env_file_value() {
+  local source_file="$1"
   local key="$1"
   local value="$2"
+  if [[ "$#" -gt 2 ]]; then
+    key="$2"
+    value="$3"
+  fi
   local temp_file
 
+  [[ -f "$source_file" ]] || : >"$source_file"
   temp_file="$(mktemp "${TMPDIR:-/tmp}/dify-env.XXXXXX")"
   awk -F= -v target="$key" -v replacement="$key=$value" '
     BEGIN { replaced = 0 }
@@ -121,26 +156,120 @@ set_user_env_value() {
         print replacement
       }
     }
-  ' "$USER_ENV_FILE" >"$temp_file"
-  mv "$temp_file" "$USER_ENV_FILE"
+  ' "$source_file" >"$temp_file"
+  mv "$temp_file" "$source_file"
+}
+
+set_user_env_value() {
+  set_env_file_value "$USER_ENV_FILE" "$1" "$2"
+}
+
+ensure_config_volume() {
+  docker volume create "$CONFIG_VOLUME_NAME" >/dev/null 2>&1 || die "Unable to create Docker volume $CONFIG_VOLUME_NAME."
+}
+
+load_volume_env() {
+  ensure_config_volume
+  VOLUME_ENV_TEMP_FILE="$(mktemp "${TMPDIR:-/tmp}/dify-volume-env.XXXXXX")"
+  docker run --rm -v "${CONFIG_VOLUME_NAME}:/state" busybox sh -c \
+    "if [ -f /state/${CONFIG_VOLUME_ENV_FILE} ]; then awk 1 /state/${CONFIG_VOLUME_ENV_FILE}; fi" \
+    >"$VOLUME_ENV_TEMP_FILE" || die "Unable to read generated settings from Docker volume $CONFIG_VOLUME_NAME."
+}
+
+persist_volume_env() {
+  [[ -n "$VOLUME_ENV_TEMP_FILE" ]] || return
+  docker run --rm -i -v "${CONFIG_VOLUME_NAME}:/state" busybox sh -c \
+    "dd of=/state/${CONFIG_VOLUME_ENV_FILE} status=none" \
+    <"$VOLUME_ENV_TEMP_FILE" || die "Unable to persist generated settings to Docker volume $CONFIG_VOLUME_NAME."
+}
+
+volume_env_value() {
+  env_file_value "$VOLUME_ENV_TEMP_FILE" "$1"
+}
+
+set_volume_env_value() {
+  local key="$1"
+  local value="$2"
+  set_env_file_value "$VOLUME_ENV_TEMP_FILE" "$key" "$value"
+  persist_volume_env
 }
 
 ensure_secret_key() {
   local current_secret_key
   local secret_key
 
+  if [[ -n "${SECRET_KEY+x}" ]]; then
+    return
+  fi
+
   current_secret_key="$(user_env_value SECRET_KEY)"
   if [[ -n "$current_secret_key" ]]; then
     return
   fi
 
-  secret_key="$(generate_secret_key)" || die "Unable to generate SECRET_KEY. Install openssl or configure SECRET_KEY in .env."
-  set_user_env_value SECRET_KEY "$secret_key"
-  log "Generated SECRET_KEY in $USER_ENV_FILE."
+  current_secret_key="$(volume_env_value SECRET_KEY)"
+  if [[ -n "$current_secret_key" ]]; then
+    return
+  fi
+
+  secret_key="$(generate_secret_key)" || die "Unable to generate SECRET_KEY. Install openssl or configure SECRET_KEY."
+  set_volume_env_value SECRET_KEY "$secret_key"
+  log "Generated SECRET_KEY in Docker volume $CONFIG_VOLUME_NAME."
+}
+
+ensure_required_secrets() {
+  local key
+  local existing_value
+  local generated_value
+  local required_keys=(
+    DB_PASSWORD
+    REDIS_PASSWORD
+    MINIO_SECRET_KEY
+    PLUGIN_DIFY_INNER_API_KEY
+  )
+
+  for key in "${required_keys[@]}"; do
+    if [[ -n "${!key+x}" ]]; then
+      continue
+    fi
+
+    existing_value="$(user_env_value "$key")"
+    if [[ -n "$existing_value" ]]; then
+      continue
+    fi
+
+    existing_value="$(volume_env_value "$key")"
+    if [[ -n "$existing_value" ]]; then
+      continue
+    fi
+
+    generated_value="$(generate_random_value)" || die "Unable to generate $key. Install openssl or configure $key."
+    set_volume_env_value "$key" "$generated_value"
+    log "Generated $key in Docker volume $CONFIG_VOLUME_NAME."
+  done
 }
 
 env_value() {
   local key="$1"
+  if [[ -n "${!key+x}" ]]; then
+    printf '%s\n' "${!key}"
+    return
+  fi
+
+  local user_value
+  user_value="$(user_env_value "$key")"
+  if [[ -n "$user_value" ]]; then
+    printf '%s\n' "$user_value"
+    return
+  fi
+
+  local volume_value
+  volume_value="$(volume_env_value "$key")"
+  if [[ -n "$volume_value" ]]; then
+    printf '%s\n' "$volume_value"
+    return
+  fi
+
   awk -F= -v target="$key" '
     /^[[:space:]]*#/ || !/=/{ next }
     {
@@ -199,7 +328,7 @@ write_merged_env() {
         print key "=" values[key]
       }
     }
-  ' "$DEFAULT_ENV_FILE" "$USER_ENV_FILE" >"$MERGED_ENV_FILE"
+  ' "$DEFAULT_ENV_FILE" "$VOLUME_ENV_TEMP_FILE" "$USER_ENV_FILE" >"$MERGED_ENV_FILE"
 }
 
 set_merged_env_value() {
@@ -269,7 +398,6 @@ metadata_db_user() {
 
 build_merged_env() {
   MERGED_ENV_FILE="$(mktemp "${TMPDIR:-/tmp}/dify-compose.XXXXXX")"
-  trap 'rm -f "$MERGED_ENV_FILE"' EXIT
 
   write_merged_env
 
@@ -321,7 +449,10 @@ build_merged_env() {
 main() {
   detect_compose
   ensure_env_files
+  load_volume_env
+  trap 'rm -f "$MERGED_ENV_FILE" "$VOLUME_ENV_TEMP_FILE"' EXIT
   ensure_secret_key
+  ensure_required_secrets
   build_merged_env
 
   if [[ "$#" -eq 0 ]]; then

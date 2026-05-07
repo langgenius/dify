@@ -7,6 +7,9 @@ Set-Location $ScriptDir
 $DefaultEnvFile = ".env.default"
 $UserEnvFile = ".env"
 $MergedEnvFile = $null
+$ConfigVolumeName = if ($env:DIFY_CONFIG_VOLUME_NAME) { $env:DIFY_CONFIG_VOLUME_NAME } else { "dify_config" }
+$ConfigVolumeEnvFile = ".dify-generated.env"
+$VolumeEnvTempFile = $null
 $Utf8NoBom = New-Object System.Text.UTF8Encoding -ArgumentList $false
 
 function Write-Info {
@@ -52,6 +55,20 @@ function Get-ComposeCommand {
 
 function New-SecretKey {
     $Bytes = New-Object byte[] 42
+    $Generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+
+    try {
+        $Generator.GetBytes($Bytes)
+    }
+    finally {
+        $Generator.Dispose()
+    }
+
+    return [Convert]::ToBase64String($Bytes)
+}
+
+function New-RandomValue {
+    $Bytes = New-Object byte[] 32
     $Generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
 
     try {
@@ -120,6 +137,44 @@ function Read-EnvFile {
     return $Values
 }
 
+function Ensure-ConfigVolume {
+    & docker volume create $ConfigVolumeName *> $null
+    if ($LASTEXITCODE -ne 0) {
+        Fail "Unable to create Docker volume $ConfigVolumeName."
+    }
+}
+
+function Load-VolumeEnvFile {
+    Ensure-ConfigVolume
+
+    $script:VolumeEnvTempFile = [System.IO.Path]::GetTempFileName()
+    & docker run --rm -v "$ConfigVolumeName:/state" busybox sh -c "if [ -f /state/$ConfigVolumeEnvFile ]; then awk 1 /state/$ConfigVolumeEnvFile; fi" `
+        | Out-File -FilePath $VolumeEnvTempFile -Encoding utf8NoBOM
+
+    if ($LASTEXITCODE -ne 0) {
+        Fail "Unable to read generated settings from Docker volume $ConfigVolumeName."
+    }
+}
+
+function Save-VolumeEnvFile {
+    if (-not $VolumeEnvTempFile -or -not (Test-Path $VolumeEnvTempFile -PathType Leaf)) {
+        return
+    }
+
+    Get-Content -Path $VolumeEnvTempFile -Raw -Encoding utf8 | & docker run --rm -i -v "$ConfigVolumeName:/state" busybox sh -c "dd of=/state/$ConfigVolumeEnvFile status=none" *> $null
+    if ($LASTEXITCODE -ne 0) {
+        Fail "Unable to persist generated settings to Docker volume $ConfigVolumeName."
+    }
+}
+
+function Read-VolumeEnvFile {
+    if (-not $VolumeEnvTempFile) {
+        return [ordered]@{}
+    }
+
+    return Read-EnvFile $VolumeEnvTempFile
+}
+
 function Set-UserEnvValue {
     param(
         [string]$Key,
@@ -159,14 +214,99 @@ function Set-UserEnvValue {
 }
 
 function Ensure-SecretKey {
+    if (Test-Path "env:SECRET_KEY") {
+        return
+    }
+
     $Values = Read-EnvFile $UserEnvFile
 
     if ($Values.Contains("SECRET_KEY") -and $Values["SECRET_KEY"]) {
         return
     }
 
-    Set-UserEnvValue "SECRET_KEY" (New-SecretKey)
-    Write-Info "Generated SECRET_KEY in $UserEnvFile."
+    $VolumeValues = Read-VolumeEnvFile
+    if ($VolumeValues.Contains("SECRET_KEY") -and $VolumeValues["SECRET_KEY"]) {
+        return
+    }
+
+    Set-UserEnvValueInFile $VolumeEnvTempFile "SECRET_KEY" (New-SecretKey)
+    Save-VolumeEnvFile
+    Write-Info "Generated SECRET_KEY in Docker volume $ConfigVolumeName."
+}
+
+function Set-UserEnvValueInFile {
+    param(
+        [string]$Path,
+        [string]$Key,
+        [string]$Value
+    )
+
+    if (-not (Test-Path $Path -PathType Leaf)) {
+        New-Item -ItemType File -Path $Path | Out-Null
+    }
+
+    $ResolvedPath = [string](Resolve-Path $Path)
+    $Lines = [System.IO.File]::ReadAllLines($ResolvedPath, [System.Text.Encoding]::UTF8)
+    $Output = New-Object System.Collections.Generic.List[string]
+    $Replaced = $false
+
+    foreach ($Line in $Lines) {
+        if ($Line -match "^\s*#" -or $Line -notmatch "=") {
+            $Output.Add($Line)
+            continue
+        }
+
+        $SeparatorIndex = $Line.IndexOf("=")
+        $CurrentKey = $Line.Substring(0, $SeparatorIndex).Trim()
+
+        if ($CurrentKey -eq $Key) {
+            if (-not $Replaced) {
+                $Output.Add("$Key=$Value")
+                $Replaced = $true
+            }
+            continue
+        }
+
+        $Output.Add($Line)
+    }
+
+    if (-not $Replaced) {
+        $Output.Add("$Key=$Value")
+    }
+
+    [System.IO.File]::WriteAllLines($ResolvedPath, $Output, $Utf8NoBom)
+}
+
+function Ensure-GeneratedRequiredSecrets {
+    $RequiredKeys = @(
+        "DB_PASSWORD",
+        "REDIS_PASSWORD",
+        "MINIO_SECRET_KEY",
+        "PLUGIN_DIFY_INNER_API_KEY"
+    )
+
+    $UserValues = Read-EnvFile $UserEnvFile
+    $VolumeValues = Read-VolumeEnvFile
+
+    foreach ($Key in $RequiredKeys) {
+        if (Test-Path "env:$Key") {
+            continue
+        }
+
+        if ($UserValues.Contains($Key) -and $UserValues[$Key]) {
+            continue
+        }
+
+        if ($VolumeValues.Contains($Key) -and $VolumeValues[$Key]) {
+            continue
+        }
+
+        $GeneratedValue = New-RandomValue
+        Set-UserEnvValueInFile $VolumeEnvTempFile $Key $GeneratedValue
+        Save-VolumeEnvFile
+        $VolumeValues[$Key] = $GeneratedValue
+        Write-Info "Generated $Key in Docker volume $ConfigVolumeName."
+    }
 }
 
 function Merge-EnvValues {
@@ -176,8 +316,18 @@ function Merge-EnvValues {
         $Values[$Entry.Key] = $Entry.Value
     }
 
+    foreach ($Entry in (Read-EnvFile $VolumeEnvTempFile).GetEnumerator()) {
+        $Values[$Entry.Key] = $Entry.Value
+    }
+
     foreach ($Entry in (Read-EnvFile $UserEnvFile).GetEnumerator()) {
         $Values[$Entry.Key] = $Entry.Value
+    }
+
+    foreach ($Key in @($Values.Keys)) {
+        if (Test-Path "env:$Key") {
+            $Values[$Key] = (Get-Item "env:$Key").Value
+        }
     }
 
     return $Values
@@ -293,7 +443,9 @@ $ComposeCommand = Get-ComposeCommand
 
 try {
     Ensure-EnvFiles
+    Load-VolumeEnvFile
     Ensure-SecretKey
+    Ensure-GeneratedRequiredSecrets
     Build-MergedEnv
 
     $ComposeArgs = @($args)
@@ -311,6 +463,9 @@ try {
     exit $LASTEXITCODE
 }
 finally {
+    if ($VolumeEnvTempFile -and (Test-Path $VolumeEnvTempFile -PathType Leaf)) {
+        Remove-Item -Force $VolumeEnvTempFile
+    }
     if ($MergedEnvFile -and (Test-Path $MergedEnvFile -PathType Leaf)) {
         Remove-Item -Force $MergedEnvFile
     }

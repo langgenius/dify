@@ -7,21 +7,21 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 - **Certbot Container**: `docker-compose.yaml` now contains `certbot` for managing SSL certificates. This container automatically renews certificates and ensures secure HTTPS connections.\
   For more information, refer `docker/certbot/README.md`.
 
-- **Persistent Environment Variables**: Default environment variables are managed through `.env.default`, while local overrides are stored in `.env`, ensuring that your configurations persist across deployments.
+- **Persistent Environment Variables**: The wrappers resolve configuration in this order: process environment variables, `.env`, a Docker named volume (`dify_config` by default), then generated secret values persisted to that named volume.
 
   > What is `.env`? </br> </br>
   > The `.env` file is a local override file. Keep it small by adding only the values that differ from `.env.default`. Use `.env.example` as the full reference when you need advanced configuration.
 
 - **Unified Vector Database Services**: All vector database services are now managed from a single Docker Compose file `docker-compose.yaml`. You can switch between different vector databases by setting the `VECTOR_STORE` environment variable in your `.env` file.
 
-- **Local .env Overrides**: The `dify-compose` and `dify-compose.ps1` wrappers create `.env` if it is missing and generate a persistent `SECRET_KEY` for this deployment.
+- **Local .env Overrides**: The `dify-compose` and `dify-compose.ps1` wrappers create `.env` if it is missing. Generated secrets are saved in a Docker named volume so redeployments stay stable even when `.env` only contains overrides.
 
 ### How to Deploy Dify with `docker-compose.yaml`
 
 1. **Prerequisites**: Ensure Docker and Docker Compose are installed on your system.
 1. **Environment Setup**:
    - Navigate to the `docker` directory.
-   - No copy step is required. The `dify-compose` wrappers create `.env` if it is missing and write a generated `SECRET_KEY` to it.
+   - No copy step is required. The `dify-compose` wrappers create `.env` if it is missing, and keep generated secrets in a Docker named volume for persistent deployments.
    - When prompted on first run, press Enter to use the default deployment, or answer `y` to stop and edit `.env` first.
    - Customize `.env` only when you need to override defaults from `.env.default`. Refer to `.env.example` for the full list of available variables.
    - **Optional (for advanced deployments)**:
@@ -61,10 +61,11 @@ For users migrating from the `docker-legacy` setup:
 ### Overview of `.env.default`, `.env`, and `.env.example`
 
 - `.env.default` contains the minimal default configuration for Docker Compose deployments.
-- `.env` contains the generated `SECRET_KEY` plus any local overrides.
+- `.env` contains local overrides for any values you explicitly customize.
 - `.env.example` is the full reference for advanced configuration.
+- `dify_config` (Docker named volume, configurable with `DIFY_CONFIG_VOLUME_NAME`) stores generated deployment secrets so they survive restarts and upgrades.
 
-The `dify-compose` wrappers merge `.env.default` and `.env` into a temporary environment file, append paired internal service keys when needed, and remove the temporary file after Docker Compose starts.
+The `dify-compose` wrappers merge `.env.default`, generated values from the Docker named volume, and `.env` into a temporary environment file, append paired internal service keys when needed, and remove the temporary file after Docker Compose starts. Process environment variables still have highest priority when Docker Compose resolves variables.
 
 #### Key Modules and Customization
 
