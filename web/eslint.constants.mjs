@@ -1,3 +1,12 @@
+export const GENERATED_IGNORES = [
+  'storybook-static/',
+  '.next/',
+  'next/',
+  'next-env.d.ts',
+  'dist/',
+  'coverage/',
+]
+
 export const NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS = [
   {
     name: 'next',
