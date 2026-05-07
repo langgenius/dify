@@ -403,8 +403,11 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         conversation_id = self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value)
         external_trace_id = None
+        parent_trace_context = None
         if isinstance(self._application_generate_entity, (WorkflowAppGenerateEntity, AdvancedChatAppGenerateEntity)):
-            external_trace_id = self._application_generate_entity.extras.get("external_trace_id")
+            extras = self._application_generate_entity.extras
+            external_trace_id = extras.get("external_trace_id")
+            parent_trace_context = extras.get("parent_trace_context")
 
         trace_task = TraceTask(
             TraceTaskName.WORKFLOW_TRACE,
@@ -412,6 +415,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             conversation_id=conversation_id,
             user_id=self._trace_manager.user_id,
             external_trace_id=external_trace_id,
+            parent_trace_context=parent_trace_context,
         )
         self._trace_manager.add_trace_task(trace_task)
 

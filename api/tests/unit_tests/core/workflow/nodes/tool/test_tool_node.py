@@ -15,9 +15,9 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment
-from tests.workflow_test_utils import build_test_graph_init_params
+from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
     from graphon.nodes.tool.tool_node import ToolNode
@@ -106,7 +106,7 @@ def tool_node(monkeypatch) -> ToolNode:
         call_depth=0,
     )
 
-    variable_pool = VariablePool.from_bootstrap(system_variables=build_system_variables(user_id="user-id"))
+    variable_pool = build_test_variable_pool(variables=build_system_variables(user_id="user-id"))
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
 
     config = graph_config["nodes"][0]
@@ -234,3 +234,22 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
     files_segment = completed_events[0].node_run_result.outputs["files"]
     assert isinstance(files_segment, ArrayFileSegment)
     assert files_segment.value == [file_obj]
+
+
+def test_tool_node_passes_node_execution_id_when_runtime_accepts_it(tool_node: ToolNode):
+    runtime_handle = ToolRuntimeHandle(raw=object())
+    tool_node._runtime.get_runtime = MagicMock(return_value=runtime_handle)
+    tool_node.ensure_execution_id = MagicMock(return_value="node-execution-id")
+
+    result = tool_node._get_tool_runtime(
+        variable_pool=tool_node.graph_runtime_state.variable_pool,
+        node_execution_id="node-execution-id",
+    )
+
+    assert result is runtime_handle
+    tool_node._runtime.get_runtime.assert_called_once_with(
+        node_id="node-instance",
+        node_data=tool_node.node_data,
+        variable_pool=tool_node.graph_runtime_state.variable_pool,
+        node_execution_id="node-execution-id",
+    )
