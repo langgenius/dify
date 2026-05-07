@@ -26,7 +26,7 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
 
   return (
     <div className="relative h-16 w-full overflow-hidden rounded-xl border-2 border-primary-600">
-      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pl-[14.5px] pr-[6.5px]">
+      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pr-[6.5px] pl-[14.5px]">
         {/* Waveform visualization placeholder */}
         <div className="absolute bottom-0 left-0 flex h-4 w-full items-end gap-[3px] px-2">
           {Array.from({ length: 40 }).map((_, i) => (
@@ -260,7 +260,7 @@ const SearchWithVoiceDemo = () => {
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                 />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <span className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400">
                   🔍
                 </span>
               </div>

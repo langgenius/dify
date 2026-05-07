@@ -1,16 +1,17 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { IS_CE_EDITION } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
-import { useIsLogin } from '@/service/use-common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
 import { LicenseStatus } from '@/types/feature'
-import { cn } from '@/utils/classnames'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -23,14 +24,20 @@ const NormalForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { isLoading: isCheckLoading, data: loginData } = useIsLogin()
-  const isLoggedIn = loginData?.logged_in
+  // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
+  // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
+  // prevents the redirect loop on 401.
+  const { isPending: isCheckLoading, data: userResp, error: probeError } = useQuery({
+    ...userProfileQueryOptions(),
+    throwOnError: err => !isLegacyBase401(err),
+  })
+  const isLoggedIn = !!userResp && !probeError
   const message = decodeURIComponent(searchParams.get('message') || '')
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isInitCheckLoading, setInitCheckLoading] = useState(true)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const isLoading = isCheckLoading || isInitCheckLoading || isRedirecting
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
@@ -42,7 +49,7 @@ const NormalForm = () => {
     try {
       if (isLoggedIn) {
         setIsRedirecting(true)
-        const redirectUrl = resolvePostLoginRedirect()
+        const redirectUrl = resolvePostLoginRedirect(searchParams)
         router.replace(redirectUrl || '/apps')
         return
       }
@@ -93,10 +100,10 @@ const NormalForm = () => {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
             </div>
-            <p className="text-text-primary system-sm-medium">{t('licenseLost', { ns: 'login' })}</p>
-            <p className="mt-1 text-text-tertiary system-xs-regular">{t('licenseLostTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">{t('licenseLost', { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -109,10 +116,10 @@ const NormalForm = () => {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
             </div>
-            <p className="text-text-primary system-sm-medium">{t('licenseExpired', { ns: 'login' })}</p>
-            <p className="mt-1 text-text-tertiary system-xs-regular">{t('licenseExpiredTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">{t('licenseExpired', { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -125,10 +132,10 @@ const NormalForm = () => {
           <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
             </div>
-            <p className="text-text-primary system-sm-medium">{t('licenseInactive', { ns: 'login' })}</p>
-            <p className="mt-1 text-text-tertiary system-xs-regular">{t('licenseInactiveTip', { ns: 'login' })}</p>
+            <p className="system-sm-medium text-text-primary">{t('licenseInactive', { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -141,12 +148,12 @@ const NormalForm = () => {
         {isInviteLink
           ? (
               <div className="mx-auto w-full">
-                <h2 className="text-text-primary title-4xl-semi-bold">
+                <h2 className="title-4xl-semi-bold text-text-primary">
                   {t('join', { ns: 'login' })}
                   {workspaceName}
                 </h2>
                 {!systemFeatures.branding.enabled && (
-                  <p className="mt-2 text-text-tertiary body-md-regular">
+                  <p className="mt-2 body-md-regular text-text-tertiary">
                     {t('joinTipStart', { ns: 'login' })}
                     {workspaceName}
                     {t('joinTipEnd', { ns: 'login' })}
@@ -156,8 +163,8 @@ const NormalForm = () => {
             )
           : (
               <div className="mx-auto w-full">
-                <h2 className="text-text-primary title-4xl-semi-bold">{systemFeatures.branding.enabled ? t('pageTitleForE', { ns: 'login' }) : t('pageTitle', { ns: 'login' })}</h2>
-                <p className="mt-2 text-text-tertiary body-md-regular">{t('welcome', { ns: 'login' })}</p>
+                <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t('pageTitleForE', { ns: 'login' }) : t('pageTitle', { ns: 'login' })}</h2>
+                <p className="mt-2 body-md-regular text-text-tertiary">{t('welcome', { ns: 'login' })}</p>
               </div>
             )}
         <div className="relative">
@@ -174,7 +181,7 @@ const NormalForm = () => {
             <div className="relative mt-6">
               <div className="flex items-center">
                 <div className="h-px flex-1 bg-linear-to-r from-background-gradient-mask-transparent to-divider-regular"></div>
-                <span className="px-3 text-text-tertiary system-xs-medium-uppercase">{t('or', { ns: 'login' })}</span>
+                <span className="px-3 system-xs-medium-uppercase text-text-tertiary">{t('or', { ns: 'login' })}</span>
                 <div className="h-px flex-1 bg-linear-to-l from-background-gradient-mask-transparent to-divider-regular"></div>
               </div>
             </div>
@@ -187,7 +194,7 @@ const NormalForm = () => {
                     <MailAndCodeAuth isInvite={isInviteLink} />
                     {systemFeatures.enable_email_password_login && (
                       <div className="cursor-pointer py-1 text-center" onClick={() => { updateAuthType('password') }}>
-                        <span className="text-components-button-secondary-accent-text system-xs-medium">{t('usePassword', { ns: 'login' })}</span>
+                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('usePassword', { ns: 'login' })}</span>
                       </div>
                     )}
                   </>
@@ -197,18 +204,18 @@ const NormalForm = () => {
                     <MailAndPasswordAuth isInvite={isInviteLink} isEmailSetup={systemFeatures.is_email_setup} allowRegistration={systemFeatures.is_allow_register} />
                     {systemFeatures.enable_email_code_login && (
                       <div className="cursor-pointer py-1 text-center" onClick={() => { updateAuthType('code') }}>
-                        <span className="text-components-button-secondary-accent-text system-xs-medium">{t('useVerificationCode', { ns: 'login' })}</span>
+                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('useVerificationCode', { ns: 'login' })}</span>
                       </div>
                     )}
                   </>
                 )}
-                <Split className="mb-5 mt-4" />
+                <Split className="mt-4 mb-5" />
               </>
             )
           }
 
           {systemFeatures.is_allow_register && authType === 'password' && (
-            <div className="mb-3 text-[13px] font-medium leading-4 text-text-secondary">
+            <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t('signup.noAccount', { ns: 'login' })}</span>
               <Link
                 className="text-text-accent"
@@ -224,8 +231,8 @@ const NormalForm = () => {
                 <div className="shadows-shadow-lg mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
                   <RiDoorLockLine className="h-5 w-5" />
                 </div>
-                <p className="text-text-primary system-sm-medium">{t('noLoginMethod', { ns: 'login' })}</p>
-                <p className="mt-1 text-text-tertiary system-xs-regular">{t('noLoginMethodTip', { ns: 'login' })}</p>
+                <p className="system-sm-medium text-text-primary">{t('noLoginMethod', { ns: 'login' })}</p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>
               </div>
               <div className="relative my-2 py-2">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -236,11 +243,11 @@ const NormalForm = () => {
           )}
           {!systemFeatures.branding.enabled && (
             <>
-              <div className="mt-2 block w-full text-text-tertiary system-xs-regular">
+              <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
                 {t('tosDesc', { ns: 'login' })}
               &nbsp;
                 <Link
-                  className="text-text-secondary system-xs-medium hover:underline"
+                  className="system-xs-medium text-text-secondary hover:underline"
                   target="_blank"
                   rel="noopener noreferrer"
                   href="https://dify.ai/terms"
@@ -249,7 +256,7 @@ const NormalForm = () => {
                 </Link>
               &nbsp;&&nbsp;
                 <Link
-                  className="text-text-secondary system-xs-medium hover:underline"
+                  className="system-xs-medium text-text-secondary hover:underline"
                   target="_blank"
                   rel="noopener noreferrer"
                   href="https://dify.ai/privacy"
@@ -258,11 +265,11 @@ const NormalForm = () => {
                 </Link>
               </div>
               {IS_CE_EDITION && (
-                <div className="w-hull mt-2 block text-text-tertiary system-xs-regular">
+                <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
                   {t('goToInit', { ns: 'login' })}
               &nbsp;
                   <Link
-                    className="text-text-secondary system-xs-medium hover:underline"
+                    className="system-xs-medium text-text-secondary hover:underline"
                     href="/install"
                   >
                     {t('setAdminAccount', { ns: 'login' })}

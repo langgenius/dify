@@ -192,8 +192,8 @@ describe('workflow-stream-handlers helpers', () => {
     markNodesStopped(stoppedWorkflow.tracing)
 
     expect(stoppedWorkflow.status).toBe(WorkflowRunningStatus.Stopped)
-    expect(stoppedWorkflow.tracing[0].status).toBe(NodeRunningStatus.Stopped)
-    expect(stoppedWorkflow.tracing[0].details?.[0][0].status).toBe(NodeRunningStatus.Stopped)
+    expect(stoppedWorkflow.tracing[0]!.status).toBe(NodeRunningStatus.Stopped)
+    expect(stoppedWorkflow.tracing[0]!.details?.[0]![0]!.status).toBe(NodeRunningStatus.Stopped)
   })
 
   it('should cover unmatched and replacement helper branches', () => {
@@ -291,7 +291,7 @@ describe('workflow-stream-handlers helpers', () => {
 
     markNodesStopped(undefined)
 
-    expect(parallelMatched.tracing[0].details).toHaveLength(2)
+    expect(parallelMatched.tracing[0]!.details).toHaveLength(2)
     expect(notFinished).toEqual(expect.objectContaining({
       expand: true,
       tracing: process.tracing,
@@ -311,7 +311,7 @@ describe('workflow-stream-handlers helpers', () => {
     }))
     expect(succeededWorkflow.status).toBe(WorkflowRunningStatus.Succeeded)
     expect(outputlessWorkflow.files).toEqual([])
-    expect(updatedHumanInput.humanInputFormDataList?.[0].expiration_time).toBe(300)
+    expect(updatedHumanInput.humanInputFormDataList?.[0]!.expiration_time).toBe(300)
     expect(appendedHumanInput.humanInputFormDataList).toHaveLength(2)
     expect(noListFilled.humanInputFilledFormDataList).toHaveLength(1)
     expect(appendedFilled.humanInputFilledFormDataList).toHaveLength(2)
@@ -319,7 +319,7 @@ describe('workflow-stream-handlers helpers', () => {
       status: WorkflowRunningStatus.Running,
       tracing: [],
     }))
-    expect(timeoutWithMatch.humanInputFormDataList?.[0].expiration_time).toBe(400)
+    expect(timeoutWithMatch.humanInputFormDataList?.[0]!.expiration_time).toBe(400)
   })
 })
 
@@ -717,7 +717,7 @@ describe('createWorkflowStreamHandlers', () => {
     })
 
     expect(existingProcess.status).toBe(WorkflowRunningStatus.Stopped)
-    expect(existingProcess.tracing[0].status).toBe(NodeRunningStatus.Stopped)
+    expect(existingProcess.tracing[0]!.status).toBe(NodeRunningStatus.Stopped)
     expect(setup.onCompleted).toHaveBeenCalledWith('', 5, false)
 
     const noOutputSetup = setupHandlers()

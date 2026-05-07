@@ -57,7 +57,7 @@ class TestAsyncWorkflowService:
             - repo: SQLAlchemyWorkflowTriggerLogRepository
             - dispatcher_manager_class: QueueDispatcherManager class
             - dispatcher: dispatcher instance
-            - quota_workflow: QuotaType.WORKFLOW
+            - quota_service: QuotaService mock
             - get_workflow: AsyncWorkflowService._get_workflow method
             - professional_task: execute_workflow_professional
             - team_task: execute_workflow_team
@@ -72,12 +72,7 @@ class TestAsyncWorkflowService:
         mock_repo.create.side_effect = _create_side_effect
 
         mock_dispatcher = MagicMock()
-        quota_workflow = MagicMock()
-        mock_get_workflow = MagicMock()
-
-        mock_professional_task = MagicMock()
-        mock_team_task = MagicMock()
-        mock_sandbox_task = MagicMock()
+        mock_quota_service = MagicMock()
 
         with (
             patch.object(
@@ -93,8 +88,8 @@ class TestAsyncWorkflowService:
             ) as mock_get_workflow,
             patch.object(
                 async_workflow_service_module,
-                "QuotaType",
-                new=SimpleNamespace(WORKFLOW=quota_workflow),
+                "QuotaService",
+                new=mock_quota_service,
             ),
             patch.object(async_workflow_service_module, "execute_workflow_professional") as mock_professional_task,
             patch.object(async_workflow_service_module, "execute_workflow_team") as mock_team_task,
@@ -107,7 +102,7 @@ class TestAsyncWorkflowService:
                 "repo": mock_repo,
                 "dispatcher_manager_class": mock_dispatcher_manager_class,
                 "dispatcher": mock_dispatcher,
-                "quota_workflow": quota_workflow,
+                "quota_service": mock_quota_service,
                 "get_workflow": mock_get_workflow,
                 "professional_task": mock_professional_task,
                 "team_task": mock_team_task,
@@ -146,6 +141,9 @@ class TestAsyncWorkflowService:
         mocks["team_task"].delay.return_value = task_result
         mocks["sandbox_task"].delay.return_value = task_result
 
+        quota_charge_mock = MagicMock()
+        mocks["quota_service"].reserve.return_value = quota_charge_mock
+
         class DummyAccount:
             def __init__(self, user_id: str):
                 self.id = user_id
@@ -163,8 +161,9 @@ class TestAsyncWorkflowService:
         assert result.status == "queued"
         assert result.queue == queue_name
 
-        mocks["quota_workflow"].consume.assert_called_once_with("tenant-123")
-        assert session.commit.call_count == 2
+        mocks["quota_service"].reserve.assert_called_once()
+        quota_charge_mock.commit.assert_called_once()
+        assert session.commit.call_count == 3
 
         created_log = mocks["repo"].create.call_args[0][0]
         assert created_log.status == WorkflowTriggerStatus.QUEUED
@@ -250,7 +249,7 @@ class TestAsyncWorkflowService:
         mocks = async_workflow_trigger_mocks
         mocks["dispatcher"].get_queue_name.return_value = QueuePriority.TEAM
         mocks["get_workflow"].return_value = workflow
-        mocks["quota_workflow"].consume.side_effect = QuotaExceededError(
+        mocks["quota_service"].reserve.side_effect = QuotaExceededError(
             feature="workflow",
             tenant_id="tenant-123",
             required=1,
@@ -267,7 +266,7 @@ class TestAsyncWorkflowService:
                 trigger_data=trigger_data,
             )
 
-        assert session.commit.call_count == 2
+        assert session.commit.call_count == 3
         updated_log = mocks["repo"].update.call_args[0][0]
         assert updated_log.status == WorkflowTriggerStatus.RATE_LIMITED
         assert "Quota limit reached" in updated_log.error
@@ -470,7 +469,7 @@ class TestAsyncWorkflowServiceGetWorkflow:
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow_by_id.assert_called_once_with(app_model, "workflow-123")
+        workflow_service.get_published_workflow_by_id.assert_called_once_with(app_model, "workflow-123", session=None)
         workflow_service.get_published_workflow.assert_not_called()
 
     def test_should_raise_when_specific_workflow_id_not_found(self):
@@ -498,7 +497,7 @@ class TestAsyncWorkflowServiceGetWorkflow:
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow.assert_called_once_with(app_model)
+        workflow_service.get_published_workflow.assert_called_once_with(app_model, session=None)
         workflow_service.get_published_workflow_by_id.assert_not_called()
 
     def test_should_raise_when_default_published_workflow_not_found(self):

@@ -78,7 +78,30 @@ describe('var-reference-vars helpers', () => {
     ] as NodeOutPutVar[], 'another')
 
     expect(vars).toHaveLength(1)
-    expect(vars[0].title).toBe('Node B')
-    expect(vars[0].vars).toEqual([expect.objectContaining({ variable: 'another_value' })])
+    expect(vars[0]!.title).toBe('Node B')
+    expect(vars[0]!.vars).toEqual([expect.objectContaining({ variable: 'another_value' })])
+  })
+
+  it('should keep parent vars when search text matches a child variable', () => {
+    const vars = filterReferenceVars([
+      {
+        title: 'Node A',
+        nodeId: 'node-a',
+        vars: [{
+          variable: 'payload',
+          type: VarType.object,
+          children: [{ variable: 'child_name', type: VarType.string }],
+        }],
+      },
+      {
+        title: 'Node B',
+        nodeId: 'node-b',
+        vars: [{ variable: 'other_value', type: VarType.string }],
+      },
+    ] as NodeOutPutVar[], 'child')
+
+    expect(vars).toHaveLength(1)
+    expect(vars[0]!.title).toBe('Node A')
+    expect(vars[0]!.vars).toEqual([expect.objectContaining({ variable: 'payload' })])
   })
 })

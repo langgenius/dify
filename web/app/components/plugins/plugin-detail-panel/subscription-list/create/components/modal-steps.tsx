@@ -21,7 +21,7 @@ type StatusStepProps = {
 
 const StatusStep = ({ isActive, text }: StatusStepProps) => {
   return (
-    <div className={`system-2xs-semibold-uppercase flex items-center gap-1 ${isActive
+    <div className={`flex items-center gap-1 system-2xs-semibold-uppercase ${isActive
       ? 'text-state-accent-solid'
       : 'text-text-tertiary'}`}
     >

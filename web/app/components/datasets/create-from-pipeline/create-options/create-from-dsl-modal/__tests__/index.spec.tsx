@@ -52,7 +52,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMocks.api,
 }))
 
@@ -113,7 +113,7 @@ describe('CreateFromDSLModal', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('app.importFromDSL')).toBeInTheDocument()
+      expect(screen.getByText('app.importFromDSL'))!.toBeInTheDocument()
     })
 
     it('should not render modal content when show is false', () => {
@@ -139,8 +139,8 @@ describe('CreateFromDSLModal', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('app.importFromDSLFile')).toBeInTheDocument()
-      expect(screen.getByText('app.importFromDSLUrl')).toBeInTheDocument()
+      expect(screen.getByText('app.importFromDSLFile'))!.toBeInTheDocument()
+      expect(screen.getByText('app.importFromDSLUrl'))!.toBeInTheDocument()
     })
 
     it('should render cancel and import buttons', () => {
@@ -152,8 +152,8 @@ describe('CreateFromDSLModal', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('app.newApp.Cancel')).toBeInTheDocument()
-      expect(screen.getByText('app.newApp.import')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.Cancel'))!.toBeInTheDocument()
+      expect(screen.getByText('app.newApp.import'))!.toBeInTheDocument()
     })
 
     it('should render uploader when file tab is active', () => {
@@ -166,7 +166,7 @@ describe('CreateFromDSLModal', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('app.dslUploader.button')).toBeInTheDocument()
+      expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
     })
 
     it('should render URL input when URL tab is active', () => {
@@ -179,8 +179,8 @@ describe('CreateFromDSLModal', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('DSL URL')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')).toBeInTheDocument()
+      expect(screen.getByText('DSL URL'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder'))!.toBeInTheDocument()
     })
   })
 
@@ -195,7 +195,8 @@ describe('CreateFromDSLModal', () => {
       )
 
       // File tab content should be visible
-      expect(screen.getByText('app.dslUploader.button')).toBeInTheDocument()
+      // File tab content should be visible
+      expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
     })
 
     it('should use provided activeTab prop', () => {
@@ -208,7 +209,7 @@ describe('CreateFromDSLModal', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByText('DSL URL')).toBeInTheDocument()
+      expect(screen.getByText('DSL URL'))!.toBeInTheDocument()
     })
 
     it('should use provided dslUrl prop', () => {
@@ -223,7 +224,7 @@ describe('CreateFromDSLModal', () => {
       )
 
       const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      expect(input).toHaveValue('https://example.com/test.pipeline')
+      expect(input)!.toHaveValue('https://example.com/test.pipeline')
     })
 
     it('should call onClose when cancel button is clicked', () => {
@@ -252,12 +253,14 @@ describe('CreateFromDSLModal', () => {
       )
 
       // Initially file tab is active
-      expect(screen.getByText('app.dslUploader.button')).toBeInTheDocument()
+      // Initially file tab is active
+      expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
 
       fireEvent.click(screen.getByText('app.importFromDSLUrl'))
 
       // URL input should be visible
-      expect(screen.getByText('DSL URL')).toBeInTheDocument()
+      // URL input should be visible
+      expect(screen.getByText('DSL URL'))!.toBeInTheDocument()
     })
 
     it('should update URL value when typing', () => {
@@ -273,7 +276,7 @@ describe('CreateFromDSLModal', () => {
       const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
-      expect(input).toHaveValue('https://example.com/test.pipeline')
+      expect(input)!.toHaveValue('https://example.com/test.pipeline')
     })
 
     it('should have disabled import button when no file is selected in file tab', () => {
@@ -287,7 +290,7 @@ describe('CreateFromDSLModal', () => {
       )
 
       const importButton = screen.getByText('app.newApp.import').closest('button')
-      expect(importButton).toBeDisabled()
+      expect(importButton)!.toBeDisabled()
     })
 
     it('should have disabled import button when no URL is entered in URL tab', () => {
@@ -301,7 +304,7 @@ describe('CreateFromDSLModal', () => {
       )
 
       const importButton = screen.getByText('app.newApp.import').closest('button')
-      expect(importButton).toBeDisabled()
+      expect(importButton)!.toBeDisabled()
     })
 
     it('should enable import button when URL is entered', () => {
@@ -445,7 +448,7 @@ describe('CreateFromDSLModal', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
       })
 
       vi.useRealTimers()
@@ -663,14 +666,14 @@ describe('CreateFromDSLModal', () => {
 
       // File tab with no file - disabled
       let importButton = screen.getByText('app.newApp.import').closest('button')
-      expect(importButton).toBeDisabled()
+      expect(importButton)!.toBeDisabled()
 
       // Switch to URL tab by clicking on it
       fireEvent.click(screen.getByText('app.importFromDSLUrl'))
 
       // Still disabled (no URL)
       importButton = screen.getByText('app.newApp.import').closest('button')
-      expect(importButton).toBeDisabled()
+      expect(importButton)!.toBeDisabled()
 
       // Add URL value - should enable
       const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
@@ -902,7 +905,7 @@ describe('CreateFromDSLModal', () => {
 
       // Wait for file to be displayed
       await waitFor(() => {
-        expect(screen.getByText('test.pipeline')).toBeInTheDocument()
+        expect(screen.getByText('test.pipeline'))!.toBeInTheDocument()
       })
 
       // Now remove the file by clicking delete button (inside ActionButton)
@@ -912,7 +915,7 @@ describe('CreateFromDSLModal', () => {
         fireEvent.click(deleteButton)
         // File should be removed - uploader prompt should show again
         await waitFor(() => {
-          expect(screen.getByText('app.dslUploader.button')).toBeInTheDocument()
+          expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
         })
       }
     })
@@ -968,7 +971,7 @@ describe('CreateFromDSLModal', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('app.newApp.Confirm')).toBeInTheDocument()
+        expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByText('app.newApp.Confirm'))
@@ -1016,7 +1019,7 @@ describe('CreateFromDSLModal', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('app.newApp.Confirm')).toBeInTheDocument()
+        expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByText('app.newApp.Confirm'))
@@ -1056,7 +1059,7 @@ describe('CreateFromDSLModal', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('app.newApp.Confirm')).toBeInTheDocument()
+        expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByText('app.newApp.Confirm'))
@@ -1103,7 +1106,7 @@ describe('CreateFromDSLModal', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('app.newApp.Confirm')).toBeInTheDocument()
+        expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByText('app.newApp.Confirm'))
@@ -1144,13 +1147,13 @@ describe('CreateFromDSLModal', () => {
 
       // Error modal should be visible
       await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
       })
 
       // There are two Cancel buttons now (one in main modal footer, one in error modal)
       // Find the Cancel button in the error modal context
       const cancelButtons = screen.getAllByText('app.newApp.Cancel')
-      fireEvent.click(cancelButtons[cancelButtons.length - 1])
+      fireEvent.click(cancelButtons[cancelButtons.length - 1]!)
 
       vi.useRealTimers()
     })
@@ -1166,14 +1169,14 @@ describe('Header', () => {
   describe('Rendering', () => {
     it('should render title', () => {
       render(<Header onClose={vi.fn()} />)
-      expect(screen.getByText('app.importFromDSL')).toBeInTheDocument()
+      expect(screen.getByText('app.importFromDSL'))!.toBeInTheDocument()
     })
 
     it('should render close icon', () => {
       render(<Header onClose={vi.fn()} />)
       // Check for close icon container
       const closeButton = document.querySelector('[class*="cursor-pointer"]')
-      expect(closeButton).toBeInTheDocument()
+      expect(closeButton)!.toBeInTheDocument()
     })
   })
 
@@ -1205,8 +1208,8 @@ describe('Tab', () => {
         />,
       )
 
-      expect(screen.getByText('app.importFromDSLFile')).toBeInTheDocument()
-      expect(screen.getByText('app.importFromDSLUrl')).toBeInTheDocument()
+      expect(screen.getByText('app.importFromDSLFile'))!.toBeInTheDocument()
+      expect(screen.getByText('app.importFromDSLUrl'))!.toBeInTheDocument()
     })
   })
 
@@ -1223,7 +1226,7 @@ describe('Tab', () => {
       fireEvent.click(screen.getByText('app.importFromDSLFile'))
       // Tab uses bind() which passes the key as first argument and event as second
       expect(setCurrentTab).toHaveBeenCalled()
-      expect(setCurrentTab.mock.calls[0][0]).toBe(CreateFromDSLModalTab.FROM_FILE)
+      expect(setCurrentTab.mock.calls[0]![0]).toBe(CreateFromDSLModalTab.FROM_FILE)
     })
 
     it('should call setCurrentTab when clicking URL tab', () => {
@@ -1238,7 +1241,7 @@ describe('Tab', () => {
       fireEvent.click(screen.getByText('app.importFromDSLUrl'))
       // Tab uses bind() which passes the key as first argument and event as second
       expect(setCurrentTab).toHaveBeenCalled()
-      expect(setCurrentTab.mock.calls[0][0]).toBe(CreateFromDSLModalTab.FROM_URL)
+      expect(setCurrentTab.mock.calls[0]![0]).toBe(CreateFromDSLModalTab.FROM_URL)
     })
   })
 })
@@ -1259,7 +1262,7 @@ describe('TabItem', () => {
         />,
       )
 
-      expect(screen.getByText('Test Tab')).toBeInTheDocument()
+      expect(screen.getByText('Test Tab'))!.toBeInTheDocument()
     })
 
     it('should render active indicator when active', () => {
@@ -1273,7 +1276,7 @@ describe('TabItem', () => {
 
       // Active indicator is the bottom border div
       const indicator = document.querySelector('[class*="bg-util-colors-blue"]')
-      expect(indicator).toBeInTheDocument()
+      expect(indicator)!.toBeInTheDocument()
     })
 
     it('should not render active indicator when inactive', () => {
@@ -1348,8 +1351,8 @@ describe('Uploader', () => {
         />,
       )
 
-      expect(screen.getByText('app.dslUploader.button')).toBeInTheDocument()
-      expect(screen.getByText('app.dslUploader.browse')).toBeInTheDocument()
+      expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
+      expect(screen.getByText('app.dslUploader.browse'))!.toBeInTheDocument()
     })
 
     it('should render file info when file is selected', () => {
@@ -1362,8 +1365,8 @@ describe('Uploader', () => {
         />,
       )
 
-      expect(screen.getByText('test.pipeline')).toBeInTheDocument()
-      expect(screen.getByText('PIPELINE')).toBeInTheDocument()
+      expect(screen.getByText('test.pipeline'))!.toBeInTheDocument()
+      expect(screen.getByText('PIPELINE'))!.toBeInTheDocument()
     })
 
     it('should apply custom className', () => {
@@ -1375,7 +1378,7 @@ describe('Uploader', () => {
         />,
       )
 
-      expect(container.firstChild).toHaveClass('custom-class')
+      expect(container.firstChild)!.toHaveClass('custom-class')
     })
   })
 
@@ -1484,7 +1487,8 @@ describe('Uploader', () => {
       dropArea.dispatchEvent(dragOverEvent)
 
       // Event should be handled without errors
-      expect(dropArea).toBeInTheDocument()
+      // Event should be handled without errors
+      expect(dropArea)!.toBeInTheDocument()
     })
 
     it('should handle dragLeave event and reset dragging state when target is dragRef', async () => {
@@ -1512,8 +1516,8 @@ describe('Uploader', () => {
       })
 
       // The dragRef div appears when dragging is true
-      const dragRefDiv = document.querySelector('[class*="absolute left-0 top-0"]')
-      expect(dragRefDiv).toBeInTheDocument()
+      const dragRefDiv = document.querySelector('[class*="absolute top-0 left-0"]')
+      expect(dragRefDiv)!.toBeInTheDocument()
 
       // When dragLeave happens on the dragRef element, setDragging(false) is called
       if (dragRefDiv) {
@@ -1648,7 +1652,7 @@ describe('Uploader', () => {
 
       // Get the file input
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      expect(fileInput).toBeInTheDocument()
+      expect(fileInput)!.toBeInTheDocument()
 
       // Spy on input click before triggering selectHandle
       const clickSpy = vi.spyOn(fileInput, 'click').mockImplementation(() => {
@@ -1688,7 +1692,7 @@ describe('Uploader', () => {
       })
 
       // Now the dragRef div should exist
-      const dragRefDiv = document.querySelector('[class*="absolute left-0 top-0"]')
+      const dragRefDiv = document.querySelector('[class*="absolute top-0 left-0"]')
 
       // When dragEnter happens on dragRef itself, setDragging should NOT be called
       if (dragRefDiv) {
@@ -1715,7 +1719,7 @@ describe('Uploader', () => {
 
       // Find and click delete button
       const deleteButton = document.querySelector('button')
-      expect(deleteButton).toBeInTheDocument()
+      expect(deleteButton)!.toBeInTheDocument()
 
       if (deleteButton) {
         fireEvent.click(deleteButton)
@@ -1745,7 +1749,7 @@ describe('DSLConfirmModal', () => {
         />,
       )
 
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
     })
 
     it('should render version information', () => {
@@ -1760,8 +1764,8 @@ describe('DSLConfirmModal', () => {
         />,
       )
 
-      expect(screen.getByText('0.9.0')).toBeInTheDocument()
-      expect(screen.getByText('1.0.0')).toBeInTheDocument()
+      expect(screen.getByText('0.9.0'))!.toBeInTheDocument()
+      expect(screen.getByText('1.0.0'))!.toBeInTheDocument()
     })
 
     it('should render cancel and confirm buttons', () => {
@@ -1772,8 +1776,8 @@ describe('DSLConfirmModal', () => {
         />,
       )
 
-      expect(screen.getByText('app.newApp.Cancel')).toBeInTheDocument()
-      expect(screen.getByText('app.newApp.Confirm')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.Cancel'))!.toBeInTheDocument()
+      expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
     })
 
     it('should render with default empty versions', () => {
@@ -1785,7 +1789,8 @@ describe('DSLConfirmModal', () => {
       )
 
       // Should not crash with default empty strings
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+      // Should not crash with default empty strings
+      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
     })
 
     it('should disable confirm button when confirmDisabled is true', () => {
@@ -1798,7 +1803,7 @@ describe('DSLConfirmModal', () => {
       )
 
       const confirmButton = screen.getByText('app.newApp.Confirm').closest('button')
-      expect(confirmButton).toBeDisabled()
+      expect(confirmButton)!.toBeDisabled()
     })
   })
 
@@ -1879,7 +1884,8 @@ describe('DSLConfirmModal', () => {
       )
 
       // Component should render without crashing
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+      // Component should render without crashing
+      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
     })
 
     it('should use default confirmDisabled when not provided', () => {
@@ -1988,7 +1994,7 @@ describe('CreateFromDSLModal Integration', () => {
 
     // Verify error modal is shown
     await waitFor(() => {
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
     })
 
     vi.useRealTimers()

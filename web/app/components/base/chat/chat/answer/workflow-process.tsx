@@ -1,5 +1,6 @@
 import type { ChatItem, WorkflowProcess } from '../../types'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   useEffect,
   useState,
@@ -7,7 +8,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type WorkflowProcessProps = {
   data: WorkflowProcess
@@ -43,7 +43,7 @@ const WorkflowProcessItem = ({
     <div
       className={cn(
         '-mx-1 rounded-xl px-2.5',
-        collapse ? 'border-l-[0.25px] border-components-panel-border py-[7px]' : 'border-[0.5px] border-components-panel-border-subtle px-1 pb-1 pt-[7px]',
+        collapse ? 'border-l-[0.25px] border-components-panel-border py-[7px]' : 'border-[0.5px] border-components-panel-border-subtle px-1 pt-[7px] pb-1',
         running && !collapse && 'bg-background-section-burn',
         succeeded && !collapse && 'bg-state-success-hover',
         failed && !collapse && 'bg-state-destructive-hover',
@@ -62,7 +62,7 @@ const WorkflowProcessItem = ({
         {
           running && (
             <div
-              className="i-ri-loader-2-line mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary"
+              className="mr-1 i-ri-loader-2-line h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary"
               data-testid="status-icon-running"
             />
           )
@@ -70,7 +70,7 @@ const WorkflowProcessItem = ({
         {
           succeeded && (
             <div
-              className="i-custom-vender-solid-general-check-circle mr-1 h-3.5 w-3.5 shrink-0 text-text-success"
+              className="mr-1 i-custom-vender-solid-general-check-circle h-3.5 w-3.5 shrink-0 text-text-success"
               data-testid="status-icon-success"
             />
           )
@@ -78,7 +78,7 @@ const WorkflowProcessItem = ({
         {
           failed && (
             <div
-              className="i-ri-error-warning-fill mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive"
+              className="mr-1 i-ri-error-warning-fill h-3.5 w-3.5 shrink-0 text-text-destructive"
               data-testid="status-icon-failed"
             />
           )
@@ -86,18 +86,18 @@ const WorkflowProcessItem = ({
         {
           paused && (
             <div
-              className="i-ri-pause-circle-fill mr-1 h-3.5 w-3.5 shrink-0 text-text-warning-secondary"
+              className="mr-1 i-ri-pause-circle-fill h-3.5 w-3.5 shrink-0 text-text-warning-secondary"
               data-testid="status-icon-paused"
             />
           )
         }
         <div
-          className={cn('text-text-secondary system-xs-medium', !collapse && 'grow')}
+          className="min-w-0 grow truncate system-xs-medium text-text-secondary"
           data-testid="workflow-process-title"
         >
           {!collapse ? t('common.workflowProcess', { ns: 'workflow' }) : latestNode?.title}
         </div>
-        <div className={cn('i-ri-arrow-right-s-line ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />
+        <div className={cn('ml-1 i-ri-arrow-right-s-line h-4 w-4 shrink-0 text-text-tertiary', !collapse && 'rotate-90')} />
       </div>
       {
         !collapse && (

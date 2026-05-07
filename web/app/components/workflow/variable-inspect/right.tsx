@@ -1,5 +1,7 @@
 import type { currentVarType } from './panel'
 import type { GenRes } from '@/service/debug'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowGoBackLine,
   RiCloseLine,
@@ -16,13 +18,11 @@ import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
-import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { AppModeEnum } from '@/types/app'
 import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 import GetCodeGeneratorResModal from '../../app/configuration/config/code-generator/get-code-generator-res'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../../base/prompt-editor/plugins/update-block'
 import { useNodesInteractions, useToolIcon } from '../hooks'
@@ -192,12 +192,12 @@ const Right = ({
                       size="xs"
                       toolIcon={toolIcon}
                     />
-                    <div className="system-sm-regular shrink-0 text-text-secondary">{currentNodeVar.title}</div>
-                    <div className="system-sm-regular shrink-0 text-text-quaternary">/</div>
+                    <div className="shrink-0 system-sm-regular text-text-secondary">{currentNodeVar.title}</div>
+                    <div className="shrink-0 system-sm-regular text-text-quaternary">/</div>
                   </>
                 )}
-              <div title={currentNodeVar.var.name} className="system-sm-semibold truncate text-text-secondary">{currentNodeVar.var.name}</div>
-              <div className="system-xs-medium ml-1 shrink-0 space-x-2 text-text-tertiary">
+              <div title={currentNodeVar.var.name} className="truncate system-sm-semibold text-text-secondary">{currentNodeVar.var.name}</div>
+              <div className="ml-1 shrink-0 space-x-2 system-xs-medium text-text-tertiary">
                 <span>{`${currentNodeVar.var.value_type}${displaySchemaType}`}</span>
                 {isTruncated && (
                   <>
@@ -217,45 +217,74 @@ const Right = ({
           {currentNodeVar && (
             <>
               {canShowPromptGenerator && (
-                <Tooltip popupContent={t('generate.optimizePromptTooltip', { ns: 'appDebug' })}>
-                  <div
-                    className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
-                    onClick={handleShowPromptGenerator}
-                  >
-                    <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
-                  </div>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <div
+                        className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
+                        onClick={handleShowPromptGenerator}
+                      >
+                        <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
+                      </div>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('generate.optimizePromptTooltip', { ns: 'appDebug' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {isTruncated && (
-                <Tooltip popupContent={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}>
-                  <ActionButton>
-                    <a
-                      href={fullContent?.download_url}
-                      target="_blank"
-                    >
-                      <RiFileDownloadFill className="size-4" />
-                    </a>
-                  </ActionButton>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton>
+                        <a
+                          href={fullContent?.download_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <RiFileDownloadFill className="size-4" />
+                        </a>
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
-                  <span className="ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded-sm bg-text-accent-secondary"></span>
+                  <span className="mr-[4.5px] ml-[2.5px] h-[3px] w-[3px] rounded-sm bg-text-accent-secondary"></span>
                   <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
                 </Badge>
               )}
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
-                <Tooltip popupContent={t('debug.variableInspect.reset', { ns: 'workflow' })}>
-                  <ActionButton onClick={resetValue}>
-                    <RiArrowGoBackLine className="h-4 w-4" />
-                  </ActionButton>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton onClick={resetValue}>
+                        <RiArrowGoBackLine className="h-4 w-4" />
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('debug.variableInspect.reset', { ns: 'workflow' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
-                <Tooltip popupContent={t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}>
-                  <ActionButton onClick={handleClear}>
-                    <RiArrowGoBackLine className="h-4 w-4" />
-                  </ActionButton>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <ActionButton onClick={handleClear}>
+                        <RiArrowGoBackLine className="h-4 w-4" />
+                      </ActionButton>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {currentNodeVar.var.value_type !== 'secret' && (

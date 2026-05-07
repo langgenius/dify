@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-pgvecto-rs"
+version = "0.0.1"
+
+dependencies = [
+    "pgvecto-rs[sqlalchemy]~=0.2.2",
+]
+description = "Dify vector store backend (dify-vdb-pgvecto-rs)."
+
+[project.entry-points."dify.vector_backends"]
+pgvecto-rs = "dify_vdb_pgvecto_rs.pgvecto_rs:PGVectoRSFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

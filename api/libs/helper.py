@@ -16,8 +16,6 @@ from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
-from graphon.file import helpers as file_helpers
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, TypeAdapter
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
@@ -25,6 +23,8 @@ from typing_extensions import TypedDict
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from extensions.ext_redis import redis_client
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 if TYPE_CHECKING:
     from models import Account
@@ -120,8 +120,20 @@ class AppIconUrlField(fields.Raw):
             obj = obj["app"]
 
         if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE:
-            return file_helpers.get_signed_file_url(obj.icon)
+            return build_icon_url(obj.icon_type, obj.icon)
         return None
+
+
+def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
+    if icon is None or icon_type is None:
+        return None
+
+    from models.model import IconType
+
+    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
+    if icon_type_value.lower() != IconType.IMAGE:
+        return None
+    return file_helpers.get_signed_file_url(icon)
 
 
 class AvatarUrlField(fields.Raw):
@@ -410,7 +422,7 @@ class TokenManager:
         token_type: str,
         account: "Account | None" = None,
         email: str | None = None,
-        additional_data: dict | None = None,
+        additional_data: dict[str, Any] | None = None,
     ) -> str:
         if account is None and email is None:
             raise ValueError("Account or email must be provided")

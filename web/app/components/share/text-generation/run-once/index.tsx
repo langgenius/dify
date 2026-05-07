@@ -4,6 +4,9 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import {
   RiLoader2Line,
   RiPlayLargeLine,
@@ -11,18 +14,15 @@ import {
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
 
 type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -120,7 +120,7 @@ const RunOnce: FC<IRunOnceProps> = ({
             : promptConfig.prompt_variables.filter(item => item.hide !== true).map(item => (
                 <div className="mt-4 w-full" key={item.key}>
                   {item.type !== 'checkbox' && (
-                    <div className="system-md-semibold flex h-6 items-center gap-1 text-text-secondary">
+                    <div className="flex h-6 items-center gap-1 system-md-semibold text-text-secondary">
                       <div className="truncate">{item.name}</div>
                       {!item.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
                     </div>
@@ -128,12 +128,25 @@ const RunOnce: FC<IRunOnceProps> = ({
                   <div className="mt-1">
                     {item.type === 'select' && (
                       <Select
-                        className="w-full"
-                        defaultValue={inputs[item.key] as (string | number | undefined)}
-                        onSelect={(i) => { handleInputsChange({ ...inputsRef.current, [item.key]: i.value }) }}
-                        items={(item.options || []).map(i => ({ name: i, value: i }))}
-                        allowSearch={false}
-                      />
+                        value={inputs[item.key] ? String(inputs[item.key]) : null}
+                        onValueChange={(nextValue) => {
+                          if (!nextValue)
+                            return
+                          handleInputsChange({ ...inputsRef.current, [item.key]: nextValue })
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          {String(inputs[item.key] || item.default || t('placeholder.select', { ns: 'common' }))}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(item.options || []).map(option => (
+                            <SelectItem key={option} value={option}>
+                              <SelectItemText>{option}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                     {item.type === 'string' && (
                       <Input
@@ -197,7 +210,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                         value={inputs[item.key] as string}
                         onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
                         noWrapper
-                        className="bg h-[80px] overflow-y-auto radius-lg bg-components-input-bg-normal p-1"
+                        className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
                         placeholder={
                           <div className="whitespace-pre">{typeof item.json_schema === 'string' ? item.json_schema : JSON.stringify(item.json_schema || '', null, 2)}</div>
                         }
@@ -209,7 +222,7 @@ const RunOnce: FC<IRunOnceProps> = ({
           {
             visionConfig?.enabled && (
               <div className="mt-4 w-full">
-                <div className="system-md-semibold flex h-6 items-center text-text-secondary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
+                <div className="flex h-6 items-center system-md-semibold text-text-secondary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
                 <div className="mt-1">
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -224,7 +237,7 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
-          <div className="mb-3 mt-6 w-full">
+          <div className="mt-6 mb-3 w-full">
             <div className="flex items-center justify-between gap-2">
               <Button
                 onClick={onClear}

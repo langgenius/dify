@@ -3,10 +3,10 @@ import type { SimpleDetail } from '../../../store'
 import type { SchemaItem } from '../components/modal-steps'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerLogEntity, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import {
@@ -202,7 +202,7 @@ export const useCommonModalState = ({
     if (!apiKeyCredentialsSchema.length)
       return
     apiKeyCredentialsFormRef.current?.setFields([{
-      name: apiKeyCredentialsSchema[0].name,
+      name: apiKeyCredentialsSchema[0]!.name,
       errors: [],
     }])
   }, [apiKeyCredentialsSchema])

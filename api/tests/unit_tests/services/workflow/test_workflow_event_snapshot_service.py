@@ -1,29 +1,37 @@
 import json
 import queue
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from itertools import cycle
 from threading import Event
+from types import SimpleNamespace
+from typing import Any, cast
+from unittest.mock import MagicMock
 
 import pytest
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.task_entities import StreamEvent
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
+from services import workflow_event_snapshot_service as service_module
 from services.workflow_event_snapshot_service import (
     BufferState,
     MessageContext,
     _build_snapshot_events,
+    _is_terminal_event,
     _resolve_task_id,
+    build_workflow_event_stream,
 )
 
 
@@ -126,50 +134,6 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
     )
 
 
-def test_build_snapshot_events_includes_pause_event() -> None:
-    workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
-    snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
-    resumption_context = _build_resumption_context("task-ctx")
-    pause_entity = _FakePauseEntity(
-        pause_id="pause-1",
-        workflow_run_id="run-1",
-        paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
-        pause_reasons=[
-            HumanInputRequired(
-                form_id="form-1",
-                form_content="content",
-                node_id="node-1",
-                node_title="Human Input",
-            )
-        ],
-    )
-
-    events = _build_snapshot_events(
-        workflow_run=workflow_run,
-        node_snapshots=[snapshot],
-        task_id="task-ctx",
-        message_context=None,
-        pause_entity=pause_entity,
-        resumption_context=resumption_context,
-    )
-
-    assert [event["event"] for event in events] == [
-        "workflow_started",
-        "node_started",
-        "node_finished",
-        "workflow_paused",
-    ]
-    assert events[2]["data"]["status"] == WorkflowNodeExecutionStatus.PAUSED.value
-    pause_data = events[-1]["data"]
-    assert pause_data["paused_nodes"] == ["node-1"]
-    assert pause_data["outputs"] == {"result": "value"}
-    assert pause_data["status"] == WorkflowExecutionStatus.PAUSED.value
-    assert pause_data["created_at"] == int(workflow_run.created_at.timestamp())
-    assert pause_data["elapsed_time"] == workflow_run.elapsed_time
-    assert pause_data["total_tokens"] == workflow_run.total_tokens
-    assert pause_data["total_steps"] == workflow_run.total_steps
-
-
 def test_build_snapshot_events_applies_message_context() -> None:
     workflow_run = _build_workflow_run(WorkflowExecutionStatus.RUNNING)
     snapshot = _build_snapshot(WorkflowNodeExecutionStatus.SUCCEEDED)
@@ -223,36 +187,6 @@ def test_resolve_task_id_priority(context_task_id, buffered_task_id, expected) -
         buffer_state.task_id_ready.set()
     task_id = _resolve_task_id(resumption_context, buffer_state, "run-1", wait_timeout=0.0)
     assert task_id == expected
-
-
-# === Merged from test_workflow_event_snapshot_service_additional.py ===
-
-
-import json
-import queue
-from collections.abc import Mapping
-from dataclasses import dataclass
-from datetime import UTC, datetime
-from threading import Event
-from types import SimpleNamespace
-from typing import Any, cast
-from unittest.mock import MagicMock
-
-import pytest
-from graphon.enums import WorkflowExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
-from sqlalchemy.orm import Session, sessionmaker
-
-from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.app.entities.task_entities import StreamEvent
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from models.enums import CreatorUserRole
-from models.model import AppMode
-from models.workflow import WorkflowRun
-from repositories.entities.workflow_pause import WorkflowPauseEntity
-from services import workflow_event_snapshot_service as service_module
-from services.workflow_event_snapshot_service import BufferState, MessageContext, build_workflow_event_stream
 
 
 def _build_workflow_run_additional(status: WorkflowExecutionStatus = WorkflowExecutionStatus.RUNNING) -> WorkflowRun:
@@ -484,15 +418,15 @@ def test_is_terminal_event_should_recognize_finished_and_optional_paused_events(
     paused_event = {"event": StreamEvent.WORKFLOW_PAUSED.value}
 
     # Act
-    is_finished = service_module._is_terminal_event(finished_event, include_paused=False)
-    paused_without_flag = service_module._is_terminal_event(paused_event, include_paused=False)
-    paused_with_flag = service_module._is_terminal_event(paused_event, include_paused=True)
+    is_finished = service_module._is_terminal_event(finished_event, close_on_pause=False)
+    paused_without_flag = service_module._is_terminal_event(paused_event, close_on_pause=False)
+    paused_with_flag = service_module._is_terminal_event(paused_event, close_on_pause=True)
 
     # Assert
     assert is_finished is True
     assert paused_without_flag is False
     assert paused_with_flag is True
-    assert service_module._is_terminal_event(StreamEvent.PING.value, include_paused=True) is False
+    assert service_module._is_terminal_event(StreamEvent.PING.value, close_on_pause=True) is False
 
 
 def test_apply_message_context_should_update_payload_when_context_exists() -> None:
@@ -797,3 +731,112 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
     # Assert
     assert events[0] == StreamEvent.PING.value
     assert snapshot_builder.call_args.kwargs["pause_entity"] is None
+
+
+def test_is_terminal_event_respects_close_on_pause_flag() -> None:
+    pause_event = {"event": "workflow_paused"}
+    finish_event = {"event": "workflow_finished"}
+
+    assert _is_terminal_event(pause_event, close_on_pause=True) is True
+    assert _is_terminal_event(pause_event, close_on_pause=False) is False
+    assert _is_terminal_event(finish_event, close_on_pause=False) is True
+
+
+def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
+    snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
+    resumption_context = _build_resumption_context("task-ctx")
+    monkeypatch.setattr(
+        service_module, "load_form_tokens_by_form_id", lambda form_ids, session=None, surface=None: {"form-1": "wtok"}
+    )
+    session_maker = _SessionMaker(
+        SimpleNamespace(
+            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+        )
+    )
+    pause_entity = _FakePauseEntity(
+        pause_id="pause-1",
+        workflow_run_id="run-1",
+        paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
+        pause_reasons=[
+            HumanInputRequired(
+                form_id="form-1",
+                form_content="content",
+                node_id="node-1",
+                node_title="Human Input",
+                form_token="wtok",
+            )
+        ],
+    )
+
+    events = _build_snapshot_events(
+        workflow_run=workflow_run,
+        node_snapshots=[snapshot],
+        task_id="task-ctx",
+        message_context=None,
+        pause_entity=pause_entity,
+        resumption_context=resumption_context,
+        session_maker=cast(sessionmaker[Session], session_maker),
+    )
+
+    assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED.value
+    assert events[-2]["data"]["form_token"] == "wtok"
+    assert events[-2]["data"]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
+    pause_data = events[-1]["data"]
+    assert pause_data["reasons"][0]["form_token"] == "wtok"
+    assert pause_data["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
+
+
+def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
+    topic = _Topic(_StaticSubscription())
+    pause_entity = _FakePauseEntity(
+        pause_id="pause-1",
+        workflow_run_id="run-1",
+        paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
+        pause_reasons=[
+            HumanInputRequired(
+                form_id="form-1",
+                form_content="content",
+                node_id="node-1",
+                node_title="Human Input",
+            )
+        ],
+    )
+    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock(return_value=pause_entity))
+    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
+    factory = SimpleNamespace(
+        create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
+        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
+    )
+    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    monkeypatch.setattr(
+        service_module, "_load_resumption_context", MagicMock(return_value=_build_resumption_context("task-1"))
+    )
+    monkeypatch.setattr(
+        service_module, "load_form_tokens_by_form_id", lambda form_ids, session=None, surface=None: {"form-1": "wtok"}
+    )
+
+    session = SimpleNamespace(
+        scalar=MagicMock(return_value=None),
+        execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+    )
+    session_maker = _SessionMaker(session)
+
+    events = list(
+        build_workflow_event_stream(
+            app_mode=AppMode.WORKFLOW,
+            workflow_run=workflow_run,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            session_maker=cast(sessionmaker[Session], session_maker),
+        )
+    )
+
+    pause_event = cast(Mapping[str, Any], events[-1])
+    assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED.value
+    assert pause_event["data"]["reasons"][0]["form_token"] == "wtok"
+    assert pause_event["data"]["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())

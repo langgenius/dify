@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
-import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import ActionButton from '@/app/components/base/action-button'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
@@ -97,7 +97,7 @@ const ObjectValueItem: FC<Props> = ({
       {/* Key */}
       <div className="w-[120px] border-r border-gray-200">
         <input
-          className="block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-hidden system-xs-regular placeholder:text-components-input-text-placeholder placeholder:system-xs-regular hover:bg-state-base-hover focus:bg-components-input-bg-active"
+          className="block h-7 w-full appearance-none px-2 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
           placeholder={t('chatVariable.modal.objectKey', { ns: 'workflow' }) || ''}
           value={list[index].key}
           onChange={handleKeyChange(index)}
@@ -116,7 +116,7 @@ const ObjectValueItem: FC<Props> = ({
       {/* Value */}
       <div className="relative w-[230px]">
         <input
-          className="block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-hidden system-xs-regular placeholder:text-components-input-text-placeholder placeholder:system-xs-regular hover:bg-state-base-hover focus:bg-components-input-bg-active"
+          className="block h-7 w-full appearance-none px-2 pr-9 system-xs-regular text-text-secondary caret-primary-600 outline-hidden placeholder:system-xs-regular placeholder:text-components-input-text-placeholder hover:bg-state-base-hover focus:bg-components-input-bg-active"
           placeholder={t('chatVariable.modal.objectValue', { ns: 'workflow' }) || ''}
           value={list[index].value}
           onChange={handleValueChange(index)}
@@ -125,10 +125,15 @@ const ObjectValueItem: FC<Props> = ({
           type={list[index].type === ChatVarType.Number ? 'number' : 'text'}
         />
         {list.length > 1 && !isFocus && (
-          <RemoveButton
-            className="absolute right-1 top-0.5 z-10 hidden group-hover:block"
-            onClick={handleItemRemove(index)}
-          />
+          <div className="absolute top-0.5 right-1 z-10">
+            <ActionButton
+              size="m"
+              className="group hover:bg-state-destructive-hover!"
+              onClick={handleItemRemove(index)}
+            >
+              <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+            </ActionButton>
+          </div>
         )}
       </div>
     </div>

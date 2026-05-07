@@ -1,22 +1,20 @@
 'use client'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
+import type { OffsetOptions } from '@floating-ui/react'
+import type { Placement } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { CollectionType } from '@/app/components/tools/types'
 import Link from '@/next/link'
-import { cn } from '@/utils/classnames'
 import {
   ToolAuthorizationSection,
   ToolBaseForm,
@@ -71,6 +69,8 @@ const ToolSelector: FC<Props> = ({
   nodeId = '',
 }) => {
   const { t } = useTranslation()
+  const sideOffset = typeof offset === 'number' ? offset : (typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0))
+  const alignOffset = typeof offset === 'number' ? 0 : (typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0))
 
   // Use custom hook for state management
   const state = useToolSelectorState({ value, onSelect, onSelectMultiple })
@@ -102,15 +102,14 @@ const ToolSelector: FC<Props> = ({
     getSettingsValue,
   } = state
 
-  const handleTriggerClick = () => {
-    if (disabled)
-      return
-    setIsShow(true)
-  }
-
   // Determine portal open state based on controlled vs uncontrolled mode
   const portalOpen = trigger ? controlledState : isShow
   const onPortalOpenChange = trigger ? onControlledStateChange : setIsShow
+  const handlePortalOpenChange = (nextOpen: boolean) => {
+    if (nextOpen && (disabled || !currentProvider || !currentTool))
+      return
+    onPortalOpenChange?.(nextOpen)
+  }
 
   // Build error tooltip content
   const renderErrorTip = () => (
@@ -134,19 +133,13 @@ const ToolSelector: FC<Props> = ({
   )
 
   return (
-    <PortalToFollowElem
-      placement={placement}
-      offset={offset}
+    <Popover
       open={portalOpen}
-      onOpenChange={onPortalOpenChange}
+      onOpenChange={handlePortalOpenChange}
     >
-      <PortalToFollowElemTrigger
-        className="w-full"
-        onClick={() => {
-          if (!currentProvider || !currentTool)
-            return
-          handleTriggerClick()
-        }}
+      <PopoverTrigger
+        nativeButton={false}
+        render={<div className="w-full" />}
       >
         {trigger}
 
@@ -182,9 +175,14 @@ const ToolSelector: FC<Props> = ({
             errorTip={renderErrorTip()}
           />
         )}
-      </PortalToFollowElemTrigger>
+      </PopoverTrigger>
 
-      <PortalToFollowElemContent className="z-10">
+      <PopoverContent
+        placement={placement}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className={cn(
           'relative max-h-[642px] min-h-20 w-[361px] rounded-xl',
           'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
@@ -192,7 +190,7 @@ const ToolSelector: FC<Props> = ({
         )}
         >
           {/* Header */}
-          <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">
+          <div className="px-4 pt-3.5 pb-1 system-xl-semibold text-text-primary">
             {t(`detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`, { ns: 'plugin' })}
           </div>
 
@@ -239,8 +237,8 @@ const ToolSelector: FC<Props> = ({
             onParamsFormChange={handleParamsFormChange}
           />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

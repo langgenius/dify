@@ -2,7 +2,6 @@ import uuid
 
 from flask import request
 from flask_restx import Resource, marshal
-from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, Field
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
@@ -10,6 +9,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
+from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
@@ -31,6 +31,7 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import escape_like_pattern
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import ChildChunk, DocumentSegment
@@ -80,14 +81,6 @@ class SegmentUpdatePayload(BaseModel):
 
 class BatchImportPayload(BaseModel):
     upload_file_id: str
-
-
-class ChildChunkCreatePayload(BaseModel):
-    content: str
-
-
-class ChildChunkUpdatePayload(BaseModel):
-    content: str
 
 
 class ChildChunkBatchUpdatePayload(BaseModel):

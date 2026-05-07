@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunTriggeredFrom } from '@/models/log'
 import type { App } from '@/types/app'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +13,6 @@ import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import DetailPanel from './detail'
 import TriggerByDisplay from './trigger-by-display'
 
@@ -59,7 +59,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const statusTdRender = (status: string) => {
     if (status === 'succeeded') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="green" />
           <span className="text-util-colors-green-green-600">Success</span>
         </div>
@@ -67,7 +67,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
     if (status === 'failed') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="red" />
           <span className="text-util-colors-red-red-600">Failure</span>
         </div>
@@ -75,7 +75,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
     if (status === 'stopped') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="yellow" />
           <span className="text-util-colors-warning-warning-600">Stop</span>
         </div>
@@ -83,7 +83,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
     if (status === 'paused') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="yellow" />
           <span className="text-util-colors-warning-warning-600">Pending</span>
         </div>
@@ -91,7 +91,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
     if (status === 'running') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="blue" />
           <span className="text-util-colors-blue-light-blue-light-600">Running</span>
         </div>
@@ -99,7 +99,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     }
     if (status === 'partial-succeeded') {
       return (
-        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <div className="inline-flex items-center gap-1 system-xs-semibold-uppercase">
           <Indicator color="green" />
           <span className="text-util-colors-green-green-600">Partial Success</span>
         </div>
@@ -121,8 +121,8 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
         <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
-            <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1"></td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">
+            <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
               <div className="flex cursor-pointer items-center hover:text-text-secondary" onClick={handleSort}>
                 {t('table.header.startTime', { ns: 'appLog' })}
                 <ArrowDownIcon
@@ -130,11 +130,11 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                 />
               </div>
             </td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.status', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.runtime', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.tokens', { ns: 'appLog' })}</td>
-            <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', !isWorkflow ? 'rounded-r-lg' : '')}>{t('table.header.user', { ns: 'appLog' })}</td>
-            {isWorkflow && <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.triggered_from', { ns: 'appLog' })}</td>}
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.status', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.runtime', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.tokens', { ns: 'appLog' })}</td>
+            <td className={cn('bg-background-section-burn py-1.5 pl-3 whitespace-nowrap', !isWorkflow ? 'rounded-r-lg' : '')}>{t('table.header.user', { ns: 'appLog' })}</td>
+            {isWorkflow && <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.triggered_from', { ns: 'appLog' })}</td>}
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">

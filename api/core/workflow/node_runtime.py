@@ -2,38 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast, overload
 
-from graphon.file import FileTransferMethod, FileType
-from graphon.model_runtime.entities import LLMMode
-from graphon.model_runtime.entities.llm_entities import (
-    LLMResult,
-    LLMResultChunk,
-    LLMResultChunkWithStructuredOutput,
-    LLMResultWithStructuredOutput,
-    LLMUsage,
-)
-from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from graphon.model_runtime.entities.model_entities import AIModelEntity
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from graphon.nodes.human_input.entities import HumanInputNodeData
-from graphon.nodes.llm.runtime_protocols import (
-    PreparedLLMProtocol,
-    PromptMessageSerializerProtocol,
-    RetrieverAttachmentLoaderProtocol,
-)
-from graphon.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
-from graphon.nodes.runtime import (
-    HumanInputFormStateProtocol,
-    HumanInputNodeRuntimeProtocol,
-    ToolNodeRuntimeProtocol,
-)
-from graphon.nodes.tool.exc import ToolNodeError, ToolRuntimeInvocationError, ToolRuntimeResolutionError
-from graphon.nodes.tool_runtime_entities import (
-    ToolRuntimeHandle,
-    ToolRuntimeMessage,
-    ToolRuntimeParameter,
-)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -60,11 +30,41 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities import LLMMode
+from graphon.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
+    LLMUsage,
+)
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import AIModelEntity
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from graphon.nodes.human_input.entities import HumanInputNodeData
+from graphon.nodes.llm.runtime_protocols import (
+    PreparedLLMProtocol,
+    PromptMessageSerializerProtocol,
+    RetrieverAttachmentLoaderProtocol,
+)
+from graphon.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
+from graphon.nodes.runtime import (
+    HumanInputFormStateProtocol,
+    HumanInputNodeRuntimeProtocol,
+    ToolNodeRuntimeProtocol,
+)
+from graphon.nodes.tool.exc import ToolNodeError, ToolRuntimeInvocationError, ToolRuntimeResolutionError
+from graphon.nodes.tool_runtime_entities import (
+    ToolRuntimeHandle,
+    ToolRuntimeMessage,
+    ToolRuntimeParameter,
+)
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-from .human_input_compat import (
+from .human_input_adapter import (
     BoundRecipient,
     DeliveryChannelConfig,
     DeliveryMethodType,
@@ -76,12 +76,11 @@ from .human_input_compat import (
 from .system_variables import SystemVariableKey, get_system_text
 
 if TYPE_CHECKING:
+    from core.tools.__base.tool import Tool
+    from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
     from graphon.file import File
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
-
-    from core.tools.__base.tool import Tool
-    from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
 
 
 _file_access_controller = DatabaseFileAccessController()
@@ -174,6 +173,28 @@ class DifyPreparedLLM(PreparedLLMProtocol):
     def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
         return self._model_instance.get_llm_num_tokens(prompt_messages)
 
+    @overload
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: Mapping[str, Any],
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: Literal[False],
+    ) -> LLMResult: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: Mapping[str, Any],
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: Literal[True],
+    ) -> Generator[LLMResultChunk, None, None]: ...
+
     def invoke_llm(
         self,
         *,
@@ -190,6 +211,28 @@ class DifyPreparedLLM(PreparedLLMProtocol):
             stop=list(stop or []),
             stream=stream,
         )
+
+    @overload
+    def invoke_llm_with_structured_output(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        json_schema: Mapping[str, Any],
+        model_parameters: Mapping[str, Any],
+        stop: Sequence[str] | None,
+        stream: Literal[False],
+    ) -> LLMResultWithStructuredOutput: ...
+
+    @overload
+    def invoke_llm_with_structured_output(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        json_schema: Mapping[str, Any],
+        model_parameters: Mapping[str, Any],
+        stop: Sequence[str] | None,
+        stream: Literal[True],
+    ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 
     def invoke_llm_with_structured_output(
         self,
@@ -458,11 +501,15 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
     @staticmethod
     def _build_tool_runtime_spec(node_data: ToolNodeData) -> _WorkflowToolRuntimeSpec:
+        tool_configurations = dict(node_data.tool_configurations)
+        tool_configurations.update(
+            {name: tool_input.model_dump(mode="python") for name, tool_input in node_data.tool_parameters.items()}
+        )
         return _WorkflowToolRuntimeSpec(
             provider_type=CoreToolProviderType(node_data.provider_type.value),
             provider_id=node_data.provider_id,
             tool_name=node_data.tool_name,
-            tool_configurations=dict(node_data.tool_configurations),
+            tool_configurations=tool_configurations,
             credential_id=node_data.credential_id,
         )
 

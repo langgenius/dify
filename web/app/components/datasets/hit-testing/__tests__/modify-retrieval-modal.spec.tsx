@@ -17,12 +17,12 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({ children, onClick, variant }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, onClick, variant }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
     <button data-testid={variant === 'primary' ? 'save-button' : 'cancel-button'} onClick={onClick}>
       {children}
     </button>

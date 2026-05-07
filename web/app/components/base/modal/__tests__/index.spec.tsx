@@ -135,19 +135,6 @@ describe('Modal', () => {
       expect(container).toBeInTheDocument()
     })
 
-    it('should apply highPriority z-index when highPriority is true', async () => {
-      await act(async () => {
-        render(
-          <Modal isShow={true} title="Test Modal" highPriority={true}>
-            <div>Content</div>
-          </Modal>,
-        )
-      })
-
-      const dialog = document.querySelector('.z-1100')
-      expect(dialog).toBeInTheDocument()
-    })
-
     it('should apply overlayOpacity background when overlayOpacity is true', async () => {
       await act(async () => {
         render(

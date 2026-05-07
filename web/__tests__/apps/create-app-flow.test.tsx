@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 /**
  * Integration test: Create App Flow
  *
@@ -9,11 +10,12 @@
  */
 import type { AppListResponse } from '@/models/app'
 import type { App } from '@/types/app'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import List from '@/app/components/apps/list'
 import { AccessMode } from '@/models/access-control'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
 let mockIsCurrentWorkspaceEditor = true
@@ -51,13 +53,6 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector?: (state: Record<string, unknown>) => unknown) => {
-    const state = { systemFeatures: mockSystemFeatures }
-    return selector ? selector(state) : state
-  },
-}))
-
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     onPlanInfoChanged: mockOnPlanInfoChanged,
@@ -80,20 +75,33 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: { pages: mockPages },
+      isLoading: mockIsLoading,
+      isFetching: mockIsFetching,
+      isFetchingNextPage: false,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: false,
+      error: null,
+      refetch: mockRefetch,
+    }),
+  }
+})
+
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: { pages: mockPages },
-    isLoading: mockIsLoading,
-    isFetching: mockIsFetching,
-    isFetchingNextPage: false,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: false,
-    error: null,
-    refetch: mockRefetch,
-  }),
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
+  }),
+}))
+
+vi.mock('@/app/components/apps/hooks/use-workflow-online-users', () => ({
+  useWorkflowOnlineUsers: () => ({
+    onlineUsersMap: {},
   }),
 }))
 
@@ -218,7 +226,16 @@ const createPage = (apps: App[]): AppListResponse => ({
 })
 
 const renderList = () => {
-  return renderWithNuqs(<List controlRefreshList={0} />)
+  const { wrapper: SysWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: mockSystemFeatures,
+  })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper()
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <NuqsWrapper>
+      <SysWrapper>{children}</SysWrapper>
+    </NuqsWrapper>
+  )
+  return { ...render(<List controlRefreshList={0} />, { wrapper: Wrapper }), onUrlUpdate }
 }
 
 describe('Create App Flow', () => {

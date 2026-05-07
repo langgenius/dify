@@ -4,6 +4,10 @@ from collections.abc import Mapping
 from typing import Any, Literal
 
 from flask import Response
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from core.entities.provider_entities import BasicProviderConfig
+from core.plugin.utils.http_parser import deserialize_response
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -21,10 +25,6 @@ from graphon.nodes.parameter_extractor.entities import (
 from graphon.nodes.question_classifier.entities import (
     ClassConfig,
 )
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-
-from core.entities.provider_entities import BasicProviderConfig
-from core.plugin.utils.http_parser import deserialize_response
 
 
 class InvokeCredentials(BaseModel):
@@ -49,7 +49,7 @@ class RequestInvokeTool(BaseModel):
     tool_type: Literal["builtin", "workflow", "api", "mcp"]
     provider: str
     tool: str
-    tool_parameters: dict
+    tool_parameters: dict[str, Any]
     credential_id: str | None = None
 
 
@@ -209,7 +209,7 @@ class RequestInvokeEncrypt(BaseModel):
     opt: Literal["encrypt", "decrypt", "clear"]
     namespace: Literal["endpoint"]
     identity: str
-    data: dict = Field(default_factory=dict)
+    data: dict[str, Any] = Field(default_factory=dict)
     config: list[BasicProviderConfig] = Field(default_factory=list)
 
 

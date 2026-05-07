@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin, PluginManifestInMarket } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { useAppContext } from '@/context/app-context'
 import { useInstallPackageFromMarketPlace, usePluginDeclarationFromMarketPlace, usePluginTaskList, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
@@ -133,10 +133,10 @@ const Installed: FC<Props> = ({
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
-        <div className="text-text-secondary system-md-regular">
+        <div className="system-md-regular text-text-secondary">
           <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
           {!isDifyVersionCompatible && (
-            <p className="text-text-warning system-md-regular">
+            <p className="system-md-regular text-text-warning">
               {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
             </p>
           )}

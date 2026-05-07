@@ -1,6 +1,7 @@
 import type { Dependency, GitHubItemAndMarketPlaceDependency, InstallStatus, PackageDependency, Plugin, PluginDeclaration, VersionProps } from '../../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { InstallStep, PluginCategoryEnum } from '../../../types'
 import InstallBundle, { InstallType } from '../index'
 import GithubItem from '../item/github-item'
@@ -181,11 +182,6 @@ vi.mock('@/config', async () => {
 // Mock mitt context
 vi.mock('@/context/mitt-context', () => ({
   useMittContextSelector: () => vi.fn(),
-}))
-
-// Mock global public context
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({}),
 }))
 
 // Mock useCanInstallPluginFromMarketplace

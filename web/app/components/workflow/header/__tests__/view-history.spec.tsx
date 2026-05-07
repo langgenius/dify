@@ -10,20 +10,22 @@ const mockFormatTimeFromNow = vi.fn((value: number) => `from-now:${value}`)
 const mockCloseAllInputFieldPanels = vi.fn()
 const mockHandleNodesCancelSelected = vi.fn()
 const mockHandleCancelDebugAndPreviewPanel = vi.fn()
+const mockHandleBackupDraft = vi.fn()
 const mockFormatWorkflowRunIdentifier = vi.fn((finishedAt?: number, status?: string) => ` (${status || finishedAt || 'unknown'})`)
 
 let mockIsChatMode = false
 
-vi.mock('../../hooks', async () => {
-  const actual = await vi.importActual<typeof import('../../hooks')>('../../hooks')
+vi.mock('../../hooks', () => {
   return {
-    ...actual,
     useIsChatMode: () => mockIsChatMode,
     useNodesInteractions: () => ({
       handleNodesCancelSelected: mockHandleNodesCancelSelected,
     }),
     useWorkflowInteractions: () => ({
       handleCancelDebugAndPreviewPanel: mockHandleCancelDebugAndPreviewPanel,
+    }),
+    useWorkflowRun: () => ({
+      handleBackupDraft: mockHandleBackupDraft,
     }),
   }
 })
@@ -48,38 +50,46 @@ vi.mock('@/app/components/base/loading', () => ({
   default: () => <div data-testid="loading" />,
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => {
-  const PortalContext = React.createContext({ open: false })
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...props}>
+      {children}
+    </button>
+  ),
+}))
 
-  return {
-    PortalToFollowElem: ({
-      children,
-      open,
-    }: {
-      children?: React.ReactNode
-      open: boolean
-    }) => <PortalContext.Provider value={{ open }}>{children}</PortalContext.Provider>,
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children?: React.ReactNode
-      onClick?: () => void
-    }) => <div data-testid="portal-trigger" onClick={onClick}>{children}</div>,
-    PortalToFollowElemContent: ({
-      children,
-    }: {
-      children?: React.ReactNode
-    }) => {
-      const { open } = React.useContext(PortalContext)
-      return open ? <div data-testid="portal-content">{children}</div> : null
-    },
-  }
-})
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
+  Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({
+    children,
+    render,
+  }: {
+    children?: React.ReactNode
+    render?: React.ReactElement
+  }) => {
+    if (render && React.isValidElement(render)) {
+      const renderElement = render as React.ReactElement<{ children?: React.ReactNode }>
+      return React.cloneElement(renderElement, renderElement.props, children)
+    }
+
+    return <>{children}</>
+  },
+  TooltipContent: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+}))
+
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 vi.mock('../../utils', async () => {
   const actual = await vi.importActual<typeof import('../../utils')>('../../utils')
@@ -130,7 +140,7 @@ describe('ViewHistory', () => {
     })
 
     expect(mockUseWorkflowRunHistory).toHaveBeenCalledWith('/history', false)
-    expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
 
@@ -165,7 +175,6 @@ describe('ViewHistory', () => {
   })
 
   it('renders workflow run history items and updates the workflow store when one is selected', () => {
-    const handleBackupDraft = vi.fn()
     const pausedRun = createHistoryItem({
       id: 'run-paused',
       status: WorkflowRunningStatus.Paused,
@@ -199,9 +208,6 @@ describe('ViewHistory', () => {
         showEnvPanel: true,
         controlMode: ControlMode.Pointer,
       },
-      hooksStoreProps: {
-        handleBackupDraft,
-      },
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
@@ -217,7 +223,7 @@ describe('ViewHistory', () => {
     expect(store.getState().showEnvPanel).toBe(false)
     expect(store.getState().controlMode).toBe(ControlMode.Hand)
     expect(mockCloseAllInputFieldPanels).toHaveBeenCalledTimes(1)
-    expect(handleBackupDraft).toHaveBeenCalledTimes(1)
+    expect(mockHandleBackupDraft).toHaveBeenCalledTimes(1)
     expect(mockHandleNodesCancelSelected).toHaveBeenCalledTimes(1)
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)
   })
@@ -271,6 +277,6 @@ describe('ViewHistory', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onClearLogAndMessageModal).toHaveBeenCalledTimes(1)
-    expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
   })
 })

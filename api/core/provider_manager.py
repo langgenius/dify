@@ -6,20 +6,12 @@ from collections.abc import Sequence
 from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any
 
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import (
-    ConfigurateMethod,
-    CredentialFormSchema,
-    FormType,
-    ProviderEntity,
-)
-from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
 from core.entities.provider_entities import (
@@ -41,6 +33,14 @@ from core.helper.position_helper import is_filtered
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormType,
+    ProviderEntity,
+)
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -70,12 +70,32 @@ class ProviderManager:
     Request-bound managers may carry caller identity in that runtime, and the
     resulting ``ProviderConfiguration`` objects must reuse it for downstream
     model-type and schema lookups.
+
+    Configuration assembly is cached per manager instance so call chains that
+    share one request-scoped manager can reuse the same provider graph instead
+    of rebuilding it for every lookup. Call ``clear_configurations_cache()``
+    when a long-lived manager needs to observe writes performed within the same
+    instance scope.
     """
+
+    decoding_rsa_key: Any | None
+    decoding_cipher_rsa: Any | None
+    _model_runtime: ModelRuntime
+    _configurations_cache: dict[str, ProviderConfigurations]
 
     def __init__(self, model_runtime: ModelRuntime):
         self.decoding_rsa_key = None
         self.decoding_cipher_rsa = None
         self._model_runtime = model_runtime
+        self._configurations_cache = {}
+
+    def clear_configurations_cache(self, tenant_id: str | None = None) -> None:
+        """Drop assembled provider configurations cached on this manager instance."""
+        if tenant_id is None:
+            self._configurations_cache.clear()
+            return
+
+        self._configurations_cache.pop(tenant_id, None)
 
     def get_configurations(self, tenant_id: str) -> ProviderConfigurations:
         """
@@ -114,6 +134,10 @@ class ProviderManager:
         :param tenant_id:
         :return:
         """
+        cached_configurations = self._configurations_cache.get(tenant_id)
+        if cached_configurations is not None:
+            return cached_configurations
+
         # Get all provider records of the workspace
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
 
@@ -273,6 +297,8 @@ class ProviderManager:
 
             provider_configurations[str(provider_id_entity)] = provider_configuration
 
+        self._configurations_cache[tenant_id] = provider_configurations
+
         # Return the encapsulated object
         return provider_configurations
 
@@ -419,7 +445,7 @@ class ProviderManager:
     @staticmethod
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
             providers = session.scalars(stmt)
             for provider in providers:
@@ -436,7 +462,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_records_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
             provider_models = session.scalars(stmt)
             for provider_model in provider_models:
@@ -452,7 +478,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_preferred_provider_type_records_dict = {}
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(TenantPreferredModelProvider).where(TenantPreferredModelProvider.tenant_id == tenant_id)
             preferred_provider_types = session.scalars(stmt)
             provider_name_to_preferred_provider_type_records_dict = {
@@ -470,7 +496,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_settings_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == tenant_id)
             provider_model_settings = session.scalars(stmt)
             for provider_model_setting in provider_model_settings:
@@ -488,7 +514,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_credentials_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(ProviderModelCredential).where(ProviderModelCredential.tenant_id == tenant_id)
             provider_model_credentials = session.scalars(stmt)
             for provider_model_credential in provider_model_credentials:
@@ -518,7 +544,7 @@ class ProviderManager:
             return {}
 
         provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
             provider_load_balancing_configs = session.scalars(stmt)
             for provider_load_balancing_config in provider_load_balancing_configs:
@@ -552,7 +578,7 @@ class ProviderManager:
         :param provider_name: provider name
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = (
                 select(ProviderCredential)
                 .where(
@@ -582,7 +608,7 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = (
                 select(ProviderModelCredential)
                 .where(
@@ -856,7 +882,7 @@ class ProviderManager:
         secret_variables: list[str],
         cache_type: ProviderCredentialsCacheType,
         is_provider: bool = False,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Get and decrypt credentials with caching."""
         credentials_cache = ProviderCredentialsCache(
             tenant_id=tenant_id,

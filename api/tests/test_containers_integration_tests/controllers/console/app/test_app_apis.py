@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -69,7 +70,7 @@ def _unwrap(func):
 
 class TestCompletionEndpoints:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_completion_create_payload(self):
@@ -86,7 +87,7 @@ class TestCompletionEndpoints:
         )
         assert payload.query == "hi"
 
-    def test_completion_api_success(self, app, monkeypatch):
+    def test_completion_api_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
         method = _unwrap(api.post)
 
@@ -116,7 +117,7 @@ class TestCompletionEndpoints:
 
         assert resp == {"result": {"text": "ok"}}
 
-    def test_completion_api_conversation_not_exists(self, app, monkeypatch):
+    def test_completion_api_conversation_not_exists(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
         method = _unwrap(api.post)
 
@@ -142,7 +143,7 @@ class TestCompletionEndpoints:
             with pytest.raises(NotFound):
                 method(app_model=MagicMock(id="app-1"))
 
-    def test_completion_api_provider_not_initialized(self, app, monkeypatch):
+    def test_completion_api_provider_not_initialized(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
         method = _unwrap(api.post)
 
@@ -166,7 +167,7 @@ class TestCompletionEndpoints:
             with pytest.raises(completion_module.ProviderNotInitializeError):
                 method(app_model=MagicMock(id="app-1"))
 
-    def test_completion_api_quota_exceeded(self, app, monkeypatch):
+    def test_completion_api_quota_exceeded(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
         method = _unwrap(api.post)
 
@@ -193,10 +194,10 @@ class TestCompletionEndpoints:
 
 class TestAppEndpoints:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_app_put_should_preserve_icon_type_when_payload_omits_it(self, app, monkeypatch):
+    def test_app_put_should_preserve_icon_type_when_payload_omits_it(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = app_module.AppApi()
         method = _unwrap(api.put)
         payload = {
@@ -234,10 +235,39 @@ class TestAppEndpoints:
                 }
             )
 
+    def test_app_icon_post_should_forward_icon_type(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+        api = app_module.AppIconApi()
+        method = _unwrap(api.post)
+        payload = {
+            "icon": "https://example.com/icon.png",
+            "icon_type": "image",
+            "icon_background": "#FFFFFF",
+        }
+        app_service = MagicMock()
+        app_service.update_app_icon.return_value = SimpleNamespace()
+        response_model = MagicMock()
+        response_model.model_dump.return_value = {"id": "app-1"}
+
+        monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+        monkeypatch.setattr(app_module.AppDetail, "model_validate", MagicMock(return_value=response_model))
+
+        with (
+            app.test_request_context("/console/api/apps/app-1/icon", method="POST", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+        ):
+            response = method(app_model=SimpleNamespace())
+
+        assert response == {"id": "app-1"}
+        assert app_service.update_app_icon.call_args.args[1:] == (
+            payload["icon"],
+            payload["icon_background"],
+            app_module.IconType.IMAGE,
+        )
+
 
 class TestOpsTraceEndpoints:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_ops_trace_query_basic(self):
@@ -248,7 +278,7 @@ class TestOpsTraceEndpoints:
         payload = TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"})
         assert payload.tracing_config["api_key"] == "k"
 
-    def test_trace_app_config_get_empty(self, app, monkeypatch):
+    def test_trace_app_config_get_empty(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = _unwrap(api.get)
 
@@ -263,7 +293,7 @@ class TestOpsTraceEndpoints:
 
         assert result == {"has_not_configured": True}
 
-    def test_trace_app_config_post_invalid(self, app, monkeypatch):
+    def test_trace_app_config_post_invalid(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = _unwrap(api.post)
 
@@ -280,7 +310,7 @@ class TestOpsTraceEndpoints:
             with pytest.raises(BadRequest):
                 method(app_id="app-1")
 
-    def test_trace_app_config_delete_not_found(self, app, monkeypatch):
+    def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = ops_trace_module.TraceAppConfigApi()
         method = _unwrap(api.delete)
 
@@ -297,7 +327,7 @@ class TestOpsTraceEndpoints:
 
 class TestSiteEndpoints:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_site_response_structure(self):
@@ -308,11 +338,26 @@ class TestSiteEndpoints:
         payload = AppSiteUpdatePayload(default_language="en-US")
         assert payload.default_language == "en-US"
 
-    def test_app_site_update_post(self, app, monkeypatch):
+    def test_app_site_update_post(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = site_module.AppSite()
         method = _unwrap(api.post)
 
         site = MagicMock()
+        site.app_id = "app-1"
+        site.code = "test-code"
+        site.title = "My Site"
+        site.icon = None
+        site.icon_background = None
+        site.description = "Test site"
+        site.default_language = "en-US"
+        site.customize_domain = None
+        site.copyright = None
+        site.privacy_policy = None
+        site.custom_disclaimer = ""
+        site.customize_token_strategy = "not_allow"
+        site.prompt_public = False
+        site.show_workflow_steps = True
+        site.use_icon_as_answer_icon = False
         monkeypatch.setattr(
             site_module.db,
             "session",
@@ -328,13 +373,29 @@ class TestSiteEndpoints:
         with app.test_request_context("/", json={"title": "My Site"}):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result is site
+        assert isinstance(result, dict)
+        assert result["title"] == "My Site"
 
-    def test_app_site_access_token_reset(self, app, monkeypatch):
+    def test_app_site_access_token_reset(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = site_module.AppSiteAccessTokenReset()
         method = _unwrap(api.post)
 
         site = MagicMock()
+        site.app_id = "app-1"
+        site.code = "old-code"
+        site.title = "My Site"
+        site.icon = None
+        site.icon_background = None
+        site.description = None
+        site.default_language = "en-US"
+        site.customize_domain = None
+        site.copyright = None
+        site.privacy_policy = None
+        site.custom_disclaimer = ""
+        site.customize_token_strategy = "not_allow"
+        site.prompt_public = False
+        site.show_workflow_steps = True
+        site.use_icon_as_answer_icon = False
         monkeypatch.setattr(
             site_module.db,
             "session",
@@ -351,7 +412,8 @@ class TestSiteEndpoints:
         with app.test_request_context("/"):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result is site
+        assert isinstance(result, dict)
+        assert result["access_token"] == "code"
 
 
 class TestWorkflowEndpoints:
@@ -366,7 +428,7 @@ class TestWorkflowEndpoints:
 
 class TestWorkflowAppLogEndpoints:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_workflow_app_log_query(self):
@@ -377,7 +439,7 @@ class TestWorkflowAppLogEndpoints:
         query = WorkflowAppLogQuery(detail="true")
         assert query.detail is True
 
-    def test_workflow_app_log_api_get(self, app, monkeypatch):
+    def test_workflow_app_log_api_get(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = workflow_app_log_module.WorkflowAppLogApi()
         method = _unwrap(api.get)
 
@@ -400,7 +462,7 @@ class TestWorkflowAppLogEndpoints:
         monkeypatch.setattr(workflow_app_log_module, "sessionmaker", DummySessionMaker)
 
         def fake_get_paginate(self, **_kwargs):
-            return {"items": [], "total": 0}
+            return {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
         monkeypatch.setattr(
             workflow_app_log_module.WorkflowAppService,
@@ -411,19 +473,19 @@ class TestWorkflowAppLogEndpoints:
         with app.test_request_context("/?page=1&limit=20"):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result == {"items": [], "total": 0}
+        assert result == {"page": 1, "limit": 20, "total": 0, "has_more": False, "data": []}
 
 
 class TestWorkflowDraftVariableEndpoints:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_workflow_variable_creation(self):
         payload = WorkflowDraftVariableUpdatePayload(name="var1", value="test")
         assert payload.name == "var1"
 
-    def test_workflow_variable_collection_get(self, app, monkeypatch):
+    def test_workflow_variable_collection_get(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = workflow_draft_variable_module.WorkflowVariableCollectionApi()
         method = _unwrap(api.get)
 
@@ -468,7 +530,7 @@ class TestWorkflowDraftVariableEndpoints:
 
 class TestWorkflowStatisticEndpoints:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_workflow_statistic_time_range(self):
@@ -480,7 +542,7 @@ class TestWorkflowStatisticEndpoints:
         assert query.start is None
         assert query.end is None
 
-    def test_workflow_daily_runs_statistic(self, app, monkeypatch):
+    def test_workflow_daily_runs_statistic(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(workflow_statistic_module, "db", SimpleNamespace(engine=MagicMock()))
         monkeypatch.setattr(
             workflow_statistic_module.DifyAPIRepositoryFactory,
@@ -506,7 +568,7 @@ class TestWorkflowStatisticEndpoints:
 
         assert response.get_json() == {"data": [{"date": "2024-01-01"}]}
 
-    def test_workflow_daily_terminals_statistic(self, app, monkeypatch):
+    def test_workflow_daily_terminals_statistic(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(workflow_statistic_module, "db", SimpleNamespace(engine=MagicMock()))
         monkeypatch.setattr(
             workflow_statistic_module.DifyAPIRepositoryFactory,
@@ -537,7 +599,7 @@ class TestWorkflowStatisticEndpoints:
 
 class TestWorkflowTriggerEndpoints:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_webhook_trigger_payload(self):
@@ -547,7 +609,7 @@ class TestWorkflowTriggerEndpoints:
         enable_payload = ParserEnable(trigger_id="trigger-1", enable_trigger=True)
         assert enable_payload.enable_trigger is True
 
-    def test_webhook_trigger_api_get(self, app, monkeypatch):
+    def test_webhook_trigger_api_get(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = workflow_trigger_module.WebhookTriggerApi()
         method = _unwrap(api.get)
 
@@ -576,7 +638,8 @@ class TestWorkflowTriggerEndpoints:
         with app.test_request_context("/?node_id=node-1"):
             result = method(app_model=SimpleNamespace(id="app-1"))
 
-        assert result is trigger
+        assert isinstance(result, dict)
+        assert {"id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", "created_at"} <= set(result.keys())
 
 
 class TestWrapsEndpoints:

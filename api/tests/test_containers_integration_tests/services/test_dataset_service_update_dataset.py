@@ -1,13 +1,21 @@
+import json
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.dataset import Dataset, ExternalKnowledgeBindings
+from graphon.model_runtime.entities.model_entities import ModelType
+from models.account import (
+    Account,
+    AccountStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountRole,
+    TenantStatus,
+)
+from models.dataset import Dataset, ExternalKnowledgeApis, ExternalKnowledgeBindings
 from models.enums import DataSourceType
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
@@ -25,12 +33,12 @@ class DatasetUpdateTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
-        tenant = Tenant(name=f"tenant-{account.id}", status="normal")
+        tenant = Tenant(name=f"tenant-{account.id}", status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
 
@@ -103,6 +111,34 @@ class DatasetUpdateTestDataFactory:
         db_session_with_containers.commit()
         return binding
 
+    @staticmethod
+    def create_external_knowledge_api(
+        db_session_with_containers: Session,
+        tenant_id: str,
+        created_by: str,
+        api_id: str | None = None,
+        name: str = "test-api",
+    ) -> ExternalKnowledgeApis:
+        """Create a real external knowledge API template for tenant-scoped update validation."""
+        external_api = ExternalKnowledgeApis(
+            tenant_id=tenant_id,
+            created_by=created_by,
+            updated_by=created_by,
+            name=name,
+            description="test description",
+            settings=json.dumps(
+                {
+                    "endpoint": "https://example.com",
+                    "api_key": "test-api-key",
+                }
+            ),
+        )
+        if api_id is not None:
+            external_api.id = api_id
+        db_session_with_containers.add(external_api)
+        db_session_with_containers.commit()
+        return external_api
+
 
 class TestDatasetServiceUpdateDataset:
     """
@@ -138,6 +174,11 @@ class TestDatasetServiceUpdateDataset:
         )
         binding_id = binding.id
         db_session_with_containers.expunge(binding)
+        external_api = DatasetUpdateTestDataFactory.create_external_knowledge_api(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=user.id,
+        )
 
         update_data = {
             "name": "new_name",
@@ -145,7 +186,7 @@ class TestDatasetServiceUpdateDataset:
             "external_retrieval_model": "new_model",
             "permission": "only_me",
             "external_knowledge_id": "new_knowledge_id",
-            "external_knowledge_api_id": str(uuid4()),
+            "external_knowledge_api_id": external_api.id,
         }
 
         result = DatasetService.update_dataset(dataset.id, update_data, user)
@@ -218,11 +259,16 @@ class TestDatasetServiceUpdateDataset:
             created_by=user.id,
             provider="external",
         )
+        external_api = DatasetUpdateTestDataFactory.create_external_knowledge_api(
+            db_session_with_containers,
+            tenant_id=tenant.id,
+            created_by=user.id,
+        )
 
         update_data = {
             "name": "new_name",
             "external_knowledge_id": "knowledge_id",
-            "external_knowledge_api_id": str(uuid4()),
+            "external_knowledge_api_id": external_api.id,
         }
 
         with pytest.raises(ValueError) as context:

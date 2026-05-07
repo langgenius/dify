@@ -165,3 +165,132 @@ Open the HTML report locally with:
 ```bash
 open cucumber-report/report.html
 ```
+
+## Writing new scenarios
+
+### Workflow
+
+1. Create a `.feature` file under `features/<capability>/`
+1. Add step definitions under `features/step-definitions/<capability>/`
+1. Reuse existing steps from `common/` and other definition files before writing new ones
+1. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
+1. Run `pnpm -C e2e check` before committing
+
+### Feature file conventions
+
+Tag every feature or scenario with a capability tag. Add auth tags only when they clarify intent or change the browser session behavior:
+
+```gherkin
+@datasets @authenticated
+Feature: Create dataset
+  Scenario: Create a new empty dataset
+    Given I am signed in as the default E2E admin
+    When I open the datasets page
+    ...
+```
+
+- Capability tags (`@apps`, `@auth`, `@datasets`, …) group related scenarios for selective runs
+- Auth/session tags:
+  - default behavior — scenarios run with the shared authenticated storageState unless marked otherwise
+  - `@unauthenticated` — uses a clean BrowserContext with no cookies or storage
+  - `@authenticated` — optional intent tag for readability or selective runs; it does not currently change hook behavior on its own
+- `@fresh` — only runs in `e2e:full` mode (requires uninitialized instance)
+- `@skip` — excluded from all runs
+
+Keep scenarios short and declarative. Each step should describe **what** the user does, not **how** the UI works.
+
+### Step definition conventions
+
+```typescript
+import type { DifyWorld } from '../../support/world'
+import { Then, When } from '@cucumber/cucumber'
+import { expect } from '@playwright/test'
+
+When('I open the datasets page', async function (this: DifyWorld) {
+  await this.getPage().goto('/datasets')
+})
+```
+
+Rules:
+
+- Always type `this` as `DifyWorld` for proper context access
+- Use `async function` (not arrow functions — Cucumber binds `this`)
+- One step = one user-visible action or one assertion
+- Keep steps stateless across scenarios; use `DifyWorld` properties for in-scenario state
+
+### Locator priority
+
+Follow the Playwright recommended locator strategy, in order of preference:
+
+| Priority | Locator            | Example                                   | When to use                               |
+| -------- | ------------------ | ----------------------------------------- | ----------------------------------------- |
+| 1        | `getByRole`        | `getByRole('button', { name: 'Create' })` | Default choice — accessible and resilient |
+| 2        | `getByLabel`       | `getByLabel('App name')`                  | Form inputs with visible labels           |
+| 3        | `getByPlaceholder` | `getByPlaceholder('Enter name')`          | Inputs without visible labels             |
+| 4        | `getByText`        | `getByText('Welcome')`                    | Static text content                       |
+| 5        | `getByTestId`      | `getByTestId('workflow-canvas')`          | Only when no semantic locator works       |
+
+Avoid raw CSS/XPath selectors. They break when the DOM structure changes.
+
+### Assertions
+
+Use `@playwright/test` `expect` — it auto-waits and retries until the condition is met or the timeout expires:
+
+```typescript
+// URL assertion
+await expect(page).toHaveURL(/\/datasets\/[a-f0-9-]+\/documents/)
+
+// Element visibility
+await expect(page.getByRole('button', { name: 'Save' })).toBeVisible()
+
+// Element state
+await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled()
+
+// Negation
+await expect(page.getByText('Loading')).not.toBeVisible()
+```
+
+Do not use manual `waitForTimeout` or polling loops. If you need a longer wait for a specific assertion, pass `{ timeout: 30_000 }` to the assertion.
+
+### Cucumber expressions
+
+Use Cucumber expression parameter types to extract values from Gherkin steps:
+
+| Type       | Pattern       | Example step                       |
+| ---------- | ------------- | ---------------------------------- |
+| `{string}` | Quoted string | `I select the "Workflow" app type` |
+| `{int}`    | Integer       | `I should see {int} items`         |
+| `{float}`  | Decimal       | `the progress is {float} percent`  |
+| `{word}`   | Single word   | `I click the {word} tab`           |
+
+Prefer `{string}` for UI labels, names, and text content — it maps naturally to Gherkin's quoted values.
+
+### Scoping locators
+
+When the page has multiple similar elements, scope locators to a container:
+
+```typescript
+When('I fill in the app name in the dialog', async function (this: DifyWorld) {
+  const dialog = this.getPage().getByRole('dialog')
+  await dialog.getByPlaceholder('Give your app a name').fill('My App')
+})
+```
+
+### Failure diagnostics
+
+The `After` hook automatically captures on failure:
+
+- Full-page screenshot (PNG)
+- Page HTML dump
+- Console errors and page errors
+
+Artifacts are saved to `cucumber-report/artifacts/` and attached to the HTML report. No extra code needed in step definitions.
+
+## Reusing existing steps
+
+Before writing a new step definition, inspect the existing step definition files first. Reuse a matching step when the wording and behavior already fit, and only add a new step when the scenario needs a genuinely new user action or assertion. Steps in `common/` are designed for broad reuse across all features.
+
+Or browse the step definition files directly:
+
+- `features/step-definitions/common/` — auth guards and navigation assertions shared by all features
+- `features/step-definitions/<capability>/` — domain-specific steps scoped to a single feature area

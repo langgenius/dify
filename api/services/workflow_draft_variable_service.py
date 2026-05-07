@@ -3,22 +3,10 @@ import json
 import logging
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from enum import StrEnum
-from typing import Any, ClassVar
+from typing import Any, ClassVar, NotRequired, TypedDict
 
-from graphon.enums import NodeType
-from graphon.file import File
-from graphon.nodes import BuiltinNodeTypes
-from graphon.nodes.variable_assigner.common.helpers import get_updated_variables
-from graphon.variable_loader import VariableLoader
-from graphon.variables import Segment, StringSegment, VariableBase
-from graphon.variables.consts import SELECTORS_LENGTH
-from graphon.variables.segments import (
-    ArrayFileSegment,
-    FileSegment,
-)
-from graphon.variables.types import SegmentType
-from graphon.variables.utils import dumps_with_segments
 from sqlalchemy import Engine, delete, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -39,6 +27,19 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import storage
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
+from graphon.enums import NodeType
+from graphon.file import File
+from graphon.nodes import BuiltinNodeTypes
+from graphon.nodes.variable_assigner.common.helpers import get_updated_variables
+from graphon.variable_loader import VariableLoader
+from graphon.variables import Segment, StringSegment, VariableBase
+from graphon.variables.consts import SELECTORS_LENGTH
+from graphon.variables.segments import (
+    ArrayFileSegment,
+    FileSegment,
+)
+from graphon.variables.types import SegmentType
+from graphon.variables.utils import dumps_with_segments
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models import Account, App, Conversation
@@ -145,7 +146,7 @@ class DraftVarLoader(VariableLoader):
             variable = segment_to_variable(
                 segment=segment,
                 selector=draft_var.get_selector(),
-                id=draft_var.id,
+                variable_id=draft_var.id,
                 name=draft_var.name,
                 description=draft_var.description,
             )
@@ -179,7 +180,7 @@ class DraftVarLoader(VariableLoader):
             variable = segment_to_variable(
                 segment=segment,
                 selector=draft_var.get_selector(),
-                id=draft_var.id,
+                variable_id=draft_var.id,
                 name=draft_var.name,
                 description=draft_var.description,
             )
@@ -190,7 +191,7 @@ class DraftVarLoader(VariableLoader):
         variable = segment_to_variable(
             segment=segment,
             selector=draft_var.get_selector(),
-            id=draft_var.id,
+            variable_id=draft_var.id,
             name=draft_var.name,
             description=draft_var.description,
         )
@@ -725,8 +726,27 @@ def _batch_upsert_draft_variable(
     session.execute(stmt)
 
 
-def _model_to_insertion_dict(model: WorkflowDraftVariable) -> dict[str, Any]:
-    d: dict[str, Any] = {
+class _InsertionDict(TypedDict):
+    id: str
+    app_id: str
+    user_id: str | None
+    last_edited_at: datetime | None
+    node_id: str
+    name: str
+    selector: str
+    value_type: SegmentType
+    value: str
+    node_execution_id: str | None
+    file_id: str | None
+    visible: NotRequired[bool]
+    editable: NotRequired[bool]
+    created_at: NotRequired[datetime]
+    updated_at: NotRequired[datetime]
+    description: NotRequired[str]
+
+
+def _model_to_insertion_dict(model: WorkflowDraftVariable) -> _InsertionDict:
+    d: _InsertionDict = {
         "id": model.id,
         "app_id": model.app_id,
         "user_id": model.user_id,
@@ -1047,7 +1067,7 @@ class DraftVariableSaver:
             filename = f"{self._generate_filename(name)}.txt"
         else:
             # For other types, store as JSON
-            original_content_serialized = dumps_with_segments(value_seg.value, ensure_ascii=False)
+            original_content_serialized = dumps_with_segments(value_seg.value)
             content_type = "application/json"
             filename = f"{self._generate_filename(name)}.json"
 
@@ -1063,10 +1083,9 @@ class DraftVariableSaver:
             mimetype=content_type,
             user=self._user,
         )
-
+        assert self._user.current_tenant_id
         # Create WorkflowDraftVariableFile record
         variable_file = WorkflowDraftVariableFile(
-            id=uuidv7(),
             upload_file_id=upload_file.id,
             size=original_size,
             length=original_length,
@@ -1075,6 +1094,7 @@ class DraftVariableSaver:
             tenant_id=self._user.current_tenant_id,
             user_id=self._user.id,
         )
+        variable_file.id = str(uuidv7())
         engine = bind = self._session.get_bind()
         assert isinstance(engine, Engine)
         with sessionmaker(bind=engine, expire_on_commit=False).begin() as session:

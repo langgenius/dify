@@ -5,6 +5,11 @@ from enum import StrEnum
 from typing import Any, Literal, cast, overload
 
 import json_repair
+from pydantic import TypeAdapter, ValidationError
+
+from core.llm_generator.output_parser.errors import OutputParserError
+from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
+from core.model_manager import ModelInstance
 from graphon.model_runtime.callbacks.base_callback import Callback
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -21,11 +26,6 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
 )
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
-from pydantic import TypeAdapter, ValidationError
-
-from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
-from core.model_manager import ModelInstance
 
 
 class ResponseFormat(StrEnum):
@@ -200,9 +200,9 @@ def _handle_native_json_schema(
     provider: str,
     model_schema: AIModelEntity,
     structured_output_schema: Mapping,
-    model_parameters: dict,
+    model_parameters: dict[str, Any],
     rules: list[ParameterRule],
-):
+) -> dict[str, Any]:
     """
     Handle structured output for models with native JSON schema support.
 
@@ -224,7 +224,7 @@ def _handle_native_json_schema(
     return model_parameters
 
 
-def _set_response_format(model_parameters: dict, rules: list):
+def _set_response_format(model_parameters: dict[str, Any], rules: list[ParameterRule]) -> None:
     """
     Set the appropriate response format parameter based on model rules.
 
@@ -326,7 +326,7 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
         return {"schema": processed_schema, "name": "llm_response"}
 
 
-def remove_additional_properties(schema: dict):
+def remove_additional_properties(schema: dict[str, Any]) -> None:
     """
     Remove additionalProperties fields from JSON schema.
     Used for models like Gemini that don't support this property.
@@ -349,7 +349,7 @@ def remove_additional_properties(schema: dict):
                     remove_additional_properties(item)
 
 
-def convert_boolean_to_string(schema: dict):
+def convert_boolean_to_string(schema: dict[str, Any]) -> None:
     """
     Convert boolean type specifications to string in JSON schema.
 

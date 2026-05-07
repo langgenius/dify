@@ -35,22 +35,24 @@ def plugin_permission_required(
                     return view(*args, **kwargs)
 
                 if install_required:
-                    if permission.install_permission == TenantPluginPermission.InstallPermission.NOBODY:
-                        raise Forbidden()
-                    if permission.install_permission == TenantPluginPermission.InstallPermission.ADMINS:
-                        if not user.is_admin_or_owner:
+                    match permission.install_permission:
+                        case TenantPluginPermission.InstallPermission.NOBODY:
                             raise Forbidden()
-                    if permission.install_permission == TenantPluginPermission.InstallPermission.EVERYONE:
-                        pass
+                        case TenantPluginPermission.InstallPermission.ADMINS:
+                            if not user.is_admin_or_owner:
+                                raise Forbidden()
+                        case TenantPluginPermission.InstallPermission.EVERYONE:
+                            pass
 
                 if debug_required:
-                    if permission.debug_permission == TenantPluginPermission.DebugPermission.NOBODY:
-                        raise Forbidden()
-                    if permission.debug_permission == TenantPluginPermission.DebugPermission.ADMINS:
-                        if not user.is_admin_or_owner:
+                    match permission.debug_permission:
+                        case TenantPluginPermission.DebugPermission.NOBODY:
                             raise Forbidden()
-                    if permission.debug_permission == TenantPluginPermission.DebugPermission.EVERYONE:
-                        pass
+                        case TenantPluginPermission.DebugPermission.ADMINS:
+                            if not user.is_admin_or_owner:
+                                raise Forbidden()
+                        case TenantPluginPermission.DebugPermission.EVERYONE:
+                            pass
 
             return view(*args, **kwargs)
 

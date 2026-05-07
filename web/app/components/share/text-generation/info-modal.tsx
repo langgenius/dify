@@ -1,9 +1,9 @@
 import type { SiteInfo } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import Modal from '@/app/components/base/modal'
 import { appDefaultIconBackground } from '@/config'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   data?: SiteInfo
@@ -20,10 +20,10 @@ const InfoModal = ({
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className="min-w-[400px] max-w-[400px] p-0!"
+      className="max-w-[400px] min-w-[400px] p-0!"
       closable
     >
-      <div className={cn('flex flex-col items-center gap-4 px-4 pb-8 pt-10')}>
+      <div className={cn('flex flex-col items-center gap-4 px-4 pt-10 pb-8')}>
         <AppIcon
           size="xxl"
           iconType={data?.icon_type}

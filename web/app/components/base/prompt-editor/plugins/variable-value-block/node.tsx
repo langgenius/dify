@@ -9,11 +9,11 @@ import {
 } from 'lexical'
 
 export class VariableValueBlockNode extends TextNode {
-  static getType(): string {
+  static override getType(): string {
     return 'variable-value-block'
   }
 
-  static clone(node: VariableValueBlockNode): VariableValueBlockNode {
+  static override clone(node: VariableValueBlockNode): VariableValueBlockNode {
     return new VariableValueBlockNode(node.__text, node.__key)
   }
 
@@ -21,13 +21,13 @@ export class VariableValueBlockNode extends TextNode {
   //   super(text, key)
   // }
 
-  createDOM(config: EditorConfig): HTMLElement {
+  override createDOM(config: EditorConfig): HTMLElement {
     const element = super.createDOM(config)
     element.classList.add('inline-flex', 'items-center', 'px-0.5', 'h-[22px]', 'text-text-accent', 'rounded-[5px]', 'align-middle')
     return element
   }
 
-  static importJSON(serializedNode: SerializedTextNode): TextNode {
+  static override importJSON(serializedNode: SerializedTextNode): TextNode {
     const node = $createVariableValueBlockNode(serializedNode.text)
     node.setFormat(serializedNode.format)
     node.setDetail(serializedNode.detail)
@@ -36,7 +36,7 @@ export class VariableValueBlockNode extends TextNode {
     return node
   }
 
-  exportJSON(): SerializedTextNode {
+  override exportJSON(): SerializedTextNode {
     return {
       detail: this.getDetail(),
       format: this.getFormat(),
@@ -48,7 +48,7 @@ export class VariableValueBlockNode extends TextNode {
     }
   }
 
-  canInsertTextBefore(): boolean {
+  override canInsertTextBefore(): boolean {
     return false
   }
 }

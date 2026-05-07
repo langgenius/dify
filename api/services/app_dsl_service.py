@@ -3,19 +3,13 @@ import hashlib
 import logging
 import uuid
 from collections.abc import Mapping
-from typing import cast
+from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
 import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-from graphon.enums import BuiltinNodeTypes
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from graphon.nodes.llm.entities import LLMNodeData
-from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
-from graphon.nodes.tool.entities import ToolNodeData
 from packaging import version
 from packaging.version import parse as parse_version
 from pydantic import BaseModel
@@ -23,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
 from core.trigger.constants import (
@@ -35,6 +30,12 @@ from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerSc
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
@@ -50,7 +51,7 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
-CURRENT_DSL_VERSION = "0.6.0"
+CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
 
 
 class Import(BaseModel):
@@ -400,7 +401,7 @@ class AppDslService:
         self,
         *,
         app: App | None,
-        data: dict,
+        data: dict[str, Any],
         account: Account,
         name: str | None = None,
         description: str | None = None,
@@ -455,7 +456,7 @@ class AppDslService:
             app.updated_by = account.id
 
             self._session.add(app)
-            self._session.commit()
+            self._session.flush()
             app_was_created.send(app, account=account)
 
         # save dependencies
@@ -567,7 +568,7 @@ class AppDslService:
 
     @classmethod
     def _append_workflow_export_data(
-        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: str | None = None
+        cls, *, export_data: dict[str, Any], app_model: App, include_secret: bool, workflow_id: str | None = None
     ):
         """
         Append workflow export data
@@ -620,7 +621,7 @@ class AppDslService:
         ]
 
     @classmethod
-    def _append_model_config_export_data(cls, export_data: dict, app_model: App):
+    def _append_model_config_export_data(cls, export_data: dict[str, Any], app_model: App):
         """
         Append model config export data
         :param export_data: export data

@@ -1,7 +1,6 @@
 import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { trackEvent } from '@/app/components/base/amplitude'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -10,6 +9,7 @@ import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import CreateAppModal from '../index'
 
 const ahooksMocks = vi.hoisted(() => ({
@@ -31,8 +31,8 @@ vi.mock('ahooks', () => ({
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
 }))
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: vi.fn(),
+vi.mock('@/utils/create-app-tracking', () => ({
+  trackCreateApp: vi.fn(),
 }))
 vi.mock('@/service/apps', () => ({
   createApp: vi.fn(),
@@ -41,7 +41,7 @@ const toastMocks = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
 }))
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: toastMocks.mockToastSuccess,
     error: toastMocks.mockToastError,
@@ -87,7 +87,7 @@ vi.mock('@/hooks/use-theme', () => ({
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
 const mockCreateApp = vi.mocked(createApp)
-const mockTrackEvent = vi.mocked(trackEvent)
+const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseAppContext = vi.mocked(useAppContext)
@@ -121,7 +121,6 @@ const renderModal = () => {
 
 describe('CreateAppModal', () => {
   const mockSetItem = vi.fn()
-  const originalLocalStorage = window.localStorage
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -153,13 +152,6 @@ describe('CreateAppModal', () => {
     })
   })
 
-  afterAll(() => {
-    Object.defineProperty(window, 'localStorage', {
-      value: originalLocalStorage,
-      writable: true,
-    })
-  })
-
   it('creates an app, notifies success, and fires callbacks', async () => {
     const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT }
     mockCreateApp.mockResolvedValue(mockApp as App)
@@ -178,10 +170,7 @@ describe('CreateAppModal', () => {
       mode: AppModeEnum.ADVANCED_CHAT,
     }))
 
-    expect(mockTrackEvent).toHaveBeenCalledWith('create_app', {
-      app_mode: AppModeEnum.ADVANCED_CHAT,
-      description: '',
-    })
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({ appMode: AppModeEnum.ADVANCED_CHAT })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()

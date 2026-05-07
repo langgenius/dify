@@ -1,12 +1,12 @@
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 
 const roleI18nKeyMap = {
   normal: 'members.normal',
@@ -62,7 +62,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
               {value === 'normal' && (
                 <div
                   data-testid="role-option-check"
-                  className="i-custom-vender-line-general-check absolute left-0 top-0.5 h-4 w-4 text-text-accent"
+                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
                 />
               )}
             </div>
@@ -81,7 +81,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
               {value === 'editor' && (
                 <div
                   data-testid="role-option-check"
-                  className="i-custom-vender-line-general-check absolute left-0 top-0.5 h-4 w-4 text-text-accent"
+                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
                 />
               )}
             </div>
@@ -100,7 +100,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
               {value === 'admin' && (
                 <div
                   data-testid="role-option-check"
-                  className="i-custom-vender-line-general-check absolute left-0 top-0.5 h-4 w-4 text-text-accent"
+                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
                 />
               )}
             </div>
@@ -120,7 +120,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
                 {value === 'dataset_operator' && (
                   <div
                     data-testid="role-option-check"
-                    className="i-custom-vender-line-general-check absolute left-0 top-0.5 h-4 w-4 text-text-accent"
+                    className="absolute top-0.5 left-0 i-custom-vender-line-general-check h-4 w-4 text-text-accent"
                   />
                 )}
               </div>

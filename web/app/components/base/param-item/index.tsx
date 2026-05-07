@@ -1,8 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import { Slider } from '@/app/components/base/ui/slider'
 import {
   NumberField,
   NumberFieldControls,
@@ -10,7 +7,10 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '../ui/number-field'
+} from '@langgenius/dify-ui/number-field'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Infotip } from '@/app/components/base/infotip'
 
 type Props = {
   className?: string
@@ -37,18 +37,17 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             <Switch
               size="md"
               className="mr-2"
-              value={enable}
-              onChange={async (val) => {
+              checked={enable}
+              onCheckedChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}
             />
           )}
-          <span className="mr-1 text-text-secondary system-sm-semibold">{name}</span>
-          {!noTooltip && (
-            <Tooltip
-              triggerClassName="w-4 h-4 shrink-0"
-              popupContent={<div className="w-[200px]">{tip}</div>}
-            />
+          <span className="mr-1 system-sm-semibold text-text-secondary">{name}</span>
+          {!noTooltip && tip && (
+            <Infotip aria-label={tip} popupClassName="w-[200px]">
+              {tip}
+            </Infotip>
           )}
         </div>
       </div>
@@ -62,11 +61,11 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             value={value}
             onValueChange={nextValue => onChange(id, nextValue ?? min)}
           >
-            <NumberFieldGroup size="regular">
-              <NumberFieldInput size="regular" className="w-[72px]" />
+            <NumberFieldGroup>
+              <NumberFieldInput className="w-[72px]" />
               <NumberFieldControls>
-                <NumberFieldIncrement size="regular" />
-                <NumberFieldDecrement size="regular" />
+                <NumberFieldIncrement />
+                <NumberFieldDecrement />
               </NumberFieldControls>
             </NumberFieldGroup>
           </NumberField>

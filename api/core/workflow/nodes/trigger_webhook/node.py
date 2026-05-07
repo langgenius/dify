@@ -2,6 +2,10 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
+from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
+from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
+from factories.variable_factory import build_segment_with_type
 from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod
 from graphon.node_events import NodeRunResult
@@ -9,11 +13,6 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.variables.types import SegmentType
 from graphon.variables.variables import FileVariable
-
-from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
-from core.workflow.file_reference import resolve_file_record_id
-from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
-from factories.variable_factory import build_segment_with_type
 
 from .entities import ContentType, WebhookData
 
@@ -75,7 +74,7 @@ class TriggerWebhookNode(Node[WebhookData]):
             outputs=outputs,
         )
 
-    def generate_file_var(self, param_name: str, file: dict):
+    def generate_file_var(self, param_name: str, file: dict[str, Any]):
         file_id = resolve_file_record_id(file.get("reference") or file.get("related_id"))
         transfer_method_value = file.get("transfer_method")
         if transfer_method_value:
@@ -147,7 +146,7 @@ class TriggerWebhookNode(Node[WebhookData]):
                 outputs[param_name] = str(webhook_data.get("body", {}).get("raw", ""))
                 continue
             elif self.node_data.content_type == ContentType.BINARY:
-                raw_data: dict = webhook_data.get("body", {}).get("raw", {})
+                raw_data: dict[str, Any] = webhook_data.get("body", {}).get("raw", {})
                 file_var = self.generate_file_var(param_name, raw_data)
                 if file_var:
                     outputs[param_name] = file_var

@@ -1,8 +1,8 @@
 import type { ClipboardEvent } from 'react'
 import type { ImageFile, VisionSettings } from '@/types/app'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useParams } from '@/next/navigation'
 import { ALLOW_FILE_EXTENSIONS, TransferMethod } from '@/types/app'
 import { getImageUploadErrorMessage, imageUpload } from './utils'
@@ -31,7 +31,7 @@ export const useImageFiles = () => {
     const files = filesRef.current
     const index = files.findIndex(file => file._id === imageFileId)
     if (index > -1) {
-      const currentFile = files[index]
+      const currentFile = files[index]!
       const newFiles = [...files.slice(0, index), { ...currentFile, deleted: true }, ...files.slice(index + 1)]
       setFiles(newFiles)
       filesRef.current = newFiles
@@ -41,7 +41,7 @@ export const useImageFiles = () => {
     const files = filesRef.current
     const index = files.findIndex(file => file._id === imageFileId)
     if (index > -1) {
-      const currentFile = files[index]
+      const currentFile = files[index]!
       const newFiles = [...files.slice(0, index), { ...currentFile, progress: -1 }, ...files.slice(index + 1)]
       filesRef.current = newFiles
       setFiles(newFiles)
@@ -51,7 +51,7 @@ export const useImageFiles = () => {
     const files = filesRef.current
     const index = files.findIndex(file => file._id === imageFileId)
     if (index > -1) {
-      const currentImageFile = files[index]
+      const currentImageFile = files[index]!
       const newFiles = [...files.slice(0, index), { ...currentImageFile, progress: 100 }, ...files.slice(index + 1)]
       filesRef.current = newFiles
       setFiles(newFiles)
@@ -61,9 +61,9 @@ export const useImageFiles = () => {
     const files = filesRef.current
     const index = files.findIndex(file => file._id === imageFileId)
     if (index > -1) {
-      const currentImageFile = files[index]
+      const currentImageFile = files[index]!
       imageUpload({
-        file: currentImageFile.file!,
+        file: currentImageFile!.file!,
         onProgressCallback: (progress) => {
           const newFiles = [...files.slice(0, index), { ...currentImageFile, progress }, ...files.slice(index + 1)]
           filesRef.current = newFiles
@@ -114,7 +114,7 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
       // TODO: leave some warnings?
       return
     }
-    if (!ALLOW_FILE_EXTENSIONS.includes(file.type.split('/')[1]))
+    if (!ALLOW_FILE_EXTENSIONS.includes(file.type.split('/')[1]!))
       return
     if (limit && file.size > limit * 1024 * 1024) {
       toast.error(t('imageUploader.uploadFromComputerLimit', { ns: 'common', size: limit }))

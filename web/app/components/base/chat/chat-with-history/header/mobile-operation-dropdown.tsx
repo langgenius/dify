@@ -1,7 +1,12 @@
-import { useState } from 'react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 type Props = {
   handleResetChat: () => void
@@ -16,40 +21,45 @@ const MobileOperationDropdown = ({
 }: Props) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const handleMenuAction = useCallback((callback: () => void) => {
+    setOpen(false)
+    queueMicrotask(callback)
+  }, [])
 
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: -4,
-      }}
     >
-      <PortalToFollowElemTrigger
-        onClick={() => setOpen(v => !v)}
+      <DropdownMenuTrigger
+        render={<div />}
         data-testid="mobile-more-btn"
       >
         <ActionButton size="l" state={open ? ActionButtonState.Hover : ActionButtonState.Default}>
           <div className="i-ri-more-fill h-[18px] w-[18px]" />
         </ActionButton>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-40">
-        <div
-          className="min-w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="min-w-[160px]"
+      >
+        <DropdownMenuItem
+          className="system-md-regular"
+          onClick={() => handleMenuAction(handleResetChat)}
         >
-          <div className="flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover" onClick={handleResetChat}>
-            <span className="grow">{t('chat.resetChat', { ns: 'share' })}</span>
-          </div>
-          {!hideViewChatSettings && (
-            <div className="flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary system-md-regular hover:bg-state-base-hover" onClick={handleViewChatSettings}>
-              <span className="grow">{t('chat.viewChatSettings', { ns: 'share' })}</span>
-            </div>
-          )}
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+          <span className="grow">{t('chat.resetChat', { ns: 'share' })}</span>
+        </DropdownMenuItem>
+        {!hideViewChatSettings && (
+          <DropdownMenuItem
+            className="system-md-regular"
+            onClick={() => handleMenuAction(handleViewChatSettings)}
+          >
+            <span className="grow">{t('chat.viewChatSettings', { ns: 'share' })}</span>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
 
   )
 }

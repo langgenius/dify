@@ -94,7 +94,7 @@ function isValidGeneratedAnswer(item?: ChatItem | ChatItemInTree): boolean {
 
 function getLastAnswer<T extends ChatItem | ChatItemInTree>(chatList: T[]): T | null {
   for (let i = chatList.length - 1; i >= 0; i--) {
-    const item = chatList[i]
+    const item = chatList[i]!
     if (isValidGeneratedAnswer(item))
       return item
   }
@@ -158,7 +158,7 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
         rootNodes.push(questionNode)
       }
       else {
-        map[parentMessageId].children!.push(questionNode)
+        map[parentMessageId]!.children!.push(questionNode)
       }
     }
   }
@@ -188,8 +188,8 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
 
         const parentAnswer = path[index - 2]
         const siblingCount = !parentAnswer ? tree.length : parentAnswer.children!.length
-        const prevSibling = !parentAnswer ? tree[item.siblingIndex! - 1]?.children?.[0]?.id : parentAnswer.children![item.siblingIndex! - 1]?.children?.[0].id
-        const nextSibling = !parentAnswer ? tree[item.siblingIndex! + 1]?.children?.[0]?.id : parentAnswer.children![item.siblingIndex! + 1]?.children?.[0].id
+        const prevSibling = !parentAnswer ? tree[item.siblingIndex! - 1]?.children?.[0]?.id : parentAnswer.children![item.siblingIndex! - 1]?.children?.[0]!.id
+        const nextSibling = !parentAnswer ? tree[item.siblingIndex! + 1]?.children?.[0]?.id : parentAnswer.children![item.siblingIndex! + 1]?.children?.[0]!.id
 
         return { ...item, siblingCount, prevSibling, nextSibling }
       })
@@ -198,8 +198,8 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
     if (node.children) {
       for (let i = node.children.length - 1; i >= 0; i--) {
         stack.push({
-          node: node.children[i],
-          path: [...path, node.children[i]],
+          node: node.children[i]!,
+          path: [...path, node.children[i]!],
         })
       }
     }

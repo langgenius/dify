@@ -57,10 +57,10 @@ describe('template-transform/use-single-run-form-params', () => {
     }))
 
     expect(result.current.forms).toHaveLength(1)
-    expect(result.current.forms[0].inputs).toEqual(varInputs)
-    expect(result.current.forms[0].values).toEqual({ input_text: 'hello' })
+    expect(result.current.forms[0]!.inputs).toEqual(varInputs)
+    expect(result.current.forms[0]!.values).toEqual({ input_text: 'hello' })
 
-    result.current.forms[0].onChange({ input_text: 'updated' })
+    result.current.forms[0]!.onChange({ input_text: 'updated' })
 
     expect(setRunInputData).toHaveBeenCalledWith({ input_text: 'updated' })
     expect(result.current.getDependentVars()).toEqual([['node-1', 'input_text']])

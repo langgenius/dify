@@ -1,7 +1,3 @@
-import * as React from 'react'
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,
   NumberFieldControls,
@@ -9,8 +5,12 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '@/app/components/base/ui/number-field'
-import { Slider } from '@/app/components/base/ui/slider'
+} from '@langgenius/dify-ui/number-field'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const MIN_KEYWORD_NUMBER = 0
 const MAX_KEYWORD_NUMBER = 50
@@ -33,13 +33,18 @@ const KeyWordNumber = ({
   return (
     <div className="flex items-center gap-x-1">
       <div className="flex grow items-center gap-x-0.5">
-        <div className="truncate text-text-secondary system-xs-medium">
+        <div className="truncate system-xs-medium text-text-secondary">
           {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         </div>
-        <Tooltip
-          popupContent={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
-        >
-          <span className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <span className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
+            )}
+          />
+          <TooltipContent>
+            {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+          </TooltipContent>
         </Tooltip>
       </div>
       <Slider
@@ -51,17 +56,17 @@ const KeyWordNumber = ({
         aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
       />
       <NumberField
-        className="w-12 shrink-0"
+        className="w-[74px] shrink-0"
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
         value={keywordNumber}
         onValueChange={handleInputChange}
       >
-        <NumberFieldGroup size="regular">
-          <NumberFieldInput size="regular" />
+        <NumberFieldGroup>
+          <NumberFieldInput className="w-12 flex-none px-2 text-center" />
           <NumberFieldControls>
-            <NumberFieldIncrement size="regular" />
-            <NumberFieldDecrement size="regular" />
+            <NumberFieldIncrement />
+            <NumberFieldDecrement />
           </NumberFieldControls>
         </NumberFieldGroup>
       </NumberField>

@@ -1,11 +1,11 @@
 import type { Param } from '../../../types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import { ParamType } from '../../../types'
 import Update from '../update'
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -123,7 +123,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(handleSave).not.toHaveBeenCalled()
-    expect(mockToast.error).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalled()
+    })
   })
 
   it('requires options before saving a select parameter', async () => {
@@ -145,6 +147,8 @@ describe('parameter-extractor/extract-parameter/update', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(handleSave).not.toHaveBeenCalled()
-    expect(mockToast.error).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(mockToast.error).toHaveBeenCalled()
+    })
   })
 })

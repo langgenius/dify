@@ -13,7 +13,7 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@/context/app-context')
 vi.mock('@/service/common')
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
   },
@@ -54,7 +54,7 @@ describe('EditWorkspaceModal', () => {
     expect(await screen.findByDisplayValue('Test Workspace')).toBeInTheDocument()
   })
 
-  it('should render on the base/ui overlay layer', async () => {
+  it('should render on the dify-ui overlay layer', async () => {
     renderModal()
 
     expect(await screen.findByRole('dialog')).toHaveClass('z-1002')

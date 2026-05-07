@@ -16,7 +16,7 @@ jobs:
   test:
     name: Full VDB Tests
     if: github.repository == 'langgenius/dify'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     strategy:
       matrix:
         python-version:
@@ -36,7 +36,7 @@ jobs:
           remove_tool_cache: true
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -65,7 +65,7 @@ jobs:
 #            tiflash
 
       - name: Set up Full Vector Store Matrix
-        uses: hoverkraft-tech/compose-action@4894d2492015c1774ee5a13a95b1072093087ec3 # v2.5.0
+        uses: hoverkraft-tech/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
         with:
           compose-file: |
             docker/docker-compose.yaml
@@ -89,7 +89,7 @@ jobs:
           cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
 
 #      - name: Check VDB Ready (TiDB)
-#        run: uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
+#        run: uv run --project api python api/providers/vdb/tidb-vector/tests/integration_tests/check_tiflash_ready.py
 
       - name: Test Vector Stores
         run: uv run --project api bash dev/pytest/pytest_vdb.sh

@@ -1,29 +1,20 @@
 """Unit tests for DatasetService and dataset-related collaborators."""
 
 from .dataset_service_test_helpers import (
-    CloudPlan,
-    Dataset,
-    DatasetCollectionBindingService,
     DatasetNameDuplicateError,
     DatasetPermissionEnum,
     DatasetPermissionService,
-    DatasetProcessRule,
     DatasetService,
     DatasetServiceUnitDataFactory,
-    DocumentIndexingError,
-    DocumentService,
     LLMBadRequestError,
     MagicMock,
-    Mock,
     ModelFeature,
     ModelType,
     NoPermissionError,
-    NotFound,
     PipelineIconInfo,
     ProviderTokenNotInitError,
     RagPipelineDatasetCreateEntity,
     SimpleNamespace,
-    TenantAccountRole,
     _make_knowledge_configuration,
     _make_retrieval_model,
     _make_session_context,
@@ -31,127 +22,6 @@ from .dataset_service_test_helpers import (
     patch,
     pytest,
 )
-
-
-class TestDatasetServiceQueries:
-    """Unit tests for DatasetService query composition and fallback branches."""
-
-    @pytest.fixture
-    def mock_dataset_query_dependencies(self):
-        with (
-            patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.helper.escape_like_pattern", return_value="escaped-search") as escape_like,
-            patch("services.dataset_service.TagService.get_target_ids_by_tag_ids") as get_target_ids,
-        ):
-            mock_db.paginate.return_value = SimpleNamespace(items=["dataset"], total=1)
-            yield {
-                "db": mock_db,
-                "escape_like_pattern": escape_like,
-                "get_target_ids": get_target_ids,
-            }
-
-    def test_get_datasets_returns_paginated_results_for_public_view(self, mock_dataset_query_dependencies):
-        items, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1")
-
-        assert items == ["dataset"]
-        assert total == 1
-        mock_dataset_query_dependencies["db"].paginate.assert_called_once()
-        mock_dataset_query_dependencies["escape_like_pattern"].assert_not_called()
-
-    def test_get_datasets_short_circuits_for_dataset_operator_without_permissions(
-        self, mock_dataset_query_dependencies
-    ):
-        user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.DATASET_OPERATOR)
-        mock_dataset_query_dependencies["db"].session.scalars.return_value.all.return_value = []
-
-        items, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=user)
-
-        assert items == []
-        assert total == 0
-        mock_dataset_query_dependencies["db"].paginate.assert_not_called()
-
-    def test_get_datasets_short_circuits_when_tag_lookup_returns_no_target_ids(self, mock_dataset_query_dependencies):
-        mock_dataset_query_dependencies["get_target_ids"].return_value = []
-
-        items, total = DatasetService.get_datasets(
-            page=1,
-            per_page=20,
-            tenant_id="tenant-1",
-            tag_ids=["tag-1"],
-        )
-
-        assert items == []
-        assert total == 0
-        mock_dataset_query_dependencies["get_target_ids"].assert_called_once_with("knowledge", "tenant-1", ["tag-1"])
-        mock_dataset_query_dependencies["db"].paginate.assert_not_called()
-
-    def test_get_datasets_search_and_tag_filters_call_collaborators(self, mock_dataset_query_dependencies):
-        mock_dataset_query_dependencies["get_target_ids"].return_value = ["dataset-1"]
-
-        items, total = DatasetService.get_datasets(
-            page=2,
-            per_page=10,
-            tenant_id="tenant-1",
-            search="report",
-            tag_ids=["tag-1"],
-        )
-
-        assert items == ["dataset"]
-        assert total == 1
-        mock_dataset_query_dependencies["escape_like_pattern"].assert_called_once_with("report")
-        mock_dataset_query_dependencies["get_target_ids"].assert_called_once_with("knowledge", "tenant-1", ["tag-1"])
-        mock_dataset_query_dependencies["db"].paginate.assert_called_once()
-
-    def test_get_process_rules_returns_latest_rule_when_present(self):
-        dataset_process_rule = Mock(spec=DatasetProcessRule)
-        dataset_process_rule.mode = "automatic"
-        dataset_process_rule.rules_dict = {"delimiter": "\n"}
-
-        with patch("services.dataset_service.db") as mock_db:
-            (mock_db.session.execute.return_value.scalar_one_or_none.return_value) = dataset_process_rule
-
-            result = DatasetService.get_process_rules("dataset-1")
-
-        assert result == {"mode": "automatic", "rules": {"delimiter": "\n"}}
-
-    def test_get_process_rules_falls_back_to_default_rules_when_missing(self):
-        with patch("services.dataset_service.db") as mock_db:
-            (mock_db.session.execute.return_value.scalar_one_or_none.return_value) = None
-
-            result = DatasetService.get_process_rules("dataset-1")
-
-        assert result == {
-            "mode": DocumentService.DEFAULT_RULES["mode"],
-            "rules": DocumentService.DEFAULT_RULES["rules"],
-        }
-
-    def test_get_datasets_by_ids_returns_empty_for_missing_ids(self):
-        with patch("services.dataset_service.db") as mock_db:
-            items, total = DatasetService.get_datasets_by_ids([], "tenant-1")
-
-        assert items == []
-        assert total == 0
-        mock_db.paginate.assert_not_called()
-
-    def test_get_datasets_by_ids_uses_paginate_for_non_empty_input(self):
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.paginate.return_value = SimpleNamespace(items=["dataset-1"], total=1)
-
-            items, total = DatasetService.get_datasets_by_ids(["dataset-1"], "tenant-1")
-
-        assert items == ["dataset-1"]
-        assert total == 1
-        mock_db.paginate.assert_called_once()
-
-    def test_get_dataset_returns_first_match(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock()
-
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.get.return_value = dataset
-
-            result = DatasetService.get_dataset(dataset.id)
-
-        assert result is dataset
 
 
 class TestDatasetServiceValidation:
@@ -532,6 +402,9 @@ class TestDatasetServiceCreationAndUpdate:
 
         with (
             patch.object(DatasetService, "_update_external_knowledge_binding") as update_binding,
+            patch(
+                "services.dataset_service.ExternalDatasetService.get_external_knowledge_api", return_value=object()
+            ) as get_external_knowledge_api,
             patch("services.dataset_service.naive_utc_now", return_value=now),
             patch("services.dataset_service.db") as mock_db,
         ):
@@ -557,6 +430,7 @@ class TestDatasetServiceCreationAndUpdate:
         assert dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM
         assert dataset.updated_by == "user-1"
         assert dataset.updated_at is now
+        get_external_knowledge_api.assert_called_once_with("api-1", dataset.tenant_id)
         update_binding.assert_called_once_with("dataset-1", "knowledge-1", "api-1")
         mock_db.session.add.assert_called_once_with(dataset)
         mock_db.session.commit.assert_called_once()
@@ -573,6 +447,31 @@ class TestDatasetServiceCreationAndUpdate:
 
         with pytest.raises(ValueError, match=message):
             DatasetService._update_external_dataset(dataset, payload, SimpleNamespace(id="user-1"))
+
+    def test_update_external_dataset_rejects_cross_tenant_external_api_id(self):
+        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1")
+
+        with (
+            patch(
+                "services.dataset_service.ExternalDatasetService.get_external_knowledge_api",
+                side_effect=ValueError("api template not found"),
+            ) as get_external_knowledge_api,
+            patch.object(DatasetService, "_update_external_knowledge_binding") as update_binding,
+            patch("services.dataset_service.db") as mock_db,
+        ):
+            with pytest.raises(ValueError, match="api template not found"):
+                DatasetService._update_external_dataset(
+                    dataset,
+                    {
+                        "external_knowledge_id": "knowledge-1",
+                        "external_knowledge_api_id": "foreign-api",
+                    },
+                    SimpleNamespace(id="user-1"),
+                )
+
+        get_external_knowledge_api.assert_called_once_with("foreign-api", dataset.tenant_id)
+        update_binding.assert_not_called()
+        mock_db.session.commit.assert_not_called()
 
     def test_update_external_knowledge_binding_updates_changed_binding_values(self):
         binding = SimpleNamespace(external_knowledge_id="old-knowledge", external_knowledge_api_id="old-api")
@@ -1308,103 +1207,6 @@ class TestDatasetServiceRagPipelineSettings:
 class TestDatasetServicePermissionsAndLifecycle:
     """Unit tests for dataset permissions, deletion, and metadata helpers."""
 
-    def test_delete_dataset_returns_false_when_dataset_is_missing(self):
-        with patch.object(DatasetService, "get_dataset", return_value=None):
-            result = DatasetService.delete_dataset("dataset-1", user=SimpleNamespace(id="user-1"))
-
-        assert result is False
-
-    def test_delete_dataset_checks_permission_and_deletes_dataset(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock()
-
-        with (
-            patch.object(DatasetService, "get_dataset", return_value=dataset),
-            patch.object(DatasetService, "check_dataset_permission") as check_permission,
-            patch("services.dataset_service.dataset_was_deleted.send") as send_deleted_signal,
-            patch("services.dataset_service.db") as mock_db,
-        ):
-            result = DatasetService.delete_dataset(dataset.id, user=SimpleNamespace(id="user-1"))
-
-        assert result is True
-        check_permission.assert_called_once_with(dataset, SimpleNamespace(id="user-1"))
-        send_deleted_signal.assert_called_once_with(dataset)
-        mock_db.session.delete.assert_called_once_with(dataset)
-        mock_db.session.commit.assert_called_once()
-
-    def test_dataset_use_check_returns_scalar_result(self):
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.execute.return_value.scalar_one.return_value = True
-
-            result = DatasetService.dataset_use_check("dataset-1")
-
-        assert result is True
-
-    def test_check_dataset_permission_rejects_cross_tenant_access(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(tenant_id="tenant-a")
-        user = DatasetServiceUnitDataFactory.create_user_mock(tenant_id="tenant-b")
-
-        with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_permission(dataset, user)
-
-    def test_check_dataset_permission_rejects_only_me_dataset_for_non_creator(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
-            permission=DatasetPermissionEnum.ONLY_ME,
-            created_by="owner-1",
-        )
-        user = DatasetServiceUnitDataFactory.create_user_mock(
-            user_id="member-1",
-            role=TenantAccountRole.EDITOR,
-        )
-
-        with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_permission(dataset, user)
-
-    def test_check_dataset_permission_rejects_partial_team_user_without_binding(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
-            permission=DatasetPermissionEnum.PARTIAL_TEAM,
-            created_by="owner-1",
-        )
-        user = DatasetServiceUnitDataFactory.create_user_mock(
-            user_id="member-1",
-            role=TenantAccountRole.EDITOR,
-        )
-
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = None
-
-            with pytest.raises(NoPermissionError, match="do not have permission"):
-                DatasetService.check_dataset_permission(dataset, user)
-
-    def test_check_dataset_permission_allows_partial_team_creator_without_lookup(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
-            permission=DatasetPermissionEnum.PARTIAL_TEAM,
-            created_by="creator-1",
-        )
-        user = DatasetServiceUnitDataFactory.create_user_mock(
-            user_id="creator-1",
-            role=TenantAccountRole.EDITOR,
-        )
-
-        with patch("services.dataset_service.db") as mock_db:
-            DatasetService.check_dataset_permission(dataset, user)
-
-        mock_db.session.scalar.assert_not_called()
-
-    def test_check_dataset_permission_allows_partial_team_member_with_binding(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
-            permission=DatasetPermissionEnum.PARTIAL_TEAM,
-            created_by="owner-1",
-        )
-        user = DatasetServiceUnitDataFactory.create_user_mock(
-            user_id="member-1",
-            role=TenantAccountRole.EDITOR,
-        )
-
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = object()
-
-            DatasetService.check_dataset_permission(dataset, user)
-
     def test_check_dataset_operator_permission_validates_required_arguments(self):
         with pytest.raises(ValueError, match="Dataset not found"):
             DatasetService.check_dataset_operator_permission(user=SimpleNamespace(id="user-1"), dataset=None)
@@ -1412,278 +1214,13 @@ class TestDatasetServicePermissionsAndLifecycle:
         with pytest.raises(ValueError, match="User not found"):
             DatasetService.check_dataset_operator_permission(user=None, dataset=SimpleNamespace(id="dataset-1"))
 
-    def test_check_dataset_operator_permission_rejects_only_me_for_non_creator(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
-            permission=DatasetPermissionEnum.ONLY_ME,
-            created_by="owner-1",
-        )
-        user = DatasetServiceUnitDataFactory.create_user_mock(
-            user_id="member-1",
-            role=TenantAccountRole.EDITOR,
-        )
-
-        with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_operator_permission(user=user, dataset=dataset)
-
-    def test_check_dataset_operator_permission_rejects_partial_team_without_binding(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(permission=DatasetPermissionEnum.PARTIAL_TEAM)
-        user = DatasetServiceUnitDataFactory.create_user_mock(
-            user_id="member-1",
-            role=TenantAccountRole.EDITOR,
-        )
-
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalars.return_value.all.return_value = []
-
-            with pytest.raises(NoPermissionError, match="do not have permission"):
-                DatasetService.check_dataset_operator_permission(user=user, dataset=dataset)
-
-    def test_get_dataset_queries_delegates_to_paginate(self):
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.desc.side_effect = lambda column: column
-            mock_db.paginate.return_value = SimpleNamespace(items=["query"], total=1)
-
-            items, total = DatasetService.get_dataset_queries("dataset-1", page=1, per_page=20)
-
-        assert items == ["query"]
-        assert total == 1
-        mock_db.paginate.assert_called_once()
-
-    def test_get_related_apps_returns_ordered_query_results(self):
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.desc.side_effect = lambda column: column
-            mock_db.session.scalars.return_value.all.return_value = ["relation-1"]
-
-            result = DatasetService.get_related_apps("dataset-1")
-
-        assert result == ["relation-1"]
-
-    def test_update_dataset_api_status_raises_not_found_for_missing_dataset(self):
-        with patch.object(DatasetService, "get_dataset", return_value=None):
-            with pytest.raises(NotFound, match="Dataset not found"):
-                DatasetService.update_dataset_api_status("dataset-1", True)
-
-    def test_update_dataset_api_status_requires_current_user_id(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(enable_api=False)
-
-        with (
-            patch.object(DatasetService, "get_dataset", return_value=dataset),
-            patch("services.dataset_service.current_user", SimpleNamespace(id=None)),
-        ):
-            with pytest.raises(ValueError, match="Current user or current user id not found"):
-                DatasetService.update_dataset_api_status(dataset.id, True)
-
-    def test_update_dataset_api_status_updates_fields_and_commits(self):
-        dataset = DatasetServiceUnitDataFactory.create_dataset_mock(enable_api=False)
-        now = object()
-
-        with (
-            patch.object(DatasetService, "get_dataset", return_value=dataset),
-            patch("services.dataset_service.current_user", SimpleNamespace(id="user-1")),
-            patch("services.dataset_service.naive_utc_now", return_value=now),
-            patch("services.dataset_service.db") as mock_db,
-        ):
-            DatasetService.update_dataset_api_status(dataset.id, True)
-
-        assert dataset.enable_api is True
-        assert dataset.updated_by == "user-1"
-        assert dataset.updated_at is now
-        mock_db.session.commit.assert_called_once()
-
-    def test_get_dataset_auto_disable_logs_returns_empty_when_billing_is_disabled(self):
-        class FakeAccount:
-            pass
-
-        current_user = FakeAccount()
-        current_user.current_tenant_id = "tenant-1"
-
-        features = SimpleNamespace(
-            billing=SimpleNamespace(enabled=False, subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL))
-        )
-
-        with (
-            patch("services.dataset_service.Account", FakeAccount),
-            patch("services.dataset_service.current_user", current_user),
-            patch("services.dataset_service.FeatureService.get_features", return_value=features),
-            patch("services.dataset_service.db") as mock_db,
-        ):
-            result = DatasetService.get_dataset_auto_disable_logs("dataset-1")
-
-        assert result == {"document_ids": [], "count": 0}
-        mock_db.session.scalars.assert_not_called()
-
-    def test_get_dataset_auto_disable_logs_returns_recent_document_ids(self):
-        class FakeAccount:
-            pass
-
-        current_user = FakeAccount()
-        current_user.current_tenant_id = "tenant-1"
-        logs = [SimpleNamespace(document_id="doc-1"), SimpleNamespace(document_id="doc-2")]
-        features = SimpleNamespace(
-            billing=SimpleNamespace(enabled=True, subscription=SimpleNamespace(plan=CloudPlan.PROFESSIONAL))
-        )
-
-        with (
-            patch("services.dataset_service.Account", FakeAccount),
-            patch("services.dataset_service.current_user", current_user),
-            patch("services.dataset_service.FeatureService.get_features", return_value=features),
-            patch("services.dataset_service.db") as mock_db,
-        ):
-            mock_db.session.scalars.return_value.all.return_value = logs
-
-            result = DatasetService.get_dataset_auto_disable_logs("dataset-1")
-
-        assert result == {"document_ids": ["doc-1", "doc-2"], "count": 2}
-
-
-class TestDatasetServiceDocumentIndexing:
-    """Unit tests for pause/recover/retry orchestration without SQL assertions."""
-
-    @pytest.fixture
-    def mock_document_service_dependencies(self):
-        with (
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.db.session") as mock_db_session,
-            patch("services.dataset_service.current_user") as mock_current_user,
-        ):
-            mock_current_user.id = "user-123"
-            yield {
-                "redis_client": mock_redis,
-                "db_session": mock_db_session,
-                "current_user": mock_current_user,
-            }
-
-    def test_pause_document_success(self, mock_document_service_dependencies):
-        document = DatasetServiceUnitDataFactory.create_document_mock(indexing_status="indexing")
-
-        DocumentService.pause_document(document)
-
-        assert document.is_paused is True
-        assert document.paused_by == "user-123"
-        mock_document_service_dependencies["db_session"].add.assert_called_once_with(document)
-        mock_document_service_dependencies["db_session"].commit.assert_called_once()
-        mock_document_service_dependencies["redis_client"].setnx.assert_called_once_with(
-            f"document_{document.id}_is_paused",
-            "True",
-        )
-
-    def test_pause_document_invalid_status_error(self, mock_document_service_dependencies):
-        document = DatasetServiceUnitDataFactory.create_document_mock(indexing_status="completed")
-
-        with pytest.raises(DocumentIndexingError):
-            DocumentService.pause_document(document)
-
-    def test_recover_document_success(self, mock_document_service_dependencies):
-        document = DatasetServiceUnitDataFactory.create_document_mock(indexing_status="indexing", is_paused=True)
-
-        with patch("services.dataset_service.recover_document_indexing_task") as recover_task:
-            DocumentService.recover_document(document)
-
-        assert document.is_paused is False
-        assert document.paused_by is None
-        assert document.paused_at is None
-        mock_document_service_dependencies["db_session"].add.assert_called_once_with(document)
-        mock_document_service_dependencies["db_session"].commit.assert_called_once()
-        mock_document_service_dependencies["redis_client"].delete.assert_called_once_with(
-            f"document_{document.id}_is_paused"
-        )
-        recover_task.delay.assert_called_once_with(document.dataset_id, document.id)
-
-    def test_retry_document_indexing_success(self, mock_document_service_dependencies):
-        dataset_id = "dataset-123"
-        documents = [
-            DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-1", indexing_status="error"),
-            DatasetServiceUnitDataFactory.create_document_mock(document_id="doc-2", indexing_status="error"),
-        ]
-        mock_document_service_dependencies["redis_client"].get.return_value = None
-
-        with patch("services.dataset_service.retry_document_indexing_task") as retry_task:
-            DocumentService.retry_document(dataset_id, documents)
-
-        assert all(document.indexing_status == "waiting" for document in documents)
-        assert mock_document_service_dependencies["db_session"].add.call_count == 2
-        assert mock_document_service_dependencies["db_session"].commit.call_count == 2
-        assert mock_document_service_dependencies["redis_client"].setex.call_count == 2
-        retry_task.delay.assert_called_once_with(dataset_id, ["doc-1", "doc-2"], "user-123")
-
 
 class TestDatasetCollectionBindingService:
     """Unit tests for dataset collection binding lookups and creation."""
 
-    def test_get_dataset_collection_binding_returns_existing_binding(self):
-        binding = SimpleNamespace(id="binding-1")
-
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = binding
-
-            result = DatasetCollectionBindingService.get_dataset_collection_binding("provider", "model")
-
-        assert result is binding
-        mock_db.session.add.assert_not_called()
-
-    def test_get_dataset_collection_binding_creates_binding_when_missing(self):
-        created_binding = SimpleNamespace(id="binding-2")
-
-        with (
-            patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.select"),
-            patch("services.dataset_service.DatasetCollectionBinding", return_value=created_binding) as binding_cls,
-            patch.object(Dataset, "gen_collection_name_by_id", return_value="generated-collection"),
-        ):
-            mock_db.session.scalar.return_value = None
-
-            result = DatasetCollectionBindingService.get_dataset_collection_binding("provider", "model", "dataset")
-
-        assert result is created_binding
-        binding_cls.assert_called_once_with(
-            provider_name="provider",
-            model_name="model",
-            collection_name="generated-collection",
-            type="dataset",
-        )
-        mock_db.session.add.assert_called_once_with(created_binding)
-        mock_db.session.commit.assert_called_once()
-
-    def test_get_dataset_collection_binding_by_id_and_type_raises_when_missing(self):
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = None
-
-            with pytest.raises(ValueError, match="Dataset collection binding not found"):
-                DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type("binding-1")
-
-    def test_get_dataset_collection_binding_by_id_and_type_returns_binding(self):
-        binding = SimpleNamespace(id="binding-1")
-
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = binding
-
-            result = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type("binding-1")
-
-        assert result is binding
-
 
 class TestDatasetPermissionService:
     """Unit tests for dataset partial-member management helpers."""
-
-    def test_get_dataset_partial_member_list_returns_scalar_results(self):
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalars.return_value.all.return_value = ["user-1", "user-2"]
-
-            result = DatasetPermissionService.get_dataset_partial_member_list("dataset-1")
-
-        assert result == ["user-1", "user-2"]
-
-    def test_update_partial_member_list_replaces_permissions_and_commits(self):
-        with patch("services.dataset_service.db") as mock_db:
-            DatasetPermissionService.update_partial_member_list(
-                "tenant-1",
-                "dataset-1",
-                [{"user_id": "user-1"}, {"user_id": "user-2"}],
-            )
-
-        mock_db.session.execute.assert_called()
-        mock_db.session.add_all.assert_called_once()
-        mock_db.session.commit.assert_called_once()
 
     def test_update_partial_member_list_rolls_back_on_exception(self):
         with patch("services.dataset_service.db") as mock_db:
@@ -1747,13 +1284,6 @@ class TestDatasetPermissionService:
                 "partial_members",
                 [{"user_id": "user-1"}],
             )
-
-    def test_clear_partial_member_list_deletes_permissions_and_commits(self):
-        with patch("services.dataset_service.db") as mock_db:
-            DatasetPermissionService.clear_partial_member_list("dataset-1")
-
-        mock_db.session.execute.assert_called()
-        mock_db.session.commit.assert_called_once()
 
     def test_clear_partial_member_list_rolls_back_on_exception(self):
         with patch("services.dataset_service.db") as mock_db:

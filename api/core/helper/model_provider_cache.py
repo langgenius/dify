@@ -1,6 +1,7 @@
 import json
 from enum import StrEnum
 from json import JSONDecodeError
+from typing import Any
 
 from extensions.ext_redis import redis_client
 
@@ -15,7 +16,7 @@ class ProviderCredentialsCache:
     def __init__(self, tenant_id: str, identity_id: str, cache_type: ProviderCredentialsCacheType):
         self.cache_key = f"{cache_type}_credentials:tenant_id:{tenant_id}:id:{identity_id}"
 
-    def get(self) -> dict | None:
+    def get(self) -> dict[str, Any] | None:
         """
         Get cached model provider credentials.
 
@@ -33,7 +34,7 @@ class ProviderCredentialsCache:
         else:
             return None
 
-    def set(self, credentials: dict):
+    def set(self, credentials: dict[str, Any]):
         """
         Cache model provider credentials.
 

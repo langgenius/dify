@@ -81,10 +81,10 @@ export const WithBackLink: Story = {
       hideCloseBtn
       beforeHeader={(
         <button
-          className="mb-1 flex items-center gap-1 text-xs font-medium uppercase text-text-accent"
+          className="mb-1 flex items-center gap-1 text-xs font-medium text-text-accent uppercase"
           onClick={() => console.log('back')}
         >
-          <span className="bg-text-accent/10 inline-block h-4 w-4 rounded-sm text-center text-[10px] leading-4 text-text-accent">{'<'}</span>
+          <span className="inline-block h-4 w-4 rounded-sm bg-text-accent/10 text-center text-[10px] leading-4 text-text-accent">{'<'}</span>
           Back
         </button>
       )}

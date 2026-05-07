@@ -161,7 +161,7 @@ describe('DSL Import with Human Input Node', () => {
 
       // No extra iteration/loop start nodes should be injected
       expect(result.nodes).toHaveLength(1)
-      expect(result.nodes[0].data.type).toBe(BlockEnum.HumanInput)
+      expect(result.nodes[0]!.data.type).toBe(BlockEnum.HumanInput)
     })
   })
 
@@ -190,7 +190,7 @@ describe('DSL Import with Human Input Node', () => {
       const result = initialNodes(nodes as Node[], [])
 
       const processed = result[0]
-      const nodeData = processed.data as HumanInputNodeType
+      const nodeData = processed!.data as HumanInputNodeType
       expect(nodeData.delivery_methods).toHaveLength(2)
       expect(nodeData.user_actions).toHaveLength(2)
       expect(nodeData.form_content).toBe('# Review Form\nPlease fill in the details below.')
@@ -204,7 +204,7 @@ describe('DSL Import with Human Input Node', () => {
 
       const result = initialNodes([humanInputNode] as Node[], [])
 
-      expect(result[0].type).toBe('custom')
+      expect(result[0]!.type).toBe('custom')
     })
   })
 
@@ -234,8 +234,9 @@ describe('DSL Import with Human Input Node', () => {
       )
 
       // Delivery method type labels are rendered in lowercase
-      expect(screen.getByText('webapp')).toBeInTheDocument()
-      expect(screen.getByText('email')).toBeInTheDocument()
+      // Delivery method type labels are rendered in lowercase
+      expect(screen.getByText('webapp'))!.toBeInTheDocument()
+      expect(screen.getByText('email'))!.toBeInTheDocument()
     })
 
     it('should display user action IDs', () => {
@@ -248,8 +249,8 @@ describe('DSL Import with Human Input Node', () => {
         />,
       )
 
-      expect(screen.getByText('approve')).toBeInTheDocument()
-      expect(screen.getByText('reject')).toBeInTheDocument()
+      expect(screen.getByText('approve'))!.toBeInTheDocument()
+      expect(screen.getByText('reject'))!.toBeInTheDocument()
     })
 
     it('should always display Timeout handle', () => {
@@ -262,7 +263,7 @@ describe('DSL Import with Human Input Node', () => {
         />,
       )
 
-      expect(screen.getByText('Timeout')).toBeInTheDocument()
+      expect(screen.getByText('Timeout'))!.toBeInTheDocument()
     })
 
     it('should render without crashing when delivery_methods is empty', () => {
@@ -277,6 +278,37 @@ describe('DSL Import with Human Input Node', () => {
         )
       }).not.toThrow()
 
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
+      // Delivery method section should not be rendered
       // Delivery method section should not be rendered
       expect(screen.queryByText('webapp')).not.toBeInTheDocument()
       expect(screen.queryByText('email')).not.toBeInTheDocument()
@@ -295,7 +327,8 @@ describe('DSL Import with Human Input Node', () => {
       }).not.toThrow()
 
       // Timeout handle should still exist
-      expect(screen.getByText('Timeout')).toBeInTheDocument()
+      // Timeout handle should still exist
+      expect(screen.getByText('Timeout'))!.toBeInTheDocument()
     })
 
     it('should render without crashing when both delivery_methods and user_actions are empty', () => {
@@ -330,7 +363,7 @@ describe('DSL Import with Human Input Node', () => {
         />,
       )
 
-      expect(screen.getByText('webapp')).toBeInTheDocument()
+      expect(screen.getByText('webapp'))!.toBeInTheDocument()
       expect(screen.queryByText('email')).not.toBeInTheDocument()
     })
 
@@ -350,9 +383,9 @@ describe('DSL Import with Human Input Node', () => {
         />,
       )
 
-      expect(screen.getByText('action_1')).toBeInTheDocument()
-      expect(screen.getByText('action_2')).toBeInTheDocument()
-      expect(screen.getByText('action_3')).toBeInTheDocument()
+      expect(screen.getByText('action_1'))!.toBeInTheDocument()
+      expect(screen.getByText('action_2'))!.toBeInTheDocument()
+      expect(screen.getByText('action_3'))!.toBeInTheDocument()
     })
   })
 

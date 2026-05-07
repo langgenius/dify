@@ -61,25 +61,25 @@ describe('createInspectVarsSlice', () => {
     ])
 
     store.getState().setInspectVarValue('node-1', 'var-1', 'edited')
-    expect(store.getState().nodesWithInspectVars[0].vars[0]).toMatchObject({
+    expect(store.getState().nodesWithInspectVars[0]!.vars[0]).toMatchObject({
       value: 'edited',
       edited: true,
     })
 
     store.getState().renameInspectVarName('node-1', 'var-1', ['node-1', 'renamed'])
-    expect(store.getState().nodesWithInspectVars[0].vars[0]).toMatchObject({
+    expect(store.getState().nodesWithInspectVars[0]!.vars[0]).toMatchObject({
       name: 'renamed',
       selector: ['node-1', 'renamed'],
     })
 
     store.getState().resetToLastRunVar('node-1', 'var-1', 'restored')
-    expect(store.getState().nodesWithInspectVars[0].vars[0]).toMatchObject({
+    expect(store.getState().nodesWithInspectVars[0]!.vars[0]).toMatchObject({
       value: 'restored',
       edited: false,
     })
 
     store.getState().deleteInspectVar('node-1', 'var-1')
-    expect(store.getState().nodesWithInspectVars[0].vars).toEqual([])
+    expect(store.getState().nodesWithInspectVars[0]!.vars).toEqual([])
 
     store.getState().deleteNodeInspectVars('node-1')
     expect(store.getState().nodesWithInspectVars).toEqual([])

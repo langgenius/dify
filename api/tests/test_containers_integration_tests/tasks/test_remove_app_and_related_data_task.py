@@ -2,11 +2,13 @@ import uuid
 from unittest.mock import ANY, call, patch
 
 import pytest
-from graphon.variables.segments import StringSegment
-from graphon.variables.types import SegmentType
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
 from extensions.storage.storage_type import StorageType
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from models import Tenant
 from models.enums import CreatorUserRole
@@ -20,11 +22,11 @@ from tasks.remove_app_and_related_data_task import (
 
 @pytest.fixture(autouse=True)
 def cleanup_database(db_session_with_containers):
-    db_session_with_containers.query(WorkflowDraftVariable).delete()
-    db_session_with_containers.query(WorkflowDraftVariableFile).delete()
-    db_session_with_containers.query(UploadFile).delete()
-    db_session_with_containers.query(App).delete()
-    db_session_with_containers.query(Tenant).delete()
+    db_session_with_containers.execute(delete(WorkflowDraftVariable))
+    db_session_with_containers.execute(delete(WorkflowDraftVariableFile))
+    db_session_with_containers.execute(delete(UploadFile))
+    db_session_with_containers.execute(delete(App))
+    db_session_with_containers.execute(delete(Tenant))
     db_session_with_containers.commit()
 
 
@@ -116,7 +118,7 @@ def _create_offload_data(db_session_with_containers, *, tenant_id: str, app_id: 
 
 
 class TestDeleteDraftVariablesBatch:
-    def test_delete_draft_variables_batch_success(self, db_session_with_containers):
+    def test_delete_draft_variables_batch_success(self, db_session_with_containers: Session):
         """Test successful deletion of draft variables in batches."""
         _, app1 = _create_tenant_and_app(db_session_with_containers)
         _, app2 = _create_tenant_and_app(db_session_with_containers)
@@ -127,21 +129,21 @@ class TestDeleteDraftVariablesBatch:
         result = delete_draft_variables_batch(app1.id, batch_size=100)
 
         assert result == 150
-        app1_remaining = db_session_with_containers.query(WorkflowDraftVariable).where(
-            WorkflowDraftVariable.app_id == app1.id
+        app1_remaining_count = db_session_with_containers.scalar(
+            select(func.count()).select_from(WorkflowDraftVariable).where(WorkflowDraftVariable.app_id == app1.id)
         )
-        app2_remaining = db_session_with_containers.query(WorkflowDraftVariable).where(
-            WorkflowDraftVariable.app_id == app2.id
+        app2_remaining_count = db_session_with_containers.scalar(
+            select(func.count()).select_from(WorkflowDraftVariable).where(WorkflowDraftVariable.app_id == app2.id)
         )
-        assert app1_remaining.count() == 0
-        assert app2_remaining.count() == 100
+        assert app1_remaining_count == 0
+        assert app2_remaining_count == 100
 
-    def test_delete_draft_variables_batch_empty_result(self, db_session_with_containers):
+    def test_delete_draft_variables_batch_empty_result(self, db_session_with_containers: Session):
         """Test deletion when no draft variables exist for the app."""
         result = delete_draft_variables_batch(str(uuid.uuid4()), 1000)
 
         assert result == 0
-        assert db_session_with_containers.query(WorkflowDraftVariable).count() == 0
+        assert db_session_with_containers.scalar(select(func.count()).select_from(WorkflowDraftVariable)) == 0
 
     @patch("tasks.remove_app_and_related_data_task._delete_draft_variable_offload_data")
     @patch("tasks.remove_app_and_related_data_task.logger")
@@ -175,7 +177,7 @@ class TestDeleteDraftVariableOffloadData:
     """Test the Offload data cleanup functionality."""
 
     @patch("extensions.ext_storage.storage")
-    def test_delete_draft_variable_offload_data_success(self, mock_storage, db_session_with_containers):
+    def test_delete_draft_variable_offload_data_success(self, mock_storage, db_session_with_containers: Session):
         """Test successful deletion of offload data."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
         offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=3)
@@ -190,12 +192,16 @@ class TestDeleteDraftVariableOffloadData:
         expected_storage_calls = [call(storage_key) for storage_key in upload_file_keys]
         mock_storage.delete.assert_has_calls(expected_storage_calls, any_order=True)
 
-        remaining_var_files = db_session_with_containers.query(WorkflowDraftVariableFile).where(
-            WorkflowDraftVariableFile.id.in_(file_ids)
+        remaining_var_files_count = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(WorkflowDraftVariableFile)
+            .where(WorkflowDraftVariableFile.id.in_(file_ids))
         )
-        remaining_upload_files = db_session_with_containers.query(UploadFile).where(UploadFile.id.in_(upload_file_ids))
-        assert remaining_var_files.count() == 0
-        assert remaining_upload_files.count() == 0
+        remaining_upload_files_count = db_session_with_containers.scalar(
+            select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+        )
+        assert remaining_var_files_count == 0
+        assert remaining_upload_files_count == 0
 
     @patch("extensions.ext_storage.storage")
     @patch("tasks.remove_app_and_related_data_task.logging")
@@ -217,9 +223,13 @@ class TestDeleteDraftVariableOffloadData:
         assert result == 1
         mock_logging.exception.assert_called_once_with("Failed to delete storage object %s", storage_keys[0])
 
-        remaining_var_files = db_session_with_containers.query(WorkflowDraftVariableFile).where(
-            WorkflowDraftVariableFile.id.in_(file_ids)
+        remaining_var_files_count = db_session_with_containers.scalar(
+            select(func.count())
+            .select_from(WorkflowDraftVariableFile)
+            .where(WorkflowDraftVariableFile.id.in_(file_ids))
         )
-        remaining_upload_files = db_session_with_containers.query(UploadFile).where(UploadFile.id.in_(upload_file_ids))
-        assert remaining_var_files.count() == 0
-        assert remaining_upload_files.count() == 0
+        remaining_upload_files_count = db_session_with_containers.scalar(
+            select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
+        )
+        assert remaining_var_files_count == 0
+        assert remaining_upload_files_count == 0

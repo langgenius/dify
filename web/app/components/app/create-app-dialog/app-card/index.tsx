@@ -1,15 +1,17 @@
 'use client'
 import type { App } from '@/models/explore'
 import { PlusIcon } from '@heroicons/react/20/solid'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContextSelector } from 'use-context-selector'
+import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import AppListContext from '@/context/app-list-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { cn } from '@/utils/classnames'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
 type AppCardProps = {
@@ -25,16 +27,21 @@ const AppCard = ({
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
   const setShowTryAppPanel = useContextSelector(AppListContext, ctx => ctx.setShowTryAppPanel)
-  const showTryAPPPanel = useCallback((appId: string) => {
-    return () => {
-      setShowTryAppPanel?.(true, { appId, app })
-    }
-  }, [setShowTryAppPanel, app.category])
+  const handleShowTryAppPanel = useCallback(() => {
+    trackEvent('preview_template', {
+      template_id: app.app_id,
+      template_name: appBasicInfo.name,
+      template_mode: appBasicInfo.mode,
+      template_category: app.category,
+      page: 'studio',
+    })
+    setShowTryAppPanel?.(true, { appId: app.app_id, app })
+  }, [setShowTryAppPanel, app, appBasicInfo])
   return (
-    <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4  shadow-xs hover:shadow-lg')}>
+    <div className={cn('group relative flex h-[132px] cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg')}>
       <div className="flex shrink-0 grow-0 items-center gap-3 pb-2">
         <div className="relative shrink-0">
           <AppIcon
@@ -45,7 +52,7 @@ const AppCard = ({
             imageUrl={appBasicInfo.icon_url}
           />
           <AppTypeIcon
-            wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 radius-xs border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
+            wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
             className="h-3 w-3"
             type={appBasicInfo.mode}
           />
@@ -57,13 +64,13 @@ const AppCard = ({
           <AppTypeLabel className="system-2xs-medium-uppercase text-text-tertiary" type={app.app.mode} />
         </div>
       </div>
-      <div className="system-xs-regular py-1 text-text-tertiary">
+      <div className="py-1 system-xs-regular text-text-tertiary">
         <div className="line-clamp-3">
           {app.description}
         </div>
       </div>
       {(canCreate || isTrialApp) && (
-        <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
+        <div className={cn('absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
           <div className={cn('grid h-8 w-full grid-cols-1 items-center space-x-2', canCreate && 'grid-cols-2')}>
             {canCreate && (
               <Button variant="primary" onClick={() => onCreate()}>
@@ -71,7 +78,7 @@ const AppCard = ({
                 <span className="text-xs">{t('newApp.useTemplate', { ns: 'app' })}</span>
               </Button>
             )}
-            <Button onClick={showTryAPPPanel(app.app_id)}>
+            <Button onClick={handleShowTryAppPanel}>
               <RiInformation2Line className="mr-1 size-4" />
               <span>{t('appCard.try', { ns: 'explore' })}</span>
             </Button>

@@ -1,7 +1,7 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 
 type MonthlyDaysSelectorProps = {
   selectedDays: (number | 'last')[]
@@ -57,10 +57,15 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                   ? (
                       <div className="flex items-center justify-center gap-1">
                         <span>{t('nodes.triggerSchedule.lastDay', { ns: 'workflow' })}</span>
-                        <Tooltip
-                          popupContent={t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
-                        >
-                          <RiQuestionLine className="h-3 w-3 text-text-quaternary" />
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={(
+                              <RiQuestionLine className="h-3 w-3 text-text-quaternary" />
+                            )}
+                          />
+                          <TooltipContent>
+                            {t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
+                          </TooltipContent>
                         </Tooltip>
                       </div>
                     )

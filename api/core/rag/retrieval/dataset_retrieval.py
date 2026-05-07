@@ -9,11 +9,6 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import and_, func, literal, or_, select, update
 from sqlalchemy.orm import sessionmaker
 
@@ -69,6 +64,11 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.helper import parse_uuid_str_or_none
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models import UploadFile
@@ -517,11 +517,11 @@ class DatasetRetrieval:
                         if attachments_with_bindings:
                             for _, upload_file in attachments_with_bindings:
                                 attachment_info = File(
-                                    id=upload_file.id,
+                                    file_id=upload_file.id,
                                     filename=upload_file.name,
                                     extension="." + upload_file.extension,
                                     mime_type=upload_file.mime_type,
-                                    type=FileType.IMAGE,
+                                    file_type=FileType.IMAGE,
                                     transfer_method=FileTransferMethod.LOCAL_FILE,
                                     remote_url=upload_file.source_url,
                                     reference=build_file_reference(
@@ -875,7 +875,11 @@ class DatasetRetrieval:
         return retrieval_resource_list
 
     def _on_retrieval_end(
-        self, flask_app: Flask, documents: list[Document], message_id: str | None = None, timer: dict | None = None
+        self,
+        flask_app: Flask,
+        documents: list[Document],
+        message_id: str | None = None,
+        timer: dict[str, Any] | None = None,
     ):
         """Handle retrieval end."""
         with flask_app.app_context():
@@ -980,7 +984,7 @@ class DatasetRetrieval:
 
             self._send_trace_task(message_id, documents, timer)
 
-    def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: dict | None):
+    def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: dict[str, Any] | None):
         """Send trace task if trace manager is available."""
         trace_manager: TraceQueueManager | None = (
             self.application_generate_entity.trace_manager if self.application_generate_entity else None
@@ -1142,7 +1146,7 @@ class DatasetRetrieval:
         invoke_from: InvokeFrom,
         hit_callback: DatasetIndexToolCallbackHandler,
         user_id: str,
-        inputs: dict,
+        inputs: dict[str, Any],
     ) -> list[DatasetRetrieverBaseTool] | None:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
@@ -1337,7 +1341,7 @@ class DatasetRetrieval:
         metadata_filtering_mode: str,
         metadata_model_config: ModelConfig,
         metadata_filtering_conditions: MetadataFilteringCondition | None,
-        inputs: dict,
+        inputs: dict[str, Any],
     ) -> tuple[dict[str, list[str]] | None, MetadataFilteringCondition | None]:
         document_query = select(DatasetDocument).where(
             DatasetDocument.dataset_id.in_(dataset_ids),
@@ -1417,7 +1421,7 @@ class DatasetRetrieval:
             metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
         return metadata_filter_document_ids, metadata_condition
 
-    def _replace_metadata_filter_value(self, text: str, inputs: dict) -> str:
+    def _replace_metadata_filter_value(self, text: str, inputs: dict[str, Any]) -> str:
         if not inputs:
             return text
 

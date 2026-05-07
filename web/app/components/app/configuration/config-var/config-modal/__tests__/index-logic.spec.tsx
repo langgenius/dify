@@ -1,10 +1,10 @@
 /* eslint-disable ts/no-explicit-any */
 import type { InputVar } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { useStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import DebugConfigurationContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
@@ -43,7 +43,7 @@ vi.mock('../form-fields', () => ({
         >
           invalid-name-change
         </button>
-        <button data-testid="valid-json-change" onClick={() => props.onJSONSchemaChange('{\n  \"foo\": \"bar\"\n}')}>valid-json-change</button>
+        <button data-testid="valid-json-change" onClick={() => props.onJSONSchemaChange('{\n  "foo": "bar"\n}')}>valid-json-change</button>
         <button data-testid="empty-json-change" onClick={() => props.onJSONSchemaChange('   ')}>empty-json-change</button>
         <button data-testid="invalid-json-change" onClick={() => props.onJSONSchemaChange('{invalid-json}')}>invalid-json-change</button>
         <button data-testid="type-change" onClick={() => props.onTypeChange({ value: InputVarType.singleFile })}>type-change</button>

@@ -1,9 +1,9 @@
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { createWorkflowToolProvider, saveWorkflowToolProvider } from '@/service/tools'
@@ -206,7 +206,6 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
       onRefreshData?.()
       invalidateAllWorkflowTools()
       invalidateDetail(workflowAppId)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
       setShowModal(false)
     }
     catch (e) {

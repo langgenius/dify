@@ -1,6 +1,7 @@
 import logging
 import time
 
+import socketio  # type: ignore[reportMissingTypeStubs]
 from flask import request
 from opentelemetry.trace import get_current_span
 from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
@@ -10,6 +11,7 @@ from contexts.wrapper import RecyclableContextVar
 from controllers.console.error import UnauthorizedAndForceLogout
 from core.logging.context import init_request_context
 from dify_app import DifyApp
+from extensions.ext_socketio import sio
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import LicenseStatus
 
@@ -122,14 +124,18 @@ def create_flask_app_with_configs() -> DifyApp:
     return dify_app
 
 
-def create_app() -> DifyApp:
+def create_app() -> tuple[socketio.WSGIApp, DifyApp]:
     start_time = time.perf_counter()
     app = create_flask_app_with_configs()
     initialize_extensions(app)
+
+    sio.app = app
+    socketio_app = socketio.WSGIApp(sio, app)
+
     end_time = time.perf_counter()
     if dify_config.DEBUG:
         logger.info("Finished create_app (%s ms)", round((end_time - start_time) * 1000, 2))
-    return app
+    return socketio_app, app
 
 
 def initialize_extensions(app: DifyApp):

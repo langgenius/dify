@@ -55,7 +55,7 @@ export const getFormErrorMessage = (
       const value = form.values[input.variable] as unknown
       const missingRequired = input.required
         && input.type !== InputVarType.checkbox
-        && !(input.variable in existVarValuesInForm)
+        && !(input.variable in existVarValuesInForm!)
         && (
           value === '' || value === undefined || value === null
           || (

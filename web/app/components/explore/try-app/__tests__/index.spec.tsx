@@ -1,6 +1,7 @@
 import type { TryAppInfo } from '@/service/try-app'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import TryApp from '../index'
 import { TypeEnum } from '../tab'
 
@@ -246,7 +247,7 @@ describe('TryApp (main index.tsx)', () => {
       await waitFor(() => {
         const buttons = document.body.querySelectorAll('button')
         const closeButton = Array.from(buttons).find(btn =>
-          btn.querySelector('svg') || btn.className.includes('radius-lg'),
+          btn.querySelector('svg') || btn.className.includes('rounded-[10px]'),
         )
         expect(closeButton).toBeInTheDocument()
 

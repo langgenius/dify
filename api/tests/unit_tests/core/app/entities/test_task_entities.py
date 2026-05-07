@@ -1,11 +1,10 @@
-from graphon.enums import WorkflowNodeExecutionStatus
-
 from core.app.entities.task_entities import (
     NodeFinishStreamResponse,
     NodeRetryStreamResponse,
     NodeStartStreamResponse,
     StreamEvent,
 )
+from graphon.enums import WorkflowNodeExecutionStatus
 
 
 class TestTaskEntities:

@@ -1,10 +1,10 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
@@ -57,7 +57,7 @@ const SettingContent = ({
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="text-text-primary system-xl-semibold">{!imageUpload ? t('feature.fileUpload.modalTitle', { ns: 'appDebug' }) : t('feature.imageUpload.modalTitle', { ns: 'appDebug' })}</div>
+        <div className="system-xl-semibold text-text-primary">{!imageUpload ? t('feature.fileUpload.modalTitle', { ns: 'appDebug' }) : t('feature.imageUpload.modalTitle', { ns: 'appDebug' })}</div>
         <div
           className="cursor-pointer p-1"
           onClick={onClose}

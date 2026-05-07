@@ -2,14 +2,15 @@
 import type { FC } from 'react'
 import type { AutoUpdateConfig } from './auto-update-setting/types'
 import type { Permissions, ReferenceSetting } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { PermissionType } from '@/app/components/plugins/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import AutoUpdateSetting from './auto-update-setting'
 import { defaultValue as autoUpdateDefaultValue } from './auto-update-setting/config'
 import Label from './label'
@@ -30,7 +31,10 @@ const PluginSettingModal: FC<Props> = ({
   const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload || {}
   const [tempPrivilege, setTempPrivilege] = useState<Permissions>(privilege)
   const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig || autoUpdateDefaultValue)
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const handlePrivilegeChange = useCallback((key: string) => {
     return (value: PermissionType) => {
       setTempPrivilege({
@@ -56,8 +60,8 @@ const PluginSettingModal: FC<Props> = ({
       className="w-[620px] max-w-[620px] p-0!"
     >
       <div className="shadows-shadow-xl flex w-full flex-col items-start rounded-2xl border border-components-panel-border bg-components-panel-bg">
-        <div className="flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
-          <span className="title-2xl-semi-bold self-stretch text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'plugin' })}</span>
+        <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
+          <span className="self-stretch title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'plugin' })}</span>
         </div>
         <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
           {[

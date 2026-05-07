@@ -1,9 +1,9 @@
 import type { GlobalVariable } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { capitalize } from 'es-toolkit/string'
-import { memo } from 'react'
 
+import { memo } from 'react'
 import { GlobalVariable as GlobalVariableIcon } from '@/app/components/base/icons/src/vender/line/others'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   payload: GlobalVariable
@@ -14,7 +14,7 @@ const Item = ({
 }: Props) => {
   return (
     <div className={cn(
-      'radius-md mb-1 border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+      'mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
     )}
     >
       <div className="flex items-center justify-between">
@@ -27,7 +27,7 @@ const Item = ({
           <div className="system-xs-medium text-text-tertiary">{capitalize(payload.value_type)}</div>
         </div>
       </div>
-      <div className="system-xs-regular mt-1.5 truncate text-text-tertiary">{payload.description}</div>
+      <div className="mt-1.5 truncate system-xs-regular text-text-tertiary">{payload.description}</div>
     </div>
   )
 }

@@ -2,16 +2,16 @@
 import type { FC } from 'react'
 import type { FormSchema } from '../../base/form/types'
 import type { PluginDetail } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
-import { toast } from '@/app/components/base/ui/toast'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { cn } from '@/utils/classnames'
 import { ReadmeEntrance } from '../readme-panel/entrance'
 
 type Props = {
@@ -81,17 +81,17 @@ const EndpointModal: FC<Props> = ({
       footer={null}
       mask
       positionCenter={false}
-      panelClassName={cn('mb-2 mr-2 mt-[64px] w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
+      panelClassName={cn('mt-[64px] mr-2 mb-2 w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
     >
       <>
         <div className="p-4 pb-2">
           <div className="flex items-center justify-between">
-            <div className="text-text-primary system-xl-semibold">{t('detailPanel.endpointModalTitle', { ns: 'plugin' })}</div>
+            <div className="system-xl-semibold text-text-primary">{t('detailPanel.endpointModalTitle', { ns: 'plugin' })}</div>
             <ActionButton onClick={onCancel}>
               <RiCloseLine className="h-4 w-4" />
             </ActionButton>
           </div>
-          <div className="mt-0.5 text-text-tertiary system-xs-regular">{t('detailPanel.endpointModalDesc', { ns: 'plugin' })}</div>
+          <div className="mt-0.5 system-xs-regular text-text-tertiary">{t('detailPanel.endpointModalDesc', { ns: 'plugin' })}</div>
           <ReadmeEntrance pluginDetail={pluginDetail} className="px-0 pt-3" />
         </div>
         <div className="grow overflow-y-auto">
@@ -112,7 +112,7 @@ const EndpointModal: FC<Props> = ({
                       href={item.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center text-text-accent-secondary body-xs-regular"
+                      className="inline-flex items-center body-xs-regular text-text-accent-secondary"
                     >
                       {t('howToGet', { ns: 'tools' })}
                       <RiArrowRightUpLine className="ml-1 h-3 w-3" />

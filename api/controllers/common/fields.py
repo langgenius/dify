@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from graphon.file import helpers as file_helpers
 from pydantic import BaseModel, ConfigDict, computed_field
 
+from graphon.file import helpers as file_helpers
 from models.model import IconType
 
 type JSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]

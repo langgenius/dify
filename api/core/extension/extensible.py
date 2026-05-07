@@ -21,8 +21,8 @@ class ExtensionModule(StrEnum):
 class ModuleExtension(BaseModel):
     extension_class: Any | None = None
     name: str
-    label: dict | None = None
-    form_schema: list | None = None
+    label: dict[str, Any] | None = None
+    form_schema: list[dict[str, Any]] | None = None
     builtin: bool = True
     position: int | None = None
 
@@ -32,9 +32,9 @@ class Extensible:
 
     name: str
     tenant_id: str
-    config: dict | None = None
+    config: dict[str, Any] | None = None
 
-    def __init__(self, tenant_id: str, config: dict | None = None):
+    def __init__(self, tenant_id: str, config: dict[str, Any] | None = None):
         self.tenant_id = tenant_id
         self.config = config
 

@@ -17,13 +17,12 @@ vi.mock('@/service/use-common', () => ({
   useMembers: () => mockUseMembers(),
 }))
 
-vi.mock('@/app/components/base/switch', () => ({
-  __esModule: true,
-  default: (props: {
-    value: boolean
-    onChange: (value: boolean) => void
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: (props: {
+    checked: boolean
+    onCheckedChange: (value: boolean) => void
   }) => (
-    <button type="button" onClick={() => props.onChange(!props.value)}>
+    <button type="button" onClick={() => props.onCheckedChange(!props.checked)}>
       toggle-workspace
     </button>
   ),

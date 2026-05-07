@@ -2,7 +2,6 @@ from io import BytesIO
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import InternalServerError
 
 import controllers.console.explore.audio as audio_module
@@ -20,6 +19,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from graphon.model_runtime.errors.invoke import InvokeError
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,

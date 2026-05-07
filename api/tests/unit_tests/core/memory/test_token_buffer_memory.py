@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+
+from core.memory.token_buffer_memory import TokenBufferMemory
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -11,8 +13,6 @@ from graphon.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-
-from core.memory.token_buffer_memory import TokenBufferMemory
 from models.model import AppMode
 
 # ---------------------------------------------------------------------------

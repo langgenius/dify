@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import TypedDict
 
 from flask import request
@@ -11,6 +12,14 @@ from services.billing_service import BillingService
 
 # Notification content is stored under three lang tags.
 _FALLBACK_LANG = "en-US"
+
+
+class NotificationLangContent(TypedDict, total=False):
+    lang: str
+    title: str
+    subtitle: str
+    body: str
+    titlePicUrl: str
 
 
 class NotificationItemDict(TypedDict):
@@ -28,9 +37,11 @@ class NotificationResponseDict(TypedDict):
     notifications: list[NotificationItemDict]
 
 
-def _pick_lang_content(contents: dict, lang: str) -> dict:
+def _pick_lang_content(contents: Mapping[str, NotificationLangContent], lang: str) -> NotificationLangContent:
     """Return the single LangContent for *lang*, falling back to English."""
-    return contents.get(lang) or contents.get(_FALLBACK_LANG) or next(iter(contents.values()), {})
+    return (
+        contents.get(lang) or contents.get(_FALLBACK_LANG) or next(iter(contents.values()), NotificationLangContent())
+    )
 
 
 class DismissNotificationPayload(BaseModel):
@@ -71,7 +82,7 @@ class NotificationApi(Resource):
 
         notifications: list[NotificationItemDict] = []
         for notification in result.get("notifications") or []:
-            contents: dict = notification.get("contents") or {}
+            contents: Mapping[str, NotificationLangContent] = notification.get("contents") or {}
             lang_content = _pick_lang_content(contents, lang)
             item: NotificationItemDict = {
                 "notification_id": notification.get("notificationId"),

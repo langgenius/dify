@@ -7,7 +7,7 @@ vi.mock('../content', () => ({
   default: () => <div data-testid="mock-inputs-form-content" />,
 }))
 
-// Note: PortalToFollowElem is mocked globally in vitest.setup.ts
+// Note: Popover is mocked globally in vitest.setup.ts
 // to render children in the normal DOM flow when open is true.
 
 describe('ViewFormDropdown', () => {

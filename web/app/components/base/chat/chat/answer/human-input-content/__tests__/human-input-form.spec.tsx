@@ -46,16 +46,16 @@ describe('HumanInputForm', () => {
     // splitByOutputVar should yield 3 parts: "Part 1 ", "{{#$output.field1#}}", " Part 2"
     const contentItems = screen.getAllByTestId('mock-content-item')
     expect(contentItems).toHaveLength(3)
-    expect(contentItems[0]).toHaveTextContent('Part 1')
-    expect(contentItems[1]).toHaveTextContent('{{#$output.field1#}}')
-    expect(contentItems[2]).toHaveTextContent('Part 2')
+    expect(contentItems[0])!.toHaveTextContent('Part 1')
+    expect(contentItems[1])!.toHaveTextContent('{{#$output.field1#}}')
+    expect(contentItems[2])!.toHaveTextContent('Part 2')
 
     const buttons = screen.getAllByTestId('action-button')
     expect(buttons).toHaveLength(4)
-    expect(buttons[0]).toHaveTextContent('Submit')
-    expect(buttons[1]).toHaveTextContent('Cancel')
-    expect(buttons[2]).toHaveTextContent('Accent')
-    expect(buttons[3]).toHaveTextContent('Ghost')
+    expect(buttons[0])!.toHaveTextContent('Submit')
+    expect(buttons[1])!.toHaveTextContent('Cancel')
+    expect(buttons[2])!.toHaveTextContent('Accent')
+    expect(buttons[3])!.toHaveTextContent('Ghost')
   })
 
   it('should handle input changes and submit correctly', async () => {
@@ -64,7 +64,7 @@ describe('HumanInputForm', () => {
     render(<HumanInputForm formData={mockFormData} onSubmit={mockOnSubmit} />)
 
     // Update input via mock ContentItem
-    await user.click(screen.getAllByTestId('update-input')[0])
+    await user.click(screen.getAllByTestId('update-input')[0]!)
 
     // Submit
     const submitButton = screen.getByRole('button', { name: 'Submit' })
@@ -91,8 +91,8 @@ describe('HumanInputForm', () => {
 
     await user.click(submitButton)
 
-    expect(submitButton).toBeDisabled()
-    expect(cancelButton).toBeDisabled()
+    expect(submitButton)!.toBeDisabled()
+    expect(cancelButton)!.toBeDisabled()
 
     // Finish submission
     await act(async () => {

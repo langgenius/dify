@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useRef } from 'react'
-import { cn } from '@/utils/classnames'
 
 type ParagraphInputProps = {
   value: string
@@ -25,13 +25,13 @@ const ParagraphInput: FC<ParagraphInputProps> = ({
   const lineCount = Math.max(3, lines.length)
 
   return (
-    <div className={cn('rounded-xl bg-components-input-bg-normal px-3 pb-2 pt-3', className)}>
+    <div className={cn('rounded-xl bg-components-input-bg-normal px-3 pt-3 pb-2', className)}>
       <div className="relative">
-        <div className="pointer-events-none absolute left-0 top-0 flex flex-col">
+        <div className="pointer-events-none absolute top-0 left-0 flex flex-col">
           {Array.from({ length: lineCount }, (_, index) => (
             <span
               key={index}
-              className="flex h-[20px] select-none items-center font-mono text-xs leading-[20px] text-text-quaternary"
+              className="flex h-[20px] items-center font-mono text-xs leading-[20px] text-text-quaternary select-none"
             >
               {String(index + 1).padStart(2, '0')}
             </span>
