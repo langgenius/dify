@@ -9,11 +9,10 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
   TagSelector: (props: {
     onOpenTagManagement?: () => void
     onTagsChange?: () => void
-    position: string
-    selectedTagIds: string[]
-    selectedTags: Tag[]
+    placement: string
     targetId: string
     type: string
+    value: Tag[]
   }) => {
     renderTagSelector(props)
 
@@ -21,8 +20,8 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
       <div data-testid="tag-selector">
         <span data-testid="target-id">{props.targetId}</span>
         <span data-testid="tag-type">{props.type}</span>
-        <span data-testid="selected-tag-ids">{props.selectedTagIds.join(',')}</span>
-        <span data-testid="selected-tag-names">{props.selectedTags.map(tag => tag.name).join(',')}</span>
+        <span data-testid="selected-tag-ids">{props.value.map(tag => tag.id).join(',')}</span>
+        <span data-testid="selected-tag-names">{props.value.map(tag => tag.name).join(',')}</span>
         <button type="button" onClick={props.onOpenTagManagement}>Manage Tags</button>
         <button type="button" onClick={props.onTagsChange}>Tags Changed</button>
       </div>
@@ -50,11 +49,10 @@ describe('AppCardTags', () => {
       expect(screen.getByTestId('selected-tag-ids')).toHaveTextContent('tag-1,tag-2')
       expect(screen.getByTestId('selected-tag-names')).toHaveTextContent('Frontend,Backend')
       expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
-        position: 'bl',
+        placement: 'bottom-start',
         targetId: 'app-1',
         type: 'app',
-        selectedTagIds: ['tag-1', 'tag-2'],
-        selectedTags: tags,
+        value: tags,
       }))
     })
   })
@@ -87,8 +85,7 @@ describe('AppCardTags', () => {
 
       expect(screen.getByTestId('selected-tag-ids')).toHaveTextContent('')
       expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
-        selectedTagIds: [],
-        selectedTags: [],
+        value: [],
       }))
     })
   })

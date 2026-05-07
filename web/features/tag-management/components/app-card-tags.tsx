@@ -17,11 +17,10 @@ export const AppCardTags = ({
   return (
     <div className="group/tag-area relative min-w-0 overflow-hidden">
       <TagSelector
-        position="bl"
+        placement="bottom-start"
         type="app"
         targetId={appId}
-        selectedTagIds={tags.map(tag => tag.id)}
-        selectedTags={tags}
+        value={tags}
         onOpenTagManagement={onOpenTagManagement}
         onTagsChange={onTagsChange}
       />

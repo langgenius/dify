@@ -26,11 +26,10 @@ export const DatasetCardTags = ({
   >
     <div className="w-full">
       <TagSelector
-        position="bl"
+        placement="bottom-start"
         type="knowledge"
         targetId={datasetId}
-        selectedTagIds={tags.map(tag => tag.id)}
-        selectedTags={tags}
+        value={tags}
         onOpenTagManagement={onOpenTagManagement}
         onTagsChange={onTagsChange}
       />
