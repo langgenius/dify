@@ -342,6 +342,9 @@ catalogs:
     fast-deep-equal:
       specifier: 3.1.3
       version: 3.1.3
+    fuse.js:
+      specifier: 7.2.0
+      version: 7.2.0
     happy-dom:
       specifier: 20.9.0
       version: 20.9.0
@@ -1024,6 +1027,9 @@ importers:
       fast-deep-equal:
         specifier: 'catalog:'
         version: 3.1.3
+      fuse.js:
+        specifier: 'catalog:'
+        version: 7.2.0
       hast-util-to-jsx-runtime:
         specifier: 'catalog:'
         version: 2.3.6
@@ -6053,6 +6059,10 @@ packages:
 
   functional-red-black-tree@1.0.1:
     resolution: {integrity: sha512-dsKNQNdj6xA3T+QlADDA7mOSlX0qiMINjn0cgr+eGHGsbSHzTabcIogz2+p/iqP1Xs6EP/sS2SbqH+brGTbq0g==}
+
+  fuse.js@7.2.0:
+    resolution: {integrity: sha512-zf4vdcIGpjNKTuXwug33Hm2okqX6a0t2ZEbez+o9oBJQSNhVJ5AqERfeiRD3r8HcLqP66MrjdkmzxrncbAOTUQ==}
+    engines: {node: '>=10'}
 
   gensync@1.0.0-beta.2:
     resolution: {integrity: sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg==}
@@ -13637,6 +13647,8 @@ snapshots:
 
   functional-red-black-tree@1.0.1: {}
 
+  fuse.js@7.2.0: {}
+
   gensync@1.0.0-beta.2: {}
 
   get-caller-file@2.0.5: {}
@@ -16793,6 +16805,7 @@ time:
   eslint-markdown@0.7.0: '2026-04-25T11:31:20.226Z'
   eslint-plugin-better-tailwindcss@4.5.0: '2026-04-28T06:24:47.281Z'
   eslint@10.2.1: '2026-04-17T20:17:44.852Z'
+  fuse.js@7.2.0: '2026-04-02T21:14:38.087Z'
   hono@4.12.15: '2026-04-24T06:51:10.290Z'
   i18next@26.0.8: '2026-04-24T19:20:14.685Z'
   js-yaml@4.1.1: '2025-11-12T15:18:03.524Z'

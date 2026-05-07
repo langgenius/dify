@@ -1,4 +1,4 @@
-import type { DefaultModel, Model } from '../declarations'
+import type { DefaultModel, Model, ModelFeatureEnum } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { ComboboxList } from '@langgenius/dify-ui/combobox'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -12,14 +12,14 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
-import { supportFunctionCall } from '@/utils/tool-call'
-import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelStatusEnum } from '../declarations'
+import { CustomConfigurationStatusEnum, ModelStatusEnum } from '../declarations'
 import { useLanguage, useMarketplaceAllPlugins } from '../hooks'
 import CreditsExhaustedAlert from '../provider-added-card/model-auth-dropdown/credits-exhausted-alert'
 import { useTrialCredits } from '../provider-added-card/use-trial-credits'
 import { providerSupportsCredits } from '../supports-credits'
 import { MODEL_PROVIDER_QUOTA_GET_PAID, providerKeyToPluginId } from '../utils'
 import MarketplaceSection from './marketplace-section'
+import { createModelSelectorSearchIndex, filterModelSelectorModels } from './model-search'
 import ModelSelectorEmptyState from './popup-empty-state'
 import PopupItem from './popup-item'
 import { CompatibleModelsNotice, ModelProviderSettingsFooter, ModelSelectorPopupFrame, ModelSelectorScrollBody, ModelSelectorSearchHeader } from './popup-layout'
@@ -129,57 +129,18 @@ function Popup({
     return [...installedMarketplaceModels, ...otherModels]
   }, [aiCreditVisibleProviders, installedProviderMap, modelList])
 
-  const filteredModelList = useMemo(() => {
-    const normalizedSearch = inputValue.toLowerCase()
-    const matchesLabel = (label: Record<string, string>) => {
-      if (label[language] !== undefined)
-        return label[language].toLowerCase().includes(normalizedSearch)
-      return Object.values(label).some(value =>
-        value.toLowerCase().includes(normalizedSearch),
-      )
-    }
-
-    const filtered = installedModelList.map((model) => {
-      const providerMatched = !!inputValue && (
-        matchesLabel(model.label)
-        || model.provider.toLowerCase().includes(normalizedSearch)
-      )
-
-      const filteredModels = model.models
-        .filter((modelItem) => {
-          if (!inputValue || providerMatched)
-            return true
-          return matchesLabel(modelItem.label)
-        })
-        .filter((modelItem) => {
-          if (scopeFeatures.length === 0)
-            return true
-          return scopeFeatures.every((feature) => {
-            if (feature === ModelFeatureEnum.toolCall)
-              return supportFunctionCall(modelItem.features)
-            return modelItem.features?.includes(feature) ?? false
-          })
-        })
-      if (
-        (inputValue && filteredModels.length === 0)
-        || (!inputValue && filteredModels.length === 0 && !aiCreditVisibleProviders.has(model.provider))
-      ) {
-        return null
-      }
-
-      return { ...model, models: filteredModels }
-    }).filter((model): model is Model => model !== null)
-
-    if (defaultModel?.provider) {
-      filtered.sort((a, b) => {
-        const aSelected = a.provider === defaultModel.provider ? 0 : 1
-        const bSelected = b.provider === defaultModel.provider ? 0 : 1
-        return aSelected - bSelected
-      })
-    }
-
-    return filtered
-  }, [aiCreditVisibleProviders, defaultModel?.provider, inputValue, installedModelList, language, scopeFeatures])
+  const searchIndex = useMemo(
+    () => createModelSelectorSearchIndex(installedModelList, language),
+    [installedModelList, language],
+  )
+  const filteredModelList = useMemo(() => filterModelSelectorModels({
+    aiCreditVisibleProviders,
+    defaultModel,
+    inputValue,
+    installedModelList,
+    scopeFeatures,
+    searchIndex,
+  }), [aiCreditVisibleProviders, defaultModel, inputValue, installedModelList, scopeFeatures, searchIndex])
 
   const marketplaceProviders = useMemo(() => {
     const installedProviders = new Set(modelProviders.map(provider => provider.provider))
