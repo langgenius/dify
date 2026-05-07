@@ -68,6 +68,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
   const onClickClientSettings = useCallback((e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
     e.stopPropagation()
     e.preventDefault()
+    setIsMenuOpen(false)
     showClientSettingsModal()
   }, [showClientSettingsModal])
 

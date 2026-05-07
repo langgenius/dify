@@ -121,6 +121,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
   const React = await import('react')
 
   const SelectContext = React.createContext<{
+    onOpenChange?: (open: boolean) => void
     onValueChange?: (value: string) => void
   }>({})
 
@@ -140,11 +141,13 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       children,
       value,
       open,
+      onOpenChange,
       onValueChange,
     }: {
       children: React.ReactNode
       value: string | null
       open?: boolean
+      onOpenChange?: (open: boolean) => void
       onValueChange?: (value: string) => void
     }) => {
       const currentValue = value ?? DEFAULT_METHOD
@@ -155,10 +158,11 @@ vi.mock('@langgenius/dify-ui/select', async () => {
           : String(open ?? false)
 
       return (
-        <SelectContext.Provider value={{ onValueChange }}>
+        <SelectContext.Provider value={{ onOpenChange, onValueChange }}>
           <div
             data-testid="custom-select"
             data-value={currentValue}
+            data-open={String(open ?? false)}
             data-options-count={optionsCount}
             data-container-open={containerOpen}
           >
@@ -168,7 +172,16 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       )
     },
     SelectTrigger: ({ children, className }: { children: React.ReactNode, render?: React.ReactNode, className?: string }) => {
-      return <div data-testid="custom-trigger" className={className}>{children}</div>
+      const context = React.useContext(SelectContext)
+      return (
+        <div
+          data-testid="custom-trigger"
+          className={className}
+          onClick={() => context.onOpenChange?.(true)}
+        >
+          {children}
+        </div>
+      )
     },
     SelectContent: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="options-container">{children}</div>
