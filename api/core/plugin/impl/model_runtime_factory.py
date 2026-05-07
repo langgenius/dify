@@ -125,6 +125,20 @@ def create_plugin_model_provider_factory(*, tenant_id: str, user_id: str | None 
     return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).model_provider_factory
 
 
+def create_plugin_model_type_instance(
+    *,
+    tenant_id: str,
+    provider: str,
+    model_type: ModelType,
+    user_id: str | None = None,
+) -> AIModel:
+    """Create a tenant-bound model wrapper for the requested provider and model type."""
+    return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).create_model_type_instance(
+        provider=provider,
+        model_type=model_type,
+    )
+
+
 def create_plugin_provider_manager(*, tenant_id: str, user_id: str | None = None) -> ProviderManager:
     """Create a tenant-bound provider manager for service flows."""
     return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).provider_manager
