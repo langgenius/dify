@@ -1,9 +1,11 @@
 import uuid
+from typing import cast
 
 import sqlalchemy as sa
 from flask_login import current_user
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
+from sqlalchemy.engine import CursorResult
 from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
@@ -178,12 +180,15 @@ class TagService:
     @staticmethod
     def delete_tag_binding(payload: TagBindingDeletePayload):
         TagService.check_target_exists(payload.type, payload.target_id)
-        result = db.session.execute(
-            delete(TagBinding).where(
-                TagBinding.target_id == payload.target_id,
-                TagBinding.tag_id.in_(payload.tag_ids),
-                TagBinding.tenant_id == current_user.current_tenant_id,
-            )
+        result = cast(
+            CursorResult,
+            db.session.execute(
+                delete(TagBinding).where(
+                    TagBinding.target_id == payload.target_id,
+                    TagBinding.tag_id.in_(payload.tag_ids),
+                    TagBinding.tenant_id == current_user.current_tenant_id,
+                )
+            ),
         )
 
         if result.rowcount:
