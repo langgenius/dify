@@ -486,6 +486,15 @@ describe('AppCard', () => {
       expect(screen.getByTestId('dropdown-menu')).toHaveAttribute('data-modal', 'false')
     })
 
+    it('should reveal operations trigger when card receives keyboard focus', () => {
+      render(<AppCard app={mockApp} />)
+      const operationsTriggerWrapper = screen.getByTestId('dropdown-menu-trigger').closest('.absolute')
+
+      expect(operationsTriggerWrapper).toHaveClass('group-focus-within:pointer-events-auto')
+      expect(operationsTriggerWrapper).toHaveClass('group-focus-within:opacity-100')
+      expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-1')
+    })
+
     it('should show edit option when dropdown menu is opened', async () => {
       render(<AppCard app={mockApp} />)
 

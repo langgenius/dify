@@ -425,7 +425,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg"
+        className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg"
       >
         <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pt-[14px] pb-3">
           <div className="relative shrink-0">
@@ -524,7 +524,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                   'absolute top-1/2 right-[6px] flex -translate-y-1/2 items-center transition-opacity',
                   isOperationsMenuOpen
                     ? 'pointer-events-auto opacity-100'
-                    : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100',
+                    : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
                 )}
               >
                 <div className="mx-1 h-[14px] w-px shrink-0 bg-divider-regular" />
@@ -533,7 +533,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                     aria-label={t('operation.more', { ns: 'common' })}
                     className={cn(
                       isOperationsMenuOpen ? 'bg-state-base-hover shadow-none' : 'bg-transparent',
-                      'flex h-8 w-8 items-center justify-center rounded-md border-none p-2 hover:bg-state-base-hover',
+                      'flex h-8 w-8 items-center justify-center rounded-md border-none p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
                     )}
                     onClick={(e) => {
                       e.stopPropagation()
