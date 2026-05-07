@@ -178,7 +178,7 @@ def _create_tag_bindings() -> tuple[dict[str, str], int]:
     return {"result": "success"}, 200
 
 
-def _remove_tag_binding() -> tuple[dict[str, str], int]:
+def _remove_tag_bindings() -> tuple[dict[str, str], int]:
     _require_tag_binding_edit_permission()
 
     payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
@@ -216,4 +216,4 @@ class TagBindingRemoveApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        return _remove_tag_binding()
+        return _remove_tag_bindings()
