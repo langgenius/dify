@@ -1,6 +1,6 @@
 import type { Tag, TagType } from '@/contract/console/tags'
 
-export type CreateTagOption = {
+type CreateTagOption = {
   id: string
   name: string
   type: TagType
