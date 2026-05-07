@@ -183,9 +183,9 @@ describe('AppSelector', () => {
     })
 
     await waitFor(() => {
-      expect(screen.queryByText('Support Bot')).not.toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: /Support Bot/ })).not.toBeInTheDocument()
     })
-    expect(screen.getByText('Workflow App')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Workflow App/ })).toBeInTheDocument()
 
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }), {
       key: 'ArrowDown',
