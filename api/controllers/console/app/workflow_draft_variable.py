@@ -7,7 +7,7 @@ from typing import Any, TypedDict
 
 from flask import Response, request
 from flask_restx import Resource, fields
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import register_schema_models
