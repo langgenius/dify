@@ -6,17 +6,21 @@ exposed prompt/tool item types by annotating construction or assignment sites.
 When only the first two type arguments are supplied, ``LayerPromptT`` and
 ``LayerToolT`` default to the corresponding exposed item types.
 
+Layer instances are shared graph/capability definitions owned by the compositor.
+Per-session runtime state belongs to each session's ``LayerControl`` objects,
+not to the shared layer instances, so different sessions can enter the same
+compositor without leaking generated ids or handles through ``self``.
+
 Dependency mappings use layer-local dependency names as keys and compositor
 layer names as values. Prompt aggregation depends on insertion order: prefix
 prompts are collected from first to last layer, while suffix prompts are
 collected in reverse.
 
-``Compositor.enter`` enters layers in compositor order and exits them in
-reverse order through ``AsyncExitStack``. It accepts an optional
-``CompositorControl`` whose keys must match the compositor layer names. When
-omitted, one is created from the compositor's layer names. Reuse the same
-``CompositorControl`` after setting ``tmp_leave`` to reenter those layer
-contexts.
+``Compositor.enter`` enters layers in compositor order and exits them in reverse
+order through ``AsyncExitStack``. It accepts an optional ``CompositorSession``
+whose layer controls must match the compositor layer names and order. When
+omitted, a fresh session is created. Reusing a suspended session resumes its
+layer contexts; closed sessions must be replaced.
 
 Optional prompt and tool transformers run after layer aggregation. The
 compositor asks each layer to ``wrap_prompt`` and ``wrap_tool`` its native
@@ -35,7 +39,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Generic, Mapping, TypedDict, c
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, JsonValue
 from typing_extensions import Self, TypeVar
 
-from agenton.layers.base import Layer, LayerControl
+from agenton.layers.base import Layer, LayerControl, LifecycleState
 from agenton.layers.types import AllPromptTypes, AllToolTypes
 
 PromptT = TypeVar("PromptT", default=AllPromptTypes)
@@ -150,8 +154,15 @@ def _validate_compositor_config_input(value: CompositorConfigValue) -> Composito
     return _validate_config_model_input(CompositorConfig, value)
 
 
-class CompositorControl:
-    """External controls for layer entry contexts entered by a compositor."""
+class CompositorSession:
+    """External lifecycle session for layer contexts entered by a compositor.
+
+    A session owns one ``LayerControl`` per compositor layer name, preserving
+    compositor order. Broadcast methods are convenience APIs for setting every
+    layer's per-entry exit intent; ``layer`` allows explicit per-layer control
+    when callers need partial suspend/delete behavior. A mixed session with any
+    closed layer cannot be entered again because compositor entry is all-or-none.
+    """
 
     __slots__ = ("layer_controls",)
 
@@ -162,15 +173,19 @@ class CompositorControl:
             (layer_name, LayerControl()) for layer_name in layer_names
         )
 
-    @property
-    def tmp_leave(self) -> bool:
-        """Whether any entered layer control is marked for temporary leave."""
-        return any(control.tmp_leave for control in self.layer_controls.values())
-
-    @tmp_leave.setter
-    def tmp_leave(self, value: bool) -> None:
+    def suspend_on_exit(self) -> None:
+        """Request suspend behavior for every layer when this entry exits."""
         for control in self.layer_controls.values():
-            control.tmp_leave = value
+            control.suspend_on_exit()
+
+    def delete_on_exit(self) -> None:
+        """Request delete behavior for every layer when this entry exits."""
+        for control in self.layer_controls.values():
+            control.delete_on_exit()
+
+    def layer(self, name: str) -> LayerControl:
+        """Return the layer control for ``name`` or raise ``KeyError``."""
+        return self.layer_controls[name]
 
 
 @dataclass(kw_only=True)
@@ -240,34 +255,51 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT]):
             layer.bind_deps({**self.layers, **deps})
         self._deps_bound = True
 
+    def new_session(self) -> CompositorSession:
+        """Create a fresh lifecycle session matching this compositor's layer order."""
+        return CompositorSession(self.layers)
+
     @asynccontextmanager
     async def enter(
         self,
-        control: CompositorControl | None = None,
-    ) -> AsyncIterator[CompositorControl]:
-        """Enter each layer context in order and yield compositor control."""
+        session: CompositorSession | None = None,
+    ) -> AsyncIterator[CompositorSession]:
+        """Enter each layer context in order and yield the active session."""
         if not self._deps_bound:
             raise RuntimeError("Compositor deps must be bound before entering context.")
 
-        if control is None:
-            control = CompositorControl(self.layers)
-        self._validate_control(control)
+        if session is None:
+            session = self.new_session()
+        self._validate_session(session)
+        self._ensure_session_can_enter(session)
 
         async with AsyncExitStack() as stack:
             for layer_name, layer in self.layers.items():
-                await stack.enter_async_context(layer.enter(control.layer_controls[layer_name]))
-            yield control
+                await stack.enter_async_context(layer.enter(session.layer_controls[layer_name]))
+            yield session
 
-    def _validate_control(self, control: CompositorControl) -> None:
+    def _validate_session(self, session: CompositorSession) -> None:
         expected_layer_names = tuple(self.layers)
-        actual_layer_names = tuple(control.layer_controls)
+        actual_layer_names = tuple(session.layer_controls)
         if actual_layer_names != expected_layer_names:
             expected = ", ".join(expected_layer_names)
             actual = ", ".join(actual_layer_names)
             raise ValueError(
-                "CompositorControl layer names must match compositor layers in order. "
+                "CompositorSession layer names must match compositor layers in order. "
                 f"Expected [{expected}], got [{actual}]."
             )
+
+    def _ensure_session_can_enter(self, session: CompositorSession) -> None:
+        """Reject active or closed layer controls before any layer side effects."""
+        for control in session.layer_controls.values():
+            if control.state is LifecycleState.ACTIVE:
+                raise RuntimeError(
+                    "LayerControl is already active; duplicate or nested enter is not allowed."
+                )
+            if control.state is LifecycleState.CLOSED:
+                raise RuntimeError(
+                    "LayerControl is closed; create a new compositor session before entering again."
+                )
 
     @property
     def prompts(self) -> list[PromptT]:
@@ -301,7 +333,7 @@ __all__ = [
     "CompositorConfig",
     "CompositorConfigValue",
     "CompositorLayerConfigInput",
-    "CompositorControl",
+    "CompositorSession",
     "CompositorTransformer",
     "CompositorTransformerKwargs",
     "CompositorLayerConfig",

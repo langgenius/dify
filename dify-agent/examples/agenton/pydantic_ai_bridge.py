@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from dataclasses import dataclass
 
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.messages import BuiltinToolCallPart, ModelMessage, ToolCallPart
+from pydantic_ai.models.openai import OpenAIChatModel  # pyright: ignore[reportDeprecated]
 from pydantic_ai.models.test import TestModel
 
 from agenton.compositor import Compositor, CompositorLayerConfig
@@ -90,8 +92,13 @@ async def main() -> None:
     )
 
     async with compositor.enter():
+        model = (
+            OpenAIChatModel("gpt-5.5")  # pyright: ignore[reportDeprecated]
+            if os.getenv("OPENAI_API_KEY")
+            else TestModel()
+        )
         agent = Agent[AgentProfile](
-            model=TestModel(call_tools=["count_words", "write_tagline"]),
+            model=model,
             deps_type=AgentProfile,
             tools=compositor.tools,
         )

@@ -5,7 +5,7 @@
 families while keeping concrete reusable layers in ``agenton_collections``.
 """
 
-from agenton.layers.base import Layer, LayerControl, LayerDeps, NoLayerDeps
+from agenton.layers.base import ExitIntent, Layer, LayerControl, LayerDeps, LifecycleState, NoLayerDeps
 from agenton.layers.types import (
     AllPromptTypes,
     AllToolTypes,
@@ -27,6 +27,8 @@ __all__ = [
     "Layer",
     "LayerDeps",
     "LayerControl",
+    "LifecycleState",
+    "ExitIntent",
     "NoLayerDeps",
     "PlainLayer",
     "PlainPrompt",

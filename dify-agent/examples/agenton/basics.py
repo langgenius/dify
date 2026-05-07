@@ -46,12 +46,12 @@ class TraceLayer(PlainLayer[NoLayerDeps]):
         self.events.append("create")
 
     @override
-    async def on_context_tmp_leave(self, control: LayerControl) -> None:
-        self.events.append("tmp_leave")
+    async def on_context_suspend(self, control: LayerControl) -> None:
+        self.events.append("suspend")
 
     @override
-    async def on_context_reenter(self, control: LayerControl) -> None:
-        self.events.append("reenter")
+    async def on_context_resume(self, control: LayerControl) -> None:
+        self.events.append("resume")
 
     @override
     async def on_context_delete(self, control: LayerControl) -> None:
@@ -132,7 +132,7 @@ async def main() -> None:
     print([tool.value("layer composition") for tool in compositor.tools])
 
     async with compositor.enter() as lifecycle_control:
-        lifecycle_control.tmp_leave = True
+        lifecycle_control.suspend_on_exit()
     async with compositor.enter(lifecycle_control):
         pass
     print("\nLifecycle:", trace.events)
