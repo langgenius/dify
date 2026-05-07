@@ -441,10 +441,10 @@ x-shared-env: &shared-api-worker-env
   NOTION_CLIENT_SECRET: ${NOTION_CLIENT_SECRET:-}
   NOTION_CLIENT_ID: ${NOTION_CLIENT_ID:-}
   NOTION_INTERNAL_SECRET: ${NOTION_INTERNAL_SECRET:-}
-  MAIL_TYPE: ${MAIL_TYPE:-resend}
+  MAIL_TYPE: ${MAIL_TYPE:-}
   MAIL_DEFAULT_SEND_FROM: ${MAIL_DEFAULT_SEND_FROM:-}
   RESEND_API_URL: ${RESEND_API_URL:-https://api.resend.com}
-  RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
   SMTP_SERVER: ${SMTP_SERVER:-}
   SMTP_PORT: ${SMTP_PORT:-465}
   SMTP_USERNAME: ${SMTP_USERNAME:-}
@@ -586,8 +586,8 @@ x-shared-env: &shared-api-worker-env
   NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
   NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
   NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
-  CERTBOT_EMAIL: ${CERTBOT_EMAIL:-your_email@example.com}
-  CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-your_domain.com}
+  CERTBOT_EMAIL: ${CERTBOT_EMAIL:-}
+  CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
   CERTBOT_OPTIONS: ${CERTBOT_OPTIONS:-}
   SSRF_HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
   SSRF_COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
@@ -629,6 +629,9 @@ x-shared-env: &shared-api-worker-env
   ENDPOINT_URL_TEMPLATE: ${ENDPOINT_URL_TEMPLATE:-http://localhost/e/{hook_id}}
   MARKETPLACE_ENABLED: ${MARKETPLACE_ENABLED:-true}
   MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+  CREATORS_PLATFORM_FEATURES_ENABLED: ${CREATORS_PLATFORM_FEATURES_ENABLED:-true}
+  CREATORS_PLATFORM_API_URL: ${CREATORS_PLATFORM_API_URL:-https://creators.dify.ai}
+  CREATORS_PLATFORM_OAUTH_CLIENT_ID: ${CREATORS_PLATFORM_OAUTH_CLIENT_ID:-}
   FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
   ENFORCE_LANGGENIUS_PLUGIN_SIGNATURES: ${ENFORCE_LANGGENIUS_PLUGIN_SIGNATURES:-true}
   PLUGIN_STDIO_BUFFER_SIZE: ${PLUGIN_STDIO_BUFFER_SIZE:-1024}
@@ -742,7 +745,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.13.3
+    image: langgenius/dify-api:1.14.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -790,7 +793,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.13.3
+    image: langgenius/dify-api:1.14.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -836,7 +839,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.13.3
+    image: langgenius/dify-api:1.14.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -873,7 +876,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.13.3
+    image: langgenius/dify-web:1.14.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -891,8 +894,8 @@ services:
       ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
       MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
       MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
-      TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
-      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
+      TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-10}
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-4000}
       LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
       MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
       MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
@@ -989,7 +992,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.14
+    image: langgenius/dify-sandbox:0.2.15
     restart: always
     environment:
       # The DifySandbox configurations
@@ -1013,7 +1016,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.3-local
+    image: langgenius/dify-plugin-daemon:0.6.0-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -1123,8 +1126,8 @@ services:
       - ./certbot/update-cert.template.txt:/update-cert.template.txt
       - ./certbot/docker-entrypoint.sh:/docker-entrypoint.sh
     environment:
-      - CERTBOT_EMAIL=${CERTBOT_EMAIL}
-      - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
+      - CERTBOT_EMAIL=${CERTBOT_EMAIL:-}
+      - CERTBOT_DOMAIN=${CERTBOT_DOMAIN:-}
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
     entrypoint: ["/docker-entrypoint.sh"]
     command: ["tail", "-f", "/dev/null"]

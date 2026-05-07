@@ -154,7 +154,6 @@ class TestAdvancedChatAppRunnerConversationVariables:
             mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
             mock_session_class.return_value.__enter__.return_value = MagicMock()
-            mock_db.session.query.return_value.where.return_value.first.return_value = MagicMock()  # App exists
             mock_db.engine = MagicMock()
 
             # Mock GraphRuntimeState to accept the variable pool
@@ -301,7 +300,6 @@ class TestAdvancedChatAppRunnerConversationVariables:
             mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
             mock_session_class.return_value.__enter__.return_value = MagicMock()
-            mock_db.session.query.return_value.where.return_value.first.return_value = MagicMock()  # App exists
             mock_db.engine = MagicMock()
 
             # Mock ConversationVariable.from_variable to return mock objects
@@ -453,7 +451,6 @@ class TestAdvancedChatAppRunnerConversationVariables:
             mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
             mock_sessionmaker.return_value.begin.return_value.__exit__ = MagicMock(return_value=False)
             mock_session_class.return_value.__enter__.return_value = MagicMock()
-            mock_db.session.query.return_value.where.return_value.first.return_value = MagicMock()  # App exists
             mock_db.engine = MagicMock()
 
             # Mock GraphRuntimeState to accept the variable pool

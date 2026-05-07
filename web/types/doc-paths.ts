@@ -8,7 +8,7 @@
 export type DocLanguage = 'en' | 'zh' | 'ja'
 
 // UseDify paths
-export type UseDifyPath =
+type UseDifyPath =
   | '/use-dify/build/additional-features'
   | '/use-dify/build/goto-anything'
   | '/use-dify/build/mcp'
@@ -121,7 +121,7 @@ type ExtractNodesPath<T> = T extends `/use-dify/nodes/${infer Path}` ? Path : ne
 export type UseDifyNodesPath = ExtractNodesPath<UseDifyPath>
 
 // SelfHost paths
-export type SelfHostPath =
+type SelfHostPath =
   | '/self-host/advanced-deployments/local-source-code'
   | '/self-host/advanced-deployments/start-the-frontend-docker-container'
   | '/self-host/configuration/environments'
@@ -136,7 +136,7 @@ export type SelfHostPath =
   | '/self-host/troubleshooting/weaviate-v4-migration'
 
 // DevelopPlugin paths
-export type DevelopPluginPath =
+type DevelopPluginPath =
   | '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin'
   | '/develop-plugin/dev-guides-and-walkthroughs/cheatsheet'
   | '/develop-plugin/dev-guides-and-walkthroughs/creating-new-model-provider'
@@ -178,7 +178,7 @@ export type DevelopPluginPath =
   | '/develop-plugin/publishing/standards/third-party-signature-verification'
 
 // API Reference paths (English, use apiReferencePathTranslations for other languages)
-export type ApiReferencePath =
+type ApiReferencePath =
   | '/api-reference/annotations/configure-annotation-reply'
   | '/api-reference/annotations/create-annotation'
   | '/api-reference/annotations/delete-annotation'
@@ -261,7 +261,7 @@ export type ApiReferencePath =
   | '/api-reference/workflows/stop-workflow-task'
 
 // Base path without language prefix
-export type DocPathWithoutLangBase =
+type DocPathWithoutLangBase =
   | UseDifyPath
   | SelfHostPath
   | DevelopPluginPath

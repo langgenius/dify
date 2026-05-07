@@ -8,10 +8,10 @@ from collections.abc import Generator
 
 from flask import Response, jsonify, request
 from flask_restx import Resource
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
@@ -20,11 +20,11 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.enums import CreatorUserRole
-from models.human_input import RecipientType
 from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
@@ -32,11 +32,6 @@ from services.human_input_service import Form, HumanInputService
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 logger = logging.getLogger(__name__)
-
-
-class HumanInputFormSubmitPayload(BaseModel):
-    inputs: dict
-    action: str
 
 
 def _jsonify_form_definition(form: Form) -> Response:
@@ -55,6 +50,11 @@ class ConsoleHumanInputFormApi(Resource):
 
         if form.tenant_id != current_tenant_id:
             raise NotFoundError("App not found")
+
+    @staticmethod
+    def _ensure_console_recipient_type(form: Form) -> None:
+        if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.CONSOLE):
+            raise NotFoundError("form not found")
 
     @setup_required
     @login_required
@@ -99,10 +99,8 @@ class ConsoleHumanInputFormApi(Resource):
             raise NotFoundError(f"form not found, token={form_token}")
 
         self._ensure_console_access(form)
-
+        self._ensure_console_recipient_type(form)
         recipient_type = form.recipient_type
-        if recipient_type not in {RecipientType.CONSOLE, RecipientType.BACKSTAGE}:
-            raise NotFoundError(f"form not found, token={form_token}")
         # The type checker is not smart enought to validate the following invariant.
         # So we need to assert it manually.
         assert recipient_type is not None, "recipient_type cannot be None here."

@@ -112,18 +112,6 @@ vi.mock('@/app/components/billing/vector-space-full', () => ({
   default: () => <div data-testid="vector-space-full">Vector Space Full</div>,
 }))
 
-vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
-  default: ({ show, onClose }: { show: boolean, onClose: () => void }) => (
-    show
-      ? (
-          <div data-testid="plan-upgrade-modal">
-            <button data-testid="close-modal" onClick={onClose}>Close</button>
-          </div>
-        )
-      : null
-  ),
-}))
-
 vi.mock('@/app/components/datasets/create/step-one/upgrade-card', () => ({
   default: () => <div data-testid="upgrade-card">Upgrade Card</div>,
 }))

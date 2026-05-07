@@ -237,8 +237,8 @@ describe('iteration path', () => {
     await user.click(screen.getByRole('button', { name: 'pick-output-var' }))
     await user.click(screen.getAllByRole('switch')[0]!)
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '7' } })
-    await user.click(screen.getByRole('button', { name: /workflow.nodes.iteration.ErrorMethod.operationTerminated/i }))
-    await user.click(screen.getByText('workflow.nodes.iteration.ErrorMethod.continueOnError'))
+    await user.click(screen.getByRole('combobox'))
+    await user.click(screen.getByRole('option', { name: 'workflow.nodes.iteration.ErrorMethod.continueOnError' }))
     await user.click(screen.getAllByRole('switch')[1]!)
 
     expect(handleInputChange).toHaveBeenCalledWith(['node-1', 'items'], 'variable', { type: VarType.arrayString })

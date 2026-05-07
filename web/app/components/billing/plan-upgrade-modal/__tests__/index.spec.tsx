@@ -1,18 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
-import PlanUpgradeModal from '../index'
+import { PlanUpgradeModal } from '../index'
 
 const mockSetShowPricingModal = vi.fn()
-
-vi.mock('@/app/components/base/modal', () => {
-  const MockModal = ({ isShow, children }: { isShow: boolean, children: React.ReactNode }) => (
-    isShow ? <div data-testid="plan-upgrade-modal">{children}</div> : null
-  )
-  return {
-    default: MockModal,
-  }
-})
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
@@ -66,6 +56,16 @@ describe('PlanUpgradeModal', () => {
     renderComponent({ onClose })
 
     await user.click(screen.getByText('billing.triggerLimitModal.dismiss'))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should call onClose when dialog requests close', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    renderComponent({ onClose })
+
+    await user.keyboard('{Escape}')
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })

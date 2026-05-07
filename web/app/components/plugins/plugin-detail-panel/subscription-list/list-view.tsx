@@ -1,9 +1,9 @@
 'use client'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import { CreateButtonType, CreateSubscriptionButton } from './create'
 import SubscriptionCard from './subscription-card'
 import { useSubscriptionList } from './use-subscription-list'
@@ -30,7 +30,18 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
             <span className="system-sm-semibold-uppercase text-text-secondary">
               {t('subscription.listNum', { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
-            <Tooltip popupContent={t('subscription.list.tip', { ns: 'pluginTrigger' })} />
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <span className="flex h-3.5 w-3.5 shrink-0 p-px">
+                    <span aria-hidden className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" />
+                  </span>
+                )}
+              />
+              <TooltipContent>
+                {t('subscription.list.tip', { ns: 'pluginTrigger' })}
+              </TooltipContent>
+            </Tooltip>
           </div>
         )}
         <CreateSubscriptionButton

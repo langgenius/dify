@@ -16,7 +16,7 @@ jobs:
   test:
     name: Full VDB Tests
     if: github.repository == 'langgenius/dify'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     strategy:
       matrix:
         python-version:

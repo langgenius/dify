@@ -77,6 +77,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
                 className="flex h-[18px] items-center space-x-0.5 text-xs font-normal text-text-tertiary"
                 href="https://jinja.palletsprojects.com/en/3.1.x/templates/"
                 target="_blank"
+                rel="noopener noreferrer"
               >
                 <span>{t(`${i18nPrefix}.codeSupportTip`, { ns: 'workflow' })}</span>
                 <RiQuestionLine className="h-3 w-3" />

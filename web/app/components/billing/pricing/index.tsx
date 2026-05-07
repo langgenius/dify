@@ -39,9 +39,11 @@ const pricingScrollAreaClassNames = {
 const Pricing: FC<PricingProps> = ({
   onCancel,
 }) => {
-  const { plan } = useProviderContext()
+  const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
+  const shouldDefaultToYearly = isCurrentWorkspaceManager && enableEducationPlan && isEducationAccount
+  const [selectedPlanRange, setSelectedPlanRange] = React.useState<PlanRange>()
+  const planRange = selectedPlanRange ?? (shouldDefaultToYearly ? PlanRange.yearly : PlanRange.monthly)
   const [currentCategory, setCurrentCategory] = useState<Category>(CategoryEnum.CLOUD)
   const canPay = isCurrentWorkspaceManager
 
@@ -73,7 +75,7 @@ const Pricing: FC<PricingProps> = ({
                   currentCategory={currentCategory}
                   onChangeCategory={setCurrentCategory}
                   currentPlanRange={planRange}
-                  onChangePlanRange={setPlanRange}
+                  onChangePlanRange={setSelectedPlanRange}
                 />
                 <Plans
                   plan={plan}

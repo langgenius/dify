@@ -18,7 +18,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -108,9 +108,9 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         <div className="mb-1 flex shrink-0 items-center justify-between">
           <div className="flex h-6 items-center gap-0.5">
             <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.formContent.title`, { ns: 'workflow' })}</div>
-            <Tooltip
-              popupContent={t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}
-            />
+            <Infotip aria-label={t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}>
+              {t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}
+            </Infotip>
           </div>
           {!readOnly && (
             <div className="flex items-center">
@@ -164,9 +164,9 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-0.5">
             <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.userActions.title`, { ns: 'workflow' })}</div>
-            <Tooltip
-              popupContent={t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}
-            />
+            <Infotip aria-label={t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}>
+              {t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}
+            </Infotip>
           </div>
           {!readOnly && (
             <div className="flex items-center px-1">

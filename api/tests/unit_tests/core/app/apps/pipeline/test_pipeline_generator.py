@@ -375,7 +375,7 @@ def test_generate_success_returns_converted(generator, mocker):
 
     workflow = MagicMock(id="wf", tenant_id="tenant", app_id="pipe", graph_dict={})
     session = MagicMock()
-    session.query.return_value.where.return_value.first.return_value = workflow
+    session.get.return_value = workflow
     mocker.patch.object(module.db, "session", session)
 
     queue_manager = MagicMock()

@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.console.datasets import data_source
@@ -51,7 +52,7 @@ def mock_engine():
 
 class TestDataSourceApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_success(self, app, patch_tenant):
@@ -188,7 +189,7 @@ class TestDataSourceApi:
 
 class TestDataSourceNotionListApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_credential_not_found(self, app, patch_tenant):
@@ -323,7 +324,7 @@ class TestDataSourceNotionListApi:
 
 class TestDataSourceNotionApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_preview_success(self, app, patch_tenant):
@@ -381,7 +382,7 @@ class TestDataSourceNotionApi:
 
 class TestDataSourceNotionDatasetSyncApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_success(self, app, patch_tenant):
@@ -424,7 +425,7 @@ class TestDataSourceNotionDatasetSyncApi:
 
 class TestDataSourceNotionDocumentSyncApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     def test_get_success(self, app, patch_tenant):

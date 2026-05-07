@@ -1,13 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import type { Item } from '@/app/components/base/select'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { SimpleSelect } from '@/app/components/base/select'
 import DisplayToggle from '../display-toggle'
 import StatusItem from '../status-item'
 import s from '../style.module.css'
+
+type Item = {
+  value: number | string
+  name: string
+} & Record<string, unknown>
 
 type MenuBarProps = {
   isAllSelected: boolean
@@ -38,6 +43,8 @@ const MenuBar: FC<MenuBarProps> = ({
   isCollapsed,
   toggleCollapsed,
 }) => {
+  const selectedStatus = statusList.find(item => item.value === selectDefaultValue) ?? null
+
   return (
     <div className={s.docSearchWrapper}>
       <Checkbox
@@ -48,17 +55,29 @@ const MenuBar: FC<MenuBarProps> = ({
         disabled={isLoading}
       />
       <div className="flex-1 pl-5 system-sm-semibold-uppercase text-text-secondary">{totalText}</div>
-      <SimpleSelect
-        onSelect={onChangeStatus}
-        items={statusList}
-        defaultValue={selectDefaultValue}
-        className={s.select}
-        wrapperClassName="h-fit mr-2"
-        optionWrapClassName="w-[160px]"
-        optionClassName="p-0"
-        renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
-        notClearable
-      />
+      <Select
+        value={selectedStatus ? String(selectedStatus.value) : null}
+        onValueChange={(nextValue) => {
+          if (!nextValue)
+            return
+          const nextItem = statusList.find(item => String(item.value) === nextValue)
+          if (nextItem)
+            onChangeStatus(nextItem)
+        }}
+      >
+        <SelectTrigger className={cn(s.select, 'mr-2 h-fit')}>
+          {selectedStatus?.name ?? ''}
+        </SelectTrigger>
+        <SelectContent popupClassName="w-[160px]">
+          {statusList.map(item => (
+            <SelectItem key={item.value} value={String(item.value)} className="h-auto p-0">
+              <SelectItemText className="sr-only m-0 p-0">{item.name}</SelectItemText>
+              <StatusItem item={item} selected={item.value === selectDefaultValue} />
+              {item.value === selectDefaultValue && <SelectItemIndicator className="hidden" />}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Input
         showLeftIcon
         showClearIcon

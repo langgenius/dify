@@ -15,6 +15,8 @@ import AppSelector from '../index'
 
 // ==================== Mock Setup ====================
 
+const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
+
 // Mock IntersectionObserver globally using class syntax
 let intersectionObserverCallback: IntersectionObserverCallback | null = null
 const mockIntersectionObserver = {
@@ -163,18 +165,35 @@ const getAppDetailData = (appId: string) => {
 }
 
 vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: () => ({
-    data: mockAppListData,
-    isLoading: mockIsLoading,
-    isFetchingNextPage: mockIsFetchingNextPage,
-    fetchNextPage: mockFetchNextPage,
-    hasNextPage: mockHasNextPage,
-  }),
   useAppDetail: (appId: string) => ({
     data: getAppDetailData(appId),
     isFetching: mockAppDetailLoading,
   }),
 }))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      list: {
+        infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
+      },
+    },
+  },
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: mockAppListData,
+      isLoading: mockIsLoading,
+      isFetchingNextPage: mockIsFetchingNextPage,
+      fetchNextPage: mockFetchNextPage,
+      hasNextPage: mockHasNextPage,
+    }),
+  }
+})
 
 // Allow configurable mock data for useAppWorkflow
 let mockWorkflowData: Record<string, unknown> | undefined | null
@@ -244,28 +263,42 @@ vi.mock('@/app/components/base/file-uploader', () => ({
   ),
 }))
 
-// Mock PortalSelect for testing select field interactions
-vi.mock('@/app/components/base/select', () => ({
-  PortalSelect: ({ onSelect, value, placeholder, items }: {
-    onSelect: (item: { value: string }) => void
-    value: string
-    placeholder: string
-    items: Array<{ value: string, name: string }>
-  }) => (
-    <div data-testid="portal-select">
-      <span data-testid="select-value">{value || placeholder}</span>
-      {items?.map((item: { value: string, name: string }) => (
+// Mock Select for testing select field interactions
+vi.mock('@langgenius/dify-ui/select', async () => {
+  const React = await import('react')
+  const SelectContext = React.createContext<{
+    onValueChange?: (value: string) => void
+  }>({})
+
+  return {
+    Select: ({ children, onValueChange }: {
+      children: React.ReactNode
+      onValueChange?: (value: string) => void
+    }) => (
+      <SelectContext.Provider value={{ onValueChange }}>
+        <div data-testid="portal-select">{children}</div>
+      </SelectContext.Provider>
+    ),
+    SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+      <span data-testid="select-value">{children}</span>
+    ),
+    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+      const context = React.useContext(SelectContext)
+      return (
         <button
-          key={item.value}
-          data-testid={`select-option-${item.value}`}
-          onClick={() => onSelect(item)}
+          key={value}
+          data-testid={`select-option-${value}`}
+          onClick={() => context.onValueChange?.(value)}
         >
-          {item.name}
+          {children}
         </button>
-      ))}
-    </div>
-  ),
-}))
+      )
+    },
+    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    SelectItemIndicator: () => null,
+  }
+})
 
 // Mock Input component with onClear support
 vi.mock('@/app/components/base/input', () => ({
@@ -307,6 +340,11 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
       {ui}
     </QueryClientProvider>,
   )
+}
+
+type AppSelectorInfiniteOptions = {
+  input: (pageParam: number) => { query: Record<string, unknown> }
+  getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
 }
 
 // Mock data factories
@@ -1523,6 +1561,22 @@ describe('AppSelector', () => {
     it('should render trigger component', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
       expect(screen.getByText('app.appSelector.placeholder'))!.toBeInTheDocument()
+    })
+
+    it('should configure paged app list query options', () => {
+      renderWithQueryClient(<AppSelector {...defaultProps} />)
+
+      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppSelectorInfiniteOptions
+
+      expect(options.input(4)).toEqual({
+        query: {
+          page: 4,
+          limit: 20,
+          name: '',
+        },
+      })
+      expect(options.getNextPageParam({ has_more: true, page: 4 })).toBe(5)
+      expect(options.getNextPageParam({ has_more: false, page: 4 })).toBeUndefined()
     })
 
     it('should show selected app info when value is provided', () => {

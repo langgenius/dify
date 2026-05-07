@@ -101,3 +101,11 @@ The scripts resolve paths relative to their location, so you can run them from a
    uv run ruff format ./        # Format code
    uv run basedpyright .        # Type checking
    ```
+
+## Generate TS stub
+
+```
+uv run dev/generate_swagger_specs.py --output-dir openapi
+```
+
+use https://jsontotable.org/openapi-to-typescript to convert to typescript

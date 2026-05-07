@@ -14,21 +14,6 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-// Mock PlanUpgradeModal
-vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
-  default: ({ show, onClose, title, description }: { show: boolean, onClose: () => void, title?: string, description?: string }) => (
-    show
-      ? (
-          <div data-testid="plan-upgrade-modal">
-            <span data-testid="modal-title">{title}</span>
-            <span data-testid="modal-description">{description}</span>
-            <button onClick={onClose} data-testid="close-modal">Close</button>
-          </div>
-        )
-      : null
-  ),
-}))
-
 describe('SegmentAdd', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -189,7 +174,7 @@ describe('SegmentAdd', () => {
 
       fireEvent.click(screen.getByText(/list\.action\.addButton/i))
 
-      expect(screen.getByTestId('plan-upgrade-modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should not call showNewSegmentModal for sandbox users', () => {
@@ -219,11 +204,11 @@ describe('SegmentAdd', () => {
 
       // Show modal
       fireEvent.click(screen.getByText(/list\.action\.addButton/i))
-      expect(screen.getByTestId('plan-upgrade-modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('close-modal'))
+      fireEvent.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
 
-      expect(screen.queryByTestId('plan-upgrade-modal')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 

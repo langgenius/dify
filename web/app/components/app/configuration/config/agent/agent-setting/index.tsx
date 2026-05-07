@@ -74,7 +74,7 @@ const AgentSetting: FC<Props> = ({
         </div>
         {/* Body */}
         <div
-          className="grow overflow-y-auto border-b p-6 pt-5 pb-[68px]"
+          className="grow overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-[68px]"
           style={{
             borderBottom: 'rgba(0, 0, 0, 0.05)',
           }}

@@ -64,7 +64,6 @@ const LocaleLayout = async ({
               defaultTheme="system"
               enableSystem
               disableTransitionOnChange
-              enableColorScheme={false}
             >
               <NuqsAdapter>
                 <TanstackQueryInitializer>

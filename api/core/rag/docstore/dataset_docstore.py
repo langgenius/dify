@@ -11,6 +11,7 @@ from core.rag.models.document import AttachmentDocument, Document
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
+from models.enums import SegmentType
 
 
 class DatasetDocumentStore:
@@ -127,6 +128,7 @@ class DatasetDocumentStore:
                 if save_child:
                     if doc.children:
                         for position, child in enumerate(doc.children, start=1):
+                            assert self._document_id
                             child_segment = ChildChunk(
                                 tenant_id=self._dataset.tenant_id,
                                 dataset_id=self._dataset.id,
@@ -137,7 +139,7 @@ class DatasetDocumentStore:
                                 index_node_hash=child.metadata.get("doc_hash"),
                                 content=child.page_content,
                                 word_count=len(child.page_content),
-                                type="automatic",
+                                type=SegmentType.AUTOMATIC,
                                 created_by=self._user_id,
                             )
                             db.session.add(child_segment)
@@ -163,6 +165,7 @@ class DatasetDocumentStore:
                     )
                     # add new child chunks
                     for position, child in enumerate(doc.children, start=1):
+                        assert self._document_id
                         child_segment = ChildChunk(
                             tenant_id=self._dataset.tenant_id,
                             dataset_id=self._dataset.id,
@@ -173,7 +176,7 @@ class DatasetDocumentStore:
                             index_node_hash=child.metadata.get("doc_hash"),
                             content=child.page_content,
                             word_count=len(child.page_content),
-                            type="automatic",
+                            type=SegmentType.AUTOMATIC,
                             created_by=self._user_id,
                         )
                         db.session.add(child_segment)

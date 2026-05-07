@@ -31,7 +31,7 @@ class FunctionCallMultiDatasetRouter:
             result: LLMResult = model_instance.invoke_llm(  # pyright: ignore[reportCallIssue, reportArgumentType]
                 prompt_messages=prompt_messages,
                 tools=dataset_tools,
-                stream=False,
+                stream=False,  # pyright: ignore[reportArgumentType]
                 model_parameters={"temperature": 0.2, "top_p": 0.3, "max_tokens": 1500},
             )
             usage = result.usage or LLMUsage.empty_usage()

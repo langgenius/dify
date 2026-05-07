@@ -1,6 +1,6 @@
 # @langgenius/dify-ui
 
-Shared UI primitives, design tokens, Tailwind preset, and the `cn()` utility consumed by Dify's `web/` app.
+Shared UI primitives, design tokens, CSS-first Tailwind styles, and the `cn()` utility consumed by Dify's `web/` app.
 
 The primitives are thin, opinionated wrappers around [Base UI] headless components, styled with `cva` + `cn` and Dify design tokens.
 
@@ -36,22 +36,36 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category | Subpath                                                                                                            | Notes                                             |
-| -------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| Overlay  | `./alert-dialog`, `./context-menu`, `./dialog`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below. |
-| Form     | `./number-field`, `./slider`, `./switch`                                                                           | Controlled / uncontrolled per Base UI defaults.   |
-| Layout   | `./scroll-area`                                                                                                    | Custom-styled scrollbar over the host viewport.   |
-| Media    | `./avatar`, `./button`                                                                                             | Button exposes `cva` variants.                    |
+| Category | Subpath                                                                                                                                            | Notes                                             |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Overlay  | `./alert-dialog`, `./autocomplete`, `./combobox`, `./context-menu`, `./dialog`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below. |
+| Form     | `./autocomplete`, `./combobox`, `./number-field`, `./slider`, `./switch`                                                                           | Controlled / uncontrolled per Base UI defaults.   |
+| Layout   | `./scroll-area`                                                                                                                                    | Custom-styled scrollbar over the host viewport.   |
+| Media    | `./avatar`, `./button`                                                                                                                             | Button exposes `cva` variants.                    |
 
 Utilities:
 
 - `./cn` — `clsx` + `tailwind-merge` wrapper. Use this for conditional class composition.
-- `./tailwind-preset` — Tailwind v4 preset with Dify tokens. Apps extend it from their own `tailwind.config.ts`.
-- `./styles.css` — the one CSS entry that ships the design tokens, theme variables, and base reset. Import it once from the app root.
+- `./styles.css` — the one CSS entry that ships the design tokens, theme variables, and project utilities/components. Import it once from the app root.
+
+## Tailwind CSS v4 integration
+
+This package uses Tailwind CSS v4's CSS-first configuration model. Consumers should import Tailwind from their own root stylesheet, then import this package's CSS entry:
+
+```css
+@import 'tailwindcss';
+@import '@langgenius/dify-ui/styles.css';
+```
+
+If a consumer uses Dify UI source files through the workspace, add an explicit source so Tailwind can detect utility classes:
+
+```css
+@source '../packages/dify-ui/src';
+```
 
 ## Overlay & portal contract
 
-All overlay primitives (`dialog`, `alert-dialog`, `popover`, `dropdown-menu`, `context-menu`, `select`, `tooltip`, `toast`) render their content inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Consumers **do not** need to wrap anything in a portal manually.
+All overlay primitives (`dialog`, `alert-dialog`, `autocomplete`, `combobox`, `popover`, `dropdown-menu`, `context-menu`, `select`, `tooltip`, `toast`) render their content inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Consumers **do not** need to wrap anything in a portal manually.
 
 ### Root isolation requirement
 
@@ -69,10 +83,10 @@ Equivalent: any root element with `isolation: isolate` in CSS. Without it, overl
 
 Every overlay primitive uses a single, shared z-index. Do **not** override it at call sites.
 
-| Layer                                                                               | z-index  | Where                                                                      |
-| ----------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
-| Overlays (Dialog, AlertDialog, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-1002` | Positioner / Backdrop                                                      |
-| Toast viewport                                                                      | `z-1003` | One layer above overlays so notifications are never hidden under a dialog. |
+| Layer                                                                                                       | z-index  | Where                                                                      |
+| ----------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
+| Overlays (Dialog, AlertDialog, Autocomplete, Combobox, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-1002` | Positioner / Backdrop                                                      |
+| Toast viewport                                                                                              | `z-1003` | One layer above overlays so notifications are never hidden under a dialog. |
 
 Rationale: during Dify's migration from legacy `portal-to-follow-elem` / `base/modal` / `base/dialog` overlays to this package, new and old overlays coexist in the DOM. `z-1002` sits above any common legacy layer, eliminating per-call-site z-index hacks. Among themselves, new primitives share the same z-index and **rely on DOM order** for stacking — the portal mounted later wins.
 
@@ -88,7 +102,23 @@ See `[web/docs/overlay-migration.md](../../web/docs/overlay-migration.md)` for t
 
 - `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
 - `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
-- `pnpm -C packages/dify-ui type-check` — `tsc --noEmit` for this package only.
+- `pnpm -C packages/dify-ui type-check` — `tsgo --noEmit` for this package only.
+
+### Disabling Animations In Tests
+
+Base UI can wait for `element.getAnimations()` to finish before it unmounts overlays, panels, and transition-driven components. Browser-based test runners can make that timing unstable, especially when tests assert final DOM state rather than animation behavior.
+
+Set the Base UI test flag in a Vitest setup file to skip those waits:
+
+```ts
+(
+  globalThis as typeof globalThis & {
+    BASE_UI_ANIMATIONS_DISABLED: boolean
+  }
+).BASE_UI_ANIMATIONS_DISABLED = true
+```
+
+`packages/dify-ui/vitest.setup.ts` already applies this for primitive tests.
 
 See `[AGENTS.md](./AGENTS.md)` for:
 

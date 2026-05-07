@@ -1,12 +1,12 @@
 'use client'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCheckLine, RiDeleteBinLine, RiWebhookLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import { CreateButtonType, CreateSubscriptionButton } from './create'
 import { DeleteConfirm } from './delete-confirm'
 import { useSubscriptionList } from './use-subscription-list'
@@ -33,7 +33,18 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             <span className="system-sm-semibold-uppercase text-text-secondary">
               {t('subscription.listNum', { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
-            <Tooltip popupContent={t('subscription.list.tip', { ns: 'pluginTrigger' })} />
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <span className="flex h-3.5 w-3.5 shrink-0 p-px">
+                    <span aria-hidden className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" />
+                  </span>
+                )}
+              />
+              <TooltipContent>
+                {t('subscription.list.tip', { ns: 'pluginTrigger' })}
+              </TooltipContent>
+            </Tooltip>
           </div>
           <CreateSubscriptionButton
             buttonType={CreateButtonType.ICON_BUTTON}

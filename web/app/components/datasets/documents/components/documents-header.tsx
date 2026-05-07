@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import type { Item } from '@/app/components/base/select'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import type { SortType } from '@/service/datasets'
 import { PlusIcon } from '@heroicons/react/24/solid'
@@ -18,6 +17,11 @@ import DatasetMetadataDrawer from '@/app/components/datasets/metadata/metadata-d
 import { useDocLink } from '@/context/i18n'
 import { DataSourceType } from '@/models/datasets'
 import { useIndexStatus } from '../status-item/hooks'
+
+type SelectOption = {
+  value: string | number
+  name: string
+}
 
 type DocumentsHeaderProps = {
   // Dataset info
@@ -82,7 +86,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   const isDataSourceNotion = dataSourceType === DataSourceType.NOTION
   const isDataSourceWeb = dataSourceType === DataSourceType.WEB
 
-  const statusFilterItems: Item[] = useMemo(() => [
+  const statusFilterItems: SelectOption[] = useMemo(() => [
     { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) as string },
     { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
     { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
@@ -94,7 +98,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
     { value: 'archived', name: DOC_INDEX_STATUS_MAP.archived.text },
   ], [DOC_INDEX_STATUS_MAP, t])
 
-  const sortItems: Item[] = useMemo(() => [
+  const sortItems: SelectOption[] = useMemo(() => [
     { value: 'created_at', name: t('list.sort.uploadTime', { ns: 'datasetDocuments' }) as string },
     { value: 'hit_count', name: t('list.sort.hitCount', { ns: 'datasetDocuments' }) as string },
   ], [t])

@@ -137,6 +137,12 @@ const getUniquePastedNodeTitle = (
   return titleCandidate
 }
 
+const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
+  return node.type === CUSTOM_NOTE_NODE
+    && target instanceof HTMLElement
+    && !!target.closest('.note-editor-theme_link')
+}
+
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
   const { data: appDslVersion } = useSuspenseQuery({
@@ -474,9 +480,11 @@ export const useNodesInteractions = () => {
   )
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
-    (_, node) => {
+    (event, node) => {
       const { controlMode } = workflowStore.getState()
       if (controlMode === ControlMode.Comment)
+        return
+      if (isNoteLinkClickTarget(event.target, node))
         return
       if (node.type === CUSTOM_ITERATION_START_NODE)
         return
@@ -1692,19 +1700,17 @@ export const useNodesInteractions = () => {
       }
 
       e.preventDefault()
-      const container = document.querySelector('#workflow-container')
-      const { x, y } = container!.getBoundingClientRect()
       workflowStore.setState({
         panelMenu: undefined,
         selectionMenu: undefined,
         edgeMenu: undefined,
         nodeMenu: {
-          top: e.clientY - y,
-          left: e.clientX - x,
+          clientX: e.clientX,
+          clientY: e.clientY,
           nodeId: node.id,
         },
       })
-      handleNodeSelect(node.id)
+      handleNodeSelect(node.id, true)
     },
     [workflowStore, handleNodeSelect],
   )
