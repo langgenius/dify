@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import type { AppSelectorValue } from '../index'
 import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
 import { AppSelector } from '../index'
@@ -96,6 +98,24 @@ function renderWithQueryClient(children: ReactNode) {
   )
 }
 
+function StatefulAppSelector({
+  onSelect,
+}: {
+  onSelect: (value: AppSelectorValue) => void
+}) {
+  const [value, setValue] = useState<AppSelectorValue>()
+
+  return (
+    <AppSelector
+      value={value}
+      onSelect={(nextValue) => {
+        setValue(nextValue)
+        onSelect(nextValue)
+      }}
+    />
+  )
+}
+
 describe('AppSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -142,5 +162,44 @@ describe('AppSelector', () => {
       expect(screen.getByText('Workflow App')).toBeInTheDocument()
     })
     expect(screen.queryByText('Support Bot')).not.toBeInTheDocument()
+  })
+
+  it('should not keep the selected app in filtered results', async () => {
+    const onSelect = vi.fn()
+
+    renderWithQueryClient(<StatefulAppSelector onSelect={onSelect} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Support Bot')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText('Support Bot'))
+    fireEvent.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }), {
+      target: { value: 'workflow' },
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Support Bot')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('Workflow App')).toBeInTheDocument()
+
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }), {
+      key: 'ArrowDown',
+    })
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }), {
+      key: 'Enter',
+    })
+
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenLastCalledWith({
+        app_id: 'app-2',
+        inputs: {},
+        files: [],
+      })
+    })
   })
 })

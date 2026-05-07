@@ -84,19 +84,6 @@ export function AppSelector({
     return selectedAppDetail || displayedApps.find(app => app.id === value.app_id)
   }, [displayedApps, selectedAppDetail, value?.app_id])
 
-  const appsForPicker = useMemo(() => {
-    if (!currentAppInfo)
-      return displayedApps
-
-    const appIndex = displayedApps.findIndex(app => app.id === currentAppInfo.id)
-    if (appIndex === -1)
-      return [currentAppInfo, ...displayedApps]
-
-    const nextApps = [...displayedApps]
-    nextApps[appIndex] = currentAppInfo
-    return nextApps
-  }, [currentAppInfo, displayedApps])
-
   const hasMore = hasNextPage ?? true
 
   const handleSelectApp = useCallback((app: App) => {
@@ -165,7 +152,7 @@ export function AppSelector({
               onShowChange={setIsShowChooseApp}
               disabled={false}
               onSelect={handleSelectApp}
-              apps={appsForPicker}
+              apps={displayedApps}
               isLoading={isLoading || isFetchingNextPage}
               hasMore={hasMore}
               onLoadMore={() => {

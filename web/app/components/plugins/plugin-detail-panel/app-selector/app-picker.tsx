@@ -172,9 +172,9 @@ export function AppPicker({
               </ComboboxStatus>
             )}
             <ComboboxList className="max-h-none p-0">
-              {apps.map(app => (
+              {(app: App) => (
                 <AppPickerOption key={app.id} app={app} />
-              ))}
+              )}
             </ComboboxList>
             <ComboboxEmpty>
               {t('noData', { ns: 'common' })}
