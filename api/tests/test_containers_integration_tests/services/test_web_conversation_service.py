@@ -1,3 +1,4 @@
+from models import App
 from unittest.mock import patch
 
 import pytest
@@ -94,7 +95,7 @@ class TestWebConversationService:
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers: Session, app: Flask):
+    def _create_test_end_user(self, db_session_with_containers: Session, app: App):
         """
         Helper method to create a test end user for testing.
 
