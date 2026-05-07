@@ -129,7 +129,6 @@ export function AppPicker({
       itemToStringLabel={app => app?.name ?? ''}
       itemToStringValue={app => app?.id ?? ''}
       filter={(app, query) => getAppSearchText(app).toLowerCase().includes(query.toLowerCase())}
-      autoHighlight
       disabled={disabled}
     >
       <ComboboxTrigger

@@ -107,7 +107,7 @@ export const TagSelector = ({
     }
 
     if (inputValue && nextItems.every(tag => tag.name !== inputValue)) {
-      nextItems.unshift({
+      nextItems.push({
         id: `__create_tag__:${inputValue}`,
         name: inputValue,
         type,

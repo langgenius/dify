@@ -3,6 +3,7 @@ import type { AppSelectorValue } from '../index'
 import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
@@ -165,34 +166,29 @@ describe('AppSelector', () => {
   })
 
   it('should not keep the selected app in filtered results', async () => {
+    const user = userEvent.setup()
     const onSelect = vi.fn()
 
     renderWithQueryClient(<StatefulAppSelector onSelect={onSelect} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
-    fireEvent.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
 
     await waitFor(() => {
       expect(screen.getByText('Support Bot')).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('Support Bot'))
-    fireEvent.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
-    fireEvent.change(screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }), {
-      target: { value: 'workflow' },
-    })
+    await user.click(screen.getByText('Support Bot'))
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.type(screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }), 'workflow')
 
     await waitFor(() => {
       expect(screen.queryByRole('option', { name: /Support Bot/ })).not.toBeInTheDocument()
     })
     expect(screen.getByRole('option', { name: /Workflow App/ })).toBeInTheDocument()
 
-    fireEvent.keyDown(screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }), {
-      key: 'ArrowDown',
-    })
-    fireEvent.keyDown(screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }), {
-      key: 'Enter',
-    })
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard('{Enter}')
 
     await waitFor(() => {
       expect(onSelect).toHaveBeenLastCalledWith({

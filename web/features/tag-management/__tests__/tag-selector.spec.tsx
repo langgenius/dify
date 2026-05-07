@@ -134,6 +134,22 @@ describe('TagSelector', () => {
     })
   })
 
+  it('selects the highlighted tag with keyboard navigation and applies it on close', async () => {
+    const user = userEvent.setup()
+    render(<TagSelector {...defaultProps} />)
+
+    const trigger = screen.getByRole('combobox', { name: /Frontend/i })
+    await user.click(trigger)
+    await user.type(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }), 'Back')
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard('{Enter}')
+    await user.click(trigger)
+
+    await waitFor(() => {
+      expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
+    })
+  })
+
   it('applies removed tags only when the popup closes', async () => {
     const user = userEvent.setup()
     render(<TagSelector {...defaultProps} />)
