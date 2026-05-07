@@ -31,18 +31,32 @@ const { mockUseQueryData, createTag, bindTag, unBindTag } = vi.hoisted(() => {
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
-}))
-
-vi.mock('../hooks/use-tag-mutations', () => ({
-  useCreateTagMutation: () => ({
+  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
     isPending: false,
-    mutate: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }, options?: { onSuccess?: (tag: Tag) => void, onError?: () => void }) => {
-      const tag: Tag = { id: 'new-tag', name: body.name, type: body.type, binding_count: 0 }
-      Promise.resolve(createTag(body.name, body.type))
-        .then(() => options?.onSuccess?.(tag))
+    mutate: (input: unknown, options?: { onSuccess?: () => void, onError?: () => void }) => {
+      Promise.resolve(mutationOptions.mutationFn(input))
+        .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
     },
   }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    tags: {
+      list: {
+        queryOptions: () => ({}),
+      },
+      create: {
+        mutationOptions: () => ({
+          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }) => createTag(body.name, body.type),
+        }),
+      },
+    },
+  },
+}))
+
+vi.mock('../hooks/use-tag-mutations', () => ({
   useApplyTagBindingsMutation: () => ({
     mutate: (
       { currentTagIds, nextTagIds, targetId, type }: { currentTagIds: string[], nextTagIds: string[], targetId: string, type: 'app' | 'knowledge' },

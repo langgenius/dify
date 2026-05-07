@@ -5,11 +5,11 @@ import type { Tag, TagType } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { useApplyTagBindingsMutation, useCreateTagMutation } from '../hooks/use-tag-mutations'
+import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
 import { isCreateTagOption } from './tag-combobox-item'
 import { TagPanel } from './tag-panel'
 import { TagTrigger } from './tag-trigger'
@@ -67,7 +67,10 @@ export const TagSelector = ({
   const [draftTags, setDraftTags] = useState<Tag[]>(value)
   const [inputValue, setInputValue] = useState('')
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
-  const createTagMutation = useCreateTagMutation()
+  const {
+    isPending: isCreatingTag,
+    mutate: createTag,
+  } = useMutation(consoleQuery.tags.create.mutationOptions())
   const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
     input: {
       query: {
@@ -164,10 +167,10 @@ export const TagSelector = ({
   }, [applyTagBindings, value])
 
   const createNewTag = useCallback((name: string) => {
-    if (!name || createTagMutation.isPending)
+    if (!name || isCreatingTag)
       return
 
-    createTagMutation.mutate({
+    createTag({
       body: {
         name,
         type,
@@ -181,7 +184,7 @@ export const TagSelector = ({
         toast.error(t('tag.failed', { ns: 'common' }))
       },
     })
-  }, [createTagMutation, t, type])
+  }, [createTag, isCreatingTag, t, type])
 
   const handleValueChange = useCallback((nextTags: TagComboboxItem[]) => {
     const createOption = nextTags.find(isCreateTagOption)
