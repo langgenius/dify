@@ -350,6 +350,7 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
     with (
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch("core.app.llm.quota.db", SimpleNamespace(engine=engine)),
+        pytest.raises(QuotaExceededError, match="Model provider openai quota exceeded."),
     ):
         deduct_llm_quota_for_model(
             tenant_id="tenant-id",
@@ -362,6 +363,59 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
         exhausted_quota_used = connection.scalar(select(Provider.quota_used).where(Provider.id == "matching-provider"))
 
     assert exhausted_quota_used == 13
+
+
+def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceeds_remaining() -> None:
+    usage = LLMUsage.empty_usage()
+    usage.total_tokens = 3
+    provider_configuration = SimpleNamespace(
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=SimpleNamespace(
+            current_quota_type=ProviderQuotaType.FREE,
+            quota_configurations=[
+                SimpleNamespace(
+                    quota_type=ProviderQuotaType.FREE,
+                    quota_unit=QuotaUnit.TOKENS,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    provider_manager = MagicMock()
+    provider_manager.get_configurations.return_value.get.return_value = provider_configuration
+    engine = create_engine("sqlite:///:memory:")
+    Provider.__table__.create(engine)
+    with engine.begin() as connection:
+        connection.execute(
+            Provider.__table__.insert(),
+            {
+                "id": "matching-provider",
+                "tenant_id": "tenant-id",
+                "provider_name": "openai",
+                "provider_type": ProviderType.SYSTEM,
+                "quota_type": ProviderQuotaType.FREE,
+                "quota_limit": 15,
+                "quota_used": 13,
+                "is_valid": True,
+            },
+        )
+
+    with (
+        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
+        patch("core.app.llm.quota.db", SimpleNamespace(engine=engine)),
+        pytest.raises(QuotaExceededError, match="Model provider openai quota exceeded."),
+    ):
+        deduct_llm_quota_for_model(
+            tenant_id="tenant-id",
+            provider="openai",
+            model="gpt-4o",
+            usage=usage,
+        )
+
+    with engine.connect() as connection:
+        quota_used = connection.scalar(select(Provider.quota_used).where(Provider.id == "matching-provider"))
+
+    assert quota_used == 15
 
 
 def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:

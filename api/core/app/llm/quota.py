@@ -8,7 +8,7 @@ with a non-LLM model.
 
 import warnings
 
-from sqlalchemy import update
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
@@ -72,6 +72,45 @@ def _resolve_llm_used_quota(*, system_configuration, model: str, usage: LLMUsage
     return used_quota
 
 
+def _deduct_free_llm_quota(
+    *,
+    tenant_id: str,
+    provider: str,
+    quota_type: ProviderQuotaType,
+    used_quota: int,
+) -> None:
+    """Deduct FREE provider quota, capping at the limit before reporting exhaustion."""
+    quota_exceeded = False
+    with sessionmaker(bind=db.engine).begin() as session:
+        provider_record = session.scalar(
+            select(Provider)
+            .where(
+                Provider.tenant_id == tenant_id,
+                # TODO: Use provider name with prefix after the data migration.
+                Provider.provider_name == ModelProviderID(provider).provider_name,
+                Provider.provider_type == ProviderType.SYSTEM.value,
+                Provider.quota_type == quota_type,
+            )
+            .with_for_update()
+        )
+        if (
+            provider_record is None
+            or provider_record.quota_limit is None
+            or provider_record.quota_used is None
+            or provider_record.quota_limit <= provider_record.quota_used
+        ):
+            quota_exceeded = True
+        else:
+            available_quota = provider_record.quota_limit - provider_record.quota_used
+            deducted_quota = min(used_quota, available_quota)
+            provider_record.quota_used += deducted_quota
+            provider_record.last_used = naive_utc_now()
+            quota_exceeded = deducted_quota < used_quota
+
+    if quota_exceeded:
+        raise QuotaExceededError(f"Model provider {provider} quota exceeded.")
+
+
 def _deduct_used_llm_quota(*, tenant_id: str, provider: str, provider_configuration, used_quota: int | None) -> None:
     """Apply a resolved LLM quota charge against the current provider quota bucket."""
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
@@ -96,23 +135,12 @@ def _deduct_used_llm_quota(*, tenant_id: str, provider: str, provider_configurat
                     pool_type="paid",
                 )
             case ProviderQuotaType.FREE:
-                with sessionmaker(bind=db.engine).begin() as session:
-                    stmt = (
-                        update(Provider)
-                        .where(
-                            Provider.tenant_id == tenant_id,
-                            # TODO: Use provider name with prefix after the data migration.
-                            Provider.provider_name == ModelProviderID(provider).provider_name,
-                            Provider.provider_type == ProviderType.SYSTEM.value,
-                            Provider.quota_type == system_configuration.current_quota_type,
-                            Provider.quota_limit > Provider.quota_used,
-                        )
-                        .values(
-                            quota_used=Provider.quota_used + used_quota,
-                            last_used=naive_utc_now(),
-                        )
-                    )
-                    session.execute(stmt)
+                _deduct_free_llm_quota(
+                    tenant_id=tenant_id,
+                    provider=provider,
+                    quota_type=system_configuration.current_quota_type,
+                    used_quota=used_quota,
+                )
             case _:
                 return
 

@@ -59,7 +59,7 @@ class CreditPoolService:
         credits_required: int,
         pool_type: str = "trial",
     ) -> int:
-        """check and deduct credits, returns actual credits deducted"""
+        """Deduct credits, depleting the pool before raising if the balance is insufficient."""
 
         pool = cls.get_pool(tenant_id, pool_type)
         if not pool:
@@ -68,8 +68,9 @@ class CreditPoolService:
         if pool.remaining_credits <= 0:
             raise QuotaExceededError("No credits remaining")
 
-        # deduct all remaining credits if less than required
-        actual_credits = min(credits_required, pool.remaining_credits)
+        remaining_credits = pool.remaining_credits
+        actual_credits = min(credits_required, remaining_credits)
+        quota_exceeded = actual_credits < credits_required
 
         try:
             with sessionmaker(db.engine).begin() as session:
@@ -85,5 +86,8 @@ class CreditPoolService:
         except Exception:
             logger.exception("Failed to deduct credits for tenant %s", tenant_id)
             raise QuotaExceededError("Failed to deduct credits")
+
+        if quota_exceeded:
+            raise QuotaExceededError("Insufficient credits remaining")
 
         return actual_credits
