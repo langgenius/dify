@@ -1,12 +1,10 @@
-from models import App
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
-from flask import Flask
 from sqlalchemy.orm import Session
 
-from models import CreatorUserRole
+from models import App, CreatorUserRole
 from models.enums import ConversationFromSource
 from models.model import EndUser, Message
 from models.web import SavedMessage
@@ -543,7 +541,9 @@ class TestSavedMessageService:
         message = self._create_test_message(db_session_with_containers, app, account)
 
         # Pre-create a saved message
-        saved = SavedMessage(app_id=app.id, message_id=message.id, created_by_role=CreatorUserRole.ACCOUNT, created_by=account.id)
+        saved = SavedMessage(
+            app_id=app.id, message_id=message.id, created_by_role=CreatorUserRole.ACCOUNT, created_by=account.id
+        )
         db_session_with_containers.add(saved)
         db_session_with_containers.commit()
 
@@ -574,7 +574,9 @@ class TestSavedMessageService:
         end_user = self._create_test_end_user(db_session_with_containers, app)
         message = self._create_test_message(db_session_with_containers, app, end_user)
 
-        saved = SavedMessage(app_id=app.id, message_id=message.id, created_by_role=CreatorUserRole.END_USER, created_by=end_user.id)
+        saved = SavedMessage(
+            app_id=app.id, message_id=message.id, created_by_role=CreatorUserRole.END_USER, created_by=end_user.id
+        )
         db_session_with_containers.add(saved)
         db_session_with_containers.commit()
 

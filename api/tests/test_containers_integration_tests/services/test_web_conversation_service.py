@@ -1,14 +1,12 @@
-from models import App
 from unittest.mock import patch
 
 import pytest
 from faker import Faker
-from flask import Flask
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models import Account
+from models import Account, App
 from models.enums import ConversationFromSource
 from models.model import Conversation, EndUser
 from models.web import PinnedConversation
