@@ -41,16 +41,12 @@ def _validate(
         ("video", ".mp4", [], [], True),
     ],
 )
-def test_bucket_semantics(
-    input_file_type, file_extension, allowed_file_types, allowed_file_extensions, expected
-):
+def test_bucket_semantics(input_file_type, file_extension, allowed_file_types, allowed_file_extensions, expected):
     config = FileUploadConfig(
         allowed_file_types=allowed_file_types,
         allowed_file_extensions=allowed_file_extensions,
     )
-    assert _validate(
-        input_file_type=input_file_type, file_extension=file_extension, config=config
-    ) is expected
+    assert _validate(input_file_type=input_file_type, file_extension=file_extension, config=config) is expected
 
 
 @pytest.mark.parametrize("whitelist_entry", [".png", ".PNG", "png", "PNG", " .Png ", "PnG"])
@@ -81,12 +77,15 @@ def test_mixed_case_whitelist_replicating_real_user_config():
 
 def test_tool_file_always_passes():
     config = FileUploadConfig(allowed_file_types=[FileType.CUSTOM], allowed_file_extensions=[".pdf"])
-    assert _validate(
-        input_file_type="image",
-        file_extension=".png",
-        file_transfer_method=FileTransferMethod.TOOL_FILE,
-        config=config,
-    ) is True
+    assert (
+        _validate(
+            input_file_type="image",
+            file_extension=".png",
+            file_transfer_method=FileTransferMethod.TOOL_FILE,
+            config=config,
+        )
+        is True
+    )
 
 
 def test_transfer_method_gate_for_non_image():
@@ -94,18 +93,24 @@ def test_transfer_method_gate_for_non_image():
         allowed_file_types=[FileType.DOCUMENT],
         allowed_file_upload_methods=[FileTransferMethod.LOCAL_FILE],
     )
-    assert _validate(
-        input_file_type="document",
-        file_extension=".pdf",
-        file_transfer_method=FileTransferMethod.LOCAL_FILE,
-        config=config,
-    ) is True
-    assert _validate(
-        input_file_type="document",
-        file_extension=".pdf",
-        file_transfer_method=FileTransferMethod.REMOTE_URL,
-        config=config,
-    ) is False
+    assert (
+        _validate(
+            input_file_type="document",
+            file_extension=".pdf",
+            file_transfer_method=FileTransferMethod.LOCAL_FILE,
+            config=config,
+        )
+        is True
+    )
+    assert (
+        _validate(
+            input_file_type="document",
+            file_extension=".pdf",
+            file_transfer_method=FileTransferMethod.REMOTE_URL,
+            config=config,
+        )
+        is False
+    )
 
 
 def test_history_replay_matches_round_1_outcome_under_unchanged_config():
