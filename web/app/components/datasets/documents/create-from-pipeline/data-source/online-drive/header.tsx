@@ -1,7 +1,7 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import Divider from '@/app/components/base/divider'
-import { Button } from '@/app/components/base/ui/button'
 
 type HeaderProps = {
   onClickConfiguration?: () => void

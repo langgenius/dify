@@ -33,7 +33,7 @@ export const groupItems = (items: ToolWithProvider[], getFirstChar: (item: ToolW
 
     // transform Chinese to pinyin
     if (/[\u4E00-\u9FA5]/.test(firstChar))
-      letter = pinyin(firstChar, { pattern: 'first', toneType: 'none' })[0].toUpperCase()
+      letter = pinyin(firstChar, { pattern: 'first', toneType: 'none' })[0]!.toUpperCase()
     else
       letter = firstChar.toUpperCase()
 
@@ -55,10 +55,10 @@ export const groupItems = (items: ToolWithProvider[], getFirstChar: (item: ToolW
     else
       groupName = AGENT_GROUP_NAME
 
-    if (!acc[letter][groupName])
-      acc[letter][groupName] = []
+    if (!acc[letter]![groupName])
+      acc[letter]![groupName] = []
 
-    acc[letter][groupName].push(item)
+    acc[letter]![groupName]!.push(item)
 
     return acc
   }, {})

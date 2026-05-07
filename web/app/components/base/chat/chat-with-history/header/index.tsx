@@ -1,5 +1,15 @@
 import type { ConversationItem } from '@/models/share'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiEditBoxLine,
   RiLayoutRight2Line,
@@ -11,16 +21,6 @@ import ActionButton, { ActionButtonState } from '@/app/components/base/action-bu
 import AppIcon from '@/app/components/base/app-icon'
 import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
-import Tooltip from '@/app/components/base/tooltip'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
 import {
   useChatWithHistoryContext,
 } from '../context'
@@ -117,31 +117,41 @@ const Header = () => {
             <div className="h-[14px] w-px bg-divider-regular"></div>
           </div>
           {isSidebarCollapsed && (
-            <Tooltip
-              disabled={!!currentConversationId}
-              popupContent={t('chat.newChatTip', { ns: 'share' })}
-            >
-              <div>
-                <ActionButton
-                  size="l"
-                  state={(!currentConversationId || isResponding) ? ActionButtonState.Disabled : ActionButtonState.Default}
-                  disabled={!currentConversationId || isResponding}
-                  onClick={handleNewConversation}
-                >
-                  <RiEditBoxLine className="h-[18px] w-[18px]" />
-                </ActionButton>
-              </div>
+            <Tooltip>
+              <TooltipTrigger
+                disabled={!!currentConversationId}
+                render={(
+                  <div>
+                    <ActionButton
+                      size="l"
+                      state={(!currentConversationId || isResponding) ? ActionButtonState.Disabled : ActionButtonState.Default}
+                      disabled={!currentConversationId || isResponding}
+                      onClick={handleNewConversation}
+                    >
+                      <RiEditBoxLine className="h-[18px] w-[18px]" />
+                    </ActionButton>
+                  </div>
+                )}
+              />
+              <TooltipContent>
+                {t('chat.newChatTip', { ns: 'share' })}
+              </TooltipContent>
             </Tooltip>
           )}
         </div>
         <div className="flex items-center gap-1">
           {currentConversationId && (
-            <Tooltip
-              popupContent={t('chat.resetChat', { ns: 'share' })}
-            >
-              <ActionButton size="l" onClick={handleNewConversation}>
-                <RiResetLeftLine className="h-[18px] w-[18px]" />
-              </ActionButton>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <ActionButton size="l" onClick={handleNewConversation}>
+                    <RiResetLeftLine className="h-[18px] w-[18px]" />
+                  </ActionButton>
+                )}
+              />
+              <TooltipContent>
+                {t('chat.resetChat', { ns: 'share' })}
+              </TooltipContent>
             </Tooltip>
           )}
           {currentConversationId && inputsForms.length > 0 && (

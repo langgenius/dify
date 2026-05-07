@@ -1,9 +1,9 @@
 'use client'
 import type { CreateApiKeyResponse } from '@/models/app'
 import { XMarkIcon } from '@heroicons/react/20/solid'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
-import { Button } from '@/app/components/base/ui/button'
 import InputCopy from './input-copy'
 import s from './style.module.css'
 

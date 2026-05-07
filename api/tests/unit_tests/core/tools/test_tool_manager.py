@@ -925,3 +925,78 @@ def test_convert_tool_parameters_type_constant_branch():
     )
 
     assert constant == {"text": "fixed"}
+
+
+def test_convert_tool_parameters_type_model_selector_from_legacy_top_level_config():
+    model_param = ToolParameter.get_simple_instance(
+        name="vision_llm_model",
+        llm_description="vision model",
+        typ=ToolParameter.ToolParameterType.MODEL_SELECTOR,
+        required=True,
+    )
+    model_param.form = ToolParameter.ToolParameterForm.FORM
+    variable_pool = Mock()
+
+    runtime_parameters = ToolManager._convert_tool_parameters_type(
+        parameters=[model_param],
+        variable_pool=variable_pool,
+        tool_configurations={
+            "vision_llm_model": {
+                "type": "constant",
+                "value": "",
+                "provider": "langgenius/tongyi/tongyi",
+                "model": "qwen3-vl-plus",
+                "model_type": "llm",
+                "mode": "chat",
+            }
+        },
+        typ="workflow",
+    )
+
+    assert runtime_parameters == {
+        "vision_llm_model": {
+            "provider": "langgenius/tongyi/tongyi",
+            "model": "qwen3-vl-plus",
+            "model_type": "llm",
+            "mode": "chat",
+        }
+    }
+
+
+def test_convert_tool_parameters_type_model_selector_from_constant_value_config():
+    model_param = ToolParameter.get_simple_instance(
+        name="tts_model",
+        llm_description="tts model",
+        typ=ToolParameter.ToolParameterType.MODEL_SELECTOR,
+        required=True,
+    )
+    model_param.form = ToolParameter.ToolParameterForm.FORM
+    variable_pool = Mock()
+
+    runtime_parameters = ToolManager._convert_tool_parameters_type(
+        parameters=[model_param],
+        variable_pool=variable_pool,
+        tool_configurations={
+            "tts_model": {
+                "type": "constant",
+                "value": {
+                    "provider": "langgenius/tongyi/tongyi",
+                    "model": "qwen3-tts-flash",
+                    "model_type": "tts",
+                    "language": "Chinese",
+                    "voice": "Cherry",
+                },
+            }
+        },
+        typ="workflow",
+    )
+
+    assert runtime_parameters == {
+        "tts_model": {
+            "provider": "langgenius/tongyi/tongyi",
+            "model": "qwen3-tts-flash",
+            "model_type": "tts",
+            "language": "Chinese",
+            "voice": "Cherry",
+        }
+    }

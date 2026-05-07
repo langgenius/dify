@@ -30,7 +30,7 @@ const actionButtonVariants = cva(
   },
 )
 
-export type ActionButtonProps = {
+type ActionButtonProps = {
   size?: 'xs' | 's' | 'm' | 'l' | 'xl'
   state?: ActionButtonState
   styleCss?: CSSProperties
@@ -73,4 +73,4 @@ const ActionButton = ({ className, size, state = ActionButtonState.Default, styl
 ActionButton.displayName = 'ActionButton'
 
 export default ActionButton
-export { ActionButton, ActionButtonState, actionButtonVariants }
+export { ActionButton, ActionButtonState }

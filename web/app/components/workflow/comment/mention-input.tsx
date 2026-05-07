@@ -1,7 +1,9 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { UserProfile } from '@/service/workflow-comment'
+import type { UserProfile } from '@/contract/console/workflow-comment'
+import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
 import {
@@ -19,10 +21,8 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import EnterKey from '@/app/components/base/icons/src/public/common/EnterKey'
-import { Avatar } from '@/app/components/base/ui/avatar'
-import { Button } from '@/app/components/base/ui/button'
 import { useParams } from '@/next/navigation'
-import { fetchMentionableUsers } from '@/service/workflow-comment'
+import { consoleClient } from '@/service/client'
 import { useStore, useWorkflowStore } from '../store'
 
 type MentionInputProps = {
@@ -37,6 +37,8 @@ type MentionInputProps = {
   isEditing?: boolean
   autoFocus?: boolean
 }
+
+const EMPTY_USERS: UserProfile[] = []
 
 const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   value,
@@ -66,7 +68,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   const mentionUsersFromStore = useStore(state => (
     appId ? state.mentionableUsersCache[appId] : undefined
   ))
-  const mentionUsers = mentionUsersFromStore ?? []
+  const mentionUsers = useMemo(() => mentionUsersFromStore ?? EMPTY_USERS, [mentionUsersFromStore])
 
   const [showMentionDropdown, setShowMentionDropdown] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
@@ -111,7 +113,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
           continue
 
         const previousChar = searchStart > 0 ? value[searchStart - 1] : ''
-        if (searchStart > 0 && !/\s/.test(previousChar))
+        if (searchStart > 0 && !/\s/.test(previousChar!))
           continue
 
         if (
@@ -163,8 +165,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
     state.setMentionableUsersLoading(appId, true)
     try {
-      const users = await fetchMentionableUsers(appId)
-      workflowStore.getState().setMentionableUsersCache(appId, users)
+      const response = await consoleClient.workflowComments.mentionUsers({
+        params: { appId },
+      })
+      workflowStore.getState().setMentionableUsersCache(appId, response.users)
     }
     catch (error) {
       console.error('Failed to load mentionable users:', error)
@@ -332,7 +336,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
       const mentionMatch = textBeforeCursor.match(/@(\w*)$/)
 
       if (mentionMatch) {
-        setMentionQuery(mentionMatch[1])
+        setMentionQuery(mentionMatch[1]!)
         setMentionPosition(cursorPosition - mentionMatch[0].length)
         setShowMentionDropdown(true)
         setSelectedMentionIndex(0)
@@ -398,7 +402,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
     const beforeMention = value.slice(0, mentionPosition)
     const afterMention = value.slice(textarea.selectionStart || 0)
 
-    const needsSpaceBefore = mentionPosition > 0 && !/\s/.test(value[mentionPosition - 1])
+    const needsSpaceBefore = mentionPosition > 0 && !/\s/.test(value[mentionPosition - 1]!)
     const prefix = needsSpaceBefore ? ' ' : ''
     const newContent = `${beforeMention}${prefix}@${user.name} ${afterMention}`
 
@@ -495,14 +499,17 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
   }, [value, resetMentionState])
 
   useEffect(() => {
-    if (autoFocus && textareaRef.current) {
-      const textarea = textareaRef.current
-      setTimeout(() => {
-        textarea.focus()
-        const length = textarea.value.length
-        textarea.setSelectionRange(length, length)
-      }, 0)
-    }
+    if (!autoFocus || !textareaRef.current)
+      return
+
+    const textarea = textareaRef.current
+    const timeout = window.setTimeout(() => {
+      textarea.focus()
+      const length = textarea.value.length
+      textarea.setSelectionRange(length, length)
+    }, 0)
+
+    return () => window.clearTimeout(timeout)
   }, [autoFocus])
 
   return (
@@ -511,7 +518,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         <div
           aria-hidden
           className={cn(
-            'inset-0 pointer-events-none absolute z-0 overflow-hidden p-1 leading-6 break-words whitespace-pre-wrap',
+            'pointer-events-none absolute inset-0 z-0 overflow-hidden p-1 leading-6 break-words whitespace-pre-wrap',
             'body-lg-regular text-text-primary',
           )}
           style={{ paddingRight, paddingBottom }}
@@ -528,7 +535,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         <Textarea
           ref={textareaRef}
           className={cn(
-            'relative z-10 w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-transparent caret-primary-500 outline-none',
+            'relative z-10 w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-transparent caret-primary-500 outline-hidden',
             'placeholder:text-text-tertiary',
           )}
           style={{ paddingRight, paddingBottom }}

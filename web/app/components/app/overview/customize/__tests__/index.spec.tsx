@@ -8,13 +8,6 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
 }))
 
-// Mock window.open
-const mockWindowOpen = vi.fn()
-Object.defineProperty(window, 'open', {
-  value: mockWindowOpen,
-  writable: true,
-})
-
 describe('CustomizeModal', () => {
   const defaultProps = {
     isShow: true,
@@ -287,7 +280,7 @@ describe('CustomizeModal', () => {
 
   // User interactions tests - verify user actions trigger expected behaviors
   describe('User Interactions', () => {
-    it('should call window.open with doc link when way 2 button is clicked', async () => {
+    it('should render the API docs link for way 2', async () => {
       // Arrange
       const props = { ...defaultProps }
 
@@ -298,16 +291,10 @@ describe('CustomizeModal', () => {
         expect(screen.getByText('appOverview.overview.appInfo.customize.way2.operation')).toBeInTheDocument()
       })
 
-      const way2Button = screen.getByText('appOverview.overview.appInfo.customize.way2.operation').closest('button')
-      expect(way2Button).toBeInTheDocument()
-      fireEvent.click(way2Button!)
-
-      // Assert
-      expect(mockWindowOpen).toHaveBeenCalledTimes(1)
-      expect(mockWindowOpen).toHaveBeenCalledWith(
-        expect.stringContaining('/use-dify/publish/developing-with-apis'),
-        '_blank',
-      )
+      const way2Link = screen.getByRole('link', { name: /way2\.operation/i })
+      expect(way2Link).toHaveAttribute('href', expect.stringContaining('/use-dify/publish/developing-with-apis'))
+      expect(way2Link).toHaveAttribute('target', '_blank')
+      expect(way2Link).toHaveAttribute('rel', 'noopener noreferrer')
     })
 
     it('should call onClose when modal close button is clicked', async () => {

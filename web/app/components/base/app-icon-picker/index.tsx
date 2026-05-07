@@ -2,12 +2,12 @@ import type { FC } from 'react'
 import type { Area } from 'react-easy-crop'
 import type { OnImageInput } from './ImageInput'
 import type { AppIconType, ImageFile } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiImageCircleAiLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import Divider from '../divider'
 import EmojiPickerInner from '../emoji-picker/Inner'
@@ -34,12 +34,17 @@ export type AppIconSelection = AppIconEmojiSelection | AppIconImageSelection
 type AppIconPickerProps = {
   onSelect?: (payload: AppIconSelection) => void
   onClose?: () => void
+  initialEmoji?: {
+    icon: string
+    background?: string | null
+  }
   className?: string
 }
 
 const AppIconPicker: FC<AppIconPickerProps> = ({
   onSelect,
   onClose,
+  initialEmoji,
   className,
 }) => {
   const { t } = useTranslation()
@@ -138,7 +143,14 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
         </div>
       )}
 
-      {activeTab === 'emoji' && <EmojiPickerInner className={cn('flex-1 overflow-hidden pt-2')} onSelect={handleSelectEmoji} />}
+      {activeTab === 'emoji' && (
+        <EmojiPickerInner
+          className={cn('flex-1 overflow-hidden pt-2')}
+          emoji={initialEmoji?.icon}
+          background={initialEmoji?.background ?? undefined}
+          onSelect={handleSelectEmoji}
+        />
+      )}
       {activeTab === 'image' && <ImageInput className={cn('flex-1 overflow-hidden')} onImageInput={handleImageInput} />}
 
       <Divider className="m-0" />

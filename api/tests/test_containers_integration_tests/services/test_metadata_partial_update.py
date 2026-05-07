@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from models.dataset import Dataset, DatasetMetadataBinding, Document
 from models.enums import DataSourceType, DocumentCreatedFrom
@@ -65,7 +66,7 @@ class TestMetadataPartialUpdate:
             yield account
 
     def test_partial_update_merges_metadata(
-        self, flask_app_with_containers, db_session_with_containers, tenant_id, mock_current_account
+        self, flask_app_with_containers, db_session_with_containers: Session, tenant_id, mock_current_account
     ):
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(
@@ -92,7 +93,7 @@ class TestMetadataPartialUpdate:
         assert updated_doc.doc_metadata["new_key"] == "new_value"
 
     def test_full_update_replaces_metadata(
-        self, flask_app_with_containers, db_session_with_containers, tenant_id, mock_current_account
+        self, flask_app_with_containers, db_session_with_containers: Session, tenant_id, mock_current_account
     ):
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(
@@ -119,7 +120,7 @@ class TestMetadataPartialUpdate:
         assert "existing_key" not in updated_doc.doc_metadata
 
     def test_partial_update_skips_existing_binding(
-        self, flask_app_with_containers, db_session_with_containers, tenant_id, user_id, mock_current_account
+        self, flask_app_with_containers, db_session_with_containers: Session, tenant_id, user_id, mock_current_account
     ):
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(
@@ -159,7 +160,7 @@ class TestMetadataPartialUpdate:
         assert len(bindings) == 1
 
     def test_rollback_called_on_commit_failure(
-        self, flask_app_with_containers, db_session_with_containers, tenant_id, mock_current_account
+        self, flask_app_with_containers, db_session_with_containers: Session, tenant_id, mock_current_account
     ):
         dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
         document = _create_document(

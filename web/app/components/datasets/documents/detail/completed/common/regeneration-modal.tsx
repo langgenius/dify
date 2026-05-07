@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import { noop } from 'es-toolkit/function'
@@ -6,7 +7,6 @@ import * as React from 'react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
-import { Button } from '@/app/components/base/ui/button'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type IDefaultContentProps = {

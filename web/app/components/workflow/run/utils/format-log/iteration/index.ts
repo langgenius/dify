@@ -27,7 +27,7 @@ export function addChildrenToIterationNode(iterationNode: NodeTracing, childrenN
     if (!details[runIndex])
       details[runIndex] = []
 
-    details[runIndex].push(item)
+    details[runIndex]!.push(item)
     lastResolvedIndex = runIndex
   })
   return {

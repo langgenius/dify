@@ -2,15 +2,15 @@ import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  Button,
+} from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Button,
-} from '@/app/components/base/ui/button'
 import {
   ConfigurationMethodEnum,
   ModelModalModeEnum,

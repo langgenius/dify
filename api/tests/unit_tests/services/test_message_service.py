@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, EndUser, Message
@@ -930,6 +931,130 @@ class TestMessageServiceSuggestedQuestions:
         # Assert
         assert result == ["Q1?"]
         mock_llm_gen.generate_suggested_questions_after_answer.assert_called_once()
+
+    @patch("services.message_service.db")
+    @patch("services.message_service.ModelManager.for_tenant")
+    @patch("services.message_service.TokenBufferMemory")
+    @patch("services.message_service.LLMGenerator")
+    @patch("services.message_service.TraceQueueManager")
+    @patch.object(MessageService, "get_message")
+    @patch("services.message_service.ConversationService")
+    def test_get_suggested_questions_chat_app_uses_frontend_model_and_prompt(
+        self,
+        mock_conversation_service,
+        mock_get_message,
+        mock_trace_manager,
+        mock_llm_gen,
+        mock_memory,
+        mock_model_manager,
+        mock_db,
+        factory,
+    ):
+        """Test suggested question generation uses frontend configured model and prompt."""
+        from core.app.entities.app_invoke_entities import InvokeFrom
+
+        app = factory.create_app_mock(mode=AppMode.CHAT.value)
+        app.tenant_id = "tenant-123"
+        user = factory.create_end_user_mock()
+        message = factory.create_message_mock()
+        mock_get_message.return_value = message
+
+        conversation = MagicMock()
+        conversation.override_model_configs = None
+        mock_conversation_service.get_conversation.return_value = conversation
+
+        app_model_config = MagicMock()
+        app_model_config.suggested_questions_after_answer_dict = {
+            "enabled": True,
+            "prompt": "custom prompt",
+            "model": {
+                "provider": "openai",
+                "name": "gpt-4o-mini",
+                "completion_params": {"max_tokens": 2048, "temperature": 0.1},
+            },
+        }
+        mock_db.session.scalar.return_value = app_model_config
+
+        mock_memory.return_value.get_history_prompt_text.return_value = "histories"
+        mock_llm_gen.generate_suggested_questions_after_answer.return_value = ["Q1?"]
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=app,
+            user=user,
+            message_id="msg-123",
+            invoke_from=InvokeFrom.WEB_APP,
+        )
+
+        assert result == ["Q1?"]
+        mock_model_manager.return_value.get_default_model_instance.assert_called_once_with(
+            tenant_id="tenant-123",
+            model_type=ModelType.LLM,
+        )
+        mock_memory.assert_called_once_with(
+            conversation=conversation,
+            model_instance=mock_model_manager.return_value.get_default_model_instance.return_value,
+        )
+        mock_llm_gen.generate_suggested_questions_after_answer.assert_called_once_with(
+            tenant_id="tenant-123",
+            histories="histories",
+            instruction_prompt="custom prompt",
+            model_config={
+                "provider": "openai",
+                "name": "gpt-4o-mini",
+                "completion_params": {"max_tokens": 2048, "temperature": 0.1},
+            },
+        )
+
+    @patch("services.message_service.db")
+    @patch("services.message_service.ModelManager.for_tenant")
+    @patch("services.message_service.TokenBufferMemory")
+    @patch("services.message_service.LLMGenerator")
+    @patch("services.message_service.TraceQueueManager")
+    @patch.object(MessageService, "get_message")
+    @patch("services.message_service.ConversationService")
+    def test_get_suggested_questions_chat_app_invalid_frontend_model_fallback_to_default(
+        self,
+        mock_conversation_service,
+        mock_get_message,
+        mock_trace_manager,
+        mock_llm_gen,
+        mock_memory,
+        mock_model_manager,
+        mock_db,
+        factory,
+    ):
+        """Test invalid frontend configured model falls back to tenant default model."""
+        app = factory.create_app_mock(mode=AppMode.CHAT.value)
+        app.tenant_id = "tenant-123"
+        user = factory.create_end_user_mock()
+        message = factory.create_message_mock()
+        mock_get_message.return_value = message
+
+        conversation = MagicMock()
+        conversation.override_model_configs = None
+        mock_conversation_service.get_conversation.return_value = conversation
+
+        app_model_config = MagicMock()
+        app_model_config.suggested_questions_after_answer_dict = {
+            "enabled": True,
+            "model": {"provider": "openai", "name": "invalid-model"},
+        }
+        mock_db.session.scalar.return_value = app_model_config
+
+        mock_model_manager.return_value.get_model_instance.side_effect = ValueError("invalid model")
+        mock_memory.return_value.get_history_prompt_text.return_value = "histories"
+        mock_llm_gen.generate_suggested_questions_after_answer.return_value = ["Q1?"]
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=app, user=user, message_id="msg-123", invoke_from=MagicMock()
+        )
+
+        assert result == ["Q1?"]
+        mock_model_manager.return_value.get_default_model_instance.assert_called_once_with(
+            tenant_id="tenant-123",
+            model_type=ModelType.LLM,
+        )
+        mock_model_manager.return_value.get_model_instance.assert_not_called()
 
     # Test 30: get_suggested_questions_after_answer - Disabled Error
     @patch("services.message_service.WorkflowService")

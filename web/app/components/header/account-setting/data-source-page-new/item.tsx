@@ -1,13 +1,13 @@
 import type {
   DataSourceCredential,
 } from './types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { Button } from '@/app/components/base/ui/button'
 import Indicator from '@/app/components/header/indicator'
 import Operator from './operator'
 

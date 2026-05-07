@@ -1,15 +1,15 @@
 import type { ChangeEvent } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
+import { Infotip } from '@/app/components/base/infotip'
 import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -65,11 +65,12 @@ const SummaryIndexSetting = ({
         <div className="flex h-6 items-center justify-between">
           <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
             {t('form.summaryAutoGen', { ns: 'datasetSettings' })}
-            <Tooltip
-              triggerClassName="ml-1 h-4 w-4 shrink-0"
-              popupContent={t('form.summaryAutoGenTip', { ns: 'datasetSettings' })}
+            <Infotip
+              aria-label={t('form.summaryAutoGenTip', { ns: 'datasetSettings' })}
+              className="ml-1"
             >
-            </Tooltip>
+              {t('form.summaryAutoGenTip', { ns: 'datasetSettings' })}
+            </Infotip>
           </div>
           <Switch
             checked={summaryIndexSetting?.enable ?? false}

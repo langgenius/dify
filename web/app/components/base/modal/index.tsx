@@ -1,5 +1,5 @@
 /**
- * @deprecated Use `@/app/components/base/ui/dialog` instead.
+ * @deprecated Use `@langgenius/dify-ui/dialog` instead.
  * This component will be removed after migration is complete.
  * See: https://github.com/langgenius/dify/issues/32767
  */

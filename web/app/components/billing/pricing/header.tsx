@@ -1,8 +1,8 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
-import { DialogDescription, DialogTitle } from '@/app/components/base/ui/dialog'
 import DifyLogo from '../../base/logo/dify-logo'
 import styles from './header.module.css'
 

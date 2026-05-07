@@ -1,11 +1,11 @@
 'use client'
 import type { ErrorInfo, ReactNode } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAlertLine, RiBugLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import { IS_DEV } from '@/config'
 
 type ErrorBoundaryState = {
@@ -67,7 +67,7 @@ class ErrorBoundaryInner extends React.Component<
     }
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (IS_DEV) {
       console.error('ErrorBoundary caught an error:', error)
       console.error('Error Info:', errorInfo)
@@ -82,7 +82,7 @@ class ErrorBoundaryInner extends React.Component<
       this.props.onError(error, errorInfo)
   }
 
-  componentDidUpdate(prevProps: any) {
+  override componentDidUpdate(prevProps: any) {
     const { resetKeys, resetOnPropsChange } = this.props
     const { hasError } = this.state
 
@@ -98,7 +98,7 @@ class ErrorBoundaryInner extends React.Component<
       this.props.onResetKeysChange(prevProps.resetKeys)
   }
 
-  render() {
+  override render() {
     const { hasError, error, errorInfo, errorCount } = this.state
     const {
       fallback,

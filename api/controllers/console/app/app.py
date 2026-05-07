@@ -1,14 +1,15 @@
 import logging
+import re
 import uuid
 from datetime import datetime
 from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
-from graphon.enums import WorkflowExecutionStatus
 from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.helpers import FileInfo
@@ -30,6 +31,7 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from graphon.enums import WorkflowExecutionStatus
 from libs.helper import build_icon_url
 from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
@@ -57,6 +59,7 @@ ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "co
 register_enum_models(console_ns, IconType)
 
 _logger = logging.getLogger(__name__)
+_TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 
 
 class AppListQuery(BaseModel):
@@ -66,22 +69,19 @@ class AppListQuery(BaseModel):
         default="all", description="App mode filter"
     )
     name: str | None = Field(default=None, description="Filter by app name")
-    tag_ids: list[str] | None = Field(default=None, description="Comma-separated tag IDs")
+    tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     is_created_by_me: bool | None = Field(default=None, description="Filter by creator")
 
     @field_validator("tag_ids", mode="before")
     @classmethod
-    def validate_tag_ids(cls, value: str | list[str] | None) -> list[str] | None:
+    def validate_tag_ids(cls, value: list[str] | None) -> list[str] | None:
         if not value:
             return None
 
-        if isinstance(value, str):
-            items = [item.strip() for item in value.split(",") if item.strip()]
-        elif isinstance(value, list):
-            items = [str(item).strip() for item in value if item and str(item).strip()]
-        else:
-            raise TypeError("Unsupported tag_ids type.")
+        if not isinstance(value, list):
+            raise ValueError("Unsupported tag_ids type.")
 
+        items = [str(item).strip() for item in value if item and str(item).strip()]
         if not items:
             return None
 
@@ -89,6 +89,26 @@ class AppListQuery(BaseModel):
             return [str(uuid.UUID(item)) for item in items]
         except ValueError as exc:
             raise ValueError("Invalid UUID format in tag_ids.") from exc
+
+
+def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
+    normalized: dict[str, str | list[str]] = {}
+    indexed_tag_ids: list[tuple[int, str]] = []
+
+    for key in query_args:
+        match = _TAG_IDS_BRACKET_PATTERN.fullmatch(key)
+        if match:
+            indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
+            continue
+
+        value = query_args.get(key)
+        if value is not None:
+            normalized[key] = value
+
+    if indexed_tag_ids:
+        normalized["tag_ids"] = [value for _, value in sorted(indexed_tag_ids)]
+
+    return normalized
 
 
 class CreateAppPayload(BaseModel):
@@ -129,6 +149,7 @@ class AppNamePayload(BaseModel):
 
 class AppIconPayload(BaseModel):
     icon: str | None = Field(default=None, description="Icon data")
+    icon_type: IconType | None = Field(default=None, description="Icon type")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
 
@@ -454,7 +475,7 @@ class AppListApi(Resource):
         """Get app list"""
         current_user, current_tenant_id = current_account_with_tenant()
 
-        args = AppListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
         args_dict = args.model_dump()
 
         # get app list
@@ -691,6 +712,32 @@ class AppExportApi(Resource):
         return payload.model_dump(mode="json")
 
 
+@console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
+class AppPublishToCreatorsPlatformApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=None)
+    @edit_permission_required
+    def post(self, app_model):
+        """Publish app to Creators Platform"""
+        from configs import dify_config
+        from core.helper.creators import get_redirect_url, upload_dsl
+
+        if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
+            return {"error": "Creators Platform features are not enabled"}, 403
+
+        current_user, _ = current_account_with_tenant()
+
+        dsl_content = AppDslService.export_dsl(app_model=app_model, include_secret=False)
+        dsl_bytes = dsl_content.encode("utf-8")
+
+        claim_code = upload_dsl(dsl_bytes)
+        redirect_url = get_redirect_url(str(current_user.id), claim_code)
+
+        return {"redirect_url": redirect_url}
+
+
 @console_ns.route("/apps/<uuid:app_id>/name")
 class AppNameApi(Resource):
     @console_ns.doc("check_app_name")
@@ -729,7 +776,12 @@ class AppIconApi(Resource):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
-        app_model = app_service.update_app_icon(app_model, args.icon or "", args.icon_background or "")
+        app_model = app_service.update_app_icon(
+            app_model,
+            args.icon or "",
+            args.icon_background or "",
+            args.icon_type,
+        )
         response_model = AppDetail.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 

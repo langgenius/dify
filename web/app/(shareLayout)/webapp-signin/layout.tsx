@@ -2,13 +2,14 @@
 
 import type { PropsWithChildren } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 export default function SignInLayout({ children }: PropsWithChildren) {
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   useDocumentTitle(t('webapp.login', { ns: 'login' }))
   return (
     <>

@@ -172,7 +172,7 @@ type HeaderOptionsProps = ComponentProps<typeof HeaderOptions>
 
 const renderComponent = (
   props: Partial<HeaderOptionsProps> = {},
-  locale: Locale = LanguagesSupported[0],
+  locale: Locale = LanguagesSupported[0]!,
 ) => {
   ;(useLocale as Mock).mockReturnValue(locale)
 
@@ -188,8 +188,7 @@ const renderComponent = (
 }
 
 const openOperationsPopover = async (user: ReturnType<typeof userEvent.setup>) => {
-  const trigger = document.querySelector('button.btn.btn-secondary') as HTMLButtonElement
-  expect(trigger).toBeTruthy()
+  const trigger = screen.getByRole('button', { name: 'common.operation.more' }) as HTMLButtonElement
   await user.click(trigger)
 }
 
@@ -280,8 +279,8 @@ describe('HeaderOptions', () => {
 
     const { csvButton, jsonButton } = await getExportButtons()
 
-    expect(csvButton).toBeDisabled()
-    expect(jsonButton).toBeDisabled()
+    expect(csvButton)!.toBeDisabled()
+    expect(jsonButton)!.toBeDisabled()
 
     expect(lastCSVDownloaderProps).toMatchObject({
       data: [['Question', 'Answer']],
@@ -324,7 +323,7 @@ describe('HeaderOptions', () => {
     await openOperationsPopover(user)
     await clickOperationAction(user, 'appAnnotation.table.header.bulkImport')
 
-    expect(await screen.findByText('appAnnotation.batchModal.title')).toBeInTheDocument()
+    expect(await screen.findByText('appAnnotation.batchModal.title'))!.toBeInTheDocument()
     await user.click(
       screen.getByRole('button', { name: 'appAnnotation.batchModal.cancel' }),
     )
@@ -376,7 +375,7 @@ describe('HeaderOptions', () => {
     })
     const lines = blobContent.trim().split('\n')
     expect(lines).toHaveLength(1)
-    expect(JSON.parse(lines[0])).toEqual({
+    expect(JSON.parse(lines[0]!)).toEqual({
       messages: [
         { role: 'system', content: '' },
         { role: 'user', content: 'Question 1' },

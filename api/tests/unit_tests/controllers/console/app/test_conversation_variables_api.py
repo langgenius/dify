@@ -5,10 +5,10 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
-from graphon.variables.types import SegmentType
 from pydantic import ValidationError
 
 from controllers.console.app import conversation_variables as conversation_variables_module
+from graphon.variables.types import SegmentType
 
 
 def _unwrap(func):

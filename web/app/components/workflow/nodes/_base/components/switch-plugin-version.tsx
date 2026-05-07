@@ -35,7 +35,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     pluginUniqueIden: string
   }>()
   const pluginDetails = useCheckInstalled({
-    pluginIds: [pluginId],
+    pluginIds: [pluginId!],
     enabled: true,
   })
   const pluginDetail = pluginDetails.data?.plugins.at(0)
@@ -95,6 +95,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                 className="flex items-center justify-center gap-1"
                 href={getMarketplaceUrl(`/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`)}
                 target="_blank"
+                rel="noopener noreferrer"
               >
                 <span className="system-xs-regular text-xs text-text-accent">
                   {t('nodes.agent.installPlugin.changelog', { ns: 'workflow' })}

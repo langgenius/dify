@@ -1,11 +1,11 @@
 'use client'
 
 import type { CreateKnowledgeBaseReq } from './declarations'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { Button } from '@/app/components/base/ui/button'
 import { useDocLink } from '@/context/i18n'
 import { useRouter } from '@/next/navigation'
 import ExternalApiSelection from './ExternalApiSelection'

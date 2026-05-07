@@ -1,8 +1,9 @@
 'use client'
-import type { ButtonProps } from '@/app/components/base/ui/button'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { SiteInfo } from '@/models/share'
 import type { HumanInputFormError } from '@/service/use-share'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCheckboxCircleFill,
@@ -19,7 +20,6 @@ import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-c
 import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import Loading from '@/app/components/base/loading'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { Button } from '@/app/components/base/ui/button'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm, useSubmitHumanInputForm } from '@/service/use-share'

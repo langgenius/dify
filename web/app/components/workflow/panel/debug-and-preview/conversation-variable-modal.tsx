@@ -37,7 +37,7 @@ const ConversationVariableModal = ({
   const { formatTime } = useTimestamp()
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
   const appID = useStore(s => s.appId)
-  const [currentVar, setCurrentVar] = React.useState<ConversationVariable>(varList[0])
+  const [currentVar, setCurrentVar] = React.useState<ConversationVariable>(varList[0]!)
   const [latestValueMap, setLatestValueMap] = React.useState<Record<string, string>>({})
   const [latestValueTimestampMap, setLatestValueTimestampMap] = React.useState<Record<string, number>>({})
 
@@ -118,7 +118,7 @@ const ConversationVariableModal = ({
               {!!latestValueTimestampMap[currentVar.id] && (
                 <div className="shrink-0 system-xs-regular text-text-tertiary">
                   {t('chatVariable.updatedAt', { ns: 'workflow' })}
-                  {formatTime(latestValueTimestampMap[currentVar.id], t('dateTimeFormat', { ns: 'appLog' }) as string)}
+                  {formatTime(latestValueTimestampMap[currentVar.id]!, t('dateTimeFormat', { ns: 'appLog' }) as string)}
                 </div>
               )}
             </div>

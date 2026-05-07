@@ -4,6 +4,12 @@ import type {
 } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
   memo,
   useMemo,
   useState,
@@ -12,12 +18,6 @@ import { useTranslation } from 'react-i18next'
 import {
   useEdges,
 } from 'reactflow'
-import {
-  Popover,
-  PopoverClose,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/app/components/base/ui/popover'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import {
   useChecklist,

@@ -1,5 +1,6 @@
 'use client'
 import type { VersionHistory } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -7,7 +8,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Divider from '@/app/components/base/divider'
-import { toast } from '@/app/components/base/ui/toast'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
 import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
@@ -107,7 +107,7 @@ export const VersionHistoryPanel = ({
     setIsOnlyShowNamedVersions(false)
   }, [])
 
-  const handleClickMenuItem = useCallback((item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
+  const handleClickActionMenuItem = useCallback((item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
     setOperatedItem(item)
     switch (operation) {
       case VersionHistoryContextMenuOptions.restore:
@@ -292,13 +292,13 @@ export const VersionHistoryPanel = ({
                           currentVersion={currentVersion}
                           latestVersionId={latestVersionId || ''}
                           onClick={handleVersionClick}
-                          handleClickMenuItem={handleClickMenuItem.bind(null, item)}
+                          handleClickActionMenuItem={handleClickActionMenuItem.bind(null, item)}
                           isLast={isLast}
                         />
                       )
                     })
                   ))}
-                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0].items.length) && (
+                  {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0]!.items.length) && (
                     <Empty onResetFilter={handleResetFilter} />
                   )}
                 </>

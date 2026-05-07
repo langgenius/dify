@@ -1,6 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
+import { Slider } from '@langgenius/dify-ui/slider'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import * as React from 'react'
@@ -8,8 +10,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
-import { Button } from '@/app/components/base/ui/button'
-import { Slider } from '@/app/components/base/ui/slider'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 import ItemPanel from './item-panel'
 
@@ -74,7 +74,7 @@ const AgentSetting: FC<Props> = ({
         </div>
         {/* Body */}
         <div
-          className="grow overflow-y-auto border-b p-6 pt-5 pb-[68px]"
+          className="grow overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-[68px]"
           style={{
             borderBottom: 'rgba(0, 0, 0, 0.05)',
           }}

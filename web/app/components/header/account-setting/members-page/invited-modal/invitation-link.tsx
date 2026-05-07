@@ -1,10 +1,10 @@
 'use client'
 import type { SuccessInvitationResult } from '.'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import s from './index.module.css'
 
 type IInvitationLinkProps = {
@@ -40,14 +40,14 @@ const InvitationLink = ({
         <div className="relative h-full grow text-[13px]">
           <Tooltip>
             <TooltipTrigger
-              render={<div className="absolute left-0 right-0 top-0 w-full cursor-pointer truncate pl-2 pr-2 text-text-primary" onClick={copyHandle} data-testid="invitation-link-url">{value.url}</div>}
+              render={<div className="absolute top-0 right-0 left-0 w-full cursor-pointer truncate pr-2 pl-2 text-text-primary" onClick={copyHandle} data-testid="invitation-link-url">{value.url}</div>}
             />
             <TooltipContent>
               {isCopied ? t('copied', { ns: 'appApi' }) : t('copy', { ns: 'appApi' })}
             </TooltipContent>
           </Tooltip>
         </div>
-        <div className="h-4 shrink-0 border bg-divider-regular" />
+        <div className="h-4 shrink-0 border border-divider-regular bg-divider-regular" />
         <Tooltip>
           <TooltipTrigger
             render={(

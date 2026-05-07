@@ -27,7 +27,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -502,8 +502,8 @@ describe('useChat – handleResume', () => {
 
       let answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      expect(answer!.workflowProcess!.tracing[0].id).toBe('iter-r1')
-      expect(answer!.workflowProcess!.tracing[0].status).toBe('running')
+      expect(answer!.workflowProcess!.tracing[0]!.id).toBe('iter-r1')
+      expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
 
       act(() => {
         capturedResumeOptions.onIterationFinish({
@@ -513,7 +513,7 @@ describe('useChat – handleResume', () => {
 
       answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      expect(answer!.workflowProcess!.tracing[0].status).toBe('succeeded')
+      expect(answer!.workflowProcess!.tracing[0]!.status).toBe('succeeded')
     })
 
     it('should handle iteration finish when no match found', async () => {
@@ -539,8 +539,8 @@ describe('useChat – handleResume', () => {
 
       let answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      expect(answer!.workflowProcess!.tracing[0].id).toBe('loop-r1')
-      expect(answer!.workflowProcess!.tracing[0].status).toBe('running')
+      expect(answer!.workflowProcess!.tracing[0]!.id).toBe('loop-r1')
+      expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
 
       act(() => {
         capturedResumeOptions.onLoopFinish({
@@ -550,7 +550,7 @@ describe('useChat – handleResume', () => {
 
       answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-      expect(answer!.workflowProcess!.tracing[0].status).toBe('succeeded')
+      expect(answer!.workflowProcess!.tracing[0]!.status).toBe('succeeded')
     })
 
     it('should handle loop finish when no match found', async () => {
@@ -661,8 +661,8 @@ describe('useChat – handleResume', () => {
       const answer = result.current.chatList.find(item => item.id === 'msg-resume')
       const matchingTraces = answer!.workflowProcess!.tracing.filter((t: any) => t.node_id === 'rn-1')
       expect(matchingTraces).toHaveLength(1)
-      expect(matchingTraces[0].id).toBe('rtrace-1-v2')
-      expect(matchingTraces[0].status).toBe('running')
+      expect(matchingTraces[0]!.id).toBe('rtrace-1-v2')
+      expect(matchingTraces[0]!.status).toBe('running')
     })
 
     it('should match nodeFinished with parallel_id', async () => {
@@ -956,9 +956,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     const answer = result.current.chatList.find(item => item.id === 'bare-msg-nt')
     expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-    expect(answer!.workflowProcess!.tracing[0].id).toBe('loop-bare')
-    expect(answer!.workflowProcess!.tracing[0].node_id).toBe('n-loop-bare')
-    expect(answer!.workflowProcess!.tracing[0].status).toBe('running')
+    expect(answer!.workflowProcess!.tracing[0]!.id).toBe('loop-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.node_id).toBe('n-loop-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
   })
 
   it('onLoopFinish should return early when no tracing', () => {
@@ -982,9 +982,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     const answer = result.current.chatList.find(item => item.id === 'bare-msg-nt')
     expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-    expect(answer!.workflowProcess!.tracing[0].id).toBe('iter-bare')
-    expect(answer!.workflowProcess!.tracing[0].node_id).toBe('n-iter-bare')
-    expect(answer!.workflowProcess!.tracing[0].status).toBe('running')
+    expect(answer!.workflowProcess!.tracing[0]!.id).toBe('iter-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.node_id).toBe('n-iter-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
   })
 
   it('onIterationFinish should return early when no tracing', () => {
@@ -1008,9 +1008,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
 
     const answer = result.current.chatList.find(item => item.id === 'bare-msg-nt')
     expect(answer!.workflowProcess!.tracing).toHaveLength(1)
-    expect(answer!.workflowProcess!.tracing[0].id).toBe('rtrace-bare')
-    expect(answer!.workflowProcess!.tracing[0].node_id).toBe('rn-bare')
-    expect(answer!.workflowProcess!.tracing[0].status).toBe('running')
+    expect(answer!.workflowProcess!.tracing[0]!.id).toBe('rtrace-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.node_id).toBe('rn-bare')
+    expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
   })
 
   it('onNodeFinished should return early when no tracing', () => {

@@ -1,20 +1,27 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 
 import Loading from '@/app/components/base/loading'
 import Header from '@/app/signin/_header'
 import { AppContextProvider } from '@/context/app-context-provider'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useIsLogin } from '@/service/use-common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
 
 export default function SignInLayout({ children }: any) {
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   useDocumentTitle('')
-  const { isLoading, data: loginData } = useIsLogin()
-  const isLoggedIn = loginData?.logged_in
+  // Probe login state. 401 stays as `error` (not thrown) so this layout can render
+  // the signin/oauth UI for unauthenticated users; other errors bubble to error.tsx.
+  // (When unauthenticated, service/base.ts's auto-redirect to /signin still fires.)
+  const { isPending, data: userResp, error } = useQuery({
+    ...userProfileQueryOptions(),
+    throwOnError: err => !isLegacyBase401(err),
+  })
+  const isLoggedIn = !!userResp && !error
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="flex min-h-screen w-full justify-center bg-background-default-burn">
         <Loading />

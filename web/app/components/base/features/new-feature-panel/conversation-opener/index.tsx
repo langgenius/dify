@@ -1,6 +1,7 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiEditLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -10,7 +11,6 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
-import { Button } from '@/app/components/base/ui/button'
 import { useModalContext } from '@/context/modal-context'
 
 type Props = {
@@ -102,7 +102,7 @@ const ConversationOpener = ({
           <>
             {!isHovering && (
               <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
-                {opening.opening_statement || t('openingStatement.placeholder', { ns: 'appDebug' })}
+                {opening.opening_statement || t('openingStatement.placeholderLine1', { ns: 'appDebug' })}
               </div>
             )}
             {isHovering && (

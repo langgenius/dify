@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-
 from core.plugin.impl.model import PluginModelClient
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 
 if TYPE_CHECKING:
     from core.model_manager import ModelManager

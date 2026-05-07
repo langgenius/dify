@@ -32,8 +32,8 @@ export const useReplaceDataSourceNode = (id: string) => {
         ...pluginDefaultValue,
       },
       position: {
-        x: emptyNode.position.x,
-        y: emptyNode.position.y,
+        x: emptyNode!.position.x,
+        y: emptyNode!.position.y,
       },
     })
     const newNodes = produce(nodes, (draft) => {

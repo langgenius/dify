@@ -71,7 +71,7 @@ describe('VariableInspect Group', () => {
 
     fireEvent.click(screen.getByText('API_KEY'))
 
-    expect(screen.getByText('workflow.debug.variableInspect.envNode')).toBeInTheDocument()
+    expect(screen.getByText('workflow.debug.variableInspect.envNode'))!.toBeInTheDocument()
     expect(handleSelect).toHaveBeenCalledWith({
       nodeId: VarInInspectType.environment,
       nodeType: VarInInspectType.environment,
@@ -97,7 +97,7 @@ describe('VariableInspect Group', () => {
       />,
     )
 
-    expect(screen.getByText('visible_var')).toBeInTheDocument()
+    expect(screen.getByText('visible_var'))!.toBeInTheDocument()
     expect(screen.queryByText('hidden_var')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Code'))
@@ -122,8 +122,8 @@ describe('VariableInspect Group', () => {
 
     const actionButtons = screen.getAllByRole('button')
 
-    fireEvent.click(actionButtons[0])
-    fireEvent.click(actionButtons[1])
+    fireEvent.click(actionButtons[0]!)
+    fireEvent.click(actionButtons[1]!)
 
     expect(handleView).toHaveBeenCalledTimes(1)
     expect(handleClear).toHaveBeenCalledTimes(1)

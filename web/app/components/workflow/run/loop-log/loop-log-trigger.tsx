@@ -3,10 +3,10 @@ import type {
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
-import { Button } from '@/app/components/base/ui/button'
 
 type LoopLogTriggerProps = {
   nodeInfo: NodeTracing

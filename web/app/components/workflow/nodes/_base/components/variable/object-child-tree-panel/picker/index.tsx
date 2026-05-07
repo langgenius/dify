@@ -59,7 +59,7 @@ export const PickerPanelMain: FC<Props> = ({
         <Field
           key={name}
           name={name}
-          payload={schema.properties[name]}
+          payload={schema.properties[name]!}
           readonly={readonly}
           valueSelector={[root.nodeId!, root.attrName]}
           onSelect={onSelect}

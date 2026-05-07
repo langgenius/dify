@@ -1,10 +1,10 @@
 import type { Recipient as RecipientItem } from '../../../types'
 import type { Member } from '@/models/common'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseCircleFill, RiErrorWarningFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Avatar } from '@/app/components/base/ui/avatar'
 
 type Props = {
   email: string

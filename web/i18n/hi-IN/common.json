@@ -494,6 +494,7 @@
   "operation.downloadSuccess": "डाउनलोड पूरा हुआ।",
   "operation.duplicate": "डुप्लिकेट",
   "operation.edit": "संपादित करें",
+  "operation.exporting": "निर्यात हो रहा है",
   "operation.format": "फॉर्मेट",
   "operation.getForFree": "मुफ्त में प्राप्त करें",
   "operation.imageCopied": "कॉपी की गई छवि",

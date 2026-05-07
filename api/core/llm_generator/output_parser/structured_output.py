@@ -5,6 +5,11 @@ from enum import StrEnum
 from typing import Any, Literal, cast, overload
 
 import json_repair
+from pydantic import TypeAdapter, ValidationError
+
+from core.llm_generator.output_parser.errors import OutputParserError
+from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
+from core.model_manager import ModelInstance
 from graphon.model_runtime.callbacks.base_callback import Callback
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -21,11 +26,6 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
 )
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
-from pydantic import TypeAdapter, ValidationError
-
-from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
-from core.model_manager import ModelInstance
 
 
 class ResponseFormat(StrEnum):

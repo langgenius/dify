@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type {
+  Edge,
   Node,
   TriggerNodeType,
   WorkflowRunningData,
@@ -34,7 +35,10 @@ export type WorkflowSliceShape = {
   listeningTriggerIsAll: boolean
   setListeningTriggerIsAll: (isAll: boolean) => void
   clipboardElements: Node[]
+  clipboardEdges: Edge[]
   setClipboardElements: (clipboardElements: Node[]) => void
+  setClipboardEdges: (clipboardEdges: Edge[]) => void
+  setClipboardData: (clipboardData: { nodes: Node[], edges: Edge[] }) => void
   selection: null | { x1: number, y1: number, x2: number, y2: number }
   setSelection: (selection: WorkflowSliceShape['selection']) => void
   bundleNodeSize: { width: number, height: number } | null
@@ -75,7 +79,15 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   listeningTriggerIsAll: false,
   setListeningTriggerIsAll: isAll => set(() => ({ listeningTriggerIsAll: isAll })),
   clipboardElements: [],
+  clipboardEdges: [],
   setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
+  setClipboardEdges: clipboardEdges => set(() => ({ clipboardEdges })),
+  setClipboardData: ({ nodes, edges }) => {
+    set(() => ({
+      clipboardElements: nodes,
+      clipboardEdges: edges,
+    }))
+  },
   selection: null,
   setSelection: selection => set(() => ({ selection })),
   bundleNodeSize: null,

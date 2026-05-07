@@ -3,19 +3,19 @@ import type {
   DataSourceCredential,
 } from './types'
 import {
-  memo,
-  useCallback,
-  useRef,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import {
   AlertDialog,
   AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
+} from '@langgenius/dify-ui/alert-dialog'
+import {
+  memo,
+  useCallback,
+  useRef,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ApiKeyModal,
   usePluginAuthAction,

@@ -1,4 +1,5 @@
 import type { FileEntity } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiCloseLine,
   RiDownloadLine,
@@ -7,7 +8,6 @@ import { useState } from 'react'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { Button } from '@/app/components/base/ui/button'
 import { downloadUrl } from '@/utils/download'
 import FileImageRender from '../file-image-render'
 import {
@@ -80,7 +80,7 @@ const FileImageItem = ({
         }
         {
           showDownloadAction && (
-            <div className="bg-opacity-[0.3] absolute inset-0.5 z-10 hidden bg-background-overlay-alt group-hover/file-image:block">
+            <div className="absolute inset-0.5 z-10 hidden bg-background-overlay-alt group-hover/file-image:block">
               <div
                 className="absolute right-0.5 bottom-0.5 flex h-6 w-6 items-center justify-center rounded-lg bg-components-actionbar-bg shadow-md"
                 onClick={(e) => {

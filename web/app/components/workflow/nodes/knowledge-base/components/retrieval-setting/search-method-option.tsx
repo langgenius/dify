@@ -8,6 +8,7 @@ import type {
   Option,
 } from './type'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
 import {
   memo,
   useCallback,
@@ -16,7 +17,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 import {

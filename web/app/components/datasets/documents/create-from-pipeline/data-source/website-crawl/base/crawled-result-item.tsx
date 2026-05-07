@@ -1,12 +1,12 @@
 'use client'
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
-import { Button } from '@/app/components/base/ui/button'
 
 type CrawledResultItemProps = {
   payload: CrawlResultItemType

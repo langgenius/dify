@@ -1,6 +1,11 @@
 import type { FC } from 'react'
 import type { Label } from '@/app/components/tools/labels/constant'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,11 +13,6 @@ import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financ
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Input from '@/app/components/base/input'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/app/components/base/ui/popover'
 import { useTags } from '@/app/components/plugins/hooks'
 
 type LabelFilterProps = {

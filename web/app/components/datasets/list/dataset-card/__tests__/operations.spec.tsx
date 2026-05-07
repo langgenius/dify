@@ -1,6 +1,6 @@
+import { DropdownMenu } from '@langgenius/dify-ui/dropdown-menu'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { DropdownMenu } from '@/app/components/base/ui/dropdown-menu'
 import Operations from '../operations'
 
 function renderInMenu(ui: React.ReactElement) {

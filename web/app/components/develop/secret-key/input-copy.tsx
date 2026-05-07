@@ -1,9 +1,9 @@
 'use client'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import CopyFeedback from '@/app/components/base/copy-feedback'
-import Tooltip from '@/app/components/base/tooltip'
 import { writeTextToClipboard } from '@/utils/clipboard'
 
 type IInputCopyProps = {
@@ -18,6 +18,12 @@ const InputCopy = ({
   children,
 }: IInputCopyProps) => {
   const [isCopied, setIsCopied] = useState(false)
+  const copyLabel = isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`
+  const handleCopy = () => {
+    writeTextToClipboard(value).then(() => {
+      setIsCopied(true)
+    })
+  }
 
   useEffect(() => {
     if (isCopied) {
@@ -37,18 +43,25 @@ const InputCopy = ({
         {children}
         <div className="relative h-full grow text-[13px]">
           <div
-            className="r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2"
-            onClick={() => {
-              writeTextToClipboard(value).then(() => {
-                setIsCopied(true)
-              })
+            className="r-0 absolute top-0 left-0 w-full cursor-pointer truncate pr-2 pl-2"
+            role="button"
+            aria-label={copyLabel}
+            tabIndex={0}
+            onClick={handleCopy}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                handleCopy()
+              }
             }}
           >
-            <Tooltip
-              popupContent={isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`}
-              position="bottom"
-            >
-              <span className="text-text-secondary">{value}</span>
+            <Tooltip>
+              <TooltipTrigger
+                render={<span className="text-text-secondary">{value}</span>}
+              />
+              <TooltipContent placement="bottom">
+                {copyLabel}
+              </TooltipContent>
             </Tooltip>
           </div>
         </div>

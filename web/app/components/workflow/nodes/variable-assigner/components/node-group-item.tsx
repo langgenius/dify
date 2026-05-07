@@ -64,7 +64,7 @@ const NodeGroupItem = ({
       if (hoveringAssignVariableGroupId)
         return hoveringAssignVariableGroupId !== item.targetHandleId
       else
-        return enteringNodePayload?.nodeData.advanced_settings?.groups[0].groupId !== item.targetHandleId
+        return enteringNodePayload?.nodeData.advanced_settings?.groups[0]!.groupId !== item.targetHandleId
     }
 
     return false
@@ -74,7 +74,7 @@ const NodeGroupItem = ({
       if (hoveringAssignVariableGroupId)
         return hoveringAssignVariableGroupId === item.targetHandleId
       else
-        return enteringNodePayload?.nodeData.advanced_settings?.groups[0].groupId === item.targetHandleId
+        return enteringNodePayload?.nodeData.advanced_settings?.groups[0]!.groupId === item.targetHandleId
     }
 
     return false

@@ -1,7 +1,7 @@
+import type { AvatarSize } from '@langgenius/dify-ui/avatar'
 import type { FC } from 'react'
-import type { AvatarSize } from '@/app/components/base/ui/avatar'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { memo } from 'react'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@/app/components/base/ui/avatar'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
 import { useAppContext } from '@/context/app-context'
 

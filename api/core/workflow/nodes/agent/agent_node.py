@@ -3,14 +3,12 @@ from __future__ import annotations
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-from graphon.entities.graph_config import NodeConfigDict
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
-
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.workflow.system_variables import SystemVariableKey, get_system_text
 
 from .entities import AgentNodeData
 from .exceptions import (
@@ -36,18 +34,18 @@ class AgentNode(Node[AgentNodeData]):
 
     def __init__(
         self,
-        id: str,
-        config: NodeConfigDict,
+        node_id: str,
+        config: AgentNodeData,
+        *,
         graph_init_params: GraphInitParams,
         graph_runtime_state: GraphRuntimeState,
-        *,
         strategy_resolver: AgentStrategyResolver,
         presentation_provider: AgentStrategyPresentationProvider,
         runtime_support: AgentRuntimeSupport,
         message_transformer: AgentMessageTransformer,
     ) -> None:
         super().__init__(
-            id=id,
+            node_id=node_id,
             config=config,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,

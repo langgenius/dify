@@ -28,6 +28,7 @@ type License = {
 }
 
 export type SystemFeatures = {
+  app_dsl_version: string
   trial_models: ModelProviderQuotaGetPaid[]
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope
@@ -63,11 +64,13 @@ export type SystemFeatures = {
     allow_email_code_login: boolean
     allow_email_password_login: boolean
   }
+  enable_creators_platform: boolean
   enable_trial_app: boolean
   enable_explore_banner: boolean
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
+  app_dsl_version: '',
   trial_models: [],
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope.ALL,
@@ -106,6 +109,7 @@ export const defaultSystemFeatures: SystemFeatures = {
     allow_email_code_login: false,
     allow_email_password_login: false,
   },
+  enable_creators_platform: false,
   enable_trial_app: false,
   enable_explore_banner: false,
 }

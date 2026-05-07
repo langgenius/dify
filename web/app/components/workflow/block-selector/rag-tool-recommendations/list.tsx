@@ -29,14 +29,14 @@ const List = ({
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
 
-  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => tool.label[language][0])
+  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => tool.label[language]![0]!)
   const treeViewToolsData = useMemo(() => {
     const result: Record<string, ToolWithProvider[]> = {}
     Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
         if (!result[groupName])
           result[groupName] = []
-        result[groupName].push(...withLetterAndGroupViewToolsData[letter][groupName])
+        result[groupName].push(...(withLetterAndGroupViewToolsData[letter]![groupName] ?? []))
       })
     })
     return result
@@ -45,8 +45,8 @@ const List = ({
   const listViewToolData = useMemo(() => {
     const result: ToolWithProvider[] = []
     letters.forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
-        result.push(...withLetterAndGroupViewToolsData[letter][groupName].map((item) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
+        result.push(...withLetterAndGroupViewToolsData[letter]![groupName]!.map((item) => {
           return {
             ...item,
             letter,

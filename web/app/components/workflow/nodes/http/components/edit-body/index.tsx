@@ -114,7 +114,7 @@ const EditBody: FC<Props> = ({
           value: '',
         })
       }
-      (draft.data as BodyPayload)[0].value = value
+      (draft.data as BodyPayload)[0]!.value = value
     })
     onChange(newBody)
   }, [onChange, payload])
@@ -127,7 +127,7 @@ const EditBody: FC<Props> = ({
           type: BodyPayloadValueType.file,
         })
       }
-      (draft.data as BodyPayload)[0].file = value as ValueSelector
+      (draft.data as BodyPayload)[0]!.file = value as ValueSelector
     })
     onChange(newBody)
   }, [onChange, payload])

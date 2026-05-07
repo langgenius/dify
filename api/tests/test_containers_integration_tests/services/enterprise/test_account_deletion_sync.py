@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import pytest
 from redis import RedisError
+from sqlalchemy.orm import Session
 
 from extensions.ext_redis import redis_client
 from models.account import TenantAccountJoin
@@ -122,7 +123,7 @@ class TestSyncAccountDeletion:
             mock_queue_task.assert_not_called()
 
     def test_sync_account_deletion_multiple_workspaces(
-        self, flask_app_with_containers, db_session_with_containers, mock_queue_task
+        self, flask_app_with_containers, db_session_with_containers: Session, mock_queue_task
     ):
         account_id = str(uuid4())
         tenant_ids = [str(uuid4()) for _ in range(3)]
@@ -144,7 +145,7 @@ class TestSyncAccountDeletion:
             assert queued_workspace_ids == set(tenant_ids)
 
     def test_sync_account_deletion_no_workspaces(
-        self, flask_app_with_containers, db_session_with_containers, mock_queue_task
+        self, flask_app_with_containers, db_session_with_containers: Session, mock_queue_task
     ):
         with patch("services.enterprise.account_deletion_sync.dify_config") as mock_config:
             mock_config.ENTERPRISE_ENABLED = True
@@ -155,7 +156,7 @@ class TestSyncAccountDeletion:
             mock_queue_task.assert_not_called()
 
     def test_sync_account_deletion_partial_failure(
-        self, flask_app_with_containers, db_session_with_containers, mock_queue_task
+        self, flask_app_with_containers, db_session_with_containers: Session, mock_queue_task
     ):
         account_id = str(uuid4())
         tenant_ids = [str(uuid4()) for _ in range(3)]
@@ -180,7 +181,7 @@ class TestSyncAccountDeletion:
             assert mock_queue_task.call_count == 3
 
     def test_sync_account_deletion_all_failures(
-        self, flask_app_with_containers, db_session_with_containers, mock_queue_task
+        self, flask_app_with_containers, db_session_with_containers: Session, mock_queue_task
     ):
         account_id = str(uuid4())
         tenant_id = str(uuid4())

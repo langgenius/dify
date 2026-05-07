@@ -658,15 +658,17 @@ class TestAppService:
         # Update app icon
         new_icon = "🌟"
         new_icon_background = "#FFD93D"
+        new_icon_type = "image"
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.id = account.id
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_icon(app, new_icon, new_icon_background)
+            updated_app = app_service.update_app_icon(app, new_icon, new_icon_background, new_icon_type)
 
         assert updated_app.icon == new_icon
         assert updated_app.icon_background == new_icon_background
+        assert str(updated_app.icon_type).lower() == new_icon_type
         assert updated_app.updated_by == account.id
 
         # Verify other fields remain unchanged

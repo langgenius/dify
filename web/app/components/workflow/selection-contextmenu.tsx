@@ -1,4 +1,12 @@
 import type { Node } from './types'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+} from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
 import {
   memo,
@@ -8,19 +16,11 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuGroup,
-  ContextMenuGroupLabel,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from '@/app/components/base/ui/context-menu'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
-import ShortcutsName from './shortcuts-name'
+import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore, useWorkflowStore } from './store'
 
 const AlignType = {
@@ -182,8 +182,8 @@ const distributeNodes = (
   const lastNode = sortedNodes[sortedNodes.length - 1]
 
   const totalGap = isHorizontal
-    ? lastNode.position.x + (lastNode.width || 0) - firstNode.position.x
-    : lastNode.position.y + (lastNode.height || 0) - firstNode.position.y
+    ? lastNode!.position.x + (lastNode!.width || 0) - firstNode!.position.x
+    : lastNode!.position.y + (lastNode!.height || 0) - firstNode!.position.y
 
   const fixedSpace = sortedNodes.reduce((sum, node) =>
     sum + (isHorizontal ? (node.width || 0) : (node.height || 0)), 0)
@@ -194,12 +194,12 @@ const distributeNodes = (
 
   return produce(nodes, (draft) => {
     let currentPosition = isHorizontal
-      ? firstNode.position.x + (firstNode.width || 0)
-      : firstNode.position.y + (firstNode.height || 0)
+      ? firstNode!.position.x + (firstNode!.width || 0)
+      : firstNode!.position.y + (firstNode!.height || 0)
 
     for (let index = 1; index < sortedNodes.length - 1; index++) {
       const nodeToAlign = sortedNodes[index]
-      const currentNode = draft.find(node => node.id === nodeToAlign.id)
+      const currentNode = draft.find(node => node.id === nodeToAlign!.id)
       if (!currentNode)
         continue
 
@@ -208,14 +208,14 @@ const distributeNodes = (
         currentNode.position.x = nextX
         if (currentNode.positionAbsolute)
           currentNode.positionAbsolute.x = nextX
-        currentPosition = nextX + (nodeToAlign.width || 0)
+        currentPosition = nextX + (nodeToAlign!.width || 0)
       }
       else {
         const nextY = currentPosition + spacing
         currentNode.position.y = nextY
         if (currentNode.positionAbsolute)
           currentNode.positionAbsolute.y = nextY
-        currentPosition = nextY + (nodeToAlign.height || 0)
+        currentPosition = nextY + (nodeToAlign!.height || 0)
       }
     }
   })
@@ -387,7 +387,7 @@ const SelectionContextmenu = () => {
             onClick={handleCopyNodes}
           >
             <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'c']} />
+            <ShortcutKbd shortcut="workflow.copy" />
           </ContextMenuItem>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
@@ -395,7 +395,7 @@ const SelectionContextmenu = () => {
             onClick={handleDuplicateNodes}
           >
             <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'd']} />
+            <ShortcutKbd shortcut="workflow.duplicate" />
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
@@ -406,16 +406,16 @@ const SelectionContextmenu = () => {
             onClick={handleDeleteNodes}
           >
             <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
-            <ShortcutsName keys={['del']} />
+            <ShortcutKbd shortcut="workflow.delete" />
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         {menuSections.map((section, sectionIndex) => (
           <ContextMenuGroup key={section.titleKey}>
             {sectionIndex > 0 && <ContextMenuSeparator />}
-            <ContextMenuGroupLabel>
+            <ContextMenuLabel>
               {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
-            </ContextMenuGroupLabel>
+            </ContextMenuLabel>
             {section.items.map((item) => {
               return (
                 <ContextMenuItem

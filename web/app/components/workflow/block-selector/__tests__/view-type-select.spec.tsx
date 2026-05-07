@@ -20,8 +20,8 @@ describe('ViewTypeSelect', () => {
 
     const [flatOption, treeOption] = getViewOptions(container)
 
-    expect(flatOption).toHaveClass('bg-components-segmented-control-item-active-bg')
-    expect(treeOption).toHaveClass('cursor-pointer')
+    expect(flatOption)!.toHaveClass('bg-components-segmented-control-item-active-bg')
+    expect(treeOption)!.toHaveClass('cursor-pointer')
   })
 
   it('should call onChange when switching to a different view type', () => {
@@ -34,7 +34,7 @@ describe('ViewTypeSelect', () => {
     )
 
     const [, treeOption] = getViewOptions(container)
-    fireEvent.click(treeOption)
+    fireEvent.click(treeOption!)
 
     expect(onChange).toHaveBeenCalledWith(ViewType.tree)
     expect(onChange).toHaveBeenCalledTimes(1)
@@ -50,7 +50,7 @@ describe('ViewTypeSelect', () => {
     )
 
     const [, treeOption] = getViewOptions(container)
-    fireEvent.click(treeOption)
+    fireEvent.click(treeOption!)
 
     expect(onChange).not.toHaveBeenCalled()
   })

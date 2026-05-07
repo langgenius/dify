@@ -1,5 +1,5 @@
 import type { LoroMap } from 'loro-crdt'
-import type { OnlineUser, RestoreRequestData } from '../../types/collaboration'
+import type { OnlineUser } from '../../types/collaboration'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { LoroDoc } from 'loro-crdt'
@@ -64,18 +64,6 @@ const createEdge = (id: string, source: string, target: string): Edge => ({
   data: {
     sourceType: BlockEnum.Start,
     targetType: BlockEnum.End,
-  },
-})
-
-const createRestoreRequestData = (): RestoreRequestData => ({
-  versionId: 'version-1',
-  versionName: 'Version One',
-  initiatorUserId: 'user-1',
-  initiatorName: 'Alice',
-  graphData: {
-    nodes: [createNode('n-restore')],
-    edges: [],
-    viewport: { x: 1, y: 2, zoom: 0.5 },
   },
 })
 
@@ -275,7 +263,6 @@ describe('CollaborationManager logs and event helpers', () => {
 
     manager.emitCommentsUpdate('app-1')
     manager.emitHistoryAction('undo')
-    manager.emitRestoreRequest(createRestoreRequestData())
     manager.emitRestoreIntent({
       versionId: 'version-1',
       versionName: 'Version One',
@@ -289,13 +276,11 @@ describe('CollaborationManager logs and event helpers', () => {
 
     manager.emitCommentsUpdate('app-1')
     manager.emitHistoryAction('undo')
-    manager.emitRestoreRequest(createRestoreRequestData())
     expect(sendSpy).not.toHaveBeenCalled()
 
     isConnectedSpy.mockReturnValue(true)
     manager.emitCommentsUpdate('app-1')
     manager.emitHistoryAction('redo')
-    manager.emitRestoreRequest(createRestoreRequestData())
     manager.emitRestoreIntent({
       versionId: 'version-2',
       initiatorUserId: 'u-2',
@@ -309,7 +294,6 @@ describe('CollaborationManager logs and event helpers', () => {
     expect(eventTypes).toEqual([
       'comments_update',
       'workflow_history_action',
-      'workflow_restore_request',
       'workflow_restore_intent',
       'workflow_restore_complete',
     ])

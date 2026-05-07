@@ -16,7 +16,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
 
 }))
 
@@ -153,7 +153,7 @@ describe('InputsFormContent', () => {
   it('should handle text input changes', async () => {
     render(<InputsFormContent />)
     const inputs = screen.getAllByPlaceholderText('Text Label')
-    await user.type(inputs[0], 'hello')
+    await user.type(inputs[0]!, 'hello')
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -162,7 +162,7 @@ describe('InputsFormContent', () => {
   it('should handle number input changes', async () => {
     render(<InputsFormContent />)
     const inputs = screen.getAllByPlaceholderText('Number Label')
-    await user.type(inputs[0], '123')
+    await user.type(inputs[0]!, '123')
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -171,7 +171,7 @@ describe('InputsFormContent', () => {
   it('should handle paragraph input changes', async () => {
     render(<InputsFormContent />)
     const inputs = screen.getAllByPlaceholderText('Paragraph Label')
-    await user.type(inputs[0], 'long text')
+    await user.type(inputs[0]!, 'long text')
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -200,10 +200,21 @@ describe('InputsFormContent', () => {
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
   })
 
+  it('should render select dropdown on the shared dify-ui overlay layer', async () => {
+    render(<InputsFormContent />)
+    const selectTrigger = screen.getAllByText(/Select Label/i).find(el => el.tagName === 'SPAN')
+    if (!selectTrigger)
+      throw new Error('Select trigger not found')
+
+    await user.click(selectTrigger)
+
+    expect(screen.getByText('Option 1').closest('.z-1002')).not.toBeNull()
+  })
+
   it('should handle single file upload change', async () => {
     render(<InputsFormContent />)
     const uploadButtons = screen.getAllByText('Upload')
-    await user.click(uploadButtons[0]) // First one is single file
+    await user.click(uploadButtons[0]!) // First one is single file
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -212,7 +223,7 @@ describe('InputsFormContent', () => {
   it('should handle multi files upload change', async () => {
     render(<InputsFormContent />)
     const uploadButtons = screen.getAllByText('Upload')
-    await user.click(uploadButtons[1]) // Second one is multi files
+    await user.click(uploadButtons[1]!) // Second one is multi files
 
     expect(mockContextValue.setCurrentConversationInputs).toHaveBeenCalled()
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
@@ -229,7 +240,7 @@ describe('InputsFormContent', () => {
 
   it('should show tip when showTip is true', () => {
     render(<InputsFormContent showTip />)
-    expect(screen.getByText(/chat.chatFormTip/i)).toBeInTheDocument()
+    expect(screen.getByText(/chat.chatFormTip/i))!.toBeInTheDocument()
   })
 
   it('should set initial values from context', () => {
@@ -243,7 +254,7 @@ describe('InputsFormContent', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithValues as unknown as any)
 
     render(<InputsFormContent />)
-    expect(screen.getByDisplayValue('initial value')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('initial value'))!.toBeInTheDocument()
   })
 
   it('should use currentConversationInputs when currentConversationId exists', () => {
@@ -258,6 +269,6 @@ describe('InputsFormContent', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithConv as unknown as any)
 
     render(<InputsFormContent />)
-    expect(screen.getByDisplayValue('conv value')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('conv value'))!.toBeInTheDocument()
   })
 })

@@ -1,11 +1,11 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 
 const roleI18nKeyMap = {

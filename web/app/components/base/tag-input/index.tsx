@@ -1,9 +1,9 @@
 import type { ChangeEvent, FC, KeyboardEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import _AutosizeInput from 'react-18-input-autosize'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 // CJS/ESM interop: Turbopack may resolve the module namespace object instead of the default export
 // eslint-disable-next-line ts/no-explicit-any
 const AutosizeInput = ('default' in (_AutosizeInput as any) ? (_AutosizeInput as any).default : _AutosizeInput) as typeof _AutosizeInput
@@ -77,7 +77,7 @@ const TagInput: FC<TagInputProps> = ({ items, onChange, disableAdd, disableRemov
         <div className={cn('group/tag-add mt-1 flex items-center gap-x-0.5', !isSpecialMode ? 'rounded-md border border-dashed border-divider-deep px-1.5' : '')}>
           {!isSpecialMode && !focused && <span className="i-ri-add-line h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary" />}
           <AutosizeInput
-            inputClassName={cn('appearance-none text-text-primary caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary', isSpecialMode ? 'bg-transparent' : '', inputClassName)}
+            inputClassName={cn('appearance-none text-text-primary caret-[#295EFF] outline-hidden placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary', isSpecialMode ? 'bg-transparent' : '', inputClassName)}
             className={cn(!isInWorkflow && 'max-w-[300px]', isInWorkflow && 'max-w-[146px]', 'overflow-hidden rounded-md py-1 system-xs-regular', isSpecialMode && 'border border-transparent px-1.5', focused && isSpecialMode && 'border-dashed border-divider-deep')}
             onFocus={() => setFocused(true)}
             onBlur={handleBlur}

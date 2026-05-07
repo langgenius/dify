@@ -1,14 +1,10 @@
 import type { Dayjs } from 'dayjs'
 import type { DatePickerProps, Period } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import Calendar from '../calendar'
 import TimePickerHeader from '../time-picker/header'
 import TimePickerOptions from '../time-picker/options'
@@ -35,15 +31,14 @@ const DatePicker = ({
   needTimePicker = true,
   renderTrigger,
   triggerWrapClassName,
-  popupZIndexClassname = 'z-11',
+  popupZIndexClassname,
   noConfirm,
   getIsDateDisabled,
 }: DatePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [view, setView] = useState(ViewType.date)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const isInitial = useRef(true)
+  const isInitialRef = useRef(true)
 
   // Normalize the value to ensure that all subsequent uses are Day.js objects.
   const normalizedValue = useMemo(() => {
@@ -62,46 +57,41 @@ const DatePicker = ({
   const [selectedYear, setSelectedYear] = useState(() => (inputValue || defaultValue).year())
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-        setView(ViewType.date)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  useEffect(() => {
-    if (isInitial.current) {
-      isInitial.current = false
+    if (isInitialRef.current) {
+      isInitialRef.current = false
       return
     }
     clearMonthMapCache()
     if (normalizedValue) {
       const newValue = getDateWithTimezone({ date: normalizedValue, timezone })
+      // eslint-disable-next-line react/set-state-in-effect -- timezone changes intentionally resync the displayed calendar state.
       setCurrentDate(newValue)
+      // eslint-disable-next-line react/set-state-in-effect -- timezone changes intentionally resync the selected value.
       setSelectedDate(newValue)
       onChange(newValue)
     }
     else {
+      // eslint-disable-next-line react/set-state-in-effect -- timezone changes intentionally resync the displayed calendar state.
       setCurrentDate(prev => getDateWithTimezone({ date: prev, timezone }))
+      // eslint-disable-next-line react/set-state-in-effect -- timezone changes intentionally resync the selected value.
       setSelectedDate(prev => prev ? getDateWithTimezone({ date: prev, timezone }) : undefined)
     }
+    // eslint-disable-next-line react/exhaustive-deps -- this effect intentionally runs only when timezone changes.
   }, [timezone])
 
-  const handleClickTrigger = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (isOpen) {
-      setIsOpen(false)
-      return
-    }
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setIsOpen(nextOpen)
     setView(ViewType.date)
-    setIsOpen(true)
-    if (normalizedValue) {
+    if (nextOpen && normalizedValue) {
       setCurrentDate(normalizedValue)
       setSelectedDate(normalizedValue)
     }
+  }, [normalizedValue])
+
+  const handleClickTrigger = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    handleOpenChange(!isOpen)
   }
 
   const handleClear = (e: React.MouseEvent) => {
@@ -210,21 +200,21 @@ const DatePicker = ({
   const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t('defaultPlaceholder', { ns: 'time' }))
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={isOpen}
-      onOpenChange={setIsOpen}
-      placement="bottom-end"
+      onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger className={triggerWrapClassName}>
-        {renderTrigger
-          ? (
-              renderTrigger({
-                value: normalizedValue,
-                selectedDate,
-                isOpen,
-                handleClear,
-                handleClickTrigger,
-              }))
+      <PopoverTrigger
+        nativeButton={false}
+        className={triggerWrapClassName}
+        render={renderTrigger
+          ? renderTrigger({
+              value: normalizedValue,
+              selectedDate,
+              isOpen,
+              handleClear,
+              handleClickTrigger,
+            })
           : (
               <div
                 className="group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt"
@@ -242,8 +232,13 @@ const DatePicker = ({
                 <span className={cn('i-ri-close-circle-fill hidden h-4 w-4 shrink-0 text-text-quaternary', (displayValue || (isOpen && selectedDate)) && 'group-hover:inline-block hover:text-text-secondary')} onClick={handleClear} data-testid="date-picker-clear-button" />
               </div>
             )}
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className={popupZIndexClassname}>
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={0}
+        className={popupZIndexClassname}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}
           {view === ViewType.date
@@ -319,8 +314,8 @@ const DatePicker = ({
             )
           }
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

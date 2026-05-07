@@ -3,17 +3,17 @@ import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 
+import { Switch } from '@langgenius/dify-ui/switch'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { Infotip } from '@/app/components/base/infotip'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import RadioCard from '@/app/components/base/radio-card'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCurrentProviderAndModel, useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -127,11 +127,12 @@ const RetrievalParamConfig: FC<Props> = ({
             )}
             <div className="flex items-center">
               <span className="mr-0.5 system-sm-semibold text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
-              <Tooltip
-                popupContent={
-                  <div className="w-[200px]">{t('modelProvider.rerankModel.tip', { ns: 'common' })}</div>
-                }
-              />
+              <Infotip
+                aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                popupClassName="w-[200px]"
+              >
+                {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+              </Infotip>
             </div>
           </div>
           {
@@ -246,11 +247,11 @@ const RetrievalParamConfig: FC<Props> = ({
                         ...value.weights!,
                         vector_setting: {
                           ...value.weights!.vector_setting,
-                          vector_weight: v.value[0],
+                          vector_weight: v.value[0]!,
                         },
                         keyword_setting: {
                           ...value.weights!.keyword_setting,
-                          keyword_weight: v.value[1],
+                          keyword_weight: v.value[1]!,
                         },
                       },
                     })

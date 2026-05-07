@@ -1,10 +1,4 @@
 'use client'
-import { cn } from '@langgenius/dify-ui/cn'
-import { useBoolean } from 'ahooks'
-import * as React from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -13,9 +7,15 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { ScrollArea } from '@/app/components/base/ui/scroll-area'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
 import { useSelectedLayoutSegments } from '@/next/navigation'

@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiQuestionLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { Button } from '@/app/components/base/ui/button'
-import { toast } from '@/app/components/base/ui/toast'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
 import Checkbox from '../../../base/checkbox'
 import Modal from '../../../base/modal'
@@ -47,8 +47,8 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
     const newTempleList = produce(templeList, (draft) => {
       const index = draft.findIndex(i => i.id === id)
       if (index !== -1) {
-        draft[index].isUpdated = true
-        draft[index].updateType = UpdateType.delete
+        draft[index]!.isUpdated = true
+        draft[index]!.updateType = UpdateType.delete
       }
     })
     setTempleList(newTempleList)
@@ -57,9 +57,9 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
     const newTempleList = produce(templeList, (draft) => {
       const index = draft.findIndex(i => i.id === id)
       if (index !== -1) {
-        draft[index] = { ...list[index] }
-        draft[index].isUpdated = false
-        delete draft[index].updateType
+        draft[index] = { ...list[index]! }
+        draft[index]!.isUpdated = false
+        delete draft[index]!.updateType
       }
     })
     setTempleList(newTempleList)

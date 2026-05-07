@@ -1,7 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
-import { Button } from '@/app/components/base/ui/button'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useToolIcon } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'

@@ -1,15 +1,15 @@
 'use client'
-import type { ButtonProps } from '@/app/components/base/ui/button'
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine } from '@remixicon/react'
-import * as React from 'react'
 
+import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import { getButtonStyle, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import { Button } from '@/app/components/base/ui/button'
 
 type Props = {
   nodeName: string

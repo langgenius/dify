@@ -1,10 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import * as React from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Drawer from '@/app/components/base/drawer-plus'
-import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,8 +7,13 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogTitle,
-} from '@/app/components/base/ui/alert-dialog'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/alert-dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Drawer from '@/app/components/base/drawer-plus'
+import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -146,7 +146,7 @@ const EditAnnotationModal: FC<Props> = ({
         foot={(
           <div>
             {isAnnotationFull && (
-              <div className="mb-4 mt-6 px-6">
+              <div className="mt-6 mb-4 px-6">
                 <AnnotationFull />
               </div>
             )}
@@ -154,7 +154,7 @@ const EditAnnotationModal: FC<Props> = ({
             {
               annotationId
                 ? (
-                    <div className="system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary">
+                    <div className="flex h-16 items-center justify-between rounded-br-xl rounded-bl-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
                       <div
                         className="flex cursor-pointer items-center space-x-2 pl-3"
                         onClick={() => setShowModal(true)}

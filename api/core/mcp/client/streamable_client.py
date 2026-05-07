@@ -303,9 +303,16 @@ class StreamableHTTPTransport:
 
             if response.status_code == 404:
                 if isinstance(message.root, JSONRPCRequest):
+                    error_msg = (
+                        f"MCP server URL returned 404 Not Found: {self.url} "
+                        "— verify the server URL is correct and the server is running"
+                        if is_initialization
+                        else "Session terminated by server"
+                    )
                     self._send_session_terminated_error(
                         ctx.server_to_client_queue,
                         message.root.id,
+                        message=error_msg,
                     )
                 return
 
@@ -381,12 +388,13 @@ class StreamableHTTPTransport:
         self,
         server_to_client_queue: ServerToClientQueue,
         request_id: RequestId,
+        message: str = "Session terminated by server",
     ):
         """Send a session terminated error response."""
         jsonrpc_error = JSONRPCError(
             jsonrpc="2.0",
             id=request_id,
-            error=ErrorData(code=32600, message="Session terminated by server"),
+            error=ErrorData(code=32600, message=message),
         )
         session_message = SessionMessage(JSONRPCMessage(jsonrpc_error))
         server_to_client_queue.put(session_message)

@@ -3,6 +3,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from enums.cloud_plan import CloudPlan
 from enums.hosted_provider import HostedTrialProvider
 from services.billing_service import BillingService
@@ -157,6 +158,7 @@ class PluginManagerModel(BaseModel):
 
 
 class SystemFeatureModel(BaseModel):
+    app_dsl_version: str = ""
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
@@ -175,6 +177,7 @@ class SystemFeatureModel(BaseModel):
     enable_change_email: bool = True
     plugin_manager: PluginManagerModel = PluginManagerModel()
     trial_models: list[str] = []
+    enable_creators_platform: bool = False
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
 
@@ -225,6 +228,7 @@ class FeatureService:
     @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
+        system_features.app_dsl_version = CURRENT_APP_DSL_VERSION
 
         cls._fulfill_system_params_from_env(system_features)
 
@@ -237,6 +241,9 @@ class FeatureService:
 
         if dify_config.MARKETPLACE_ENABLED:
             system_features.enable_marketplace = True
+
+        if dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
+            system_features.enable_creators_platform = True
 
         return system_features
 
@@ -283,7 +290,7 @@ class FeatureService:
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
         billing_info = BillingService.get_info(tenant_id)
 
-        features_usage_info = BillingService.get_tenant_feature_plan_usage_info(tenant_id)
+        features_usage_info = BillingService.get_quota_info(tenant_id)
 
         features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = billing_info["subscription"]["plan"]

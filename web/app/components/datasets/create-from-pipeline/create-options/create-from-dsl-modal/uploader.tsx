@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine, RiNodeTree, RiUploadCloud2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { toast } from '@/app/components/base/ui/toast'
 import { formatFileSize } from '@/utils/format'
 
 type Props = {

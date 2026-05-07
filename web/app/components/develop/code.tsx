@@ -226,7 +226,7 @@ function useTabGroupProps(availableLanguages: string[]) {
   const activeLanguage = [...(availableLanguages || [])].sort(
     (a, z) => preferredLanguages.indexOf(z) - preferredLanguages.indexOf(a),
   )[0]
-  const languageIndex = availableLanguages?.indexOf(activeLanguage) || 0
+  const languageIndex = availableLanguages?.indexOf(activeLanguage!) || 0
   const newSelectedIndex = languageIndex === -1 ? selectedIndex : languageIndex
   if (newSelectedIndex !== selectedIndex)
     setSelectedIndex(newSelectedIndex)

@@ -4,23 +4,25 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
+
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod
 from graphon.node_events import NodeRunResult
 from graphon.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
+from graphon.nodes.document_extractor.exc import TextExtractionError, UnsupportedFileTypeError
 from graphon.nodes.document_extractor.node import (
     _extract_text_from_docx,
     _extract_text_from_excel,
+    _extract_text_from_file,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
     _normalize_docx_zip,
 )
-from graphon.variables import ArrayFileSegment
+from graphon.variables import ArrayFileSegment, FileSegment
 from graphon.variables.segments import ArrayStringSegment
 from graphon.variables.variables import StringVariable
-
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -44,11 +46,10 @@ def document_extractor_node(graph_init_params):
         title="Test Document Extractor",
         variable_selector=["node_id", "variable_name"],
     )
-    node_config = {"id": "test_node_id", "data": node_data.model_dump()}
     http_client = Mock()
     node = DocumentExtractorNode(
-        id="test_node_id",
-        config=node_config,
+        node_id="test_node_id",
+        config=node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=Mock(),
         http_client=http_client,
@@ -341,7 +342,7 @@ def test_extract_text_from_excel_sheet_parse_error(mock_excel_file):
     # Mock ExcelFile
     mock_excel_instance = Mock()
     mock_excel_instance.sheet_names = ["GoodSheet", "BadSheet"]
-    mock_excel_instance.parse.side_effect = [df, Exception("Parse error")]
+    mock_excel_instance.parse.side_effect = [df, TypeError("Parse error")]
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_mixed_content"
@@ -386,7 +387,7 @@ def test_extract_text_from_excel_all_sheets_fail(mock_excel_file):
     # Mock ExcelFile
     mock_excel_instance = Mock()
     mock_excel_instance.sheet_names = ["BadSheet1", "BadSheet2"]
-    mock_excel_instance.parse.side_effect = [Exception("Error 1"), Exception("Error 2")]
+    mock_excel_instance.parse.side_effect = [TypeError("Error 1"), TypeError("Error 2")]
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_all_bad_sheets"
@@ -395,6 +396,12 @@ def test_extract_text_from_excel_all_sheets_fail(mock_excel_file):
     assert result == ""
 
     assert mock_excel_instance.parse.call_count == 2
+
+
+@patch("pandas.ExcelFile", side_effect=RuntimeError("broken workbook"))
+def test_extract_text_from_excel_wraps_workbook_open_errors(mock_excel_file):
+    with pytest.raises(TextExtractionError, match="Failed to extract text from Excel file: broken workbook"):
+        _extract_text_from_excel(b"broken")
 
 
 @patch("pandas.ExcelFile")
@@ -418,6 +425,103 @@ def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
     expected_manual = "| 1.0 | 1.1 |\n| --- | --- |\n| Test | Test |\n\n"
 
     assert expected_manual == result
+
+
+@pytest.mark.parametrize(
+    ("extension", "mime_type"),
+    [
+        (".xlsx", "text/plain"),
+        (None, "application/vnd.ms-excel"),
+    ],
+)
+def test_extract_text_from_file_routes_excel_inputs(document_extractor_node, extension, mime_type):
+    file = Mock(spec=File)
+    file.extension = extension
+    file.mime_type = mime_type
+
+    with (
+        patch(
+            "graphon.nodes.document_extractor.node._download_file_content",
+            return_value=b"excel",
+        ),
+        patch(
+            "graphon.nodes.document_extractor.node._extract_text_from_excel",
+            return_value="excel text",
+        ) as mock_extract,
+    ):
+        result = _extract_text_from_file(
+            document_extractor_node.http_client,
+            file,
+            unstructured_api_config=document_extractor_node._unstructured_api_config,
+        )
+
+    assert result == "excel text"
+    mock_extract.assert_called_once_with(b"excel")
+
+
+def test_extract_text_from_file_rejects_missing_extension_and_mime_type(document_extractor_node):
+    file = Mock(spec=File)
+    file.extension = None
+    file.mime_type = None
+
+    with patch(
+        "graphon.nodes.document_extractor.node._download_file_content",
+        return_value=b"unknown",
+    ):
+        with pytest.raises(UnsupportedFileTypeError, match="Unable to determine file type"):
+            _extract_text_from_file(
+                document_extractor_node.http_client,
+                file,
+                unstructured_api_config=document_extractor_node._unstructured_api_config,
+            )
+
+
+def test_run_list_file_extraction_error_returns_failed(document_extractor_node, mock_graph_runtime_state):
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    file_list = Mock(spec=ArrayFileSegment)
+    file_list.value = [Mock(spec=File)]
+    mock_graph_runtime_state.variable_pool.get.return_value = file_list
+
+    with patch(
+        "graphon.nodes.document_extractor.node._extract_text_from_file",
+        side_effect=TextExtractionError("bad file"),
+    ):
+        result = document_extractor_node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "bad file"
+
+
+def test_run_single_file_segment_extraction_error_returns_failed(document_extractor_node, mock_graph_runtime_state):
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    file_segment = Mock(spec=FileSegment)
+    file_segment.value = Mock(spec=File)
+    mock_graph_runtime_state.variable_pool.get.return_value = file_segment
+
+    with patch(
+        "graphon.nodes.document_extractor.node._extract_text_from_file",
+        side_effect=TextExtractionError("single file failed"),
+    ):
+        result = document_extractor_node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "single file failed"
+
+
+def test_run_single_file_segment_returns_string_output(document_extractor_node, mock_graph_runtime_state):
+    document_extractor_node.graph_runtime_state = mock_graph_runtime_state
+    file_segment = Mock(spec=FileSegment)
+    file_segment.value = Mock(spec=File)
+    mock_graph_runtime_state.variable_pool.get.return_value = file_segment
+
+    with patch(
+        "graphon.nodes.document_extractor.node._extract_text_from_file",
+        return_value="single file text",
+    ):
+        result = document_extractor_node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "single file text"}
 
 
 def _make_docx_zip(use_backslash: bool) -> bytes:

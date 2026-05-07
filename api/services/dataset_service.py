@@ -10,9 +10,6 @@ from collections.abc import Sequence
 from typing import Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
-from graphon.file import helpers as file_helpers
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
-from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -31,6 +28,9 @@ from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
@@ -3748,6 +3748,7 @@ class SegmentService:
                     ChildChunk.segment_id == segment.id,
                 )
             )
+            assert current_user.current_tenant_id
             child_chunk = ChildChunk(
                 tenant_id=current_user.current_tenant_id,
                 dataset_id=dataset.id,
@@ -3758,7 +3759,7 @@ class SegmentService:
                 index_node_hash=index_node_hash,
                 content=content,
                 word_count=len(content),
-                type="customized",
+                type=SegmentType.CUSTOMIZED,
                 created_by=current_user.id,
             )
             db.session.add(child_chunk)
@@ -3818,6 +3819,7 @@ class SegmentService:
             if new_child_chunks_args:
                 child_chunk_count = len(child_chunks)
                 for position, args in enumerate(new_child_chunks_args, start=child_chunk_count + 1):
+                    assert current_user.current_tenant_id
                     index_node_id = str(uuid.uuid4())
                     index_node_hash = helper.generate_text_hash(args.content)
                     child_chunk = ChildChunk(
@@ -3830,7 +3832,7 @@ class SegmentService:
                         index_node_hash=index_node_hash,
                         content=args.content,
                         word_count=len(args.content),
-                        type="customized",
+                        type=SegmentType.CUSTOMIZED,
                         created_by=current_user.id,
                     )
 

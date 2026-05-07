@@ -9,10 +9,6 @@ when passing files to downstream LLM nodes.
 from typing import Any
 from unittest.mock import Mock, patch
 
-from graphon.entities import GraphInitParams
-from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
-
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
@@ -22,6 +18,9 @@ from core.workflow.nodes.trigger_webhook.entities import (
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
 from core.workflow.system_variables import default_system_variables
+from graphon.entities import GraphInitParams
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.runtime import GraphRuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_variable_pool
 
 
@@ -31,11 +30,6 @@ def create_webhook_node(
     tenant_id: str = "test-tenant",
 ) -> TriggerWebhookNode:
     """Helper function to create a webhook node with proper initialization."""
-    node_config = {
-        "id": "webhook-node-1",
-        "data": webhook_data.model_dump(),
-    }
-
     graph_init_params = GraphInitParams(
         workflow_id="test-workflow",
         graph_config={},
@@ -57,8 +51,8 @@ def create_webhook_node(
     )
 
     node = TriggerWebhookNode(
-        id="webhook-node-1",
-        config=node_config,
+        node_id="webhook-node-1",
+        config=webhook_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )
@@ -66,10 +60,6 @@ def create_webhook_node(
     # Attach a lightweight app_config onto runtime state for tenant lookups
     runtime_state.app_config = Mock()
     runtime_state.app_config.tenant_id = tenant_id
-
-    # Provide compatibility alias expected by node implementation
-    # Some nodes reference `self.node_id`; expose it as an alias to `self.id` for tests
-    node.node_id = node.id
 
     return node
 

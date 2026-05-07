@@ -14,6 +14,8 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
+
+from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -22,8 +24,6 @@ from graphon.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-
-from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
 
 
 def _mock_model_instance(*, schema: dict[str, Any] | None = None) -> SimpleNamespace:

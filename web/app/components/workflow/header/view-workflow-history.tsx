@@ -1,5 +1,11 @@
-import type { WorkflowHistoryState } from '../workflow-history-store'
+import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import {
   RiCloseLine,
   RiHistoryLine,
@@ -13,11 +19,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import Divider from '../../base/divider'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import {
@@ -91,12 +92,20 @@ const ViewWorkflowHistory = () => {
   }, [t])
 
   const calculateChangeList: ChangeHistoryList = useMemo(() => {
-    const filterList = (list: any, startIndex = 0, reverse = false) => list.map((state: Partial<WorkflowHistoryState>, index: number) => {
-      const nodes = (state.nodes || store.getState().nodes) || []
-      const nodeId = state?.workflowHistoryEventMeta?.nodeId
+    const filterList = (
+      list: Array<Partial<WorkflowHistoryState> | undefined>,
+      startIndex = 0,
+      reverse = false,
+    ) => list.flatMap((state, index) => {
+      if (!state)
+        return []
+
+      const nodes = state.nodes || store.getState().nodes || []
+      const nodeId = state.workflowHistoryEventMeta?.nodeId
       const targetTitle = nodes.find(n => n.id === nodeId)?.data?.title ?? ''
-      return {
-        label: state.workflowHistoryEvent && getHistoryLabel(state.workflowHistoryEvent),
+
+      return [{
+        label: state.workflowHistoryEvent ? getHistoryLabel(state.workflowHistoryEvent) : '',
         index: reverse ? list.length - 1 - index - startIndex : index - startIndex,
         state: {
           ...state,
@@ -107,8 +116,8 @@ const ViewWorkflowHistory = () => {
               }
             : undefined,
         },
-      }
-    }).filter(Boolean)
+      }]
+    })
 
     const historyData = {
       pastStates: filterList(pastStates, pastStates.length).reverse(),
@@ -132,22 +141,23 @@ const ViewWorkflowHistory = () => {
 
   return (
     (
-      <PortalToFollowElem
-        placement="bottom-end"
-        offset={{
-          mainAxis: 4,
-          crossAxis: 131,
-        }}
+      <Popover
+        modal="trap-focus"
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(nextOpen) => {
+          if (nodesReadOnly)
+            return
+          setOpen(nextOpen)
+        }}
       >
-        <PortalToFollowElemTrigger onClick={() => !nodesReadOnly && setOpen(v => !v)}>
-          <TipPopup
-            title={t('changeHistory.title', { ns: 'workflow' })}
-          >
-            <div
+        <PopoverTrigger
+          render={(
+            <button
+              type="button"
+              aria-label={t('changeHistory.title', { ns: 'workflow' })}
+              disabled={nodesReadOnly}
               className={
-                cn('flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', open && 'bg-state-accent-active text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
+                cn('box-border inline-flex h-8 max-h-8 min-h-8 w-8 max-w-8 min-w-8 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', open && 'bg-state-accent-active text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
               }
               onClick={() => {
                 if (nodesReadOnly)
@@ -156,26 +166,40 @@ const ViewWorkflowHistory = () => {
                 setShowMessageLogModal(false)
               }}
             >
-              <RiHistoryLine className="h-4 w-4" />
-            </div>
-          </TipPopup>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-12">
+              <TipPopup
+                title={t('changeHistory.title', { ns: 'workflow' })}
+              >
+                <span className="flex h-full w-full shrink-0 items-center justify-center">
+                  <span className="i-ri-history-line h-4 w-4 shrink-0" />
+                </span>
+              </TipPopup>
+            </button>
+          )}
+        />
+        <PopoverContent
+          placement="bottom-end"
+          popupClassName="border-none bg-transparent shadow-none"
+        >
           <div
-            className="ml-2 flex max-w-[360px] min-w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]"
+            className="flex max-w-[360px] min-w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]"
           >
             <div className="sticky top-0 flex items-center justify-between px-4 pt-3">
               <div className="system-mg-regular grow text-text-secondary">{t('changeHistory.title', { ns: 'workflow' })}</div>
-              <div
-                className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
+              <PopoverClose
+                render={(
+                  <button
+                    type="button"
+                    aria-label={t('operation.close', { ns: 'common' })}
+                    className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
+                  >
+                    <RiCloseLine className="h-4 w-4 text-text-secondary" />
+                  </button>
+                )}
                 onClick={() => {
                   setCurrentLogItem()
                   setShowMessageLogModal(false)
-                  setOpen(false)
                 }}
-              >
-                <RiCloseLine className="h-4 w-4 text-text-secondary" />
-              </div>
+              />
             </div>
             <div
               className="overflow-y-auto p-2"
@@ -293,8 +317,8 @@ const ViewWorkflowHistory = () => {
               <div className="mb-1 leading-[18px] text-text-tertiary">{t('changeHistory.hintText', { ns: 'workflow' })}</div>
             </div>
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
     )
   )
 }

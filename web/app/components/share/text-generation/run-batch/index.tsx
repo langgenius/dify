@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiLoader2Line,
@@ -7,7 +8,6 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/app/components/base/ui/button'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import CSVDownload from './csv-download'
 import CSVReader from './csv-reader'

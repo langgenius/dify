@@ -112,7 +112,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
           />
         </div>
         <div className="mt-1 system-md-semibold text-text-primary">{eventInfo?.identity?.label[language]}</div>
-        <Description className="mt-3 mb-2 h-auto" text={eventInfo.description[language]} descriptionLineRows={2}></Description>
+        <Description className="mt-3 mb-2 h-auto" text={eventInfo.description[language]!} descriptionLineRows={2}></Description>
       </div>
       <div className="flex h-full flex-col gap-2 overflow-y-auto px-4 pt-4 pb-2">
         <div className="system-sm-semibold-uppercase text-text-secondary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>

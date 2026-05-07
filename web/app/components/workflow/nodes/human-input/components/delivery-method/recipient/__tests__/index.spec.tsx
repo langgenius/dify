@@ -17,9 +17,8 @@ vi.mock('@/service/use-common', () => ({
   useMembers: () => mockUseMembers(),
 }))
 
-vi.mock('@/app/components/base/switch', () => ({
-  __esModule: true,
-  default: (props: {
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: (props: {
     checked: boolean
     onCheckedChange: (value: boolean) => void
   }) => (

@@ -1,6 +1,7 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { renderHookWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -69,15 +70,6 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_collaboration_mode: boolean } }) => unknown) =>
-    selector({
-      systemFeatures: {
-        enable_collaboration_mode: isCollaborationEnabled,
-      },
-    }),
-}))
-
 vi.mock('@/app/components/workflow/hooks/use-serial-async-callback', () => ({
   useSerialAsyncCallback: (fn: (...args: unknown[]) => Promise<void>, checkFn: () => boolean) =>
     (...args: unknown[]) => {
@@ -91,13 +83,27 @@ vi.mock('@/service/workflow', () => ({
   syncWorkflowDraft: (p: unknown) => mockSyncWorkflowDraft(p),
 }))
 
-vi.mock('@/service/fetch', () => ({ postWithKeepalive: (...args: unknown[]) => mockPostWithKeepalive(...args) }))
-vi.mock('@/config', () => ({ API_PREFIX: '/api' }))
+vi.mock('@/service/fetch', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/fetch')>()
+  return {
+    ...actual,
+    postWithKeepalive: (...args: unknown[]) => mockPostWithKeepalive(...args),
+  }
+})
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return { ...actual, API_PREFIX: '/api' }
+})
 
 const mockHandleRefreshWorkflowDraft = vi.fn()
 vi.mock('@/app/components/workflow-app/hooks', () => ({
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft }),
 }))
+
+const renderUseNodesSyncDraft = () =>
+  renderHookWithSystemFeatures(() => useNodesSyncDraft(), {
+    systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
+  })
 
 describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => {
   beforeEach(() => {
@@ -139,7 +145,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     const error = { json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }), bodyUsed: false }
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
-    const { result } = renderHook(() => useNodesSyncDraft())
+    const { result } = renderUseNodesSyncDraft()
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false)
     })
@@ -152,7 +158,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     const error = { json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }), bodyUsed: false }
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
-    const { result } = renderHook(() => useNodesSyncDraft())
+    const { result } = renderUseNodesSyncDraft()
     await act(async () => {
       await result.current.doSyncWorkflowDraft(true)
     })
@@ -165,7 +171,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     const error = { json: vi.fn().mockResolvedValue({ code: 'other_error' }), bodyUsed: false }
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
-    const { result } = renderHook(() => useNodesSyncDraft())
+    const { result } = renderUseNodesSyncDraft()
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false)
     })
@@ -175,7 +181,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
   })
 
   it('should not include source_workflow_id in draft sync payloads', async () => {
-    const { result } = renderHook(() => useNodesSyncDraft())
+    const { result } = renderUseNodesSyncDraft()
 
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false)
@@ -225,7 +231,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       onSettled: vi.fn(),
     }
 
-    const { result } = renderHook(() => useNodesSyncDraft())
+    const { result } = renderUseNodesSyncDraft()
 
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false, callbacks)
@@ -272,7 +278,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       conversationVariables: [{ id: 'conversation-1' }],
     }
 
-    const { result } = renderHook(() => useNodesSyncDraft())
+    const { result } = renderUseNodesSyncDraft()
 
     act(() => {
       result.current.syncWorkflowDraftWhenPageClose()
@@ -296,7 +302,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
       onSettled: vi.fn(),
     }
 
-    const { result } = renderHook(() => useNodesSyncDraft())
+    const { result } = renderUseNodesSyncDraft()
 
     await act(async () => {
       await result.current.doSyncWorkflowDraft(false, callbacks)
@@ -314,7 +320,7 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     mockCollaborationIsConnected.mockReturnValue(true)
     mockCollaborationGetIsLeader.mockReturnValue(false)
 
-    const { result } = renderHook(() => useNodesSyncDraft())
+    const { result } = renderUseNodesSyncDraft()
 
     act(() => {
       result.current.syncWorkflowDraftWhenPageClose()

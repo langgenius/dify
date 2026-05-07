@@ -1,5 +1,6 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiAlertFill,
   RiCloseLine,
@@ -9,7 +10,6 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import Modal from '@/app/components/base/modal'
-import { Button } from '@/app/components/base/ui/button'
 import { useUpdateDSLModal } from '../hooks/use-update-dsl-modal'
 import VersionMismatchModal from './version-mismatch-modal'
 

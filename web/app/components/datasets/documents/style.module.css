@@ -26,7 +26,7 @@
   @apply text-text-secondary text-sm;
 }
 .addFileBtn {
-  @apply mt-4 w-fit !text-[13px] font-medium border-[0.5px];
+  @apply mt-4 w-fit !text-[13px] font-medium border-[0.5px] border-components-button-secondary-border;
 }
 .plusIcon {
   @apply w-4 h-4 mr-2 stroke-current stroke-[1.5px];

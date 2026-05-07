@@ -2,6 +2,7 @@
 import type {
   MCPServerDetail,
 } from '@/app/components/tools/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
@@ -9,7 +10,6 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
-import { Button } from '@/app/components/base/ui/button'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import {

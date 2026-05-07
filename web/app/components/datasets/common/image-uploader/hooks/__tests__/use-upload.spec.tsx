@@ -1,9 +1,9 @@
 import type { PropsWithChildren } from 'react'
 import type { FileEntity } from '../../types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { toast } from '@/app/components/base/ui/toast'
 import { FileContextProvider } from '../../store'
 import { useUpload } from '../use-upload'
 
@@ -21,7 +21,7 @@ vi.mock('@/service/use-common', () => ({
   })),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },

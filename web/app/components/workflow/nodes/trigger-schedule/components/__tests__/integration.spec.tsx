@@ -43,7 +43,7 @@ describe('trigger-schedule components', () => {
         />,
       )
 
-      const trigger = screen.getByRole('button', { name: 'workflow.nodes.triggerSchedule.frequency.daily' })
+      const trigger = screen.getByRole('combobox')
       await user.click(trigger)
       await user.keyboard('{ArrowDown}')
       await user.keyboard('{Enter}')

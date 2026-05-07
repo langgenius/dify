@@ -1,6 +1,7 @@
 import type { TryAppInfo } from '@/service/try-app'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import TryApp from '../index'
 import { TypeEnum } from '../tab'
 

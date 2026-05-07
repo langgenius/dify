@@ -26,10 +26,10 @@ const ShowAllSettings = ({
     return (
       <div className="flex cursor-pointer items-center gap-x-4" onClick={handleShowAllSettings}>
         <div className="flex grow flex-col">
-          <span className="system-sm-medium flex min-h-6 items-center text-text-secondary">
+          <span className="flex min-h-6 items-center system-sm-medium text-text-secondary">
             {t('variableConfig.showAllSettings', { ns: 'appDebug' })}
           </span>
-          <span className="body-xs-regular pb-0.5 text-text-tertiary first-letter:capitalize">
+          <span className="pb-0.5 body-xs-regular text-text-tertiary first-letter:capitalize">
             {hiddenFieldNames}
           </span>
         </div>

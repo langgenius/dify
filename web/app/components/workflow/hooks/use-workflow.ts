@@ -253,7 +253,7 @@ export const useWorkflow = () => {
 
   const isVarUsedInNodes = useCallback((varSelector: ValueSelector) => {
     const nodeId = varSelector[0]
-    const afterNodes = getAfterNodesInSameBranch(nodeId)
+    const afterNodes = getAfterNodesInSameBranch(nodeId!)
     const effectNodes = findUsedVarNodes(varSelector, afterNodes)
     return effectNodes.length > 0
   }, [getAfterNodesInSameBranch])
@@ -261,7 +261,7 @@ export const useWorkflow = () => {
   const removeUsedVarInNodes = useCallback((varSelector: ValueSelector) => {
     const nodeId = varSelector[0]
     const { nodes, setNodes } = collaborativeWorkflow.getState()
-    const afterNodes = getAfterNodesInSameBranch(nodeId)
+    const afterNodes = getAfterNodesInSameBranch(nodeId!)
     const effectNodes = findUsedVarNodes(varSelector, afterNodes)
     if (effectNodes.length > 0) {
       const newNodes = nodes.map((node) => {

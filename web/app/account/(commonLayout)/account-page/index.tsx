@@ -1,25 +1,25 @@
 'use client'
 import type { IItem } from '@/app/components/header/account-setting/collapse'
 import type { App } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { Button } from '@/app/components/base/ui/button'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { IS_CE_EDITION, validPassword } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
+import { consoleQuery } from '@/service/client'
 import { updateUserProfile } from '@/service/common'
-import { useAppList } from '@/service/use-apps'
-import { commonQueryKeys, useUserProfile } from '@/service/use-common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { commonQueryKeys, userProfileQueryOptions } from '@/service/use-common'
 import DeleteAccount from '../delete-account'
 
 import AvatarWithEdit from './AvatarWithEdit'
@@ -34,12 +34,21 @@ const descriptionClassName = `
 
 export default function AccountPage() {
   const { t } = useTranslation()
-  const { systemFeatures } = useGlobalPublicStore()
-  const { data: appList } = useAppList({ page: 1, limit: 100, name: '' })
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: appList } = useQuery(consoleQuery.apps.list.queryOptions({
+    input: {
+      query: {
+        page: 1,
+        limit: 100,
+        name: '',
+      },
+    },
+  }))
   const apps = appList?.data || []
   const queryClient = useQueryClient()
-  const { data: userProfileResp } = useUserProfile()
-  const userProfile = userProfileResp?.profile
+  // Cache is warmed by AppContextProvider's useSuspenseQuery; this hits cache synchronously.
+  const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
+  const userProfile = userProfileResp.profile
   const mutateUserProfile = () => queryClient.invalidateQueries({ queryKey: commonQueryKeys.userProfile })
   const { isEducationAccount } = useProviderContext()
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
@@ -128,7 +137,7 @@ export default function AccountPage() {
   }
 
   const renderAppItem = (item: IItem) => {
-    const { icon, icon_background, icon_type, icon_url } = item as any
+    const { icon, icon_background, icon_type, icon_url } = item as IItem & Pick<App, 'icon' | 'icon_background' | 'icon_type' | 'icon_url'>
     return (
       <div className="flex px-3 py-1">
         <div className="mr-3">
@@ -214,116 +223,107 @@ export default function AccountPage() {
         )}
         {!IS_CE_EDITION && <Button className="mt-2 text-components-button-destructive-secondary-text" onClick={() => setShowDeleteAccountModal(true)}>{t('account.delete', { ns: 'common' })}</Button>}
       </div>
-      {
-        editNameModalVisible && (
-          <Dialog open={editNameModalVisible} onOpenChange={open => !open && setEditNameModalVisible(false)}>
-            <DialogContent className="w-[420px]! p-6!">
-              <div className="mb-6 title-2xl-semi-bold text-text-primary">{t('account.editName', { ns: 'common' })}</div>
-              <div className={titleClassName}>{t('account.name', { ns: 'common' })}</div>
-              <Input
-                className="mt-2"
-                value={editName}
-                onChange={e => setEditName(e.target.value)}
-              />
-              <div className="mt-10 flex justify-end">
-                <Button className="mr-2" onClick={() => setEditNameModalVisible(false)}>{t('operation.cancel', { ns: 'common' })}</Button>
-                <Button
-                  disabled={editing || !editName}
-                  variant="primary"
-                  onClick={handleSaveName}
-                >
-                  {t('operation.save', { ns: 'common' })}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )
-      }
-      {
-        editPasswordModalVisible && (
-          <Dialog open={editPasswordModalVisible} onOpenChange={open => !open && (setEditPasswordModalVisible(false), resetPasswordForm())}>
-            <DialogContent className="w-[420px]! p-6!">
-              <div className="mb-6 title-2xl-semi-bold text-text-primary">{userProfile.is_password_set ? t('account.resetPassword', { ns: 'common' }) : t('account.setPassword', { ns: 'common' })}</div>
-              {userProfile.is_password_set && (
-                <>
-                  <div className={titleClassName}>{t('account.currentPassword', { ns: 'common' })}</div>
-                  <div className="relative mt-2">
-                    <Input
-                      type={showCurrentPassword ? 'text' : 'password'}
-                      value={currentPassword}
-                      onChange={e => setCurrentPassword(e.target.value)}
-                    />
-
-                    <div className="absolute inset-y-0 right-0 flex items-center">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      >
-                        {showCurrentPassword ? '👀' : '😝'}
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
-              <div className="mt-8 system-sm-semibold text-text-secondary">
-                {userProfile.is_password_set ? t('account.newPassword', { ns: 'common' }) : t('account.password', { ns: 'common' })}
-              </div>
+      <Dialog open={editNameModalVisible} onOpenChange={open => !open && setEditNameModalVisible(false)}>
+        <DialogContent className="w-105 p-6">
+          <div className="mb-6 title-2xl-semi-bold text-text-primary">{t('account.editName', { ns: 'common' })}</div>
+          <div className={titleClassName}>{t('account.name', { ns: 'common' })}</div>
+          <Input
+            className="mt-2"
+            value={editName}
+            onChange={e => setEditName(e.target.value)}
+          />
+          <div className="mt-10 flex justify-end">
+            <Button className="mr-2" onClick={() => setEditNameModalVisible(false)}>{t('operation.cancel', { ns: 'common' })}</Button>
+            <Button
+              disabled={editing || !editName}
+              variant="primary"
+              onClick={handleSaveName}
+            >
+              {t('operation.save', { ns: 'common' })}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={editPasswordModalVisible} onOpenChange={open => !open && (setEditPasswordModalVisible(false), resetPasswordForm())}>
+        <DialogContent className="w-[420px]! p-6!">
+          <div className="mb-6 title-2xl-semi-bold text-text-primary">{userProfile.is_password_set ? t('account.resetPassword', { ns: 'common' }) : t('account.setPassword', { ns: 'common' })}</div>
+          {userProfile.is_password_set && (
+            <>
+              <div className={titleClassName}>{t('account.currentPassword', { ns: 'common' })}</div>
               <div className="relative mt-2">
                 <Input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center">
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   >
-                    {showPassword ? '👀' : '😝'}
+                    {showCurrentPassword ? '👀' : '😝'}
                   </Button>
                 </div>
               </div>
-              <div className="mt-8 system-sm-semibold text-text-secondary">{t('account.confirmPassword', { ns: 'common' })}</div>
-              <div className="relative mt-2">
-                <Input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                />
-                <div className="absolute inset-y-0 right-0 flex items-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? '👀' : '😝'}
-                  </Button>
-                </div>
-              </div>
-              <div className="mt-10 flex justify-end">
-                <Button
-                  className="mr-2"
-                  onClick={() => {
-                    setEditPasswordModalVisible(false)
-                    resetPasswordForm()
-                  }}
-                >
-                  {t('operation.cancel', { ns: 'common' })}
-                </Button>
-                <Button
-                  disabled={editing}
-                  variant="primary"
-                  onClick={handleSavePassword}
-                >
-                  {userProfile.is_password_set ? t('operation.reset', { ns: 'common' }) : t('operation.save', { ns: 'common' })}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )
-      }
+            </>
+          )}
+          <div className="mt-8 system-sm-semibold text-text-secondary">
+            {userProfile.is_password_set ? t('account.newPassword', { ns: 'common' }) : t('account.password', { ns: 'common' })}
+          </div>
+          <div className="relative mt-2">
+            <Input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? '👀' : '😝'}
+              </Button>
+            </div>
+          </div>
+          <div className="mt-8 system-sm-semibold text-text-secondary">{t('account.confirmPassword', { ns: 'common' })}</div>
+          <div className="relative mt-2">
+            <Input
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? '👀' : '😝'}
+              </Button>
+            </div>
+          </div>
+          <div className="mt-10 flex justify-end">
+            <Button
+              className="mr-2"
+              onClick={() => {
+                setEditPasswordModalVisible(false)
+                resetPasswordForm()
+              }}
+            >
+              {t('operation.cancel', { ns: 'common' })}
+            </Button>
+            <Button
+              disabled={editing}
+              variant="primary"
+              onClick={handleSavePassword}
+            >
+              {userProfile.is_password_set ? t('operation.reset', { ns: 'common' }) : t('operation.save', { ns: 'common' })}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {
         showDeleteAccountModal && (
           <DeleteAccount
@@ -332,13 +332,15 @@ export default function AccountPage() {
           />
         )
       }
-      {showUpdateEmail && (
-        <EmailChangeModal
-          show={showUpdateEmail}
-          onClose={() => setShowUpdateEmail(false)}
-          email={userProfile.email}
-        />
-      )}
+      {/* Use conditional JSX instead of a mounted controlled Dialog so closing destroys the email-change form session. */}
+      {showUpdateEmail
+        ? (
+            <EmailChangeModal
+              onClose={() => setShowUpdateEmail(false)}
+              email={userProfile.email}
+            />
+          )
+        : null}
     </>
   )
 }

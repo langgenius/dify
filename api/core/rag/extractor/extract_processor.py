@@ -94,6 +94,7 @@ class ExtractProcessor:
         cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str | None = None
     ) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE:
+            upload_file = extract_setting.upload_file
             with tempfile.TemporaryDirectory() as temp_dir:
                 upload_file = extract_setting.upload_file
                 if not file_path:
@@ -104,6 +105,7 @@ class ExtractProcessor:
                     storage.download(upload_file.key, file_path)
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
+                assert upload_file is not None, "upload_file is required"
                 etl_type = dify_config.ETL_TYPE
                 extractor: BaseExtractor | None = None
                 if etl_type == "Unstructured":

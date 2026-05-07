@@ -110,7 +110,7 @@ const CodeEditor: FC<Props> = ({
     }
     const varName = varValue.slice(-1)[0]
     return {
-      name: getUniqVarName(varName),
+      name: getUniqVarName(varName!),
       isExist: false,
     }
   }

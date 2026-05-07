@@ -24,12 +24,12 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 import pytest
-from graphon.entities import WorkflowExecution
-from graphon.enums import WorkflowExecutionStatus
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from extensions.ext_storage import storage
+from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models import WorkflowPause as WorkflowPauseModel
@@ -175,7 +175,7 @@ class TestWorkflowPauseIntegration:
     """Comprehensive integration tests for workflow pause functionality."""
 
     @pytest.fixture(autouse=True)
-    def setup_test_data(self, db_session_with_containers):
+    def setup_test_data(self, db_session_with_containers: Session):
         """Set up test data for each test method using TestContainers."""
         # Create test tenant and account
 
