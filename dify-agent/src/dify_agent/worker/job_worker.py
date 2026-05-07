@@ -53,7 +53,7 @@ class RunJobWorker:
         store: RedisRunStore,
         group_name: str = "run-workers",
         consumer_name: str = "worker-1",
-        pending_idle_ms: int = 60_000,
+        pending_idle_ms: int = 600_000,
         runner_factory: JobRunnerFactory | None = None,
     ) -> None:
         self.store = store
@@ -141,7 +141,12 @@ async def main() -> None:
     settings = ServerSettings()
     redis = Redis.from_url(settings.redis_url)
     try:
-        await RunJobWorker(store=RedisRunStore(redis, prefix=settings.redis_prefix)).run_forever()
+        await RunJobWorker(
+            store=RedisRunStore(redis, prefix=settings.redis_prefix),
+            group_name=settings.worker_group_name,
+            consumer_name=settings.worker_consumer_name or "worker-1",
+            pending_idle_ms=settings.worker_pending_idle_ms,
+        ).run_forever()
     finally:
         await redis.aclose()
 
