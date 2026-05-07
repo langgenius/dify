@@ -20,6 +20,13 @@ type AuthorizeProps = {
   disabled?: boolean
   onUpdate?: () => void
   notAllowCustomCredential?: boolean
+  /**
+   * If provided, the API-key button delegates modal-opening to the parent
+   * instead of rendering it inline. Used when this Authorize is mounted
+   * inside a Popover whose outside-click handler would otherwise unmount
+   * the modal.
+   */
+  onApiKeyClick?: () => void
 }
 const Authorize = ({
   pluginPayload,
@@ -30,6 +37,7 @@ const Authorize = ({
   disabled,
   onUpdate,
   notAllowCustomCredential,
+  onApiKeyClick,
 }: AuthorizeProps) => {
   const { t } = useTranslation()
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
@@ -57,14 +65,16 @@ const Authorize = ({
         pluginPayload,
         buttonVariant: 'secondary',
         buttonText: !canOAuth ? t('auth.useApiAuth', { ns: 'plugin' }) : t('auth.addApi', { ns: 'plugin' }),
+        onClick: onApiKeyClick,
       }
     }
     return {
       pluginPayload,
       buttonText: !canOAuth ? t('auth.useApiAuth', { ns: 'plugin' }) : t('auth.addApi', { ns: 'plugin' }),
       buttonVariant: !canOAuth ? 'primary' : 'secondary-accent',
+      onClick: onApiKeyClick,
     }
-  }, [canOAuth, theme, pluginPayload, t])
+  }, [canOAuth, theme, pluginPayload, t, onApiKeyClick])
 
   const OAuthButton = useMemo(() => {
     const Item = (
