@@ -1,12 +1,12 @@
 'use client'
 
-import type { Placement } from '@langgenius/dify-ui/combobox'
+import type { Placement } from '@langgenius/dify-ui/popover'
 import type { App } from '@/types/app'
 import {
-  Combobox,
-  ComboboxContent,
-  ComboboxTrigger,
-} from '@langgenius/dify-ui/combobox'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,7 +24,7 @@ export type AppSelectorValue = {
   files?: unknown[]
 }
 
-export type AppSelectorProps = {
+type AppSelectorProps = {
   value?: AppSelectorValue
   scope?: string
   disabled?: boolean
@@ -130,26 +130,21 @@ export function AppSelector({
   }), [value])
 
   return (
-    <Combobox<App>
-      items={appsForPicker}
-      value={currentAppInfo ?? null}
+    <Popover
       open={isShow}
       onOpenChange={setIsShow}
-      itemToStringLabel={app => app?.name ?? ''}
-      itemToStringValue={app => app?.id ?? ''}
-      disabled={disabled}
     >
-      <ComboboxTrigger
+      <PopoverTrigger
         aria-label={t('appSelector.label', { ns: 'app' })}
-        icon={false}
-        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
+        disabled={disabled}
+        render={<button type="button" className="block w-full border-0 bg-transparent p-0 text-left" />}
       >
         <AppTrigger
           open={isShow}
           appDetail={currentAppInfo}
         />
-      </ComboboxTrigger>
-      <ComboboxContent
+      </PopoverTrigger>
+      <PopoverContent
         placement={placement}
         sideOffset={offset}
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
@@ -188,7 +183,7 @@ export function AppSelector({
             />
           )}
         </div>
-      </ComboboxContent>
-    </Combobox>
+      </PopoverContent>
+    </Popover>
   )
 }

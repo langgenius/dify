@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 
-export type AppTriggerProps = {
+type AppTriggerProps = {
   open: boolean
   appDetail?: App
 }

@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppModeEnum } from '@/types/app'
 
-export type AppPickerProps = {
+type AppPickerProps = {
   scope?: string
   disabled: boolean
   trigger: ReactNode
