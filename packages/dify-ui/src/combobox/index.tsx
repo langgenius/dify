@@ -30,7 +30,7 @@ export type ComboboxRootChangeEventDetails = BaseCombobox.Root.ChangeEventDetail
 export type ComboboxRootHighlightEventDetails = BaseCombobox.Root.HighlightEventDetails
 
 const comboboxPopupClassName = [
-  'w-(--anchor-width) min-w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
+  'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
   'data-side-top:origin-bottom data-side-bottom:origin-top data-side-left:origin-right data-side-right:origin-left',
 ]
 
@@ -124,9 +124,9 @@ const comboboxInputGroupVariants = cva(
   {
     variants: {
       size: {
-        small: 'h-6 rounded-md',
-        medium: 'h-8 rounded-lg',
-        large: 'h-9 rounded-[10px]',
+        small: 'min-h-6 rounded-md',
+        medium: 'min-h-8 rounded-lg',
+        large: 'min-h-9 rounded-[10px]',
       },
     },
     defaultVariants: {
@@ -460,7 +460,7 @@ export function ComboboxChips({
 }: BaseCombobox.Chips.Props) {
   return (
     <BaseCombobox.Chips
-      className={cn('flex min-w-0 flex-wrap items-center gap-1 px-1', className)}
+      className={cn('flex w-full min-w-0 flex-wrap items-center gap-1 px-1', className)}
       {...props}
     />
   )
@@ -472,7 +472,7 @@ export function ComboboxChip({
 }: BaseCombobox.Chip.Props) {
   return (
     <BaseCombobox.Chip
-      className={cn('inline-flex min-w-0 shrink-0 items-center gap-1 rounded-md bg-state-base-hover px-1.5 py-0.5 text-text-secondary system-xs-medium', className)}
+      className={cn('inline-flex max-w-full min-w-0 items-center gap-1 rounded-md bg-state-base-hover px-1.5 py-0.5 text-text-secondary system-xs-medium', className)}
       {...props}
     />
   )
