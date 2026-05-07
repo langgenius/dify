@@ -12,9 +12,8 @@ from pydantic_ai.messages import BuiltinToolCallPart, ModelMessage, ToolCallPart
 from pydantic_ai.models.openai import OpenAIChatModel  # pyright: ignore[reportDeprecated]
 from pydantic_ai.models.test import TestModel
 
-from agenton.compositor import Compositor, CompositorLayerConfig
-from agenton.layers.types import AllPromptTypes, AllToolTypes, PydanticAIPrompt, PydanticAITool
-from agenton_collections.layers.plain import ObjectLayer, ToolsLayer
+from agenton.compositor import CompositorBuilder, LayerRegistry
+from agenton_collections.layers.plain import ObjectLayer, PromptLayer, ToolsLayer
 from agenton_collections.layers.pydantic_ai import PydanticAIBridgeLayer
 from agenton_collections.transformers import PYDANTIC_AI_TRANSFORMERS
 
@@ -55,40 +54,32 @@ async def main() -> None:
         tool_entries=(write_tagline,),
     )
 
-    compositor = Compositor[
-        PydanticAIPrompt[object],
-        PydanticAITool[object],
-        AllPromptTypes,
-        AllToolTypes,
-    ].from_config(
-        {
-            "layers": [
-                {
-                    "name": "base_prompt",
-                    "layer": {
-                        "import_path": "agenton_collections.layers.plain:PromptLayer",
+    registry = LayerRegistry()
+    registry.register_layer(PromptLayer)
+    compositor = (
+        CompositorBuilder(registry)
+        .add_config(
+            {
+                "layers": [
+                    {
+                        "name": "base_prompt",
+                        "type": "plain.prompt",
                         "config": {
                             "prefix": "Use the available tools before answering.",
                             "suffix": "Return concise, inspectable output.",
                         },
                     },
-                },
-                CompositorLayerConfig(
-                    name="profile",
-                    layer=ObjectLayer[AgentProfile](profile),
-                ),
-                CompositorLayerConfig(
-                    name="plain_tools",
-                    layer=ToolsLayer(tool_entries=(count_words,)),
-                ),
-                CompositorLayerConfig(
-                    name="pydantic_ai_bridge",
-                    deps={"object_layer": "profile"},
-                    layer=pydantic_ai_bridge,
-                ),
-            ]
-        },
-        **PYDANTIC_AI_TRANSFORMERS,
+                ]
+            }
+        )
+        .add_instance(name="profile", layer=ObjectLayer[AgentProfile](profile))
+        .add_instance(name="plain_tools", layer=ToolsLayer(tool_entries=(count_words,)))
+        .add_instance(
+            name="pydantic_ai_bridge",
+            deps={"object_layer": "profile"},
+            layer=pydantic_ai_bridge,
+        )
+        .build(**PYDANTIC_AI_TRANSFORMERS)
     )
 
     async with compositor.enter():

@@ -4,11 +4,14 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from itertools import count
 
+from pydantic import BaseModel, ConfigDict
 from typing_extensions import override
 
 from agenton.compositor import Compositor, CompositorSession
 from agenton.layers import (
     ExitIntent,
+    EmptyLayerConfig,
+    EmptyRuntimeHandles,
     LayerControl,
     LifecycleState,
     NoLayerDeps,
@@ -239,22 +242,30 @@ def test_failed_resume_keeps_control_reusable_as_suspended() -> None:
     assert session.layer("trace").state is LifecycleState.CLOSED
 
 
+class RuntimeState(BaseModel):
+    runtime_id: int | None = None
+    resumed_runtime_id: int | None = None
+    deleted_runtime_id: int | None = None
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
+
 @dataclass(slots=True)
-class RuntimeStateLayer(PlainLayer[NoLayerDeps]):
+class RuntimeStateLayer(PlainLayer[NoLayerDeps, EmptyLayerConfig, RuntimeState]):
     next_id: Iterator[int] = field(default_factory=lambda: count(1))
 
     @override
-    async def on_context_create(self, control: LayerControl) -> None:
+    async def on_context_create(self, control: LayerControl[RuntimeState, EmptyRuntimeHandles]) -> None:
         runtime_id = next(self.next_id)
-        control.runtime_state["runtime_id"] = runtime_id
+        control.runtime_state.runtime_id = runtime_id
 
     @override
-    async def on_context_resume(self, control: LayerControl) -> None:
-        control.runtime_state["resumed_runtime_id"] = control.runtime_state["runtime_id"]
+    async def on_context_resume(self, control: LayerControl[RuntimeState, EmptyRuntimeHandles]) -> None:
+        control.runtime_state.resumed_runtime_id = control.runtime_state.runtime_id
 
     @override
-    async def on_context_delete(self, control: LayerControl) -> None:
-        control.runtime_state["deleted_runtime_id"] = control.runtime_state["runtime_id"]
+    async def on_context_delete(self, control: LayerControl[RuntimeState, EmptyRuntimeHandles]) -> None:
+        control.runtime_state.deleted_runtime_id = control.runtime_state.runtime_id
 
 
 def test_runtime_state_is_per_session_and_survives_suspend_resume_delete() -> None:
@@ -275,12 +286,12 @@ def test_runtime_state_is_per_session_and_survives_suspend_resume_delete() -> No
 
     asyncio.run(run())
 
-    assert first_session.layer("trace").runtime_state == {
+    assert first_session.layer("trace").runtime_state.model_dump(exclude_none=True) == {
         "runtime_id": 1,
         "resumed_runtime_id": 1,
         "deleted_runtime_id": 1,
     }
-    assert second_session.layer("trace").runtime_state == {
+    assert second_session.layer("trace").runtime_state.model_dump(exclude_none=True) == {
         "runtime_id": 2,
         "deleted_runtime_id": 2,
     }

@@ -2,7 +2,10 @@
 
 ``Layer`` itself is framework-neutral. This module defines typed layer families
 that bind its prompt/tool generic slots to concrete contracts, such as ordinary
-string prompts with plain callable tools or pydantic-ai prompt/tool shapes.
+string prompts with plain callable tools or pydantic-ai prompt/tool shapes. The
+families keep the trailing schema generic slots open so concrete layers can have
+``config_type``, ``runtime_state_type``, and ``runtime_handles_type`` inferred
+from type arguments instead of repeated class attributes.
 Tagged aggregate aliases cover code paths that can accept any supported
 prompt/tool family without changing the plain and pydantic-ai layer contracts.
 Pydantic-ai names are imported for static analysis only, so ``agenton`` can be
@@ -14,15 +17,17 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Generic, Literal
 
-from typing_extensions import final, override
+from typing_extensions import TypeVar, final, override
 
 if TYPE_CHECKING:
     from pydantic_ai import Tool
     from pydantic_ai.tools import SystemPromptFunc
 
-from agenton.layers.base import Layer, LayerDeps
+from pydantic import BaseModel
+
+from agenton.layers.base import EmptyLayerConfig, EmptyRuntimeHandles, EmptyRuntimeState, Layer, LayerDeps
 
 type PlainPrompt = str
 type PlainTool = Callable[..., Any]
@@ -68,7 +73,17 @@ type AllPromptTypes = PlainPromptType | PydanticAIPromptType[Any]
 type AllToolTypes = PlainToolType | PydanticAIToolType[Any]
 
 
-class PlainLayer[DepsT: LayerDeps](Layer[DepsT, PlainPrompt, PlainTool]):
+_DepsT = TypeVar("_DepsT", bound=LayerDeps)
+_ConfigT = TypeVar("_ConfigT", bound=BaseModel, default=EmptyLayerConfig)
+_RuntimeStateT = TypeVar("_RuntimeStateT", bound=BaseModel, default=EmptyRuntimeState)
+_RuntimeHandlesT = TypeVar("_RuntimeHandlesT", bound=BaseModel, default=EmptyRuntimeHandles)
+_AgentDepsT = TypeVar("_AgentDepsT")
+
+
+class PlainLayer(
+    Generic[_DepsT, _ConfigT, _RuntimeStateT, _RuntimeHandlesT],
+    Layer[_DepsT, PlainPrompt, PlainTool, _ConfigT, _RuntimeStateT, _RuntimeHandlesT],
+):
     """Layer base for ordinary string prompts and plain-callable tools."""
 
     @final
@@ -82,8 +97,16 @@ class PlainLayer[DepsT: LayerDeps](Layer[DepsT, PlainPrompt, PlainTool]):
         return PlainToolType(tool)
 
 
-class PydanticAILayer[DepsT: LayerDeps, AgentDepsT](
-    Layer[DepsT, PydanticAIPrompt[AgentDepsT], PydanticAITool[AgentDepsT]]
+class PydanticAILayer(
+    Generic[_DepsT, _AgentDepsT, _ConfigT, _RuntimeStateT, _RuntimeHandlesT],
+    Layer[
+        _DepsT,
+        PydanticAIPrompt[_AgentDepsT],
+        PydanticAITool[_AgentDepsT],
+        _ConfigT,
+        _RuntimeStateT,
+        _RuntimeHandlesT,
+    ],
 ):
     """Layer base for pydantic-ai prompt and tool adapters."""
 
@@ -91,13 +114,13 @@ class PydanticAILayer[DepsT: LayerDeps, AgentDepsT](
     @override
     def wrap_prompt(
         self,
-        prompt: PydanticAIPrompt[AgentDepsT],
-    ) -> PydanticAIPromptType[AgentDepsT]:
+        prompt: PydanticAIPrompt[_AgentDepsT],
+    ) -> PydanticAIPromptType[_AgentDepsT]:
         return PydanticAIPromptType(prompt)
 
     @final
     @override
-    def wrap_tool(self, tool: PydanticAITool[AgentDepsT]) -> PydanticAIToolType[AgentDepsT]:
+    def wrap_tool(self, tool: PydanticAITool[_AgentDepsT]) -> PydanticAIToolType[_AgentDepsT]:
         return PydanticAIToolType(tool)
 
 

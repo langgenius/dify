@@ -38,3 +38,11 @@ def test_agenton_pydantic_ai_example_smoke() -> None:
     assert "ToolCallPart: count_words(" in result.stdout
     assert "ToolCallPart: write_tagline(" in result.stdout
     assert "TextPart:" in result.stdout
+
+
+def test_agenton_session_snapshot_example_smoke() -> None:
+    result = _run_example("examples/agenton/session_snapshot.py")
+
+    assert result.returncode == 0, result.stderr
+    assert "Snapshot:" in result.stdout
+    assert "Rehydrated handle: restored:demo-connection" in result.stdout
