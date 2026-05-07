@@ -2,6 +2,11 @@
 import type { FC } from 'react'
 import type { AgentConfig } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
@@ -10,11 +15,6 @@ import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { BubbleText } from '@/app/components/base/icons/src/vender/solid/education'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import Radio from '@/app/components/base/radio/ui'
 import AgentSetting from '../agent/agent-setting'
 
@@ -107,47 +107,48 @@ const AssistantTypePicker: FC<Props> = ({
   )
   return (
     <>
-      <PortalToFollowElem
+      <Popover
         open={open}
         onOpenChange={setOpen}
-        placement="bottom-end"
-        offset={{
-          mainAxis: 8,
-          crossAxis: -2,
-        }}
       >
-        <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-          <div className={cn(open && 'bg-gray-50', 'flex h-8 cursor-pointer items-center space-x-1 rounded-lg border border-black/5 px-3 text-indigo-600 select-none')}>
-            {isAgent ? <BubbleText className="h-3 w-3" /> : <CuteRobot className="h-3 w-3" />}
-            <div className="text-xs font-medium">{t(`assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`, { ns: 'appDebug' })}</div>
-            <RiArrowDownSLine className="h-3 w-3" />
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-          <div className="relative left-0.5 w-[480px] rounded-xl border border-black/8 bg-white p-6 shadow-lg">
-            <div className="mb-2 text-sm leading-5 font-semibold text-gray-900">{t('assistantType.name', { ns: 'appDebug' })}</div>
-            <SelectItem
-              Icon={BubbleText}
-              value="chat"
-              disabled={disabled}
-              text={t('assistantType.chatAssistant.name', { ns: 'appDebug' })}
-              description={t('assistantType.chatAssistant.description', { ns: 'appDebug' })}
-              isChecked={!isAgent}
-              onClick={handleChange}
-            />
-            <SelectItem
-              Icon={CuteRobot}
-              value="agent"
-              disabled={disabled}
-              text={t('assistantType.agentAssistant.name', { ns: 'appDebug' })}
-              description={t('assistantType.agentAssistant.description', { ns: 'appDebug' })}
-              isChecked={isAgent}
-              onClick={handleChange}
-            />
-            {!disabled && agentConfigUI}
-          </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        <PopoverTrigger
+          nativeButton={false}
+          render={(
+            <div className={cn(open && 'bg-gray-50', 'flex h-8 cursor-pointer items-center space-x-1 rounded-lg border border-black/5 px-3 text-indigo-600 select-none')} />
+          )}
+        >
+          {isAgent ? <BubbleText className="h-3 w-3" /> : <CuteRobot className="h-3 w-3" />}
+          <div className="text-xs font-medium">{t(`assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`, { ns: 'appDebug' })}</div>
+          <RiArrowDownSLine className="h-3 w-3" />
+        </PopoverTrigger>
+        <PopoverContent
+          placement="bottom-end"
+          sideOffset={8}
+          alignOffset={-2}
+          popupClassName="relative left-0.5 w-[480px] rounded-xl border border-black/8 bg-white p-6 shadow-lg"
+        >
+          <div className="mb-2 text-sm leading-5 font-semibold text-gray-900">{t('assistantType.name', { ns: 'appDebug' })}</div>
+          <SelectItem
+            Icon={BubbleText}
+            value="chat"
+            disabled={disabled}
+            text={t('assistantType.chatAssistant.name', { ns: 'appDebug' })}
+            description={t('assistantType.chatAssistant.description', { ns: 'appDebug' })}
+            isChecked={!isAgent}
+            onClick={handleChange}
+          />
+          <SelectItem
+            Icon={CuteRobot}
+            value="agent"
+            disabled={disabled}
+            text={t('assistantType.agentAssistant.name', { ns: 'appDebug' })}
+            description={t('assistantType.agentAssistant.description', { ns: 'appDebug' })}
+            isChecked={isAgent}
+            onClick={handleChange}
+          />
+          {!disabled && agentConfigUI}
+        </PopoverContent>
+      </Popover>
       {isShowAgentSetting && (
         <AgentSetting
           isFunctionCall={isFunctionCall}

@@ -50,7 +50,7 @@ describe('Modal Component', () => {
     })
 
     it('renders md size class and default extra button label', () => {
-      const { container } = render(
+      render(
         <Modal
           {...defaultProps}
           size="md"
@@ -60,7 +60,7 @@ describe('Modal Component', () => {
       )
 
       expect(screen.getByText(/remove/i)).toBeInTheDocument()
-      expect(container.querySelector('.w-\\[640px\\]')).toBeInTheDocument()
+      expect(document.querySelector('.w-\\[640px\\]')).toBeInTheDocument()
     })
 
     it('renders footerSlot and bottomSlot', () => {
@@ -101,12 +101,12 @@ describe('Modal Component', () => {
       const onClose = vi.fn()
       const { rerender } = render(<Modal {...defaultProps} onClose={onClose} clickOutsideNotClose={false} />)
 
-      fireEvent.click(screen.getByRole('tooltip'))
+      fireEvent.click(document.querySelector('[role="tooltip"]')!)
       expect(onClose).toHaveBeenCalledTimes(1)
 
       onClose.mockClear()
       rerender(<Modal {...defaultProps} onClose={onClose} clickOutsideNotClose={true} />)
-      fireEvent.click(screen.getByRole('tooltip'))
+      fireEvent.click(document.querySelector('[role="tooltip"]')!)
       expect(onClose).not.toHaveBeenCalled()
     })
 

@@ -95,33 +95,7 @@ vi.mock('@/app/components/workflow/utils', () => ({
   getKeyboardKeyNameBySystem: (key: string) => key,
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await vi.importActual<typeof import('react')>('react')
-  const OpenContext = React.createContext(false)
-
-  return {
-    PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-      <OpenContext.Provider value={open}>
-        <div>{children}</div>
-      </OpenContext.Provider>
-    ),
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick?: () => void
-    }) => (
-      <button type="button" data-testid="portal-trigger" onClick={onClick}>
-        {children}
-      </button>
-    ),
-    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => {
-      const open = React.useContext(OpenContext)
-      return open ? <div>{children}</div> : null
-    },
-  }
-})
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
 
 vi.mock('@/app/components/base/tooltip', () => ({
   default: ({ children }: { children?: React.ReactNode }) => <>{children}</>,

@@ -88,7 +88,7 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 **Rules**:
 
 1. **Match actual conditional rendering**: If the real component returns `null` or doesn't render under certain conditions, the mock must do the same. Always check the actual component implementation before creating mocks.
-1. **Use shared state variables when needed**: When mocking components that depend on shared context or state (e.g., `PortalToFollowElem` with `PortalToFollowElemContent`), use module-level variables to track state and reset them in `beforeEach`.
+1. **Use shared state variables when needed**: When mocking components that depend on shared context or state (for example, a parent overlay mock with a separate content component), use module-level variables to track state and reset them in `beforeEach`.
 1. **Always reset shared mock state in beforeEach**: Module-level variables used in mocks must be reset in `beforeEach` to ensure test isolation, even if you set default values elsewhere.
 1. **Use fake timers only when needed**: Only use `vi.useFakeTimers()` if:
    - Testing components that use real `setTimeout`/`setInterval` (not mocked)
@@ -377,16 +377,16 @@ describe('ComponentName', () => {
 
 ```tsx
 // ✅ CORRECT: Matches actual component behavior
-let mockPortalOpenState = false
+let mockOverlayOpenState = false
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, ...props }) => {
-    mockPortalOpenState = open || false // Update shared state
+vi.mock('external-overlay-library', () => ({
+  OverlayRoot: ({ children, open, ...props }) => {
+    mockOverlayOpenState = open || false // Update shared state
     return <div data-open={open}>{children}</div>
   },
-  PortalToFollowElemContent: ({ children }) => {
+  OverlayContent: ({ children }) => {
     // ✅ Matches actual: returns null when open is false
-    if (!mockPortalOpenState)
+    if (!mockOverlayOpenState)
       return null
     return <div>{children}</div>
   },
@@ -395,7 +395,7 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
 describe('Component', () => {
   beforeEach(() => {
     vi.clearAllMocks() // ✅ Reset mock call history
-    mockPortalOpenState = false // ✅ Reset shared state
+    mockOverlayOpenState = false // ✅ Reset shared state
   })
 })
 ```

@@ -82,7 +82,7 @@ vi.mock('../../plugin-page/plugin-info', () => ({
   ),
 }))
 
-// Mock Tooltip - uses PortalToFollowElem which requires complex floating UI setup
+// Mock Tooltip - uses Popover which requires complex floating UI setup
 // Simplified mock that just renders children with tooltip content accessible
 vi.mock('../../../base/tooltip', () => ({
   default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (

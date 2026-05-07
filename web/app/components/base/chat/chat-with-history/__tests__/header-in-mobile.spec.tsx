@@ -40,30 +40,8 @@ vi.mock('../../embedded-chatbot/theme/theme-context', () => ({
   })),
 }))
 
-// Mock PortalToFollowElem using React Context
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await import('react')
-  const MockContext = React.createContext(false)
-
-  return {
-    PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-      return (
-        <MockContext.Provider value={open}>
-          <div data-open={open}>{children}</div>
-        </MockContext.Provider>
-      )
-    },
-    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => {
-      const open = React.useContext(MockContext)
-      if (!open)
-        return null
-      return <div>{children}</div>
-    },
-    PortalToFollowElemTrigger: ({ children, onClick, ...props }: { children: React.ReactNode, onClick: () => void } & React.HTMLAttributes<HTMLDivElement>) => (
-      <div onClick={onClick} {...props}>{children}</div>
-    ),
-  }
-})
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
+vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
 
 // Mock Modal to avoid Headless UI issues in tests
 vi.mock('@/app/components/base/modal', () => ({

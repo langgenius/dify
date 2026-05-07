@@ -68,12 +68,6 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
 ]
 
 export const OVERLAY_MIGRATION_LEGACY_BASE_FILES = [
-  'app/components/base/chat/chat/citation/progress-tooltip.tsx',
-  'app/components/base/chat/chat/citation/tooltip.tsx',
-  'app/components/base/chip/index.tsx',
-  'app/components/base/modal/modal.tsx',
-  'app/components/base/sort/index.tsx',
-  'app/components/base/tooltip/index.tsx',
 ]
 
 export const HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS = {

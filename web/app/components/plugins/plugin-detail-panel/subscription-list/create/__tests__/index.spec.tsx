@@ -7,33 +7,6 @@ import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { CreateButtonType, CreateSubscriptionButton, DEFAULT_METHOD } from '../index'
 
-let mockPortalOpenState = false
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-    mockPortalOpenState = open || false
-    return (
-      <div data-testid="portal-elem" data-open={open}>
-        {children}
-      </div>
-    )
-  },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: { children: React.ReactNode, onClick?: () => void, className?: string }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-    if (!mockPortalOpenState)
-      return null
-    return (
-      <div data-testid="portal-content" className={className}>
-        {children}
-      </div>
-    )
-  },
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
@@ -281,7 +254,6 @@ const setupMocks = (config: {
 describe('CreateSubscriptionButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
     setupMocks()
   })
 
