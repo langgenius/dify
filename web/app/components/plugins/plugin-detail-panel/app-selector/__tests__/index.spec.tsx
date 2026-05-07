@@ -77,7 +77,7 @@ afterAll(() => {
 })
 
 // Mock portal components for controlled positioning in tests
-// Use React context to properly scope open state per portal instance (for nested portals)
+// Use React context to properly scope open state per popover instance (for nested popovers)
 vi.mock('@langgenius/dify-ui/popover', () => {
   // Context reference shared across mock components
   let sharedContext: React.Context<boolean> | null = null
@@ -85,8 +85,8 @@ vi.mock('@langgenius/dify-ui/popover', () => {
   // Lazily get or create the context
   const getContext = (): React.Context<boolean> => {
     if (!sharedContext) {
-      const PortalOpenContext = React.createContext(false)
-      sharedContext = PortalOpenContext
+      const PopoverOpenContext = React.createContext(false)
+      sharedContext = PopoverOpenContext
     }
     return sharedContext
   }
@@ -103,7 +103,7 @@ vi.mock('@langgenius/dify-ui/popover', () => {
       return React.createElement(
         Context.Provider,
         { value: open || false },
-        React.createElement('div', { 'data-testid': 'portal-to-follow-elem', 'data-open': open }, children),
+        React.createElement('div', { 'data-testid': 'popover', 'data-open': open }, children),
       )
     },
     PopoverTrigger: ({
@@ -117,7 +117,7 @@ vi.mock('@langgenius/dify-ui/popover', () => {
       onClick?: () => void
       className?: string
     }) => (
-      <div data-testid="portal-trigger" onClick={onClick} className={className}>
+      <div data-testid="popover-trigger" onClick={onClick} className={className}>
         {render ?? children}
       </div>
     ),
@@ -127,7 +127,7 @@ vi.mock('@langgenius/dify-ui/popover', () => {
       if (!isOpen)
         return null
       return (
-        <div data-testid="portal-content" className={className}>{children}</div>
+        <div data-testid="popover-content" className={className}>{children}</div>
       )
     },
   }
@@ -562,7 +562,7 @@ describe('AppPicker', () => {
       const onShowChange = vi.fn()
       render(<AppPicker {...defaultProps} disabled={true} onShowChange={onShowChange} />)
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('popover-trigger'))
       expect(onShowChange).not.toHaveBeenCalled()
     })
 
@@ -570,7 +570,7 @@ describe('AppPicker', () => {
       const onShowChange = vi.fn()
       render(<AppPicker {...defaultProps} disabled={false} onShowChange={onShowChange} />)
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('popover-trigger'))
       expect(onShowChange).toHaveBeenCalledWith(true)
     })
   })
@@ -683,7 +683,7 @@ describe('AppPicker', () => {
 
       // The component should render without errors
       // The component should render without errors
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle isShow toggle correctly', () => {
@@ -697,7 +697,7 @@ describe('AppPicker', () => {
 
       // Should not crash
       // Should not crash
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should setup intersection observer when isShow is true', () => {
@@ -718,7 +718,7 @@ describe('AppPicker', () => {
 
       // Component should render without errors
       // Component should render without errors
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should cleanup observer on component unmount', () => {
@@ -736,7 +736,7 @@ describe('AppPicker', () => {
 
       // Component should still work correctly
       // Component should still work correctly
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should not setup IntersectionObserver when observerTarget is null', () => {
@@ -745,7 +745,7 @@ describe('AppPicker', () => {
 
       // The guard at line 84 should prevent setup
       // The guard at line 84 should prevent setup
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should debounce onLoadMore calls using loadingRef', () => {
@@ -1555,7 +1555,7 @@ describe('AppSelector', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should render trigger component', () => {
@@ -1588,33 +1588,33 @@ describe('AppSelector', () => {
       )
       // Should show the app trigger with app info
       // Should show the app trigger with app info
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
     it('should handle different placement values', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} placement="top" />)
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle different offset values', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} offset={10} />)
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle disabled state', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} disabled={true} />)
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
       // Portal should remain closed when disabled
       // Portal should remain closed when disabled
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover'))!.toHaveAttribute('data-open', 'false')
     })
 
     it('should handle scope prop', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} scope="workflow" />)
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle value with inputs', () => {
@@ -1624,7 +1624,7 @@ describe('AppSelector', () => {
           value={{ app_id: 'app-1', inputs: { name: 'test' }, files: [] }}
         />,
       )
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle value with files', () => {
@@ -1634,7 +1634,7 @@ describe('AppSelector', () => {
           value={{ app_id: 'app-1', inputs: {}, files: [{ id: 'file-1' }] }}
         />,
       )
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
   })
 
@@ -1642,32 +1642,32 @@ describe('AppSelector', () => {
     it('should toggle isShow state when trigger is clicked', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
-      const trigger = screen.getAllByTestId('portal-trigger')[0]
+      const trigger = screen.getAllByTestId('popover-trigger')[0]
       fireEvent.click(trigger!)
 
       // The portal state should update synchronously - get the first one (outer portal)
       // The portal state should update synchronously - get the first one (outer portal)
-      expect(screen.getAllByTestId('portal-to-follow-elem')[0])!.toHaveAttribute('data-open', 'true')
+      expect(screen.getAllByTestId('popover')[0])!.toHaveAttribute('data-open', 'true')
     })
 
     it('should not toggle isShow when disabled', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} disabled={true} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover'))!.toHaveAttribute('data-open', 'false')
     })
 
     it('should manage search text state', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Portal content should be visible after click
       // Portal content should be visible after click
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
 
     it('should render correctly during load more setup', () => {
@@ -1678,7 +1678,7 @@ describe('AppSelector', () => {
 
       // Trigger should be rendered
       // Trigger should be rendered
-      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-trigger'))!.toBeInTheDocument()
     })
   })
 
@@ -1689,9 +1689,9 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} onSelect={onSelect} />)
 
       // Open the portal
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('popover-trigger'))
 
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
 
     it('should call onSelect with correct value structure', () => {
@@ -1706,7 +1706,7 @@ describe('AppSelector', () => {
 
       // The component should maintain the correct value structure
       // The component should maintain the correct value structure
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should clear inputs when selecting different app', () => {
@@ -1721,7 +1721,7 @@ describe('AppSelector', () => {
 
       // Component renders with existing value
       // Component renders with existing value
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should preserve inputs when selecting same app', () => {
@@ -1734,7 +1734,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
   })
 
@@ -1748,7 +1748,7 @@ describe('AppSelector', () => {
       }
 
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should memoize currentAppInfo correctly', () => {
@@ -1763,7 +1763,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should memoize formattedValue correctly', () => {
@@ -1774,7 +1774,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should be wrapped with React.memo', () => {
@@ -1791,7 +1791,7 @@ describe('AppSelector', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
   })
 
@@ -1799,7 +1799,7 @@ describe('AppSelector', () => {
     it('should handle load more when hasMore is true', async () => {
       mockHasNextPage = true
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should not trigger load more when already loading', async () => {
@@ -1825,7 +1825,7 @@ describe('AppSelector', () => {
         vi.advanceTimersByTime(500)
       })
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should render load more area when hasMore is true', () => {
@@ -1836,11 +1836,11 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Open the portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // Should render without errors
       // Should render without errors
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
 
     it('should handle fetchNextPage rejection gracefully in handleLoadMore', async () => {
@@ -1851,7 +1851,7 @@ describe('AppSelector', () => {
 
       // Should not crash even if fetchNextPage rejects
       // Should not crash even if fetchNextPage rejects
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should call fetchNextPage when intersection observer triggers handleLoadMore', async () => {
@@ -1862,10 +1862,10 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // Open the inner app picker portal
-      const triggers = screen.getAllByTestId('portal-trigger')
+      const triggers = screen.getAllByTestId('popover-trigger')
       fireEvent.click(triggers[1]!)
 
       // Simulate intersection to trigger handleLoadMore
@@ -1883,8 +1883,8 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Open portals
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
-      const triggers = screen.getAllByTestId('portal-trigger')
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
+      const triggers = screen.getAllByTestId('popover-trigger')
       fireEvent.click(triggers[1]!)
 
       // Trigger first intersection
@@ -1898,7 +1898,7 @@ describe('AppSelector', () => {
       // Still only one call due to the picker-level debounce
       expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
 
-      expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
+      expect(screen.getAllByTestId('popover-content').length).toBeGreaterThan(0)
     })
 
     it('should skip handleLoadMore when isFetchingNextPage is true', async () => {
@@ -1909,8 +1909,8 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Open portals
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
-      const triggers = screen.getAllByTestId('portal-trigger')
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
+      const triggers = screen.getAllByTestId('popover-trigger')
       fireEvent.click(triggers[1]!)
 
       // Trigger intersection
@@ -1928,8 +1928,8 @@ describe('AppSelector', () => {
       renderWithQueryClient(<AppSelector {...defaultProps} />)
 
       // Open portals
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
-      const triggers = screen.getAllByTestId('portal-trigger')
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
+      const triggers = screen.getAllByTestId('popover-trigger')
       fireEvent.click(triggers[1]!)
 
       // Trigger intersection
@@ -1950,7 +1950,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle form change without image file', () => {
@@ -1963,7 +1963,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should extract #image# from inputs and add to files array', () => {
@@ -1977,7 +1977,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should preserve existing files when no #image# in inputs', () => {
@@ -1990,7 +1990,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
   })
 
@@ -2010,9 +2010,9 @@ describe('AppSelector', () => {
       )
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
 
     it('should preserve inputs when selecting the same app', () => {
@@ -2029,7 +2029,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle app selection with empty value', () => {
@@ -2047,9 +2047,9 @@ describe('AppSelector', () => {
       )
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
   })
 
@@ -2062,19 +2062,19 @@ describe('AppSelector', () => {
     it('should handle empty pages array', () => {
       mockAppListData = { pages: [] }
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle undefined data', () => {
       mockAppListData = undefined
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle loading state', () => {
       mockIsLoading = true
       renderWithQueryClient(<AppSelector {...defaultProps} />)
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle app not found in displayedApps', () => {
@@ -2089,7 +2089,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle value with empty inputs and files', () => {
@@ -2100,7 +2100,7 @@ describe('AppSelector', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
   })
 
@@ -2113,7 +2113,7 @@ describe('AppSelector', () => {
 
       // Should not crash
       // Should not crash
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
   })
 })
@@ -2147,11 +2147,11 @@ describe('AppSelector Integration', () => {
       renderWithQueryClient(<AppSelector onSelect={onSelect} />)
 
       // 1. Click trigger to open picker - get first trigger (outer portal)
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // Get the first portal element (outer portal)
       // Get the first portal element (outer portal)
-      expect(screen.getAllByTestId('portal-to-follow-elem')[0])!.toHaveAttribute('data-open', 'true')
+      expect(screen.getAllByTestId('popover')[0])!.toHaveAttribute('data-open', 'true')
     })
 
     it('should handle app change with input preservation logic', () => {
@@ -2163,7 +2163,7 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
   })
 
@@ -2179,9 +2179,9 @@ describe('AppSelector Integration', () => {
     it('should pass correct props to AppPicker', () => {
       renderWithQueryClient(<AppSelector onSelect={vi.fn()} />)
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('popover-trigger'))
 
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
   })
 
@@ -2194,15 +2194,15 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      expect(screen.getByTestId('portal-to-follow-elem'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover'))!.toBeInTheDocument()
     })
 
     it('should handle search filtering through app list', () => {
       renderWithQueryClient(<AppSelector onSelect={vi.fn()} />)
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('popover-trigger'))
 
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
   })
 
@@ -2221,11 +2221,11 @@ describe('AppSelector Integration', () => {
       )
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // The inner AppPicker portal is closed by default (isShowChooseApp = false)
       // We need to click on the inner trigger to open it
-      const innerTriggers = screen.getAllByTestId('portal-trigger')
+      const innerTriggers = screen.getAllByTestId('popover-trigger')
       // The second trigger is the inner AppPicker trigger
       fireEvent.click(innerTriggers[1]!)
 
@@ -2256,10 +2256,10 @@ describe('AppSelector Integration', () => {
       )
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // Click on the inner trigger to open app picker
-      const innerTriggers = screen.getAllByTestId('portal-trigger')
+      const innerTriggers = screen.getAllByTestId('popover-trigger')
       fireEvent.click(innerTriggers[1]!)
 
       // Click on the same app - need to get the one in the app list, not the trigger
@@ -2289,10 +2289,10 @@ describe('AppSelector Integration', () => {
       )
 
       // Open the main portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // Click on inner trigger to open app picker
-      const innerTriggers = screen.getAllByTestId('portal-trigger')
+      const innerTriggers = screen.getAllByTestId('popover-trigger')
       fireEvent.click(innerTriggers[1]!)
 
       // Click on an app from the dropdown
@@ -2317,9 +2317,9 @@ describe('AppSelector Integration', () => {
       renderWithQueryClient(<AppSelector onSelect={vi.fn()} />)
 
       // Open the portal to render the app picker
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
 
     it('should stay stable after fetchNextPage completes', async () => {
@@ -2329,9 +2329,9 @@ describe('AppSelector Integration', () => {
 
       renderWithQueryClient(<AppSelector onSelect={vi.fn()} />)
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
-      expect(screen.getByTestId('portal-content'))!.toBeInTheDocument()
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
     })
 
     it('should not call fetchNextPage when conditions prevent it', () => {
@@ -2340,7 +2340,7 @@ describe('AppSelector Integration', () => {
 
       renderWithQueryClient(<AppSelector onSelect={vi.fn()} />)
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // fetchNextPage should not be called
       expect(mockFetchNextPage).not.toHaveBeenCalled()
@@ -2362,10 +2362,10 @@ describe('AppSelector Integration', () => {
       )
 
       // Open portal
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // formattedValue should include #image# from files
-      expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
+      expect(screen.getAllByTestId('popover-content').length).toBeGreaterThan(0)
     })
 
     it('should handle value with no files', () => {
@@ -2381,9 +2381,9 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
-      expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
+      expect(screen.getAllByTestId('popover-content').length).toBeGreaterThan(0)
     })
 
     it('should handle undefined value.files', () => {
@@ -2399,9 +2399,9 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
-      expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
+      expect(screen.getAllByTestId('popover-content').length).toBeGreaterThan(0)
     })
 
     it('should call onSelect with transformed inputs when form input changes', () => {
@@ -2430,7 +2430,7 @@ describe('AppSelector Integration', () => {
       )
 
       // Open portal to render AppInputsPanel
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // Find and interact with the form input (may not exist if schema is empty)
       const formInputs = screen.queryAllByPlaceholderText('FormInputField')
@@ -2446,7 +2446,7 @@ describe('AppSelector Integration', () => {
       }
       else {
         // If form inputs aren't rendered, at least verify component rendered
-        expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
+        expect(screen.getAllByTestId('popover-content').length).toBeGreaterThan(0)
       }
     })
 
@@ -2482,7 +2482,7 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // Find file uploader and trigger upload - the #image# field will be extracted
       const uploadBtns = screen.queryAllByTestId('upload-file-btn')
@@ -2493,7 +2493,7 @@ describe('AppSelector Integration', () => {
       }
       else {
         // Verify component rendered
-        expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
+        expect(screen.getAllByTestId('popover-content').length).toBeGreaterThan(0)
       }
     })
 
@@ -2520,7 +2520,7 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // Find form input (may not exist if schema is empty)
       const inputs = screen.queryAllByPlaceholderText('PreserveField')
@@ -2536,7 +2536,7 @@ describe('AppSelector Integration', () => {
       }
       else {
         // If form inputs aren't rendered, at least verify component rendered
-        expect(screen.getAllByTestId('portal-content').length).toBeGreaterThan(0)
+        expect(screen.getAllByTestId('popover-content').length).toBeGreaterThan(0)
       }
     })
 
@@ -2571,7 +2571,7 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       // Try to find and click the upload button which triggers #image# form change
       const uploadBtn = screen.queryByTestId('upload-file-btn')
@@ -2605,7 +2605,7 @@ describe('AppSelector Integration', () => {
         />,
       )
 
-      fireEvent.click(screen.getAllByTestId('portal-trigger')[0]!)
+      fireEvent.click(screen.getAllByTestId('popover-trigger')[0]!)
 
       const inputs = screen.queryAllByPlaceholderText('SimpleInput')
       if (inputs.length > 0) {

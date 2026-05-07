@@ -13,6 +13,10 @@
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"
     },
+    "./autocomplete": {
+      "types": "./src/autocomplete/index.tsx",
+      "import": "./src/autocomplete/index.tsx"
+    },
     "./avatar": {
       "types": "./src/avatar/index.tsx",
       "import": "./src/avatar/index.tsx"
@@ -20,6 +24,10 @@
     "./button": {
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
+    },
+    "./combobox": {
+      "types": "./src/combobox/index.tsx",
+      "import": "./src/combobox/index.tsx"
     },
     "./context-menu": {
       "types": "./src/context-menu/index.tsx",
@@ -103,6 +111,7 @@
     "@storybook/addon-themes": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-virtual": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@typescript/native-preview": "catalog:",

@@ -1,46 +1,73 @@
-import type { Tag } from '@/contract/console/tags'
+import type { ComboboxRootProps } from '@langgenius/dify-ui/combobox'
+import type { ComponentProps } from 'react'
+import type { TagComboboxItem } from './tag-combobox-item'
+import type { Tag, TagType } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
+import { useApplyTagBindingsMutation, useCreateTagMutation } from '../hooks/use-tag-mutations'
+import { isCreateTagOption } from './tag-combobox-item'
 import { TagPanel } from './tag-panel'
 import { TagTrigger } from './tag-trigger'
 
-type TagSelectorProps = {
+const TAG_COMBOBOX_FILTER: NonNullable<ComboboxRootProps<TagComboboxItem, true>['filter']> = (tag, query) => tag.name.includes(query)
+const tagToString = (tag: TagComboboxItem) => tag.name
+const isSameTag = (item: TagComboboxItem, value: TagComboboxItem) => item.id === value.id
+
+type TagSelectorRootProps = Omit<
+  ComboboxRootProps<TagComboboxItem, true>,
+  | 'items'
+  | 'multiple'
+  | 'value'
+  | 'defaultValue'
+  | 'onValueChange'
+  | 'inputValue'
+  | 'defaultInputValue'
+  | 'onInputValueChange'
+  | 'filter'
+  | 'itemToStringLabel'
+  | 'isItemEqualToValue'
+  | 'open'
+  | 'defaultOpen'
+  | 'onOpenChange'
+  | 'onOpenChangeComplete'
+  | 'children'
+>
+type TagSelectorContentProps = Pick<ComponentProps<typeof ComboboxContent>, 'placement' | 'sideOffset' | 'alignOffset' | 'portalProps' | 'positionerProps' | 'popupProps' | 'popupClassName'>
+
+type TagSelectorProps = TagSelectorRootProps & TagSelectorContentProps & {
   targetId: string
-  isPopover?: boolean
-  position?: 'bl' | 'br'
-  type: 'knowledge' | 'app'
-  selectedTagIds: string[]
-  selectedTags: Tag[]
+  type: TagType
+  value: Tag[]
   onOpenTagManagement?: () => void
   onTagsChange?: () => void
-  minWidth?: number | string
 }
 
 export const TagSelector = ({
   targetId,
-  isPopover = true,
-  position,
   type,
-  selectedTagIds,
-  selectedTags,
+  value,
   onOpenTagManagement = () => {},
   onTagsChange,
-  minWidth,
+  placement = 'bottom-start',
+  sideOffset = 4,
+  alignOffset = 0,
+  portalProps,
+  positionerProps,
+  popupProps,
+  popupClassName,
+  ...rootProps
 }: TagSelectorProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const [draftTagIds, setDraftTagIds] = useState<string[]>(selectedTagIds)
+  const [draftTags, setDraftTags] = useState<Tag[]>(value)
+  const [inputValue, setInputValue] = useState('')
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
+  const createTagMutation = useCreateTagMutation()
   const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
     input: {
       query: {
@@ -49,20 +76,51 @@ export const TagSelector = ({
     },
   }))
 
-  const tagNames = selectedTags.length
-    ? selectedTags.filter(selectedTag => tagList.find(tag => tag.id === selectedTag.id)).map(tag => tag.name)
-    : []
-  const placement = position === 'bl'
-    ? 'bottom-start'
-    : position === 'br'
-      ? 'bottom-end'
-      : 'bottom'
-  const resolvedMinWidth = minWidth == null
-    ? undefined
-    : typeof minWidth === 'number' ? `${minWidth}px` : minWidth
+  const selectedTagIds = useMemo(() => value.map(tag => tag.id), [value])
+  const tagNames = useMemo(() => {
+    if (!value.length)
+      return []
+
+    const tagNameById = new Map(tagList.map(tag => [tag.id, tag.name]))
+    return value.flatMap((tag) => {
+      const tagName = tagNameById.get(tag.id)
+      return tagName ? [tagName] : []
+    })
+  }, [tagList, value])
   const triggerLabel = tagNames.length ? tagNames.join(', ') : t('tag.addTag', { ns: 'common' })
 
+  const items = useMemo<TagComboboxItem[]>(() => {
+    const tagIds = new Set<string>()
+    const nextItems: TagComboboxItem[] = []
+
+    for (const tag of tagList) {
+      if (tag.type !== type)
+        continue
+
+      tagIds.add(tag.id)
+      nextItems.push(tag)
+    }
+
+    for (const tag of value) {
+      if (tag.type === type && !tagIds.has(tag.id))
+        nextItems.push(tag)
+    }
+
+    if (inputValue && nextItems.every(tag => tag.name !== inputValue)) {
+      nextItems.unshift({
+        id: `__create_tag__:${inputValue}`,
+        name: inputValue,
+        type,
+        binding_count: 0,
+        isCreateOption: true,
+      })
+    }
+
+    return nextItems
+  }, [inputValue, tagList, type, value])
+
   const applyTagBindings = useCallback(() => {
+    const draftTagIds = draftTags.map(tag => tag.id)
     const draftTagIdSet = new Set(draftTagIds)
     const tagSelectionChanged = selectedTagIds.length !== draftTagIds.length
       || selectedTagIds.some(tagId => !draftTagIdSet.has(tagId))
@@ -92,53 +150,91 @@ export const TagSelector = ({
         onTagsChange?.()
       },
     })
-  }, [applyTagBindingsMutation, draftTagIds, onTagsChange, selectedTagIds, t, targetId, type])
+  }, [applyTagBindingsMutation, draftTags, onTagsChange, selectedTagIds, t, targetId, type])
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
-    if (nextOpen)
-      setDraftTagIds(selectedTagIds)
-    else
+    if (nextOpen) {
+      setDraftTags(value)
+    }
+    else {
       applyTagBindings()
+    }
 
     setOpen(nextOpen)
-  }, [applyTagBindings, selectedTagIds])
+  }, [applyTagBindings, value])
 
-  if (!isPopover)
-    return null
+  const createNewTag = useCallback((name: string) => {
+    if (!name || createTagMutation.isPending)
+      return
+
+    createTagMutation.mutate({
+      body: {
+        name,
+        type,
+      },
+    }, {
+      onSuccess: () => {
+        toast.success(t('tag.created', { ns: 'common' }))
+        setInputValue('')
+      },
+      onError: () => {
+        toast.error(t('tag.failed', { ns: 'common' }))
+      },
+    })
+  }, [createTagMutation, t, type])
+
+  const handleValueChange = useCallback((nextTags: TagComboboxItem[]) => {
+    const createOption = nextTags.find(isCreateTagOption)
+    if (createOption) {
+      createNewTag(createOption.name)
+      return
+    }
+
+    setDraftTags(nextTags.filter(tag => !isCreateTagOption(tag)))
+  }, [createNewTag])
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger
+    <Combobox
+      {...rootProps}
+      open={open}
+      onOpenChange={handleOpenChange}
+      items={items}
+      multiple
+      value={draftTags}
+      onValueChange={handleValueChange}
+      inputValue={inputValue}
+      onInputValueChange={setInputValue}
+      filter={TAG_COMBOBOX_FILTER}
+      itemToStringLabel={tagToString}
+      isItemEqualToValue={isSameTag}
+    >
+      <ComboboxTrigger
         aria-label={triggerLabel}
         className={cn(
           open ? 'bg-state-base-hover' : 'bg-transparent',
-          'block w-full rounded-lg border-0 p-0 text-left focus:outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
+          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset data-open:bg-state-base-hover data-open:hover:bg-state-base-hover',
         )}
+        icon={false}
       >
         <TagTrigger tags={tagNames} />
-      </PopoverTrigger>
-      <PopoverContent
+      </ComboboxTrigger>
+      <ComboboxContent
         placement={placement}
-        sideOffset={4}
-        popupClassName="overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
-        popupProps={{
-          style: {
-            width: 'var(--anchor-width, auto)',
-            minWidth: resolvedMinWidth,
-          },
-        }}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        portalProps={portalProps}
+        positionerProps={positionerProps}
+        popupProps={popupProps}
+        popupClassName={cn('w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]', popupClassName)}
       >
         <TagPanel
           type={type}
-          selectedTagIds={selectedTagIds}
-          selectedTags={selectedTags}
-          draftTagIds={draftTagIds}
-          onDraftTagIdsChange={setDraftTagIds}
-          tagList={tagList}
+          inputValue={inputValue}
+          onInputValueChange={setInputValue}
           onOpenTagManagement={onOpenTagManagement}
           onClose={() => handleOpenChange(false)}
         />
-      </PopoverContent>
-    </Popover>
+      </ComboboxContent>
+    </Combobox>
   )
 }
