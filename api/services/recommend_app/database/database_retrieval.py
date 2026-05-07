@@ -19,7 +19,6 @@ class RecommendedAppItemDict(TypedDict):
     copyright: Any
     privacy_policy: Any
     custom_disclaimer: str
-    category: str
     categories: list[str]
     position: int
     is_listed: bool
@@ -82,7 +81,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
             if not site:
                 continue
 
-            app_categories = recommended_app.categories or [recommended_app.category]
+            app_categories = recommended_app.categories or []
             recommended_app_result: RecommendedAppItemDict = {
                 "id": recommended_app.id,
                 "app": recommended_app.app,
@@ -91,7 +90,6 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
                 "copyright": site.copyright,
                 "privacy_policy": site.privacy_policy,
                 "custom_disclaimer": site.custom_disclaimer,
-                "category": app_categories[0],
                 "categories": app_categories,
                 "position": recommended_app.position,
                 "is_listed": recommended_app.is_listed,

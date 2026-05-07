@@ -21,8 +21,7 @@ export type App = {
   copyright: string
   privacy_policy: string | null
   custom_disclaimer: string | null
-  category: AppCategory
-  categories?: AppCategory[]
+  categories: AppCategory[]
   position: number
   is_listed: boolean
   install_count: number

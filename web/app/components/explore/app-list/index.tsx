@@ -80,7 +80,6 @@ const Apps = ({
     return data.allList.filter(item => (
       currCategory === allCategoriesEn
       || item.categories?.includes(currCategory)
-      || item.category === currCategory
     ))
   }, [data, currCategory, allCategoriesEn])
 
@@ -281,7 +280,7 @@ const Apps = ({
         <TryApp
           appId={currentTryApp?.appId || ''}
           app={currentTryApp?.app}
-          category={currentTryApp?.app?.category}
+          categories={currentTryApp?.app?.categories}
           onClose={hideTryAppPanel}
           onCreate={handleShowFromTryApp}
         />

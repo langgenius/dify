@@ -56,7 +56,7 @@ def _create_recommended_app(
         copyright="copy",
         privacy_policy="pp",
         category=category,
-        categories=categories,
+        categories=[category] if categories is None else categories,
         language=language,
         is_listed=is_listed,
         position=position,
@@ -129,10 +129,33 @@ class TestFetchRecommendedAppsFromDb:
         result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
 
         recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
-        assert recommended_app["category"] == "writing"
         assert recommended_app["categories"] == ["writing", "assistant"]
         assert "writing" in result["categories"]
         assert "assistant" in result["categories"]
+
+    def test_ignores_legacy_category_when_categories_are_empty(
+        self,
+        flask_app_with_containers,
+        db_session_with_containers,
+    ):
+        tenant_id = str(uuid4())
+        created_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
+        _create_site(db_session_with_containers, app_id=created_app.id)
+        _create_recommended_app(
+            db_session_with_containers,
+            app_id=created_app.id,
+            category="writing",
+            categories=[],
+        )
+
+        db_session_with_containers.expire_all()
+
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
+
+        recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
+        assert "category" not in recommended_app
+        assert recommended_app["categories"] == []
+        assert "writing" not in result["categories"]
 
     def test_falls_back_to_default_language_when_empty(self, flask_app_with_containers, db_session_with_containers):
         tenant_id = str(uuid4())
