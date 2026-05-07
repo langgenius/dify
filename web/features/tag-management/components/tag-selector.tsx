@@ -230,6 +230,7 @@ export const TagSelector = ({
         <TagPanel
           type={type}
           inputValue={inputValue}
+          onInputValueChange={setInputValue}
           onOpenTagManagement={onOpenTagManagement}
           onClose={() => handleOpenChange(false)}
         />

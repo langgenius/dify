@@ -1,6 +1,6 @@
 import type { TagComboboxItem } from './tag-combobox-item'
 import type { TagType } from '@/contract/console/tags'
-import { ComboboxClear, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemText, ComboboxList, ComboboxSeparator, useComboboxFilteredItems } from '@langgenius/dify-ui/combobox'
+import { ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemText, ComboboxList, ComboboxSeparator, useComboboxFilteredItems } from '@langgenius/dify-ui/combobox'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCreateTagOption } from './tag-combobox-item'
@@ -8,6 +8,7 @@ import { isCreateTagOption } from './tag-combobox-item'
 type TagPanelProps = {
   type: TagType
   inputValue: string
+  onInputValueChange: (value: string) => void
   onOpenTagManagement?: () => void
   onClose?: () => void
 }
@@ -15,6 +16,7 @@ type TagPanelProps = {
 export const TagPanel = ({
   type,
   inputValue,
+  onInputValueChange,
   onOpenTagManagement,
   onClose,
 }: TagPanelProps) => {
@@ -35,7 +37,18 @@ export const TagPanel = ({
             placeholder={placeholder}
             className="pl-2"
           />
-          <ComboboxClear aria-label={t('operation.clear', { ns: 'common' })} />
+          {inputValue && (
+            <button
+              type="button"
+              aria-label={t('operation.clear', { ns: 'common' })}
+              className="mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset"
+              onClick={() => onInputValueChange('')}
+              onPointerDown={event => event.preventDefault()}
+              data-testid="tag-search-clear-button"
+            >
+              <span className="i-ri-close-line size-4" aria-hidden="true" />
+            </button>
+          )}
         </ComboboxInputGroup>
       </div>
       {filteredItems.length > 0 && (
@@ -64,14 +77,14 @@ export const TagPanel = ({
 
             return (
               <ComboboxItem key={tag.id} value={tag} index={index}>
-                <ComboboxItemText>{tag.name}</ComboboxItemText>
+                <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
                 <ComboboxItemIndicator />
               </ComboboxItem>
             )
           }}
         </ComboboxList>
       )}
-      {!inputValue && !hasCreateOption && realItemCount === 0 && (
+      {!hasCreateOption && realItemCount === 0 && (
         <div className="p-1">
           <div className="flex flex-col items-center gap-y-1 p-3">
             <span aria-hidden="true" className="i-ri-price-tag-3-line h-6 w-6 text-text-quaternary" />

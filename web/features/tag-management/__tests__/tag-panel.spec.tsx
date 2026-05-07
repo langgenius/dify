@@ -13,6 +13,7 @@ const { onValueChangeSpy } = vi.hoisted(() => ({
 
 const i18n = {
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
+  operationClear: 'common.operation.clear',
   create: 'common.tag.create',
   noTag: 'common.tag.noTag',
   manageTags: 'common.tag.manageTags',
@@ -80,6 +81,7 @@ const PanelHarness = ({
       <TagPanel
         type={type}
         inputValue={inputValue}
+        onInputValueChange={setInputValue}
         onOpenTagManagement={onOpenTagManagement}
       />
     </Combobox>
@@ -109,6 +111,22 @@ describe('TagPanel', () => {
 
     expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /API/i })).not.toBeInTheDocument()
+  })
+
+  it('clears only the search input from the input clear button', async () => {
+    const user = userEvent.setup()
+    render(<PanelHarness />)
+
+    const input = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
+    await user.type(input, 'Back')
+    expect(input).toHaveValue('Back')
+    vi.clearAllMocks()
+
+    await user.click(screen.getByRole('button', { name: i18n.operationClear }))
+
+    expect(input).toHaveValue('')
+    expect(onValueChangeSpy).not.toHaveBeenCalled()
+    expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('shows a create option when the query is not an existing tag name', async () => {
