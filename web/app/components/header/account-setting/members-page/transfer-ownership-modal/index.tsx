@@ -52,15 +52,10 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     }, 1000))
   }
   const sendEmail = async () => {
-    try {
-      const res = await sendOwnerEmail({})
-      startCount()
-      if (res.data)
-        setStepToken(res.data)
-    }
-    catch (error) {
-      toast.error(`Error sending verification code: ${error ? (error as any).message : ''}`)
-    }
+    const res = await sendOwnerEmail({})
+    startCount()
+    if (res.data)
+      setStepToken(res.data)
   }
   const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
     try {
@@ -81,8 +76,13 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     }
   }
   const sendCodeToOriginEmail = async () => {
-    await sendEmail()
-    setStep(STEP.verify)
+    try {
+      await sendEmail()
+      setStep(STEP.verify)
+    }
+    catch {
+      // The base service layer already surfaces the backend error (e.g. rate-limit) as a toast.
+    }
   }
   const handleVerifyOriginEmail = async () => {
     await verifyEmailAddress(code, stepToken, () => setStep(STEP.transfer))
