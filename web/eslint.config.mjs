@@ -13,7 +13,6 @@ import storybook from 'eslint-plugin-storybook'
 import {
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
   NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-  OVERLAY_MIGRATION_LEGACY_BASE_FILES,
   OVERLAY_RESTRICTED_IMPORT_PATTERNS,
   WEB_RESTRICTED_IMPORT_PATTERNS,
 } from './eslint.constants.mjs'
@@ -177,7 +176,6 @@ export default antfu(
     ignores: [
       'next/**',
       ...GLOB_TESTS,
-      ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
     ],
     rules: {
       'no-restricted-imports': ['error', {

@@ -38,13 +38,6 @@ export const WEB_RESTRICTED_IMPORT_PATTERNS = [
 export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: [
-      '**/portal-to-follow-elem',
-      '**/portal-to-follow-elem/index',
-    ],
-    message: 'Deprecated: use semantic overlay primitives from @langgenius/dify-ui (popover / dropdown-menu / tooltip / context-menu) instead. See issue #32767.',
-  },
-  {
-    group: [
       '**/base/tooltip',
       '**/base/tooltip/index',
     ],
@@ -54,7 +47,6 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
     group: [
       '**/base/modal',
       '**/base/modal/index',
-      '**/base/modal/modal',
     ],
     message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
   },
@@ -65,9 +57,6 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
     ],
     message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
   },
-]
-
-export const OVERLAY_MIGRATION_LEGACY_BASE_FILES = [
 ]
 
 export const HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS = {
