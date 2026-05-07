@@ -116,3 +116,27 @@ def test_history_replay_matches_round_1_outcome_under_unchanged_config():
     )
     assert _validate(input_file_type="custom", file_extension=".png", config=config) is True
     assert _validate(input_file_type="image", file_extension=".png", config=config) is True
+
+
+def test_empty_whitelist_in_custom_bucket_denies_by_default():
+    """Defensive: when a file lands in the CUSTOM bucket, an empty
+    allowed_file_extensions list rejects. The UI never submits empty;
+    this guards DSL / API paths that bypass the UI from accidentally
+    widening what's accepted."""
+    config = FileUploadConfig(
+        allowed_file_types=[FileType.CUSTOM],
+        allowed_file_extensions=[],
+    )
+    assert _validate(input_file_type="custom", file_extension=".png", config=config) is False
+    assert _validate(input_file_type="image", file_extension=".png", config=config) is False
+
+
+def test_normalize_handles_whitespace_and_empty_consistently():
+    """Whitespace-only or empty entries in the whitelist must not match real
+    extensions (regression guard for _normalize_extension edge cases)."""
+    for noisy_entry in ("", "   ", "\t"):
+        config = FileUploadConfig(
+            allowed_file_types=[FileType.CUSTOM],
+            allowed_file_extensions=[noisy_entry],
+        )
+        assert _validate(input_file_type="custom", file_extension=".png", config=config) is False

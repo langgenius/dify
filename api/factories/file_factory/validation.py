@@ -8,9 +8,9 @@ from graphon.file import FileTransferMethod, FileType, FileUploadConfig
 
 
 def _normalize_extension(extension: str) -> str:
-    if not extension:
-        return ""
     s = extension.strip().lower()
+    if not s:
+        return ""
     return s if s.startswith(".") else "." + s
 
 
@@ -41,10 +41,14 @@ def is_file_valid_with_config(
     if not type_allowed and not custom_allowed:
         return False
 
+    # When the file is in the CUSTOM bucket, the extension whitelist is authoritative.
+    # An explicitly set whitelist (including the empty list) is enforced; empty == deny —
+    # the UI never submits an empty list, so this guards against DSL/API paths that
+    # bypass the UI from accidentally widening the allowlist.
     in_custom_bucket = input_file_type == FileType.CUSTOM or not type_allowed
     if (
         in_custom_bucket
-        and config.allowed_file_extensions
+        and config.allowed_file_extensions is not None
         and not _extension_matches(file_extension, config.allowed_file_extensions)
     ):
         return False

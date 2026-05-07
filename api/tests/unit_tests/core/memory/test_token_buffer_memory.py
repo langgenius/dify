@@ -198,6 +198,47 @@ class TestBuildPromptMessageWithFiles:
         assert isinstance(result.content[-1], TextPromptMessageContent)
         assert result.content[-1].data == "user text"
 
+    def test_replay_skips_revalidation_by_passing_config_none(self):
+        """Replay contract: history files were validated on upload, so this
+        path must call build_from_message_file with config=None. Reverting
+        this would re-trigger ENG-244 whenever workflow config drifts."""
+        conv = _make_conversation(AppMode.CHAT)
+        mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
+
+        mock_file_extra_config = MagicMock()
+        mock_file_extra_config.image_config = None
+
+        real_image_content = ImagePromptMessageContent(
+            url="http://example.com/img.png", format="png", mime_type="image/png"
+        )
+        mock_app_record = MagicMock()
+        mock_app_record.tenant_id = "tenant-1"
+
+        with (
+            patch(
+                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
+                return_value=mock_file_extra_config,
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
+                return_value=MagicMock(),
+            ) as mock_build,
+            patch(
+                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
+                return_value=real_image_content,
+            ),
+        ):
+            mem._build_prompt_message_with_files(
+                message_files=[MagicMock()],
+                text_content="user text",
+                message=_make_message(),
+                app_record=mock_app_record,
+                is_user_message=True,
+            )
+
+        mock_build.assert_called_once()
+        assert mock_build.call_args.kwargs["config"] is None
+
     @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
     def test_chat_mode_with_files_assistant_message(self, mode):
         """When files are present, returns AssistantPromptMessage with list content."""
