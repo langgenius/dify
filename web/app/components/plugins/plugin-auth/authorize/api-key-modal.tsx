@@ -3,9 +3,7 @@ import type {
   FormRefObject,
   FormSchema,
 } from '@/app/components/base/form/types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiGroup2Line, RiUser3Line } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -20,7 +18,9 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
 // eslint-disable-next-line no-restricted-imports -- legacy modal, migration tracked in #32767
 import Modal from '@/app/components/base/modal/modal'
+import PermissionSelector from '@/app/components/base/permission-selector'
 import { PermissionLevel } from '@/models/permission'
+import { useMembers } from '@/service/use-common'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import { ReadmeShowType } from '../../readme-panel/store'
 import {
@@ -56,9 +56,15 @@ const ApiKeyModal = ({
     setDoingAction(value)
   }, [])
   const { data = [], isLoading } = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
-  const [permission, setPermission] = useState<PermissionLevel>(
+  const [permission, setPermission] = useState<PermissionLevel | undefined>(
     (editValues?.__visibility__ as PermissionLevel) ?? PermissionLevel.allTeamMembers,
   )
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
+    (editValues?.__partial_member_list__ as string[]) ?? [],
+  )
+  // Only need member list when creating (the permission selector is hidden on edit).
+  const { data: membersData } = useMembers()
+  const memberList = membersData?.accounts ?? []
   const mergedData = useMemo(() => {
     if (formSchemasFromProps?.length)
       return formSchemasFromProps
@@ -117,11 +123,17 @@ const ApiKeyModal = ({
         })
       }
       else {
+        const permissionPayload = {
+          visibility: permission,
+          ...(permission === PermissionLevel.partialMembers
+            ? { partial_member_list: selectedMemberIDs.map(id => ({ user_id: id })) }
+            : {}),
+        }
         await addPluginCredential({
           credentials: restValues,
           type: CredentialTypeEnum.API_KEY,
           name: __name__ || '',
-          visibility: permission,
+          ...permissionPayload,
         })
       }
       toast.success(t('api.actionSuccess', { ns: 'common' }))
@@ -132,7 +144,7 @@ const ApiKeyModal = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction, permission])
+  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction, permission, selectedMemberIDs])
 
   return (
     <Modal
@@ -174,38 +186,18 @@ const ApiKeyModal = ({
       }
       {!isLoading && !editValues && (
         <div className="mt-4 px-1">
-          <div className="mb-2 system-sm-semibold text-text-secondary">
+          <div className="mb-1 system-sm-semibold text-text-secondary">
             {t('auth.whoCanUse', { ns: 'plugin' })}
           </div>
-          <div className="flex gap-2">
-            {[
-              { value: PermissionLevel.onlyMe, label: t('auth.personal', { ns: 'plugin' }), Icon: RiUser3Line },
-              { value: PermissionLevel.allTeamMembers, label: t('auth.shared', { ns: 'plugin' }), Icon: RiGroup2Line },
-            ].map(({ value, label, Icon }) => {
-              const selected = permission === value
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => setPermission(value)}
-                  className={cn(
-                    'flex flex-1 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-left',
-                    selected
-                      ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
-                      : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:bg-state-base-hover',
-                    disabled && 'cursor-not-allowed opacity-50',
-                  )}
-                >
-                  <Icon className={cn('h-4 w-4 shrink-0', selected ? 'text-text-accent' : 'text-text-tertiary')} />
-                  <span className={cn('system-sm-medium', selected ? 'text-text-accent' : 'text-text-secondary')}>
-                    {label}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-          <div className="mt-2 system-xs-regular text-text-tertiary">
+          <PermissionSelector
+            disabled={disabled}
+            permission={permission}
+            value={selectedMemberIDs}
+            memberList={memberList}
+            onChange={v => setPermission(v)}
+            onMemberSelect={setSelectedMemberIDs}
+          />
+          <div className="mt-1 system-xs-regular text-text-tertiary">
             {t('auth.onlyAtCreationHint', { ns: 'plugin' })}
           </div>
         </div>
