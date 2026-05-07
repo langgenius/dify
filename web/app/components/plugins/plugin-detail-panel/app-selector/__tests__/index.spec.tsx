@@ -106,10 +106,10 @@ describe('AppSelector', () => {
 
     renderWithQueryClient(<AppSelector onSelect={onSelect} />)
 
-    fireEvent.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    fireEvent.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
     expect(screen.getByText('app.appSelector.label')).toBeInTheDocument()
 
-    fireEvent.click(screen.getAllByRole('combobox', { name: 'app.appSelector.label' })[1]!)
+    fireEvent.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
 
     await waitFor(() => {
       expect(screen.getByText('Support Bot')).toBeInTheDocument()
@@ -123,6 +123,7 @@ describe('AppSelector', () => {
       files: [],
     })
     expect(screen.getByText('app.appSelector.label')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'app.appSelector.label' })).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.queryByText('Workflow App')).not.toBeInTheDocument()
     })
@@ -131,8 +132,8 @@ describe('AppSelector', () => {
   it('should search apps from the content input', async () => {
     renderWithQueryClient(<AppSelector onSelect={vi.fn()} />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
     fireEvent.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
-    fireEvent.click(screen.getAllByRole('combobox', { name: 'app.appSelector.label' })[1]!)
     fireEvent.change(screen.getByRole('combobox', { name: 'app.appSelector.placeholder' }), {
       target: { value: 'workflow' },
     })
