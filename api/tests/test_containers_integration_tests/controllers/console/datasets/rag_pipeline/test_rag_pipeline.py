@@ -156,7 +156,7 @@ class TestCustomizedPipelineTemplateApi:
         delete_mock.assert_called_once_with("tpl-1")
         assert response == 200
 
-    def test_post_success(self, app, db_session_with_containers: Session):
+    def test_post_success(self, app:Flask, db_session_with_containers: Session):
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.post)
 
