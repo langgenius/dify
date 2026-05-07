@@ -261,11 +261,15 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon" />,
 }))
 
-// Mock Modal - headlessui Dialog has complex behavior
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow }: { children: ReactNode, isShow: boolean }) => (
-    isShow ? <div data-testid="modal">{children}</div> : null
+// Mock Dialog to avoid Base UI focus/portal behavior in tests
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: ReactNode, open?: boolean }) => (
+    open ? <div>{children}</div> : null
   ),
+  DialogContent: ({ children }: { children: ReactNode }) => (
+    <div data-testid="modal">{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 // Mock VisualEditor - complex component with many dependencies

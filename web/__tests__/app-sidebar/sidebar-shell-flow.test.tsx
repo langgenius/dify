@@ -96,10 +96,7 @@ vi.mock('@/app/components/workflow/utils', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-}))
+vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
 
 vi.mock('@/app/components/app-sidebar/app-info', () => ({
   default: ({

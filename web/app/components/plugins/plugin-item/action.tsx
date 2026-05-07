@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
@@ -20,7 +20,6 @@ import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import ActionButton from '../../base/action-button'
-import Tooltip from '../../base/tooltip'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
 import PluginInfo from '../plugin-page/plugin-info'
 import { PluginSource } from '../types'
@@ -114,38 +113,59 @@ const Action: FC<Props> = ({
     finally {
       hideDeleting()
     }
-  }, [installationId, onDelete])
+  }, [hideDeleteConfirm, hideDeleting, installationId, onDelete, showDeleting])
   return (
     <div className="flex space-x-1">
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
       {isShowFetchNewVersion
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.checkForUpdates`, { ns: 'plugin' })}>
-            <ActionButton onClick={handleFetchNewVersion}>
-              <RiLoopLeftLine className="h-4 w-4 text-text-tertiary" />
-            </ActionButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton onClick={handleFetchNewVersion}>
+                  <span className="i-ri-loop-left-line h-4 w-4 text-text-tertiary" />
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>
+              {t(`${i18nPrefix}.checkForUpdates`, { ns: 'plugin' })}
+            </TooltipContent>
           </Tooltip>
         )}
       {
         isShowInfo
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.pluginInfo`, { ns: 'plugin' })}>
-            <ActionButton onClick={showPluginInfo}>
-              <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
-            </ActionButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton onClick={showPluginInfo}>
+                  <span className="i-ri-information-2-line h-4 w-4 text-text-tertiary" />
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>
+              {t(`${i18nPrefix}.pluginInfo`, { ns: 'plugin' })}
+            </TooltipContent>
           </Tooltip>
         )
       }
       {
         isShowDelete
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.delete`, { ns: 'plugin' })}>
-            <ActionButton
-              className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
-              onClick={showDeleteConfirm}
-            >
-              <RiDeleteBinLine className="h-4 w-4" />
-            </ActionButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton
+                  className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+                  onClick={showDeleteConfirm}
+                >
+                  <span className="i-ri-delete-bin-line h-4 w-4" />
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>
+              {t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
+            </TooltipContent>
           </Tooltip>
         )
       }
