@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from flask import Flask
 from sqlalchemy.orm import Session
+
 from models.enums import CustomizeTokenStrategy
 from models.model import App, RecommendedApp, Site
 from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
