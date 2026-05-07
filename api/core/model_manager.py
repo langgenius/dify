@@ -393,7 +393,7 @@ class ModelInstance:
             try:
                 from core.helper.credential_utils import check_credential_policy_compliance
 
-                if lb_config.credential_id:
+                if lb_config.credential_id and not dify_config.ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK:
                     check_credential_policy_compliance(
                         credential_id=lb_config.credential_id,
                         provider=self.provider,
@@ -632,7 +632,7 @@ class LBModelManager:
             try:
                 from core.helper.credential_utils import check_credential_policy_compliance
 
-                if config.credential_id:
+                if config.credential_id and not dify_config.ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK:
                     check_credential_policy_compliance(
                         credential_id=config.credential_id,
                         provider=self._provider,

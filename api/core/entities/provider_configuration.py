@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from constants import HIDDEN_VALUE
 from core.entities import PluginCredentialType
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
@@ -163,7 +164,7 @@ class ProviderConfiguration(BaseModel):
                 credentials = self.custom_configuration.provider.credentials
                 current_credential_id = self.custom_configuration.provider.current_credential_id
 
-            if current_credential_id:
+            if current_credential_id and not dify_config.ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK:
                 from core.helper.credential_utils import check_credential_policy_compliance
 
                 check_credential_policy_compliance(
@@ -173,7 +174,7 @@ class ProviderConfiguration(BaseModel):
                 )
             else:
                 # no current credential id, check all available credentials
-                if self.custom_configuration.provider:
+                if self.custom_configuration.provider and not dify_config.ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK:
                     for credential_configuration in self.custom_configuration.provider.available_credentials:
                         from core.helper.credential_utils import check_credential_policy_compliance
 

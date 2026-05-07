@@ -23,6 +23,12 @@ class EnterpriseFeatureConfig(BaseSettings):
         ge=1, description="Maximum timeout in seconds for enterprise requests", default=5
     )
 
+    ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK: bool = Field(
+        default=False,
+        description="When disabled, credential policy check is disabled at workflow run time."
+        "You can disable to gain performance by trading off consistency",
+    )
+
 
 class EnterpriseTelemetryConfig(BaseSettings):
     """
