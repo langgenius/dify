@@ -7,10 +7,10 @@ import { useState } from 'react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
-  ConfigurationMethodEnum,
-  FormTypeEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
+  ModelProviderConfigurationMethod,
+  ModelProviderFormType,
+  ProviderModelStatus,
+  ProviderModelType,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType } from '@/app/components/workflow/types'
 import { ProviderContext } from '@/context/provider-context'
@@ -78,16 +78,16 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
           en_US: 'GPT-4o',
           zh_Hans: 'GPT-4o',
         },
-        model_type: ModelTypeEnum.textGeneration,
-        fetch_from: ConfigurationMethodEnum.predefinedModel,
-        status: ModelStatusEnum.active,
+        model_type: ProviderModelType.textGeneration,
+        fetch_from: ModelProviderConfigurationMethod.predefinedModel,
+        status: ProviderModelStatus.active,
         model_properties: {
           mode: 'chat',
         },
         load_balancing_enabled: false,
         features: [],
       }],
-      status: ModelStatusEnum.active,
+      status: ProviderModelStatus.active,
     }],
     mutate: vi.fn(),
     isLoading: false,
@@ -281,7 +281,7 @@ vi.mock('@/utils/completion-params', () => ({
 
 const createSchemaItem = (
   variable: string,
-  type: FormTypeEnum,
+  type: ModelProviderFormType,
   overrides: Partial<CredentialFormSchema> = {},
 ): CredentialFormSchema => ({
   variable,
@@ -336,8 +336,8 @@ const renderInputVarList = (ui: React.ReactElement) => {
         zh_Hans: 'OpenAI',
       },
       preferred_provider_type: 'custom',
-      configurate_methods: [ConfigurationMethodEnum.predefinedModel],
-      supported_model_types: [ModelTypeEnum.textGeneration],
+      configurate_methods: [ModelProviderConfigurationMethod.predefinedModel],
+      supported_model_types: [ProviderModelType.textGeneration],
     }] as ReturnType<typeof createMockProviderContextValue>['modelProviders'],
   })
 
@@ -377,7 +377,7 @@ describe('InputVarList', () => {
     renderInputVarList(
       <TestHarness
         schema={[
-          createSchemaItem('query', FormTypeEnum.textInput, {
+          createSchemaItem('query', ModelProviderFormType.textInput, {
             required: true,
             tooltip: {
               en_US: 'query-tip',
@@ -412,8 +412,8 @@ describe('InputVarList', () => {
     renderInputVarList(
       <TestHarness
         schema={[
-          createSchemaItem('limit', FormTypeEnum.textNumber),
-          createSchemaItem('attachment', FormTypeEnum.file),
+          createSchemaItem('limit', ModelProviderFormType.textNumber),
+          createSchemaItem('attachment', ModelProviderFormType.file),
         ]}
         onOpen={onOpen}
         onChangeSpy={onChange}
@@ -450,8 +450,8 @@ describe('InputVarList', () => {
     renderInputVarList(
       <TestHarness
         schema={[
-          createSchemaItem('assistant', FormTypeEnum.appSelector),
-          createSchemaItem('model', FormTypeEnum.modelSelector, {
+          createSchemaItem('assistant', ModelProviderFormType.appSelector),
+          createSchemaItem('model', ModelProviderFormType.modelSelector, {
             scope: 'llm',
           }),
         ]}
@@ -491,8 +491,8 @@ describe('InputVarList', () => {
     })
 
     await user.click(screen.getByText('workflow:errorMsg.configureModel'))
-    await user.click(await screen.findByRole('button', { name: 'plugin.detailPanel.configureModel' }))
-    await user.click(await screen.findByRole('button', { name: /GPT-4o/i }))
+    await user.click(await screen.findByRole('combobox', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(await screen.findByRole('option', { name: /GPT-4o/i }))
 
     expect(onChange).toHaveBeenLastCalledWith({
       assistant: {
