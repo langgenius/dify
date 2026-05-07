@@ -124,6 +124,9 @@ class DatadogDataTrace(BaseTraceInstance):
         elif isinstance(trace_info, ToolTraceInfo):
             self.tool_trace(trace_info)
 
+        if self.trace_client.span_processor is not None:
+            self.trace_client.span_processor.force_flush(timeout_millis=10000)
+
     def workflow_trace(self, trace_info: WorkflowTraceInfo) -> None:
         try:
             attrs = span_builder.build_workflow_attrs(trace_info)
