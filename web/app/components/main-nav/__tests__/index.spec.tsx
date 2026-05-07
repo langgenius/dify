@@ -18,6 +18,8 @@ import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/s
 import { AppModeEnum } from '@/types/app'
 import MainNav from '../index'
 
+const activeEdgeClassName = 'before:pointer-events-none'
+
 const { mockToastSuccess } = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
 }))
@@ -207,7 +209,7 @@ describe('MainNav', () => {
 
     const datasetsLink = screen.getByRole('link', { name: /common.menus.datasets/ })
     expect(datasetsLink.className).toContain('bg-[linear-gradient(98.077deg')
-    expect(datasetsLink).toHaveClass('main-nav-active-edge')
+    expect(datasetsLink).toHaveClass(activeEdgeClassName)
   })
 
   it('applies the Figma glass active state to the Home route', () => {
@@ -220,7 +222,8 @@ describe('MainNav', () => {
     expect(homeLink).toHaveClass(
       'border-transparent',
       'backdrop-blur-[5px]',
-      'main-nav-active-edge',
+      activeEdgeClassName,
+      'after:border-components-main-nav-glass-edge-highlight-first',
     )
     expect(homeLink.className).toContain('bg-[linear-gradient(98.077deg')
   })
@@ -276,6 +279,26 @@ describe('MainNav', () => {
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('Beta Tool'))
     expect(mockPush).toHaveBeenCalledWith('/explore/installed/installed-2')
+  })
+
+  it('collapses and expands installed web apps from the section arrow', () => {
+    mockInstalledApps = [createInstalledApp()]
+
+    renderMainNav()
+
+    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
+    expect(webAppsButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Alpha App')).toBeInTheDocument()
+
+    fireEvent.click(webAppsButton)
+
+    expect(webAppsButton).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
+
+    fireEvent.click(webAppsButton)
+
+    expect(webAppsButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Alpha App')).toBeInTheDocument()
   })
 
   it('updates pin status and reuses the existing delete confirmation for installed web apps', async () => {
