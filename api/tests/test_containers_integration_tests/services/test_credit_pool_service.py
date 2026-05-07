@@ -90,9 +90,7 @@ class TestCreditPoolService:
         pool = CreditPoolService.get_pool(tenant_id=tenant_id)
         assert pool.quota_used == credits_required
 
-    def test_check_and_deduct_credits_depletes_and_raises_when_insufficient(
-        self, db_session_with_containers: Session
-    ):
+    def test_check_and_deduct_credits_depletes_and_raises_when_insufficient(self, db_session_with_containers: Session):
         tenant_id = self._create_tenant_id()
         pool = CreditPoolService.create_default_pool(tenant_id)
         remaining = 5
