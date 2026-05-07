@@ -113,6 +113,7 @@ describe('DatasetCardTags', () => {
       const maskDiv = container.querySelector('.bg-tag-selector-mask-bg')
       expect(maskDiv).toBeInTheDocument()
       expect(maskDiv).toHaveClass('group-hover/tag-area:hidden')
+      expect(maskDiv).toHaveClass('group-focus-within/tag-area:hidden')
       expect(maskDiv).toHaveClass('group-hover:bg-tag-selector-mask-hover-bg')
     })
 
