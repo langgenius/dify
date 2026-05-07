@@ -27,7 +27,6 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
 
 - `no-restricted-imports` blocks all deprecated imports listed above.
 - The rule is enabled for normal source files (`.ts` / `.tsx`) and test files are excluded.
-- No source-file exceptions remain. Deprecated overlay imports must be migrated instead of suppressed.
 
 ## Migration phases
 
