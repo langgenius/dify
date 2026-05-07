@@ -1,3 +1,4 @@
+from models import App
 from unittest.mock import patch
 
 import pytest
@@ -90,7 +91,7 @@ class TestSavedMessageService:
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers: Session, app: Flask):
+    def _create_test_end_user(self, db_session_with_containers: Session, app: App):
         """
         Helper method to create a test end user for testing.
 
@@ -118,7 +119,7 @@ class TestSavedMessageService:
 
         return end_user
 
-    def _create_test_message(self, db_session_with_containers: Session, app: Flask, user):
+    def _create_test_message(self, db_session_with_containers: Session, app: App, user):
         """
         Helper method to create a test message for testing.
 
@@ -201,13 +202,13 @@ class TestSavedMessageService:
         saved_message1 = SavedMessage(
             app_id=app.id,
             message_id=message1.id,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
         saved_message2 = SavedMessage(
             app_id=app.id,
             message_id=message2.id,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
 
@@ -451,7 +452,7 @@ class TestSavedMessageService:
         saved_message = SavedMessage(
             app_id=app.id,
             message_id=message.id,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
 
@@ -542,7 +543,7 @@ class TestSavedMessageService:
         message = self._create_test_message(db_session_with_containers, app, account)
 
         # Pre-create a saved message
-        saved = SavedMessage(app_id=app.id, message_id=message.id, created_by_role="account", created_by=account.id)
+        saved = SavedMessage(app_id=app.id, message_id=message.id, created_by_role=CreatorUserRole.ACCOUNT, created_by=account.id)
         db_session_with_containers.add(saved)
         db_session_with_containers.commit()
 
@@ -573,7 +574,7 @@ class TestSavedMessageService:
         end_user = self._create_test_end_user(db_session_with_containers, app)
         message = self._create_test_message(db_session_with_containers, app, end_user)
 
-        saved = SavedMessage(app_id=app.id, message_id=message.id, created_by_role="end_user", created_by=end_user.id)
+        saved = SavedMessage(app_id=app.id, message_id=message.id, created_by_role=CreatorUserRole.END_USER, created_by=end_user.id)
         db_session_with_containers.add(saved)
         db_session_with_containers.commit()
 
@@ -598,10 +599,10 @@ class TestSavedMessageService:
 
         # Both users save the same message
         saved_account = SavedMessage(
-            app_id=app.id, message_id=message.id, created_by_role="account", created_by=account1.id
+            app_id=app.id, message_id=message.id, created_by_role=CreatorUserRole.ACCOUNT, created_by=account1.id
         )
         saved_end_user = SavedMessage(
-            app_id=app.id, message_id=message.id, created_by_role="end_user", created_by=end_user.id
+            app_id=app.id, message_id=message.id, created_by_role=CreatorUserRole.END_USER, created_by=end_user.id
         )
         db_session_with_containers.add_all([saved_account, saved_end_user])
         db_session_with_containers.commit()
