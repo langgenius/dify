@@ -6,7 +6,7 @@ from functools import wraps
 from typing import Any, TypedDict
 
 from flask import Response, request
-from flask_restx import Resource, fields, marshal, marshal_with
+from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
