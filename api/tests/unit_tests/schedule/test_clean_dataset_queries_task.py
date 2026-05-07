@@ -58,8 +58,8 @@ class TestCleanDatasetQueriesTask:
     @patch("schedule.clean_dataset_queries_task.db")
     @patch("schedule.clean_dataset_queries_task.dify_config")
     def test_lock_held_skips(self, mock_cfg, mock_db, mock_redis):
-        """When the Redis lock is already held, the task raises LockError and
-        makes no database calls."""
+        """When the Redis lock is already held, the task exits cleanly without
+        database calls or raising an error."""
         mock_cfg.CLEAN_DATASET_QUERIES_RETENTION_DAYS = 60
         mock_cfg.PLAN_SANDBOX_CLEAN_DAY_SETTING = 30
 
@@ -71,8 +71,7 @@ class TestCleanDatasetQueriesTask:
         session = MagicMock()
         mock_db.session = session
 
-        with pytest.raises(LockError):
-            clean_dataset_queries_task()
+        clean_dataset_queries_task()
 
         session.scalars.assert_not_called()
         session.execute.assert_not_called()
