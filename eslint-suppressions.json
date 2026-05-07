@@ -1029,14 +1029,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/form/components/base/base-field.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/base/form/components/base/base-form.tsx": {
     "ts/no-explicit-any": {
       "count": 6
@@ -2858,16 +2850,6 @@
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-common-modal-state.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/hooks/use-oauth-client-state.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/create/index.tsx": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 3
     }
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/types.ts": {
