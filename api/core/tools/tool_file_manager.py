@@ -14,6 +14,7 @@ from sqlalchemy import select
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.helper import ssrf_proxy
+from core.tools.signature import require_files_base_url
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_storage import storage
 from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
@@ -45,7 +46,7 @@ class ToolFileManager:
         sign file to get a temporary url for plugin access
         """
         # Use internal URL for plugin/tool file access in Docker environments
-        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+        base_url = require_files_base_url(for_external=False)
         file_preview_url = f"{base_url}/files/tools/{tool_file_id}{extension}"
 
         timestamp = str(int(time.time()))

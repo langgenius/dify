@@ -13,7 +13,7 @@ from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
 from core.db.session_factory import session_factory
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
-from core.tools.signature import sign_tool_file
+from core.tools.signature import require_files_base_url, sign_tool_file
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import FileTransferMethod
@@ -122,9 +122,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
 
     @staticmethod
     def _base_url(*, for_external: bool) -> str:
-        if for_external:
-            return dify_config.FILES_URL
-        return dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+        return require_files_base_url(for_external=for_external)
 
     @staticmethod
     def _secret_key() -> bytes:

@@ -106,6 +106,27 @@ def reset_secret_key():
         dify_config.SECRET_KEY = original
 
 
+@pytest.fixture(autouse=True)
+def _default_files_url():
+    """Provide a valid FILES_URL default so file URL signing works in unit tests.
+
+    Tests that need to assert behavior when FILES_URL is missing can override
+    this via monkeypatch on ``dify_config.FILES_URL`` / ``INTERNAL_FILES_URL``.
+    """
+
+    from configs import dify_config
+
+    original_files_url = dify_config.FILES_URL
+    original_internal = dify_config.INTERNAL_FILES_URL
+    if not dify_config.FILES_URL:
+        dify_config.FILES_URL = "http://localhost:5001"
+    try:
+        yield
+    finally:
+        dify_config.FILES_URL = original_files_url
+        dify_config.INTERNAL_FILES_URL = original_internal
+
+
 @pytest.fixture(scope="session")
 def _unit_test_engine():
     engine = create_engine("sqlite:///:memory:")
