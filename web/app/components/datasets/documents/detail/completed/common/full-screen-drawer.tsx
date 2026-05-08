@@ -3,27 +3,23 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { CompletedDrawer } from './drawer'
 
-type IFullScreenDrawerProps = {
-  isOpen: boolean
+type DocumentDetailDrawerProps = {
+  open: boolean
   onClose?: () => void
   fullScreen: boolean
-  showOverlay?: boolean
-  needCheckChunks?: boolean
   modal?: boolean
 }
 
-const FullScreenDrawer = ({
-  isOpen,
+export function DocumentDetailDrawer({
+  open,
   onClose = noop,
   fullScreen,
   children,
-  showOverlay = true,
-  needCheckChunks = false,
   modal = false,
-}: PropsWithChildren<IFullScreenDrawerProps>) => {
+}: PropsWithChildren<DocumentDetailDrawerProps>) {
   return (
     <CompletedDrawer
-      open={isOpen}
+      open={open}
       onClose={onClose}
       panelClassName={cn(
         fullScreen
@@ -34,13 +30,9 @@ const FullScreenDrawer = ({
         'bg-components-panel-bg',
         !fullScreen && 'rounded-xl border-[0.5px] border-components-panel-border',
       )}
-      showOverlay={showOverlay}
-      needCheckChunks={needCheckChunks}
       modal={modal}
     >
       {children}
     </CompletedDrawer>
   )
 }
-
-export default FullScreenDrawer

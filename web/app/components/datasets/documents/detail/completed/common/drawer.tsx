@@ -8,8 +8,6 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { useEffect, useRef } from 'react'
-import { useSegmentListContext } from '..'
 
 type DrawerSide = 'right' | 'left' | 'bottom' | 'top'
 type DrawerSwipeDirection = 'right' | 'left' | 'down' | 'up'
@@ -19,11 +17,9 @@ type CompletedDrawerProps = {
   open: boolean
   onClose: () => void
   side?: DrawerSide
-  showOverlay?: boolean
-  modal?: boolean
   panelClassName?: string
   panelContentClassName?: string
-  needCheckChunks?: boolean
+  modal?: boolean
 }
 
 const SIDE_TO_SWIPE_DIRECTION: Record<DrawerSide, DrawerSwipeDirection> = {
@@ -33,7 +29,7 @@ const SIDE_TO_SWIPE_DIRECTION: Record<DrawerSide, DrawerSwipeDirection> = {
   top: 'up',
 }
 
-const DRAWER_SHELL_CLASS_NAME = [
+const DRAWER_POPUP_CLASS_NAME = [
   'pointer-events-auto overflow-visible border-0 bg-transparent shadow-none',
   'data-[swipe-direction=right]:h-screen data-[swipe-direction=right]:max-w-none data-[swipe-direction=right]:rounded-none data-[swipe-direction=right]:border-0',
   'data-[swipe-direction=left]:h-screen data-[swipe-direction=left]:max-w-none data-[swipe-direction=left]:rounded-none data-[swipe-direction=left]:border-0',
@@ -41,73 +37,15 @@ const DRAWER_SHELL_CLASS_NAME = [
   'data-[swipe-direction=up]:max-h-none data-[swipe-direction=up]:rounded-none data-[swipe-direction=up]:border-0',
 ].join(' ')
 
-function containsTarget(selector: string, target: Node | null): boolean {
-  const elements = document.querySelectorAll(selector)
-  return Array.from(elements).some(el => el?.contains(target))
-}
-
-function shouldReopenChunkDetail(
-  isClickOnChunk: boolean,
-  isClickOnChildChunk: boolean,
-  segmentModalOpen: boolean,
-  childChunkModalOpen: boolean,
-): boolean {
-  if (segmentModalOpen && isClickOnChildChunk)
-    return true
-  if (childChunkModalOpen && isClickOnChunk && !isClickOnChildChunk)
-    return true
-  return !isClickOnChunk && !isClickOnChildChunk
-}
-
 export function CompletedDrawer({
   open,
   onClose,
   side = 'right',
-  showOverlay = true,
-  modal = false,
-  needCheckChunks = false,
   children,
   panelClassName,
   panelContentClassName,
+  modal = false,
 }: PropsWithChildren<CompletedDrawerProps>) {
-  const panelContentRef = useRef<HTMLDivElement>(null)
-  const currSegment = useSegmentListContext(s => s.currSegment)
-  const currChildChunk = useSegmentListContext(s => s.currChildChunk)
-
-  useEffect(() => {
-    if (!open || modal)
-      return
-
-    const shouldCloseDrawer = (target: Node | null) => {
-      const panelContent = panelContentRef.current
-      if (!panelContent || !target)
-        return false
-
-      if (panelContent.contains(target))
-        return false
-
-      if (containsTarget('.image-previewer', target))
-        return false
-
-      if (!needCheckChunks)
-        return true
-
-      const isClickOnChunk = containsTarget('.chunk-card', target)
-      const isClickOnChildChunk = containsTarget('.child-chunk', target)
-      return shouldReopenChunkDetail(isClickOnChunk, isClickOnChildChunk, currSegment.showModal, currChildChunk.showModal)
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (shouldCloseDrawer(event.target as Node | null))
-        queueMicrotask(onClose)
-    }
-
-    window.addEventListener('pointerdown', handlePointerDown, { capture: true })
-    return () => {
-      window.removeEventListener('pointerdown', handlePointerDown, { capture: true })
-    }
-  }, [currChildChunk.showModal, currSegment.showModal, modal, needCheckChunks, onClose, open])
-
   const handleOpenChange: DrawerOpenChange = (nextOpen, eventDetails) => {
     if (nextOpen)
       return
@@ -130,22 +68,17 @@ export function CompletedDrawer({
       onOpenChange={handleOpenChange}
     >
       <DrawerPortal>
-        {showOverlay && (
+        {modal && (
           <DrawerBackdrop
-            onClick={modal ? onClose : undefined}
-            className={cn(
-              'bg-black/30',
-              !modal && 'pointer-events-none',
-            )}
+            onClick={onClose}
           />
         )}
         <DrawerViewport className="pointer-events-none">
           <DrawerPopup
             aria-modal={modal ? 'true' : 'false'}
-            className={cn(DRAWER_SHELL_CLASS_NAME, panelClassName)}
+            className={cn(DRAWER_POPUP_CLASS_NAME, panelClassName)}
           >
             <DrawerContent
-              ref={panelContentRef}
               className={cn('flex grow flex-col overflow-visible p-0 pb-0', panelContentClassName)}
             >
               {children}

@@ -19,7 +19,6 @@ describe('useModalState', () => {
     expect(result.current.currSegment.showModal).toBe(false)
     expect(result.current.currChildChunk.showModal).toBe(false)
     expect(result.current.showNewChildSegmentModal).toBe(false)
-    expect(result.current.isRegenerationModalOpen).toBe(false)
     expect(result.current.fullScreen).toBe(false)
     expect(result.current.isCollapsed).toBe(true)
   })
@@ -133,14 +132,5 @@ describe('useModalState', () => {
       result.current.toggleCollapsed()
     })
     expect(result.current.isCollapsed).toBe(true)
-  })
-
-  it('should set regeneration modal state', () => {
-    const { result } = renderUseModalState()
-
-    act(() => {
-      result.current.setIsRegenerationModalOpen(true)
-    })
-    expect(result.current.isRegenerationModalOpen).toBe(true)
   })
 })
