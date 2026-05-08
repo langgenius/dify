@@ -53,7 +53,7 @@ const MainNav = ({
       activeIcon: 'i-custom-vender-main-nav-knowledge-active',
     },
     {
-      href: '/tools',
+      href: '/tools?section=provider',
       label: t('mainNav.integrations', { ns: 'common' }),
       active: path => path.startsWith('/tools'),
       icon: 'i-custom-vender-main-nav-integrations',

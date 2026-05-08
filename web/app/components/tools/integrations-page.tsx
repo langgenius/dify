@@ -129,7 +129,7 @@ export default function IntegrationsPage() {
   const { t } = useTranslation()
   const [sectionParam] = useQueryState('section', parseAsIntegrationSection)
   const [categoryParam] = useQueryState('category', parseAsToolCategory)
-  const section = sectionParam ?? sectionByToolCategory[categoryParam ?? 'builtin']
+  const section = sectionParam ?? (categoryParam ? sectionByToolCategory[categoryParam] : 'provider')
   const [providerSearchText, setProviderSearchText] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const providerItem = useMemo<NavItem>(() => ({

@@ -45,6 +45,13 @@ describe('IntegrationsPage', () => {
     vi.clearAllMocks()
   })
 
+  it('defaults to the model provider section when no query is provided', () => {
+    renderIntegrationsPage()
+
+    expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
+    expect(screen.getAllByText('common.settings.provider')).toHaveLength(2)
+  })
+
   it('renders the model provider section from the section query', () => {
     renderIntegrationsPage({ section: 'provider' })
 

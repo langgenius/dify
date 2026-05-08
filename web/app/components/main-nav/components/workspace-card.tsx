@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -113,34 +114,36 @@ const WorkspaceCard = () => {
           </div>
           <span aria-hidden className="i-ri-expand-up-down-line h-4 w-4 shrink-0 text-text-tertiary" />
         </button>
-        <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
-          <button
-            type="button"
-            className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary"
-            aria-label={t('mainNav.workspace.credits', { ns: 'common', count: formattedCredits })}
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
-            }}
-          >
-            <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
-            <span className="truncate system-xs-medium" title={formattedCredits}>{formattedCredits}</span>
-            <span className="shrink-0 system-xs-regular">{t('mainNav.workspace.creditsUnit', { ns: 'common' })}</span>
-          </button>
-          {enableBilling && (
+        {IS_CLOUD_EDITION && (
+          <div className="flex items-center justify-center gap-1.5 border-t border-divider-subtle py-2 pr-2.5 pl-2">
             <button
               type="button"
-              className="max-w-[120px] shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover"
-              title={t('upgradeBtn.encourageShort', { ns: 'billing' })}
+              className="flex min-w-0 flex-1 items-center gap-0.5 px-1 text-left text-text-tertiary transition-colors hover:text-text-secondary"
+              aria-label={t('mainNav.workspace.credits', { ns: 'common', count: formattedCredits })}
               onClick={(e) => {
                 e.stopPropagation()
-                handlePlanClick()
+                setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
               }}
             >
-              {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+              <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
+              <span className="truncate system-xs-medium" title={formattedCredits}>{formattedCredits}</span>
+              <span className="shrink-0 system-xs-regular">{t('mainNav.workspace.creditsUnit', { ns: 'common' })}</span>
             </button>
-          )}
-        </div>
+            {enableBilling && (
+              <button
+                type="button"
+                className="max-w-[120px] shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover"
+                title={t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePlanClick()
+                }}
+              >
+                {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+              </button>
+            )}
+          </div>
+        )}
       </div>
       {open && (
         <div className="absolute top-0 right-0 left-0 z-20 flex flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
