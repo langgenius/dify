@@ -569,13 +569,13 @@ class OpsTraceManager:
         db.session.commit()
 
     @classmethod
-    def get_app_tracing_config(cls, app_id: str):
+    def get_app_tracing_config(cls, app_id: str, session: Session):
         """
         Get app tracing config
         :param app_id: app id
         :return:
         """
-        app: App | None = db.session.get(App, app_id)
+        app: App | None = session.get(App, app_id)
         if not app:
             raise ValueError("App not found")
         if not app.tracing:

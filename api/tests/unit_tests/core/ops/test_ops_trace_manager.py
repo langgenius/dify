@@ -407,18 +407,18 @@ def test_update_app_tracing_config_success(mock_db):
 def test_get_app_tracing_config_errors_when_missing(mock_db):
     mock_db.get.return_value = None
     with pytest.raises(ValueError, match="App not found"):
-        OpsTraceManager.get_app_tracing_config("app")
+        OpsTraceManager.get_app_tracing_config("app", mock_db)
 
 
 def test_get_app_tracing_config_returns_defaults(mock_db):
     mock_db.get.return_value = SimpleNamespace(tracing=None)
-    assert OpsTraceManager.get_app_tracing_config("app-id") == {"enabled": False, "tracing_provider": None}
+    assert OpsTraceManager.get_app_tracing_config("app-id", mock_db) == {"enabled": False, "tracing_provider": None}
 
 
 def test_get_app_tracing_config_returns_payload(mock_db):
     payload = {"enabled": True, "tracing_provider": "dummy"}
     mock_db.get.return_value = SimpleNamespace(tracing=json.dumps(payload))
-    assert OpsTraceManager.get_app_tracing_config("app-id") == payload
+    assert OpsTraceManager.get_app_tracing_config("app-id", mock_db) == payload
 
 
 def test_check_and_project_helpers(monkeypatch):

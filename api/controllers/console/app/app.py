@@ -1,3 +1,4 @@
+from core.db.session_factory import session_factory
 import logging
 import re
 import uuid
@@ -841,9 +842,10 @@ class AppTraceApi(Resource):
     @account_initialization_required
     def get(self, app_id):
         """Get app trace"""
-        app_trace_config = OpsTraceManager.get_app_tracing_config(app_id=app_id)
+        with session_factory.create_session() as session:
+            app_trace_config = OpsTraceManager.get_app_tracing_config(app_id, session)
 
-        return app_trace_config
+            return app_trace_config
 
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
