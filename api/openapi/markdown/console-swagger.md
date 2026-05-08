@@ -13277,7 +13277,7 @@ Default value types for form inputs.
 | app |  |  | No |
 | app_id | string |  | Yes |
 | can_trial |  |  | No |
-| category |  |  | No |
+| categories | [ string ] |  | No |
 | copyright |  |  | No |
 | custom_disclaimer |  |  | No |
 | description |  |  | No |
