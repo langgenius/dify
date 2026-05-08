@@ -529,11 +529,9 @@ class BaseAgentRunner(AppRunner):
         image_detail_config = file_extra_config.image_config.detail if file_extra_config.image_config else None
         image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
 
-        # History files were validated on upload; replaying does not re-validate.
         file_objs = file_factory.build_from_message_files(
             message_files=files,
             tenant_id=self.tenant_id,
-            config=None,
             access_controller=_file_access_controller,
         )
         if not file_objs:

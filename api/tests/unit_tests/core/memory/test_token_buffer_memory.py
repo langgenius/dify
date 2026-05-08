@@ -198,10 +198,11 @@ class TestBuildPromptMessageWithFiles:
         assert isinstance(result.content[-1], TextPromptMessageContent)
         assert result.content[-1].data == "user text"
 
-    def test_replay_skips_revalidation_by_passing_config_none(self):
+    def test_replay_does_not_pass_config_to_file_factory(self):
         """Replay contract: history files were validated on upload, so this
-        path must call build_from_message_file with config=None. Reverting
-        this would re-trigger ENG-244 whenever workflow config drifts."""
+        path must not forward a FileUploadConfig. The factory's signature
+        no longer accepts ``config``; this test guards against a future
+        regression that re-introduces it."""
         conv = _make_conversation(AppMode.CHAT)
         mem = TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
 
@@ -237,7 +238,7 @@ class TestBuildPromptMessageWithFiles:
             )
 
         mock_build.assert_called_once()
-        assert mock_build.call_args.kwargs["config"] is None
+        assert "config" not in mock_build.call_args.kwargs
 
     @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
     def test_chat_mode_with_files_assistant_message(self, mode):
