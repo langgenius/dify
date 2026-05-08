@@ -3425,8 +3425,8 @@ Delete a workflow variable
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
+| app_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -3464,8 +3464,8 @@ Update a workflow variable
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | payload | body |  | Yes | [WorkflowDraftVariableUpdatePayload](#workflowdraftvariableupdatepayload) |
-| app_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
+| app_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -3569,8 +3569,8 @@ Delete workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
 | workflow_id | path |  | Yes | string |
+| app_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -10262,7 +10262,7 @@ Get banner list
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string |  | No |
 | created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel120](#_anonymousinlinemodel120) |  | No |
+| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | object |  | No |
@@ -10278,7 +10278,7 @@ Get banner list
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel122](#_anonymousinlinemodel122) ] |  | No |
+| data | [ [_AnonymousInlineModel_f22974b53f29](#_anonymousinlinemodel_f22974b53f29) ] |  | No |
 | has_more | boolean |  | No |
 | limit | integer |  | No |
 
@@ -11203,7 +11203,7 @@ Condition detail
 | is_bound | boolean |  | No |
 | link | string |  | No |
 | provider | string |  | No |
-| source_info | [_AnonymousInlineModel137](#_anonymousinlinemodel137) |  | No |
+| source_info | [_AnonymousInlineModel_23c2b671ba3a](#_anonymousinlinemodel_23c2b671ba3a) |  | No |
 
 #### DataSourceIntegrateIcon
 
@@ -11217,13 +11217,13 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel138](#_anonymousinlinemodel138) ] |  | No |
+| data | [ [_AnonymousInlineModel_25862ce5f48a](#_anonymousinlinemodel_25862ce5f48a) ] |  | No |
 
 #### DataSourceIntegratePage
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| page_icon | [_AnonymousInlineModel135](#_anonymousinlinemodel135) |  | No |
+| page_icon | [_AnonymousInlineModel_a0b20ccbcc30](#_anonymousinlinemodel_a0b20ccbcc30) |  | No |
 | page_id | string |  | No |
 | page_name | string |  | No |
 | parent_id | string |  | No |
@@ -11233,7 +11233,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| pages | [ [_AnonymousInlineModel136](#_anonymousinlinemodel136) ] |  | No |
+| pages | [ [_AnonymousInlineModel_2c596168c3fc](#_anonymousinlinemodel_2c596168c3fc) ] |  | No |
 | total | integer |  | No |
 | workspace_icon | string |  | No |
 | workspace_id | string |  | No |
@@ -11266,7 +11266,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | content | string |  | No |
 | content_type | string |  | No |
-| file_info | [_AnonymousInlineModel151](#_anonymousinlinemodel151) |  | No |
+| file_info | [_AnonymousInlineModel_b167c49063fd](#_anonymousinlinemodel_b167c49063fd) |  | No |
 
 #### DatasetCreatePayload
 
@@ -11293,15 +11293,15 @@ Condition detail
 | data_source_type | string |  | No |
 | description | string |  | No |
 | doc_form | string |  | No |
-| doc_metadata | [ [_AnonymousInlineModel149](#_anonymousinlinemodel149) ] |  | No |
+| doc_metadata | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
 | document_count | integer |  | No |
 | embedding_available | boolean |  | No |
 | embedding_model | string |  | No |
 | embedding_model_provider | string |  | No |
 | enable_api | boolean |  | No |
-| external_knowledge_info | [_AnonymousInlineModel147](#_anonymousinlinemodel147) |  | No |
-| external_retrieval_model | [_AnonymousInlineModel148](#_anonymousinlinemodel148) |  | No |
-| icon_info | [_AnonymousInlineModel150](#_anonymousinlinemodel150) |  | No |
+| external_knowledge_info | [_AnonymousInlineModel_e4e7d3bab76c](#_anonymousinlinemodel_e4e7d3bab76c) |  | No |
+| external_retrieval_model | [_AnonymousInlineModel_c590c00ae173](#_anonymousinlinemodel_c590c00ae173) |  | No |
+| icon_info | [_AnonymousInlineModel_f167e7269491](#_anonymousinlinemodel_f167e7269491) |  | No |
 | id | string |  | No |
 | indexing_technique | string |  | No |
 | is_multimodal | boolean |  | No |
@@ -11310,9 +11310,9 @@ Condition detail
 | permission | string |  | No |
 | pipeline_id | string |  | No |
 | provider | string |  | No |
-| retrieval_model_dict | [_AnonymousInlineModel145](#_anonymousinlinemodel145) |  | No |
+| retrieval_model_dict | [_AnonymousInlineModel_b60e909e5cf7](#_anonymousinlinemodel_b60e909e5cf7) |  | No |
 | runtime_mode | string |  | No |
-| summary_index_setting | [_AnonymousInlineModel146](#_anonymousinlinemodel146) |  | No |
+| summary_index_setting | [_AnonymousInlineModel_b1954337d565](#_anonymousinlinemodel_b1954337d565) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | total_available_documents | integer |  | No |
 | total_documents | integer |  | No |
@@ -11368,7 +11368,7 @@ Condition detail
 | created_by | string |  | No |
 | created_by_role | string |  | No |
 | id | string |  | No |
-| queries | [_AnonymousInlineModel152](#_anonymousinlinemodel152) |  | No |
+| queries | [_AnonymousInlineModel_2127372e7d5f](#_anonymousinlinemodel_2127372e7d5f) |  | No |
 | source | string |  | No |
 | source_app_id | string |  | No |
 
@@ -11398,12 +11398,12 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | reranking_enable | boolean |  | No |
 | reranking_mode | string |  | No |
-| reranking_model | [_AnonymousInlineModel143](#_anonymousinlinemodel143) |  | No |
+| reranking_model | [_AnonymousInlineModel_b1d3cff1a2a3](#_anonymousinlinemodel_b1d3cff1a2a3) |  | No |
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | No |
 | search_method | string |  | No |
 | top_k | integer |  | No |
-| weights | [_AnonymousInlineModel144](#_anonymousinlinemodel144) |  | No |
+| weights | [_AnonymousInlineModel_acd4ec746615](#_anonymousinlinemodel_acd4ec746615) |  | No |
 
 #### DatasetUpdatePayload
 
@@ -11436,8 +11436,8 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel141](#_anonymousinlinemodel141) |  | No |
-| vector_setting | [_AnonymousInlineModel142](#_anonymousinlinemodel142) |  | No |
+| keyword_setting | [_AnonymousInlineModel_9e0a0acff315](#_anonymousinlinemodel_9e0a0acff315) |  | No |
+| vector_setting | [_AnonymousInlineModel_1172d50d45de](#_anonymousinlinemodel_1172d50d45de) |  | No |
 | weight_type | string |  | No |
 
 #### DatasourceCredentialDeletePayload
@@ -12722,14 +12722,14 @@ Enum class for model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| notion_info | [ [_AnonymousInlineModel140](#_anonymousinlinemodel140) ] |  | No |
+| notion_info | [ [_AnonymousInlineModel_6e92789928f6](#_anonymousinlinemodel_6e92789928f6) ] |  | No |
 
 #### NotionIntegratePage
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | is_bound | boolean |  | No |
-| page_icon | [_AnonymousInlineModel135](#_anonymousinlinemodel135) |  | No |
+| page_icon | [_AnonymousInlineModel_a0b20ccbcc30](#_anonymousinlinemodel_a0b20ccbcc30) |  | No |
 | page_id | string |  | No |
 | page_name | string |  | No |
 | parent_id | string |  | No |
@@ -12739,7 +12739,7 @@ Enum class for model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| pages | [ [_AnonymousInlineModel139](#_anonymousinlinemodel139) ] |  | No |
+| pages | [ [_AnonymousInlineModel_8b48161825a0](#_anonymousinlinemodel_8b48161825a0) ] |  | No |
 | workspace_icon | string |  | No |
 | workspace_id | string |  | No |
 | workspace_name | string |  | No |
@@ -13222,7 +13222,7 @@ Default value types for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| leaked_dependencies | [ [_AnonymousInlineModel154](#_anonymousinlinemodel154) ] |  | No |
+| leaked_dependencies | [ [_AnonymousInlineModel_08ac6c00da3e](#_anonymousinlinemodel_08ac6c00da3e) ] |  | No |
 
 #### RagPipelineImportPayload
 
@@ -13295,7 +13295,7 @@ Default value types for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel153](#_anonymousinlinemodel153) ] |  | No |
+| data | [ [_AnonymousInlineModel_9fd6e9c31846](#_anonymousinlinemodel_9fd6e9c31846) ] |  | No |
 | total | integer |  | No |
 
 #### RerankingModel
@@ -13686,7 +13686,7 @@ Tag type
 | api_base_url | string |  | No |
 | created_at | object |  | No |
 | created_by | string |  | No |
-| deleted_tools | [ [_AnonymousInlineModel157](#_anonymousinlinemodel157) ] |  | No |
+| deleted_tools | [ [_AnonymousInlineModel_dc3986f5aace](#_anonymousinlinemodel_dc3986f5aace) ] |  | No |
 | description | string |  | No |
 | enable_api | boolean |  | No |
 | enable_site | boolean |  | No |
@@ -13697,14 +13697,14 @@ Tag type
 | id | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | No |
-| model_config | [_AnonymousInlineModel155](#_anonymousinlinemodel155) |  | No |
+| model_config | [_AnonymousInlineModel_077bfed82248](#_anonymousinlinemodel_077bfed82248) |  | No |
 | name | string |  | No |
-| site | [_AnonymousInlineModel159](#_anonymousinlinemodel159) |  | No |
-| tags | [ [_AnonymousInlineModel158](#_anonymousinlinemodel158) ] |  | No |
+| site | [_AnonymousInlineModel_6aef1ef456af](#_anonymousinlinemodel_6aef1ef456af) |  | No |
+| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
 | updated_at | object |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
-| workflow | [_AnonymousInlineModel156](#_anonymousinlinemodel156) |  | No |
+| workflow | [_AnonymousInlineModel_1c1826a63eef](#_anonymousinlinemodel_1c1826a63eef) |  | No |
 
 #### TrialAppModelConfig
 
@@ -13813,7 +13813,7 @@ Tag type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel160](#_anonymousinlinemodel160) ] |  | No |
+| conversation_variables | [ [_AnonymousInlineModel_6dfb60503932](#_anonymousinlinemodel_6dfb60503932) ] |  | No |
 | created_at | object |  | No |
 | created_by | [SimpleAccount](#simpleaccount) |  | No |
 | environment_variables | [ object ] |  | No |
@@ -13823,7 +13823,7 @@ Tag type
 | id | string |  | No |
 | marked_comment | string |  | No |
 | marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel161](#_anonymousinlinemodel161) ] |  | No |
+| rag_pipeline_variables | [ [_AnonymousInlineModel_e05256314b57](#_anonymousinlinemodel_e05256314b57) ] |  | No |
 | tool_published | boolean |  | No |
 | updated_at | object |  | No |
 | updated_by | [SimpleAccount](#simpleaccount) |  | No |
@@ -13996,9 +13996,9 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel126](#_anonymousinlinemodel126) ] |  | No |
+| conversation_variables | [ [_AnonymousInlineModel_6dfb60503932](#_anonymousinlinemodel_6dfb60503932) ] |  | No |
 | created_at | object |  | No |
-| created_by | [_AnonymousInlineModel125](#_anonymousinlinemodel125) |  | No |
+| created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
 | environment_variables | [ object ] |  | No |
 | features | object |  | No |
 | graph | object |  | No |
@@ -14006,10 +14006,10 @@ User action configuration.
 | id | string |  | No |
 | marked_comment | string |  | No |
 | marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel127](#_anonymousinlinemodel127) ] |  | No |
+| rag_pipeline_variables | [ [_AnonymousInlineModel_e05256314b57](#_anonymousinlinemodel_e05256314b57) ] |  | No |
 | tool_published | boolean |  | No |
 | updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel125](#_anonymousinlinemodel125) |  | No |
+| updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
 | version | string |  | No |
 
 #### WorkflowAppLogPaginationResponse
@@ -14077,17 +14077,17 @@ User action configuration.
 | content | string |  | No |
 | created_at | object |  | No |
 | created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel129](#_anonymousinlinemodel129) |  | No |
+| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
 | id | string |  | No |
 | mention_count | integer |  | No |
-| participants | [ [_AnonymousInlineModel129](#_anonymousinlinemodel129) ] |  | No |
+| participants | [ [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) ] |  | No |
 | position_x | number |  | No |
 | position_y | number |  | No |
 | reply_count | integer |  | No |
 | resolved | boolean |  | No |
 | resolved_at | object |  | No |
 | resolved_by | string |  | No |
-| resolved_by_account | [_AnonymousInlineModel129](#_anonymousinlinemodel129) |  | No |
+| resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
 | updated_at | object |  | No |
 
 #### WorkflowCommentCreate
@@ -14113,16 +14113,16 @@ User action configuration.
 | content | string |  | No |
 | created_at | object |  | No |
 | created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel129](#_anonymousinlinemodel129) |  | No |
+| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
 | id | string |  | No |
-| mentions | [ [_AnonymousInlineModel131](#_anonymousinlinemodel131) ] |  | No |
+| mentions | [ [_AnonymousInlineModel_f7ff64cce858](#_anonymousinlinemodel_f7ff64cce858) ] |  | No |
 | position_x | number |  | No |
 | position_y | number |  | No |
-| replies | [ [_AnonymousInlineModel130](#_anonymousinlinemodel130) ] |  | No |
+| replies | [ [_AnonymousInlineModel_55c39c6a4b9e](#_anonymousinlinemodel_55c39c6a4b9e) ] |  | No |
 | resolved | boolean |  | No |
 | resolved_at | object |  | No |
 | resolved_by | string |  | No |
-| resolved_by_account | [_AnonymousInlineModel129](#_anonymousinlinemodel129) |  | No |
+| resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
 | updated_at | object |  | No |
 
 #### WorkflowCommentMentionUsersPayload
@@ -14194,7 +14194,7 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel132](#_anonymousinlinemodel132) ] |  | No |
+| items | [ [_AnonymousInlineModel_6fa66c1a5667](#_anonymousinlinemodel_6fa66c1a5667) ] |  | No |
 
 #### WorkflowDraftVariable
 
@@ -14216,7 +14216,7 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel134](#_anonymousinlinemodel134) ] |  | No |
+| items | [ [_AnonymousInlineModel_fb9665315d70](#_anonymousinlinemodel_fb9665315d70) ] |  | No |
 
 #### WorkflowDraftVariableListQuery
 
@@ -14229,7 +14229,7 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel133](#_anonymousinlinemodel133) ] |  | No |
+| items | [ [_AnonymousInlineModel_b81fc757b1e7](#_anonymousinlinemodel_b81fc757b1e7) ] |  | No |
 | total | object |  | No |
 
 #### WorkflowDraftVariablePatchPayload
@@ -14292,7 +14292,7 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | has_more | boolean |  | No |
-| items | [ [_AnonymousInlineModel128](#_anonymousinlinemodel128) ] |  | No |
+| items | [ [_AnonymousInlineModel_62ae0d5352a8](#_anonymousinlinemodel_62ae0d5352a8) ] |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
 
@@ -14330,8 +14330,8 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel120](#_anonymousinlinemodel120) |  | No |
-| created_by_end_user | [_AnonymousInlineModel121](#_anonymousinlinemodel121) |  | No |
+| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| created_by_end_user | [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) |  | No |
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
 | error | string |  | No |
@@ -14369,7 +14369,7 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel120](#_anonymousinlinemodel120) |  | No |
+| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | object |  | No |
@@ -14410,8 +14410,8 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel120](#_anonymousinlinemodel120) |  | No |
-| created_by_end_user | [_AnonymousInlineModel121](#_anonymousinlinemodel121) |  | No |
+| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| created_by_end_user | [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) |  | No |
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
 | error | string |  | No |
@@ -14436,13 +14436,13 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel124](#_anonymousinlinemodel124) ] |  | No |
+| data | [ [_AnonymousInlineModel_5c48729794fa](#_anonymousinlinemodel_5c48729794fa) ] |  | No |
 
 #### WorkflowRunPagination
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel123](#_anonymousinlinemodel123) ] |  | No |
+| data | [ [_AnonymousInlineModel_d9cdfda1ede7](#_anonymousinlinemodel_d9cdfda1ede7) ] |  | No |
 | has_more | boolean |  | No |
 | limit | integer |  | No |
 
@@ -14563,692 +14563,7 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 
-#### _AnonymousInlineModel1
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| features | object | Feature configuration object | No |
-
-#### _AnonymousInlineModel10
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel11](#_anonymousinlinemodel11) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
-
-#### _AnonymousInlineModel100
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| extension | string |  | No |
-| id | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | No |
-| size | integer |  | No |
-| source_url | string |  | No |
-
-#### _AnonymousInlineModel101
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| extension | string |  | No |
-| id | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | No |
-| size | integer |  | No |
-| source_url | string |  | No |
-
-#### _AnonymousInlineModel102
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel103](#_anonymousinlinemodel103) ] |  | No |
-| total | integer |  | No |
-
-#### _AnonymousInlineModel103
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | object |  | No |
-| id | string |  | No |
-| mode | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel104
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | object |  | No |
-| id | string |  | No |
-| mode | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel105
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_count | integer |  | No |
-| author_name | string |  | No |
-| built_in_field_enabled | boolean |  | No |
-| chunk_structure | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| data_source_type | string |  | No |
-| description | string |  | No |
-| doc_form | string |  | No |
-| doc_metadata | [ [_AnonymousInlineModel116](#_anonymousinlinemodel116) ] |  | No |
-| document_count | integer |  | No |
-| embedding_available | boolean |  | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
-| enable_api | boolean |  | No |
-| external_knowledge_info | [_AnonymousInlineModel112](#_anonymousinlinemodel112) |  | No |
-| external_retrieval_model | [_AnonymousInlineModel114](#_anonymousinlinemodel114) |  | No |
-| icon_info | [_AnonymousInlineModel118](#_anonymousinlinemodel118) |  | No |
-| id | string |  | No |
-| indexing_technique | string |  | No |
-| is_multimodal | boolean |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| permission | string |  | No |
-| pipeline_id | string |  | No |
-| provider | string |  | No |
-| retrieval_model_dict | [_AnonymousInlineModel106](#_anonymousinlinemodel106) |  | No |
-| runtime_mode | string |  | No |
-| summary_index_setting | [_AnonymousInlineModel110](#_anonymousinlinemodel110) |  | No |
-| tags | [ [Tag](#tag) ] |  | No |
-| total_available_documents | integer |  | No |
-| total_documents | integer |  | No |
-| updated_at | object |  | No |
-| updated_by | string |  | No |
-| word_count | integer |  | No |
-
-#### _AnonymousInlineModel106
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_enable | boolean |  | No |
-| reranking_mode | string |  | No |
-| reranking_model | [_AnonymousInlineModel219](#_anonymousinlinemodel219) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| search_method | string |  | No |
-| top_k | integer |  | No |
-| weights | [_AnonymousInlineModel220](#_anonymousinlinemodel220) |  | No |
-
-#### _AnonymousInlineModel107
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_enable | boolean |  | No |
-| reranking_mode | string |  | No |
-| reranking_model | [_AnonymousInlineModel108](#_anonymousinlinemodel108) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| search_method | string |  | No |
-| top_k | integer |  | No |
-| weights | [_AnonymousInlineModel109](#_anonymousinlinemodel109) |  | No |
-
-#### _AnonymousInlineModel108
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
-#### _AnonymousInlineModel109
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel223](#_anonymousinlinemodel223) |  | No |
-| vector_setting | [_AnonymousInlineModel224](#_anonymousinlinemodel224) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel11
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel166](#_anonymousinlinemodel166) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel110
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enable | boolean |  | No |
-| model_name | string |  | No |
-| model_provider_name | string |  | No |
-| summary_prompt | string |  | No |
-
-#### _AnonymousInlineModel111
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enable | boolean |  | No |
-| model_name | string |  | No |
-| model_provider_name | string |  | No |
-| summary_prompt | string |  | No |
-
-#### _AnonymousInlineModel112
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| external_knowledge_api_endpoint | string |  | No |
-| external_knowledge_api_id | string |  | No |
-| external_knowledge_api_name | string |  | No |
-| external_knowledge_id | string |  | No |
-
-#### _AnonymousInlineModel113
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| external_knowledge_api_endpoint | string |  | No |
-| external_knowledge_api_id | string |  | No |
-| external_knowledge_api_name | string |  | No |
-| external_knowledge_id | string |  | No |
-
-#### _AnonymousInlineModel114
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| top_k | integer |  | No |
-
-#### _AnonymousInlineModel115
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| top_k | integer |  | No |
-
-#### _AnonymousInlineModel116
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel117
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel118
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | string |  | No |
-
-#### _AnonymousInlineModel119
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | string |  | No |
-
-#### _AnonymousInlineModel12
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel13](#_anonymousinlinemodel13) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel120
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel121
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel122
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_id | string |  | No |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel225](#_anonymousinlinemodel225) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| message_id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel123
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel226](#_anonymousinlinemodel226) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel124
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel227](#_anonymousinlinemodel227) |  | No |
-| created_by_end_user | [_AnonymousInlineModel228](#_anonymousinlinemodel228) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| execution_metadata | object |  | No |
-| extras | object |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| index | integer |  | No |
-| inputs | object |  | No |
-| inputs_truncated | boolean |  | No |
-| node_id | string |  | No |
-| node_type | string |  | No |
-| outputs | object |  | No |
-| outputs_truncated | boolean |  | No |
-| predecessor_node_id | string |  | No |
-| process_data | object |  | No |
-| process_data_truncated | boolean |  | No |
-| status | string |  | No |
-| title | string |  | No |
-
-#### _AnonymousInlineModel125
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel126
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel127
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel128
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel230](#_anonymousinlinemodel230) ] |  | No |
-| created_at | object |  | No |
-| created_by | [_AnonymousInlineModel229](#_anonymousinlinemodel229) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel231](#_anonymousinlinemodel231) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel229](#_anonymousinlinemodel229) |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel129
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel13
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel130
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel129](#_anonymousinlinemodel129) |  | No |
-| id | string |  | No |
-
-#### _AnonymousInlineModel131
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| mentioned_user_account | [_AnonymousInlineModel129](#_anonymousinlinemodel129) |  | No |
-| mentioned_user_id | string |  | No |
-| reply_id | string |  | No |
-
-#### _AnonymousInlineModel132
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel133
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel134
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| full_content | object |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel135
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| emoji | string |  | No |
-| type | string |  | No |
-| url | string |  | No |
-
-#### _AnonymousInlineModel136
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| page_icon | [_AnonymousInlineModel232](#_anonymousinlinemodel232) |  | No |
-| page_id | string |  | No |
-| page_name | string |  | No |
-| parent_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel137
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| pages | [ [_AnonymousInlineModel233](#_anonymousinlinemodel233) ] |  | No |
-| total | integer |  | No |
-| workspace_icon | string |  | No |
-| workspace_id | string |  | No |
-| workspace_name | string |  | No |
-
-#### _AnonymousInlineModel138
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| disabled | boolean |  | No |
-| id | string |  | No |
-| is_bound | boolean |  | No |
-| link | string |  | No |
-| provider | string |  | No |
-| source_info | [_AnonymousInlineModel234](#_anonymousinlinemodel234) |  | No |
-
-#### _AnonymousInlineModel139
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| is_bound | boolean |  | No |
-| page_icon | [_AnonymousInlineModel235](#_anonymousinlinemodel235) |  | No |
-| page_id | string |  | No |
-| page_name | string |  | No |
-| parent_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel14
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel140
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| pages | [ [_AnonymousInlineModel236](#_anonymousinlinemodel236) ] |  | No |
-| workspace_icon | string |  | No |
-| workspace_id | string |  | No |
-| workspace_name | string |  | No |
-
-#### _AnonymousInlineModel141
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel142
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel143
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
-#### _AnonymousInlineModel144
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel237](#_anonymousinlinemodel237) |  | No |
-| vector_setting | [_AnonymousInlineModel238](#_anonymousinlinemodel238) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel145
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_enable | boolean |  | No |
-| reranking_mode | string |  | No |
-| reranking_model | [_AnonymousInlineModel239](#_anonymousinlinemodel239) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| search_method | string |  | No |
-| top_k | integer |  | No |
-| weights | [_AnonymousInlineModel240](#_anonymousinlinemodel240) |  | No |
-
-#### _AnonymousInlineModel146
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enable | boolean |  | No |
-| model_name | string |  | No |
-| model_provider_name | string |  | No |
-| summary_prompt | string |  | No |
-
-#### _AnonymousInlineModel147
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| external_knowledge_api_endpoint | string |  | No |
-| external_knowledge_api_id | string |  | No |
-| external_knowledge_api_name | string |  | No |
-| external_knowledge_id | string |  | No |
-
-#### _AnonymousInlineModel148
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| top_k | integer |  | No |
-
-#### _AnonymousInlineModel149
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel15
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| failed | integer |  | No |
-| partial_succeeded | integer |  | No |
-| running | integer |  | No |
-| stopped | integer |  | No |
-| succeeded | integer |  | No |
-| total | integer |  | No |
-
-#### _AnonymousInlineModel150
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | string |  | No |
-
-#### _AnonymousInlineModel151
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| extension | string |  | No |
-| id | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | No |
-| size | integer |  | No |
-| source_url | string |  | No |
-
-#### _AnonymousInlineModel152
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| content_type | string |  | No |
-| file_info | [_AnonymousInlineModel241](#_anonymousinlinemodel241) |  | No |
-
-#### _AnonymousInlineModel153
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | object |  | No |
-| id | string |  | No |
-| mode | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel154
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| current_identifier | string |  | No |
-| type | string |  | No |
-| value | object |  | No |
-
-#### _AnonymousInlineModel155
+#### _AnonymousInlineModel_077bfed82248
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -15277,7 +14592,44 @@ Workflow tool configuration
 | updated_by | string |  | No |
 | user_input_form | object |  | No |
 
-#### _AnonymousInlineModel156
+#### _AnonymousInlineModel_08ac6c00da3e
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_identifier | string |  | No |
+| type | string |  | No |
+| value | object |  | No |
+
+#### _AnonymousInlineModel_109e5b50787c
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | object |  | No |
+| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| created_by_end_user | [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) |  | No |
+| created_by_role | string |  | No |
+| elapsed_time | number |  | No |
+| error | string |  | No |
+| exceptions_count | integer |  | No |
+| finished_at | object |  | No |
+| graph | object |  | No |
+| id | string |  | No |
+| inputs | object |  | No |
+| outputs | object |  | No |
+| status | string |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
+| version | string |  | No |
+
+#### _AnonymousInlineModel_1172d50d45de
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | No |
+| embedding_provider_name | string |  | No |
+| vector_weight | number |  | No |
+
+#### _AnonymousInlineModel_1c1826a63eef
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -15287,23 +14639,171 @@ Workflow tool configuration
 | updated_at | object |  | No |
 | updated_by | string |  | No |
 
-#### _AnonymousInlineModel157
+#### _AnonymousInlineModel_2127372e7d5f
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| provider_id | string |  | No |
-| tool_name | string |  | No |
+| content | string |  | No |
+| content_type | string |  | No |
+| file_info | [_AnonymousInlineModel_b167c49063fd](#_anonymousinlinemodel_b167c49063fd) |  | No |
+
+#### _AnonymousInlineModel_23c2b671ba3a
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| pages | [ [_AnonymousInlineModel_2c596168c3fc](#_anonymousinlinemodel_2c596168c3fc) ] |  | No |
+| total | integer |  | No |
+| workspace_icon | string |  | No |
+| workspace_id | string |  | No |
+| workspace_name | string |  | No |
+
+#### _AnonymousInlineModel_25862ce5f48a
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | object |  | No |
+| disabled | boolean |  | No |
+| id | string |  | No |
+| is_bound | boolean |  | No |
+| link | string |  | No |
+| provider | string |  | No |
+| source_info | [_AnonymousInlineModel_23c2b671ba3a](#_anonymousinlinemodel_23c2b671ba3a) |  | No |
+
+#### _AnonymousInlineModel_2ae9b194de06
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | No |
+| items | [ [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) ] |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
+
+#### _AnonymousInlineModel_2c596168c3fc
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| page_icon | [_AnonymousInlineModel_a0b20ccbcc30](#_anonymousinlinemodel_a0b20ccbcc30) |  | No |
+| page_id | string |  | No |
+| page_name | string |  | No |
+| parent_id | string |  | No |
 | type | string |  | No |
 
-#### _AnonymousInlineModel158
+#### _AnonymousInlineModel_3da888b4ad25
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| presigned_url | string | Pre-signed URL for download | No |
+| presigned_url_expires_at | string | Pre-signed URL expiration time | No |
+| status | string | Export status: success/failed | No |
+
+#### _AnonymousInlineModel_3ecceebc874e
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | object |  | No |
+| id | string |  | No |
+
+#### _AnonymousInlineModel_41eb417dc7a4
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [_AnonymousInlineModel_815ec6c311d4](#_anonymousinlinemodel_815ec6c311d4) ] |  | No |
+
+#### _AnonymousInlineModel_42fa71dcf115
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| created_at | object |  | No |
+| created_by | string |  | No |
+| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
+| id | string |  | No |
+| mentions | [ [_AnonymousInlineModel_f7ff64cce858](#_anonymousinlinemodel_f7ff64cce858) ] |  | No |
+| position_x | number |  | No |
+| position_y | number |  | No |
+| replies | [ [_AnonymousInlineModel_55c39c6a4b9e](#_anonymousinlinemodel_55c39c6a4b9e) ] |  | No |
+| resolved | boolean |  | No |
+| resolved_at | object |  | No |
+| resolved_by | string |  | No |
+| resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
+| updated_at | object |  | No |
+
+#### _AnonymousInlineModel_55c39c6a4b9e
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| created_at | object |  | No |
+| created_by | string |  | No |
+| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
+| id | string |  | No |
+
+#### _AnonymousInlineModel_594b64f230a3
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
+| updated_at | object |  | No |
 
-#### _AnonymousInlineModel159
+#### _AnonymousInlineModel_5c48729794fa
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | object |  | No |
+| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| created_by_end_user | [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) |  | No |
+| created_by_role | string |  | No |
+| elapsed_time | number |  | No |
+| error | string |  | No |
+| execution_metadata | object |  | No |
+| extras | object |  | No |
+| finished_at | object |  | No |
+| id | string |  | No |
+| index | integer |  | No |
+| inputs | object |  | No |
+| inputs_truncated | boolean |  | No |
+| node_id | string |  | No |
+| node_type | string |  | No |
+| outputs | object |  | No |
+| outputs_truncated | boolean |  | No |
+| predecessor_node_id | string |  | No |
+| process_data | object |  | No |
+| process_data_truncated | boolean |  | No |
+| status | string |  | No |
+| title | string |  | No |
+
+#### _AnonymousInlineModel_5f5165b9b01b
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| failed | integer |  | No |
+| partial_succeeded | integer |  | No |
+| running | integer |  | No |
+| stopped | integer |  | No |
+| succeeded | integer |  | No |
+| total | integer |  | No |
+
+#### _AnonymousInlineModel_62ae0d5352a8
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [_AnonymousInlineModel_6dfb60503932](#_anonymousinlinemodel_6dfb60503932) ] |  | No |
+| created_at | object |  | No |
+| created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| environment_variables | [ object ] |  | No |
+| features | object |  | No |
+| graph | object |  | No |
+| hash | string |  | No |
+| id | string |  | No |
+| marked_comment | string |  | No |
+| marked_name | string |  | No |
+| rag_pipeline_variables | [ [_AnonymousInlineModel_e05256314b57](#_anonymousinlinemodel_e05256314b57) ] |  | No |
+| tool_published | boolean |  | No |
+| updated_at | object |  | No |
+| updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| version | string |  | No |
+
+#### _AnonymousInlineModel_6aef1ef456af
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -15332,28 +14832,7 @@ Workflow tool configuration
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 
-#### _AnonymousInlineModel16
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel17](#_anonymousinlinemodel17) |  | No |
-| created_by_end_user | [_AnonymousInlineModel19](#_anonymousinlinemodel19) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| graph | object |  | No |
-| id | string |  | No |
-| inputs | object |  | No |
-| outputs | object |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel160
+#### _AnonymousInlineModel_6dfb60503932
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -15363,100 +14842,7 @@ Workflow tool configuration
 | value | object |  | No |
 | value_type | string |  | No |
 
-#### _AnonymousInlineModel161
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel162
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_id | string |  | No |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel6](#_anonymousinlinemodel6) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| message_id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel163
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel164
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel165
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel13](#_anonymousinlinemodel13) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel166
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel167
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel168
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel169
+#### _AnonymousInlineModel_6e2a3c8f3856
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -15465,903 +14851,29 @@ Workflow tool configuration
 | session_id | string |  | No |
 | type | string |  | No |
 
-#### _AnonymousInlineModel17
+#### _AnonymousInlineModel_6e92789928f6
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel170
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel4](#_anonymousinlinemodel4) |  | No |
-| created_by_end_user | [_AnonymousInlineModel24](#_anonymousinlinemodel24) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| execution_metadata | object |  | No |
-| extras | object |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| index | integer |  | No |
-| inputs | object |  | No |
-| inputs_truncated | boolean |  | No |
-| node_id | string |  | No |
-| node_type | string |  | No |
-| outputs | object |  | No |
-| outputs_truncated | boolean |  | No |
-| predecessor_node_id | string |  | No |
-| process_data | object |  | No |
-| process_data_truncated | boolean |  | No |
-| status | string |  | No |
-| title | string |  | No |
-
-#### _AnonymousInlineModel171
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel172
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel173
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel174
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel175
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel176
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel177
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel178
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel179
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel44](#_anonymousinlinemodel44) ] |  | No |
-| created_at | object |  | No |
-| created_by | [_AnonymousInlineModel42](#_anonymousinlinemodel42) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel46](#_anonymousinlinemodel46) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel42](#_anonymousinlinemodel42) |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel18
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel180
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel181
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel182
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel183
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel184
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel185
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel186
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel187
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel188
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| hash | string |  | No |
-| result | string |  | No |
-| updated_at | string |  | No |
-
-#### _AnonymousInlineModel189
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel19
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel190
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel191
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel66](#_anonymousinlinemodel66) |  | No |
-| id | string |  | No |
-
-#### _AnonymousInlineModel192
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| mentioned_user_account | [_AnonymousInlineModel70](#_anonymousinlinemodel70) |  | No |
-| mentioned_user_id | string |  | No |
-| reply_id | string |  | No |
-
-#### _AnonymousInlineModel193
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel194
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel195
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel196
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel197
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| full_content | object |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel198
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_enable | boolean |  | No |
-| reranking_mode | string |  | No |
-| reranking_model | [_AnonymousInlineModel83](#_anonymousinlinemodel83) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| search_method | string |  | No |
-| top_k | integer |  | No |
-| weights | [_AnonymousInlineModel85](#_anonymousinlinemodel85) |  | No |
-
-#### _AnonymousInlineModel199
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enable | boolean |  | No |
-| model_name | string |  | No |
-| model_provider_name | string |  | No |
-| summary_prompt | string |  | No |
-
-#### _AnonymousInlineModel2
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| features | object | System feature configuration object | No |
-
-#### _AnonymousInlineModel20
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel200
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| external_knowledge_api_endpoint | string |  | No |
-| external_knowledge_api_id | string |  | No |
-| external_knowledge_api_name | string |  | No |
-| external_knowledge_id | string |  | No |
-
-#### _AnonymousInlineModel201
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel202
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel203
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
-#### _AnonymousInlineModel204
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
-#### _AnonymousInlineModel205
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel253](#_anonymousinlinemodel253) |  | No |
-| vector_setting | [_AnonymousInlineModel254](#_anonymousinlinemodel254) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel206
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel87](#_anonymousinlinemodel87) |  | No |
-| vector_setting | [_AnonymousInlineModel89](#_anonymousinlinemodel89) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel207
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel208
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel209
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| content_type | string |  | No |
-| file_info | [_AnonymousInlineModel100](#_anonymousinlinemodel100) |  | No |
-
-#### _AnonymousInlineModel21
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel22](#_anonymousinlinemodel22) ] |  | No |
-
-#### _AnonymousInlineModel210
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| extension | string |  | No |
-| id | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | No |
-| size | integer |  | No |
-| source_url | string |  | No |
-
-#### _AnonymousInlineModel211
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| extension | string |  | No |
-| id | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | No |
-| size | integer |  | No |
-| source_url | string |  | No |
-
-#### _AnonymousInlineModel212
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | object |  | No |
-| id | string |  | No |
-| mode | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel213
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_enable | boolean |  | No |
-| reranking_mode | string |  | No |
-| reranking_model | [_AnonymousInlineModel108](#_anonymousinlinemodel108) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| search_method | string |  | No |
-| top_k | integer |  | No |
-| weights | [_AnonymousInlineModel109](#_anonymousinlinemodel109) |  | No |
-
-#### _AnonymousInlineModel214
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enable | boolean |  | No |
-| model_name | string |  | No |
-| model_provider_name | string |  | No |
-| summary_prompt | string |  | No |
-
-#### _AnonymousInlineModel215
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| external_knowledge_api_endpoint | string |  | No |
-| external_knowledge_api_id | string |  | No |
-| external_knowledge_api_name | string |  | No |
-| external_knowledge_id | string |  | No |
-
-#### _AnonymousInlineModel216
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| top_k | integer |  | No |
-
-#### _AnonymousInlineModel217
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel218
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | string |  | No |
-
-#### _AnonymousInlineModel219
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
-#### _AnonymousInlineModel22
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel171](#_anonymousinlinemodel171) |  | No |
-| created_by_end_user | [_AnonymousInlineModel172](#_anonymousinlinemodel172) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| execution_metadata | object |  | No |
-| extras | object |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| index | integer |  | No |
-| inputs | object |  | No |
-| inputs_truncated | boolean |  | No |
-| node_id | string |  | No |
-| node_type | string |  | No |
-| outputs | object |  | No |
-| outputs_truncated | boolean |  | No |
-| predecessor_node_id | string |  | No |
-| process_data | object |  | No |
-| process_data_truncated | boolean |  | No |
-| status | string |  | No |
-| title | string |  | No |
-
-#### _AnonymousInlineModel220
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel260](#_anonymousinlinemodel260) |  | No |
-| vector_setting | [_AnonymousInlineModel261](#_anonymousinlinemodel261) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel221
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
-#### _AnonymousInlineModel222
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel262](#_anonymousinlinemodel262) |  | No |
-| vector_setting | [_AnonymousInlineModel263](#_anonymousinlinemodel263) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel223
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel224
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel225
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel226
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel227
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel228
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel229
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel23
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel4](#_anonymousinlinemodel4) |  | No |
-| created_by_end_user | [_AnonymousInlineModel24](#_anonymousinlinemodel24) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| execution_metadata | object |  | No |
-| extras | object |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| index | integer |  | No |
-| inputs | object |  | No |
-| inputs_truncated | boolean |  | No |
-| node_id | string |  | No |
-| node_type | string |  | No |
-| outputs | object |  | No |
-| outputs_truncated | boolean |  | No |
-| predecessor_node_id | string |  | No |
-| process_data | object |  | No |
-| process_data_truncated | boolean |  | No |
-| status | string |  | No |
-| title | string |  | No |
-
-#### _AnonymousInlineModel230
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel231
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel232
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| emoji | string |  | No |
-| type | string |  | No |
-| url | string |  | No |
-
-#### _AnonymousInlineModel233
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| page_icon | [_AnonymousInlineModel264](#_anonymousinlinemodel264) |  | No |
-| page_id | string |  | No |
-| page_name | string |  | No |
-| parent_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel234
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| pages | [ [_AnonymousInlineModel265](#_anonymousinlinemodel265) ] |  | No |
-| total | integer |  | No |
+| pages | [ [_AnonymousInlineModel_8b48161825a0](#_anonymousinlinemodel_8b48161825a0) ] |  | No |
 | workspace_icon | string |  | No |
 | workspace_id | string |  | No |
 | workspace_name | string |  | No |
 
-#### _AnonymousInlineModel235
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| emoji | string |  | No |
-| type | string |  | No |
-| url | string |  | No |
-
-#### _AnonymousInlineModel236
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| is_bound | boolean |  | No |
-| page_icon | [_AnonymousInlineModel266](#_anonymousinlinemodel266) |  | No |
-| page_id | string |  | No |
-| page_name | string |  | No |
-| parent_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel237
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel238
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel239
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
-#### _AnonymousInlineModel24
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel240
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel267](#_anonymousinlinemodel267) |  | No |
-| vector_setting | [_AnonymousInlineModel268](#_anonymousinlinemodel268) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel241
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| extension | string |  | No |
-| id | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | No |
-| size | integer |  | No |
-| source_url | string |  | No |
-
-#### _AnonymousInlineModel242
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel243
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel244
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_id | string |  | No |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel6](#_anonymousinlinemodel6) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| message_id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel245
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel246
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel247
+#### _AnonymousInlineModel_6fa66c1a5667
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
+| edited | boolean |  | No |
 | id | string |  | No |
 | name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel248
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
+| selector | [ string ] |  | No |
 | type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
 
-#### _AnonymousInlineModel249
+#### _AnonymousInlineModel_6fec07cd0d85
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -16370,896 +14882,72 @@ Workflow tool configuration
 | id | string |  | No |
 | name | string |  | No |
 
-#### _AnonymousInlineModel25
+#### _AnonymousInlineModel_7b8b49ca164e
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
+| name | string |  | No |
 | type | string |  | No |
 
-#### _AnonymousInlineModel250
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel251
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
-#### _AnonymousInlineModel252
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel87](#_anonymousinlinemodel87) |  | No |
-| vector_setting | [_AnonymousInlineModel89](#_anonymousinlinemodel89) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel253
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel254
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel255
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel256
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel257
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| extension | string |  | No |
-| id | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | No |
-| size | integer |  | No |
-| source_url | string |  | No |
-
-#### _AnonymousInlineModel258
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
-#### _AnonymousInlineModel259
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel272](#_anonymousinlinemodel272) |  | No |
-| vector_setting | [_AnonymousInlineModel273](#_anonymousinlinemodel273) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel26
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel29](#_anonymousinlinemodel29) ] |  | No |
-| created_at | object |  | No |
-| created_by | [_AnonymousInlineModel27](#_anonymousinlinemodel27) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel31](#_anonymousinlinemodel31) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel27](#_anonymousinlinemodel27) |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel260
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel261
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel262
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel263
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel264
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| emoji | string |  | No |
-| type | string |  | No |
-| url | string |  | No |
-
-#### _AnonymousInlineModel265
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| page_icon | [_AnonymousInlineModel274](#_anonymousinlinemodel274) |  | No |
-| page_id | string |  | No |
-| page_name | string |  | No |
-| parent_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel266
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| emoji | string |  | No |
-| type | string |  | No |
-| url | string |  | No |
-
-#### _AnonymousInlineModel267
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel268
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel269
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel27
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel270
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel271
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel272
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel273
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel274
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| emoji | string |  | No |
-| type | string |  | No |
-| url | string |  | No |
-
-#### _AnonymousInlineModel28
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel29
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel3
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel4](#_anonymousinlinemodel4) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
-
-#### _AnonymousInlineModel30
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel31
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel32
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel33
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| hash | string |  | No |
-| result | string |  | No |
-| updated_at | string |  | No |
-
-#### _AnonymousInlineModel34
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel35](#_anonymousinlinemodel35) |  | No |
-| created_by_end_user | [_AnonymousInlineModel37](#_anonymousinlinemodel37) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| execution_metadata | object |  | No |
-| extras | object |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| index | integer |  | No |
-| inputs | object |  | No |
-| inputs_truncated | boolean |  | No |
-| node_id | string |  | No |
-| node_type | string |  | No |
-| outputs | object |  | No |
-| outputs_truncated | boolean |  | No |
-| predecessor_node_id | string |  | No |
-| process_data | object |  | No |
-| process_data_truncated | boolean |  | No |
-| status | string |  | No |
-| title | string |  | No |
-
-#### _AnonymousInlineModel35
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel36
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel37
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel38
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel39
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| has_more | boolean |  | No |
-| items | [ [_AnonymousInlineModel40](#_anonymousinlinemodel40) ] |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
-
-#### _AnonymousInlineModel4
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_id | string |  | No |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel163](#_anonymousinlinemodel163) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| message_id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel40
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel181](#_anonymousinlinemodel181) ] |  | No |
-| created_at | object |  | No |
-| created_by | [_AnonymousInlineModel180](#_anonymousinlinemodel180) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel182](#_anonymousinlinemodel182) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel180](#_anonymousinlinemodel180) |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel41
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel44](#_anonymousinlinemodel44) ] |  | No |
-| created_at | object |  | No |
-| created_by | [_AnonymousInlineModel42](#_anonymousinlinemodel42) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel46](#_anonymousinlinemodel46) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel42](#_anonymousinlinemodel42) |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel42
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel43
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel44
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel45
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel46
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel47
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel48
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel44](#_anonymousinlinemodel44) ] |  | No |
-| created_at | object |  | No |
-| created_by | [_AnonymousInlineModel49](#_anonymousinlinemodel49) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel42](#_anonymousinlinemodel42) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel49](#_anonymousinlinemodel49) |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel49
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel5
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_id | string |  | No |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel6](#_anonymousinlinemodel6) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| message_id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel50
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel51
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel52](#_anonymousinlinemodel52) |  | No |
-| created_by_end_user | [_AnonymousInlineModel33](#_anonymousinlinemodel33) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| execution_metadata | object |  | No |
-| extras | object |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| index | integer |  | No |
-| inputs | object |  | No |
-| inputs_truncated | boolean |  | No |
-| node_id | string |  | No |
-| node_type | string |  | No |
-| outputs | object |  | No |
-| outputs_truncated | boolean |  | No |
-| predecessor_node_id | string |  | No |
-| process_data | object |  | No |
-| process_data_truncated | boolean |  | No |
-| status | string |  | No |
-| title | string |  | No |
-
-#### _AnonymousInlineModel52
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel53
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel54
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| hash | string |  | No |
-| result | string |  | No |
-| updated_at | string |  | No |
-
-#### _AnonymousInlineModel55
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| node_id | string | Node ID | Yes |
-
-#### _AnonymousInlineModel56
+#### _AnonymousInlineModel_7d4493e4fbe7
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string |  | No |
 | created_at | object |  | No |
 | created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel57](#_anonymousinlinemodel57) |  | No |
+| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
 | id | string |  | No |
 | mention_count | integer |  | No |
-| participants | [ [_AnonymousInlineModel57](#_anonymousinlinemodel57) ] |  | No |
+| participants | [ [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) ] |  | No |
 | position_x | number |  | No |
 | position_y | number |  | No |
 | reply_count | integer |  | No |
 | resolved | boolean |  | No |
 | resolved_at | object |  | No |
 | resolved_by | string |  | No |
-| resolved_by_account | [_AnonymousInlineModel57](#_anonymousinlinemodel57) |  | No |
+| resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
 | updated_at | object |  | No |
 
-#### _AnonymousInlineModel57
+#### _AnonymousInlineModel_815ec6c311d4
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
+| data | [ [_AnonymousInlineModel_f22974b53f29](#_anonymousinlinemodel_f22974b53f29) ] |  | No |
+| has_more | boolean |  | No |
+| limit | integer |  | No |
 
-#### _AnonymousInlineModel58
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel59
+#### _AnonymousInlineModel_8b48161825a0
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| id | string |  | No |
+| is_bound | boolean |  | No |
+| page_icon | [_AnonymousInlineModel_a0b20ccbcc30](#_anonymousinlinemodel_a0b20ccbcc30) |  | No |
+| page_id | string |  | No |
+| page_name | string |  | No |
+| parent_id | string |  | No |
+| type | string |  | No |
 
-#### _AnonymousInlineModel6
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel60
+#### _AnonymousInlineModel_9e0a0acff315
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| updated_at | object |  | No |
+| keyword_weight | number |  | No |
 
-#### _AnonymousInlineModel61
+#### _AnonymousInlineModel_9e392b037de1
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
 | created_at | object |  | No |
 | created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel62](#_anonymousinlinemodel62) |  | No |
+| created_by_role | string |  | No |
 | id | string |  | No |
-| mentions | [ [_AnonymousInlineModel68](#_anonymousinlinemodel68) ] |  | No |
-| position_x | number |  | No |
-| position_y | number |  | No |
-| replies | [ [_AnonymousInlineModel64](#_anonymousinlinemodel64) ] |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
-| resolved_by_account | [_AnonymousInlineModel62](#_anonymousinlinemodel62) |  | No |
-| updated_at | object |  | No |
+| queries | [_AnonymousInlineModel_2127372e7d5f](#_anonymousinlinemodel_2127372e7d5f) |  | No |
+| source | string |  | No |
+| source_app_id | string |  | No |
 
-#### _AnonymousInlineModel62
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel63
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel64
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel193](#_anonymousinlinemodel193) |  | No |
-| id | string |  | No |
-
-#### _AnonymousInlineModel65
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel66](#_anonymousinlinemodel66) |  | No |
-| id | string |  | No |
-
-#### _AnonymousInlineModel66
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel67
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel68
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| mentioned_user_account | [_AnonymousInlineModel193](#_anonymousinlinemodel193) |  | No |
-| mentioned_user_id | string |  | No |
-| reply_id | string |  | No |
-
-#### _AnonymousInlineModel69
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| mentioned_user_account | [_AnonymousInlineModel70](#_anonymousinlinemodel70) |  | No |
-| mentioned_user_id | string |  | No |
-| reply_id | string |  | No |
-
-#### _AnonymousInlineModel7
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel70
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel71
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar_url | object |  | No |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel72
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
-
-#### _AnonymousInlineModel73
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| id | string |  | No |
-
-#### _AnonymousInlineModel74
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| updated_at | object |  | No |
-
-#### _AnonymousInlineModel75
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel76](#_anonymousinlinemodel76) ] |  | No |
-| total | object |  | No |
-
-#### _AnonymousInlineModel76
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel77
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel78](#_anonymousinlinemodel78) ] |  | No |
-
-#### _AnonymousInlineModel78
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| full_content | object |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel79
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| full_content | object |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel8
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| presigned_url | string | Pre-signed URL for download | No |
-| presigned_url_expires_at | string | Pre-signed URL expiration time | No |
-| status | string | Export status: success/failed | No |
-
-#### _AnonymousInlineModel80
+#### _AnonymousInlineModel_9f63a959b311
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -17272,15 +14960,15 @@ Workflow tool configuration
 | data_source_type | string |  | No |
 | description | string |  | No |
 | doc_form | string |  | No |
-| doc_metadata | [ [_AnonymousInlineModel94](#_anonymousinlinemodel94) ] |  | No |
+| doc_metadata | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
 | document_count | integer |  | No |
 | embedding_available | boolean |  | No |
 | embedding_model | string |  | No |
 | embedding_model_provider | string |  | No |
 | enable_api | boolean |  | No |
-| external_knowledge_info | [_AnonymousInlineModel93](#_anonymousinlinemodel93) |  | No |
-| external_retrieval_model | [_AnonymousInlineModel87](#_anonymousinlinemodel87) |  | No |
-| icon_info | [_AnonymousInlineModel83](#_anonymousinlinemodel83) |  | No |
+| external_knowledge_info | [_AnonymousInlineModel_e4e7d3bab76c](#_anonymousinlinemodel_e4e7d3bab76c) |  | No |
+| external_retrieval_model | [_AnonymousInlineModel_c590c00ae173](#_anonymousinlinemodel_c590c00ae173) |  | No |
+| icon_info | [_AnonymousInlineModel_f167e7269491](#_anonymousinlinemodel_f167e7269491) |  | No |
 | id | string |  | No |
 | indexing_technique | string |  | No |
 | is_multimodal | boolean |  | No |
@@ -17289,9 +14977,9 @@ Workflow tool configuration
 | permission | string |  | No |
 | pipeline_id | string |  | No |
 | provider | string |  | No |
-| retrieval_model_dict | [_AnonymousInlineModel81](#_anonymousinlinemodel81) |  | No |
+| retrieval_model_dict | [_AnonymousInlineModel_b60e909e5cf7](#_anonymousinlinemodel_b60e909e5cf7) |  | No |
 | runtime_mode | string |  | No |
-| summary_index_setting | [_AnonymousInlineModel91](#_anonymousinlinemodel91) |  | No |
+| summary_index_setting | [_AnonymousInlineModel_b1954337d565](#_anonymousinlinemodel_b1954337d565) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | total_available_documents | integer |  | No |
 | total_documents | integer |  | No |
@@ -17299,120 +14987,182 @@ Workflow tool configuration
 | updated_by | string |  | No |
 | word_count | integer |  | No |
 
-#### _AnonymousInlineModel81
+#### _AnonymousInlineModel_9fd6e9c31846
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| reranking_enable | boolean |  | No |
-| reranking_mode | string |  | No |
-| reranking_model | [_AnonymousInlineModel204](#_anonymousinlinemodel204) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| search_method | string |  | No |
-| top_k | integer |  | No |
-| weights | [_AnonymousInlineModel205](#_anonymousinlinemodel205) |  | No |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | object |  | No |
+| id | string |  | No |
+| mode | string |  | No |
+| name | string |  | No |
 
-#### _AnonymousInlineModel82
+#### _AnonymousInlineModel_a0b20ccbcc30
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| reranking_enable | boolean |  | No |
-| reranking_mode | string |  | No |
-| reranking_model | [_AnonymousInlineModel83](#_anonymousinlinemodel83) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| search_method | string |  | No |
-| top_k | integer |  | No |
-| weights | [_AnonymousInlineModel85](#_anonymousinlinemodel85) |  | No |
+| emoji | string |  | No |
+| type | string |  | No |
+| url | string |  | No |
 
-#### _AnonymousInlineModel83
+#### _AnonymousInlineModel_a284d64a9a60
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| features | object | Feature configuration object | No |
+
+#### _AnonymousInlineModel_a3f9c9b23c7b
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string | Node ID | Yes |
+
+#### _AnonymousInlineModel_acd4ec746615
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_setting | [_AnonymousInlineModel_9e0a0acff315](#_anonymousinlinemodel_9e0a0acff315) |  | No |
+| vector_setting | [_AnonymousInlineModel_1172d50d45de](#_anonymousinlinemodel_1172d50d45de) |  | No |
+| weight_type | string |  | No |
+
+#### _AnonymousInlineModel_b0fd3f86d9d5
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+
+#### _AnonymousInlineModel_b167c49063fd
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extension | string |  | No |
+| id | string |  | No |
+| mime_type | string |  | No |
+| name | string |  | No |
+| size | integer |  | No |
+| source_url | string |  | No |
+
+#### _AnonymousInlineModel_b1954337d565
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enable | boolean |  | No |
+| model_name | string |  | No |
+| model_provider_name | string |  | No |
+| summary_prompt | string |  | No |
+
+#### _AnonymousInlineModel_b1d3cff1a2a3
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | reranking_model_name | string |  | No |
 | reranking_provider_name | string |  | No |
 
-#### _AnonymousInlineModel84
+#### _AnonymousInlineModel_b60e909e5cf7
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
+| reranking_enable | boolean |  | No |
+| reranking_mode | string |  | No |
+| reranking_model | [_AnonymousInlineModel_b1d3cff1a2a3](#_anonymousinlinemodel_b1d3cff1a2a3) |  | No |
+| score_threshold | number |  | No |
+| score_threshold_enabled | boolean |  | No |
+| search_method | string |  | No |
+| top_k | integer |  | No |
+| weights | [_AnonymousInlineModel_acd4ec746615](#_anonymousinlinemodel_acd4ec746615) |  | No |
 
-#### _AnonymousInlineModel85
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel95](#_anonymousinlinemodel95) |  | No |
-| vector_setting | [_AnonymousInlineModel81](#_anonymousinlinemodel81) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel86
+#### _AnonymousInlineModel_b81fc757b1e7
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel87](#_anonymousinlinemodel87) |  | No |
-| vector_setting | [_AnonymousInlineModel89](#_anonymousinlinemodel89) |  | No |
-| weight_type | string |  | No |
+| description | string |  | No |
+| edited | boolean |  | No |
+| id | string |  | No |
+| is_truncated | boolean |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
 
-#### _AnonymousInlineModel87
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel88
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel89
+#### _AnonymousInlineModel_c2fd55515424
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
+| data | [ [_AnonymousInlineModel_d9cdfda1ede7](#_anonymousinlinemodel_d9cdfda1ede7) ] |  | No |
+| has_more | boolean |  | No |
+| limit | integer |  | No |
 
-#### _AnonymousInlineModel9
+#### _AnonymousInlineModel_c590c00ae173
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| failed | integer |  | No |
-| partial_succeeded | integer |  | No |
-| running | integer |  | No |
-| stopped | integer |  | No |
-| succeeded | integer |  | No |
+| score_threshold | number |  | No |
+| score_threshold_enabled | boolean |  | No |
+| top_k | integer |  | No |
+
+#### _AnonymousInlineModel_d7909996c09b
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [_AnonymousInlineModel_fb9665315d70](#_anonymousinlinemodel_fb9665315d70) ] |  | No |
+
+#### _AnonymousInlineModel_d9cdfda1ede7
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | object |  | No |
+| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| elapsed_time | number |  | No |
+| exceptions_count | integer |  | No |
+| finished_at | object |  | No |
+| id | string |  | No |
+| retry_index | integer |  | No |
+| status | string |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
+| version | string |  | No |
+
+#### _AnonymousInlineModel_dc3986f5aace
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| provider_id | string |  | No |
+| tool_name | string |  | No |
+| type | string |  | No |
+
+#### _AnonymousInlineModel_e05256314b57
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allow_file_extension | [ string ] |  | No |
+| allow_file_upload_methods | [ string ] |  | No |
+| allowed_file_types | [ string ] |  | No |
+| belong_to_node_id | string |  | No |
+| default_value | object |  | No |
+| label | string |  | No |
+| max_length | integer |  | No |
+| options | [ string ] |  | No |
+| placeholder | string |  | No |
+| required | boolean |  | No |
+| tooltips | string |  | No |
+| type | string |  | No |
+| unit | string |  | No |
+| variable | string |  | No |
+
+#### _AnonymousInlineModel_e4156c0bccd9
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [_AnonymousInlineModel_9fd6e9c31846](#_anonymousinlinemodel_9fd6e9c31846) ] |  | No |
 | total | integer |  | No |
 
-#### _AnonymousInlineModel90
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel91
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enable | boolean |  | No |
-| model_name | string |  | No |
-| model_provider_name | string |  | No |
-| summary_prompt | string |  | No |
-
-#### _AnonymousInlineModel92
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enable | boolean |  | No |
-| model_name | string |  | No |
-| model_provider_name | string |  | No |
-| summary_prompt | string |  | No |
-
-#### _AnonymousInlineModel93
+#### _AnonymousInlineModel_e4e7d3bab76c
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -17421,50 +15171,68 @@ Workflow tool configuration
 | external_knowledge_api_name | string |  | No |
 | external_knowledge_id | string |  | No |
 
-#### _AnonymousInlineModel94
+#### _AnonymousInlineModel_ea9dd9094a9d
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| features | object | System feature configuration object | No |
+
+#### _AnonymousInlineModel_ebd05b3690b0
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
+| resolved | boolean |  | No |
+| resolved_at | object |  | No |
+| resolved_by | string |  | No |
 
-#### _AnonymousInlineModel95
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel96
+#### _AnonymousInlineModel_f167e7269491
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
 
-#### _AnonymousInlineModel97
+#### _AnonymousInlineModel_f22974b53f29
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| conversation_id | string |  | No |
 | created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_role | string |  | No |
+| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| elapsed_time | number |  | No |
+| exceptions_count | integer |  | No |
+| finished_at | object |  | No |
 | id | string |  | No |
-| queries | [_AnonymousInlineModel98](#_anonymousinlinemodel98) |  | No |
-| source | string |  | No |
-| source_app_id | string |  | No |
+| message_id | string |  | No |
+| retry_index | integer |  | No |
+| status | string |  | No |
+| total_steps | integer |  | No |
+| total_tokens | integer |  | No |
+| version | string |  | No |
 
-#### _AnonymousInlineModel98
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| content_type | string |  | No |
-| file_info | [_AnonymousInlineModel210](#_anonymousinlinemodel210) |  | No |
-
-#### _AnonymousInlineModel99
+#### _AnonymousInlineModel_f7ff64cce858
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| content_type | string |  | No |
-| file_info | [_AnonymousInlineModel100](#_anonymousinlinemodel100) |  | No |
+| mentioned_user_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
+| mentioned_user_id | string |  | No |
+| reply_id | string |  | No |
+
+#### _AnonymousInlineModel_fb9665315d70
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| edited | boolean |  | No |
+| full_content | object |  | No |
+| id | string |  | No |
+| is_truncated | boolean |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value | object |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |

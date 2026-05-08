@@ -9,6 +9,7 @@ which is unnecessary when the goal is only to serialize the Flask-RESTX
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -51,6 +52,77 @@ _ORIGINAL_REGISTER_MODEL = Swagger.register_model
 _ORIGINAL_REGISTER_FIELD = Swagger.register_field
 
 
+def _jsonable_schema_value(value: object) -> object:
+    """Return a deterministic JSON-serializable representation for schema fingerprints."""
+
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    if isinstance(value, list | tuple):
+        return [_jsonable_schema_value(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _jsonable_schema_value(item) for key, item in value.items()}
+    return repr(value)
+
+
+def _field_signature(field: object) -> object:
+    """Build a stable signature for a Flask-RESTX field object."""
+
+    from flask_restx import fields
+    from flask_restx.model import instance
+
+    field_instance = instance(field)
+    signature: dict[str, object] = {
+        "class": f"{field_instance.__class__.__module__}.{field_instance.__class__.__qualname__}"
+    }
+
+    if isinstance(field_instance, fields.Nested):
+        nested = getattr(field_instance, "nested", None)
+        if isinstance(nested, dict):
+            signature["nested"] = _inline_model_signature(nested)
+        else:
+            signature["nested"] = getattr(nested, "name", repr(nested))
+    elif hasattr(field_instance, "container"):
+        signature["container"] = _field_signature(field_instance.container)
+    else:
+        schema = getattr(field_instance, "__schema__", None)
+        if isinstance(schema, dict):
+            signature["schema"] = _jsonable_schema_value(schema)
+
+    for attr_name in (
+        "attribute",
+        "default",
+        "description",
+        "example",
+        "max",
+        "min",
+        "nullable",
+        "readonly",
+        "required",
+        "title",
+    ):
+        if hasattr(field_instance, attr_name):
+            signature[attr_name] = _jsonable_schema_value(getattr(field_instance, attr_name))
+
+    return signature
+
+
+def _inline_model_signature(nested_fields: dict[object, object]) -> object:
+    """Build a stable signature for an anonymous inline model."""
+
+    return [
+        (str(field_name), _field_signature(field))
+        for field_name, field in sorted(nested_fields.items(), key=lambda item: str(item[0]))
+    ]
+
+
+def _inline_model_name(nested_fields: dict[object, object]) -> str:
+    """Return a stable Swagger model name for an anonymous inline field map."""
+
+    signature = json.dumps(_inline_model_signature(nested_fields), sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha1(signature.encode("utf-8")).hexdigest()[:12]
+    return f"_AnonymousInlineModel_{digest}"
+
+
 def _apply_runtime_defaults() -> None:
     """Force the small config surface required for Swagger generation."""
 
@@ -87,9 +159,10 @@ def _patch_swagger_for_inline_nested_dicts() -> None:
 
         anonymous_name = anonymous_models.get(id(nested_fields))
         if anonymous_name is None:
-            anonymous_name = f"_AnonymousInlineModel{len(anonymous_models) + 1}"
+            anonymous_name = _inline_model_name(nested_fields)
             anonymous_models[id(nested_fields)] = anonymous_name
-            self.api.model(anonymous_name, nested_fields)
+            if anonymous_name not in self.api.models:
+                self.api.model(anonymous_name, nested_fields)
 
         return self.api.models[anonymous_name]
 
@@ -171,20 +244,14 @@ def _materialize_inline_model_definitions(api: RestxApi) -> None:
     from flask_restx.model import Model, OrderedModel, instance
 
     anonymous_models: dict[int, str] = {}
-    next_anonymous_index = 1
 
     def model_name_for(nested_fields: dict[object, object]) -> str:
-        nonlocal next_anonymous_index
-
         anonymous_name = anonymous_models.get(id(nested_fields))
         if anonymous_name is None:
-            anonymous_name = f"_AnonymousInlineModel{next_anonymous_index}"
-            while anonymous_name in api.models:
-                next_anonymous_index += 1
-                anonymous_name = f"_AnonymousInlineModel{next_anonymous_index}"
+            anonymous_name = _inline_model_name(nested_fields)
             anonymous_models[id(nested_fields)] = anonymous_name
-            next_anonymous_index += 1
-            api.model(anonymous_name, nested_fields)
+            if anonymous_name not in api.models:
+                api.model(anonymous_name, nested_fields)
         return anonymous_name
 
     def materialize_field(field: object) -> None:
