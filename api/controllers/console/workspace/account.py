@@ -8,6 +8,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from constants.languages import supported_language
@@ -45,6 +46,8 @@ from libs.helper import EmailStr, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
 from models import AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
@@ -322,9 +325,24 @@ class AccountAvatarApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        current_user, current_tenant_id = current_account_with_tenant()
         args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        avatar = args.avatar
 
-        avatar_url = file_helpers.get_signed_file_url(args.avatar)
+        if avatar.startswith(("http://", "https://")):
+            return {"avatar_url": avatar}
+
+        upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == avatar).limit(1))
+        if upload_file is None:
+            raise NotFound("Avatar file not found")
+
+        if upload_file.tenant_id != current_tenant_id:
+            raise NotFound("Avatar file not found")
+
+        if upload_file.created_by_role != CreatorUserRole.ACCOUNT or upload_file.created_by != current_user.id:
+            raise NotFound("Avatar file not found")
+
+        avatar_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
         return {"avatar_url": avatar_url}
 
     @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
@@ -595,12 +613,24 @@ class ChangeEmailSendEmailApi(Resource):
         account = None
         user_email = None
         email_for_sending = args.email.lower()
-        if args.phase is not None and args.phase == "new_email":
+        # Default to the initial phase; any legacy/unexpected client input is
+        # coerced back to `old_email` so we never trust the caller to declare
+        # later phases without a verified predecessor token.
+        send_phase = AccountService.CHANGE_EMAIL_PHASE_OLD
+        if args.phase is not None and args.phase == AccountService.CHANGE_EMAIL_PHASE_NEW:
+            send_phase = AccountService.CHANGE_EMAIL_PHASE_NEW
             if args.token is None:
                 raise InvalidTokenError()
 
             reset_data = AccountService.get_change_email_data(args.token)
             if reset_data is None:
+                raise InvalidTokenError()
+
+            # The token used to request a new-email code must come from the
+            # old-email verification step. This prevents the bypass described
+            # in GHSA-4q3w-q5mc-45rq where the phase-1 token was reused here.
+            token_phase = reset_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
+            if token_phase != AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED:
                 raise InvalidTokenError()
             user_email = reset_data.get("email", "")
 
@@ -620,7 +650,7 @@ class ChangeEmailSendEmailApi(Resource):
             email=email_for_sending,
             old_email=user_email,
             language=language,
-            phase=args.phase,
+            phase=send_phase,
         )
         return {"result": "success", "data": token}
 
@@ -655,12 +685,31 @@ class ChangeEmailCheckApi(Resource):
             AccountService.add_change_email_error_rate_limit(user_email)
             raise EmailCodeError()
 
+        # Only advance tokens that were minted by the matching send-code step;
+        # refuse tokens that have already progressed or lack a phase marker so
+        # the chain `old_email -> old_email_verified -> new_email -> new_email_verified`
+        # is strictly enforced.
+        phase_transitions = {
+            AccountService.CHANGE_EMAIL_PHASE_OLD: AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED,
+            AccountService.CHANGE_EMAIL_PHASE_NEW: AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+        }
+        token_phase = token_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
+        if not isinstance(token_phase, str):
+            raise InvalidTokenError()
+        refreshed_phase = phase_transitions.get(token_phase)
+        if refreshed_phase is None:
+            raise InvalidTokenError()
+
         # Verified, revoke the first token
         AccountService.revoke_change_email_token(args.token)
 
-        # Refresh token data by generating a new token
+        # Refresh token data by generating a new token that carries the
+        # upgraded phase so later steps can check it.
         _, new_token = AccountService.generate_change_email_token(
-            user_email, code=args.code, old_email=token_data.get("old_email"), additional_data={}
+            user_email,
+            code=args.code,
+            old_email=token_data.get("old_email"),
+            additional_data={AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY: refreshed_phase},
         )
 
         AccountService.reset_change_email_error_rate_limit(user_email)
@@ -690,12 +739,28 @@ class ChangeEmailResetApi(Resource):
         if not reset_data:
             raise InvalidTokenError()
 
-        AccountService.revoke_change_email_token(args.token)
+        # Only tokens that completed both verification phases may be used to
+        # change the email. This closes GHSA-4q3w-q5mc-45rq where a token from
+        # the initial send-code step could be replayed directly here.
+        token_phase = reset_data.get(AccountService.CHANGE_EMAIL_TOKEN_PHASE_KEY)
+        if token_phase != AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED:
+            raise InvalidTokenError()
+
+        # Bind the new email to the token that was mailed and verified, so a
+        # verified token cannot be reused with a different `new_email` value.
+        token_email = reset_data.get("email")
+        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
+        if normalized_token_email != normalized_new_email:
+            raise InvalidTokenError()
 
         old_email = reset_data.get("old_email", "")
         current_user, _ = current_account_with_tenant()
         if current_user.email.lower() != old_email.lower():
             raise AccountNotFound()
+
+        # Revoke only after all checks pass so failed attempts don't burn a
+        # legitimately verified token.
+        AccountService.revoke_change_email_token(args.token)
 
         updated_account = AccountService.update_account_email(current_user, email=normalized_new_email)
 

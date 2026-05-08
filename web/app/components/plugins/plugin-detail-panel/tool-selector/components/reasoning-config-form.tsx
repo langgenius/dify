@@ -7,6 +7,7 @@ import type {
   ValueSelector,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import {
   RiArrowRightUpLine,
@@ -16,11 +17,11 @@ import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { SimpleSelect } from '@/app/components/base/select'
+// eslint-disable-next-line no-restricted-imports -- legacy tooltip migration is handled separately from this change
 import Tooltip from '@/app/components/base/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
@@ -156,6 +157,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
       language,
       schema,
     })
+    const selectedOption = isSelect && options
+      ? pickerProps.selectItems.find(item => item.value === (varInput?.value as string | number | undefined)) ?? null
+      : null
 
     return (
       <div key={variable} className="space-y-0.5">
@@ -225,13 +229,19 @@ const ReasoningConfigForm: React.FC<Props> = ({
               />
             )}
             {isSelect && options && (
-              <SimpleSelect
-                wrapperClassName="h-8 grow"
-                defaultValue={varInput?.value as string | number | undefined}
-                items={pickerProps.selectItems}
-                onSelect={item => handleValueChange(variable, type)(item.value as string)}
-                placeholder={placeholder?.[language] || placeholder?.en_US}
-              />
+              <Select value={selectedOption ? String(selectedOption.value) : null} onValueChange={value => value && handleValueChange(variable, type)(value)}>
+                <SelectTrigger className="h-8 grow">
+                  {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
+                </SelectTrigger>
+                <SelectContent>
+                  {pickerProps.selectItems.map(item => (
+                    <SelectItem key={item.value} value={String(item.value)}>
+                      <SelectItemText>{item.name}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
             {isShowJSONEditor && isConstant && (
               <div className="mt-1 w-full">
@@ -268,7 +278,6 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {showVariableSelector && (
               <VarReferencePicker
-                zIndex={1001}
                 className="h-8 grow"
                 readonly={false}
                 isShowNodeName

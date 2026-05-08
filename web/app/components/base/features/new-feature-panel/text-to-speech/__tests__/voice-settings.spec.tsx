@@ -1,38 +1,17 @@
+import type { ReactNode } from 'react'
 import type { Features } from '../../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import VoiceSettings from '../voice-settings'
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({
-    children,
-    placement,
-    offset,
-  }: {
-    children: React.ReactNode
-    placement?: string
-    offset?: { mainAxis?: number }
-  }) => (
-    <div
-      data-testid="voice-settings-portal"
-      data-placement={placement}
-      data-main-axis={offset?.mainAxis}
-    >
-      {children}
-    </div>
-  ),
-  PortalToFollowElemTrigger: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => (
-    <div data-testid="voice-settings-trigger" onClick={onClick}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  },
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -44,6 +23,25 @@ vi.mock('@/service/use-apps', () => ({
   useAppVoices: () => ({
     data: [{ name: 'alloy', value: 'alloy' }],
   }),
+}))
+
+vi.mock('@langgenius/dify-ui/switch', () => ({
+  Switch: ({
+    checked,
+    onCheckedChange,
+    ...props
+  }: {
+    checked?: boolean
+    onCheckedChange?: (checked: boolean) => void
+  }) => (
+    <button
+      type="button"
+      data-testid="switch"
+      data-checked={String(checked)}
+      onClick={() => onCheckedChange?.(!checked)}
+      {...props}
+    />
+  ),
 }))
 
 const defaultFeatures: Features = {
@@ -58,7 +56,7 @@ const defaultFeatures: Features = {
   annotationReply: { enabled: false },
 }
 
-const renderWithProvider = (ui: React.ReactNode) => {
+const renderWithProvider = (ui: ReactNode) => {
   return render(
     <FeaturesProvider features={defaultFeatures}>
       {ui}
@@ -101,12 +99,7 @@ describe('VoiceSettings', () => {
 
     fireEvent.click(screen.getByText('Settings'))
 
-    expect(onOpen).toHaveBeenCalled()
-    // The toggle function should flip the open state
-    const toggleFn = onOpen.mock.calls[0]![0]
-    expect(typeof toggleFn).toBe('function')
-    expect(toggleFn(false)).toBe(true)
-    expect(toggleFn(true)).toBe(false)
+    expect(onOpen).toHaveBeenCalledWith(true)
   })
 
   it('should not call onOpen when disabled and trigger is clicked', () => {
@@ -137,16 +130,13 @@ describe('VoiceSettings', () => {
 
   it('should use top placement and mainAxis 4 when placementLeft is false', () => {
     renderWithProvider(
-      <VoiceSettings open={false} onOpen={vi.fn()} placementLeft={false}>
+      <VoiceSettings open={true} onOpen={vi.fn()} placementLeft={false}>
         <button>Settings</button>
       </VoiceSettings>,
     )
 
-    const portal = screen.getAllByTestId('voice-settings-portal')
-      .find(item => item.hasAttribute('data-main-axis'))
-
-    expect(portal).toBeDefined()
-    expect(portal)!.toHaveAttribute('data-placement', 'top')
-    expect(portal)!.toHaveAttribute('data-main-axis', '4')
+    const content = screen.getByTestId('popover-content')
+    expect(content).toHaveAttribute('data-placement', 'top')
+    expect(content).toHaveAttribute('data-side-offset', '4')
   })
 })

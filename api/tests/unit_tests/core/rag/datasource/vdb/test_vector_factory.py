@@ -146,10 +146,7 @@ def test_get_vector_factory_entry_point_overrides_builtin(vector_factory_module,
 def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
     dataset = SimpleNamespace(id="dataset-1")
 
-    with (
-        patch.object(vector_factory_module.Vector, "_get_embeddings", return_value="embeddings"),
-        patch.object(vector_factory_module.Vector, "_init_vector", return_value="processor"),
-    ):
+    with patch.object(vector_factory_module.Vector, "_init_vector", return_value="processor"):
         default_vector = vector_factory_module.Vector(dataset)
         custom_vector = vector_factory_module.Vector(dataset, attributes=["doc_id"])
 
@@ -166,8 +163,55 @@ def test_vector_init_uses_default_and_custom_attributes(vector_factory_module):
         "original_chunk_id",
     ]
     assert custom_vector._attributes == ["doc_id"]
-    assert default_vector._embeddings == "embeddings"
+    # ``_embeddings`` is now a lazy proxy that defers materializing the real
+    # embedding model until ``embed_*`` is invoked, so cleanup paths never
+    # trigger billing/feature-service calls during ``Vector(dataset)``
+    # construction. See ``_LazyEmbeddings``.
+    assert isinstance(default_vector._embeddings, vector_factory_module._LazyEmbeddings)
     assert default_vector._vector_processor == "processor"
+
+
+def test_lazy_embeddings_defer_real_load_until_first_embed_call(vector_factory_module, monkeypatch):
+    """``Vector(dataset)`` must not transitively call ``ModelManager`` during
+    construction. The real embedding model should only be materialized on the
+    first ``embed_*`` call (i.e. create / search paths) so cleanup paths
+    (``delete_by_ids`` / ``delete``) remain resilient to billing-API failures.
+    """
+    for_tenant_mock = MagicMock(side_effect=AssertionError("ModelManager.for_tenant must not be called eagerly"))
+    monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", for_tenant_mock)
+
+    dataset = SimpleNamespace(
+        tenant_id="tenant-1",
+        embedding_model_provider="openai",
+        embedding_model="text-embedding-3-small",
+    )
+
+    proxy = vector_factory_module._LazyEmbeddings(dataset)
+
+    # Construction alone does not trigger ModelManager / FeatureService / BillingService.
+    for_tenant_mock.assert_not_called()
+
+    # Exercising an embed_* method materializes the real model exactly once.
+    inner_model = MagicMock()
+    inner_model.embed_documents.return_value = [[0.1, 0.2]]
+    cached_embedding_mock = MagicMock(return_value=inner_model)
+    real_for_tenant = MagicMock()
+    real_for_tenant.get_model_instance.return_value = "embedding-model-instance"
+    monkeypatch.setattr(vector_factory_module.ModelManager, "for_tenant", MagicMock(return_value=real_for_tenant))
+    monkeypatch.setattr(vector_factory_module, "CacheEmbedding", cached_embedding_mock)
+
+    result = proxy.embed_documents(["hello"])
+
+    assert result == [[0.1, 0.2]]
+    cached_embedding_mock.assert_called_once_with("embedding-model-instance")
+    inner_model.embed_documents.assert_called_once_with(["hello"])
+
+    # Subsequent calls reuse the materialized model (no re-resolution).
+    inner_model.embed_documents.reset_mock()
+    cached_embedding_mock.reset_mock()
+    proxy.embed_documents(["world"])
+    cached_embedding_mock.assert_not_called()
+    inner_model.embed_documents.assert_called_once_with(["world"])
 
 
 def test_init_vector_prefers_dataset_index_struct(vector_factory_module, monkeypatch):
@@ -272,6 +316,33 @@ def test_create_batches_texts_and_skips_empty_input(vector_factory_module):
     vector._vector_processor.create.assert_not_called()
 
 
+def test_create_skips_empty_text_documents_before_embedding(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1], [0.2]]
+    vector._vector_processor = MagicMock()
+
+    docs = [
+        Document(page_content="foo", metadata={"doc_id": "id-1"}),
+        Document(page_content="", metadata={"doc_id": "id-empty"}),
+        Document(page_content="  \n", metadata={"doc_id": "id-blank"}),
+        Document(page_content="bar", metadata={"doc_id": "id-2"}),
+    ]
+
+    vector.create(texts=docs, request_id="r-1")
+
+    vector._embeddings.embed_documents.assert_called_once_with(["foo", "bar"])
+    vector._vector_processor.create.assert_called_once_with(
+        texts=[docs[0], docs[3]], embeddings=[[0.1], [0.2]], request_id="r-1"
+    )
+
+    vector._embeddings.embed_documents.reset_mock()
+    vector._vector_processor.create.reset_mock()
+    vector.create(texts=[docs[1], docs[2]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
 def test_create_multimodal_filters_missing_uploads(vector_factory_module, monkeypatch):
     class _Field:
         def in_(self, value):
@@ -352,6 +423,48 @@ def test_add_texts_with_optional_duplicate_check(vector_factory_module):
     vector._vector_processor.create.assert_called_once()
 
 
+def test_add_texts_skips_empty_text_documents(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1]]
+    vector._vector_processor = MagicMock()
+
+    docs = [
+        Document(page_content="keep", metadata={"doc_id": "id-1"}),
+        Document(page_content="", metadata={"doc_id": "id-empty"}),
+    ]
+
+    vector.add_texts(docs, source="api")
+
+    vector._embeddings.embed_documents.assert_called_once_with(["keep"])
+    vector._vector_processor.create.assert_called_once_with(texts=[docs[0]], embeddings=[[0.1]], source="api")
+
+    vector._embeddings.embed_documents.reset_mock()
+    vector._vector_processor.create.reset_mock()
+    vector.add_texts([docs[1]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
+def test_add_texts_filters_empty_documents_before_duplicate_check(vector_factory_module):
+    vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
+    vector._embeddings = MagicMock()
+    vector._embeddings.embed_documents.return_value = [[0.1]]
+    vector._vector_processor = MagicMock()
+    vector._filter_duplicate_texts = MagicMock(return_value=[])
+
+    docs = [
+        Document(page_content="keep", metadata={"doc_id": "id-1"}),
+        Document(page_content="   ", metadata={"doc_id": "id-empty"}),
+    ]
+
+    vector.add_texts(docs, duplicate_check=True)
+
+    vector._filter_duplicate_texts.assert_called_once_with([docs[0]])
+    vector._embeddings.embed_documents.assert_not_called()
+    vector._vector_processor.create.assert_not_called()
+
+
 def test_vector_delegation_methods(vector_factory_module):
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
@@ -372,19 +485,11 @@ def test_vector_delegation_methods(vector_factory_module):
 
 
 def test_search_by_file_handles_missing_and_existing_upload(vector_factory_module, monkeypatch):
-    class _Field:
-        def __eq__(self, value):
-            return value
-
-    upload_query = MagicMock()
-    upload_query.where.return_value = upload_query
-
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._embeddings = MagicMock()
     vector._vector_processor = MagicMock()
 
     mock_session = SimpleNamespace(get=lambda _model, _id: None)
-    monkeypatch.setattr(vector_factory_module, "UploadFile", SimpleNamespace(id=_Field()))
     monkeypatch.setattr(vector_factory_module, "db", SimpleNamespace(session=mock_session))
 
     assert vector.search_by_file("file-1") == []

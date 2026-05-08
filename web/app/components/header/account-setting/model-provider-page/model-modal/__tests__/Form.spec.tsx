@@ -8,8 +8,10 @@ import type {
   CredentialFormSchemaTextInput,
   FormValue,
 } from '../../declarations'
+import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '../../declarations'
 import Form from '../Form'
 
@@ -28,8 +30,8 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
-  default: ({ onSelect }: { onSelect: (item: { id: string }) => void }) => (
-    <button type="button" onClick={() => onSelect({ id: 'app-1' })}>Select App</button>
+  AppSelector: ({ onSelect }: { onSelect: (item: AppSelectorValue) => void }) => (
+    <button type="button" onClick={() => onSelect({ app_id: 'app-1', inputs: {}, files: [] })}>Select App</button>
   ),
 }))
 
@@ -288,7 +290,8 @@ describe('Form', () => {
       expect(onChange).toHaveBeenCalledTimes(1)
     })
 
-    it('should render select and checkbox fields and update checkbox value', () => {
+    it('should render select and checkbox fields and update checkbox value', async () => {
+      const user = userEvent.setup()
       const formSchemas: AnyFormSchema[] = [
         createSelectSchema({
           variable: 'model',
@@ -339,10 +342,10 @@ describe('Form', () => {
       )
 
       expect(screen.getByText('Select A'))!.toBeInTheDocument()
-      fireEvent.click(screen.getByText('Select A'))
-      fireEvent.click(screen.getByText('Select B'))
+      await user.click(screen.getByRole('combobox'))
+      await user.click(screen.getByRole('option', { name: 'Select B' }))
 
-      fireEvent.click(screen.getByText('True'))
+      await user.click(screen.getByText('True'))
 
       expect(onChange).toHaveBeenCalledWith({ model: 'b', agree: false, toggle: 'on' })
       expect(onChange).toHaveBeenCalledWith({ model: 'a', agree: true, toggle: 'on' })
@@ -406,7 +409,7 @@ describe('Form', () => {
         multi_tool: [{ id: 'tool-1' }],
       }))
       expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        app_selector: { id: 'app-1', type: FormTypeEnum.appSelector },
+        app_selector: { app_id: 'app-1', inputs: {}, files: [], type: FormTypeEnum.appSelector },
       }))
     })
 
@@ -989,9 +992,8 @@ describe('Form', () => {
         />,
       )
 
-      const selectTrigger = screen.getByRole('button', { name: 'Select A' })
-      fireEvent.click(selectTrigger)
-      expect(screen.queryByText('Select B')).not.toBeInTheDocument()
+      const selectTrigger = screen.getByRole('combobox')
+      expect(selectTrigger).toBeDisabled()
     })
 
     // isShowDefaultValue=false: value used even if empty
@@ -1234,6 +1236,10 @@ describe('Form', () => {
       expect(screen.getByText('Region'))!.toBeInTheDocument()
       expect(screen.getByText('Model'))!.toBeInTheDocument()
       expect(screen.getByText('Agree'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Enter your API key here'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Select region'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Choose model'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Agree tooltip'))!.toBeInTheDocument()
     })
 
     it('should render required asterisk for radio, select, checkbox, and other field types', () => {
@@ -1899,7 +1905,8 @@ describe('Form', () => {
       expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
     })
 
-    it('should show ValidatingTip for select field being validated', () => {
+    it('should show ValidatingTip for select field being validated', async () => {
+      const user = userEvent.setup()
       // Arrange: value 'a' is pre-selected so 'Select A' text appears in the trigger button
       const formSchemas: AnyFormSchema[] = [
         createSelectSchema({
@@ -1923,14 +1930,14 @@ describe('Form', () => {
         />,
       )
 
-      // First click opens the dropdown (Select A is the trigger button text)
-      fireEvent.click(screen.getByText('Select A'))
-      // Then click on 'Select B' option in the open dropdown
-      fireEvent.click(screen.getByText('Select B'))
+      await user.click(screen.getByRole('combobox'))
+      await user.click(screen.getByRole('option', { name: 'Select B' }))
 
       // Assert: ValidatingTip shows for the select field
       // Assert: ValidatingTip shows for the select field
-      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      })
     })
 
     it('should show ValidatingTip for toolSelector field being validated', () => {

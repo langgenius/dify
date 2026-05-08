@@ -36,11 +36,12 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
+    HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
+    WorkflowAppPausedBlockingResponse,
     WorkflowFinishStreamResponse,
-    WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
@@ -91,27 +92,50 @@ def _make_pipeline():
 
 
 class TestWorkflowGenerateTaskPipeline:
-    def test_to_blocking_response_handles_pause(self):
+    def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
         pipeline = _make_pipeline()
+        pipeline._graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            start_at=0.0,
+            total_tokens=5,
+            node_run_steps=2,
+        )
 
         def _gen():
-            yield WorkflowPauseStreamResponse(
+            yield HumanInputRequiredResponse(
                 task_id="task",
-                workflow_run_id="run",
-                data=WorkflowPauseStreamResponse.Data(
-                    workflow_run_id="run",
-                    status=WorkflowExecutionStatus.PAUSED,
-                    outputs={},
-                    created_at=1,
-                    elapsed_time=0.1,
-                    total_tokens=0,
-                    total_steps=0,
+                workflow_run_id="run-id",
+                data=HumanInputRequiredResponse.Data(
+                    form_id="form-1",
+                    node_id="node-1",
+                    node_title="Human Input",
+                    form_content="content",
+                    expiration_time=1,
                 ),
             )
 
         response = pipeline._to_blocking_response(_gen())
 
+        assert isinstance(response, WorkflowAppPausedBlockingResponse)
+        assert response.workflow_run_id == "run-id"
         assert response.data.status == WorkflowExecutionStatus.PAUSED
+        assert response.data.created_at == 0
+        assert response.data.paused_nodes == ["node-1"]
+        assert response.data.reasons == [
+            {
+                "TYPE": "human_input_required",
+                "form_id": "form-1",
+                "node_id": "node-1",
+                "node_title": "Human Input",
+                "form_content": "content",
+                "inputs": [],
+                "actions": [],
+                "display_in_ui": False,
+                "form_token": None,
+                "resolved_default_values": {},
+                "expiration_time": 1,
+            }
+        ]
 
     def test_to_blocking_response_handles_finish(self):
         pipeline = _make_pipeline()

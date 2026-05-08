@@ -6,6 +6,8 @@ import { useDocumentDownload } from '@/service/knowledge/use-document'
 import { downloadUrl } from '@/utils/download'
 import Popup from '../popup'
 
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+
 vi.mock('@/service/knowledge/use-document', () => ({
   useDocumentDownload: vi.fn(),
 }))

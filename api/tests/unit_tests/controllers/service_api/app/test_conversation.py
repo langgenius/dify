@@ -20,6 +20,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
@@ -504,7 +505,7 @@ class TestConversationApiController:
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user)
 
-    def test_list_last_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_list_last_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         class _BeginStub:
             def __enter__(self):
                 return SimpleNamespace()
@@ -552,7 +553,7 @@ class TestConversationDetailApiController:
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
 
-    def test_delete_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "delete",
@@ -570,7 +571,7 @@ class TestConversationDetailApiController:
 
 
 class TestConversationRenameApiController:
-    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "rename",
@@ -602,7 +603,7 @@ class TestConversationVariablesApiController:
             with pytest.raises(NotChatAppError):
                 handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
 
-    def test_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "get_conversational_variable",
@@ -621,7 +622,7 @@ class TestConversationVariablesApiController:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, c_id="00000000-0000-0000-0000-000000000001")
 
-    def test_success_serializes_response(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_success_serializes_response(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
         monkeypatch.setattr(
             ConversationService,
@@ -661,7 +662,7 @@ class TestConversationVariablesApiController:
 
 
 class TestConversationVariableDetailApiController:
-    def test_update_type_mismatch(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_update_type_mismatch(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "update_conversation_variable",
@@ -687,7 +688,7 @@ class TestConversationVariableDetailApiController:
                     variable_id="00000000-0000-0000-0000-000000000002",
                 )
 
-    def test_update_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_update_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             ConversationService,
             "update_conversation_variable",
@@ -713,7 +714,7 @@ class TestConversationVariableDetailApiController:
                     variable_id="00000000-0000-0000-0000-000000000002",
                 )
 
-    def test_update_success_serializes_response(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_update_success_serializes_response(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
         monkeypatch.setattr(
             ConversationService,

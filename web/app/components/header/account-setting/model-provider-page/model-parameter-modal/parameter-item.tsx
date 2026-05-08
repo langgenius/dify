@@ -7,9 +7,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import Radio from '@/app/components/base/radio'
 import TagInput from '@/app/components/base/tag-input'
@@ -349,18 +349,13 @@ function ParameterItem({
           </div>
           {
             parameterRule.help && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={(
-                    <span className="mr-1 flex h-4 w-4 shrink-0 items-center justify-center">
-                      <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary" />
-                    </span>
-                  )}
-                />
-                <TooltipContent className="mr-1">
-                  <div className="w-[150px] whitespace-pre-wrap">{parameterRule.help[language] || parameterRule.help.en_US}</div>
-                </TooltipContent>
-              </Tooltip>
+              <Infotip
+                aria-label={parameterRule.help[language] || parameterRule.help.en_US}
+                className="mr-1"
+                popupClassName="w-[150px] whitespace-pre-wrap"
+              >
+                {parameterRule.help[language] || parameterRule.help.en_US}
+              </Infotip>
             )
           }
         </div>

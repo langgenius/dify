@@ -1,13 +1,9 @@
 import type { FC, MouseEvent } from 'react'
 import type { Resources } from './index'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import Link from '@/next/link'
 import { useDocumentDownload } from '@/service/knowledge/use-document'
 import { downloadUrl } from '@/utils/download'
@@ -47,22 +43,25 @@ const Popup: FC<PopupProps> = ({
   }
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="top-start"
-      offset={{
-        mainAxis: 8,
-        crossAxis: -2,
-      }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div data-testid="popup-trigger" className="flex h-7 max-w-[240px] items-center rounded-lg bg-components-button-secondary-bg px-2">
-          <FileIcon type={fileType} className="mr-1 h-4 w-4 shrink-0" />
-          <div className="truncate text-xs text-text-tertiary">{data.documentName}</div>
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{ zIndex: 1000 }}>
+      <PopoverTrigger
+        nativeButton={false}
+        render={(
+          <div data-testid="popup-trigger" className="flex h-7 max-w-[240px] items-center rounded-lg bg-components-button-secondary-bg px-2">
+            <FileIcon type={fileType} className="mr-1 h-4 w-4 shrink-0" />
+            <div className="truncate text-xs text-text-tertiary">{data.documentName}</div>
+          </div>
+        )}
+      />
+      <PopoverContent
+        placement="top-start"
+        sideOffset={8}
+        alignOffset={-2}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div data-testid="popup-content" className="max-w-[360px] rounded-xl bg-background-section-burn shadow-lg backdrop-blur-[5px]">
           <div className="px-4 pt-3 pb-2">
             <div className="flex h-[18px] items-center">
@@ -156,8 +155,8 @@ const Popup: FC<PopupProps> = ({
             </div>
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

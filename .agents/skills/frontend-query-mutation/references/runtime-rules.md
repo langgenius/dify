@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - Conditional queries
+- oRPC default options
 - Cache invalidation
 - Key API guide
 - `mutate` vs `mutateAsync`
@@ -35,9 +36,50 @@ function useBadAccessMode(appId: string | undefined) {
 }
 ```
 
+## oRPC Default Options
+
+Use `experimental_defaults` in `createTanstackQueryUtils` when a contract operation should always carry shared TanStack Query behavior, such as default stale time, mutation cache writes, or invalidation.
+
+Place defaults at the query utility creation point in `web/service/client.ts`:
+
+```typescript
+export const consoleQuery = createTanstackQueryUtils(consoleClient, {
+  path: ['console'],
+  experimental_defaults: {
+    tags: {
+      create: {
+        mutationOptions: {
+          onSuccess: (tag, _variables, _result, context) => {
+            context.client.setQueryData(
+              consoleQuery.tags.list.queryKey({
+                input: {
+                  query: {
+                    type: tag.type,
+                  },
+                },
+              }),
+              (oldTags: Tag[] | undefined) => oldTags ? [tag, ...oldTags] : oldTags,
+            )
+          },
+        },
+      },
+    },
+  },
+})
+```
+
+Rules:
+
+- Keep defaults inline in the `consoleQuery` or `marketplaceQuery` initialization when they need sibling oRPC key builders.
+- Do not create a wrapper function solely to host `createTanstackQueryUtils`.
+- Do not split defaults into a vertical feature file if that forces handwritten operation paths such as `generateOperationKey(['console', ...])`.
+- Keep feature-level orchestration in the feature vertical; keep query utility lifecycle defaults with the query utility.
+- Prefer call-site callbacks for UI feedback only; shared cache behavior belongs in oRPC defaults when it is tied to a contract operation.
+
 ## Cache Invalidation
 
-Bind invalidation in the service-layer mutation definition.
+Bind shared invalidation in oRPC defaults when it is tied to a contract operation.
+Use feature vertical hooks only for multi-operation workflows or domain orchestration that cannot live in a single operation default.
 Components may add UI feedback in call-site callbacks, but they should not decide which queries to invalidate.
 
 Use:
@@ -49,7 +91,7 @@ Use:
 Do not use deprecated `useInvalid` from `use-base.ts`.
 
 ```typescript
-// Service layer owns cache invalidation.
+// Feature orchestration owns cache invalidation only when defaults are not enough.
 export const useUpdateAccessMode = () => {
   const queryClient = useQueryClient()
 
@@ -124,7 +166,7 @@ When touching old code, migrate it toward these rules:
 
 | Old pattern | New pattern |
 |---|---|
-| `useInvalid(key)` in service layer | `queryClient.invalidateQueries(...)` inside mutation `onSuccess` |
-| component-triggered invalidation after mutation | move invalidation into the service-layer mutation definition |
+| `useInvalid(key)` in service wrappers | oRPC defaults, or a feature vertical hook for real orchestration |
+| component-triggered invalidation after mutation | move invalidation into oRPC defaults or a feature vertical hook |
 | imperative fetch plus manual invalidation | wrap it in `useMutation(...mutationOptions(...))` |
 | `await mutateAsync()` without `try/catch` | switch to `mutate(...)` or add `try/catch` |

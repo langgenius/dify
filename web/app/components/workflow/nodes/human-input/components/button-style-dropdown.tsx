@@ -2,16 +2,16 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
   RiFontSize,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { UserActionButtonType } from '../types'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -45,23 +45,29 @@ const ButtonStyleDropdown: FC<Props> = ({
   }, [data])
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open && !readonly}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 44,
+      onOpenChange={(nextOpen) => {
+        if (readonly)
+          return
+        setOpen(nextOpen)
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => !readonly && setOpen(v => !v)}>
-        <div className={cn('flex items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1', !readonly && 'cursor-pointer hover:bg-components-button-tertiary-bg-hover', open && 'bg-components-button-tertiary-bg-hover')}>
-          <Button size="small" className="pointer-events-none px-1" variant={currentStyle}>
-            <RiFontSize className="h-4 w-4" />
-          </Button>
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{ zIndex: 1000 }}>
+      <PopoverTrigger
+        render={(
+          <div className={cn('flex items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1', !readonly && 'cursor-pointer hover:bg-components-button-tertiary-bg-hover', open && 'bg-components-button-tertiary-bg-hover')}>
+            <Button size="small" className="pointer-events-none px-1" variant={currentStyle}>
+              <RiFontSize className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        alignOffset={44}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-xs">
           <div className="system-md-medium text-text-primary">{t(`${i18nPrefix}.userActions.chooseStyle`, { ns: 'workflow' })}</div>
           <div className="mt-2 flex w-[324px] flex-wrap gap-1">
@@ -103,8 +109,8 @@ const ButtonStyleDropdown: FC<Props> = ({
             </div>
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

@@ -1,9 +1,22 @@
+import type { ReactElement } from 'react'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
 import AccessControl from '../index'
+
+let mockWebappAuth = {
+  enabled: true,
+  allow_sso: true,
+  allow_email_password_login: false,
+  allow_email_code_login: false,
+}
+
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { webapp_auth: mockWebappAuth },
+})
 
 const mockMutateAsync = vi.fn()
 const mockUseUpdateAccessMode = vi.fn(() => ({
@@ -12,20 +25,6 @@ const mockUseUpdateAccessMode = vi.fn(() => ({
 }))
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
-let mockWebappAuth = {
-  enabled: true,
-  allow_sso: true,
-  allow_email_password_login: false,
-  allow_email_code_login: false,
-}
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { webapp_auth: typeof mockWebappAuth } }) => unknown) => selector({
-    systemFeatures: {
-      webapp_auth: mockWebappAuth,
-    },
-  }),
-}))
 
 vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),

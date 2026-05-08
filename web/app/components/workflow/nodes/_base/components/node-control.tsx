@@ -11,13 +11,13 @@ import { useTranslation } from 'react-i18next'
 import {
   Stop,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useNodesInteractions,
 } from '../../../hooks'
 import { NodeRunningStatus } from '../../../types'
 import { canRunBySingle } from '../../../utils'
-import PanelOperator from './panel-operator'
 
 type NodeControlProps = Pick<Node, 'id' | 'data'> & {
   pluginInstallLocked?: boolean
@@ -82,10 +82,9 @@ const NodeControl: FC<NodeControlProps> = ({
             </button>
           )
         }
-        <PanelOperator
+        <NodeActionsDropdown
           id={id}
           data={data}
-          offset={0}
           triggerClassName="w-5! h-5!"
         />
       </div>

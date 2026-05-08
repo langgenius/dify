@@ -76,9 +76,10 @@ The easiest way to start the Dify server is through [Docker Compose](docker/dock
 ```bash
 cd dify
 cd docker
-cp .env.example .env
-docker compose up -d
+./dify-compose up -d
 ```
+
+On Windows PowerShell, run `.\dify-compose.ps1 up -d` from the `docker` directory.
 
 After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process.
 
@@ -137,20 +138,7 @@ Star Dify on GitHub and be instantly notified of new releases.
 
 ### Custom configurations
 
-If you need to customize the configuration, please refer to the comments in our [.env.example](docker/.env.example) file and update the corresponding values in your `.env` file. Additionally, you might need to make adjustments to the `docker-compose.yaml` file itself, such as changing image versions, port mappings, or volume mounts, based on your specific deployment environment and requirements. After making any changes, please re-run `docker compose up -d`. You can find the full list of available environment variables [here](https://docs.dify.ai/getting-started/install-self-hosted/environments).
-
-#### Customizing Suggested Questions
-
-You can now customize the "Suggested Questions After Answer" feature to better fit your use case. For example, to generate longer, more technical questions:
-
-```bash
-# In your .env file
-SUGGESTED_QUESTIONS_PROMPT='Please help me predict the five most likely technical follow-up questions a developer would ask. Focus on implementation details, best practices, and architecture considerations. Keep each question between 40-60 characters. Output must be JSON array: ["question1","question2","question3","question4","question5"]'
-SUGGESTED_QUESTIONS_MAX_TOKENS=512
-SUGGESTED_QUESTIONS_TEMPERATURE=0.3
-```
-
-See the [Suggested Questions Configuration Guide](docs/suggested-questions-configuration.md) for detailed examples and usage instructions.
+If you need to customize the configuration, add only the values you want to override to `docker/.env`. The default values live in [`docker/.env.default`](docker/.env.default), and the full reference remains in [`docker/.env.example`](docker/.env.example). After making any changes, re-run `./dify-compose up -d` or `.\dify-compose.ps1 up -d` from the `docker` directory. You can find the full list of available environment variables [here](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 ### Metrics Monitoring with Grafana
 
@@ -160,7 +148,7 @@ Import the dashboard to Grafana, using Dify's PostgreSQL database as data source
 
 ### Deployment with Kubernetes
 
-If you'd like to configure a highly-available setup, there are community-contributed [Helm Charts](https://helm.sh/) and YAML files which allow Dify to be deployed on Kubernetes.
+If you'd like to configure a highly available setup, there are community-contributed [Helm Charts](https://helm.sh/) and YAML files which allow Dify to be deployed on Kubernetes.
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)

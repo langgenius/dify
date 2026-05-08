@@ -1,12 +1,16 @@
 import type { MouseEvent } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useWorkflowStore } from '../store'
 import { readWorkflowClipboard } from '../utils'
 
 export const usePanelInteractions = () => {
   const workflowStore = useWorkflowStore()
-  const appDslVersion = useGlobalPublicStore(s => s.systemFeatures.app_dsl_version)
+  const { data: appDslVersion } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.app_dsl_version,
+  })
 
   const handlePaneContextMenu = useCallback((e: MouseEvent) => {
     e.preventDefault()
@@ -18,15 +22,13 @@ export const usePanelInteractions = () => {
         workflowStore.getState().setClipboardData({ nodes, edges })
     })
 
-    const container = document.querySelector('#workflow-container')
-    const { x, y } = container!.getBoundingClientRect()
     workflowStore.setState({
       nodeMenu: undefined,
       selectionMenu: undefined,
       edgeMenu: undefined,
       panelMenu: {
-        top: e.clientY - y,
-        left: e.clientX - x,
+        clientX: e.clientX,
+        clientY: e.clientY,
       },
     })
   }, [workflowStore, appDslVersion])

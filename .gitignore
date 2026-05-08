@@ -219,6 +219,9 @@ node_modules
 # plugin migrate
 plugins.jsonl
 
+# generated API OpenAPI specs
+packages/contracts/openapi/
+
 # mise
 mise.toml
 
@@ -236,6 +239,10 @@ scripts/stress-test/reports/
 # mcp
 .playwright-mcp/
 .serena/
+
+# vitest browser mode attachments (failure screenshots, traces, etc.)
+.vitest-attachments/
+**/__screenshots__/
 
 # settings
 *.local.json

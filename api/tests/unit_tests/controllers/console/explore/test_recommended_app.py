@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+from flask import Flask
+
 import controllers.console.explore.recommended_app as module
 from models.model import AppMode, IconType
 
@@ -11,7 +13,7 @@ def unwrap(func):
 
 
 class TestRecommendedAppListApi:
-    def test_get_with_language_param(self, app):
+    def test_get_with_language_param(self, app: Flask):
         api = module.RecommendedAppListApi()
         method = unwrap(api.get)
 
@@ -31,7 +33,7 @@ class TestRecommendedAppListApi:
         service_mock.assert_called_once_with("en-US")
         assert result == result_data
 
-    def test_get_fallback_to_user_language(self, app):
+    def test_get_fallback_to_user_language(self, app: Flask):
         api = module.RecommendedAppListApi()
         method = unwrap(api.get)
 
@@ -51,7 +53,7 @@ class TestRecommendedAppListApi:
         service_mock.assert_called_once_with("fr-FR")
         assert result == result_data
 
-    def test_get_fallback_to_default_language(self, app):
+    def test_get_fallback_to_default_language(self, app: Flask):
         api = module.RecommendedAppListApi()
         method = unwrap(api.get)
 
@@ -73,7 +75,7 @@ class TestRecommendedAppListApi:
 
 
 class TestRecommendedAppApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = module.RecommendedAppApi()
         method = unwrap(api.get)
 

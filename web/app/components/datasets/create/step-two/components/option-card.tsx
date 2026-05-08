@@ -20,7 +20,7 @@ type OptionCardHeaderProps = {
 export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   const { icon, title, description, isActive, activeClassName, effectImg, disabled } = props
   return (
-    <div className={cn('relative flex h-full overflow-hidden rounded-t-xl', isActive && activeClassName, !disabled && 'cursor-pointer')}>
+    <div className={cn('relative flex flex-1 overflow-hidden rounded-t-xl', isActive && activeClassName, !disabled && 'cursor-pointer')}>
       <div className="relative flex size-14 items-center justify-center overflow-hidden">
         {isActive && effectImg && <img src={effectImg} className="absolute top-0 left-0 h-full w-full" alt="" width={56} height={56} />}
         <div className="p-1">
@@ -63,7 +63,7 @@ export const OptionCard: FC<OptionCardProps> = (
   const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, noHighlight, disabled, ...rest } = props
   return (
     <div
-      className={cn('rounded-xl bg-components-option-card-option-bg shadow-xs', (isActive && !noHighlight)
+      className={cn('flex flex-col rounded-xl bg-components-option-card-option-bg shadow-xs', (isActive && !noHighlight)
         ? 'border-[1.5px] border-components-option-card-option-selected-border'
         : 'border border-components-option-card-option-border', disabled && 'pointer-events-none opacity-50', className)}
       style={{

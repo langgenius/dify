@@ -53,8 +53,7 @@ describe('SchemaModal', () => {
     expect(screen.getByText('workflow.nodes.agent.parameterSchema')).toBeInTheDocument()
     expect(screen.getByTestId('visual-editor')).toHaveTextContent('response')
 
-    const closeButton = document.body.querySelector('div.absolute.right-5.top-5')
-    fireEvent.click(closeButton!)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onClose).toHaveBeenCalled()
   })

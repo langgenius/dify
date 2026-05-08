@@ -192,27 +192,6 @@ vi.mock('ahooks', () => ({
   useKeyPress: vi.fn(),
 }))
 
-let portalOpenState = false
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange: _onOpenChange }: PropsWithChildren<{
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    placement?: string
-    offset?: unknown
-  }>) => {
-    portalOpenState = open
-    return <div data-testid="portal-elem" data-open={open}>{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick }: PropsWithChildren<{ onClick?: () => void }>) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: PropsWithChildren) => {
-    if (!portalOpenState)
-      return null
-    return <div data-testid="portal-content">{children}</div>
-  },
-}))
-
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
   default: ({ onConfirm, onCancel }: {
     onConfirm: (name: string, icon: unknown, description?: string) => void
@@ -229,7 +208,6 @@ vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
 describe('RagPipelineHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpenState = false
     mockStoreState = {
       pipelineId: 'test-pipeline-id',
       showDebugAndPreviewPanel: false,
@@ -351,7 +329,6 @@ describe('InputFieldButton', () => {
 describe('Publisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpenState = false
   })
 
   describe('Rendering', () => {
@@ -367,9 +344,9 @@ describe('Publisher', () => {
       expect(button)!.toHaveClass('px-2')
     })
 
-    it('should render portal trigger element', () => {
+    it('should render publish trigger button', () => {
       render(<Publisher />)
-      expect(screen.getByTestId('portal-trigger'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /workflow\.common\.publish/i }))!.toBeInTheDocument()
     })
   })
 
@@ -377,7 +354,7 @@ describe('Publisher', () => {
     it('should call handleSyncWorkflowDraft when opening', () => {
       render(<Publisher />)
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.publish/i }))
 
       expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)
     })
@@ -385,12 +362,14 @@ describe('Publisher', () => {
     it('should toggle open state when trigger clicked', () => {
       render(<Publisher />)
 
-      const portal = screen.getByTestId('portal-elem')
-      expect(portal)!.toHaveAttribute('data-open', 'false')
+      const trigger = screen.getByRole('button', { name: /workflow\.common\.publish/i })
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(trigger)
 
       expect(mockHandleSyncWorkflowDraft).toHaveBeenCalled()
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
+      expect(screen.getByText(/workflow\.common\.publishUpdate/i))!.toBeInTheDocument()
     })
   })
 })
@@ -978,7 +957,6 @@ describe('RunMode', () => {
 describe('Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpenState = false
     mockStoreState = {
       pipelineId: 'test-pipeline-id',
       showDebugAndPreviewPanel: false,

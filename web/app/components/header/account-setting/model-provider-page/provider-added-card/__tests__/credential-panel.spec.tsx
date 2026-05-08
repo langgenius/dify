@@ -1,6 +1,6 @@
 import type { ModelProvider } from '../../declarations'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -28,10 +28,6 @@ vi.mock('@/config', async (importOriginal) => {
   return { ...actual, IS_CLOUD_EDITION: true }
 })
 
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({ data: { trial_models: ['langgenius/openai/openai'] } }),
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: mockToastNotify },
   toast: {
@@ -42,24 +38,33 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    modelProviders: {
-      models: {
-        queryKey: ({ input }: { input: { params: { provider: string } } }) => ['console', 'modelProviders', 'models', input.params.provider],
-      },
-      changePreferredProviderType: {
-        mutationOptions: (opts: Record<string, unknown>) => ({
-          mutationFn: (...args: unknown[]) => {
-            mockChangePriorityFn(...args)
-            return Promise.resolve({ result: 'success' })
-          },
-          ...opts,
-        }),
-      },
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const mockedModelProviders = {
+    models: {
+      queryKey: ({ input }: { input: { params: { provider: string } } }) => ['console', 'modelProviders', 'models', input.params.provider],
     },
-  },
-}))
+    changePreferredProviderType: {
+      mutationOptions: (opts: Record<string, unknown>) => ({
+        mutationFn: (...args: unknown[]) => {
+          mockChangePriorityFn(...args)
+          return Promise.resolve({ result: 'success' })
+        },
+        ...opts,
+      }),
+    },
+  }
+  return {
+    ...actual,
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, prop) {
+        if (prop === 'modelProviders')
+          return mockedModelProviders
+        return Reflect.get(target, prop)
+      },
+    }),
+  }
+})
 
 vi.mock('../../hooks', () => ({
   useUpdateModelList: () => mockUpdateModelList,
@@ -88,13 +93,6 @@ vi.mock('@/app/components/base/icons/src/vender/line/alertsAndFeedback/Warning',
   default: (props: Record<string, unknown>) => <div data-testid="warning-icon" className={props.className as string} />,
 }))
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, gcTime: 0 },
-    mutations: { retry: false },
-  },
-})
-
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
   provider: 'langgenius/openai/openai',
   provider_credential_schema: { credential_form_schemas: [] },
@@ -112,12 +110,9 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
 } as unknown as ModelProvider)
 
 const renderWithQueryClient = (provider: ModelProvider) => {
-  const queryClient = createTestQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <CredentialPanel provider={provider} />
-    </QueryClientProvider>,
-  )
+  return renderWithSystemFeatures(<CredentialPanel provider={provider} />, {
+    systemFeatures: { trial_models: ['langgenius/openai/openai'] as never },
+  })
 }
 
 describe('CredentialPanel', () => {

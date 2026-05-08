@@ -22,13 +22,13 @@ type EditorProps = {
   placeholder?: string
   onChange?: (editorState: EditorState) => void
   containerElement: HTMLDivElement | null
-  setShortcutsEnabled?: (v: boolean) => void
+  setHistoryShortcutsEnabled?: (v: boolean) => void
 }
 const Editor = ({
   placeholder = 'write you note...',
   onChange,
   containerElement,
-  setShortcutsEnabled,
+  setHistoryShortcutsEnabled,
 }: EditorProps) => {
   const handleEditorChange = useCallback((editorState: EditorState) => {
     onChange?.(editorState)
@@ -40,8 +40,8 @@ const Editor = ({
         contentEditable={(
           <div>
             <ContentEditable
-              onFocus={() => setShortcutsEnabled?.(false)}
-              onBlur={() => setShortcutsEnabled?.(true)}
+              onFocus={() => setHistoryShortcutsEnabled?.(false)}
+              onBlur={() => setHistoryShortcutsEnabled?.(true)}
               spellCheck={false}
               className="h-full w-full text-text-secondary caret-primary-600 outline-hidden"
             />

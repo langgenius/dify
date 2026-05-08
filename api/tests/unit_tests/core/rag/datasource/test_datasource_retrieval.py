@@ -109,17 +109,6 @@ class _FakeExecuteResult:
         return _FakeExecuteScalarResult(self._data)
 
 
-class _FakeSummaryQuery:
-    def __init__(self, summaries: list) -> None:
-        self._summaries = summaries
-
-    def filter(self, *args, **kwargs):
-        return self
-
-    def all(self) -> list:
-        return self._summaries
-
-
 class _FakeScalarsResult:
     def __init__(self, data: list) -> None:
         self._data = data

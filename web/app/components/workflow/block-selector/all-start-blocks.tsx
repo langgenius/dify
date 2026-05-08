@@ -8,6 +8,7 @@ import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useCallback,
   useEffect,
@@ -18,8 +19,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import Link from '@/next/link'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -54,7 +55,10 @@ const AllStartBlocks = ({
   const { t } = useTranslation()
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
 

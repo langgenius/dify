@@ -5,6 +5,7 @@ Unit tests for Service API Index endpoint
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.service_api.index import IndexApi
 
@@ -13,7 +14,7 @@ class TestIndexApi:
     """Test suite for IndexApi resource."""
 
     @patch("controllers.service_api.index.dify_config", autospec=True)
-    def test_get_returns_api_info(self, mock_config, app):
+    def test_get_returns_api_info(self, mock_config, app: Flask):
         """Test that GET returns API metadata with correct structure."""
         # Arrange
         mock_config.project.version = "1.0.0-test"
@@ -32,7 +33,7 @@ class TestIndexApi:
         assert response["api_version"] == "v1"
         assert response["server_version"] == "1.0.0-test"
 
-    def test_get_response_has_required_fields(self, app):
+    def test_get_response_has_required_fields(self, app: Flask):
         """Test that response contains all required fields."""
         # Arrange
         mock_config = MagicMock()

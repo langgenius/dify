@@ -62,16 +62,13 @@ describe('CheckboxWithLabel', () => {
     it('should render tooltip when provided', () => {
       render(<CheckboxWithLabel {...defaultProps} tooltip="Helpful tooltip text" />)
 
-      // Assert - Tooltip trigger should be present
-      const tooltipTrigger = document.querySelector('[class*="ml-0.5"]')
-      expect(tooltipTrigger)!.toBeInTheDocument()
+      expect(screen.getByLabelText('Helpful tooltip text'))!.toBeInTheDocument()
     })
 
     it('should not render tooltip when not provided', () => {
       render(<CheckboxWithLabel {...defaultProps} />)
 
-      const tooltipTrigger = document.querySelector('[class*="ml-0.5"]')
-      expect(tooltipTrigger).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Helpful tooltip text')).not.toBeInTheDocument()
     })
   })
 
@@ -81,8 +78,7 @@ describe('CheckboxWithLabel', () => {
         <CheckboxWithLabel {...defaultProps} className="custom-class" />,
       )
 
-      const label = container.querySelector('label')
-      expect(label)!.toHaveClass('custom-class')
+      expect(container.firstChild)!.toHaveClass('custom-class')
     })
 
     it('should apply custom labelClassName', () => {
@@ -114,16 +110,14 @@ describe('CheckboxWithLabel', () => {
       expect(mockOnChange).toHaveBeenCalledWith(false)
     })
 
-    it('should not trigger onChange when clicking label text due to custom checkbox', () => {
+    it('should trigger onChange when clicking label text', () => {
       const mockOnChange = vi.fn()
       render(<CheckboxWithLabel {...defaultProps} onChange={mockOnChange} />)
 
-      // Act - Click on the label text element
       const labelText = screen.getByText('Test Label')
       fireEvent.click(labelText)
 
-      // Assert - Custom checkbox does not support native label-input click forwarding
-      expect(mockOnChange).not.toHaveBeenCalled()
+      expect(mockOnChange).toHaveBeenCalledWith(true)
     })
   })
 })
@@ -386,15 +380,14 @@ describe('CrawledResult', () => {
     it('should pass showPreview to items', () => {
       render(<CrawledResult {...defaultProps} showPreview={true} />)
 
-      // Assert - Preview buttons should be visible
-      const buttons = screen.getAllByRole('button')
+      const buttons = screen.getAllByRole('button', { name: 'datasetCreation.stepOne.website.preview' })
       expect(buttons.length).toBe(3)
     })
 
     it('should not show preview buttons when showPreview is false', () => {
       render(<CrawledResult {...defaultProps} showPreview={false} />)
 
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'datasetCreation.stepOne.website.preview' })).not.toBeInTheDocument()
     })
   })
 
@@ -507,7 +500,7 @@ describe('CrawledResult', () => {
         />,
       )
 
-      const buttons = screen.getAllByRole('button')
+      const buttons = screen.getAllByRole('button', { name: 'datasetCreation.stepOne.website.preview' })
       fireEvent.click(buttons[1]!) // Second item's preview button
 
       expect(mockOnPreview).toHaveBeenCalledWith(list[1], 1)
@@ -796,7 +789,7 @@ describe('Base Components Integration', () => {
     expect(mockOnSelectedChange).toHaveBeenCalledWith([list[0]])
 
     // Act - Preview second item
-    const previewButtons = screen.getAllByRole('button')
+    const previewButtons = screen.getAllByRole('button', { name: 'datasetCreation.stepOne.website.preview' })
     fireEvent.click(previewButtons[1]!)
 
     expect(mockOnPreview).toHaveBeenCalledWith(list[1], 1)

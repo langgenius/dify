@@ -5,10 +5,6 @@
   "private": true,
   "exports": {
     "./styles.css": "./src/styles/styles.css",
-    "./tailwind-preset": {
-      "types": "./src/tailwind-preset.ts",
-      "import": "./src/tailwind-preset.ts"
-    },
     "./cn": {
       "types": "./src/cn.ts",
       "import": "./src/cn.ts"
@@ -17,6 +13,10 @@
       "types": "./src/alert-dialog/index.tsx",
       "import": "./src/alert-dialog/index.tsx"
     },
+    "./autocomplete": {
+      "types": "./src/autocomplete/index.tsx",
+      "import": "./src/autocomplete/index.tsx"
+    },
     "./avatar": {
       "types": "./src/avatar/index.tsx",
       "import": "./src/avatar/index.tsx"
@@ -24,6 +24,10 @@
     "./button": {
       "types": "./src/button/index.tsx",
       "import": "./src/button/index.tsx"
+    },
+    "./combobox": {
+      "types": "./src/combobox/index.tsx",
+      "import": "./src/combobox/index.tsx"
     },
     "./context-menu": {
       "types": "./src/context-menu/index.tsx",
@@ -48,6 +52,10 @@
     "./popover": {
       "types": "./src/popover/index.tsx",
       "import": "./src/popover/index.tsx"
+    },
+    "./preview-card": {
+      "types": "./src/preview-card/index.tsx",
+      "import": "./src/preview-card/index.tsx"
     },
     "./scroll-area": {
       "types": "./src/scroll-area/index.tsx",
@@ -79,7 +87,7 @@
     "storybook:build": "storybook build",
     "test": "vp test",
     "test:watch": "vp test --watch",
-    "type-check": "tsc"
+    "type-check": "tsgo"
   },
   "peerDependencies": {
     "@base-ui/react": "catalog:",
@@ -103,8 +111,10 @@
     "@storybook/addon-themes": "catalog:",
     "@storybook/react-vite": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-virtual": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",

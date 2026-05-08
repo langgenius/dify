@@ -86,7 +86,7 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
   ])
 
   const mergedAttributes: Record<string, AttributeDefinition[]> = {
-    ...(defaultSanitizeSchema.attributes ?? {}),
+    ...defaultSanitizeSchema.attributes,
   }
 
   for (const tag of Object.keys(ALLOWED_TAGS)) {

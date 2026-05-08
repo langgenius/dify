@@ -14,7 +14,7 @@ const jsonResponse = (body: unknown, init: ResponseInit = {}): Response =>
     ...init,
     headers: {
       "content-type": "application/json",
-      ...(init.headers ?? {}),
+      ...init.headers,
     },
   });
 

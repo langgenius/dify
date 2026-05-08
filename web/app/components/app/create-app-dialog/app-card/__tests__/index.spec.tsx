@@ -1,8 +1,9 @@
 /* eslint-disable ts/no-explicit-any */
 import type { App } from '@/models/explore'
 import type { AppIconType } from '@/types/app'
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppListContext from '@/context/app-list-context'
 import { AppModeEnum } from '@/types/app'

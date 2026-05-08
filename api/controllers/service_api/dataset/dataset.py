@@ -2,7 +2,7 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -100,8 +100,26 @@ class TagBindingPayload(BaseModel):
 
 
 class TagUnbindingPayload(BaseModel):
-    tag_id: str
+    """Accept the legacy single-tag Service API payload while exposing a normalized tag_ids list internally."""
+
+    tag_ids: list[str] = Field(default_factory=list)
+    tag_id: str | None = None
     target_id: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_tag_id(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        if not data.get("tag_ids") and data.get("tag_id"):
+            return {**data, "tag_ids": [data["tag_id"]]}
+        return data
+
+    @model_validator(mode="after")
+    def validate_tag_ids(self) -> "TagUnbindingPayload":
+        if not self.tag_ids:
+            raise ValueError("Tag IDs is required.")
+        return self
 
 
 class DatasetListQuery(BaseModel):
@@ -601,11 +619,11 @@ class DatasetTagBindingApi(DatasetApiResource):
 @service_api_ns.route("/datasets/tags/unbinding")
 class DatasetTagUnbindingApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[TagUnbindingPayload.__name__])
-    @service_api_ns.doc("unbind_dataset_tag")
-    @service_api_ns.doc(description="Unbind a tag from a dataset")
+    @service_api_ns.doc("unbind_dataset_tags")
+    @service_api_ns.doc(description="Unbind tags from a dataset")
     @service_api_ns.doc(
         responses={
-            204: "Tag unbound successfully",
+            204: "Tags unbound successfully",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - insufficient permissions",
         }
@@ -618,7 +636,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
 
         payload = TagUnbindingPayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag_binding(
-            TagBindingDeletePayload(tag_id=payload.tag_id, target_id=payload.target_id, type=TagType.KNOWLEDGE)
+            TagBindingDeletePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE)
         )
 
         return "", 204

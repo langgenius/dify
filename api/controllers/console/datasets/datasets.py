@@ -50,6 +50,7 @@ from fields.dataset_fields import (
 from fields.document_fields import document_status_fields
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.login import current_account_with_tenant, login_required
+from libs.url_utils import normalize_api_base_url
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.enums import ApiTokenType, SegmentStatus
@@ -889,7 +890,8 @@ class DatasetApiBaseUrlApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        return {"api_base_url": (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"}
+        base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
+        return {"api_base_url": normalize_api_base_url(base)}
 
 
 @console_ns.route("/datasets/retrieval-setting")

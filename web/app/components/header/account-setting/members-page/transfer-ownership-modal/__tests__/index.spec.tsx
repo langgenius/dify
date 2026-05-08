@@ -183,18 +183,20 @@ describe('TransferOwnershipModal', () => {
     })
   })
 
-  it('should show error when sending verification email fails', async () => {
+  it('should not show a modal-level toast and should stay on start step when sending verification email fails', async () => {
     const user = userEvent.setup()
     vi.mocked(sendOwnerEmail).mockRejectedValue(new Error('network error'))
     renderModal()
     await user.click(screen.getByTestId('transfer-modal-send-code'))
 
+    // The base service layer surfaces the real backend error. The modal itself
+    // must NOT show an additional toast (e.g. "Error sending verification code: undefined").
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: expect.stringContaining('network error'),
-      }))
+      expect(sendOwnerEmail).toHaveBeenCalled()
     })
+    expect(mockNotify).not.toHaveBeenCalled()
+    // Should remain on the start step instead of advancing to the verify step.
+    expect(screen.getByTestId('transfer-modal-send-code')).toBeInTheDocument()
   })
 
   it('should show error when ownership transfer fails', async () => {
@@ -229,7 +231,7 @@ describe('TransferOwnershipModal', () => {
     })
   })
 
-  it('should show fallback error prefix when sendOwnerEmail throws null', async () => {
+  it('should swallow null rejection from sendOwnerEmail without showing a modal-level toast', async () => {
     const user = userEvent.setup()
     vi.mocked(sendOwnerEmail).mockRejectedValue(null)
 
@@ -237,11 +239,10 @@ describe('TransferOwnershipModal', () => {
     await user.click(screen.getByTestId('transfer-modal-send-code'))
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-        message: expect.stringContaining('Error sending verification code:'),
-      }))
+      expect(sendOwnerEmail).toHaveBeenCalled()
     })
+    expect(mockNotify).not.toHaveBeenCalled()
+    expect(screen.getByTestId('transfer-modal-send-code')).toBeInTheDocument()
   })
 
   it('should show fallback error prefix when verifyOwnerEmail throws null', async () => {

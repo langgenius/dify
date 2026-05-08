@@ -1,29 +1,24 @@
+import type { ReactElement } from 'react'
 import type { EmbeddedChatbotContextValue } from '../../context'
 import type { AppData } from '@/models/share'
-import type { SystemFeatures } from '@/types/feature'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { InstallationScope, LicenseStatus } from '@/types/feature'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useEmbeddedChatbotContext } from '../../context'
 import Header from '../index'
+
+let mockBranding = { enabled: true, workspace_logo: '' }
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { branding: { ...mockBranding } },
+})
 
 vi.mock('../../context', () => ({
   useEmbeddedChatbotContext: vi.fn(),
 }))
 
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
-}))
-
 vi.mock('@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown', () => ({
   default: () => <div data-testid="view-form-dropdown" />,
 }))
-
-type GlobalPublicStoreMock = {
-  systemFeatures: SystemFeatures
-  setSystemFeatures: (systemFeatures: SystemFeatures) => void
-}
 
 describe('EmbeddedChatbot Header', () => {
   const defaultAppData: AppData = {
@@ -47,48 +42,6 @@ describe('EmbeddedChatbot Header', () => {
     allInputsHidden: false,
   }
 
-  const defaultSystemFeatures: SystemFeatures = {
-    app_dsl_version: '',
-    trial_models: [],
-    plugin_installation_permission: {
-      plugin_installation_scope: InstallationScope.ALL,
-      restrict_to_marketplace_only: false,
-    },
-    sso_enforced_for_signin: false,
-    sso_enforced_for_signin_protocol: '',
-    sso_enforced_for_web: false,
-    sso_enforced_for_web_protocol: '',
-    enable_marketplace: false,
-    enable_change_email: false,
-    enable_email_code_login: false,
-    enable_email_password_login: false,
-    enable_social_oauth_login: false,
-    is_allow_create_workspace: false,
-    is_allow_register: false,
-    is_email_setup: false,
-    license: {
-      status: LicenseStatus.NONE,
-      expired_at: '',
-    },
-    branding: {
-      enabled: true,
-      workspace_logo: '',
-      login_page_logo: '',
-      favicon: '',
-      application_title: '',
-    },
-    webapp_auth: {
-      enabled: false,
-      allow_sso: false,
-      sso_config: { protocol: '' },
-      allow_email_code_login: false,
-      allow_email_password_login: false,
-    },
-    enable_collaboration_mode: false,
-    enable_trial_app: false,
-    enable_explore_banner: false,
-  }
-
   const setupIframe = () => {
     const mockPostMessage = vi.fn()
     const mockTop = { postMessage: mockPostMessage }
@@ -100,11 +53,8 @@ describe('EmbeddedChatbot Header', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockBranding = { enabled: true, workspace_logo: '' }
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue(defaultContext as EmbeddedChatbotContextValue)
-    vi.mocked(useGlobalPublicStore).mockImplementation((selector: (s: GlobalPublicStoreMock) => unknown) => selector({
-      systemFeatures: defaultSystemFeatures,
-      setSystemFeatures: vi.fn(),
-    }))
 
     Object.defineProperty(window, 'self', { value: window, configurable: true })
     Object.defineProperty(window, 'top', { value: window, configurable: true })
@@ -149,16 +99,7 @@ describe('EmbeddedChatbot Header', () => {
     })
 
     it('should render workspace logo when branding is enabled and logo exists', () => {
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector: (s: GlobalPublicStoreMock) => unknown) => selector({
-        systemFeatures: {
-          ...defaultSystemFeatures,
-          branding: {
-            ...defaultSystemFeatures.branding,
-            workspace_logo: 'https://example.com/workspace.png',
-          },
-        },
-        setSystemFeatures: vi.fn(),
-      }))
+      mockBranding = { enabled: true, workspace_logo: 'https://example.com/workspace.png' }
 
       render(<Header title="Test Chatbot" />)
 
@@ -167,32 +108,13 @@ describe('EmbeddedChatbot Header', () => {
     })
 
     it('should render Dify logo by default when branding enabled is true but no logo provided', () => {
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector: (s: GlobalPublicStoreMock) => unknown) => selector({
-        systemFeatures: {
-          ...defaultSystemFeatures,
-          branding: {
-            ...defaultSystemFeatures.branding,
-            enabled: true,
-            workspace_logo: '',
-          },
-        },
-        setSystemFeatures: vi.fn(),
-      }))
+      mockBranding = { enabled: true, workspace_logo: '' }
       render(<Header title="Test Chatbot" />)
       expect(screen.getByAltText('Dify logo')).toBeInTheDocument()
     })
 
     it('should render Dify logo when branding is disabled', () => {
-      vi.mocked(useGlobalPublicStore).mockImplementation((selector: (s: GlobalPublicStoreMock) => unknown) => selector({
-        systemFeatures: {
-          ...defaultSystemFeatures,
-          branding: {
-            ...defaultSystemFeatures.branding,
-            enabled: false,
-          },
-        },
-        setSystemFeatures: vi.fn(),
-      }))
+      mockBranding = { enabled: false, workspace_logo: '' }
       render(<Header title="Test Chatbot" />)
       expect(screen.getByAltText('Dify logo')).toBeInTheDocument()
     })

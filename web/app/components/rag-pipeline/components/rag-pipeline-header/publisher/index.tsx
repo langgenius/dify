@@ -1,53 +1,65 @@
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import Popup from './popup'
 
 const Publisher = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [confirmVisible, { setFalse: hideConfirm, setTrue: showConfirm }] = useBoolean(false)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
+    if (!newOpen && confirmVisible)
+      return
     if (newOpen)
       handleSyncWorkflowDraft(true)
     setOpen(newOpen)
-  }, [handleSyncWorkflowDraft])
+  }, [confirmVisible, handleSyncWorkflowDraft])
+  const closePopover = useCallback(() => {
+    setOpen(false)
+  }, [])
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 40,
-      }}
+      onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger onClick={() => handleOpenChange(!open)}>
-        <Button
-          className="px-2"
-          variant="primary"
-        >
-          <span className="pl-1">{t('common.publish', { ns: 'workflow' })}</span>
-          <RiArrowDownSLine className="h-4 w-4" />
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-11">
-        <Popup />
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      <PopoverTrigger
+        nativeButton
+        render={(
+          <Button
+            className="px-2"
+            variant="primary"
+          >
+            <span className="pl-1">{t('common.publish', { ns: 'workflow' })}</span>
+            <RiArrowDownSLine className="h-4 w-4" />
+          </Button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        alignOffset={40}
+        popupClassName={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}
+      >
+        <Popup
+          onRequestClose={closePopover}
+          confirmVisible={confirmVisible}
+          onShowConfirm={showConfirm}
+          onHideConfirm={hideConfirm}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
 

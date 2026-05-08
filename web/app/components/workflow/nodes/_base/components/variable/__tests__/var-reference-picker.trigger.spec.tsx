@@ -1,4 +1,8 @@
 import type { ComponentProps } from 'react'
+import {
+  Popover,
+  PopoverContent,
+} from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '../../../../tool/types'
@@ -28,7 +32,7 @@ const createProps = (
   readonly: false,
   setControlFocus: vi.fn(),
   setOpen: vi.fn(),
-  tooltipPopup: null,
+  hoverPopup: null,
   triggerRef: { current: null },
   value: [],
   varKindType: VarKindType.constant,
@@ -38,46 +42,53 @@ const createProps = (
   ],
   varName: '',
   variableCategory: 'system',
-  WrapElem: 'div',
-  VarPickerWrap: 'div',
   ...overrides,
 })
 
+const renderWithPopover = (
+  overrides: Partial<ComponentProps<typeof VarReferencePickerTrigger>> = {},
+) => {
+  const onOpenChange = vi.fn()
+
+  render(
+    <Popover onOpenChange={onOpenChange}>
+      <VarReferencePickerTrigger
+        {...createProps(overrides)}
+      />
+      <PopoverContent popupClassName="border-none bg-transparent p-0 shadow-none">
+        <div>picker-content</div>
+      </PopoverContent>
+    </Popover>,
+  )
+
+  return { onOpenChange }
+}
+
 describe('VarReferencePickerTrigger', () => {
   it('should show the placeholder state and open the picker for variable mode', () => {
-    const setOpen = vi.fn()
-    render(
-      <VarReferencePickerTrigger
-        {...createProps({
-          placeholder: 'Pick variable',
-          setOpen,
-        })}
-      />,
-    )
+    const { onOpenChange } = renderWithPopover({
+      placeholder: 'Pick variable',
+    })
 
     expect(screen.getByText('Pick variable'))!.toBeInTheDocument()
     fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
-    expect(setOpen).toHaveBeenCalledWith(true)
+    expect(onOpenChange).toHaveBeenCalledWith(true, expect.anything())
   })
 
   it('should render the selected variable state and clear it', () => {
     const handleClearVar = vi.fn()
     const handleVariableJump = vi.fn()
 
-    render(
-      <VarReferencePickerTrigger
-        {...createProps({
-          handleClearVar,
-          handleVariableJump,
-          hasValue: true,
-          outputVarNode: { title: 'Source Node', desc: '', type: BlockEnum.Code },
-          outputVarNodeId: 'node-a',
-          type: VarType.string,
-          value: ['node-a', 'answer'],
-          varName: 'answer',
-        })}
-      />,
-    )
+    renderWithPopover({
+      handleClearVar,
+      handleVariableJump,
+      hasValue: true,
+      outputVarNode: { title: 'Source Node', desc: '', type: BlockEnum.Code },
+      outputVarNodeId: 'node-a',
+      type: VarType.string,
+      value: ['node-a', 'answer'],
+      varName: 'answer',
+    })
 
     expect(screen.getByText('Source Node'))!.toBeInTheDocument()
     expect(screen.getByText('answer'))!.toBeInTheDocument()
@@ -93,20 +104,16 @@ describe('VarReferencePickerTrigger', () => {
     const setControlFocus = vi.fn()
     const setOpen = vi.fn()
 
-    render(
-      <VarReferencePickerTrigger
-        {...createProps({
-          isConstant: true,
-          isSupportConstantValue: true,
-          schemaWithDynamicSelect: {
-            type: 'text-input',
-          } as never,
-          setOpen,
-          setControlFocus,
-          value: 'constant-value',
-        })}
-      />,
-    )
+    renderWithPopover({
+      isConstant: true,
+      isSupportConstantValue: true,
+      schemaWithDynamicSelect: {
+        type: 'text-input',
+      } as never,
+      setOpen,
+      setControlFocus,
+      value: 'constant-value',
+    })
 
     fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
     expect(setControlFocus).toHaveBeenCalledTimes(1)
@@ -116,38 +123,27 @@ describe('VarReferencePickerTrigger', () => {
   })
 
   it('should render add button trigger in table mode', () => {
-    render(
-      <VarReferencePickerTrigger
-        {...createProps({
-          hasValue: true,
-          isAddBtnTrigger: true,
-          isInTable: true,
-          value: ['node-a', 'answer'],
-          varName: 'answer',
-        })}
-      />,
-    )
+    renderWithPopover({
+      hasValue: true,
+      isAddBtnTrigger: true,
+      isInTable: true,
+      value: ['node-a', 'answer'],
+      varName: 'answer',
+    })
 
-    expect(document.querySelector('button'))!.toBeInTheDocument()
+    expect(screen.getByTestId('add-button'))!.toBeInTheDocument()
   })
 
   it('should stay inert in readonly mode and show value type placeholder badge', () => {
-    const setOpen = vi.fn()
-
-    render(
-      <VarReferencePickerTrigger
-        {...createProps({
-          placeholder: 'Readonly placeholder',
-          readonly: true,
-          setOpen,
-          typePlaceHolder: 'string',
-          valueTypePlaceHolder: 'text',
-        })}
-      />,
-    )
+    const { onOpenChange } = renderWithPopover({
+      placeholder: 'Readonly placeholder',
+      readonly: true,
+      typePlaceHolder: 'string',
+      valueTypePlaceHolder: 'text',
+    })
 
     fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
-    expect(setOpen).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
     expect(screen.getByText('string'))!.toBeInTheDocument()
     expect(screen.getByText('text'))!.toBeInTheDocument()
   })
@@ -155,17 +151,13 @@ describe('VarReferencePickerTrigger', () => {
   it('should show loading placeholder and remove rows in table mode', () => {
     const onRemove = vi.fn()
 
-    render(
-      <VarReferencePickerTrigger
-        {...createProps({
-          hasValue: false,
-          isInTable: true,
-          isLoading: true,
-          onRemove,
-          placeholder: 'Loading variable',
-        })}
-      />,
-    )
+    renderWithPopover({
+      hasValue: false,
+      isInTable: true,
+      isLoading: true,
+      onRemove,
+      placeholder: 'Loading variable',
+    })
 
     expect(screen.getByText('Loading variable'))!.toBeInTheDocument()
 

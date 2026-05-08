@@ -117,17 +117,17 @@ async function runTypeCheck(
 
   await fs.mkdir(TYPECHECK_CACHE_DIR, { recursive: true })
 
-  const tscArgs = ['exec', 'tsc', '--noEmit', '--pretty', 'false']
+  const tsgoArgs = ['exec', 'tsgo', '--noEmit', '--pretty', 'false']
   if (incremental) {
-    tscArgs.push('--incremental', '--tsBuildInfoFile', buildInfoPath)
+    tsgoArgs.push('--incremental', '--tsBuildInfoFile', buildInfoPath)
   }
   else {
-    tscArgs.push('--incremental', 'false')
+    tsgoArgs.push('--incremental', 'false')
   }
-  tscArgs.push('--project', projectPath)
+  tsgoArgs.push('--project', projectPath)
 
   try {
-    const { stdout, stderr } = await execFileAsync('pnpm', tscArgs, {
+    const { stdout, stderr } = await execFileAsync('pnpm', tsgoArgs, {
       cwd: projectDirectory,
       env: {
         ...process.env,

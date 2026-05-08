@@ -15,7 +15,7 @@ permissions:
 jobs:
   python-style:
     name: Python Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -25,7 +25,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             api/**
@@ -33,7 +33,7 @@ jobs:
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: false
           python-version: "3.12"
@@ -57,7 +57,7 @@ jobs:
 
   web-style:
     name: Web Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         working-directory: ./web
@@ -73,7 +73,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             web/**
@@ -83,7 +83,6 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
-            .npmrc
             .nvmrc
             .github/workflows/style.yml
             .github/actions/setup-web/**
@@ -95,7 +94,7 @@ jobs:
       - name: Restore ESLint cache
         if: steps.changed-files.outputs.any_changed == 'true'
         id: eslint-cache-restore
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .eslintcache
           key: ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
@@ -110,6 +109,8 @@ jobs:
       - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: vp run lint:tss
 
       - name: Web type check
@@ -124,14 +125,14 @@ jobs:
 
       - name: Save ESLint cache
         if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: .eslintcache
           key: ${{ steps.eslint-cache-restore.outputs.cache-primary-key }}
 
   superlinter:
     name: SuperLinter
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
@@ -142,7 +143,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             **.sh

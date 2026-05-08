@@ -3,6 +3,20 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import dayjs from '../../utils/dayjs'
 import DatePicker from '../index'
 
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, onClick, disabled, className }: {
+    children?: React.ReactNode
+    onClick?: () => void
+    disabled?: boolean
+    className?: string
+  }) => (
+    <button onClick={onClick as (() => void) | undefined} disabled={disabled as boolean | undefined} className={className as string | undefined}>
+      {children}
+    </button>
+  ),
+}))
+
 // Mock scrollIntoView
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn()
@@ -113,14 +127,13 @@ describe('DatePicker', () => {
       render(<DatePicker {...props} />)
 
       openPicker()
+      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
 
-      // Simulate a mousedown event outside the container
       act(() => {
         document.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
       })
 
-      // The picker should now be closed - input shows its value
-      // The picker should now be closed - input shows its value
+      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
   })

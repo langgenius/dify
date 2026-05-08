@@ -5,6 +5,7 @@ import type {
 import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useCallback,
   useEffect,
@@ -12,8 +13,8 @@ import {
   useRef,
 } from 'react'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum } from '../types'
@@ -76,7 +77,10 @@ const DataSources = ({
     onSelect(BlockEnum.DataSource, toolDefaultValue && defaultValue)
   }, [onSelect])
 
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
 
   const {
     queryPluginsWithDebounced: fetchPlugins,

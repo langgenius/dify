@@ -1,7 +1,8 @@
 import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '../../../../types'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum } from '../../../../types'
 import InstallMulti from '../install-multi'
 
@@ -54,11 +55,6 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   default: () => ({
     installedInfo: mockInstalledInfo,
   }),
-}))
-
-// Mock useGlobalPublicStore
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({}),
 }))
 
 // Mock pluginInstallLimit (imported by the useInstallMultiState hook via @/ path)

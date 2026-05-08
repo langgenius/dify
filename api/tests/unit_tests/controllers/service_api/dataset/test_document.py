@@ -22,6 +22,9 @@ import pytest
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.service_api.dataset.document import (
+    DeprecatedDocumentAddByTextApi,
+    DeprecatedDocumentUpdateByFileApi,
+    DeprecatedDocumentUpdateByTextApi,
     DocumentAddByFileApi,
     DocumentAddByTextApi,
     DocumentApi,
@@ -30,7 +33,6 @@ from controllers.service_api.dataset.document import (
     DocumentListQuery,
     DocumentTextCreatePayload,
     DocumentTextUpdate,
-    DocumentUpdateByFileApi,
     DocumentUpdateByTextApi,
     InvalidMetadataError,
 )
@@ -699,8 +701,8 @@ class TestDocumentApiDelete:
     ``delete`` is wrapped by ``@cloud_edition_billing_rate_limit_check`` which
     internally calls ``validate_and_get_api_token``.  To bypass the decorator
     we call the original function via ``__wrapped__`` (preserved by
-    ``functools.wraps``).  ``delete`` queries the dataset via
-    ``db.session.query(Dataset)`` directly, so we patch ``db`` at the
+    ``functools.wraps``).  ``delete`` loads the dataset via
+    ``db.session.scalar(select(Dataset)...)``, so we patch ``db`` at the
     controller module.
     """
 
@@ -1005,7 +1007,7 @@ class TestDocumentAddByTextApi:
 
         # Act
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/document/create_by_text",
+            f"/datasets/{mock_dataset.id}/document/create-by-text",
             method="POST",
             json={
                 "name": "Test Document",
@@ -1037,7 +1039,7 @@ class TestDocumentAddByTextApi:
 
         # Act & Assert
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/document/create_by_text",
+            f"/datasets/{mock_dataset.id}/document/create-by-text",
             method="POST",
             json={"name": "Test Document", "text": "Content"},
             headers={"Authorization": "Bearer test_token"},
@@ -1066,7 +1068,7 @@ class TestDocumentAddByTextApi:
 
         # Act & Assert
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/document/create_by_text",
+            f"/datasets/{mock_dataset.id}/document/create-by-text",
             method="POST",
             json={"name": "Test Document", "text": "Content"},
             headers={"Authorization": "Bearer test_token"},
@@ -1093,9 +1095,28 @@ class TestArchivedDocumentImmutableError:
         assert error.code == 403
 
 
+class TestDocumentRouteDeprecation:
+    """Test that legacy document routes stay marked deprecated."""
+
+    def test_create_by_text_legacy_alias_is_deprecated(self):
+        """Ensure only the legacy create-by-text alias is marked deprecated."""
+        assert DeprecatedDocumentAddByTextApi.post.__apidoc__["deprecated"] is True
+        assert DocumentAddByTextApi.post.__apidoc__.get("deprecated") is not True
+
+    def test_update_by_text_legacy_alias_is_deprecated(self):
+        """Ensure only the legacy update-by-text alias is marked deprecated."""
+        assert DeprecatedDocumentUpdateByTextApi.post.__apidoc__["deprecated"] is True
+        assert DocumentUpdateByTextApi.post.__apidoc__.get("deprecated") is not True
+
+    def test_update_by_file_legacy_aliases_are_deprecated(self):
+        """Ensure only the legacy file-update aliases are marked deprecated."""
+        assert DeprecatedDocumentUpdateByFileApi.post.__apidoc__["deprecated"] is True
+        assert DocumentApi.patch.__apidoc__.get("deprecated") is not True
+
+
 # =============================================================================
 # Endpoint tests for DocumentUpdateByTextApi, DocumentAddByFileApi,
-# DocumentUpdateByFileApi.
+# and the canonical/deprecated document file update routes.
 #
 # These controllers use ``@cloud_edition_billing_resource_check`` (does NOT
 # preserve ``__wrapped__``) and ``@cloud_edition_billing_rate_limit_check``
@@ -1162,7 +1183,7 @@ class TestDocumentUpdateByTextApiPost:
 
         doc_id = str(uuid.uuid4())
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update_by_text",
+            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update-by-text",
             method="POST",
             json={"name": "Updated Doc", "text": "New content"},
             headers={"Authorization": "Bearer test_token"},
@@ -1195,7 +1216,7 @@ class TestDocumentUpdateByTextApiPost:
 
         doc_id = str(uuid.uuid4())
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update_by_text",
+            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update-by-text",
             method="POST",
             json={"name": "Doc", "text": "Content"},
             headers={"Authorization": "Bearer test_token"},
@@ -1343,12 +1364,51 @@ class TestDocumentAddByFileApiPost:
                 api.post(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
 
 
-class TestDocumentUpdateByFileApiPost:
-    """Test suite for DocumentUpdateByFileApi.post() endpoint.
+class TestDocumentUpdateByFileApiPatch:
+    """Test suite for the canonical document file update endpoint.
 
-    ``post`` is wrapped by ``@cloud_edition_billing_resource_check`` and
+    ``patch`` is wrapped by ``@cloud_edition_billing_resource_check`` and
     ``@cloud_edition_billing_rate_limit_check``.
     """
+
+    @pytest.mark.parametrize("route_name", ["update_by_file", "update-by-file"])
+    @patch("controllers.service_api.dataset.document._update_document_by_file")
+    @patch("controllers.service_api.wraps.FeatureService")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_update_by_file_deprecated_aliases_delegate_to_shared_handler(
+        self,
+        mock_validate_token,
+        mock_feature_svc,
+        mock_update_document_by_file,
+        route_name,
+        app,
+        mock_tenant,
+        mock_dataset,
+    ):
+        """Test legacy POST aliases still dispatch while marked deprecated."""
+        _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
+        mock_update_document_by_file.return_value = ({"document": {"id": "doc-1"}, "batch": "batch-1"}, 200)
+
+        doc_id = str(uuid.uuid4())
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/{doc_id}/{route_name}",
+            method="POST",
+            headers={"Authorization": "Bearer test_token"},
+        ):
+            api = DeprecatedDocumentUpdateByFileApi()
+            response, status = api.post(
+                tenant_id=mock_tenant.id,
+                dataset_id=mock_dataset.id,
+                document_id=doc_id,
+            )
+
+        assert status == 200
+        assert response["batch"] == "batch-1"
+        mock_update_document_by_file.assert_called_once_with(
+            tenant_id=mock_tenant.id,
+            dataset_id=mock_dataset.id,
+            document_id=doc_id,
+        )
 
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
@@ -1371,15 +1431,15 @@ class TestDocumentUpdateByFileApiPost:
         doc_id = str(uuid.uuid4())
         data = {"file": (BytesIO(b"content"), "test.pdf", "application/pdf")}
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update_by_file",
-            method="POST",
+            f"/datasets/{mock_dataset.id}/documents/{doc_id}",
+            method="PATCH",
             content_type="multipart/form-data",
             data=data,
             headers={"Authorization": "Bearer test_token"},
         ):
-            api = DocumentUpdateByFileApi()
+            api = DocumentApi()
             with pytest.raises(ValueError, match="Dataset does not exist"):
-                api.post(
+                api.patch(
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     document_id=doc_id,
@@ -1407,15 +1467,15 @@ class TestDocumentUpdateByFileApiPost:
         doc_id = str(uuid.uuid4())
         data = {"file": (BytesIO(b"content"), "test.pdf", "application/pdf")}
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update_by_file",
-            method="POST",
+            f"/datasets/{mock_dataset.id}/documents/{doc_id}",
+            method="PATCH",
             content_type="multipart/form-data",
             data=data,
             headers={"Authorization": "Bearer test_token"},
         ):
-            api = DocumentUpdateByFileApi()
+            api = DocumentApi()
             with pytest.raises(ValueError, match="External datasets"):
-                api.post(
+                api.patch(
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     document_id=doc_id,
@@ -1466,14 +1526,14 @@ class TestDocumentUpdateByFileApiPost:
         doc_id = str(uuid.uuid4())
         data = {"file": (BytesIO(b"file content"), "test.pdf", "application/pdf")}
         with app.test_request_context(
-            f"/datasets/{mock_dataset.id}/documents/{doc_id}/update_by_file",
-            method="POST",
+            f"/datasets/{mock_dataset.id}/documents/{doc_id}",
+            method="PATCH",
             content_type="multipart/form-data",
             data=data,
             headers={"Authorization": "Bearer test_token"},
         ):
-            api = DocumentUpdateByFileApi()
-            response, status = api.post(
+            api = DocumentApi()
+            response, status = api.patch(
                 tenant_id=mock_tenant.id,
                 dataset_id=mock_dataset.id,
                 document_id=doc_id,

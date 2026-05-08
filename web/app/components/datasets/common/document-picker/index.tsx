@@ -2,6 +2,11 @@
 import type { FC } from 'react'
 import type { DocumentItem, ParentMode, SimpleDocumentDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -9,11 +14,6 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import Loading from '@/app/components/base/loading'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import SearchInput from '@/app/components/base/search-input'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentList } from '@/service/knowledge/use-document'
@@ -61,7 +61,6 @@ const DocumentPicker: FC<Props> = ({
 
   const [open, {
     set: setOpen,
-    toggle: togglePopup,
   }] = useBoolean(false)
   const ArrowIcon = RiArrowDownSLine
 
@@ -77,34 +76,40 @@ const DocumentPicker: FC<Props> = ({
   }, [parentMode, t])
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
     >
-      <PortalToFollowElemTrigger onClick={togglePopup}>
-        <div className={cn('ml-1 flex cursor-pointer items-center rounded-lg px-2 py-0.5 select-none hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-          <FileIcon name={name} extension={extension} size="xl" />
-          <div className="mr-0.5 ml-1 flex flex-col items-start">
-            <div className="flex items-center space-x-0.5">
-              <span className={cn('system-md-semibold text-text-primary')}>
-                {' '}
-                {name || '--'}
-              </span>
-              <ArrowIcon className="h-4 w-4 text-text-primary" />
-            </div>
-            <div className="flex h-3 items-center space-x-0.5 text-text-tertiary">
-              <TypeIcon className="h-3 w-3" />
-              <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
-                {isGeneralMode && t('chunkingMode.general', { ns: 'dataset' })}
-                {isQAMode && t('chunkingMode.qa', { ns: 'dataset' })}
-                {isParentChild && `${t('chunkingMode.parentChild', { ns: 'dataset' })} · ${parentModeLabel}`}
-              </span>
+      <PopoverTrigger
+        nativeButton={false}
+        render={(
+          <div className={cn('ml-1 flex cursor-pointer items-center rounded-lg px-2 py-0.5 select-none hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+            <FileIcon name={name} extension={extension} size="xl" />
+            <div className="mr-0.5 ml-1 flex flex-col items-start">
+              <div className="flex items-center space-x-0.5">
+                <span className={cn('system-md-semibold text-text-primary')}>
+                  {' '}
+                  {name || '--'}
+                </span>
+                <ArrowIcon className="h-4 w-4 text-text-primary" />
+              </div>
+              <div className="flex h-3 items-center space-x-0.5 text-text-tertiary">
+                <TypeIcon className="h-3 w-3" />
+                <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
+                  {isGeneralMode && t('chunkingMode.general', { ns: 'dataset' })}
+                  {isQAMode && t('chunkingMode.qa', { ns: 'dataset' })}
+                  {isParentChild && `${t('chunkingMode.parentChild', { ns: 'dataset' })} · ${parentModeLabel}`}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-11">
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={0}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 pt-2 shadow-lg backdrop-blur-[5px]">
           <SearchInput value={query} onChange={setQuery} className="mx-1" />
           {documentsList
@@ -125,9 +130,8 @@ const DocumentPicker: FC<Props> = ({
                 </div>
               )}
         </div>
-
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 export default React.memo(DocumentPicker)

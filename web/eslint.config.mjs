@@ -11,11 +11,11 @@ import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import {
+  GENERATED_IGNORES,
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
   NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-  NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
-  OVERLAY_MIGRATION_LEGACY_BASE_FILES,
   OVERLAY_RESTRICTED_IMPORT_PATTERNS,
+  WEB_RESTRICTED_IMPORT_PATTERNS,
 } from './eslint.constants.mjs'
 import dify from './plugins/eslint/index.js'
 
@@ -27,7 +27,7 @@ export default antfu(
         'react/no-unnecessary-use-prefix': 'error',
       },
     },
-    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
+    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json', ...GENERATED_IGNORES],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
@@ -161,20 +161,13 @@ export default antfu(
     },
   },
   {
-    name: 'dify/base-ui-primitives',
-    files: ['app/components/base/ui/**/*.tsx'],
-    rules: {
-      'react-refresh/only-export-components': 'off',
-    },
-  },
-  {
-    name: 'dify/no-direct-next-imports',
+    name: 'dify/restricted-imports',
     files: [GLOB_TS, GLOB_TSX],
     ignores: ['next/**'],
     rules: {
       'no-restricted-imports': ['error', {
         paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-        patterns: NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+        patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
       }],
     },
   },
@@ -184,13 +177,12 @@ export default antfu(
     ignores: [
       'next/**',
       ...GLOB_TESTS,
-      ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
     ],
     rules: {
       'no-restricted-imports': ['error', {
         paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
         patterns: [
-          ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
+          ...WEB_RESTRICTED_IMPORT_PATTERNS,
           ...OVERLAY_RESTRICTED_IMPORT_PATTERNS,
         ],
       }],

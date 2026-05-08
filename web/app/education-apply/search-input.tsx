@@ -1,4 +1,9 @@
-import type { ChangeEventHandler } from 'react'
+import type { ChangeEventHandler, UIEventHandler } from 'react'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import {
   useCallback,
   useRef,
@@ -6,17 +11,13 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useEducation } from './hooks'
 
 type SearchInputProps = {
   value?: string
   onChange: (value: string) => void
 }
+
 const SearchInput = ({
   value,
   onChange,
@@ -48,7 +49,7 @@ const SearchInput = ({
       keywords,
       page,
     })
-  }, [querySchoolsWithDebounced, handleUpdateSchools])
+  }, [handleUpdateSchools, querySchoolsWithDebounced])
 
   const handleValueChange: ChangeEventHandler<HTMLInputElement> = useCallback((e) => {
     setOpen(true)
@@ -58,10 +59,10 @@ const SearchInput = ({
     valueRef.current = inputValue
     onChange(inputValue)
     handleSearch(true)
-  }, [onChange, handleSearch, setSchools])
+  }, [handleSearch, onChange, setSchools])
 
-  const handleScroll = useCallback((e: Event) => {
-    const target = e.target as HTMLDivElement
+  const handleScroll: UIEventHandler<HTMLDivElement> = useCallback((e) => {
+    const target = e.currentTarget
     const {
       scrollTop,
       scrollHeight,
@@ -74,32 +75,32 @@ const SearchInput = ({
   }, [handleSearch, hasNext])
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom"
-      offset={4}
-      triggerPopupSameWidth
-    >
-      <PortalToFollowElemTrigger className="block w-full">
-        <Input
-          className="w-full"
-          placeholder={t('form.schoolName.placeholder', { ns: 'education' })}
-          value={value}
-          onChange={handleValueChange}
-        />
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-32">
-        {
-          !!schools.length && value && (
-            <div
-              className="max-h-[330px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1"
-              onScroll={handleScroll as any}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        nativeButton={false}
+        render={(
+          <Input
+            className="w-full"
+            placeholder={t('form.schoolName.placeholder', { ns: 'education' })}
+            value={value}
+            onChange={handleValueChange}
+          />
+        )}
+      />
+      {!!schools.length && !!value
+        ? (
+            <PopoverContent
+              placement="bottom"
+              sideOffset={4}
+              popupClassName="w-[var(--anchor-width)] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
             >
-              {
-                schools.map((school, index) => (
+              <div
+                className="max-h-[330px] overflow-y-auto"
+                onScroll={handleScroll}
+              >
+                {schools.map(school => (
                   <div
-                    key={index}
+                    key={school}
                     className="flex h-8 cursor-pointer items-center truncate rounded-lg px-2 py-1.5 system-md-regular text-text-secondary hover:bg-state-base-hover"
                     title={school}
                     onClick={() => {
@@ -109,13 +110,12 @@ const SearchInput = ({
                   >
                     {school}
                   </div>
-                ))
-              }
-            </div>
+                ))}
+              </div>
+            </PopoverContent>
           )
-        }
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+        : null}
+    </Popover>
   )
 }
 

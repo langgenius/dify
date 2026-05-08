@@ -15,14 +15,15 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
-import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -81,13 +82,22 @@ const ServerURLSection: FC<ServerURLSectionProps> = ({
             <CopyFeedback content={serverURL} className="size-6!" />
             <Divider type="vertical" className="mx-0.5! h-3.5! shrink-0" />
             {isCurrentWorkspaceManager && (
-              <Tooltip popupContent={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}>
-                <div
-                  className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
-                  onClick={onRegenerate}
-                >
-                  <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
-                </div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <button
+                      type="button"
+                      className="cursor-pointer rounded-md p-1 outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                      aria-label={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}
+                      onClick={onRegenerate}
+                    >
+                      <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')} />
+                    </button>
+                  )}
+                />
+                <TooltipContent>
+                  {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+                </TooltipContent>
               </Tooltip>
             )}
           </>
@@ -104,13 +114,19 @@ type TriggerModeOverlayProps = {
 const TriggerModeOverlay: FC<TriggerModeOverlayProps> = ({ triggerModeMessage }) => {
   if (triggerModeMessage) {
     return (
-      <Tooltip
-        popupContent={triggerModeMessage}
-        popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
-        position="right"
-      >
-        <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
-      </Tooltip>
+      <Popover>
+        <PopoverTrigger
+          openOnHover
+          aria-label={typeof triggerModeMessage === 'string' ? triggerModeMessage : 'Disabled'}
+          render={<button type="button" className="absolute inset-0 z-10 cursor-not-allowed rounded-xl outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover" />}
+        />
+        <PopoverContent
+          placement="right"
+          popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
+        >
+          {triggerModeMessage}
+        </PopoverContent>
+      </Popover>
     )
   }
   return <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
@@ -146,12 +162,13 @@ function getTooltipContent({
         <div className="mb-1 text-xs font-normal text-text-secondary">
           {t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
         </div>
-        <div
-          className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
+        <button
+          type="button"
+          className="cursor-pointer rounded-sm text-xs font-normal text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
           onClick={() => window.open(docLink('/use-dify/nodes/user-input'), '_blank')}
         >
           {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
-        </div>
+        </button>
       </>
     )
   }
@@ -316,16 +333,31 @@ const MCPServiceCard: FC<IAppCardProps> = ({
                 </div>
               </div>
               <StatusIndicator serverActivated={serverActivated} />
-              <Tooltip
-                popupContent={tooltipContent}
-                position="right"
-                popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
-                offset={24}
-              >
-                <div>
-                  <Switch checked={activated} onCheckedChange={onChangeStatus} disabled={toggleDisabled} />
-                </div>
-              </Tooltip>
+              {toggleDisabled && tooltipContent
+                ? (
+                    <Popover>
+                      <PopoverTrigger
+                        openOnHover
+                        nativeButton={false}
+                        aria-label={typeof tooltipContent === 'string' ? tooltipContent : t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
+                        render={(
+                          <div>
+                            <Switch checked={activated} onCheckedChange={onChangeStatus} disabled={toggleDisabled} />
+                          </div>
+                        )}
+                      />
+                      <PopoverContent
+                        placement="right"
+                        sideOffset={24}
+                        popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
+                      >
+                        {tooltipContent}
+                      </PopoverContent>
+                    </Popover>
+                  )
+                : (
+                    <Switch checked={activated} onCheckedChange={onChangeStatus} disabled={toggleDisabled} />
+                  )}
             </div>
             {!isMinimalState && (
               <ServerURLSection

@@ -6,6 +6,40 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Publisher from '../index'
 import Popup from '../popup'
 
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
+    <button
+      onClick={onClick as (() => void) | undefined}
+      disabled={disabled as boolean | undefined}
+      data-variant={variant as string | undefined}
+      className={className as string | undefined}
+    >
+      {children as React.ReactNode}
+    </button>
+  ),
+}))
+vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
+  AlertDialog: ({ children, open, onOpenChange }: { children: React.ReactNode, open?: boolean, onOpenChange?: (open: boolean) => void }) => (
+    open
+      ? (
+          <div role="alertdialog">
+            {children}
+            <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
+              Close
+            </button>
+          </div>
+        )
+      : null
+  ),
+  AlertDialogActions: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogCancelButton: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
+  AlertDialogConfirmButton: ({ children, onClick, disabled }: Record<string, unknown>) => <button onClick={onClick as (() => void) | undefined} disabled={disabled as boolean | undefined}>{children as React.ReactNode}</button>,
+  AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
 const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
@@ -60,7 +94,8 @@ vi.mock('@/context/dataset-detail', () => ({
 
 const mockSetShowPricingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: () => mockSetShowPricingModal,
+  useModalContextSelector: <T,>(selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T): T =>
+    selector({ setShowPricingModal: mockSetShowPricingModal }),
 }))
 
 const mockIsAllowPublishAsCustomKnowledgePipelineTemplate = vi.fn(() => true)
@@ -200,8 +235,7 @@ describe('publisher', () => {
       it('should render portal element in closed state by default', () => {
         renderWithQueryClient(<Publisher />)
 
-        const trigger = screen.getByText('workflow.common.publish').closest('[data-state]')
-        expect(trigger).toHaveAttribute('data-state', 'closed')
+        expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
         expect(screen.queryByText('workflow.common.publishUpdate')).not.toBeInTheDocument()
       })
 
@@ -276,6 +310,25 @@ describe('publisher', () => {
         await waitFor(() => {
           expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
         })
+      })
+
+      it('should close the outer popover before opening publish-as follow-up flow', async () => {
+        mockPublishedAt.mockReturnValue(1700000000)
+        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        renderWithQueryClient(<Publisher />)
+
+        fireEvent.click(screen.getByText('workflow.common.publish'))
+
+        await waitFor(() => {
+          expect(screen.getByText('pipeline.common.publishAs')).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getByText('pipeline.common.publishAs'))
+
+        await waitFor(() => {
+          expect(screen.queryByText('pipeline.common.publishAs')).not.toBeInTheDocument()
+        })
+        expect(mockSetShowPricingModal).toHaveBeenCalled()
       })
     })
   })
@@ -688,7 +741,7 @@ describe('publisher', () => {
           expect(screen.getByText('pipeline.common.confirmPublish')).toBeInTheDocument()
         })
 
-        fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+        fireEvent.click(screen.getByTestId('alert-dialog-close'))
 
         await waitFor(() => {
           expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()

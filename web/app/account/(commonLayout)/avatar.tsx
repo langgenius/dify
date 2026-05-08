@@ -4,6 +4,7 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
@@ -11,13 +12,14 @@ import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
-import { useLogout, useUserProfile } from '@/service/use-common'
+import { useLogout, userProfileQueryOptions } from '@/service/use-common'
 
 export default function AppSelector() {
   const router = useRouter()
   const { t } = useTranslation()
-  const { data: userProfileResp } = useUserProfile()
-  const userProfile = userProfileResp?.profile
+  // Cache is warmed by AppContextProvider's useSuspenseQuery; this hits cache synchronously.
+  const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
+  const userProfile = userProfileResp.profile
   const { isEducationAccount } = useProviderContext()
 
   const { mutateAsync: logout } = useLogout()

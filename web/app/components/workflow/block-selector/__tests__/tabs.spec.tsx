@@ -1,8 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import Tabs from '../tabs'
 import { TabsEnum } from '../types'
+
+const render = (ui: React.ReactElement) =>
+  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
 
 const {
   mockSetState,
@@ -32,12 +36,6 @@ vi.mock('@/app/components/base/tooltip', () => ({
       {children}
     </div>
   ),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => unknown) => selector({
-    systemFeatures: { enable_marketplace: true },
-  }),
 }))
 
 vi.mock('@/service/use-plugins', () => ({

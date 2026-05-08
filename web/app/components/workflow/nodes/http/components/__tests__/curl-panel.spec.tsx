@@ -32,7 +32,7 @@ describe('curl-panel', () => {
 
   describe('parseCurl', () => {
     it('should parse method, headers, json body, and query params from a valid curl command', () => {
-      const { node, error } = curlParser.parseCurl('curl -X POST -H \"Authorization: Bearer token\" --json \"{\"name\":\"openai\"}\" https://example.com/users?page=1&size=2')
+      const { node, error } = curlParser.parseCurl('curl -X POST -H "Authorization: Bearer token" --json "{"name":"openai"}" https://example.com/users?page=1&size=2')
 
       expect(error).toBeNull()
       expect(node).toMatchObject({

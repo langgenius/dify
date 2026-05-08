@@ -102,7 +102,7 @@ const ConversationOpener = ({
           <>
             {!isHovering && (
               <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
-                {opening.opening_statement || t('openingStatement.placeholder', { ns: 'appDebug' })}
+                {opening.opening_statement || t('openingStatement.placeholderLine1', { ns: 'appDebug' })}
               </div>
             )}
             {isHovering && (

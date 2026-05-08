@@ -3,13 +3,14 @@
 import type { FC } from 'react'
 import type { App as AppType } from '@/models/explore'
 import { Button } from '@langgenius/dify-ui/button'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal/index'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import App from './app'
 import AppInfo from './app-info'
@@ -31,7 +32,7 @@ const TryApp: FC<Props> = ({
   onClose,
   onCreate,
 }) => {
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isTrialApp = !!(app && app.can_trial && systemFeatures.enable_trial_app)
   const canUseTryTab = IS_CLOUD_EDITION && (app ? isTrialApp : true)
   const [type, setType] = useState<TypeEnum>(() => (canUseTryTab ? TypeEnum.TRY : TypeEnum.DETAIL))

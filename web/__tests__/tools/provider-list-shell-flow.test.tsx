@@ -1,22 +1,16 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import ProviderList from '@/app/components/tools/provider-list'
 import { CollectionType } from '@/app/components/tools/types'
-import { renderWithNuqs } from '@/test/nuqs-testing'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 const mockInvalidateInstalledPluginList = vi.fn()
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    systemFeatures: {
-      enable_marketplace: true,
-    },
   }),
 }))
 
@@ -159,7 +153,16 @@ vi.mock('@/app/components/tools/mcp', () => ({
 }))
 
 const renderProviderList = (searchParams = '') => {
-  return renderWithNuqs(<ProviderList />, { searchParams })
+  const { wrapper: SysWrapper } = createSystemFeaturesWrapper({
+    systemFeatures: { enable_marketplace: true },
+  })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({ searchParams })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <NuqsWrapper>
+      <SysWrapper>{children}</SysWrapper>
+    </NuqsWrapper>
+  )
+  return { ...render(<ProviderList />, { wrapper: Wrapper }), onUrlUpdate }
 }
 
 describe('Tool Provider List Shell Flow', () => {

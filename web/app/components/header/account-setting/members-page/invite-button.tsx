@@ -1,9 +1,10 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { RiUserAddLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 
 type InviteButtonProps = {
@@ -14,7 +15,7 @@ type InviteButtonProps = {
 const InviteButton = (props: InviteButtonProps) => {
   const { t } = useTranslation()
   const { currentWorkspace } = useAppContext()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } = useWorkspacePermissions(currentWorkspace!.id, systemFeatures.branding.enabled)
   if (systemFeatures.branding.enabled) {
     if (isFetchingWorkspacePermissions) {

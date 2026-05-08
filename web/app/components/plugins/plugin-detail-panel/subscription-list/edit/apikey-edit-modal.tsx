@@ -2,6 +2,8 @@
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef, useState } from 'react'
@@ -9,7 +11,6 @@ import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import Modal from '@/app/components/base/modal/modal'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { useUpdateTriggerSubscription, useVerifyTriggerSubscription } from '@/service/use-triggers'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
@@ -23,10 +24,12 @@ type Props = {
   pluginDetail?: PluginDetail
 }
 
-enum EditStep {
-  EditCredentials = 'edit_credentials',
-  EditConfiguration = 'edit_configuration',
-}
+const EditStep = {
+  EditCredentials: 'edit_credentials',
+  EditConfiguration: 'edit_configuration',
+} as const
+
+type EditStep = typeof EditStep[keyof typeof EditStep]
 
 const normalizeFormType = (type: string): FormTypeEnum => {
   switch (type) {
@@ -52,7 +55,6 @@ const normalizeFormType = (type: string): FormTypeEnum => {
 
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 
-// Check if all credential values are hidden (meaning nothing was changed)
 const areAllCredentialsHidden = (credentials: Record<string, unknown>): boolean => {
   return Object.values(credentials).every(value => value === HIDDEN_SECRET_VALUE)
 }
@@ -63,17 +65,36 @@ const StatusStep = ({ isActive, text, onClick, clickable }: {
   onClick?: () => void
   clickable?: boolean
 }) => {
-  return (
-    <div
-      className={`flex items-center gap-1 system-2xs-semibold-uppercase ${isActive
-        ? 'text-state-accent-solid'
-        : 'text-text-tertiary'} ${clickable ? 'cursor-pointer hover:text-text-secondary' : ''}`}
-      onClick={clickable ? onClick : undefined}
-    >
-      {isActive && (
-        <div className="h-1 w-1 rounded-full bg-state-accent-solid"></div>
-      )}
+  const className = `flex items-center gap-1 system-2xs-semibold-uppercase ${isActive
+    ? 'text-state-accent-solid'
+    : 'text-text-tertiary'} ${clickable ? 'cursor-pointer rounded bg-transparent p-0 text-left hover:text-text-secondary focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden' : ''}`
+
+  const content = (
+    <>
+      {isActive
+        ? (
+            <div className="h-1 w-1 rounded-full bg-state-accent-solid"></div>
+          )
+        : null}
       {text}
+    </>
+  )
+
+  if (clickable) {
+    return (
+      <button
+        type="button"
+        className={className}
+        onClick={onClick}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return (
+    <div className={className}>
+      {content}
     </div>
   )
 }
@@ -260,78 +281,123 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
     })
   }, [parametersSchema, subscription.parameters, subscription.id, detail?.plugin_id, detail?.provider, verifiedCredentials])
 
-  const getConfirmButtonText = () => {
+  const confirmButtonText = (() => {
     if (currentStep === EditStep.EditCredentials)
       return isVerifying ? t('modal.common.verifying', { ns: 'pluginTrigger' }) : t('modal.common.verify', { ns: 'pluginTrigger' })
 
     return isUpdating ? t('operation.saving', { ns: 'common' }) : t('operation.save', { ns: 'common' })
-  }
+  })()
 
   const handleBack = () => {
     setCurrentStep(EditStep.EditCredentials)
     setVerifiedCredentials(null)
   }
 
+  const isDisabled = isUpdating || isVerifying
+  const title = t('subscription.list.item.actions.edit.title', { ns: 'pluginTrigger' })
+
   return (
-    <Modal
-      title={t('subscription.list.item.actions.edit.title', { ns: 'pluginTrigger' })}
-      confirmButtonText={getConfirmButtonText()}
-      onClose={onClose}
-      onCancel={onClose}
-      onConfirm={handleConfirm}
-      disabled={isUpdating || isVerifying}
-      showExtraButton={currentStep === EditStep.EditConfiguration}
-      extraButtonText={t('modal.common.back', { ns: 'pluginTrigger' })}
-      extraButtonVariant="secondary"
-      onExtraButtonClick={handleBack}
-      clickOutsideNotClose
-      wrapperClassName="z-101!"
-      bottomSlot={currentStep === EditStep.EditCredentials ? <EncryptedBottom /> : null}
+    <Dialog
+      open
+      disablePointerDismissal
+      onOpenChange={(open) => {
+        if (!open)
+          onClose()
+      }}
     >
-      {pluginDetail && (
-        <ReadmeEntrance pluginDetail={pluginDetail} showType={ReadmeShowType.modal} />
-      )}
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="p-0"
+      >
+        <div data-testid="modal" data-title={title} data-disabled={isDisabled} className="flex max-h-[80dvh] flex-col">
+          <div className="relative shrink-0 p-6 pr-14 pb-3">
+            <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
+              {title}
+            </DialogTitle>
+            <DialogCloseButton data-testid="modal-close-button" className="top-5 right-5 h-8 w-8 rounded-lg" />
+          </div>
+          <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+            {pluginDetail && (
+              <ReadmeEntrance pluginDetail={pluginDetail} showType={ReadmeShowType.modal} />
+            )}
 
-      {/* Multi-step indicator */}
-      <MultiSteps currentStep={currentStep} onStepClick={handleBack} />
+            <MultiSteps currentStep={currentStep} onStepClick={handleBack} />
 
-      {/* Step 1: Edit Credentials */}
-      {currentStep === EditStep.EditCredentials && (
-        <div className="mb-4">
-          {credentialsFormSchemas.length > 0 && (
-            <BaseForm
-              formSchemas={credentialsFormSchemas}
-              ref={credentialsFormRef}
-              labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-              formClassName="space-y-4"
-              preventDefaultSubmit={true}
-            />
+            {currentStep === EditStep.EditCredentials
+              ? (
+                  <div className="mb-4">
+                    {credentialsFormSchemas.length > 0 && (
+                      <BaseForm
+                        formSchemas={credentialsFormSchemas}
+                        ref={credentialsFormRef}
+                        labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+                        formClassName="space-y-4"
+                        preventDefaultSubmit={true}
+                      />
+                    )}
+                  </div>
+                )
+              : (
+                  <div className="max-h-[70vh]">
+                    <BaseForm
+                      formSchemas={basicFormSchemas}
+                      ref={basicFormRef}
+                      labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+                      formClassName="space-y-4 mb-4"
+                    />
+
+                    {parametersFormSchemas.length > 0 && (
+                      <BaseForm
+                        formSchemas={parametersFormSchemas}
+                        ref={parametersFormRef}
+                        labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+                        formClassName="space-y-4"
+                      />
+                    )}
+                  </div>
+                )}
+          </div>
+          <div className="flex shrink-0 justify-between p-6 pt-5">
+            <div />
+            <div className="flex items-center">
+              {currentStep === EditStep.EditConfiguration && (
+                <>
+                  <Button
+                    data-testid="modal-extra-button"
+                    variant="secondary"
+                    onClick={handleBack}
+                    disabled={isDisabled}
+                  >
+                    {t('modal.common.back', { ns: 'pluginTrigger' })}
+                  </Button>
+                  <div className="mx-3 h-4 w-px bg-divider-regular"></div>
+                </>
+              )}
+              <Button
+                data-testid="modal-cancel-button"
+                onClick={onClose}
+                disabled={isDisabled}
+              >
+                {t('operation.cancel', { ns: 'common' })}
+              </Button>
+              <Button
+                data-testid="modal-confirm-button"
+                className="ml-2"
+                variant="primary"
+                onClick={handleConfirm}
+                disabled={isDisabled}
+              >
+                {confirmButtonText}
+              </Button>
+            </div>
+          </div>
+          {currentStep === EditStep.EditCredentials && (
+            <div data-testid="modal-bottom-slot" className="shrink-0">
+              <EncryptedBottom />
+            </div>
           )}
         </div>
-      )}
-
-      {/* Step 2: Edit Configuration */}
-      {currentStep === EditStep.EditConfiguration && (
-        <div className="max-h-[70vh]">
-          {/* Basic form: subscription name and callback URL */}
-          <BaseForm
-            formSchemas={basicFormSchemas}
-            ref={basicFormRef}
-            labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-            formClassName="space-y-4 mb-4"
-          />
-
-          {/* Parameters */}
-          {parametersFormSchemas.length > 0 && (
-            <BaseForm
-              formSchemas={parametersFormSchemas}
-              ref={parametersFormRef}
-              labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-              formClassName="space-y-4"
-            />
-          )}
-        </div>
-      )}
-    </Modal>
+      </DialogContent>
+    </Dialog>
   )
 }

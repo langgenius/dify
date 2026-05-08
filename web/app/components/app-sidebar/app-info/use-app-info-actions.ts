@@ -62,7 +62,7 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
           timestamp: Date.now(),
         })
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [appDetail?.id])
 
   useEffect(() => {
@@ -89,7 +89,7 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
           }
         })
       })
-      .catch(() => {})
+      .catch(() => { })
 
     return () => {
       disposed = true
@@ -183,7 +183,6 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
   const handleConfirmExport = useCallback(async () => {
     if (!appDetail)
       return
-    closeModal()
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
@@ -195,6 +194,9 @@ export function useAppInfoActions({ onDetailExpand }: UseAppInfoActionsParams) {
     }
     catch {
       toast(t('exportFailed', { ns: 'app' }), { type: 'error' })
+    }
+    finally {
+      closeModal()
     }
   }, [appDetail, closeModal, onExport, t])
 

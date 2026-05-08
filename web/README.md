@@ -56,6 +56,8 @@ pnpm -C web run dev
 # or if you are using vinext which provides a better development experience
 pnpm -C web run dev:vinext
 # (optional) start the dev proxy server so that you can use online API in development
+# edit web/dev-proxy.config.ts to choose proxy paths
+# edit web/.env.local to override DEV_PROXY_TARGET, DEV_PROXY_ENTERPRISE_TARGET, DEV_PROXY_HOST, or DEV_PROXY_PORT
 pnpm -C web run dev:proxy
 ```
 
@@ -165,7 +167,7 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Storybook]: https://storybook.js.org
 [Vite+]: https://viteplus.dev
 [Vitest]: https://vitest.dev
-[index.spec.tsx]: ./app/components/base/button/index.spec.tsx
+[index.spec.tsx]: ./app/components/base/radio/__tests__/index.spec.tsx
 [pnpm]: https://pnpm.io
 [vinext]: https://github.com/cloudflare/vinext
 [web/docs/test.md]: ./docs/test.md

@@ -309,7 +309,7 @@ describe('UsageInfo', () => {
           />,
         )
 
-        expect(container.querySelector('[data-state]')).toBeInTheDocument()
+        expect(container.querySelectorAll('.cursor-default').length).toBeGreaterThan(0)
       })
     })
   })

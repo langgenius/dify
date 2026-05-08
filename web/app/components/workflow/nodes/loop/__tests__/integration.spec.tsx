@@ -353,8 +353,8 @@ describe('loop path', () => {
       await user.click(screen.getByText('Variable'))
       fireEvent.change(screen.getByDisplayValue('12'), { target: { value: '42' } })
 
-      expect(onSelect).toHaveBeenCalledWith(ComparisonOperator.is)
-      expect(onNumberVarTypeChange).toHaveBeenCalledWith(NumberVarType.variable)
+      expect(onSelect.mock.calls[0]?.[0]).toBe(ComparisonOperator.is)
+      expect(onNumberVarTypeChange.mock.calls[0]?.[0]).toBe(NumberVarType.variable)
       expect(onValueChange).toHaveBeenCalledWith('42')
     })
 
@@ -563,7 +563,7 @@ describe('loop path', () => {
               id: 'loop-var-object',
               var_type: VarType.arrayObject,
               value_type: ValueType.constant,
-              value: '[{\"id\":1}]',
+              value: '[{"id":1}]',
             })}
             onChange={onObjectChange}
           />
@@ -571,7 +571,7 @@ describe('loop path', () => {
       )
 
       fireEvent.change(screen.getByDisplayValue('draft'), { target: { value: 'published' } })
-      fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '[{\"id\":2}]' } })
+      fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '[{"id":2}]' } })
 
       expect(onStringChange).toHaveBeenCalledWith('published')
       expect(onObjectChange).toHaveBeenCalledWith('[{"id":2}]')

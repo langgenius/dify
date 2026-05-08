@@ -1,9 +1,18 @@
+import type { ReactElement } from 'react'
 import type { PluginDetail } from '../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import * as amplitude from '@/app/components/base/amplitude'
 import { PluginSource } from '../../types'
 import DetailHeader from '../detail-header'
+
+let mockEnableMarketplace = true
+
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { enable_marketplace: mockEnableMarketplace },
+  })
 
 const { mockToast } = vi.hoisted(() => ({
   mockToast: Object.assign(vi.fn(), {
@@ -70,13 +79,7 @@ vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))
 
-// Global mock state for enable_marketplace
-let mockEnableMarketplace = true
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { enable_marketplace: boolean } }) => unknown) =>
-    selector({ systemFeatures: { enable_marketplace: mockEnableMarketplace } }),
-}))
+// Global mock state for enable_marketplace seeded into the QueryClient via the local render helper.
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({

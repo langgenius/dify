@@ -10,14 +10,20 @@ from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.code.entities import CodeLanguage
+from graphon.nodes.llm.entities import LLMNodeData
 from graphon.variables.segments import StringSegment
 
 
 def _assert_typed_node_config(config, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
     _ = node_id
-    assert isinstance(config, BaseNodeData)
-    assert config.type == node_type
-    assert config.version == version
+    if isinstance(config, BaseNodeData):
+        assert config.type == node_type
+        assert config.version == version
+        return
+
+    assert isinstance(config, dict)
+    assert config["type"] == node_type
+    assert config["version"] == version
 
 
 def _node_constructor(*, return_value):
@@ -545,6 +551,84 @@ class TestDifyNodeFactoryCreateNode:
         elif constructor_name == "DocumentExtractorNode":
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.http_client
+
+    def test_build_llm_compatible_node_init_kwargs_preserves_structured_output_switch(self, factory):
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+                "structured_output_enabled": True,
+                "structured_output": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {"type": {"type": "string"}},
+                        "required": ["type"],
+                    }
+                },
+            }
+        )
+        wrapped_model_instance = sentinel.wrapped_model_instance
+        memory = sentinel.memory
+        factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
+        factory._build_memory_for_llm_node = MagicMock(return_value=memory)
+        with patch.object(node_factory, "DifyPreparedLLM", return_value=wrapped_model_instance) as prepared_llm:
+            kwargs = factory._build_llm_compatible_node_init_kwargs(
+                node_class=sentinel.node_class,
+                node_data=node_data,
+                wrap_model_instance=True,
+                include_http_client=True,
+                include_llm_file_saver=True,
+                include_prompt_message_serializer=True,
+                include_retriever_attachment_loader=True,
+                include_jinja2_template_renderer=True,
+            )
+
+        assert node_data.structured_output_switch_on is True
+        assert node_data.structured_output_enabled is True
+        factory._build_model_instance_for_llm_node.assert_called_once_with(node_data)
+        factory._build_memory_for_llm_node.assert_called_once_with(
+            node_data=node_data,
+            model_instance=sentinel.model_instance,
+        )
+        prepared_llm.assert_called_once_with(sentinel.model_instance)
+        assert kwargs["model_instance"] is wrapped_model_instance
+
+    def test_create_node_passes_alias_preserving_llm_config_to_constructor(self, monkeypatch, factory):
+        created_node = object()
+        constructor = _node_constructor(return_value=created_node)
+        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
+        monkeypatch.setattr(factory, "_build_llm_compatible_node_init_kwargs", MagicMock(return_value={}))
+
+        node_config = {
+            "id": "llm-node-id",
+            "data": {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+                "structured_output_enabled": True,
+                "structured_output": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {"type": {"type": "string"}},
+                        "required": ["type"],
+                    }
+                },
+            },
+        }
+
+        factory.create_node(node_config)
+
+        config = constructor.call_args.kwargs["config"]
+        assert isinstance(config, dict)
+        assert config["structured_output_enabled"] is True
+        assert "structured_output_switch_on" not in config
 
     @pytest.mark.parametrize(
         ("node_type", "constructor_name", "expected_extra_kwargs"),

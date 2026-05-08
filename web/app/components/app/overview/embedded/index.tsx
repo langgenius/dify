@@ -186,8 +186,8 @@ const EmbeddedContent = ({
   }
   const previewFallback = latestResolvedIframeUrlRef.current
     ? (option === 'chromePlugin'
-        ? getChromePluginContent(latestResolvedIframeUrlRef.current)
-        : getEmbeddedIframeSnippet(latestResolvedIframeUrlRef.current))
+      ? getChromePluginContent(latestResolvedIframeUrlRef.current)
+      : getEmbeddedIframeSnippet(latestResolvedIframeUrlRef.current))
     : ''
 
   const navigateToChromeUrl = () => {
@@ -289,14 +289,14 @@ const EmbeddedContent = ({
               {option === 'scripts'
                 ? scriptsContent
                 : (
-                    <Suspense fallback={previewFallback}>
-                      <AsyncEmbeddedOptionContent
-                        option={option}
-                        iframeUrlPromise={previewIframeUrlPromise}
-                        latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
-                      />
-                    </Suspense>
-                  )}
+                  <Suspense fallback={previewFallback}>
+                    <AsyncEmbeddedOptionContent
+                      option={option}
+                      iframeUrlPromise={previewIframeUrlPromise}
+                      latestResolvedIframeUrlRef={latestResolvedIframeUrlRef}
+                    />
+                  </Suspense>
+                )}
             </pre>
           </div>
         </div>

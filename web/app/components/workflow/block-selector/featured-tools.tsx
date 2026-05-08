@@ -3,12 +3,12 @@ import type { ToolWithProvider } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
+import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { RiMoreLine } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
-import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
@@ -235,7 +235,6 @@ function FeaturedToolUninstalledItem({
   const description = typeof plugin.brief === 'object' ? plugin.brief[language] : plugin.brief
   const installCountLabel = t('install', { ns: 'plugin', num: formatNumber(plugin.install_count || 0) })
   const [actionOpen, setActionOpen] = useState(false)
-  const [isActionHovered, setIsActionHovered] = useState(false)
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false)
 
   useEffect(() => {
@@ -244,7 +243,6 @@ function FeaturedToolUninstalledItem({
 
     const handleScroll = () => {
       setActionOpen(false)
-      setIsActionHovered(false)
     }
 
     window.addEventListener('scroll', handleScroll, true)
@@ -254,77 +252,72 @@ function FeaturedToolUninstalledItem({
     }
   }, [actionOpen])
 
+  const row = (
+    <div
+      className="group flex h-8 w-full items-center rounded-lg pr-1 pl-3 hover:bg-state-base-hover"
+    >
+      <div className="flex h-full min-w-0 items-center">
+        <BlockIcon type={BlockEnum.Tool} toolIcon={plugin.icon} />
+        <div className="ml-2 min-w-0">
+          <div className="truncate system-sm-medium text-text-secondary">{label}</div>
+        </div>
+      </div>
+      <div className="ml-auto flex h-full items-center gap-1 pl-1">
+        <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
+        <div
+          className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
+        >
+          <button
+            type="button"
+            className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
+            onClick={() => {
+              setActionOpen(false)
+              setIsInstallModalOpen(true)
+            }}
+          >
+            {t('installAction', { ns: 'plugin' })}
+          </button>
+          <Action
+            open={actionOpen}
+            onOpenChange={setActionOpen}
+            author={plugin.org}
+            name={plugin.name}
+            version={plugin.latest_version}
+          />
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <>
-      <Tooltip
-        position="right"
-        needsDelay={false}
-        popupClassName="p-0! px-3! py-2.5! w-[224px]! leading-[18px]! text-xs! text-gray-700! border-[0.5px]! border-black/5! rounded-xl! shadow-lg!"
-        popupContent={(
-          <div>
-            <BlockIcon size="md" className="mb-2" type={BlockEnum.Tool} toolIcon={plugin.icon} />
-            <div className="mb-1 text-sm leading-5 text-text-primary">{label}</div>
-            <div className="text-xs leading-[18px] text-text-secondary">{description}</div>
-          </div>
-        )}
-        disabled={!description || isActionHovered || actionOpen || isInstallModalOpen}
-      >
-        <div
-          className="group flex h-8 w-full items-center rounded-lg pr-1 pl-3 hover:bg-state-base-hover"
-        >
-          <div className="flex h-full min-w-0 items-center">
-            <BlockIcon type={BlockEnum.Tool} toolIcon={plugin.icon} />
-            <div className="ml-2 min-w-0">
-              <div className="truncate system-sm-medium text-text-secondary">{label}</div>
-            </div>
-          </div>
-          <div className="ml-auto flex h-full items-center gap-1 pl-1">
-            <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
-            <div
-              className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
-              onMouseEnter={() => setIsActionHovered(true)}
-              onMouseLeave={() => {
-                if (!actionOpen)
-                  setIsActionHovered(false)
-              }}
-            >
-              <button
-                type="button"
-                className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
-                onClick={() => {
-                  setActionOpen(false)
-                  setIsInstallModalOpen(true)
-                  setIsActionHovered(true)
-                }}
-              >
-                {t('installAction', { ns: 'plugin' })}
-              </button>
-              <Action
-                open={actionOpen}
-                onOpenChange={(value) => {
-                  setActionOpen(value)
-                  setIsActionHovered(value)
-                }}
-                author={plugin.org}
-                name={plugin.name}
-                version={plugin.latest_version}
-              />
-            </div>
-          </div>
-        </div>
-      </Tooltip>
+      {description
+        ? (
+            // Preview is supplementary: icon / label / brief are all reachable from
+            // the InstallFromMarketplace modal that opens on click, so hover/focus-only
+            // activation is a11y-safe. See packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
+            <PreviewCard>
+              <PreviewCardTrigger delay={150} closeDelay={150} render={row} />
+              <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
+                <div>
+                  <BlockIcon size="md" className="mb-2" type={BlockEnum.Tool} toolIcon={plugin.icon} />
+                  <div className="mb-1 text-sm leading-5 text-text-primary">{label}</div>
+                  <div className="text-xs leading-[18px] text-text-secondary">{description}</div>
+                </div>
+              </PreviewCardContent>
+            </PreviewCard>
+          )
+        : row}
       {isInstallModalOpen && (
         <InstallFromMarketplace
           uniqueIdentifier={plugin.latest_package_identifier}
           manifest={plugin}
           onSuccess={async () => {
             setIsInstallModalOpen(false)
-            setIsActionHovered(false)
             await onInstallSuccess?.()
           }}
           onClose={() => {
             setIsInstallModalOpen(false)
-            setIsActionHovered(false)
           }}
         />
       )}

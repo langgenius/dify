@@ -32,7 +32,7 @@ class TagBindingPayload(BaseModel):
 
 
 class TagBindingRemovePayload(BaseModel):
-    tag_id: str = Field(description="Tag ID to remove")
+    tag_ids: list[str] = Field(description="Tag IDs to remove", min_length=1)
     target_id: str = Field(description="Target ID to unbind tag from")
     type: TagType = Field(description="Tag type")
 
@@ -152,41 +152,68 @@ class TagUpdateDeleteApi(Resource):
         return "", 204
 
 
-@console_ns.route("/tag-bindings/create")
-class TagBindingCreateApi(Resource):
+def _require_tag_binding_edit_permission() -> None:
+    """
+    Ensure the current account can edit tag bindings.
+
+    Tag binding operations are allowed for users who can edit resources (app/dataset) within the current tenant.
+    """
+    current_user, _ = current_account_with_tenant()
+    # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+    if not (current_user.has_edit_permission or current_user.is_dataset_editor):
+        raise Forbidden()
+
+
+def _create_tag_bindings() -> tuple[dict[str, str], int]:
+    _require_tag_binding_edit_permission()
+
+    payload = TagBindingPayload.model_validate(console_ns.payload or {})
+    TagService.save_tag_binding(
+        TagBindingCreatePayload(
+            tag_ids=payload.tag_ids,
+            target_id=payload.target_id,
+            type=payload.type,
+        )
+    )
+    return {"result": "success"}, 200
+
+
+def _remove_tag_bindings() -> tuple[dict[str, str], int]:
+    _require_tag_binding_edit_permission()
+
+    payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
+    TagService.delete_tag_binding(
+        TagBindingDeletePayload(
+            tag_ids=payload.tag_ids,
+            target_id=payload.target_id,
+            type=payload.type,
+        )
+    )
+    return {"result": "success"}, 200
+
+
+@console_ns.route("/tag-bindings")
+class TagBindingCollectionApi(Resource):
+    """Canonical collection resource for tag binding creation."""
+
+    @console_ns.doc("create_tag_binding")
     @console_ns.expect(console_ns.models[TagBindingPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        current_user, _ = current_account_with_tenant()
-        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
-            raise Forbidden()
-
-        payload = TagBindingPayload.model_validate(console_ns.payload or {})
-        TagService.save_tag_binding(
-            TagBindingCreatePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=payload.type)
-        )
-
-        return {"result": "success"}, 200
+        return _create_tag_bindings()
 
 
 @console_ns.route("/tag-bindings/remove")
-class TagBindingDeleteApi(Resource):
+class TagBindingRemoveApi(Resource):
+    """Batch resource for tag binding deletion."""
+
+    @console_ns.doc("remove_tag_bindings")
+    @console_ns.doc(description="Remove one or more tag bindings from a target.")
     @console_ns.expect(console_ns.models[TagBindingRemovePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        current_user, _ = current_account_with_tenant()
-        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
-            raise Forbidden()
-
-        payload = TagBindingRemovePayload.model_validate(console_ns.payload or {})
-        TagService.delete_tag_binding(
-            TagBindingDeletePayload(tag_id=payload.tag_id, target_id=payload.target_id, type=payload.type)
-        )
-
-        return {"result": "success"}, 200
+        return _remove_tag_bindings()

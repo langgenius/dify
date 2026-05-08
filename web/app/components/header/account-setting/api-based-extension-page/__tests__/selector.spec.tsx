@@ -15,6 +15,8 @@ vi.mock('@/service/use-common', () => ({
   useApiBasedExtensions: vi.fn(),
 }))
 
+vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
+
 describe('ApiBasedExtensionSelector', () => {
   const mockOnChange = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()

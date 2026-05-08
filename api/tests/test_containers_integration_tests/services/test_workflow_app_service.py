@@ -1530,7 +1530,7 @@ class TestWorkflowAppService:
         assert result_cross_tenant["total"] == 0
 
     def test_get_paginate_workflow_app_logs_raises_when_account_filter_email_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
@@ -1543,7 +1543,7 @@ class TestWorkflowAppService:
             )
 
     def test_get_paginate_workflow_app_logs_filters_by_account(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
@@ -1558,7 +1558,9 @@ class TestWorkflowAppService:
         assert result["total"] >= 0
         assert isinstance(result["data"], list)
 
-    def test_get_paginate_workflow_archive_logs(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_paginate_workflow_archive_logs(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
 

@@ -4,14 +4,16 @@ import type { Plugin } from '@/app/components/plugins/types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import useTimestamp from '@/hooks/use-timestamp'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { formatNumber } from '@/utils/format'
 import { PreferredProviderTypeEnum } from '../declarations'
 import { useMarketplaceAllPlugins } from '../hooks'
@@ -32,8 +34,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { credits, isExhausted, isLoading, nextCreditResetDate } = useTrialCredits()
-  const { data: systemFeatures } = useSystemFeaturesQuery()
-  const trialModels = systemFeatures?.trial_models ?? []
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const trialModels = systemFeatures.trial_models
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),
   ), [providers])
@@ -99,19 +101,9 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
       <div className="relative">
         <div className="mb-2 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
           {t('modelProvider.quota', { ns: 'common' })}
-          <Tooltip>
-            <TooltipTrigger
-              aria-label={tipText}
-              render={(
-                <span className="ml-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
-                  <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-                </span>
-              )}
-            />
-            <TooltipContent>
-              {tipText}
-            </TooltipContent>
-          </Tooltip>
+          <Infotip aria-label={tipText} className="ml-0.5">
+            {tipText}
+          </Infotip>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 text-xs text-text-tertiary">

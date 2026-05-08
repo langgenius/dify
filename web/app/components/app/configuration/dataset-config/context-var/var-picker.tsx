@@ -3,15 +3,15 @@ import type { FC } from 'react'
 import type { IInputTypeIconProps } from '@/app/components/app/configuration/config-var/input-type-icon'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import IconTypeIcon from '@/app/components/app/configuration/config-var/input-type-icon'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 
 type Option = { name: string, value: string, type: string }
 export type Props = {
@@ -33,6 +33,7 @@ const VarItem: FC<{ item: Option }> = ({ item }) => (
     </div>
   </div>
 )
+
 const VarPicker: FC<Props> = ({
   triggerClassName,
   className,
@@ -45,47 +46,50 @@ const VarPicker: FC<Props> = ({
   const [open, setOpen] = useState(false)
   const currItem = options.find(item => item.value === value)
   const notSetVar = !currItem
+
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 8,
-      }}
-    >
-      <PortalToFollowElemTrigger className={cn(triggerClassName)} onClick={() => setOpen(v => !v)}>
-        <div className={cn(
-          className,
-          notSetVar ? 'border-[#FEDF89] bg-[#FFFCF5] text-[#DC6803]' : 'border-components-button-secondary-border text-text-accent hover:bg-components-button-secondary-bg',
-          open ? 'bg-components-button-secondary-bg' : 'bg-transparent',
-          `
-          flex h-8 cursor-pointer items-center justify-center space-x-1 rounded-lg border px-2 text-[13px]
-          font-medium shadow-xs
-          `,
-        )}
-        >
-          <div>
-            {value
-              ? (
-                  <VarItem item={currItem as Option} />
-                )
-              : (
-                  <div>
-                    {notSelectedVarTip || t('feature.dataSet.queryVariable.choosePlaceholder', { ns: 'appDebug' })}
-                  </div>
-                )}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        nativeButton={false}
+        render={(
+          <div className={cn(triggerClassName)}>
+            <div className={cn(
+              className,
+              notSetVar ? 'border-[#FEDF89] bg-[#FFFCF5] text-[#DC6803]' : 'border-components-button-secondary-border text-text-accent hover:bg-components-button-secondary-bg',
+              open ? 'bg-components-button-secondary-bg' : 'bg-transparent',
+              `
+              flex h-8 cursor-pointer items-center justify-center space-x-1 rounded-lg border px-2 text-[13px]
+              font-medium shadow-xs
+              `,
+            )}
+            >
+              <div>
+                {currItem
+                  ? (
+                      <VarItem item={currItem} />
+                    )
+                  : (
+                      <div>
+                        {notSelectedVarTip || t('feature.dataSet.queryVariable.choosePlaceholder', { ns: 'appDebug' })}
+                      </div>
+                    )}
+              </div>
+              <ChevronDownIcon className={cn(open && 'rotate-180 text-text-tertiary', 'h-3.5 w-3.5')} />
+            </div>
           </div>
-          <ChevronDownIcon className={cn(open && 'rotate-180 text-text-tertiary', 'h-3.5 w-3.5')} />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{ zIndex: 1000 }}>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={8}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
         {options.length > 0
           ? (
               <div className="max-h-[50vh] w-[240px] overflow-y-auto rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
-                {options.map(({ name, value, type }, index) => (
+                {options.map(({ name, value, type }) => (
                   <div
-                    key={index}
+                    key={value}
                     className="flex cursor-pointer rounded-lg px-3 py-1 hover:bg-state-base-hover"
                     onClick={() => {
                       onChange(value)
@@ -103,9 +107,9 @@ const VarPicker: FC<Props> = ({
                 <div className="text-xs leading-normal text-text-tertiary">{t('feature.dataSet.queryVariable.noVarTip', { ns: 'appDebug' })}</div>
               </div>
             )}
-
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
+
 export default React.memo(VarPicker)

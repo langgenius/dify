@@ -2,7 +2,7 @@ import base64
 import hashlib
 import os
 import uuid
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Sequence  # Changed Iterator to Generator
 from contextlib import contextmanager, suppress
 from tempfile import NamedTemporaryFile
 from typing import Literal
@@ -324,7 +324,7 @@ class FileService:
     def build_upload_files_zip_tempfile(
         *,
         upload_files: Sequence[UploadFile],
-    ) -> Iterator[str]:
+    ) -> Generator[str, None, None]:  # Changed from Iterator[str]
         """
         Build a ZIP from `UploadFile`s and yield a tempfile path.
 

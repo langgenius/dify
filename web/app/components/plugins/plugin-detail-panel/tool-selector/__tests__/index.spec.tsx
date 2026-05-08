@@ -152,32 +152,41 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
   ),
 }))
 
-// Portal components need mocking for controlled positioning in tests
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({
+// Popover positioning is mocked for deterministic panel tests.
+vi.mock('@langgenius/dify-ui/popover', () => ({
+  Popover: ({
     children,
     open,
   }: {
     children: ReactNode
     open?: boolean
   }) => (
-    <div data-testid="portal-to-follow-elem" data-open={open}>
+    <div data-testid="popover" data-open={open}>
       {children}
     </div>
   ),
-  PortalToFollowElemTrigger: ({
+  PopoverTrigger: ({
     children,
+    render,
     onClick,
   }: {
     children: ReactNode
+    render?: ReactNode
     onClick?: () => void
   }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>
-      {children}
+    <div data-testid="popover-trigger" onClick={onClick}>
+      {render
+        ? (
+            <>
+              {render}
+              {children}
+            </>
+          )
+        : children}
     </div>
   ),
-  PortalToFollowElemContent: ({ children }: { children: ReactNode }) => (
-    <div data-testid="portal-content">{children}</div>
+  PopoverContent: ({ children }: { children: ReactNode }) => (
+    <div data-testid="popover-content">{children}</div>
   ),
 }))
 
@@ -252,11 +261,15 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon" />,
 }))
 
-// Mock Modal - headlessui Dialog has complex behavior
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow }: { children: ReactNode, isShow: boolean }) => (
-    isShow ? <div data-testid="modal">{children}</div> : null
+// Mock Dialog to avoid Base UI focus/portal behavior in tests
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: ReactNode, open?: boolean }) => (
+    open ? <div>{children}</div> : null
   ),
+  DialogContent: ({ children }: { children: ReactNode }) => (
+    <div data-testid="modal">{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 // Mock VisualEditor - complex component with many dependencies
@@ -1370,7 +1383,7 @@ describe('ToolSelector Component', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<ToolSelector {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should render ToolTrigger when no value and no trigger', () => {
@@ -1392,7 +1405,7 @@ describe('ToolSelector Component', () => {
 
     it('should render panel content', () => {
       render(<ToolSelector {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('popover-content')).toBeInTheDocument()
     })
 
     it('should render tool base form in panel', () => {
@@ -1424,7 +1437,7 @@ describe('ToolSelector Component', () => {
         { wrapper: createWrapper() },
       )
       // The component should receive and use the nodeId
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      expect(screen.getByTestId('popover-content')).toBeInTheDocument()
     })
   })
 
@@ -1440,7 +1453,7 @@ describe('ToolSelector Component', () => {
         />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByTestId('portal-to-follow-elem')).toHaveAttribute('data-open', 'true')
+      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'true')
     })
 
     it('should use internal state when no trigger', () => {
@@ -1448,7 +1461,7 @@ describe('ToolSelector Component', () => {
         <ToolSelector {...defaultProps} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByTestId('portal-to-follow-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
     })
   })
 
@@ -1501,9 +1514,9 @@ describe('ToolSelector Component', () => {
       )
 
       // Click on portal trigger
-      fireEvent.click(screen.getByTestId('portal-trigger'))
+      fireEvent.click(screen.getByTestId('popover-trigger'))
       // State should not change when disabled
-      expect(screen.getByTestId('portal-to-follow-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
     })
   })
 
@@ -1521,7 +1534,7 @@ describe('ToolSelector Component', () => {
       rerender(<ToolSelector {...defaultProps} onSelect={onSelect} />)
 
       // Component should not trigger unnecessary re-renders
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
   })
 })
@@ -1539,7 +1552,7 @@ describe('Edge Cases', () => {
         <ToolSelector {...defaultProps} value={undefined} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle undefined selectedTools', () => {
@@ -1547,7 +1560,7 @@ describe('Edge Cases', () => {
         <ToolSelector {...defaultProps} selectedTools={undefined} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle empty nodeOutputVars', () => {
@@ -1555,7 +1568,7 @@ describe('Edge Cases', () => {
         <ToolSelector {...defaultProps} nodeOutputVars={[]} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle empty availableNodes', () => {
@@ -1563,7 +1576,7 @@ describe('Edge Cases', () => {
         <ToolSelector {...defaultProps} availableNodes={[]} />,
         { wrapper: createWrapper() },
       )
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
   })
 
@@ -2513,11 +2526,11 @@ describe('Additional Coverage Tests', () => {
       )
 
       // Click on the trigger
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Should still be closed because disabled
-      expect(screen.getByTestId('portal-to-follow-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
     })
 
     it('should handle trigger click when provider and tool exist', () => {
@@ -2528,10 +2541,10 @@ describe('Additional Coverage Tests', () => {
       )
 
       // Without provider/tool, clicking should not open
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
-      expect(screen.getByTestId('portal-to-follow-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
     })
 
     it('should early return from handleTriggerClick when disabled', () => {
@@ -2544,11 +2557,11 @@ describe('Additional Coverage Tests', () => {
       // Rerender with disabled=true
       rerender(<ToolSelector {...defaultProps} disabled={true} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Verify it stays closed
-      expect(screen.getByTestId('portal-to-follow-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
     })
 
     it('should set isShow when clicked with valid provider and tool', () => {
@@ -2582,12 +2595,12 @@ describe('Additional Coverage Tests', () => {
       )
 
       // Click on the trigger - this should call handleTriggerClick
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Now that we have provider and tool, the click should work
       // This tests lines 106-108 and 148
-      expect(screen.getByTestId('portal-to-follow-elem')).toBeInTheDocument()
+      expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should not open when disabled is true even with valid provider', () => {
@@ -2620,11 +2633,11 @@ describe('Additional Coverage Tests', () => {
       )
 
       // Click should not open because disabled=true
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByTestId('popover-trigger')
       fireEvent.click(trigger)
 
       // Verify it stays closed due to disabled
-      expect(screen.getByTestId('portal-to-follow-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
     })
   })
 
