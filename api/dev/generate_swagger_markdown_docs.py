@@ -105,7 +105,7 @@ def generate_markdown_docs(
                 _convert_spec_to_markdown(swagger_path, markdown_path)
                 written_paths.append(markdown_path)
 
-            for target in FASTOPENAPI_SPEC_TARGETS: # type: ignore
+            for target in FASTOPENAPI_SPEC_TARGETS:  # type: ignore
                 fastopenapi_path = fastopenapi_paths_by_name[target.filename]
                 markdown_path = temp_markdown_dir / f"{fastopenapi_path.stem}.md"
                 _convert_spec_to_markdown(fastopenapi_path, markdown_path)
