@@ -503,7 +503,7 @@ class TestAppDslService:
 
     @pytest.mark.parametrize("has_workflow", [True, False])
     def test_import_app_legacy_versions_extract_dependencies(
-        self, db_session_with_containers: Session, monkeypatch, has_workflow: bool
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch, has_workflow: bool
     ):
         monkeypatch.setattr(
             AppDslService,
