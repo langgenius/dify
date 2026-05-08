@@ -7,10 +7,26 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 import controllers.console.explore.installed_app as module
 
 
+@pytest.fixture(autouse=True)
+def _patch_db_engine():
+    with patch.object(type(module.db), "engine", new_callable=PropertyMock, return_value=MagicMock()):
+        yield
+
+
 def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
+
+
+def _make_sm(session_mock):
+    """Return a sessionmaker mock whose .begin() context manager yields session_mock."""
+    ctx = MagicMock()
+    ctx.__enter__.return_value = session_mock
+    ctx.__exit__.return_value = False
+    sm = MagicMock()
+    sm.return_value.begin.return_value = ctx
+    return sm
 
 
 @pytest.fixture
@@ -61,7 +77,7 @@ class TestInstalledAppsListApi:
         with (
             app.test_request_context("/"),
             patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch.object(module.db, "session", session),
+            patch.object(module, "sessionmaker", _make_sm(session)),
             patch.object(module.TenantService, "get_user_role", return_value="owner"),
             patch.object(
                 module.FeatureService,
@@ -85,7 +101,7 @@ class TestInstalledAppsListApi:
         with (
             app.test_request_context("/?app_id=a1"),
             patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch.object(module.db, "session", session),
+            patch.object(module, "sessionmaker", _make_sm(session)),
             patch.object(module.TenantService, "get_user_role", return_value="member"),
             patch.object(
                 module.FeatureService,
@@ -111,7 +127,7 @@ class TestInstalledAppsListApi:
         with (
             app.test_request_context("/"),
             patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch.object(module.db, "session", session),
+            patch.object(module, "sessionmaker", _make_sm(session)),
             patch.object(module.TenantService, "get_user_role", return_value="owner"),
             patch.object(
                 module.FeatureService,
@@ -147,7 +163,7 @@ class TestInstalledAppsListApi:
         with (
             app.test_request_context("/"),
             patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch.object(module.db, "session", session),
+            patch.object(module, "sessionmaker", _make_sm(session)),
             patch.object(module.TenantService, "get_user_role", return_value="member"),
             patch.object(
                 module.FeatureService,
@@ -183,7 +199,7 @@ class TestInstalledAppsListApi:
         with (
             app.test_request_context("/"),
             patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch.object(module.db, "session", session),
+            patch.object(module, "sessionmaker", _make_sm(session)),
             patch.object(module.TenantService, "get_user_role", return_value="owner"),
             patch.object(
                 module.FeatureService,
@@ -214,7 +230,7 @@ class TestInstalledAppsListApi:
         with (
             app.test_request_context("/"),
             patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch.object(module.db, "session", session),
+            patch.object(module, "sessionmaker", _make_sm(session)),
             patch.object(module.TenantService, "get_user_role", return_value="owner"),
             patch.object(
                 module.FeatureService,
@@ -240,7 +256,7 @@ class TestInstalledAppsListApi:
         with (
             app.test_request_context("/"),
             patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch.object(module.db, "session", session),
+            patch.object(module, "sessionmaker", _make_sm(session)),
         ):
             with pytest.raises(ValueError, match="current_user.current_tenant must not be None"):
                 method(api)
@@ -268,7 +284,7 @@ class TestInstalledAppsCreateApi:
         with (
             app.test_request_context("/", json={"app_id": "a1"}),
             payload_patch({"app_id": "a1"}),
-            patch.object(module.db, "session", session),
+            patch.object(module, "sessionmaker", _make_sm(session)),
             patch.object(module, "current_account_with_tenant", return_value=(None, tenant_id)),
         ):
             result = method(api)
@@ -286,7 +302,8 @@ class TestInstalledAppsCreateApi:
         with (
             app.test_request_context("/", json={"app_id": "a1"}),
             payload_patch({"app_id": "a1"}),
-            patch.object(module.db, "session", session),
+            patch.object(module, "sessionmaker", _make_sm(session)),
+            patch.object(module, "current_account_with_tenant", return_value=(None, "t1")),
         ):
             with pytest.raises(NotFound):
                 method(api)
@@ -307,7 +324,7 @@ class TestInstalledAppsCreateApi:
         with (
             app.test_request_context("/", json={"app_id": "a1"}),
             payload_patch({"app_id": "a1"}),
-            patch.object(module.db, "session", session),
+            patch.object(module, "sessionmaker", _make_sm(session)),
             patch.object(module, "current_account_with_tenant", return_value=(None, tenant_id)),
         ):
             with pytest.raises(Forbidden):
@@ -319,9 +336,11 @@ class TestInstalledAppApi:
         api = module.InstalledAppApi()
         method = unwrap(api.delete)
 
+        session = MagicMock()
+
         with (
             patch.object(module, "current_account_with_tenant", return_value=(None, tenant_id)),
-            patch.object(module.db, "session"),
+            patch.object(module, "sessionmaker", _make_sm(session)),
         ):
             resp, status = method(installed_app)
 
@@ -342,10 +361,14 @@ class TestInstalledAppApi:
         api = module.InstalledAppApi()
         method = unwrap(api.patch)
 
+        session = MagicMock()
+        # merge() returns the same object so is_pinned assignment is observable
+        session.merge.return_value = installed_app
+
         with (
             app.test_request_context("/", json={"is_pinned": True}),
             payload_patch({"is_pinned": True}),
-            patch.object(module.db, "session"),
+            patch.object(module, "sessionmaker", _make_sm(session)),
         ):
             result = method(installed_app)
 
@@ -356,7 +379,7 @@ class TestInstalledAppApi:
         api = module.InstalledAppApi()
         method = unwrap(api.patch)
 
-        with app.test_request_context("/", json={}), payload_patch({}), patch.object(module.db, "session"):
+        with app.test_request_context("/", json={}), payload_patch({}):
             result = method(installed_app)
 
         assert result["result"] == "success"
