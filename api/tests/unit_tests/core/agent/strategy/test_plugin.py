@@ -1,5 +1,6 @@
 # File: tests/unit_tests/core/agent/strategy/test_plugin.py
 
+from pytest_mock import MockerFixture
 from unittest.mock import MagicMock
 
 import pytest
@@ -213,7 +214,7 @@ class TestInvoke:
             (None, None, "msg"),
         ],
     )
-    def test_invoke_optional_arguments(self, strategy, mocker, conversation_id, app_id, message_id) -> None:
+    def test_invoke_optional_arguments(self, strategy, mocker: MockerFixture, conversation_id, app_id, message_id) -> None:
         mock_manager = MagicMock()
         mock_manager.invoke = MagicMock(return_value=iter([]))
 

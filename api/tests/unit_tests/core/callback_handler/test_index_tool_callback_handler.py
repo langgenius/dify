@@ -76,7 +76,7 @@ class TestOnQuery:
 
 
 class TestOnToolEnd:
-    def test_on_tool_end_no_metadata(self, handler, mocker: MockerFixture):
+    def test_on_tool_end_no_metadata(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         document = mocker.Mock()
@@ -86,7 +86,7 @@ class TestOnToolEnd:
 
         mock_db.session.commit.assert_not_called()
 
-    def test_on_tool_end_dataset_document_not_found(self, handler, mocker: MockerFixture):
+    def test_on_tool_end_dataset_document_not_found(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
         mock_db.session.scalar.return_value = None
 
@@ -97,7 +97,7 @@ class TestOnToolEnd:
 
         mock_db.session.scalar.assert_called_once()
 
-    def test_on_tool_end_parent_child_index_with_child(self, handler, mocker: MockerFixture):
+    def test_on_tool_end_parent_child_index_with_child(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         mock_dataset_doc = mocker.Mock()
@@ -120,7 +120,7 @@ class TestOnToolEnd:
         mock_db.session.execute.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
-    def test_on_tool_end_non_parent_child_index(self, handler, mocker: MockerFixture):
+    def test_on_tool_end_non_parent_child_index(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         mock_dataset_doc = mocker.Mock()
@@ -140,12 +140,12 @@ class TestOnToolEnd:
         mock_db.session.execute.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
-    def test_on_tool_end_empty_documents(self, handler):
+    def test_on_tool_end_empty_documents(self, handler: DatasetIndexToolCallbackHandler):
         handler.on_tool_end([])
 
 
 class TestReturnRetrieverResourceInfo:
-    def test_publish_called(self, handler, mock_queue_manager, mocker: MockerFixture):
+    def test_publish_called(self, handler: DatasetIndexToolCallbackHandler, mock_queue_manager, mocker: MockerFixture):
         mock_event = mocker.patch("core.callback_handler.index_tool_callback_handler.QueueRetrieverResourcesEvent")
 
         resources = [mocker.Mock()]

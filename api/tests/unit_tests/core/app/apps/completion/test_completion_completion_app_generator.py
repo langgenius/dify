@@ -298,7 +298,7 @@ class TestCompletionAppGenerator:
             (RuntimeError("boom"), True),
         ],
     )
-    def test_generate_worker_error_handling(self, generator, mocker, error, should_publish):
+    def test_generate_worker_error_handling(self, generator, mocker: MockerFixture, error, should_publish):
         flask_app = MagicMock()
         flask_app.app_context.return_value = contextlib.nullcontext()
 

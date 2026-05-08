@@ -141,7 +141,7 @@ class TestAgentChatAppRunnerRun:
             (LLMMode.COMPLETION, "CotCompletionAgentRunner"),
         ],
     )
-    def test_run_chain_of_thought_modes(self, runner, mocker, mode, expected_runner):
+    def test_run_chain_of_thought_modes(self, runner, mocker: MockerFixture, mode, expected_runner):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT)

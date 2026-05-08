@@ -251,7 +251,7 @@ class TestAgentChatAppGeneratorWorker:
             Exception("bad"),
         ],
     )
-    def test_generate_worker_publishes_errors(self, generator, mocker, error):
+    def test_generate_worker_publishes_errors(self, generator, mocker: MockerFixture, error):
         queue_manager = mocker.MagicMock()
         generator._get_conversation = mocker.MagicMock(return_value=mocker.MagicMock())
         generator._get_message = mocker.MagicMock(return_value=mocker.MagicMock())

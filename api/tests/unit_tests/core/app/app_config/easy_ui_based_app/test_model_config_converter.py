@@ -175,7 +175,7 @@ class TestModelConfigConverter:
         ],
     )
     def test_convert_provider_model_status_errors(
-        self, mock_app_config, mock_provider_bundle, mocker, status, expected_exception
+        self, mock_app_config, mock_provider_bundle, mocker: MockerFixture, status, expected_exception
     ):
         mock_provider = MagicMock()
         mock_provider.status = status

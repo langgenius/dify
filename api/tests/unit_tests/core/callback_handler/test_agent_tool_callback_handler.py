@@ -1,3 +1,4 @@
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from pytest_mock import MockerFixture
 from unittest.mock import MagicMock
 
@@ -108,21 +109,21 @@ class TestDifyAgentCallbackHandler:
         assert handler.color == "green"
         assert handler.current_loop == 1
 
-    def test_on_tool_start_debug_enabled(self, handler, enable_debug, mocker: MockerFixture):
+    def test_on_tool_start_debug_enabled(self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_start("tool1", {"a": 1})
 
         mock_print_text.assert_called()
 
-    def test_on_tool_start_debug_disabled(self, handler, disable_debug, mocker: MockerFixture):
+    def test_on_tool_start_debug_disabled(self, handler: DifyAgentCallbackHandler, disable_debug, mocker: MockerFixture):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_start("tool1", {"a": 1})
 
         mock_print_text.assert_not_called()
 
-    def test_on_tool_end_debug_enabled_and_trace(self, handler, enable_debug, mocker: MockerFixture):
+    def test_on_tool_end_debug_enabled_and_trace(self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
         mock_trace_manager = MagicMock()
 
@@ -138,7 +139,7 @@ class TestDifyAgentCallbackHandler:
         assert mock_print_text.call_count >= 1
         mock_trace_manager.add_trace_task.assert_called_once()
 
-    def test_on_tool_end_without_trace_manager(self, handler, enable_debug, mocker: MockerFixture):
+    def test_on_tool_end_without_trace_manager(self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_end(
@@ -149,14 +150,14 @@ class TestDifyAgentCallbackHandler:
 
         assert mock_print_text.call_count >= 1
 
-    def test_on_tool_error_debug_enabled(self, handler, enable_debug, mocker: MockerFixture):
+    def test_on_tool_error_debug_enabled(self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_error(Exception("error"))
 
         mock_print_text.assert_called_once()
 
-    def test_on_tool_error_debug_disabled(self, handler, disable_debug, mocker: MockerFixture):
+    def test_on_tool_error_debug_disabled(self, handler: DifyAgentCallbackHandler, disable_debug, mocker: MockerFixture):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_tool_error(Exception("error"))
@@ -164,14 +165,14 @@ class TestDifyAgentCallbackHandler:
         mock_print_text.assert_not_called()
 
     @pytest.mark.parametrize("thought", ["thinking", ""])
-    def test_on_agent_start(self, handler, enable_debug, mocker, thought):
+    def test_on_agent_start(self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture, thought):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_agent_start(thought)
 
         mock_print_text.assert_called()
 
-    def test_on_agent_finish_increments_loop(self, handler, enable_debug, mocker: MockerFixture):
+    def test_on_agent_finish_increments_loop(self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         current_loop = handler.current_loop
@@ -180,19 +181,19 @@ class TestDifyAgentCallbackHandler:
         assert handler.current_loop == current_loop + 1
         mock_print_text.assert_called()
 
-    def test_on_datasource_start_debug_enabled(self, handler, enable_debug, mocker: MockerFixture):
+    def test_on_datasource_start_debug_enabled(self, handler: DifyAgentCallbackHandler, enable_debug, mocker: MockerFixture):
         mock_print_text = mocker.patch("core.callback_handler.agent_tool_callback_handler.print_text")
 
         handler.on_datasource_start("ds1", {"x": 1})
 
         mock_print_text.assert_called_once()
 
-    def test_ignore_agent_property(self, disable_debug, handler):
+    def test_ignore_agent_property(self, disable_debug, handler: DifyAgentCallbackHandler):
         assert handler.ignore_agent is True
 
-    def test_ignore_chat_model_property(self, disable_debug, handler):
+    def test_ignore_chat_model_property(self, disable_debug, handler: DifyAgentCallbackHandler):
         assert handler.ignore_chat_model is True
 
-    def test_ignore_properties_when_debug_enabled(self, enable_debug, handler):
+    def test_ignore_properties_when_debug_enabled(self, enable_debug, handler: DifyAgentCallbackHandler):
         assert handler.ignore_agent is False
         assert handler.ignore_chat_model is False
