@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Ảnh",
   "variableConfig.file.supportFileTypes": "Các loại tệp hỗ trợ",
   "variableConfig.file.video.name": "Video",
+  "variableConfig.hidden": "Ẩn và điền sẵn",
+  "variableConfig.hiddenDescription": "Ẩn trường này khỏi người dùng cuối và tự cung cấp giá trị. Loại trừ lẫn nhau với Bắt buộc. <docLink>Tìm hiểu thêm</docLink>",
   "variableConfig.hide": "Ẩn",
   "variableConfig.inputPlaceholder": "Vui lòng nhập",
   "variableConfig.json": "Mã JSON",
