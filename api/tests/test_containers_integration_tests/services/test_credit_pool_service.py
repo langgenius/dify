@@ -90,11 +90,14 @@ class TestCreditPoolService:
         pool = CreditPoolService.get_pool(tenant_id=tenant_id)
         assert pool.quota_used == credits_required
 
-    def test_check_and_deduct_credits_depletes_and_raises_when_insufficient(self, db_session_with_containers: Session):
+    def test_check_and_deduct_credits_raises_without_deducting_when_insufficient(
+        self, db_session_with_containers: Session
+    ):
         tenant_id = self._create_tenant_id()
         pool = CreditPoolService.create_default_pool(tenant_id)
         remaining = 5
         pool.quota_used = pool.quota_limit - remaining
+        quota_used = pool.quota_used
         db_session_with_containers.commit()
 
         with pytest.raises(QuotaExceededError, match="Insufficient credits remaining"):
@@ -102,4 +105,19 @@ class TestCreditPoolService:
 
         db_session_with_containers.expire_all()
         updated_pool = CreditPoolService.get_pool(tenant_id=tenant_id)
-        assert updated_pool.quota_used == pool.quota_limit
+        assert updated_pool.quota_used == quota_used
+
+    def test_deduct_credits_capped_depletes_available_balance(self, db_session_with_containers: Session):
+        tenant_id = self._create_tenant_id()
+        pool = CreditPoolService.create_default_pool(tenant_id)
+        remaining = 5
+        pool.quota_used = pool.quota_limit - remaining
+        quota_limit = pool.quota_limit
+        db_session_with_containers.commit()
+
+        result = CreditPoolService.deduct_credits_capped(tenant_id=tenant_id, credits_required=200)
+
+        assert result == remaining
+        db_session_with_containers.expire_all()
+        updated_pool = CreditPoolService.get_pool(tenant_id=tenant_id)
+        assert updated_pool.quota_used == quota_limit

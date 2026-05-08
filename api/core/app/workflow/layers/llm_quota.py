@@ -132,6 +132,7 @@ class LLMQuotaLayer(GraphEngineLayer):
                 error_type=error_type,
             )
 
+        # TODO: Push Graphon to expose a public pre-run failure/skip hook, then replace this private _run override.
         node._run = quota_aborted_run  # type: ignore[method-assign]
         self._send_abort_command(reason=reason)
 
