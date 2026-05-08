@@ -115,7 +115,7 @@ class PdfExtractor(BaseExtractor):
         """
         image_content = []
         upload_files = []
-        base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
+        base_url = dify_config.FILES_URL
 
         try:
             image_objects = page.get_objects(filter=(pdfium_c.FPDF_PAGEOBJ_IMAGE,))
