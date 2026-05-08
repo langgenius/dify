@@ -56,6 +56,8 @@
   "overview.appInfo.embedded.copy": "コピー",
   "overview.appInfo.embedded.entry": "埋め込み",
   "overview.appInfo.embedded.explanation": "チャットアプリをウェブサイトに埋め込む方法を選択します。",
+  "overview.appInfo.embedded.hiddenInputs.description": "非表示フィールドに値を入力します。これらの値は iframe の URL または埋め込みスクリプトの inputs オブジェクトに追加されます。",
+  "overview.appInfo.embedded.hiddenInputs.title": "非表示フィールドを事前入力",
   "overview.appInfo.embedded.iframe": "ウェブサイトの任意の場所にチャットアプリを追加するには、この iframe を HTML コードに追加してください。",
   "overview.appInfo.embedded.scripts": "ウェブサイトの右下にチャットアプリを追加するには、このコードを HTML に追加してください。",
   "overview.appInfo.embedded.title": "ウェブサイトに埋め込む",
