@@ -108,7 +108,7 @@ const defaultAppParams = {
         hide: false,
       },
     },
-  ],
+  ] as Record<string, Record<string, unknown>>[],
   more_like_this: {
     enabled: true,
   },
