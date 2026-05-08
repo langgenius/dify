@@ -25,8 +25,8 @@ class EnterpriseFeatureConfig(BaseSettings):
 
     ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK: bool = Field(
         default=False,
-        description="When disabled, credential policy check is disabled at workflow run time."
-        "You can disable to gain performance by trading off consistency",
+        description="If disabled, credential policy check is only performed when saving workflows."
+        "This helps gain runtime performance by trading off consistency.",
     )
 
 
