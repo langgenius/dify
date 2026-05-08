@@ -142,13 +142,14 @@ class TestFetchRecommendedAppsFromDb:
         flask_app_with_containers,
         db_session_with_containers: Session,
     ):
+        legacy_category = f"legacy-empty-{uuid4()}"
         tenant_id = str(uuid4())
         created_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
         _create_site(db_session_with_containers, app_id=created_app.id)
         _create_recommended_app(
             db_session_with_containers,
             app_id=created_app.id,
-            category="writing",
+            category=legacy_category,
             categories=[],
         )
 
@@ -159,7 +160,7 @@ class TestFetchRecommendedAppsFromDb:
         recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
         assert "category" not in recommended_app
         assert recommended_app["categories"] == []
-        assert "writing" not in result["categories"]
+        assert legacy_category not in result["categories"]
 
     def test_falls_back_to_default_language_when_empty(
         self, flask_app_with_containers, db_session_with_containers: Session
