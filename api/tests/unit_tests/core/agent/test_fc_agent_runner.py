@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.agent.errors import AgentMaxIterationError
+from core.agent.errors import AgentMaxIterationError, AgentRepeatedToolCallError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueMessageFileEvent
@@ -450,3 +450,63 @@ class TestRunMethod:
 
         with pytest.raises(AgentMaxIterationError):
             list(runner.run(message, "query"))
+
+    def test_run_blocks_repeated_identical_tool_calls_before_invocation(self, runner, mocker):
+        runner.app_config.agent.max_iteration = 5
+        message = MagicMock(id="m1")
+
+        runner.model_instance.invoke_llm.side_effect = [
+            DummyResult(message=DummyMessage(content="", tool_calls=[_tool_call("1", "tool", {"a": 1})])),
+            DummyResult(message=DummyMessage(content="", tool_calls=[_tool_call("2", "tool", {"a": 1})])),
+            DummyResult(message=DummyMessage(content="", tool_calls=[_tool_call("3", "tool", {"a": 1})])),
+        ]
+
+        prompt_tool = MagicMock()
+        prompt_tool.name = "tool"
+        runner._init_prompt_tools.return_value = ({"tool": MagicMock()}, [prompt_tool])
+
+        tool_invoke_meta = MagicMock()
+        tool_invoke_meta.to_dict.return_value = {}
+        invoke_tool = mocker.patch(
+            "core.agent.fc_agent_runner.ToolEngine.agent_invoke",
+            return_value=("ok", [], tool_invoke_meta),
+        )
+
+        with pytest.raises(AgentRepeatedToolCallError):
+            list(runner.run(message, "query"))
+
+        assert invoke_tool.call_count == 2
+
+    def test_run_allows_same_tool_with_different_args(self, runner, mocker):
+        runner.app_config.agent.max_iteration = 5
+        message = MagicMock(id="m1")
+
+        runner.model_instance.invoke_llm.side_effect = [
+            DummyResult(message=DummyMessage(content="", tool_calls=[_tool_call("1", "tool", {"a": 1})])),
+            DummyResult(message=DummyMessage(content="", tool_calls=[_tool_call("2", "tool", {"a": 2})])),
+            DummyResult(message=DummyMessage(content="", tool_calls=[_tool_call("3", "tool", {"a": 3})])),
+            DummyResult(message=DummyMessage(content="done", tool_calls=[])),
+        ]
+
+        prompt_tool = MagicMock()
+        prompt_tool.name = "tool"
+        runner._init_prompt_tools.return_value = ({"tool": MagicMock()}, [prompt_tool])
+
+        tool_invoke_meta = MagicMock()
+        tool_invoke_meta.to_dict.return_value = {}
+        invoke_tool = mocker.patch(
+            "core.agent.fc_agent_runner.ToolEngine.agent_invoke",
+            return_value=("ok", [], tool_invoke_meta),
+        )
+
+        list(runner.run(message, "query"))
+
+        assert invoke_tool.call_count == 3
+
+
+def _tool_call(tool_call_id: str, name: str, args: dict[str, Any]):
+    tool_call = MagicMock()
+    tool_call.id = tool_call_id
+    tool_call.function.name = name
+    tool_call.function.arguments = json.dumps(args)
+    return tool_call

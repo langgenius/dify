@@ -8,6 +8,11 @@ from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
+from core.agent.tool_call_guardrail import (
+    ToolCallSignature,
+    ensure_not_repeated_tool_call,
+    get_tool_call_signature,
+)
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -85,6 +90,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         final_answer = ""
         prompt_messages: list = []  # Initialize prompt_messages
         agent_thought_id = ""  # Initialize agent_thought_id
+        tool_call_signatures: list[ToolCallSignature] = []
 
         def increase_usage(final_llm_usage_dict: dict[str, LLMUsage | None], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
@@ -218,6 +224,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         final_answer = f"{scratchpad.action.action_input}"
                 else:
                     function_call_state = True
+                    tool_call_signatures.append(
+                        get_tool_call_signature(scratchpad.action.action_name, scratchpad.action.action_input)
+                    )
+                    ensure_not_repeated_tool_call(tool_call_signatures)
+
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
                         action=scratchpad.action,

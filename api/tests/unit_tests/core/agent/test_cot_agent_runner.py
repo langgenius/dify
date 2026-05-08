@@ -5,7 +5,7 @@ import pytest
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
-from core.agent.errors import AgentMaxIterationError
+from core.agent.errors import AgentMaxIterationError, AgentRepeatedToolCallError
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 
 
@@ -271,6 +271,61 @@ class TestRun:
 
         with pytest.raises(AgentMaxIterationError):
             list(runner.run(message, "query", {}))
+
+    def test_run_blocks_repeated_identical_tool_calls_before_invocation(self, runner, mocker):
+        runner.app_config.agent.max_iteration = 5
+        message = MagicMock()
+        message.id = "msg-id"
+
+        action = AgentScratchpadUnit.Action(action_name="tool", action_input={"a": 1})
+
+        mocker.patch(
+            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            side_effect=[[action], [action], [action]],
+        )
+
+        invoke_tool = mocker.patch(
+            "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
+            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
+        )
+
+        fake_prompt_tool = MagicMock()
+        fake_prompt_tool.name = "tool"
+        runner._init_prompt_tools = MagicMock(return_value=({"tool": MagicMock()}, [fake_prompt_tool]))
+
+        with pytest.raises(AgentRepeatedToolCallError):
+            list(runner.run(message, "query", {}))
+
+        assert invoke_tool.call_count == 2
+
+    def test_run_allows_same_tool_with_different_args(self, runner, mocker):
+        runner.app_config.agent.max_iteration = 5
+        message = MagicMock()
+        message.id = "msg-id"
+
+        actions = [
+            AgentScratchpadUnit.Action(action_name="tool", action_input={"a": 1}),
+            AgentScratchpadUnit.Action(action_name="tool", action_input={"a": 2}),
+            AgentScratchpadUnit.Action(action_name="tool", action_input={"a": 3}),
+        ]
+
+        mocker.patch(
+            "core.agent.cot_agent_runner.CotAgentOutputParser.handle_react_stream_output",
+            side_effect=[[actions[0]], [actions[1]], [actions[2]], []],
+        )
+
+        invoke_tool = mocker.patch(
+            "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
+            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
+        )
+
+        fake_prompt_tool = MagicMock()
+        fake_prompt_tool.name = "tool"
+        runner._init_prompt_tools = MagicMock(return_value=({"tool": MagicMock()}, [fake_prompt_tool]))
+
+        list(runner.run(message, "query", {}))
+
+        assert invoke_tool.call_count == 3
 
     def test_run_increase_usage_aggregation(self, runner, mocker):
         message = MagicMock()

@@ -6,6 +6,11 @@ from typing import Any, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.errors import AgentMaxIterationError
+from core.agent.tool_call_guardrail import (
+    ToolCallSignature,
+    ensure_not_repeated_tool_call,
+    get_tool_call_signature,
+)
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
@@ -56,6 +61,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         llm_usage: dict[str, LLMUsage | None] = {"usage": None}
         final_answer = ""
         prompt_messages: list = []  # Initialize prompt_messages
+        tool_call_signatures: list[ToolCallSignature] = []
 
         # get tracing instance
         trace_manager = app_generate_entity.trace_manager
@@ -223,6 +229,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             # Check if max iteration is reached and model still wants to call tools
             if iteration_step == max_iteration_steps and tool_calls:
                 raise AgentMaxIterationError(app_config.agent.max_iteration)
+
+            if tool_calls:
+                tool_call_signatures.extend(
+                    get_tool_call_signature(tool_call_name, tool_call_args)
+                    for _, tool_call_name, tool_call_args in tool_calls
+                )
+                ensure_not_repeated_tool_call(tool_call_signatures)
 
             # call tools
             tool_responses = []
