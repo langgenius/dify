@@ -2,6 +2,7 @@ from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from constants.model_template import default_app_templates
@@ -670,6 +671,9 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
         app_args = CreateAppParams(
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -678,10 +682,6 @@ class TestAppService:
             icon="🌐",
             icon_background="#74B9FF",
         )
-
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -730,6 +730,9 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
         app_args = CreateAppParams(
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -738,10 +741,6 @@ class TestAppService:
             icon="🔌",
             icon_background="#A29BFE",
         )
-
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -790,6 +789,9 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
         app_args = CreateAppParams(
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -798,10 +800,6 @@ class TestAppService:
             icon="🔄",
             icon_background="#FD79A8",
         )
-
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -841,6 +839,9 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
         app_args = CreateAppParams(
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -849,10 +850,6 @@ class TestAppService:
             icon="🗑️",
             icon_background="#E17055",
         )
-
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -893,6 +890,9 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
         app_args = CreateAppParams(
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -901,10 +901,6 @@ class TestAppService:
             icon="🧹",
             icon_background="#00B894",
         )
-
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -953,6 +949,9 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
         app_args = CreateAppParams(
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -961,10 +960,6 @@ class TestAppService:
             icon="📊",
             icon_background="#6C5CE7",
         )
-
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -992,6 +987,9 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
         app_args = CreateAppParams(
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -1000,10 +998,6 @@ class TestAppService:
             icon="🔗",
             icon_background="#FDCB6E",
         )
-
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -1032,6 +1026,9 @@ class TestAppService:
         tenant = account.current_tenant
 
         # Create app first
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
         app_args = CreateAppParams(
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
@@ -1040,10 +1037,6 @@ class TestAppService:
             icon="🆔",
             icon_background="#E84393",
         )
-
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -1087,7 +1080,7 @@ class TestAppService:
         app_service = AppService()
 
         # Attempt to create app with invalid mode - Pydantic will reject invalid literal
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             app_args = CreateAppParams(
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),

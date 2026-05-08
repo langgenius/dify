@@ -50,6 +50,7 @@ class CreateAppParams(BaseModel):
     icon_background: str | None = None
     api_rph: int = 0
     api_rpm: int = 0
+    max_active_requests: int | None = None
 
 
 class AppService:
@@ -172,6 +173,7 @@ class AppService:
         app.tenant_id = tenant_id
         app.api_rph = params.api_rph
         app.api_rpm = params.api_rpm
+        app.max_active_requests = params.max_active_requests
         app.created_by = account.id
         app.updated_by = account.id
 

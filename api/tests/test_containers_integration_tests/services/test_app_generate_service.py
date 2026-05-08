@@ -164,6 +164,8 @@ class TestAppGenerateService:
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
+        from services.app_service import AppService, CreateAppParams
+
         # Create app with realistic data
         app_args = CreateAppParams(
             name=fake.company(),
@@ -176,8 +178,6 @@ class TestAppGenerateService:
             api_rpm=10,
             max_active_requests=5,
         )
-
-        from services.app_service import AppService, CreateAppParams
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
