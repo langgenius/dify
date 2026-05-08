@@ -72,7 +72,7 @@ class TestDefaultModelApi:
 
         assert result["result"] == "success"
 
-    def test_get_returns_empty_when_no_default(self, app):
+    def test_get_returns_empty_when_no_default(self, app: Flask):
         api = DefaultModelApi()
         method = unwrap(api.get)
 
@@ -154,7 +154,7 @@ class TestModelProviderModelApi:
 
         assert status == 204
 
-    def test_get_models_returns_empty(self, app):
+    def test_get_models_returns_empty(self, app: Flask):
         api = ModelProviderModelApi()
         method = unwrap(api.get)
 
@@ -224,7 +224,7 @@ class TestModelProviderModelCredentialApi:
 
         assert status == 201
 
-    def test_get_empty_credentials(self, app):
+    def test_get_empty_credentials(self, app: Flask):
         api = ModelProviderModelCredentialApi()
         method = unwrap(api.get)
 
@@ -242,7 +242,7 @@ class TestModelProviderModelCredentialApi:
 
         assert result["credentials"] == {}
 
-    def test_delete_success(self, app):
+    def test_delete_success(self, app: Flask):
         api = ModelProviderModelCredentialApi()
         method = unwrap(api.delete)
 
@@ -416,7 +416,7 @@ class TestParameterAndAvailableModels:
 
         assert "data" in result
 
-    def test_empty_rules(self, app):
+    def test_empty_rules(self, app: Flask):
         api = ModelProviderModelParameterRuleApi()
         method = unwrap(api.get)
 
@@ -431,7 +431,7 @@ class TestParameterAndAvailableModels:
 
         assert result["data"] == []
 
-    def test_no_models(self, app):
+    def test_no_models(self, app: Flask):
         api = ModelProviderAvailableModelApi()
         method = unwrap(api.get)
 

@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -82,7 +83,7 @@ def test_get_segment_with_summary(monkeypatch):
 
 
 class TestDatasetDocumentSegmentListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = DatasetDocumentSegmentListApi()
         method = unwrap(api.get)
 
@@ -132,7 +133,7 @@ class TestDatasetDocumentSegmentListApi:
 
         assert status == 200
 
-    def test_get_dataset_not_found(self, app):
+    def test_get_dataset_not_found(self, app: Flask):
         api = DatasetDocumentSegmentListApi()
         method = unwrap(api.get)
 
@@ -150,7 +151,7 @@ class TestDatasetDocumentSegmentListApi:
             with pytest.raises(NotFound):
                 method(api, "ds-1", "doc-1")
 
-    def test_get_permission_denied(self, app):
+    def test_get_permission_denied(self, app: Flask):
         api = DatasetDocumentSegmentListApi()
         method = unwrap(api.get)
 
@@ -176,7 +177,7 @@ class TestDatasetDocumentSegmentListApi:
 
 
 class TestDatasetDocumentSegmentApi:
-    def test_patch_success(self, app):
+    def test_patch_success(self, app: Flask):
         api = DatasetDocumentSegmentApi()
         method = unwrap(api.patch)
 
@@ -221,7 +222,7 @@ class TestDatasetDocumentSegmentApi:
         assert status == 200
         assert response["result"] == "success"
 
-    def test_patch_document_indexing_in_progress(self, app):
+    def test_patch_document_indexing_in_progress(self, app: Flask):
         api = DatasetDocumentSegmentApi()
         method = unwrap(api.patch)
 
@@ -264,7 +265,7 @@ class TestDatasetDocumentSegmentApi:
             with pytest.raises(InvalidActionError):
                 method(api, "ds-1", "doc-1", "disable")
 
-    def test_patch_llm_bad_request(self, app):
+    def test_patch_llm_bad_request(self, app: Flask):
         api = DatasetDocumentSegmentApi()
         method = unwrap(api.patch)
 
@@ -308,7 +309,7 @@ class TestDatasetDocumentSegmentApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(api, "ds-1", "doc-1", "enable")
 
-    def test_patch_provider_token_not_init(self, app):
+    def test_patch_provider_token_not_init(self, app: Flask):
         api = DatasetDocumentSegmentApi()
         method = unwrap(api.patch)
 
@@ -354,7 +355,7 @@ class TestDatasetDocumentSegmentApi:
 
 
 class TestDatasetDocumentSegmentAddApi:
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = DatasetDocumentSegmentAddApi()
         method = unwrap(api.post)
 
@@ -413,7 +414,7 @@ class TestDatasetDocumentSegmentAddApi:
         assert status == 200
         assert response["data"]["id"] == "seg-1"
 
-    def test_post_llm_bad_request(self, app):
+    def test_post_llm_bad_request(self, app: Flask):
         api = DatasetDocumentSegmentAddApi()
         method = unwrap(api.post)
 
@@ -452,7 +453,7 @@ class TestDatasetDocumentSegmentAddApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(api, "ds-1", "doc-1")
 
-    def test_post_provider_token_not_init(self, app):
+    def test_post_provider_token_not_init(self, app: Flask):
         api = DatasetDocumentSegmentAddApi()
         method = unwrap(api.post)
 
@@ -493,7 +494,7 @@ class TestDatasetDocumentSegmentAddApi:
 
 
 class TestDatasetDocumentSegmentUpdateApi:
-    def test_patch_success(self, app):
+    def test_patch_success(self, app: Flask):
         api = DatasetDocumentSegmentUpdateApi()
         method = unwrap(api.patch)
 
@@ -551,7 +552,7 @@ class TestDatasetDocumentSegmentUpdateApi:
         assert status == 200
         assert "data" in response
 
-    def test_patch_llm_bad_request(self, app):
+    def test_patch_llm_bad_request(self, app: Flask):
         api = DatasetDocumentSegmentUpdateApi()
         method = unwrap(api.patch)
 
@@ -596,7 +597,7 @@ class TestDatasetDocumentSegmentUpdateApi:
 
 
 class TestDatasetDocumentSegmentBatchImportApi:
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
 
@@ -638,7 +639,7 @@ class TestDatasetDocumentSegmentBatchImportApi:
         assert status == 200
         assert response["job_status"] == "waiting"
 
-    def test_post_dataset_not_found(self, app):
+    def test_post_dataset_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
 
@@ -659,7 +660,7 @@ class TestDatasetDocumentSegmentBatchImportApi:
             with pytest.raises(NotFound):
                 method(api, "ds-1", "doc-1")
 
-    def test_post_document_not_found(self, app):
+    def test_post_document_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
 
@@ -684,7 +685,7 @@ class TestDatasetDocumentSegmentBatchImportApi:
             with pytest.raises(NotFound):
                 method(api, "ds-1", "doc-1")
 
-    def test_post_upload_file_not_found(self, app):
+    def test_post_upload_file_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
 
@@ -713,7 +714,7 @@ class TestDatasetDocumentSegmentBatchImportApi:
             with pytest.raises(NotFound):
                 method(api, "ds-1", "doc-1")
 
-    def test_post_invalid_file_type(self, app):
+    def test_post_invalid_file_type(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
 
@@ -745,7 +746,7 @@ class TestDatasetDocumentSegmentBatchImportApi:
             with pytest.raises(ValueError):
                 method(api, "ds-1", "doc-1")
 
-    def test_post_async_task_failure(self, app):
+    def test_post_async_task_failure(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
 
@@ -783,7 +784,7 @@ class TestDatasetDocumentSegmentBatchImportApi:
         assert status == 500
         assert "error" in response
 
-    def test_get_job_not_found_in_redis(self, app):
+    def test_get_job_not_found_in_redis(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.get)
 
@@ -799,7 +800,7 @@ class TestDatasetDocumentSegmentBatchImportApi:
 
 
 class TestChildChunkAddApi:
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = ChildChunkAddApi()
         method = unwrap(api.post)
 
@@ -852,7 +853,7 @@ class TestChildChunkAddApi:
         assert status == 200
         assert response["data"]["id"] == "cc-1"
 
-    def test_post_child_chunk_indexing_error(self, app):
+    def test_post_child_chunk_indexing_error(self, app: Flask):
         api = ChildChunkAddApi()
         method = unwrap(api.post)
 
@@ -897,7 +898,7 @@ class TestChildChunkAddApi:
 
 
 class TestChildChunkUpdateApi:
-    def test_delete_success(self, app):
+    def test_delete_success(self, app: Flask):
         api = ChildChunkUpdateApi()
         method = unwrap(api.delete)
 
@@ -941,7 +942,7 @@ class TestChildChunkUpdateApi:
         assert status == 204
         assert response["result"] == "success"
 
-    def test_delete_child_chunk_index_error(self, app):
+    def test_delete_child_chunk_index_error(self, app: Flask):
         api = ChildChunkUpdateApi()
         method = unwrap(api.delete)
 
@@ -984,7 +985,7 @@ class TestChildChunkUpdateApi:
 
 
 class TestSegmentListAdvancedCases:
-    def test_segment_list_with_keyword_filter(self, app):
+    def test_segment_list_with_keyword_filter(self, app: Flask):
         api = DatasetDocumentSegmentListApi()
         method = unwrap(api.get)
 
@@ -1035,7 +1036,7 @@ class TestSegmentListAdvancedCases:
         assert status == 200
         assert response["total"] == 1
 
-    def test_segment_list_permission_denied(self, app):
+    def test_segment_list_permission_denied(self, app: Flask):
         """Test segment list with permission denied"""
         api = DatasetDocumentSegmentListApi()
         method = unwrap(api.get)
@@ -1058,7 +1059,7 @@ class TestSegmentListAdvancedCases:
             with pytest.raises(Forbidden):
                 method(api, "ds-1", "doc-1")
 
-    def test_segment_list_dataset_not_found(self, app):
+    def test_segment_list_dataset_not_found(self, app: Flask):
         """Test segment list with dataset not found"""
         api = DatasetDocumentSegmentListApi()
         method = unwrap(api.get)
@@ -1079,7 +1080,7 @@ class TestSegmentListAdvancedCases:
 
 
 class TestSegmentOperationCases:
-    def test_segment_add_with_provider_token_error(self, app):
+    def test_segment_add_with_provider_token_error(self, app: Flask):
         """Test segment add with provider token not initialized"""
         api = DatasetDocumentSegmentAddApi()
         method = unwrap(api.post)
@@ -1117,7 +1118,7 @@ class TestSegmentOperationCases:
             with pytest.raises(ProviderTokenNotInitError):
                 method(api, "ds-1", "doc-1")
 
-    def test_batch_import_with_document_not_found(self, app):
+    def test_batch_import_with_document_not_found(self, app: Flask):
         """Test batch import with document not found"""
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
@@ -1146,7 +1147,7 @@ class TestSegmentOperationCases:
             with pytest.raises(NotFound):
                 method(api, "ds-1", "doc-1")
 
-    def test_batch_import_with_invalid_file(self, app):
+    def test_batch_import_with_invalid_file(self, app: Flask):
         """Test batch import with invalid file type"""
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
@@ -1181,7 +1182,7 @@ class TestSegmentOperationCases:
             with pytest.raises(NotFound):
                 method(api, "ds-1", "doc-1")
 
-    def test_batch_import_with_async_task_failure(self, app):
+    def test_batch_import_with_async_task_failure(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.post)
 
@@ -1226,7 +1227,7 @@ class TestSegmentOperationCases:
         assert status == 500
         assert "error" in response
 
-    def test_batch_import_get_job_not_found(self, app):
+    def test_batch_import_get_job_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
         method = unwrap(api.get)
 

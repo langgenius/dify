@@ -467,7 +467,6 @@ describe('InputVarList', () => {
     await user.click(screen.getAllByText('app.appSelector.placeholder')[0]!)
     await user.click(screen.getAllByText('app.appSelector.placeholder')[1]!)
     await user.click(screen.getByTitle('Weather Assistant (app-1)'))
-    await user.type(screen.getByPlaceholderText('Topic'), 'weather')
 
     expect(onChange).toHaveBeenNthCalledWith(1, {
       assistant: {
@@ -479,6 +478,10 @@ describe('InputVarList', () => {
         credential_id: 'credential-1',
       },
     })
+
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.type(screen.getByPlaceholderText('Topic'), 'weather')
+
     expect(onChange).toHaveBeenLastCalledWith({
       assistant: {
         app_id: 'app-1',
