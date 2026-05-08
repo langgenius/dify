@@ -1,7 +1,7 @@
+import type { PropsWithChildren } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
-import * as React from 'react'
-import Drawer from './drawer'
+import { CompletedDrawer } from './drawer'
 
 type IFullScreenDrawerProps = {
   isOpen: boolean
@@ -20,9 +20,9 @@ const FullScreenDrawer = ({
   showOverlay = true,
   needCheckChunks = false,
   modal = false,
-}: React.PropsWithChildren<IFullScreenDrawerProps>) => {
+}: PropsWithChildren<IFullScreenDrawerProps>) => {
   return (
-    <Drawer
+    <CompletedDrawer
       open={isOpen}
       onClose={onClose}
       panelClassName={cn(
@@ -39,7 +39,7 @@ const FullScreenDrawer = ({
       modal={modal}
     >
       {children}
-    </Drawer>
+    </CompletedDrawer>
   )
 }
 
