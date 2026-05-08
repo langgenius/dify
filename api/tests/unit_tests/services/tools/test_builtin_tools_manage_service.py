@@ -180,7 +180,7 @@ class TestSetDefaultProvider:
         session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="provider not found"):
-            BuiltinToolManageService.set_default_provider("t", "u", "p", "id")
+            BuiltinToolManageService.set_default_provider("t", "p", "id")
 
     @patch(f"{MODULE}.sessionmaker")
     @patch(f"{MODULE}.db")
@@ -189,7 +189,7 @@ class TestSetDefaultProvider:
         target = MagicMock()
         session.scalar.return_value = target
 
-        result = BuiltinToolManageService.set_default_provider("t", "u", "p", "id")
+        result = BuiltinToolManageService.set_default_provider("t", "p", "id")
 
         assert result == {"result": "success"}
         assert target.is_default is True
@@ -203,7 +203,7 @@ class TestSetDefaultProvider:
         session = _mock_sessionmaker(mock_sm_cls)
         session.scalar.return_value = MagicMock()
 
-        BuiltinToolManageService.set_default_provider("tenant-1", "user-A", "google", "cred-id")
+        BuiltinToolManageService.set_default_provider("tenant-1", "google", "cred-id")
 
         session.execute.assert_called_once()
         update_stmt = session.execute.call_args.args[0]
