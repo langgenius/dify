@@ -70,9 +70,22 @@ def create_env_files_from_example(env_example_path):
     This allows docker-compose to use env_file references.
     Supports per-module structure with subdirectories.
     """
-    envs_dir = "envs"
-    os.makedirs(envs_dir, exist_ok=True)
-    
+    base_dir = os.path.dirname(os.path.abspath(env_example_path))
+    root_env_file = os.path.join(base_dir, ".env")
+    if not os.path.exists(root_env_file):
+        with open(env_example_path, "r", encoding="utf-8") as src, open(
+            root_env_file, "w", encoding="utf-8", newline="\n"
+        ) as dst:
+            dst.write(src.read())
+        print(f"Created {root_env_file}")
+    else:
+        print(f"{root_env_file} already exists, skipping")
+
+    envs_dir = os.path.join(base_dir, "envs")
+    if not os.path.isdir(envs_dir):
+        print(f"No envs directory found at {envs_dir}, skipping split env files")
+        return []
+
     created_files = []
     # Walk through all .env.example files in subdirectories
     for root, dirs, files in os.walk(envs_dir):
@@ -80,9 +93,15 @@ def create_env_files_from_example(env_example_path):
             if file.endswith('.env.example'):
                 example_file = os.path.join(root, file)
                 env_file = example_file.replace('.env.example', '.env')
-                
+
+                if os.path.exists(env_file):
+                    print(f"{env_file} already exists, skipping")
+                    continue
+
                 # Copy .example to actual file
-                with open(example_file, 'r') as src, open(env_file, 'w') as dst:
+                with open(example_file, "r", encoding="utf-8") as src, open(
+                    env_file, "w", encoding="utf-8", newline="\n"
+                ) as dst:
                     dst.write(src.read())
                 created_files.append(env_file)
                 print(f"Created {env_file}")
@@ -107,10 +126,10 @@ def insert_shared_env(template_path, output_path, header_comments):
 
 
 def main():
-    env_example_path = ".env.example"
-    template_path = "docker-compose-template.yaml"
-    output_path = "docker-compose.yaml"
-    anchor_name = "shared-api-worker-env"  # Can be modified as needed
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    env_example_path = os.path.join(base_dir, ".env.example")
+    template_path = os.path.join(base_dir, "docker-compose-template.yaml")
+    output_path = os.path.join(base_dir, "docker-compose.yaml")
 
     # Define header comments to be added at the top of docker-compose.yaml
     header_comments = (
