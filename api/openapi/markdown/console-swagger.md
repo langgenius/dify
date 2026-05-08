@@ -3248,8 +3248,8 @@ Delete all variables for a specific node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| app_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -3425,8 +3425,8 @@ Delete a workflow variable
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| variable_id | path |  | Yes | string |
 | app_id | path |  | Yes | string |
+| variable_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -3464,8 +3464,8 @@ Update a workflow variable
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | payload | body |  | Yes | [WorkflowDraftVariableUpdatePayload](#workflowdraftvariableupdatepayload) |
-| variable_id | path |  | Yes | string |
 | app_id | path |  | Yes | string |
+| variable_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -3569,8 +3569,8 @@ Delete workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| workflow_id | path |  | Yes | string |
 | app_id | path |  | Yes | string |
+| workflow_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -4611,8 +4611,8 @@ then asynchronously generates summary indexes for the provided documents.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -13277,7 +13277,7 @@ Default value types for form inputs.
 | app |  |  | No |
 | app_id | string |  | Yes |
 | can_trial |  |  | No |
-| category |  |  | No |
+| categories | [ string ] |  | No |
 | copyright |  |  | No |
 | custom_disclaimer |  |  | No |
 | description |  |  | No |
@@ -13813,7 +13813,7 @@ Tag type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel_6dfb60503932](#_anonymousinlinemodel_6dfb60503932) ] |  | No |
+| conversation_variables | [ [_AnonymousInlineModel_0d3c9a5fad96](#_anonymousinlinemodel_0d3c9a5fad96) ] |  | No |
 | created_at | object |  | No |
 | created_by | [SimpleAccount](#simpleaccount) |  | No |
 | environment_variables | [ object ] |  | No |
@@ -13996,7 +13996,7 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel_6dfb60503932](#_anonymousinlinemodel_6dfb60503932) ] |  | No |
+| conversation_variables | [ [_AnonymousInlineModel_0d3c9a5fad96](#_anonymousinlinemodel_0d3c9a5fad96) ] |  | No |
 | created_at | object |  | No |
 | created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
 | environment_variables | [ object ] |  | No |
@@ -14194,7 +14194,7 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel_6fa66c1a5667](#_anonymousinlinemodel_6fa66c1a5667) ] |  | No |
+| items | [ [_AnonymousInlineModel_2dc4e67d1fd7](#_anonymousinlinemodel_2dc4e67d1fd7) ] |  | No |
 
 #### WorkflowDraftVariable
 
@@ -14216,7 +14216,7 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel_fb9665315d70](#_anonymousinlinemodel_fb9665315d70) ] |  | No |
+| items | [ [_AnonymousInlineModel_069c20981c8a](#_anonymousinlinemodel_069c20981c8a) ] |  | No |
 
 #### WorkflowDraftVariableListQuery
 
@@ -14229,7 +14229,7 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel_b81fc757b1e7](#_anonymousinlinemodel_b81fc757b1e7) ] |  | No |
+| items | [ [_AnonymousInlineModel_dbaf230a222a](#_anonymousinlinemodel_dbaf230a222a) ] |  | No |
 | total | object |  | No |
 
 #### WorkflowDraftVariablePatchPayload
@@ -14292,7 +14292,7 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | has_more | boolean |  | No |
-| items | [ [_AnonymousInlineModel_62ae0d5352a8](#_anonymousinlinemodel_62ae0d5352a8) ] |  | No |
+| items | [ [_AnonymousInlineModel_89eefc08daef](#_anonymousinlinemodel_89eefc08daef) ] |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
 
@@ -14563,6 +14563,22 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 
+#### _AnonymousInlineModel_069c20981c8a
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| edited | boolean |  | No |
+| full_content | object |  | No |
+| id | string |  | No |
+| is_truncated | boolean |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value | object |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
+
 #### _AnonymousInlineModel_077bfed82248
 
 | Name | Type | Description | Required |
@@ -14599,6 +14615,16 @@ Workflow tool configuration
 | current_identifier | string |  | No |
 | type | string |  | No |
 | value | object |  | No |
+
+#### _AnonymousInlineModel_0d3c9a5fad96
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+| value | object |  | No |
+| value_type | string |  | No |
 
 #### _AnonymousInlineModel_109e5b50787c
 
@@ -14669,15 +14695,6 @@ Workflow tool configuration
 | provider | string |  | No |
 | source_info | [_AnonymousInlineModel_23c2b671ba3a](#_anonymousinlinemodel_23c2b671ba3a) |  | No |
 
-#### _AnonymousInlineModel_2ae9b194de06
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| has_more | boolean |  | No |
-| items | [ [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) ] |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
-
 #### _AnonymousInlineModel_2c596168c3fc
 
 | Name | Type | Description | Required |
@@ -14687,6 +14704,19 @@ Workflow tool configuration
 | page_name | string |  | No |
 | parent_id | string |  | No |
 | type | string |  | No |
+
+#### _AnonymousInlineModel_2dc4e67d1fd7
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| edited | boolean |  | No |
+| id | string |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
 
 #### _AnonymousInlineModel_3da888b4ad25
 
@@ -14707,7 +14737,7 @@ Workflow tool configuration
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_815ec6c311d4](#_anonymousinlinemodel_815ec6c311d4) ] |  | No |
+| data | [ [_AnonymousInlineModel_5c48729794fa](#_anonymousinlinemodel_5c48729794fa) ] |  | No |
 
 #### _AnonymousInlineModel_42fa71dcf115
 
@@ -14727,6 +14757,29 @@ Workflow tool configuration
 | resolved_by | string |  | No |
 | resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
 | updated_at | object |  | No |
+
+#### _AnonymousInlineModel_4a054bbbea15
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | No |
+| items | [ [_AnonymousInlineModel_89eefc08daef](#_anonymousinlinemodel_89eefc08daef) ] |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
+
+#### _AnonymousInlineModel_4ab7498f5baa
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hash | string |  | No |
+| result | string |  | No |
+| updated_at | string |  | No |
+
+#### _AnonymousInlineModel_53fd19270df1
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [_AnonymousInlineModel_069c20981c8a](#_anonymousinlinemodel_069c20981c8a) ] |  | No |
 
 #### _AnonymousInlineModel_55c39c6a4b9e
 
@@ -14783,26 +14836,6 @@ Workflow tool configuration
 | succeeded | integer |  | No |
 | total | integer |  | No |
 
-#### _AnonymousInlineModel_62ae0d5352a8
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel_6dfb60503932](#_anonymousinlinemodel_6dfb60503932) ] |  | No |
-| created_at | object |  | No |
-| created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel_e05256314b57](#_anonymousinlinemodel_e05256314b57) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| version | string |  | No |
-
 #### _AnonymousInlineModel_6aef1ef456af
 
 | Name | Type | Description | Required |
@@ -14832,16 +14865,6 @@ Workflow tool configuration
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 
-#### _AnonymousInlineModel_6dfb60503932
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
 #### _AnonymousInlineModel_6e2a3c8f3856
 
 | Name | Type | Description | Required |
@@ -14859,19 +14882,6 @@ Workflow tool configuration
 | workspace_icon | string |  | No |
 | workspace_id | string |  | No |
 | workspace_name | string |  | No |
-
-#### _AnonymousInlineModel_6fa66c1a5667
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
 
 #### _AnonymousInlineModel_6fec07cd0d85
 
@@ -14917,6 +14927,26 @@ Workflow tool configuration
 | data | [ [_AnonymousInlineModel_f22974b53f29](#_anonymousinlinemodel_f22974b53f29) ] |  | No |
 | has_more | boolean |  | No |
 | limit | integer |  | No |
+
+#### _AnonymousInlineModel_89eefc08daef
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [_AnonymousInlineModel_0d3c9a5fad96](#_anonymousinlinemodel_0d3c9a5fad96) ] |  | No |
+| created_at | object |  | No |
+| created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| environment_variables | [ object ] |  | No |
+| features | object |  | No |
+| graph | object |  | No |
+| hash | string |  | No |
+| id | string |  | No |
+| marked_comment | string |  | No |
+| marked_name | string |  | No |
+| rag_pipeline_variables | [ [_AnonymousInlineModel_e05256314b57](#_anonymousinlinemodel_e05256314b57) ] |  | No |
+| tool_published | boolean |  | No |
+| updated_at | object |  | No |
+| updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| version | string |  | No |
 
 #### _AnonymousInlineModel_8b48161825a0
 
@@ -15063,6 +15093,13 @@ Workflow tool configuration
 | reranking_model_name | string |  | No |
 | reranking_provider_name | string |  | No |
 
+#### _AnonymousInlineModel_b5ba6156e57e
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [_AnonymousInlineModel_dbaf230a222a](#_anonymousinlinemodel_dbaf230a222a) ] |  | No |
+| total | object |  | No |
+
 #### _AnonymousInlineModel_b60e909e5cf7
 
 | Name | Type | Description | Required |
@@ -15075,20 +15112,6 @@ Workflow tool configuration
 | search_method | string |  | No |
 | top_k | integer |  | No |
 | weights | [_AnonymousInlineModel_acd4ec746615](#_anonymousinlinemodel_acd4ec746615) |  | No |
-
-#### _AnonymousInlineModel_b81fc757b1e7
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
 
 #### _AnonymousInlineModel_c2fd55515424
 
@@ -15106,12 +15129,6 @@ Workflow tool configuration
 | score_threshold_enabled | boolean |  | No |
 | top_k | integer |  | No |
 
-#### _AnonymousInlineModel_d7909996c09b
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel_fb9665315d70](#_anonymousinlinemodel_fb9665315d70) ] |  | No |
-
 #### _AnonymousInlineModel_d9cdfda1ede7
 
 | Name | Type | Description | Required |
@@ -15127,6 +15144,20 @@ Workflow tool configuration
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
 | version | string |  | No |
+
+#### _AnonymousInlineModel_dbaf230a222a
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| edited | boolean |  | No |
+| id | string |  | No |
+| is_truncated | boolean |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
 
 #### _AnonymousInlineModel_dc3986f5aace
 
@@ -15220,19 +15251,3 @@ Workflow tool configuration
 | mentioned_user_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
 | mentioned_user_id | string |  | No |
 | reply_id | string |  | No |
-
-#### _AnonymousInlineModel_fb9665315d70
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| full_content | object |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
