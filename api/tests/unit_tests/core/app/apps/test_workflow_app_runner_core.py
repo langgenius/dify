@@ -142,7 +142,9 @@ class TestWorkflowBasedAppRunner:
         assert graph is not None
         assert variable_pool is graph_runtime_state.variable_pool
 
-    def test_get_graph_and_variable_pool_preloads_constructor_variables_before_graph_init(self, monkeypatch: pytest.MonkeyPatch):
+    def test_get_graph_and_variable_pool_preloads_constructor_variables_before_graph_init(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         variable_loader = SimpleNamespace(
             load_variables=lambda selectors: (
                 [

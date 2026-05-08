@@ -1,6 +1,7 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+from pytest_mock import MockerFixture
 
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
 

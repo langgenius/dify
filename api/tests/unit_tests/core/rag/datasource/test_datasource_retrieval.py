@@ -699,7 +699,9 @@ class TestRetrievalServiceInternals:
 
         assert RetrievalService.format_retrieval_documents(documents) == []
 
-    def test_format_retrieval_documents_with_parent_child_summary_and_attachments(self, monkeypatch: pytest.MonkeyPatch):
+    def test_format_retrieval_documents_with_parent_child_summary_and_attachments(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         dataset_doc_parent = SimpleNamespace(
             id="doc-parent",
             doc_form=IndexStructureType.PARENT_CHILD_INDEX,
@@ -958,7 +960,9 @@ class TestRetrievalServiceInternals:
                     query="query",
                 )
 
-    def test_retrieve_internal_hybrid_weighted_attachment_flow(self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app):
+    def test_retrieve_internal_hybrid_weighted_attachment_flow(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app
+    ):
         executor = _ImmediateExecutor()
         monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
         monkeypatch.setattr(

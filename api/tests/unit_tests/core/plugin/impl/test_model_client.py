@@ -1,10 +1,10 @@
-from pytest_mock import MockerFixture
 from __future__ import annotations
 
 import io
 from types import SimpleNamespace
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from core.plugin.impl.model import PluginModelClient

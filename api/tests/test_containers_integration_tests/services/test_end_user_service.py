@@ -1,4 +1,3 @@
-from models import TenantAccountRole
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -8,6 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
 from models.model import App, DefaultEndUserSessionID, EndUser
 from services.end_user_service import EndUserService

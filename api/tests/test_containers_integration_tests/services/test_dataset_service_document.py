@@ -1,12 +1,12 @@
 """Testcontainers integration tests for SQL-backed DocumentService paths."""
 
-from sqlalchemy.orm import Session
 import datetime
 import json
 from unittest.mock import create_autospec, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -233,7 +233,9 @@ def test_get_upload_file_id_for_upload_file_document_rejects_invalid_source_type
         )
 
 
-def test_get_upload_file_id_for_upload_file_document_rejects_missing_upload_file_id(db_session_with_containers: Session):
+def test_get_upload_file_id_for_upload_file_document_rejects_missing_upload_file_id(
+    db_session_with_containers: Session,
+):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
     document = DocumentServiceIntegrationFactory.create_document(
         db_session_with_containers,
@@ -266,7 +268,9 @@ def test_get_upload_file_id_for_upload_file_document_returns_string_id(db_sessio
     assert result == "99"
 
 
-def test_get_upload_file_for_upload_file_document_raises_when_file_service_returns_nothing(db_session_with_containers: Session):
+def test_get_upload_file_for_upload_file_document_raises_when_file_service_returns_nothing(
+    db_session_with_containers: Session,
+):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
     document = DocumentServiceIntegrationFactory.create_document(
         db_session_with_containers,
@@ -297,7 +301,9 @@ def test_get_upload_file_for_upload_file_document_returns_upload_file(db_session
     assert result.id == upload_file.id
 
 
-def test_get_upload_files_by_document_id_for_zip_download_raises_for_missing_documents(db_session_with_containers: Session):
+def test_get_upload_files_by_document_id_for_zip_download_raises_for_missing_documents(
+    db_session_with_containers: Session,
+):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
 
     with pytest.raises(NotFound, match="Document not found"):
@@ -308,7 +314,9 @@ def test_get_upload_files_by_document_id_for_zip_download_raises_for_missing_doc
         )
 
 
-def test_get_upload_files_by_document_id_for_zip_download_rejects_cross_tenant_access(db_session_with_containers: Session):
+def test_get_upload_files_by_document_id_for_zip_download_rejects_cross_tenant_access(
+    db_session_with_containers: Session,
+):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
     upload_file = DocumentServiceIntegrationFactory.create_upload_file(
         db_session_with_containers,
@@ -330,7 +338,9 @@ def test_get_upload_files_by_document_id_for_zip_download_rejects_cross_tenant_a
         )
 
 
-def test_get_upload_files_by_document_id_for_zip_download_rejects_missing_upload_files(db_session_with_containers: Session):
+def test_get_upload_files_by_document_id_for_zip_download_rejects_missing_upload_files(
+    db_session_with_containers: Session,
+):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
     document = DocumentServiceIntegrationFactory.create_document(
         db_session_with_containers,
@@ -346,7 +356,9 @@ def test_get_upload_files_by_document_id_for_zip_download_rejects_missing_upload
         )
 
 
-def test_get_upload_files_by_document_id_for_zip_download_returns_document_keyed_mapping(db_session_with_containers: Session):
+def test_get_upload_files_by_document_id_for_zip_download_returns_document_keyed_mapping(
+    db_session_with_containers: Session,
+):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
     upload_file_a = DocumentServiceIntegrationFactory.create_upload_file(
         db_session_with_containers,
@@ -396,7 +408,7 @@ def test_prepare_document_batch_download_zip_raises_not_found_for_missing_datase
 
 
 def test_prepare_document_batch_download_zip_translates_permission_error_to_forbidden(
-    db_session_with_containers:Session,
+    db_session_with_containers: Session,
     current_user_mock,
 ):
     dataset = DocumentServiceIntegrationFactory.create_dataset(
@@ -419,7 +431,7 @@ def test_prepare_document_batch_download_zip_translates_permission_error_to_forb
 
 
 def test_prepare_document_batch_download_zip_returns_upload_files_in_requested_order(
-    db_session_with_containers:Session,
+    db_session_with_containers: Session,
     current_user_mock,
 ):
     dataset = DocumentServiceIntegrationFactory.create_dataset(
@@ -481,7 +493,9 @@ def test_get_document_by_dataset_id_returns_enabled_documents(db_session_with_co
     assert [document.id for document in result] == [enabled_document.id]
 
 
-def test_get_working_documents_by_dataset_id_returns_completed_enabled_unarchived_documents(db_session_with_containers: Session):
+def test_get_working_documents_by_dataset_id_returns_completed_enabled_unarchived_documents(
+    db_session_with_containers: Session,
+):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
     available_document = DocumentServiceIntegrationFactory.create_document(
         db_session_with_containers,

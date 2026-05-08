@@ -1,9 +1,9 @@
-from pytest_mock import MockerFixture
 import base64
 import queue
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.base.tts.app_generator_tts_publisher import (
     AppGeneratorTTSPublisher,

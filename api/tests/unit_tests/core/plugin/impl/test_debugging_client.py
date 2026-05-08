@@ -1,5 +1,6 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
+
+from pytest_mock import MockerFixture
 
 from core.plugin.impl.debugging import PluginDebuggingClient
 

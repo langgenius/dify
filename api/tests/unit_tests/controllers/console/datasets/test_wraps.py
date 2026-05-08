@@ -1,7 +1,7 @@
-from pytest_mock import MockerFixture
 from unittest.mock import Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from controllers.console.datasets.wraps import get_rag_pipeline

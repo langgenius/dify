@@ -1,5 +1,6 @@
-from pytest_mock import MockerFixture
 from uuid import uuid4
+
+from pytest_mock import MockerFixture
 
 from constants import UUID_NIL
 from core.prompt.utils.extract_thread_messages import extract_thread_messages

@@ -1,9 +1,9 @@
-from pytest_mock import MockerFixture
 import uuid
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns

@@ -1,4 +1,3 @@
-from pytest_mock import MockerFixture
 import binascii
 import datetime
 from enum import StrEnum
@@ -6,6 +5,7 @@ from enum import StrEnum
 import pytest
 from flask import Response
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 
 from core.plugin.entities.endpoint import EndpointEntityWithInstance
 from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot

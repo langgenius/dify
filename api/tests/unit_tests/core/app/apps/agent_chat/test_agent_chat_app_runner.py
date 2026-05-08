@@ -1,5 +1,5 @@
-from pytest_mock import MockerFixture
 import pytest
+from pytest_mock import MockerFixture
 
 from core.agent.entities import AgentEntity
 from core.app.apps.agent_chat.app_runner import AgentChatAppRunner

@@ -1,8 +1,8 @@
-from pytest_mock import MockerFixture
 from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
+from pytest_mock import MockerFixture
 from werkzeug import Request
 
 from core.plugin.impl.oauth import OAuthHandler

@@ -1,5 +1,6 @@
-from pytest_mock import MockerFixture
 from collections.abc import Generator
+
+from pytest_mock import MockerFixture
 
 from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import DatasourceMessage

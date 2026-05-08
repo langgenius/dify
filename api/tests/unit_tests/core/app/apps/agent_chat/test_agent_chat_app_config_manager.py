@@ -1,8 +1,8 @@
-from pytest_mock import MockerFixture
 import uuid
 from types import SimpleNamespace
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.agent_chat.app_config_manager import (

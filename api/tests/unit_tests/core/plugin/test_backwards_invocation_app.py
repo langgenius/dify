@@ -1,10 +1,10 @@
-from pytest_mock import MockerFixture
 import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from pydantic import BaseModel
+from pytest_mock import MockerFixture
 
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation

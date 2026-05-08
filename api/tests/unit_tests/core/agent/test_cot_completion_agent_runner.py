@@ -1,7 +1,7 @@
-from pytest_mock import MockerFixture
 import json
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
 from graphon.model_runtime.entities.message_entities import (
@@ -172,7 +172,12 @@ class TestOrganizePromptMessages:
         assert "Question: What is Python?" in content
 
     def test_no_scratchpad(
-        self, runner, mocker: MockerFixture, dummy_app_config_factory, dummy_agent_config_factory, dummy_prompt_entity_factory
+        self,
+        runner,
+        mocker: MockerFixture,
+        dummy_app_config_factory,
+        dummy_agent_config_factory,
+        dummy_prompt_entity_factory,
     ):
         template = "SYS {{historic_messages}} {{agent_scratchpad}} {{query}}"
 

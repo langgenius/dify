@@ -1,9 +1,9 @@
-from pytest_mock import MockerFixture
 import contextlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError

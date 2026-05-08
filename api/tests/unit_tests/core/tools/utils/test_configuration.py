@@ -1,9 +1,10 @@
 from __future__ import annotations
-import pytest
 
 from collections.abc import Generator
 from typing import Any
 from unittest.mock import patch
+
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.tool_parameter_cache import ToolParameterCache

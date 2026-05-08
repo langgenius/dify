@@ -1,5 +1,6 @@
-from pytest_mock import MockerFixture
 import json
+
+from pytest_mock import MockerFixture
 
 from core.plugin.impl import exc as exc_module
 from core.plugin.impl.exc import PluginDaemonError, PluginInvokeError

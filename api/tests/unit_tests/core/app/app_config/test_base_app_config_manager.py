@@ -1,8 +1,8 @@
-from pytest_mock import MockerFixture
 from collections import UserDict
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
 
@@ -155,7 +155,9 @@ class TestBaseAppConfigManager:
         with pytest.raises(RuntimeError):
             BaseAppConfigManager.convert_features(mock_config_dict, "CHAT")
 
-    def test_convert_features_mapping_subclass(self, mocker: MockerFixture, mock_app_additional_features, mock_managers):
+    def test_convert_features_mapping_subclass(
+        self, mocker: MockerFixture, mock_app_additional_features, mock_managers
+    ):
         # Arrange
         class CustomMapping(UserDict):
             pass

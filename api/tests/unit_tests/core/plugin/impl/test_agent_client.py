@@ -1,5 +1,6 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
+
+from pytest_mock import MockerFixture
 
 from core.plugin.entities.request import PluginInvokeContext
 from core.plugin.impl.agent import PluginAgentClient

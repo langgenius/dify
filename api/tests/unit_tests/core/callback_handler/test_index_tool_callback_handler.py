@@ -1,5 +1,5 @@
-from pytest_mock import MockerFixture
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import (
@@ -86,7 +86,9 @@ class TestOnToolEnd:
 
         mock_db.session.commit.assert_not_called()
 
-    def test_on_tool_end_dataset_document_not_found(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
+    def test_on_tool_end_dataset_document_not_found(
+        self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture
+    ):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
         mock_db.session.scalar.return_value = None
 
@@ -97,7 +99,9 @@ class TestOnToolEnd:
 
         mock_db.session.scalar.assert_called_once()
 
-    def test_on_tool_end_parent_child_index_with_child(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
+    def test_on_tool_end_parent_child_index_with_child(
+        self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture
+    ):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         mock_dataset_doc = mocker.Mock()

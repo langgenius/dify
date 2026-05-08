@@ -1,8 +1,8 @@
-from pytest_mock import MockerFixture
 from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 
 from controllers.console import console_ns
 from controllers.console.datasets.error import WebsiteCrawlError

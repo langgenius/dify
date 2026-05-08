@@ -1,5 +1,5 @@
-from pytest_mock import MockerFixture
 import pytest
+from pytest_mock import MockerFixture
 
 from core.plugin.impl.endpoint import PluginEndpointClient
 from core.plugin.impl.exc import PluginDaemonInternalServerError

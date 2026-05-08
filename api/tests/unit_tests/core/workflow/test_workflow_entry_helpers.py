@@ -619,7 +619,9 @@ class TestWorkflowEntryHelpers:
                 user_inputs={},
             )
 
-    def test_run_free_node_uses_empty_mapping_when_selector_extraction_is_not_implemented(self, monkeypatch: pytest.MonkeyPatch):
+    def test_run_free_node_uses_empty_mapping_when_selector_extraction_is_not_implemented(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         class FakeNodeClass:
             @staticmethod
             def extract_variable_selector_to_variable_mapping(**_kwargs):

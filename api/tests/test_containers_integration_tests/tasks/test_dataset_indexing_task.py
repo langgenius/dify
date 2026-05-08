@@ -1,7 +1,5 @@
 """Integration tests for dataset indexing task SQL behaviors using testcontainers."""
 
-from models import AccountStatus
-from models import TenantStatus
 import uuid
 from collections.abc import Sequence
 from unittest.mock import MagicMock, patch
@@ -14,7 +12,7 @@ from sqlalchemy.orm import Session
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from enums.cloud_plan import CloudPlan
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (

@@ -272,7 +272,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert "Missing app data" in result.error
 
-    def test_import_app_yaml_error_returns_failed(self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_import_app_yaml_error_returns_failed(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         def bad_safe_load(_content: str):
             raise yaml.YAMLError("bad")
 
@@ -287,7 +289,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert result.error.startswith("Invalid YAML format:")
 
-    def test_import_app_unexpected_error_returns_failed(self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_import_app_unexpected_error_returns_failed(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         monkeypatch.setattr(
             AppDslService,
             "_create_or_update_app",
@@ -305,7 +309,9 @@ class TestAppDslService:
 
     # ── Import: YAML URL ──────────────────────────────────────────────
 
-    def test_import_app_yaml_url_fetch_error_returns_failed(self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_import_app_yaml_url_fetch_error_returns_failed(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         monkeypatch.setattr(
             app_dsl_service.ssrf_proxy,
             "get",
@@ -321,7 +327,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert "Error fetching YAML from URL: boom" in result.error
 
-    def test_import_app_yaml_url_empty_content_returns_failed(self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_import_app_yaml_url_empty_content_returns_failed(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         response = MagicMock()
         response.content = b""
         response.raise_for_status.return_value = None
@@ -336,7 +344,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert "Empty content" in result.error
 
-    def test_import_app_yaml_url_file_too_large_returns_failed(self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_import_app_yaml_url_file_too_large_returns_failed(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         response = MagicMock()
         response.content = b"x" * (DSL_MAX_SIZE + 1)
         response.raise_for_status.return_value = None
@@ -379,7 +389,9 @@ class TestAppDslService:
         assert result.imported_dsl_version == "99.0.0"
         assert requested_urls == [yaml_url]
 
-    def test_import_app_yaml_url_github_blob_rewrites_to_raw(self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_import_app_yaml_url_github_blob_rewrites_to_raw(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         yaml_url = "https://github.com/acme/repo/blob/main/app.yml"
         raw_url = "https://raw.githubusercontent.com/acme/repo/main/app.yml"
         yaml_bytes = _pending_yaml_content()
@@ -554,7 +566,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert "expired" in result.error
 
-    def test_confirm_import_success_deletes_redis_key(self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_confirm_import_success_deletes_redis_key(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         import_id = str(uuid4())
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
 
@@ -614,7 +628,9 @@ class TestAppDslService:
         result = service.check_dependencies(app_model=app_model)
         assert result.leaked_dependencies == []
 
-    def test_check_dependencies_calls_analysis_service(self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_check_dependencies_calls_analysis_service(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         app_id = str(uuid4())
         pending = CheckDependenciesPendingData(dependencies=[], app_id=app_id)
         redis_client.setex(
@@ -665,7 +681,9 @@ class TestAppDslService:
         with pytest.raises(ValueError, match="loss app mode"):
             service._create_or_update_app(app=None, data={"app": {}}, account=_account_mock())
 
-    def test_create_or_update_app_existing_app_updates_fields(self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch):
+    def test_create_or_update_app_existing_app_updates_fields(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         fixed_now = object()
         monkeypatch.setattr(app_dsl_service, "naive_utc_now", lambda: fixed_now)
 

@@ -7,12 +7,12 @@ model output structures. Implementation under test:
 core.agent.output_parser.cot_output_parser.CotAgentOutputParser.
 """
 
-from pytest_mock import MockerFixture
 import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 

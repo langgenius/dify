@@ -1,7 +1,7 @@
-from pytest_mock import MockerFixture
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.app_config.easy_ui_based_app.prompt_template.manager import (
     PromptTemplateConfigManager,

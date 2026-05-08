@@ -1,7 +1,7 @@
 from __future__ import annotations
-from sqlalchemy.orm import Session
 
 import pytest
+from sqlalchemy.orm import Session
 
 from services.message_service import MessageService
 from tests.test_containers_integration_tests.helpers.execution_extra_content import (

@@ -475,7 +475,9 @@ class TestDifyNodeFactoryCreateNode:
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
         latest_node_class.assert_not_called()
 
-    def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(self, monkeypatch: pytest.MonkeyPatch, factory):
+    def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(
+        self, monkeypatch: pytest.MonkeyPatch, factory
+    ):
         latest_node = sentinel.latest_node
         latest_node_class = _node_constructor(return_value=latest_node)
         monkeypatch.setattr(
@@ -597,7 +599,9 @@ class TestDifyNodeFactoryCreateNode:
         prepared_llm.assert_called_once_with(sentinel.model_instance)
         assert kwargs["model_instance"] is wrapped_model_instance
 
-    def test_create_node_passes_alias_preserving_llm_config_to_constructor(self, monkeypatch: pytest.MonkeyPatch, factory):
+    def test_create_node_passes_alias_preserving_llm_config_to_constructor(
+        self, monkeypatch: pytest.MonkeyPatch, factory
+    ):
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
         monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))

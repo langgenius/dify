@@ -1,8 +1,8 @@
-from pytest_mock import MockerFixture
 import types
 from collections.abc import Generator
 
 import pytest
+from pytest_mock import MockerFixture
 
 from contexts.wrapper import RecyclableContextVar
 from core.datasource.datasource_manager import DatasourceManager

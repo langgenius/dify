@@ -1,5 +1,5 @@
-from pytest_mock import MockerFixture
 import pytest
+from pytest_mock import MockerFixture
 
 import core.app.apps.pipeline.pipeline_queue_manager as module
 from core.app.apps.base_app_queue_manager import PublishFrom

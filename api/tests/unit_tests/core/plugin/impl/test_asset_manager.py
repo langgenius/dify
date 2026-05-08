@@ -1,7 +1,7 @@
-from pytest_mock import MockerFixture
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.plugin.impl.asset import PluginAssetManager
 

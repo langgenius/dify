@@ -1,5 +1,5 @@
-import pytest
 import pandas as pd
+import pytest
 
 
 def test_pandas_csv(tmp_path, monkeypatch: pytest.MonkeyPatch):

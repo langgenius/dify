@@ -1,8 +1,8 @@
-from pytest_mock import MockerFixture
 import json
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit

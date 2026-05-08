@@ -1,7 +1,7 @@
-from pytest_mock import MockerFixture
 import json
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError

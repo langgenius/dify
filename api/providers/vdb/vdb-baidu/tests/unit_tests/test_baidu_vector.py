@@ -524,7 +524,9 @@ def test_create_table_raises_timeout_if_table_never_becomes_normal(baidu_module,
         vector._create_table(3)
 
 
-def test_factory_uses_existing_collection_prefix_when_index_struct_exists(baidu_module, monkeypatch: pytest.MonkeyPatch):
+def test_factory_uses_existing_collection_prefix_when_index_struct_exists(
+    baidu_module, monkeypatch: pytest.MonkeyPatch
+):
     factory = baidu_module.BaiduVectorFactory()
     dataset = SimpleNamespace(
         id="dataset-1",

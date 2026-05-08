@@ -1,7 +1,8 @@
-import pytest
 import sys
 import types
 from types import SimpleNamespace
+
+import pytest
 
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS

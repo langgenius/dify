@@ -1,5 +1,6 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
+
+from pytest_mock import MockerFixture
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.tool import PluginToolManager

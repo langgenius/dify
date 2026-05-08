@@ -7,9 +7,9 @@ Pydantic ValidationError behavior and pytest fixtures for validation and
 mocking; ensure entity invariants and validation rules remain stable.
 """
 
-from pytest_mock import MockerFixture
 import pytest
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 
 from core.agent.plugin_entities import (
     AgentFeature,

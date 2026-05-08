@@ -266,7 +266,9 @@ class TestResponseUnmodified:
 
 
 class TestRequestFinishedInfoAccessLine:
-    def test_info_access_log_includes_method_path_status_duration_trace_id(self, monkeypatch: pytest.MonkeyPatch, caplog):
+    def test_info_access_log_includes_method_path_status_duration_trace_id(
+        self, monkeypatch: pytest.MonkeyPatch, caplog
+    ):
         """Ensure INFO access line contains expected fields with computed duration and trace id."""
         app = _get_test_app()
         # Push a real request context so flask.request and g are available

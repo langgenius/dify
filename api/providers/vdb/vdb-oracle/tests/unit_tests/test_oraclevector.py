@@ -346,7 +346,9 @@ def test_create_collection_cache_and_execute_path(oracle_module, monkeypatch: py
     oracle_module.redis_client.set.assert_called_once()
 
 
-def test_oracle_factory_init_vector_uses_existing_or_generated_collection(oracle_module, monkeypatch: pytest.MonkeyPatch):
+def test_oracle_factory_init_vector_uses_existing_or_generated_collection(
+    oracle_module, monkeypatch: pytest.MonkeyPatch
+):
     factory = oracle_module.OracleVectorFactory()
     dataset_with_index = SimpleNamespace(
         id="dataset-1",

@@ -18,11 +18,11 @@ Primary collaborators include ``PipelineRunner``,
 ``UserFrom``, and patched DB/runtime dependencies used by the runner.
 """
 
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner

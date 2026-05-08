@@ -1,5 +1,6 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
+
+from pytest_mock import MockerFixture
 
 from core.datasource.entities.datasource_entities import (
     GetOnlineDocumentPageContentRequest,

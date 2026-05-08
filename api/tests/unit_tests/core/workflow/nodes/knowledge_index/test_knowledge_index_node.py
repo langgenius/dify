@@ -1,9 +1,9 @@
-from pytest_mock import MockerFixture
 import time
 import uuid
 from unittest.mock import Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.rag.index_processor.constant.index_type import IndexTechniqueType

@@ -244,7 +244,9 @@ class TestGetUserTenant:
                     protected_view()
 
     @patch("controllers.inner_api.plugin.wraps.Tenant")
-    def test_should_use_default_session_id_when_user_id_empty(self, mock_tenant_class, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_should_use_default_session_id_when_user_id_empty(
+        self, mock_tenant_class, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ):
         """Test that default session ID is used when user_id is empty string"""
 
         # Arrange

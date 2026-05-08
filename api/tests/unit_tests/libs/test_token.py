@@ -1,6 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
 from werkzeug.wrappers import Response
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN

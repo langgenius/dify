@@ -1,8 +1,8 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 import core.app.apps.completion.app_runner as module
 from core.app.apps.completion.app_runner import CompletionAppRunner

@@ -1,8 +1,8 @@
-from pytest_mock import MockerFixture
 import contextlib
 
 import pytest
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError

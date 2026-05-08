@@ -1,8 +1,8 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.entities.model_entities import ModelStatus
@@ -117,7 +117,9 @@ class TestModelConfigConverter:
         result = ModelConfigConverter.convert(mock_app_config)
         assert result.mode == LLMMode.COMPLETION
 
-    def test_convert_mode_from_schema_invalid_fallback(self, mock_app_config, mock_provider_bundle, mocker: MockerFixture):
+    def test_convert_mode_from_schema_invalid_fallback(
+        self, mock_app_config, mock_provider_bundle, mocker: MockerFixture
+    ):
         mock_provider_bundle.model_type_instance.get_model_schema.return_value.model_properties = {
             ModelPropertyKey.MODE: "invalid"
         }

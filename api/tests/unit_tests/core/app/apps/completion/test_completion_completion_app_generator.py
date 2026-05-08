@@ -1,10 +1,10 @@
-from pytest_mock import MockerFixture
 import contextlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 
 import core.app.apps.completion.app_generator as module
 from core.app.apps.completion.app_generator import CompletionAppGenerator

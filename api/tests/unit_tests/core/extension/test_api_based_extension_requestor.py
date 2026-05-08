@@ -1,6 +1,6 @@
-from pytest_mock import MockerFixture
 import httpx
 import pytest
+from pytest_mock import MockerFixture
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from models.api_based_extension import APIBasedExtensionPoint

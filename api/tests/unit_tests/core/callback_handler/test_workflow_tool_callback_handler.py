@@ -1,7 +1,7 @@
-from pytest_mock import MockerFixture
 from unittest.mock import MagicMock, call
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.callback_handler.workflow_tool_callback_handler import (
     DifyWorkflowCallbackHandler,
@@ -109,7 +109,9 @@ class TestDifyWorkflowCallbackHandler:
             ("not_iterable", AttributeError),
         ],
     )
-    def test_on_tool_execution_invalid_outputs_type(self, handler: DifyWorkflowCallbackHandler, invalid_outputs, expected_exception):
+    def test_on_tool_execution_invalid_outputs_type(
+        self, handler: DifyWorkflowCallbackHandler, invalid_outputs, expected_exception
+    ):
         # Arrange
         tool_name = "invalid_tool"
 
@@ -164,7 +166,9 @@ class TestDifyWorkflowCallbackHandler:
         # Ensure first two prints happened before failure
         assert mock_print_text.call_count >= 2
 
-    def test_on_tool_execution_none_message_id_and_trace_manager(self, handler: DifyWorkflowCallbackHandler, mock_print_text):
+    def test_on_tool_execution_none_message_id_and_trace_manager(
+        self, handler: DifyWorkflowCallbackHandler, mock_print_text
+    ):
         # Arrange
         tool_name = "optional_params_tool"
         message = DummyToolInvokeMessage('{"data": "ok"}')

@@ -1,10 +1,10 @@
 """Final working unit tests for admin endpoints - tests business logic directly."""
 
-from pytest_mock import MockerFixture
 import uuid
 from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
+from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from controllers.console.admin import (
@@ -319,7 +319,9 @@ class TestInsertExploreAppListApi:
         assert response["result"] == "success"
         assert mock_app.is_public is True
 
-    def test_update_recommended_app(self, mocker: MockerFixture, mock_admin_auth, mock_console_payload, mock_session_factory):
+    def test_update_recommended_app(
+        self, mocker: MockerFixture, mock_admin_auth, mock_console_payload, mock_session_factory
+    ):
         mock_app = Mock(spec=App)
         mock_app.id = "app-id"
         mock_app.site = None

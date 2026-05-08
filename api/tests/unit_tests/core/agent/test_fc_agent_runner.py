@@ -1,9 +1,9 @@
-from pytest_mock import MockerFixture
 import json
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.agent.errors import AgentMaxIterationError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner

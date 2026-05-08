@@ -1,5 +1,5 @@
-from pytest_mock import MockerFixture
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.app_config.workflow_ui_based_app.variables.manager import (
     WorkflowVariablesConfigManager,

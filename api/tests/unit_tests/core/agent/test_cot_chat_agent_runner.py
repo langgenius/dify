@@ -1,7 +1,7 @@
-from pytest_mock import MockerFixture
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent

@@ -1,6 +1,7 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+from pytest_mock import MockerFixture
 
 import core.app.apps.completion.app_config_manager as module
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom

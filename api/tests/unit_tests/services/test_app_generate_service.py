@@ -13,7 +13,6 @@ Covers:
   - get_response_generator              (ended / non-ended workflow run)
 """
 
-from pytest_mock import MockerFixture
 import threading
 import time
 import uuid
@@ -21,6 +20,7 @@ from contextlib import contextmanager
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -473,7 +473,9 @@ class TestGenerateBilling:
         reserve_mock.assert_called_once_with(QuotaType.WORKFLOW, "tenant-id")
         quota_charge.commit.assert_called_once()
 
-    def test_billing_quota_exceeded_raises_rate_limit_error(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+    def test_billing_quota_exceeded_raises_rate_limit_error(
+        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    ):
         from services.errors.app import QuotaExceededError
         from services.errors.llm import InvokeRateLimitError
 
@@ -518,7 +520,9 @@ class TestGenerateBilling:
             )
         quota_charge.refund.assert_called_once()
 
-    def test_rate_limit_exit_called_in_finally_for_blocking(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+    def test_rate_limit_exit_called_in_finally_for_blocking(
+        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    ):
         """For non-streaming (blocking) calls, rate_limit.exit should be called in finally."""
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", False)
 

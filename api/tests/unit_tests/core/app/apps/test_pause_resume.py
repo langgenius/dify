@@ -1,8 +1,9 @@
-from pytest_mock import MockerFixture
 import sys
 import time
 from types import ModuleType, SimpleNamespace
 from typing import Any
+
+from pytest_mock import MockerFixture
 
 import graphon.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module

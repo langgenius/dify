@@ -1,4 +1,3 @@
-from models import TenantAccountRole
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -11,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource
 from models.model import App, Conversation, EndUser, Message, MessageAnnotation

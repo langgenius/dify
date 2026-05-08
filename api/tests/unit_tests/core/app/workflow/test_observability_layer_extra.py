@@ -1,7 +1,8 @@
 from __future__ import annotations
-import pytest
 
 from types import SimpleNamespace
+
+import pytest
 
 from core.app.workflow.layers.observability import ObservabilityLayer
 from graphon.enums import BuiltinNodeTypes

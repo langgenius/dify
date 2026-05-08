@@ -1,4 +1,3 @@
-from models import CreatorUserRole
 import json
 from unittest.mock import MagicMock, create_autospec, patch
 
@@ -7,7 +6,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from models import Account
+from models import Account, CreatorUserRole
 from models.enums import ConversationFromSource, MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService

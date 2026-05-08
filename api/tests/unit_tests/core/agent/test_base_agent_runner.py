@@ -1,9 +1,9 @@
-from pytest_mock import MockerFixture
 import json
 from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 import core.agent.base_agent_runner as module
 from core.agent.base_agent_runner import BaseAgentRunner

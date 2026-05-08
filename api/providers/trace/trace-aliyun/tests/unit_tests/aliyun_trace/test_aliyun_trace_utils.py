@@ -1,9 +1,9 @@
-import pytest
 import json
 from collections.abc import Mapping
 from typing import Any, cast
 from unittest.mock import MagicMock
 
+import pytest
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_FRAMEWORK,
     GEN_AI_SESSION_ID,
