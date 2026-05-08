@@ -234,14 +234,8 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode={false}
-        inputs={[{
-          variable: 'secret',
-          label: 'Secret',
-          type: 'text-input',
-          required: false,
-          hide: true,
-        } as any]}
         missingStartNode={false}
+        published={false}
         publishedAt={Date.now()}
         showBatchRunConfig
         showRunConfig
@@ -282,6 +276,7 @@ describe('app-publisher sections', () => {
         hasHumanInputNode={false}
         hasTriggerNode={false}
         missingStartNode
+        published={false}
         publishedAt={Date.now()}
         toolPublished={false}
         workflowToolAvailable
@@ -308,6 +303,7 @@ describe('app-publisher sections', () => {
         hasHumanInputNode={false}
         hasTriggerNode
         missingStartNode={false}
+        published={false}
         publishedAt={undefined}
         toolPublished={false}
         workflowToolAvailable

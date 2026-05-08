@@ -436,6 +436,7 @@ const AppPublisher = ({
               hasHumanInputNode={hasHumanInputNode}
               hasTriggerNode={hasTriggerNode}
               missingStartNode={missingStartNode}
+              published={published}
               publishedAt={publishedAt}
               showBatchRunConfig={hiddenLaunchVariables.length > 0 && (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION)}
               showRunConfig={hiddenLaunchVariables.length > 0}
