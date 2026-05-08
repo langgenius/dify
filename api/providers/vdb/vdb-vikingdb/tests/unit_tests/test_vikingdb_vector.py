@@ -293,7 +293,9 @@ def test_vikingdb_factory_validates_config_and_builds_vector(vikingdb_module, mo
         ("VIKINGDB_SCHEME", "VIKINGDB_SCHEME should not be None"),
     ],
 )
-def test_vikingdb_factory_raises_when_required_config_missing(vikingdb_module, monkeypatch: pytest.MonkeyPatch, field, message):
+def test_vikingdb_factory_raises_when_required_config_missing(
+    vikingdb_module, monkeypatch: pytest.MonkeyPatch, field, message
+):
     factory = vikingdb_module.VikingDBVectorFactory()
     dataset = SimpleNamespace(
         id="dataset-1", index_struct_dict={"vector_store": {"class_prefix": "existing"}}, index_struct=None

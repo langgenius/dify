@@ -102,7 +102,9 @@ def test_gen_index_struct_dict(vector_factory_module):
         ("HOLOGRES", "dify_vdb_hologres.hologres_vector", "HologresVectorFactory"),
     ],
 )
-def test_get_vector_factory_supported(vector_factory_module, monkeypatch: pytest.MonkeyPatch, vector_type, module_path, class_name):
+def test_get_vector_factory_supported(
+    vector_factory_module, monkeypatch: pytest.MonkeyPatch, vector_type, module_path, class_name
+):
     expected_cls = _register_fake_factory_module(monkeypatch, module_path, class_name)
 
     result_cls = vector_factory_module.Vector.get_vector_factory(getattr(vector_factory_module.VectorType, vector_type))

@@ -61,7 +61,9 @@ def mock_dependencies(monkeypatch: pytest.MonkeyPatch):
         (b"\x89PNG\r\n\x1a\n some png", "image/png", "png", "test_file_id_png"),
     ],
 )
-def test_extract_images_formats(mock_dependencies, monkeypatch: pytest.MonkeyPatch, image_bytes, expected_mime, expected_ext, file_id):
+def test_extract_images_formats(
+    mock_dependencies, monkeypatch: pytest.MonkeyPatch, image_bytes, expected_mime, expected_ext, file_id
+):
     saves = mock_dependencies.saves
     db_stub = mock_dependencies.db
 

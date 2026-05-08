@@ -167,7 +167,13 @@ class TestFeedbackExportApi:
             mock_export_feedbacks.assert_called_once()
 
     def test_feedback_export_csv_format(
-        self, test_client: FlaskClient, auth_header, monkeypatch: pytest.MonkeyPatch, mock_app_model, mock_account, sample_feedback_data
+        self,
+        test_client: FlaskClient,
+        auth_header,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_app_model,
+        mock_account,
+        sample_feedback_data,
     ):
         """Test feedback export in CSV format."""
 
@@ -202,7 +208,13 @@ class TestFeedbackExportApi:
         assert "text/csv" in response.content_type
 
     def test_feedback_export_json_format(
-        self, test_client: FlaskClient, auth_header, monkeypatch: pytest.MonkeyPatch, mock_app_model, mock_account, sample_feedback_data
+        self,
+        test_client: FlaskClient,
+        auth_header,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_app_model,
+        mock_account,
+        sample_feedback_data,
     ):
         """Test feedback export in JSON format."""
 
