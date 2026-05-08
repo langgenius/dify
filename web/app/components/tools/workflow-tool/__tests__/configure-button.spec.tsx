@@ -1,11 +1,10 @@
-import type { WorkflowToolModalPayload } from '../index'
+import type { WorkflowToolDrawerPayload } from '../index'
 import type { WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { VarType } from '@/app/components/workflow/types'
 import WorkflowToolConfigureButton from '../configure-button'
-import WorkflowToolAsModal from '../index'
+import { WorkflowToolDrawer } from '../index'
 import MethodSelector from '../method-selector'
 
 vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
@@ -67,21 +66,6 @@ vi.mock('@/app/components/plugins/hooks', () => ({
       { name: 'label2', label: 'Label 2' },
     ],
   }),
-}))
-
-// Mock Drawer - simplified for testing, preserves behavior
-vi.mock('@/app/components/base/drawer-plus', () => ({
-  default: ({ isShow, onHide, title, body }: { isShow: boolean, onHide: () => void, title: string, body: React.ReactNode }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="drawer" role="dialog">
-        <div data-testid="drawer-title">{title}</div>
-        <button data-testid="drawer-close" onClick={onHide}>Close</button>
-        {body}
-      </div>
-    )
-  },
 }))
 
 // Mock EmojiPickerInner - simplified for testing
@@ -169,7 +153,7 @@ const createDefaultConfigureButtonProps = (overrides = {}) => ({
   ...overrides,
 })
 
-const createDefaultModalPayload = (overrides: Partial<WorkflowToolModalPayload> = {}): WorkflowToolModalPayload => ({
+const createDefaultDrawerPayload = (overrides: Partial<WorkflowToolDrawerPayload> = {}): WorkflowToolDrawerPayload => ({
   icon: createMockEmoji(),
   label: 'Test Tool',
   name: 'test_tool',
@@ -339,8 +323,8 @@ describe('WorkflowToolConfigureButton', () => {
     })
   })
 
-  // Modal behavior tests
-  describe('Modal Behavior', () => {
+  // Drawer behavior tests
+  describe('Drawer Behavior', () => {
     it('should request configuration from the unpublished entry point', async () => {
       // Arrange
       const user = userEvent.setup()
@@ -350,7 +334,7 @@ describe('WorkflowToolConfigureButton', () => {
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
 
-      // Click to open modal
+      // Click to request opening the drawer
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(triggerArea!)
 
@@ -385,7 +369,7 @@ describe('WorkflowToolConfigureButton', () => {
         expect(screen.getByText('workflow.common.configure'))!.toBeInTheDocument()
       })
 
-      // Click the main area (should not open modal)
+      // Click the main area (should not request opening the drawer)
       const mainArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(mainArea!)
 
@@ -493,9 +477,9 @@ describe('WorkflowToolConfigureButton', () => {
 })
 
 // ============================================================================
-// WorkflowToolAsModal Tests
+// WorkflowToolDrawer Tests
 // ============================================================================
-describe('WorkflowToolAsModal', () => {
+describe('WorkflowToolDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -506,12 +490,12 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -522,12 +506,12 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -538,12 +522,12 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -554,12 +538,12 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -570,12 +554,12 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -586,12 +570,12 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -602,12 +586,12 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -620,12 +604,12 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -636,12 +620,12 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -652,13 +636,13 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: false,
-        payload: createDefaultModalPayload({ workflow_tool_id: 'tool-123' }),
+        payload: createDefaultDrawerPayload({ workflow_tool_id: 'tool-123' }),
         onHide: vi.fn(),
         onRemove: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -669,13 +653,13 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
         onRemove: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -717,7 +701,7 @@ describe('WorkflowToolAsModal', () => {
   describe('Props', () => {
     it('should initialize state from payload', () => {
       // Arrange
-      const payload = createDefaultModalPayload({
+      const payload = createDefaultDrawerPayload({
         label: 'Custom Label',
         name: 'custom_name',
         description: 'Custom description',
@@ -729,7 +713,7 @@ describe('WorkflowToolAsModal', () => {
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -740,7 +724,7 @@ describe('WorkflowToolAsModal', () => {
 
     it('should pass labels to label selector', () => {
       // Arrange
-      const payload = createDefaultModalPayload({ labels: ['tag1', 'tag2'] })
+      const payload = createDefaultDrawerPayload({ labels: ['tag1', 'tag2'] })
       const props = {
         isAdd: true,
         payload,
@@ -748,7 +732,7 @@ describe('WorkflowToolAsModal', () => {
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert
       // Assert
@@ -763,12 +747,12 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ label: '' }),
+        payload: createDefaultDrawerPayload({ label: '' }),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       const labelInput = screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder')
       await user.type(labelInput, 'New Label')
 
@@ -782,12 +766,12 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ name: '' }),
+        payload: createDefaultDrawerPayload({ name: '' }),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       const nameInput = screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')
       await user.type(nameInput, 'new_name')
 
@@ -801,12 +785,12 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ description: '' }),
+        payload: createDefaultDrawerPayload({ description: '' }),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       const descInput = screen.getByPlaceholderText('tools.createTool.descriptionPlaceholder')
       await user.type(descInput, 'New description')
 
@@ -820,12 +804,12 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       const iconButton = screen.getByTestId('app-icon')
       await user.click(iconButton)
 
@@ -839,12 +823,12 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Open emoji picker
       const iconButton = screen.getByTestId('app-icon')
@@ -865,12 +849,12 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       const iconButton = screen.getByTestId('app-icon')
       await user.click(iconButton)
@@ -919,12 +903,12 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ labels: ['initial'] }),
+        payload: createDefaultDrawerPayload({ labels: ['initial'] }),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByTestId('add-label'))
 
       // Assert
@@ -937,12 +921,12 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ privacy_policy: '' }),
+        payload: createDefaultDrawerPayload({ privacy_policy: '' }),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       const privacyInput = screen.getByPlaceholderText('tools.createTool.privacyPolicyPlaceholder')
       await user.type(privacyInput, 'https://example.com/privacy')
 
@@ -960,12 +944,12 @@ describe('WorkflowToolAsModal', () => {
       const onHide = vi.fn()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide,
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByText('common.operation.cancel'))
 
       // Assert
@@ -978,12 +962,12 @@ describe('WorkflowToolAsModal', () => {
       const onHide = vi.fn()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide,
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByTestId('drawer-close'))
 
       // Assert
@@ -996,13 +980,13 @@ describe('WorkflowToolAsModal', () => {
       const onRemove = vi.fn()
       const props = {
         isAdd: false,
-        payload: createDefaultModalPayload({ workflow_tool_id: 'tool-123' }),
+        payload: createDefaultDrawerPayload({ workflow_tool_id: 'tool-123' }),
         onHide: vi.fn(),
         onRemove,
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByText('common.operation.delete'))
 
       // Assert
@@ -1015,13 +999,13 @@ describe('WorkflowToolAsModal', () => {
       const onCreate = vi.fn()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
         onCreate,
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByText('common.operation.save'))
 
       // Assert
@@ -1036,13 +1020,13 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: false,
-        payload: createDefaultModalPayload({ workflow_tool_id: 'tool-123' }),
+        payload: createDefaultDrawerPayload({ workflow_tool_id: 'tool-123' }),
         onHide: vi.fn(),
         onSave: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByText('common.operation.save'))
 
       // Assert
@@ -1056,13 +1040,13 @@ describe('WorkflowToolAsModal', () => {
       const onSave = vi.fn()
       const props = {
         isAdd: false,
-        payload: createDefaultModalPayload({ workflow_tool_id: 'tool-123' }),
+        payload: createDefaultDrawerPayload({ workflow_tool_id: 'tool-123' }),
         onHide: vi.fn(),
         onSave,
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByText('common.operation.save'))
       await user.click(screen.getByText('common.operation.confirm'))
 
@@ -1077,7 +1061,7 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({
+        payload: createDefaultDrawerPayload({
           parameters: [{
             name: 'param1',
             description: '', // Start with empty description
@@ -1090,7 +1074,7 @@ describe('WorkflowToolAsModal', () => {
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       const descInput = screen.getByPlaceholderText('tools.createTool.toolInput.descriptionPlaceholder')
       await user.type(descInput, 'New parameter description')
 
@@ -1107,13 +1091,13 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ label: '' }),
+        payload: createDefaultDrawerPayload({ label: '' }),
         onHide: vi.fn(),
         onCreate: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByText('common.operation.save'))
 
       // Assert
@@ -1128,13 +1112,13 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ label: 'Test', name: '' }),
+        payload: createDefaultDrawerPayload({ label: 'Test', name: '' }),
         onHide: vi.fn(),
         onCreate: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByText('common.operation.save'))
 
       // Assert
@@ -1149,12 +1133,12 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ name: '' }),
+        payload: createDefaultDrawerPayload({ name: '' }),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       const nameInput = screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')
       await user.type(nameInput, 'invalid name with spaces')
 
@@ -1168,12 +1152,12 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ name: '' }),
+        payload: createDefaultDrawerPayload({ name: '' }),
         onHide: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       const nameInput = screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')
       await user.type(nameInput, 'valid_name_123')
 
@@ -1219,31 +1203,31 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ parameters: [] }),
+        payload: createDefaultDrawerPayload({ parameters: [] }),
         onHide: vi.fn(),
       }
 
       // Act & Assert
-      expect(() => render(<WorkflowToolAsModal {...props} />)).not.toThrow()
+      expect(() => render(<WorkflowToolDrawer {...props} />)).not.toThrow()
     })
 
     it('should handle empty output parameters', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({ outputParameters: [] }),
+        payload: createDefaultDrawerPayload({ outputParameters: [] }),
         onHide: vi.fn(),
       }
 
       // Act & Assert
-      expect(() => render(<WorkflowToolAsModal {...props} />)).not.toThrow()
+      expect(() => render(<WorkflowToolDrawer {...props} />)).not.toThrow()
     })
 
     it('should handle parameter with __image name specially', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({
+        payload: createDefaultDrawerPayload({
           parameters: [{
             name: '__image',
             description: 'Image parameter',
@@ -1256,7 +1240,7 @@ describe('WorkflowToolAsModal', () => {
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert - __image should show method as text, not selector
       // Assert - __image should show method as text, not selector
@@ -1267,7 +1251,7 @@ describe('WorkflowToolAsModal', () => {
       // Arrange
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload({
+        payload: createDefaultDrawerPayload({
           outputParameters: [{
             name: 'text', // Collides with reserved
             description: 'Custom text output',
@@ -1278,7 +1262,7 @@ describe('WorkflowToolAsModal', () => {
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
 
       // Assert - should show both reserved and custom with warning icon
       const textElements = screen.getAllByText('text')
@@ -1290,13 +1274,13 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: false,
-        payload: createDefaultModalPayload({ workflow_tool_id: 'tool-123' }),
+        payload: createDefaultDrawerPayload({ workflow_tool_id: 'tool-123' }),
         onHide: vi.fn(),
         // onSave is undefined
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByText('common.operation.save'))
 
       // Show confirm modal
@@ -1313,13 +1297,13 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: true,
-        payload: createDefaultModalPayload(),
+        payload: createDefaultDrawerPayload(),
         onHide: vi.fn(),
         // onCreate is undefined
       }
 
       // Act & Assert - should not crash
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByText('common.operation.save'))
     })
 
@@ -1328,13 +1312,13 @@ describe('WorkflowToolAsModal', () => {
       const user = userEvent.setup()
       const props = {
         isAdd: false,
-        payload: createDefaultModalPayload({ workflow_tool_id: 'tool-123' }),
+        payload: createDefaultDrawerPayload({ workflow_tool_id: 'tool-123' }),
         onHide: vi.fn(),
         onSave: vi.fn(),
       }
 
       // Act
-      render(<WorkflowToolAsModal {...props} />)
+      render(<WorkflowToolDrawer {...props} />)
       await user.click(screen.getByText('common.operation.save'))
 
       await waitFor(() => {
@@ -1588,7 +1572,7 @@ describe('Integration Tests', () => {
     }))
   })
 
-  // Complete workflow: open modal -> fill form -> save
+  // Complete workflow: open drawer -> fill form -> save
   describe('Complete Workflow', () => {
     it('should complete full create workflow', async () => {
       // Arrange
@@ -1597,9 +1581,9 @@ describe('Integration Tests', () => {
 
       // Act
       render(
-        <WorkflowToolAsModal
+        <WorkflowToolDrawer
           isAdd
-          payload={createDefaultModalPayload()}
+          payload={createDefaultDrawerPayload()}
           onHide={vi.fn()}
           onCreate={onCreate}
         />,
@@ -1640,9 +1624,9 @@ describe('Integration Tests', () => {
 
       // Act
       render(
-        <WorkflowToolAsModal
+        <WorkflowToolDrawer
           isAdd={false}
-          payload={createDefaultModalPayload({ workflow_tool_id: 'workflow-tool-1' })}
+          payload={createDefaultDrawerPayload({ workflow_tool_id: 'workflow-tool-1' })}
           onHide={vi.fn()}
           onSave={onSave}
         />,

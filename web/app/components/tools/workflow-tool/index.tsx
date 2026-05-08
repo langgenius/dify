@@ -1,6 +1,5 @@
 'use client'
 import type { DrawerRootProps } from '@langgenius/dify-ui/drawer'
-import type { FC } from 'react'
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -37,7 +36,7 @@ import {
   isWorkflowToolNameValid,
 } from './helpers'
 
-export type WorkflowToolModalPayload = {
+export type WorkflowToolDrawerPayload = {
   icon: Emoji
   label: string
   name: string
@@ -53,9 +52,9 @@ export type WorkflowToolModalPayload = {
   workflow_app_id?: string
 }
 
-type Props = {
+export type WorkflowToolDrawerProps = {
   isAdd?: boolean
-  payload: WorkflowToolModalPayload
+  payload: WorkflowToolDrawerPayload
   onHide: () => void
   onRemove?: () => void
   onCreate?: (payload: WorkflowToolProviderRequest & { workflow_app_id: string }) => void
@@ -65,7 +64,7 @@ type Props = {
   }>) => void
 }
 
-type WorkflowToolDrawerProps = {
+type WorkflowToolDrawerFrameProps = {
   title: string
   closeLabel: string
   onHide: () => void
@@ -89,7 +88,7 @@ const InfoTooltip = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
-const WorkflowToolDrawer = ({ title, closeLabel, onHide, children }: WorkflowToolDrawerProps) => {
+const WorkflowToolDrawerFrame = ({ title, closeLabel, onHide, children }: WorkflowToolDrawerFrameProps) => {
   const handleOpenChange = React.useCallback<NonNullable<DrawerRootProps['onOpenChange']>>((open) => {
     if (!open)
       onHide()
@@ -176,15 +175,14 @@ const WorkflowToolEmojiPicker = ({ onSelect, onClose }: WorkflowToolEmojiPickerP
   )
 }
 
-// Add and Edit
-const WorkflowToolAsModal: FC<Props> = ({
+function WorkflowToolDrawerComponent({
   isAdd,
   payload,
   onHide,
   onRemove,
   onSave,
   onCreate,
-}) => {
+}: WorkflowToolDrawerProps) {
   const { t } = useTranslation()
 
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
@@ -218,7 +216,7 @@ const WorkflowToolAsModal: FC<Props> = ({
     setLabels(value)
   }
   const [privacyPolicy, setPrivacyPolicy] = useState(payload.privacy_policy)
-  const [showModal, setShowModal] = useState(false)
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false)
 
   const onConfirm = () => {
     let errorMessage = ''
@@ -261,7 +259,7 @@ const WorkflowToolAsModal: FC<Props> = ({
 
   return (
     <>
-      <WorkflowToolDrawer
+      <WorkflowToolDrawerFrame
         onHide={onHide}
         title={t('common.workflowAsTool', { ns: 'workflow' })!}
         closeLabel={t('operation.close', { ns: 'common' })!}
@@ -446,7 +444,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                   if (isAdd)
                     onConfirm()
                   else
-                    setShowModal(true)
+                    setConfirmModalOpen(true)
                 }}
               >
                 {t('operation.save', { ns: 'common' })}
@@ -454,7 +452,7 @@ const WorkflowToolAsModal: FC<Props> = ({
             </div>
           </div>
         </div>
-      </WorkflowToolDrawer>
+      </WorkflowToolDrawerFrame>
       {showEmojiPicker && (
         <WorkflowToolEmojiPicker
           onSelect={(icon, icon_background) => {
@@ -466,10 +464,10 @@ const WorkflowToolAsModal: FC<Props> = ({
           }}
         />
       )}
-      {showModal && (
+      {confirmModalOpen && (
         <ConfirmModal
-          show={showModal}
-          onClose={() => setShowModal(false)}
+          show={confirmModalOpen}
+          onClose={() => setConfirmModalOpen(false)}
           onConfirm={onConfirm}
         />
       )}
@@ -477,4 +475,5 @@ const WorkflowToolAsModal: FC<Props> = ({
 
   )
 }
-export default React.memo(WorkflowToolAsModal)
+
+export const WorkflowToolDrawer = React.memo(WorkflowToolDrawerComponent)

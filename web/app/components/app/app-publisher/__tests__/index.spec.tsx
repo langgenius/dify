@@ -137,10 +137,10 @@ vi.mock('../../app-access-control', () => ({
 }))
 
 vi.mock('@/app/components/tools/workflow-tool', () => ({
-  default: ({ onHide }: { onHide: () => void }) => (
-    <div data-testid="workflow-tool-modal">
-      workflow tool modal
-      <button onClick={onHide}>close-workflow-tool-modal</button>
+  WorkflowToolDrawer: ({ onHide }: { onHide: () => void }) => (
+    <div data-testid="workflow-tool-drawer">
+      workflow tool drawer
+      <button onClick={onHide}>close-workflow-tool-drawer</button>
     </div>
   ),
 }))
@@ -256,7 +256,7 @@ describe('AppPublisher', () => {
     expect(screen.getByTestId('embedded-modal'))!.toBeInTheDocument()
   })
 
-  it('should keep workflow tool modal mounted after closing the publish popover', () => {
+  it('should keep workflow tool drawer mounted after closing the publish popover', () => {
     mockAppDetail = {
       ...mockAppDetail,
       mode: AppModeEnum.WORKFLOW,
@@ -272,7 +272,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('publisher-workflow-tool'))
 
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
-    expect(screen.getByTestId('workflow-tool-modal')).toBeInTheDocument()
+    expect(screen.getByTestId('workflow-tool-drawer')).toBeInTheDocument()
   })
 
   it('should close embedded and access control panels through child callbacks', async () => {

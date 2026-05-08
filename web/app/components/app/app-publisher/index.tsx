@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
-import WorkflowToolModal from '@/app/components/tools/workflow-tool'
+import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useConfigureButton } from '@/app/components/tools/workflow-tool/hooks/use-configure-button'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
@@ -414,7 +414,7 @@ const AppPublisher = ({
         {showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} />}
       </Popover>
       {workflowToolDrawerOpen && (
-        <WorkflowToolModal
+        <WorkflowToolDrawer
           isAdd={!workflowToolPublished}
           payload={workflowTool.payload}
           onHide={closeWorkflowToolDrawer}
