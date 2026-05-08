@@ -122,19 +122,17 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
           placement="bottom-start"
           sideOffset={4}
           positionerProps={{ anchor: batchMenuAnchorRef }}
-          popupClassName="w-[var(--anchor-width)] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-0 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]"
+          popupClassName="w-[var(--anchor-width)]"
         >
-          <div className="w-full p-1">
-            <DropdownMenuItem
-              className="h-auto w-full px-2 py-1.5 system-md-regular"
-              onClick={() => {
-                setIsBatchMenuOpen(false)
-                showBatchModal()
-              }}
-            >
-              {t('list.action.batchAdd', { ns: 'datasetDocuments' })}
-            </DropdownMenuItem>
-          </div>
+          <DropdownMenuItem
+            className="system-md-regular"
+            onClick={() => {
+              setIsBatchMenuOpen(false)
+              showBatchModal()
+            }}
+          >
+            {t('list.action.batchAdd', { ns: 'datasetDocuments' })}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
