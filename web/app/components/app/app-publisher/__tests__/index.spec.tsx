@@ -38,6 +38,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
+  Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
 }))
 
 vi.mock('ahooks', async () => {
@@ -105,11 +106,11 @@ vi.mock('@/app/components/base/amplitude', () => ({
 vi.mock('@/app/components/app/overview/embedded', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (isShow
     ? (
-      <div data-testid="embedded-modal">
-        embedded modal
-        <button onClick={onClose}>close-embedded-modal</button>
-      </div>
-    )
+        <div data-testid="embedded-modal">
+          embedded modal
+          <button onClick={onClose}>close-embedded-modal</button>
+        </div>
+      )
     : null),
 }))
 

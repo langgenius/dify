@@ -1,8 +1,8 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { AppDetailResponse } from '@/models/app'
-import { InputVarType } from '@/app/components/workflow/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
@@ -26,6 +26,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
+  Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
 }))
 
 vi.mock('@/context/app-context', () => ({
