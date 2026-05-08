@@ -1,7 +1,7 @@
 from typing import Literal, Protocol, cast
 from urllib.parse import quote_plus, urlunparse
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -12,6 +12,7 @@ class RedisConfigDefaults(Protocol):
     REDIS_PASSWORD: str | None
     REDIS_DB: int
     REDIS_USE_SSL: bool
+    REDIS_USE_CLUSTERS: bool
 
 
 def _redis_defaults(config: object) -> RedisConfigDefaults:
@@ -37,14 +38,26 @@ class RedisPubSubConfig(BaseSettings):
         default=None,
     )
 
-    PUBSUB_REDIS_USE_CLUSTERS: bool = Field(
+    PUBSUB_REDIS_USE_CLUSTERS: bool | None = Field(
         validation_alias=AliasChoices("EVENT_BUS_REDIS_USE_CLUSTERS", "PUBSUB_REDIS_USE_CLUSTERS"),
         description=(
             "Enable Redis Cluster mode for pub/sub or streams transport. Recommended for large deployments. "
+            "Defaults to `REDIS_USE_CLUSTERS` when unset so that operators running a clustered "
+            "main Redis do not also need to set this flag explicitly. "
             "Also accepts ENV: EVENT_BUS_REDIS_USE_CLUSTERS."
         ),
-        default=False,
+        default=None,
     )
+
+    @field_validator("PUBSUB_REDIS_USE_CLUSTERS", mode="before")
+    @classmethod
+    def _blank_pubsub_use_clusters_is_unset(cls, value: object) -> object:
+        # Docker Compose renders unset flags as empty strings (`${VAR:-}`). Treat
+        # an empty / whitespace-only value as "not set" so the inheritance from
+        # REDIS_USE_CLUSTERS still takes effect — otherwise Pydantic rejects "".
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value
 
     PUBSUB_REDIS_CHANNEL_TYPE: Literal["pubsub", "sharded", "streams"] = Field(
         validation_alias=AliasChoices("EVENT_BUS_REDIS_CHANNEL_TYPE", "PUBSUB_REDIS_CHANNEL_TYPE"),
@@ -104,3 +117,9 @@ class RedisPubSubConfig(BaseSettings):
             return pubsub_redis_url
 
         return self._build_default_pubsub_url()
+
+    @property
+    def normalized_pubsub_use_clusters(self) -> bool:
+        if self.PUBSUB_REDIS_USE_CLUSTERS is not None:
+            return self.PUBSUB_REDIS_USE_CLUSTERS
+        return _redis_defaults(self).REDIS_USE_CLUSTERS

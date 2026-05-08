@@ -10,6 +10,7 @@ from extensions.ext_redis import (
     _get_connection_health_params,
     _normalize_redis_key_prefix,
     _serialize_redis_name,
+    init_app,
     redis_fallback,
 )
 
@@ -222,3 +223,82 @@ class TestRedisClientWrapperKeyPrefix:
             wrapper.get("plain:key")
 
         mock_client.get.assert_called_once_with("plain:key")
+
+
+class TestInitAppPubsubRouting:
+    """Cover the #35291 fix: init_app must route `normalized_pubsub_use_clusters`
+    (not the raw `PUBSUB_REDIS_USE_CLUSTERS`) into `_create_pubsub_client`.
+    A regression here would silently reintroduce the bug, and pure property
+    tests on DifyConfig would not catch it."""
+
+    @patch("extensions.ext_redis._create_pubsub_client")
+    @patch("extensions.ext_redis._create_cluster_client")
+    @patch("extensions.ext_redis._create_sentinel_client")
+    @patch("extensions.ext_redis._create_standalone_client")
+    @patch("extensions.ext_redis._get_base_redis_params", return_value={})
+    @patch("extensions.ext_redis.dify_config")
+    def test_pubsub_client_is_constructed_with_inherited_cluster_flag(
+        self,
+        mock_config,
+        mock_params,
+        mock_standalone,
+        mock_sentinel,
+        mock_cluster,
+        mock_create_pubsub,
+    ):
+        mock_config.REDIS_USE_SENTINEL = False
+        mock_config.REDIS_USE_CLUSTERS = False
+        mock_config.normalized_pubsub_redis_url = "redis://pubsub-host:6379/0"
+        mock_config.normalized_pubsub_use_clusters = True
+
+        init_app(MagicMock(extensions={}))
+
+        mock_create_pubsub.assert_called_once_with("redis://pubsub-host:6379/0", True)
+
+    @patch("extensions.ext_redis._create_pubsub_client")
+    @patch("extensions.ext_redis._create_cluster_client")
+    @patch("extensions.ext_redis._create_sentinel_client")
+    @patch("extensions.ext_redis._create_standalone_client")
+    @patch("extensions.ext_redis._get_base_redis_params", return_value={})
+    @patch("extensions.ext_redis.dify_config")
+    def test_pubsub_client_respects_explicit_false_override(
+        self,
+        mock_config,
+        mock_params,
+        mock_standalone,
+        mock_sentinel,
+        mock_cluster,
+        mock_create_pubsub,
+    ):
+        mock_config.REDIS_USE_SENTINEL = False
+        mock_config.REDIS_USE_CLUSTERS = True
+        mock_config.normalized_pubsub_redis_url = "redis://pubsub-host:6379/0"
+        mock_config.normalized_pubsub_use_clusters = False
+
+        init_app(MagicMock(extensions={}))
+
+        mock_create_pubsub.assert_called_once_with("redis://pubsub-host:6379/0", False)
+
+    @patch("extensions.ext_redis._create_pubsub_client")
+    @patch("extensions.ext_redis._create_cluster_client")
+    @patch("extensions.ext_redis._create_sentinel_client")
+    @patch("extensions.ext_redis._create_standalone_client")
+    @patch("extensions.ext_redis._get_base_redis_params", return_value={})
+    @patch("extensions.ext_redis.dify_config")
+    def test_pubsub_client_skipped_when_pubsub_url_absent(
+        self,
+        mock_config,
+        mock_params,
+        mock_standalone,
+        mock_sentinel,
+        mock_cluster,
+        mock_create_pubsub,
+    ):
+        mock_config.REDIS_USE_SENTINEL = False
+        mock_config.REDIS_USE_CLUSTERS = False
+        mock_config.normalized_pubsub_redis_url = ""
+        mock_config.normalized_pubsub_use_clusters = False
+
+        init_app(MagicMock(extensions={}))
+
+        mock_create_pubsub.assert_not_called()

@@ -236,6 +236,110 @@ def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.
         _ = DifyConfig().normalized_pubsub_redis_url
 
 
+def test_pubsub_use_clusters_inherits_from_redis_use_clusters(monkeypatch: pytest.MonkeyPatch):
+    """When PUBSUB_REDIS_USE_CLUSTERS is unset, it falls back to REDIS_USE_CLUSTERS (#35291)."""
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_USE_CLUSTERS", "true")
+    monkeypatch.setenv("REDIS_CLUSTERS", "node1:7000,node2:7001")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.PUBSUB_REDIS_USE_CLUSTERS is None
+    assert config.normalized_pubsub_use_clusters is True
+
+
+def test_pubsub_use_clusters_explicit_override_wins(monkeypatch: pytest.MonkeyPatch):
+    """Explicitly setting EVENT_BUS_REDIS_USE_CLUSTERS overrides the REDIS_USE_CLUSTERS fallback."""
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_USE_CLUSTERS", "true")
+    monkeypatch.setenv("EVENT_BUS_REDIS_USE_CLUSTERS", "false")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.PUBSUB_REDIS_USE_CLUSTERS is False
+    assert config.normalized_pubsub_use_clusters is False
+
+
+def test_pubsub_use_clusters_pubsub_only_cluster(monkeypatch: pytest.MonkeyPatch):
+    """Operator can enable cluster mode for pubsub alone (main Redis standalone)."""
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_USE_CLUSTERS", "false")
+    monkeypatch.setenv("EVENT_BUS_REDIS_USE_CLUSTERS", "true")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.PUBSUB_REDIS_USE_CLUSTERS is True
+    assert config.normalized_pubsub_use_clusters is True
+
+
+def test_pubsub_use_clusters_empty_string_behaves_as_unset(monkeypatch: pytest.MonkeyPatch):
+    """Empty env value (docker-compose `${VAR:-}` pattern) falls back to REDIS_USE_CLUSTERS (#35291)."""
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("REDIS_USE_CLUSTERS", "true")
+    monkeypatch.setenv("EVENT_BUS_REDIS_USE_CLUSTERS", "")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.PUBSUB_REDIS_USE_CLUSTERS is None
+    assert config.normalized_pubsub_use_clusters is True
+
+
+def test_pubsub_use_clusters_defaults_to_false_when_neither_set(monkeypatch: pytest.MonkeyPatch):
+    """With neither flag set, clustering stays off (unchanged default for non-cluster deployments)."""
+    os.environ.clear()
+
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "postgresql")
+    monkeypatch.setenv("DB_USERNAME", "postgres")
+    monkeypatch.setenv("DB_PASSWORD", "postgres")
+    monkeypatch.setenv("DB_HOST", "localhost")
+    monkeypatch.setenv("DB_PORT", "5432")
+    monkeypatch.setenv("DB_DATABASE", "dify")
+
+    config = DifyConfig(_env_file=None)
+
+    assert config.PUBSUB_REDIS_USE_CLUSTERS is None
+    assert config.REDIS_USE_CLUSTERS is False
+    assert config.normalized_pubsub_use_clusters is False
+
+
 def test_dify_config_exposes_redis_key_prefix_default(monkeypatch: pytest.MonkeyPatch):
     os.environ.clear()
 
