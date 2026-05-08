@@ -246,9 +246,9 @@ class ToolManager:
                     raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
             # check if the credential is allowed to be used
-            from core.helper.credential_utils import check_credential_policy_compliance
+            from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
-            check_credential_policy_compliance(
+            runtime_check_credential_policy_compliance(
                 credential_id=builtin_provider.id,
                 provider=provider_id,
                 credential_type=PluginCredentialType.TOOL,
