@@ -1112,8 +1112,8 @@ Get a specific segment by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| document_id | path |  | Yes | string |
 | segment_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
 | dataset_id | path |  | Yes | string |
 
 ##### Responses
