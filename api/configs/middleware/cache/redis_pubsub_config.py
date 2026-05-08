@@ -1,21 +1,7 @@
-from typing import Literal, Protocol, cast
-from urllib.parse import quote_plus, urlunparse
+from typing import Literal
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings
-
-
-class RedisConfigDefaults(Protocol):
-    REDIS_HOST: str
-    REDIS_PORT: int
-    REDIS_USERNAME: str | None
-    REDIS_PASSWORD: str | None
-    REDIS_DB: int
-    REDIS_USE_SSL: bool
-
-
-def _redis_defaults(config: object) -> RedisConfigDefaults:
-    return cast(RedisConfigDefaults, config)
 
 
 class RedisPubSubConfig(BaseSettings):
@@ -26,24 +12,113 @@ class RedisPubSubConfig(BaseSettings):
     - pubsub: Redis PUBLISH/SUBSCRIBE (at-most-once)
     - sharded: Redis 7+ Sharded Pub/Sub (at-most-once, better scaling)
     - streams: Redis Streams (at-least-once, supports late subscribers)
+
+    Connection-topology resolution (see ``build_pubsub_spec`` in
+    ``redis_connection_spec.py``):
+
+    1. ``PUBSUB_REDIS_MODE`` set → build a dedicated spec from the
+       structured ``PUBSUB_REDIS_*`` fields (all three topologies,
+       including independent Sentinel).
+    2. Otherwise → inherit the main Redis spec so the pub/sub client
+       reuses the main client object and its failover-aware handle.
     """
 
-    PUBSUB_REDIS_URL: str | None = Field(
-        validation_alias=AliasChoices("EVENT_BUS_REDIS_URL", "PUBSUB_REDIS_URL"),
+    # ------------------------------------------------------------------
+    # Structured mode selector
+    # ------------------------------------------------------------------
+
+    PUBSUB_REDIS_MODE: Literal["standalone", "sentinel", "cluster"] | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_MODE", "PUBSUB_REDIS_MODE"),
         description=(
-            "Redis connection URL for streaming events between API and celery worker; "
-            "defaults to URL constructed from `REDIS_*` configurations. Also accepts ENV: EVENT_BUS_REDIS_URL."
+            "Topology mode for the Event Bus. When set, the Event Bus builds a dedicated "
+            "client from PUBSUB_REDIS_* fields instead of inheriting the main Redis spec. "
+            "Set to 'sentinel' to route pub/sub through a Sentinel-quorum-aware client "
+            "independent from the main Redis. "
+            "Also accepts ENV: EVENT_BUS_REDIS_MODE."
         ),
         default=None,
     )
 
-    PUBSUB_REDIS_USE_CLUSTERS: bool = Field(
-        validation_alias=AliasChoices("EVENT_BUS_REDIS_USE_CLUSTERS", "PUBSUB_REDIS_USE_CLUSTERS"),
-        description=(
-            "Enable Redis Cluster mode for pub/sub or streams transport. Recommended for large deployments. "
-            "Also accepts ENV: EVENT_BUS_REDIS_USE_CLUSTERS."
+    # ------------------------------------------------------------------
+    # Structured standalone fields (used when PUBSUB_REDIS_MODE=standalone)
+    # ------------------------------------------------------------------
+
+    PUBSUB_REDIS_HOST: str | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_HOST", "PUBSUB_REDIS_HOST"),
+        description="Event Bus Redis host (PUBSUB_REDIS_MODE=standalone).",
+        default=None,
+    )
+    PUBSUB_REDIS_PORT: int | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_PORT", "PUBSUB_REDIS_PORT"),
+        description="Event Bus Redis port (PUBSUB_REDIS_MODE=standalone).",
+        default=None,
+    )
+    PUBSUB_REDIS_DB: int | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_DB", "PUBSUB_REDIS_DB"),
+        description="Event Bus Redis database number (standalone / sentinel).",
+        default=None,
+    )
+
+    # ------------------------------------------------------------------
+    # Structured sentinel fields (used when PUBSUB_REDIS_MODE=sentinel)
+    # ------------------------------------------------------------------
+
+    PUBSUB_REDIS_SENTINELS: str | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_SENTINELS", "PUBSUB_REDIS_SENTINELS"),
+        description="Comma-separated 'host:port' list of Sentinel nodes for the Event Bus.",
+        default=None,
+    )
+    PUBSUB_REDIS_SENTINEL_SERVICE_NAME: str | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_SENTINEL_SERVICE_NAME", "PUBSUB_REDIS_SENTINEL_SERVICE_NAME"),
+        description="Sentinel service (master) name to resolve for the Event Bus.",
+        default=None,
+    )
+    PUBSUB_REDIS_SENTINEL_USERNAME: str | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_SENTINEL_USERNAME", "PUBSUB_REDIS_SENTINEL_USERNAME"),
+        description="Username for authenticating to the Event Bus Sentinel quorum.",
+        default=None,
+    )
+    PUBSUB_REDIS_SENTINEL_PASSWORD: str | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_SENTINEL_PASSWORD", "PUBSUB_REDIS_SENTINEL_PASSWORD"),
+        description="Password for authenticating to the Event Bus Sentinel quorum.",
+        default=None,
+    )
+    PUBSUB_REDIS_SENTINEL_SOCKET_TIMEOUT: float | None = Field(
+        validation_alias=AliasChoices(
+            "EVENT_BUS_REDIS_SENTINEL_SOCKET_TIMEOUT", "PUBSUB_REDIS_SENTINEL_SOCKET_TIMEOUT"
         ),
-        default=False,
+        description="Socket timeout (seconds) for the Event Bus Sentinel connection.",
+        default=None,
+    )
+
+    # ------------------------------------------------------------------
+    # Structured cluster fields (used when PUBSUB_REDIS_MODE=cluster)
+    # ------------------------------------------------------------------
+
+    PUBSUB_REDIS_CLUSTERS: str | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_CLUSTERS", "PUBSUB_REDIS_CLUSTERS"),
+        description="Comma-separated 'host:port' list of Cluster nodes for the Event Bus.",
+        default=None,
+    )
+
+    # ------------------------------------------------------------------
+    # Common credentials / SSL (used by all three structured modes)
+    # ------------------------------------------------------------------
+
+    PUBSUB_REDIS_USERNAME: str | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_USERNAME", "PUBSUB_REDIS_USERNAME"),
+        description="Event Bus Redis username (structured-mode credential; not inherited from main).",
+        default=None,
+    )
+    PUBSUB_REDIS_PASSWORD: str | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_PASSWORD", "PUBSUB_REDIS_PASSWORD"),
+        description="Event Bus Redis password (structured-mode credential; not inherited from main).",
+        default=None,
+    )
+    PUBSUB_REDIS_USE_SSL: bool | None = Field(
+        validation_alias=AliasChoices("EVENT_BUS_REDIS_USE_SSL", "PUBSUB_REDIS_USE_SSL"),
+        description="Enable SSL/TLS for the Event Bus connection (structured-mode only).",
+        default=None,
     )
 
     PUBSUB_REDIS_CHANNEL_TYPE: Literal["pubsub", "sharded", "streams"] = Field(
@@ -70,37 +145,25 @@ class RedisPubSubConfig(BaseSettings):
         default=600,
     )
 
-    def _build_default_pubsub_url(self) -> str:
-        defaults = _redis_defaults(self)
-        if not defaults.REDIS_HOST or not defaults.REDIS_PORT:
-            raise ValueError("PUBSUB_REDIS_URL must be set when default Redis URL cannot be constructed")
+    @field_validator(
+        "PUBSUB_REDIS_MODE",
+        "PUBSUB_REDIS_PORT",
+        "PUBSUB_REDIS_DB",
+        "PUBSUB_REDIS_USE_SSL",
+        "PUBSUB_REDIS_SENTINEL_SOCKET_TIMEOUT",
+        mode="before",
+    )
+    @classmethod
+    def _empty_string_is_none(cls, v: object) -> object:
+        """Allow empty string in env / .env to mean 'unset' (None).
 
-        scheme = "rediss" if defaults.REDIS_USE_SSL else "redis"
-        username = defaults.REDIS_USERNAME or None
-        password = defaults.REDIS_PASSWORD or None
-
-        userinfo = ""
-        if username:
-            userinfo = quote_plus(username)
-        if password:
-            password_part = quote_plus(password)
-            userinfo = f"{userinfo}:{password_part}" if userinfo else f":{password_part}"
-        if userinfo:
-            userinfo = f"{userinfo}@"
-
-        db = defaults.REDIS_DB
-
-        netloc = f"{userinfo}{defaults.REDIS_HOST}:{defaults.REDIS_PORT}"
-        return urlunparse((scheme, netloc, f"/{db}", "", "", ""))
-
-    @property
-    def normalized_pubsub_redis_url(self) -> str:
-        pubsub_redis_url = self.PUBSUB_REDIS_URL
-        if pubsub_redis_url:
-            cleaned = pubsub_redis_url.strip()
-            pubsub_redis_url = cleaned or None
-
-        if pubsub_redis_url:
-            return pubsub_redis_url
-
-        return self._build_default_pubsub_url()
+        Deployment templates (docker-compose, Helm) frequently expose env
+        vars via ``${VAR:-}`` which renders as an empty string when the
+        caller hasn't set one. For non-string-typed fields (Literal /
+        int / bool / float) pydantic would fail literal/int parsing on
+        ``""``; coerce it to ``None`` up front so the documented default
+        kicks in instead.
+        """
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v

@@ -1,6 +1,6 @@
 import ssl
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
 import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
@@ -90,7 +90,42 @@ def get_celery_redis_global_keyprefix() -> str | None:
     return f"{normalized_prefix}:"
 
 
+_CLUSTER_SCHEMES = ("redis+cluster://", "rediss+cluster://")
+
+
+def _reject_cluster_broker_url(broker_url: str | None, backend_url: str | None) -> None:
+    """Fail fast if the Celery broker/backend URL targets a Redis Cluster.
+
+    Kombu's redis transport does not support Redis Cluster — its BRPOP
+    multi-queue blocking pop, ETA ZSets, and unacked Hash all assume a
+    single slot. Without this guard, an operator who follows the
+    "my main Redis is on Cluster, so Celery should be too" symmetric
+    mental model would crash on the first task enqueue with an opaque
+    Kombu error (MOVED redirect, unroutable key, etc.).
+
+    Strips whitespace before scheme-matching so a YAML quoting slip
+    (``"  redis+cluster://..."``) still reaches this guard instead of
+    falling through to Kombu's URL parser.
+    """
+    for env_name, url in (("CELERY_BROKER_URL", broker_url), ("CELERY_RESULT_BACKEND", backend_url)):
+        if not url:
+            continue
+        lowered = url.strip().lower()
+        for scheme in _CLUSTER_SCHEMES:
+            if lowered.startswith(scheme):
+                raise ValueError(
+                    f"{env_name} is set to a Redis Cluster URL ({scheme}); Celery/Kombu's redis "
+                    "transport does not support Redis Cluster. Use a standalone or Sentinel "
+                    "Redis instance for the Celery broker/backend."
+                )
+
+
 def init_app(app: DifyApp) -> Celery:
+    _reject_cluster_broker_url(
+        dify_config.CELERY_BROKER_URL,
+        cast("str | None", dify_config.CELERY_RESULT_BACKEND),
+    )
+
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
             from core.logging.context import init_request_context
