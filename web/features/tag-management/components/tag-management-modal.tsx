@@ -1,11 +1,10 @@
 'use client'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { useCreateTagMutation } from '../hooks/use-tag-mutations'
 import { TagItemEditor } from './tag-item-editor'
 
 type TagManagementModalProps = {
@@ -24,7 +23,7 @@ export const TagManagementModal = ({ show, type, onClose, onTagsChange }: TagMan
     },
     enabled: show,
   }))
-  const createTagMutation = useCreateTagMutation()
+  const createTagMutation = useMutation(consoleQuery.tags.create.mutationOptions())
   const [name, setName] = useState<string>('')
 
   const createNewTag = () => {
@@ -55,8 +54,8 @@ export const TagManagementModal = ({ show, type, onClose, onTagsChange }: TagMan
 
   return (
     <Dialog open={show} onOpenChange={open => !open && handleClose()}>
-      <DialogContent className="w-[600px]! max-w-[600px]! rounded-xl! p-8!">
-        <div className="relative pb-2 text-xl leading-[30px] font-semibold text-text-primary">{t('tag.manageTags', { ns: 'common' })}</div>
+      <DialogContent className="w-150 max-w-150 rounded-xl p-8">
+        <div className="relative pb-2 text-xl leading-7.5 font-semibold text-text-primary">{t('tag.manageTags', { ns: 'common' })}</div>
         <DialogCloseButton data-testid="tag-management-modal-close-button" className="top-4 right-4" />
         <div className="mt-3 flex flex-wrap gap-2">
           <input className="w-25 shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm leading-5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid" placeholder={t('tag.addNew', { ns: 'common' }) || ''} autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && createNewTag()} onBlur={createNewTag} />

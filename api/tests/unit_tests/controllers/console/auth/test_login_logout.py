@@ -412,7 +412,7 @@ class TestLoginApi:
         mock_get_invitation,
         mock_is_rate_limit,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -448,7 +448,7 @@ class TestLoginApi:
         mock_revoke_token,
         mock_get_token_data,
         mock_db,
-        app,
+        app: Flask,
     ):
         mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
         mock_get_account.side_effect = Unauthorized("Account is banned.")

@@ -271,6 +271,7 @@ const NodePanel: FC<Props> = ({
               <div className={cn('mb-1')}>
                 <CodeEditor
                   readOnly
+                  showFileList
                   title={<div>{processDataTitle}</div>}
                   language={CodeLanguage.json}
                   value={nodeInfo.process_data}
@@ -282,6 +283,7 @@ const NodePanel: FC<Props> = ({
               <div>
                 <CodeEditor
                   readOnly
+                  showFileList
                   title={<div>{outputTitle}</div>}
                   language={CodeLanguage.json}
                   value={nodeInfo.outputs}

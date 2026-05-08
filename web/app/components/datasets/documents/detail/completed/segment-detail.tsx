@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -7,7 +6,6 @@ import {
   RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
 } from '@remixicon/react'
-import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
@@ -42,20 +40,15 @@ type ISegmentDetailProps = {
   onCancel: () => void
   isEditMode?: boolean
   docForm: ChunkingMode
-  onModalStateChange?: (isOpen: boolean) => void
 }
 
-/**
- * Show all the contents of the segment
- */
-const SegmentDetail: FC<ISegmentDetailProps> = ({
+export function SegmentDetail({
   segInfo,
   onUpdate,
   onCancel,
   isEditMode,
   docForm,
-  onModalStateChange,
-}) => {
+}: ISegmentDetailProps) {
   const { t } = useTranslation()
   const [question, setQuestion] = useState(isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
@@ -99,19 +92,16 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
 
   const handleRegeneration = useCallback(() => {
     setShowRegenerationModal(true)
-    onModalStateChange?.(true)
-  }, [onModalStateChange])
+  }, [])
 
   const onCancelRegeneration = useCallback(() => {
     setShowRegenerationModal(false)
-    onModalStateChange?.(false)
-  }, [onModalStateChange])
+  }, [])
 
   const onCloseAfterRegeneration = useCallback(() => {
     setShowRegenerationModal(false)
-    onModalStateChange?.(false)
-    onCancel() // Close the edit drawer
-  }, [onCancel, onModalStateChange])
+    onCancel()
+  }, [onCancel])
 
   const onConfirmRegeneration = useCallback(() => {
     onUpdate(segInfo?.id || '', question, answer, keywords, attachments, summary, true)
@@ -241,5 +231,3 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     </div>
   )
 }
-
-export default React.memo(SegmentDetail)

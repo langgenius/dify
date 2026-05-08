@@ -90,7 +90,7 @@ class TestOAuthLogin:
         mock_redirect,
         mock_get_providers,
         resource,
-        app,
+        app: Flask,
         mock_oauth_provider,
         invite_token,
         expected_token,
@@ -165,7 +165,7 @@ class TestOAuthCallback:
         mock_get_providers,
         mock_config,
         resource,
-        app,
+        app: Flask,
         oauth_setup,
     ):
         mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
@@ -218,7 +218,7 @@ class TestOAuthCallback:
         mock_get_providers,
         mock_config,
         resource,
-        app,
+        app: Flask,
         oauth_setup,
     ):
         mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
@@ -262,7 +262,7 @@ class TestOAuthCallback:
         mock_tenant_service,
         mock_account_service,
         resource,
-        app,
+        app: Flask,
         oauth_setup,
         account_status,
         expected_redirect,
@@ -301,7 +301,7 @@ class TestOAuthCallback:
         mock_get_providers,
         mock_config,
         resource,
-        app,
+        app: Flask,
         oauth_setup,
     ):
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
@@ -337,7 +337,7 @@ class TestOAuthCallback:
         mock_get_providers,
         mock_config,
         resource,
-        app,
+        app: Flask,
         oauth_setup,
     ):
         """Defensive test for CLOSED account status handling in OAuth callback.
@@ -466,7 +466,7 @@ class TestAccountGeneration:
         mock_register_service,
         mock_feature_service,
         mock_get_account,
-        app,
+        app: Flask,
         user_info,
         mock_account,
         allow_register,
@@ -505,7 +505,7 @@ class TestAccountGeneration:
         mock_register_service,
         mock_feature_service,
         mock_get_account,
-        app,
+        app: Flask,
     ):
         user_info = OAuthUserInfo(id="123", name="Test User", email="Upper@Example.com")
         mock_feature_service.get_system_features.return_value.is_allow_register = True
@@ -530,7 +530,7 @@ class TestAccountGeneration:
         mock_feature_service,
         mock_tenant_service,
         mock_get_account,
-        app,
+        app: Flask,
         user_info,
         mock_account,
     ):

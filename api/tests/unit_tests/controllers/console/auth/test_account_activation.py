@@ -185,7 +185,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
         mock_account,
     ):
@@ -263,7 +263,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
         mock_account,
     ):
@@ -312,7 +312,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
         mock_account,
         language,
@@ -358,7 +358,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
     ):
         """
@@ -398,7 +398,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
     ):
         """
@@ -438,7 +438,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        app,
+        app: Flask,
         mock_invitation,
         mock_account,
     ):

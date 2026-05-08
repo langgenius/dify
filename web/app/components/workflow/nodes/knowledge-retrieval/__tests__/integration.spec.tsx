@@ -427,7 +427,7 @@ describe('knowledge-retrieval path', () => {
       await user.click(screen.getByRole('button', { name: /workflow.nodes.knowledgeRetrieval.metadata.options.disabled.title/i }))
       await user.click(screen.getByText('workflow.nodes.knowledgeRetrieval.metadata.options.manual.title'))
 
-      expect(onSelect).toHaveBeenCalledWith(MetadataFilteringModeEnum.manual)
+      expect(onSelect.mock.calls[0]?.[0]).toBe(MetadataFilteringModeEnum.manual)
     })
 
     it('should remove stale metadata conditions and open the manual metadata panel', async () => {

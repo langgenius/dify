@@ -75,14 +75,15 @@ console_ns.schema_model(
 
 
 def _convert_values_to_json_serializable_object(value: Segment):
-    if isinstance(value, FileSegment):
-        return value.value.model_dump()
-    elif isinstance(value, ArrayFileSegment):
-        return [i.model_dump() for i in value.value]
-    elif isinstance(value, SegmentGroup):
-        return [_convert_values_to_json_serializable_object(i) for i in value.value]
-    else:
-        return value.value
+    match value:
+        case FileSegment():
+            return value.value.model_dump()
+        case ArrayFileSegment():
+            return [i.model_dump() for i in value.value]
+        case SegmentGroup():
+            return [_convert_values_to_json_serializable_object(i) for i in value.value]
+        case _:
+            return value.value
 
 
 def _serialize_var_value(variable: WorkflowDraftVariable):

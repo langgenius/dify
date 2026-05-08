@@ -133,8 +133,8 @@ vi.mock('@/app/components/tools/setting/build-in/config-credentials', () => ({
 }))
 
 vi.mock('@/app/components/tools/workflow-tool', () => ({
-  default: ({ onHide, onSave, onRemove }: { onHide: () => void, onSave: (data: unknown) => void, onRemove: () => void }) => (
-    <div data-testid="workflow-tool-modal">
+  WorkflowToolDrawer: ({ onHide, onSave, onRemove }: { onHide: () => void, onSave: (data: unknown) => void, onRemove: () => void }) => (
+    <div data-testid="workflow-tool-drawer">
       <button data-testid="wf-save" onClick={() => onSave({ name: 'test' })}>Save</button>
       <button data-testid="wf-remove" onClick={onRemove}>Remove</button>
       <button data-testid="wf-close" onClick={onHide}>Close</button>
@@ -581,7 +581,7 @@ describe('ProviderDetail', () => {
       })
     })
 
-    it('saves workflow tool via workflow modal', async () => {
+    it('saves workflow tool via workflow drawer', async () => {
       render(
         <ProviderDetail
           collection={createMockCollection({ type: CollectionType.workflow })}
@@ -593,7 +593,7 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
-      expect(screen.getByTestId('workflow-tool-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('workflow-tool-drawer'))!.toBeInTheDocument()
       await act(async () => {
         fireEvent.click(screen.getByTestId('wf-save'))
       })
@@ -627,7 +627,7 @@ describe('ProviderDetail', () => {
     })
   })
 
-  describe('Modal Close Actions', () => {
+  describe('Overlay Close Actions', () => {
     it('closes ConfigCredential when cancel is clicked', async () => {
       render(
         <ProviderDetail
@@ -665,7 +665,7 @@ describe('ProviderDetail', () => {
       expect(screen.queryByTestId('edit-custom-modal')).not.toBeInTheDocument()
     })
 
-    it('closes WorkflowToolModal via onHide', async () => {
+    it('closes WorkflowToolDrawer via onHide', async () => {
       render(
         <ProviderDetail
           collection={createMockCollection({ type: CollectionType.workflow })}
@@ -677,9 +677,9 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.createTool.editAction'))
-      expect(screen.getByTestId('workflow-tool-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('workflow-tool-drawer'))!.toBeInTheDocument()
       fireEvent.click(screen.getByTestId('wf-close'))
-      expect(screen.queryByTestId('workflow-tool-modal')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('workflow-tool-drawer')).not.toBeInTheDocument()
     })
   })
 

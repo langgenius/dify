@@ -20,10 +20,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import CheckboxList from '@/app/components/base/checkbox-list'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
-import Tooltip from '@/app/components/base/tooltip'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 
@@ -95,7 +95,7 @@ export type BaseFieldProps = {
   formSchema: FormSchema
   field: AnyFieldApi
   disabled?: boolean
-  onChange?: (field: string, value: any) => void
+  onChange?: (field: string, value: unknown) => void
   fieldState?: FieldState
 }
 
@@ -156,7 +156,7 @@ const BaseField = ({
   }, [options])
 
   const watchedValues = useStore(field.form.store, (s) => {
-    const result: Record<string, any> = {}
+    const result: Record<string, unknown> = {}
     for (const variable of watchedVariables)
       result[variable] = s.values[variable]
 
@@ -201,7 +201,7 @@ const BaseField = ({
     }))
   }, [dynamicOptionsData, renderI18nObject])
 
-  const handleChange = useCallback((value: any) => {
+  const handleChange = useCallback((value: unknown) => {
     field.handleChange(value)
     onChange?.(field.name, value)
   }, [field, onChange])
@@ -223,12 +223,10 @@ const BaseField = ({
               <span className="ml-1 text-text-destructive-secondary">*</span>
             )
           }
-          {tooltip && (
-            <Tooltip
-              triggerTestId="base-field-tooltip-trigger"
-              popupContent={<div className="w-[200px]">{translatedTooltip}</div>}
-              triggerClassName="ml-0.5 w-4 h-4"
-            />
+          {translatedTooltip && (
+            <Infotip aria-label={translatedTooltip} className="ml-0.5" popupClassName="w-[200px]">
+              {translatedTooltip}
+            </Infotip>
           )}
         </div>
         <div className={cn(inputContainerClassName)}>

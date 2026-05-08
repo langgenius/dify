@@ -205,7 +205,7 @@ vi.mock('@/app/components/tools/setting/build-in/config-credentials', () => ({
 }))
 
 vi.mock('@/app/components/tools/workflow-tool', () => ({
-  default: ({ onHide, onSave, onRemove }: { payload: unknown, onHide: () => void, onSave: (d: unknown) => void, onRemove: () => void }) => (
+  WorkflowToolDrawer: ({ onHide, onSave, onRemove }: { payload: unknown, onHide: () => void, onSave: (d: unknown) => void, onRemove: () => void }) => (
     <div data-testid="workflow-tool-modal">
       <button data-testid="wf-modal-hide" onClick={onHide}>Hide</button>
       <button data-testid="wf-modal-save" onClick={() => onSave({ name: 'updated-wf' })}>Save</button>
