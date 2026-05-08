@@ -1,5 +1,6 @@
 """Final working unit tests for admin endpoints - tests business logic directly."""
 
+from pytest_mock import MockerFixture
 import uuid
 from unittest.mock import Mock, PropertyMock, patch
 
@@ -18,7 +19,7 @@ from models.model import App, InstalledApp, RecommendedApp
 
 
 @pytest.fixture(autouse=True)
-def bypass_only_edition_cloud(mocker):
+def bypass_only_edition_cloud(mocker: MockerFixture):
     """
     Bypass only_edition_cloud decorator by setting EDITION to "CLOUD".
     """
@@ -29,7 +30,7 @@ def bypass_only_edition_cloud(mocker):
 
 
 @pytest.fixture
-def mock_admin_auth(mocker):
+def mock_admin_auth(mocker: MockerFixture):
     """
     Provide valid admin authentication for controller tests.
     """
@@ -44,7 +45,7 @@ def mock_admin_auth(mocker):
 
 
 @pytest.fixture
-def mock_console_payload(mocker):
+def mock_console_payload(mocker: MockerFixture):
     payload = {
         "app_id": str(uuid.uuid4()),
         "language": "en-US",
@@ -62,7 +63,7 @@ def mock_console_payload(mocker):
 
 
 @pytest.fixture
-def mock_banner_payload(mocker):
+def mock_banner_payload(mocker: MockerFixture):
     mocker.patch(
         "flask_restx.namespace.Namespace.payload",
         new_callable=PropertyMock,
@@ -78,7 +79,7 @@ def mock_banner_payload(mocker):
 
 
 @pytest.fixture
-def mock_session_factory(mocker):
+def mock_session_factory(mocker: MockerFixture):
     mock_session = Mock()
     mock_session.execute = Mock()
     mock_session.add = Mock()
