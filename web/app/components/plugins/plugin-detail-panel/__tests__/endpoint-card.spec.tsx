@@ -9,6 +9,7 @@ const mockDisableEndpoint = vi.fn()
 const mockDeleteEndpoint = vi.fn()
 const mockUpdateEndpoint = vi.fn()
 const mockToastNotify = vi.fn()
+const mockWriteTextToClipboard = vi.fn()
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
@@ -70,6 +71,10 @@ vi.mock('@/service/use-endpoints', () => ({
         onSuccess()
     },
   }),
+}))
+
+vi.mock('@/utils/clipboard', () => ({
+  writeTextToClipboard: (...args: unknown[]) => mockWriteTextToClipboard(...args),
 }))
 
 vi.mock('@/app/components/header/indicator', () => ({
@@ -136,6 +141,7 @@ const mockPluginDetail: PluginDetail = {
 describe('EndpointCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWriteTextToClipboard.mockResolvedValue(undefined)
     // Reset failure flags
     failureFlags.enable = false
     failureFlags.disable = false
@@ -233,6 +239,14 @@ describe('EndpointCard', () => {
       fireEvent.click(allButtons[0]!)
 
       expect(screen.getByTestId('endpoint-modal'))!.toBeInTheDocument()
+    })
+
+    it('should copy endpoint url when copy action is clicked', () => {
+      render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.copy' }))
+
+      expect(mockWriteTextToClipboard).toHaveBeenCalledWith('https://api.example.com/api/test')
     })
 
     it('should call updateEndpoint when save in modal', () => {

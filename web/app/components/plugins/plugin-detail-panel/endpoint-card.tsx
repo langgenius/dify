@@ -12,7 +12,6 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
-import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +25,7 @@ import {
   useEnableEndpoint,
   useUpdateEndpoint,
 } from '@/service/use-endpoints'
+import { writeTextToClipboard } from '@/utils/clipboard'
 import EndpointModal from './endpoint-modal'
 import { NAME_FIELD } from './utils'
 
@@ -127,8 +127,9 @@ const EndpointCard = ({
 
   const [isCopied, setIsCopied] = useState(false)
   const handleCopy = (value: string) => {
-    copy(value)
-    setIsCopied(true)
+    void writeTextToClipboard(value).then(() => {
+      setIsCopied(true)
+    })
   }
 
   const handleDisableConfirmOpenChange = (open: boolean) => {

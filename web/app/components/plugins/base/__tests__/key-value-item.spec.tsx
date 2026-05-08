@@ -16,15 +16,16 @@ vi.mock('@/app/components/base/action-button', () => ({
   ),
 }))
 
-const mockCopy = vi.fn()
-vi.mock('copy-to-clipboard', () => ({
-  default: (...args: unknown[]) => mockCopy(...args),
+const mockWriteTextToClipboard = vi.fn()
+vi.mock('@/utils/clipboard', () => ({
+  writeTextToClipboard: (...args: unknown[]) => mockWriteTextToClipboard(...args),
 }))
 
 describe('KeyValueItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    mockWriteTextToClipboard.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -44,10 +45,10 @@ describe('KeyValueItem', () => {
     expect(screen.queryByText('sk-secret')).not.toBeInTheDocument()
   })
 
-  it('copies actual value (not masked) when copy button is clicked', () => {
+  it('copies actual value (not masked) when copy button is clicked', async () => {
     render(<KeyValueItem label="Key" value="sk-secret" maskedValue="sk-***" />)
     fireEvent.click(screen.getByTestId('action-button'))
-    expect(mockCopy).toHaveBeenCalledWith('sk-secret')
+    expect(mockWriteTextToClipboard).toHaveBeenCalledWith('sk-secret')
   })
 
   it('renders copy tooltip', () => {

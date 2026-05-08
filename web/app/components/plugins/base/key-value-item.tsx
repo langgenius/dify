@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import { writeTextToClipboard } from '@/utils/clipboard'
 import { CopyCheck } from '../../base/icons/src/vender/line/files'
 
 type Props = {
@@ -27,8 +27,9 @@ const KeyValueItem: FC<Props> = ({
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
   const handleCopy = useCallback(() => {
-    copy(value)
-    setIsCopied(true)
+    void writeTextToClipboard(value).then(() => {
+      setIsCopied(true)
+    })
   }, [value])
 
   useEffect(() => {
