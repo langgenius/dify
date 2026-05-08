@@ -20,7 +20,7 @@ import Tab, { TypeEnum } from './tab'
 type Props = {
   appId: string
   app?: AppType
-  category?: string
+  categories?: string[]
   onClose: () => void
   onCreate: () => void
 }
@@ -28,7 +28,7 @@ type Props = {
 const TryApp: FC<Props> = ({
   appId,
   app,
-  category,
+  categories,
   onClose,
   onCreate,
 }) => {
@@ -81,7 +81,7 @@ const TryApp: FC<Props> = ({
               className="w-[360px] shrink-0"
               appDetail={appDetail}
               appId={appId}
-              category={category}
+              categories={categories}
               onCreate={onCreate}
             />
           </div>

@@ -77,7 +77,10 @@ const Apps = ({
   const filteredList = useMemo(() => {
     if (!data)
       return []
-    return data.allList.filter(item => currCategory === allCategoriesEn || item.category === currCategory)
+    return data.allList.filter(item => (
+      currCategory === allCategoriesEn
+      || item.categories?.includes(currCategory)
+    ))
   }, [data, currCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
@@ -277,7 +280,7 @@ const Apps = ({
         <TryApp
           appId={currentTryApp?.appId || ''}
           app={currentTryApp?.app}
-          category={currentTryApp?.app?.category}
+          categories={currentTryApp?.app?.categories}
           onClose={hideTryAppPanel}
           onCreate={handleShowFromTryApp}
         />
