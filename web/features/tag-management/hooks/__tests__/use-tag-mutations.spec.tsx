@@ -6,11 +6,11 @@ import { useApplyTagBindingsMutation } from '../use-tag-mutations'
 
 const {
   bindTag,
-  listQueryKey,
+  listKey,
   unbindTag,
 } = vi.hoisted(() => ({
   bindTag: vi.fn(),
-  listQueryKey: vi.fn((options: { input: { query: { type: string } } }) => ['console', 'tags', 'list', options.input.query.type]),
+  listKey: vi.fn((options: { type: 'query', input: { query: { type: string } } }) => ['console', 'tags', 'list', 'query', options.input.query.type]),
   unbindTag: vi.fn(),
 }))
 
@@ -24,7 +24,7 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     tags: {
       list: {
-        queryKey: listQueryKey,
+        key: listKey,
       },
     },
   },
@@ -92,8 +92,16 @@ describe('useTagMutations', () => {
       })
       await waitFor(() => {
         expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['console', 'tags', 'list', 'app'],
+          queryKey: ['console', 'tags', 'list', 'query', 'app'],
         })
+      })
+      expect(listKey).toHaveBeenCalledWith({
+        type: 'query',
+        input: {
+          query: {
+            type: 'app',
+          },
+        },
       })
     })
 
@@ -114,8 +122,16 @@ describe('useTagMutations', () => {
       expect(unbindTag).not.toHaveBeenCalled()
       await waitFor(() => {
         expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['console', 'tags', 'list', 'knowledge'],
+          queryKey: ['console', 'tags', 'list', 'query', 'knowledge'],
         })
+      })
+      expect(listKey).toHaveBeenCalledWith({
+        type: 'query',
+        input: {
+          query: {
+            type: 'knowledge',
+          },
+        },
       })
     })
   })

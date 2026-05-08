@@ -43,7 +43,8 @@ export const useApplyTagBindingsMutation = () => {
     },
     onSettled: (_data, _error, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: consoleQuery.tags.list.queryKey({
+        queryKey: consoleQuery.tags.list.key({
+          type: 'query',
           input: {
             query: {
               type: variables.type,
