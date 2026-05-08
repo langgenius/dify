@@ -1,14 +1,12 @@
-import type { WorkflowCommentList } from '@/service/workflow-comment'
+import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import CommentsPanel from '../index'
 
 const mockHandleCommentIconClick = vi.hoisted(() => vi.fn())
-const mockLoadComments = vi.hoisted(() => vi.fn())
+const mockHandleCommentResolve = vi.hoisted(() => vi.fn())
 const mockSetActiveCommentId = vi.hoisted(() => vi.fn())
 const mockSetControlMode = vi.hoisted(() => vi.fn())
 const mockSetShowResolvedComments = vi.hoisted(() => vi.fn())
-const mockResolveWorkflowComment = vi.hoisted(() => vi.fn())
-const mockEmitCommentsUpdate = vi.hoisted(() => vi.fn())
 
 const commentFixtures: WorkflowCommentList[] = [
   {
@@ -90,19 +88,9 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-comment', () => ({
   useWorkflowComment: () => ({
     comments: commentFixtures,
     loading: false,
-    loadComments: (...args: unknown[]) => mockLoadComments(...args),
     handleCommentIconClick: (...args: unknown[]) => mockHandleCommentIconClick(...args),
+    handleCommentResolve: (...args: unknown[]) => mockHandleCommentResolve(...args),
   }),
-}))
-
-vi.mock('@/service/workflow-comment', () => ({
-  resolveWorkflowComment: (...args: unknown[]) => mockResolveWorkflowComment(...args),
-}))
-
-vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', () => ({
-  collaborationManager: {
-    emitCommentsUpdate: (...args: unknown[]) => mockEmitCommentsUpdate(...args),
-  },
 }))
 
 vi.mock('@/app/components/base/user-avatar-list', () => ({
@@ -122,8 +110,7 @@ describe('CommentsPanel', () => {
     vi.clearAllMocks()
     storeState.activeCommentId = null
     storeState.showResolvedComments = true
-    mockResolveWorkflowComment.mockResolvedValue({})
-    mockLoadComments.mockResolvedValue(undefined)
+    mockHandleCommentResolve.mockResolvedValue(undefined)
   })
 
   it('filters comments and selects a thread', () => {
@@ -149,9 +136,7 @@ describe('CommentsPanel', () => {
     fireEvent.click(resolveIcons[0]!)
 
     await waitFor(() => {
-      expect(mockResolveWorkflowComment).toHaveBeenCalledWith('app-1', 'c-1')
-      expect(mockEmitCommentsUpdate).toHaveBeenCalledWith('app-1')
-      expect(mockLoadComments).toHaveBeenCalled()
+      expect(mockHandleCommentResolve).toHaveBeenCalledWith('c-1')
       expect(mockSetActiveCommentId).toHaveBeenCalledWith('c-1')
     })
   })

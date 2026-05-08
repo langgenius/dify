@@ -18,11 +18,10 @@ vi.mock('@/app/components/base/drawer-plus', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/emoji-picker', () => ({
-  default: ({ onSelect, onClose }: { onSelect: (icon: string, background: string) => void, onClose: () => void }) => (
+vi.mock('@/app/components/base/emoji-picker/Inner', () => ({
+  default: ({ onSelect }: { onSelect: (icon: string, background: string) => void }) => (
     <div data-testid="emoji-picker">
       <button data-testid="select-emoji" onClick={() => onSelect('🚀', '#000000')}>Emoji</button>
-      <button data-testid="close-emoji-picker" onClick={onClose}>Close</button>
     </div>
   ),
 }))
@@ -129,6 +128,7 @@ describe('WorkflowToolAsModal', () => {
     await user.click(screen.getByTestId('append-label'))
     await user.click(screen.getByTestId('app-icon'))
     await user.click(screen.getByTestId('select-emoji'))
+    await user.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
@@ -195,6 +195,6 @@ describe('WorkflowToolAsModal', () => {
       />,
     )
 
-    expect(screen.getAllByText('tools.createTool.toolOutput.reservedParameterDuplicateTip').length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId('reserved-output-warning').length).toBeGreaterThan(0)
   })
 })

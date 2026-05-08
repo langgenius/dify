@@ -21,7 +21,7 @@ import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
@@ -233,7 +233,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 <SelectTrigger className="h-8 grow">
                   {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
                 </SelectTrigger>
-                <SelectContent popupClassName="w-(--anchor-width)">
+                <SelectContent>
                   {pickerProps.selectItems.map(item => (
                     <SelectItem key={item.value} value={String(item.value)}>
                       <SelectItemText>{item.name}</SelectItemText>
@@ -278,7 +278,6 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {showVariableSelector && (
               <VarReferencePicker
-                zIndex={1001}
                 className="h-8 grow"
                 readonly={false}
                 isShowNodeName

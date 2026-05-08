@@ -147,7 +147,7 @@ const AddExtractParameter: FC<Props> = ({
                   <SelectTrigger className="w-full capitalize">
                     {param.type}
                   </SelectTrigger>
-                  <SelectContent popupClassName="w-(--anchor-width)">
+                  <SelectContent>
                     {TYPES.map(type => (
                       <SelectItem key={type} value={type} className="capitalize">
                         <SelectItemText className="capitalize">{type}</SelectItemText>

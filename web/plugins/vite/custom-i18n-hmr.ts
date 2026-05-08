@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite'
 import fs from 'node:fs'
-import { injectClientSnippet, normalizeViteModuleId } from './utils'
+import { injectClientSnippet, normalizeViteModuleId } from './utils.ts'
 
 type CustomI18nHmrPluginOptions = {
   injectTarget: string

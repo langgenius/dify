@@ -1,13 +1,13 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { capitalize } from 'es-toolkit/string'
 import { useState } from 'react'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 
 export type ConditionValueMethodProps = {
   valueMethod?: string
@@ -24,23 +24,27 @@ const ConditionValueMethod = ({
   const [open, setOpen] = useState(false)
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={{ mainAxis: 4, crossAxis: 0 }}
     >
-      <PortalToFollowElemTrigger asChild onClick={() => setOpen(v => !v)}>
-        <Button
-          className="shrink-0"
-          variant="ghost"
-          size="small"
-        >
-          {capitalize(valueMethod)}
-          <RiArrowDownSLine className="ml-px h-3.5 w-3.5" />
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1000">
+      <PopoverTrigger
+        render={(
+          <Button
+            className="shrink-0"
+            variant="ghost"
+            size="small"
+          >
+            {capitalize(valueMethod)}
+            <RiArrowDownSLine className="ml-px h-3.5 w-3.5" />
+          </Button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
         <div className="w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {
             options.map(option => (
@@ -63,8 +67,8 @@ const ConditionValueMethod = ({
             ))
           }
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

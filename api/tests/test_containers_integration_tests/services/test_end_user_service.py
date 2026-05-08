@@ -4,6 +4,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account, Tenant, TenantAccountJoin
@@ -102,7 +103,7 @@ class TestEndUserServiceGetOrCreateEndUser:
         """Provide test data factory."""
         return TestEndUserServiceFactory()
 
-    def test_get_or_create_end_user_with_custom_user_id(self, db_session_with_containers, factory):
+    def test_get_or_create_end_user_with_custom_user_id(self, db_session_with_containers: Session, factory):
         """Test getting or creating end user with custom user_id."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -118,7 +119,7 @@ class TestEndUserServiceGetOrCreateEndUser:
         assert result.type == InvokeFrom.SERVICE_API
         assert result.is_anonymous is False
 
-    def test_get_or_create_end_user_without_user_id(self, db_session_with_containers, factory):
+    def test_get_or_create_end_user_without_user_id(self, db_session_with_containers: Session, factory):
         """Test getting or creating end user without user_id uses default session."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -131,7 +132,7 @@ class TestEndUserServiceGetOrCreateEndUser:
         # Verify _is_anonymous is set correctly (property always returns False)
         assert result._is_anonymous is True
 
-    def test_get_existing_end_user(self, db_session_with_containers, factory):
+    def test_get_existing_end_user(self, db_session_with_containers: Session, factory):
         """Test retrieving an existing end user."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -167,7 +168,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         """Provide test data factory."""
         return TestEndUserServiceFactory()
 
-    def test_create_end_user_service_api_type(self, db_session_with_containers, factory):
+    def test_create_end_user_service_api_type(self, db_session_with_containers: Session, factory):
         """Test creating new end user with SERVICE_API type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -189,7 +190,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result.app_id == app_id
         assert result.session_id == user_id
 
-    def test_create_end_user_web_app_type(self, db_session_with_containers, factory):
+    def test_create_end_user_web_app_type(self, db_session_with_containers: Session, factory):
         """Test creating new end user with WEB_APP type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -209,7 +210,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result.type == InvokeFrom.WEB_APP
 
     @patch("services.end_user_service.logger")
-    def test_upgrade_legacy_end_user_type(self, mock_logger, db_session_with_containers, factory):
+    def test_upgrade_legacy_end_user_type(self, mock_logger, db_session_with_containers: Session, factory):
         """Test upgrading legacy end user with different type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -243,7 +244,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert "Upgrading legacy EndUser" in log_call
 
     @patch("services.end_user_service.logger")
-    def test_get_existing_end_user_matching_type(self, mock_logger, db_session_with_containers, factory):
+    def test_get_existing_end_user_matching_type(self, mock_logger, db_session_with_containers: Session, factory):
         """Test retrieving existing end user with matching type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -272,7 +273,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result.type == InvokeFrom.SERVICE_API
         mock_logger.info.assert_not_called()
 
-    def test_create_anonymous_user_with_default_session(self, db_session_with_containers, factory):
+    def test_create_anonymous_user_with_default_session(self, db_session_with_containers: Session, factory):
         """Test creating anonymous user when user_id is None."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -293,7 +294,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result._is_anonymous is True
         assert result.external_user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
-    def test_query_ordering_prioritizes_matching_type(self, db_session_with_containers, factory):
+    def test_query_ordering_prioritizes_matching_type(self, db_session_with_containers: Session, factory):
         """Test that query ordering prioritizes records with matching type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -328,7 +329,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result.id == matching.id
         assert result.id != non_matching.id
 
-    def test_external_user_id_matches_session_id(self, db_session_with_containers, factory):
+    def test_external_user_id_matches_session_id(self, db_session_with_containers: Session, factory):
         """Test that external_user_id is set to match session_id."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -357,7 +358,9 @@ class TestEndUserServiceGetOrCreateEndUserByType:
             InvokeFrom.DEBUGGER,
         ],
     )
-    def test_create_end_user_with_different_invoke_types(self, db_session_with_containers, invoke_type, factory):
+    def test_create_end_user_with_different_invoke_types(
+        self, db_session_with_containers: Session, invoke_type, factory
+    ):
         """Test creating end users with different InvokeFrom types."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -385,7 +388,7 @@ class TestEndUserServiceGetEndUserById:
         """Provide test data factory."""
         return TestEndUserServiceFactory()
 
-    def test_get_end_user_by_id_returns_end_user(self, db_session_with_containers, factory):
+    def test_get_end_user_by_id_returns_end_user(self, db_session_with_containers: Session, factory):
         app = factory.create_app_and_account(db_session_with_containers)
         existing_user = factory.create_end_user(
             db_session_with_containers,
@@ -404,7 +407,7 @@ class TestEndUserServiceGetEndUserById:
         assert result is not None
         assert result.id == existing_user.id
 
-    def test_get_end_user_by_id_returns_none(self, db_session_with_containers, factory):
+    def test_get_end_user_by_id_returns_none(self, db_session_with_containers: Session, factory):
         app = factory.create_app_and_account(db_session_with_containers)
 
         result = EndUserService.get_end_user_by_id(
@@ -423,7 +426,7 @@ class TestEndUserServiceCreateBatch:
     def factory(self):
         return TestEndUserServiceFactory()
 
-    def _create_multiple_apps(self, db_session_with_containers, factory, count: int = 3):
+    def _create_multiple_apps(self, db_session_with_containers: Session, factory, count: int = 3):
         """Create multiple apps under the same tenant."""
         first_app = factory.create_app_and_account(db_session_with_containers)
         tenant_id = first_app.tenant_id
@@ -452,13 +455,13 @@ class TestEndUserServiceCreateBatch:
         all_apps = db_session_with_containers.query(App).filter(App.tenant_id == tenant_id).all()
         return tenant_id, all_apps
 
-    def test_create_batch_empty_app_ids(self, db_session_with_containers):
+    def test_create_batch_empty_app_ids(self, db_session_with_containers: Session):
         result = EndUserService.create_end_user_batch(
             type=InvokeFrom.SERVICE_API, tenant_id=str(uuid4()), app_ids=[], user_id="user-1"
         )
         assert result == {}
 
-    def test_create_batch_creates_users_for_all_apps(self, db_session_with_containers, factory):
+    def test_create_batch_creates_users_for_all_apps(self, db_session_with_containers: Session, factory):
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=3)
         app_ids = [a.id for a in apps]
         user_id = f"user-{uuid4()}"
@@ -473,7 +476,7 @@ class TestEndUserServiceCreateBatch:
             assert result[app_id].session_id == user_id
             assert result[app_id].type == InvokeFrom.SERVICE_API
 
-    def test_create_batch_default_session_id(self, db_session_with_containers, factory):
+    def test_create_batch_default_session_id(self, db_session_with_containers: Session, factory):
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=2)
         app_ids = [a.id for a in apps]
 
@@ -486,7 +489,7 @@ class TestEndUserServiceCreateBatch:
             assert end_user.session_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
             assert end_user._is_anonymous is True
 
-    def test_create_batch_deduplicate_app_ids(self, db_session_with_containers, factory):
+    def test_create_batch_deduplicate_app_ids(self, db_session_with_containers: Session, factory):
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=2)
         app_ids = [apps[0].id, apps[1].id, apps[0].id, apps[1].id]
         user_id = f"user-{uuid4()}"
@@ -497,7 +500,7 @@ class TestEndUserServiceCreateBatch:
 
         assert len(result) == 2
 
-    def test_create_batch_returns_existing_users(self, db_session_with_containers, factory):
+    def test_create_batch_returns_existing_users(self, db_session_with_containers: Session, factory):
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=2)
         app_ids = [a.id for a in apps]
         user_id = f"user-{uuid4()}"
@@ -516,7 +519,7 @@ class TestEndUserServiceCreateBatch:
         for app_id in app_ids:
             assert first_result[app_id].id == second_result[app_id].id
 
-    def test_create_batch_partial_existing_users(self, db_session_with_containers, factory):
+    def test_create_batch_partial_existing_users(self, db_session_with_containers: Session, factory):
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=3)
         user_id = f"user-{uuid4()}"
 
@@ -545,7 +548,7 @@ class TestEndUserServiceCreateBatch:
         "invoke_type",
         [InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP, InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER],
     )
-    def test_create_batch_all_invoke_types(self, db_session_with_containers, invoke_type, factory):
+    def test_create_batch_all_invoke_types(self, db_session_with_containers: Session, invoke_type, factory):
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=1)
         user_id = f"user-{uuid4()}"
 

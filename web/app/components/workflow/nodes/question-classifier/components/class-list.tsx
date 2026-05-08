@@ -17,9 +17,6 @@ import Item from './class-item'
 
 const i18nPrefix = 'nodes.questionClassifiers'
 
-// Layout constants
-const HANDLE_SIDE_WIDTH = 3 // Width offset for drag handle spacing
-
 type Props = {
   nodeId: string
   list: Topic[]
@@ -107,7 +104,7 @@ const ClassList: FC<Props> = ({
       {!collapsed && (
         <div
           ref={listContainerRef}
-          className={cn('overflow-y-visible', `pl-${HANDLE_SIDE_WIDTH}`)}
+          className="overflow-y-visible pl-3"
         >
           <ReactSortable
             list={list.map(item => ({ ...item }))}
@@ -130,8 +127,7 @@ const ClassList: FC<Props> = ({
                   <div
                     key={item.id}
                     className={cn(
-                      'group relative rounded-[10px] bg-components-panel-bg',
-                      `-ml-${HANDLE_SIDE_WIDTH} min-h-[40px] px-0 py-0`,
+                      'group relative -ml-3 min-h-[40px] rounded-[10px] bg-components-panel-bg px-0 py-0',
                     )}
                     style={{
                       // Performance hint for browser

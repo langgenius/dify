@@ -7,7 +7,7 @@ import {
   isValidElement,
   useEffect,
 } from 'react'
-import ShortcutsName from '../shortcuts-name'
+import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 
 export type ShortcutMapping = {
   option: TriggerOption
@@ -39,7 +39,7 @@ export const OptionRow = ({
         <span className="ml-2 truncate">{option.name}</span>
       </div>
       {shortcutKey && (
-        <ShortcutsName keys={[shortcutKey]} className="ml-2" textColor="secondary" />
+        <ShortcutKbd hotkey={shortcutKey} className="ml-2" textColor="secondary" />
       )}
     </DropdownMenuItem>
   )
@@ -111,8 +111,8 @@ export const SingleOptionTrigger = ({
   }
 
   return (
-    <span onClick={handleRunClick}>
+    <button type="button" onClick={handleRunClick}>
       {children}
-    </span>
+    </button>
   )
 }

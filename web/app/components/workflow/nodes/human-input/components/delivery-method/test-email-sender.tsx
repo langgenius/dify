@@ -3,16 +3,17 @@ import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
+  Var,
 } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowRightSFill, RiCloseLine } from '@remixicon/react'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { RiArrowRightSFill } from '@remixicon/react'
 import { noop, unionBy } from 'es-toolkit/compat'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
-import Modal from '@/app/components/base/modal'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
 import {
@@ -30,11 +31,11 @@ import EmailInput from './recipient/email-input'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type EmailConfigureModalProps = {
+type EmailSenderModalProps = {
   nodeId: string
   deliveryId: string
-  isShow: boolean
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   jumpToEmailConfigModal: () => void
   config?: EmailConfig
   formContent?: string
@@ -48,18 +49,22 @@ const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
   if (!targetVar)
     return undefined
 
-  let curr: any = targetVar.vars
+  let curr: Var[] | undefined = targetVar.vars
   for (let i = 1; i < valueSelector.length; i++) {
     const key = valueSelector[i]
     const isLast = i === valueSelector.length - 1
+    const currentVar: Var | undefined = curr?.find(v => v.variable.replace('conversation.', '') === key)
 
-    if (Array.isArray(curr))
-      curr = curr.find((v: any) => v.variable.replace('conversation.', '') === key)
+    if (!currentVar)
+      return undefined
 
     if (isLast)
-      return curr
-    else if (curr?.type === VarType.object || curr?.type === VarType.file)
-      curr = curr.children
+      return currentVar
+
+    if ((currentVar.type === VarType.object || currentVar.type === VarType.file) && Array.isArray(currentVar.children))
+      curr = currentVar.children
+    else
+      return undefined
   }
 
   return undefined
@@ -68,15 +73,15 @@ const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
 const EmailSenderModal = ({
   nodeId,
   deliveryId,
-  isShow,
-  onClose,
+  open,
+  onOpenChange,
   jumpToEmailConfigModal,
   config,
   formContent,
   formInputs,
   nodesOutputVars = [],
   availableNodes = [],
-}: EmailConfigureModalProps) => {
+}: EmailSenderModalProps) => {
   const { t } = useTranslation()
   const { userProfile, currentWorkspace } = useAppContext()
   const appDetail = useAppStore(state => state.appDetail)
@@ -104,7 +109,7 @@ const EmailSenderModal = ({
       return {
         label: {
           nodeType: varInfo?.type,
-          nodeName: varInfo?.title || availableNodes[0]?.data.title!, // default start node title
+          nodeName: varInfo?.title || availableNodes[0]?.data.title || '',
           variable: isSystemVar(item) ? item.join('.') : item[item.length - 1]!,
           isChatVar: isConversationVar(item),
         },
@@ -178,194 +183,194 @@ const EmailSenderModal = ({
 
   if (done) {
     return (
-      <Modal
-        isShow={isShow}
-        onClose={noop}
-        className="relative max-w-[480px]! p-0!"
+      <Dialog
+        open={open}
+        onOpenChange={onOpenChange}
       >
-        <div className="space-y-2 p-6 pb-3">
-          <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.done`, { ns: 'workflow' })}</div>
-          {debugEnabled && (
-            <div className="system-md-regular text-text-secondary">
-              <Trans
-                i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugDone`}
-                ns="workflow"
-                components={{ email: <span className="system-md-semibold text-text-secondary"></span> }}
-                values={{ email: userProfile.email }}
+        <DialogContent>
+          <div className="space-y-2">
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.done`, { ns: 'workflow' })}</DialogTitle>
+            {debugEnabled && (
+              <div className="system-md-regular text-text-secondary">
+                <Trans
+                  i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugDone`}
+                  ns="workflow"
+                  components={{ email: <span className="system-md-semibold text-text-secondary"></span> }}
+                  values={{ email: userProfile.email }}
+                />
+              </div>
+            )}
+            {!debugEnabled && onlyWholeTeam && (
+              <div className="system-md-regular text-text-secondary">
+                <Trans
+                  i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone2`}
+                  ns="workflow"
+                  components={{ team: <span className="system-md-medium text-text-secondary"></span> }}
+                  values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
+                />
+              </div>
+            )}
+            {!debugEnabled && onlySpecificUsers && (
+              <div className="system-md-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone3`, { ns: 'workflow' })}</div>
+            )}
+            {!debugEnabled && combinedRecipients && (
+              <div className="system-md-regular text-text-secondary">
+                <Trans
+                  i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone1`}
+                  ns="workflow"
+                  components={{ team: <span className="system-md-medium text-text-secondary"></span> }}
+                  values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
+                />
+              </div>
+            )}
+          </div>
+          {(onlySpecificUsers || combinedRecipients) && !debugEnabled && (
+            <div className="mt-4">
+              <EmailInput
+                disabled
+                email={userProfile.email}
+                value={config?.recipients?.items}
+                list={accounts}
+                onDelete={noop}
+                onSelect={noop}
+                onAdd={noop}
               />
             </div>
           )}
+          <div className="mt-6 flex flex-row-reverse gap-2">
+            <Button
+              variant="primary"
+              className="w-[72px]"
+              onClick={() => onOpenChange(false)}
+            >
+              {t('operation.ok', { ns: 'common' })}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+    >
+      <DialogContent>
+        <DialogCloseButton />
+        <div className="space-y-1 pr-8">
+          <DialogTitle className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.title`, { ns: 'workflow' })}</DialogTitle>
+          {debugEnabled && (
+            <>
+              <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip`, { ns: 'workflow' })}</div>
+              <div className="system-sm-regular text-text-secondary">
+                <Trans
+                  i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip2`}
+                  ns="workflow"
+                  components={{ email: <span className="system-sm-semibold text-text-primary"></span> }}
+                  values={{ email: userProfile.email }}
+                />
+              </div>
+            </>
+          )}
           {!debugEnabled && onlyWholeTeam && (
-            <div className="system-md-regular text-text-secondary">
+            <div className="system-sm-regular text-text-secondary">
               <Trans
-                i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone2`}
+                i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip2`}
                 ns="workflow"
-                components={{ team: <span className="system-md-medium text-text-secondary"></span> }}
+                components={{ team: <span className="system-sm-semibold text-text-primary"></span> }}
                 values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
               />
             </div>
           )}
           {!debugEnabled && onlySpecificUsers && (
-            <div className="system-md-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone3`, { ns: 'workflow' })}</div>
+            <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip3`, { ns: 'workflow' })}</div>
           )}
           {!debugEnabled && combinedRecipients && (
-            <div className="system-md-regular text-text-secondary">
+            <div className="system-sm-regular text-text-secondary">
               <Trans
-                i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone1`}
+                i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip1`}
                 ns="workflow"
-                components={{ team: <span className="system-md-medium text-text-secondary"></span> }}
+                components={{ team: <span className="system-sm-semibold text-text-primary"></span> }}
                 values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
               />
             </div>
           )}
         </div>
         {(onlySpecificUsers || combinedRecipients) && !debugEnabled && (
-          <div className="px-5">
-            <EmailInput
-              disabled
-              email={userProfile.email}
-              value={config?.recipients?.items}
-              list={accounts}
-              onDelete={noop}
-              onSelect={noop}
-              onAdd={noop}
-            />
-          </div>
-        )}
-        <div className="flex flex-row-reverse gap-2 p-6 pt-5">
-          <Button
-            variant="primary"
-            className="w-[72px]"
-            onClick={onClose}
-          >
-            {t('operation.ok', { ns: 'common' })}
-          </Button>
-        </div>
-      </Modal>
-    )
-  }
-
-  return (
-    <Modal
-      isShow={isShow}
-      onClose={noop}
-      className="relative max-w-[480px]! p-0!"
-    >
-      <div className="absolute top-5 right-5 cursor-pointer p-1.5" onClick={onClose}>
-        <RiCloseLine className="h-5 w-5 text-text-tertiary" />
-      </div>
-      <div className="space-y-1 p-6 pb-3">
-        <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.title`, { ns: 'workflow' })}</div>
-        {debugEnabled && (
           <>
-            <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip`, { ns: 'workflow' })}</div>
-            <div className="system-sm-regular text-text-secondary">
+            <div className="mt-4">
+              <EmailInput
+                disabled
+                email={userProfile.email}
+                value={config?.recipients?.items}
+                list={accounts}
+                onDelete={noop}
+                onSelect={noop}
+                onAdd={noop}
+              />
+            </div>
+            <div className="mt-1 system-xs-regular text-text-tertiary">
               <Trans
-                i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip2`}
+                i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.tip`}
                 ns="workflow"
-                components={{ email: <span className="system-sm-semibold text-text-primary"></span> }}
-                values={{ email: userProfile.email }}
+                components={{
+                  strong: <span onClick={jumpToEmailConfigModal} className="cursor-pointer system-xs-regular text-text-accent"></span>,
+                }}
               />
             </div>
           </>
         )}
-        {!debugEnabled && onlyWholeTeam && (
-          <div className="system-sm-regular text-text-secondary">
-            <Trans
-              i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip2`}
-              ns="workflow"
-              components={{ team: <span className="system-sm-semibold text-text-primary"></span> }}
-              values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
-            />
-          </div>
-        )}
-        {!debugEnabled && onlySpecificUsers && (
-          <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip3`, { ns: 'workflow' })}</div>
-        )}
-        {!debugEnabled && combinedRecipients && (
-          <div className="system-sm-regular text-text-secondary">
-            <Trans
-              i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip1`}
-              ns="workflow"
-              components={{ team: <span className="system-sm-semibold text-text-primary"></span> }}
-              values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
-            />
-          </div>
-        )}
-      </div>
-      {(onlySpecificUsers || combinedRecipients) && !debugEnabled && (
-        <>
-          <div className="px-5">
-            <EmailInput
-              disabled
-              email={userProfile.email}
-              value={config?.recipients?.items}
-              list={accounts}
-              onDelete={noop}
-              onSelect={noop}
-              onAdd={noop}
-            />
-          </div>
-          <div className="px-6 pt-1 system-xs-regular text-text-tertiary">
-            <Trans
-              i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.tip`}
-              ns="workflow"
-              components={{
-                strong: <span onClick={jumpToEmailConfigModal} className="cursor-pointer system-xs-regular text-text-accent"></span>,
-              }}
-            />
-          </div>
-        </>
-      )}
-      {/* vars */}
-      {generatedInputs.length > 0 && (
-        <>
-          <div className="px-6">
-            <Divider className="mt-4! mb-2! h-px! w-12! bg-divider-regular" />
-          </div>
-          <div className="px-6 py-2">
-            <div className="group flex h-6 cursor-pointer items-center" onClick={() => setCollapsed(!collapsed)}>
-              <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
-              <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} />
+        {/* vars */}
+        {generatedInputs.length > 0 && (
+          <>
+            <div>
+              <Divider className="mt-4! mb-2! h-px! w-12! bg-divider-regular" />
             </div>
-            <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`, { ns: 'workflow' })}</div>
-            {!collapsed && (
-              <div className="mt-3 space-y-4">
-                {generatedInputs.map((variable, index) => (
-                  <div
-                    key={variable.variable}
-                    className="mb-4 last-of-type:mb-0"
-                  >
-                    <FormItem
-                      autoFocus={index === 0}
-                      payload={variable}
-                      value={inputs[variable.variable]}
-                      onChange={v => handleValueChange(variable.variable, v)}
-                    />
-                  </div>
-                ))}
+            <div className="py-2">
+              <div className="group flex h-6 cursor-pointer items-center" onClick={() => setCollapsed(!collapsed)}>
+                <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
+                <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} />
               </div>
-            )}
-          </div>
-        </>
-      )}
-      <div className="flex flex-row-reverse gap-2 p-6 pt-5">
-        <Button
-          disabled={sendingEmail || !confirmChecked}
-          loading={sendingEmail}
-          variant="primary"
-          onClick={handleConfirm}
-        >
-          {t(`${i18nPrefix}.deliveryMethod.emailSender.send`, { ns: 'workflow' })}
-        </Button>
-        <Button
-          className="w-[72px]"
-          onClick={onClose}
-        >
-          {t('operation.cancel', { ns: 'common' })}
-        </Button>
-      </div>
-    </Modal>
+              <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`, { ns: 'workflow' })}</div>
+              {!collapsed && (
+                <div className="mt-3 space-y-4">
+                  {generatedInputs.map((variable, index) => (
+                    <div
+                      key={variable.variable}
+                      className="mb-4 last-of-type:mb-0"
+                    >
+                      <FormItem
+                        autoFocus={index === 0}
+                        payload={variable}
+                        value={inputs[variable.variable]}
+                        onChange={v => handleValueChange(variable.variable, v)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+        <div className="mt-6 flex flex-row-reverse gap-2">
+          <Button
+            disabled={sendingEmail || !confirmChecked}
+            loading={sendingEmail}
+            variant="primary"
+            onClick={handleConfirm}
+          >
+            {t(`${i18nPrefix}.deliveryMethod.emailSender.send`, { ns: 'workflow' })}
+          </Button>
+          <Button
+            className="w-[72px]"
+            onClick={() => onOpenChange(false)}
+          >
+            {t('operation.cancel', { ns: 'common' })}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

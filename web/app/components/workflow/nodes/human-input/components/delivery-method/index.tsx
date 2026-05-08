@@ -6,11 +6,11 @@ import type {
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import MethodItem from './method-item'
 import MethodSelector from './method-selector'
-import UpgradeModal from './upgrade-modal'
+import { UpgradeModal } from './upgrade-modal'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -62,18 +62,15 @@ const DeliveryMethodForm: React.FC<Props> = ({
   const handleShowUpgradeModal = () => {
     setShowUpgradeModal(true)
   }
-  const handleCloseUpgradeModal = () => {
-    setShowUpgradeModal(false)
-  }
 
   return (
     <div className="px-4 py-2">
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
           <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
-          <Tooltip
-            popupContent={t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}
-          />
+          <Infotip aria-label={t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}>
+            {t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}
+          </Infotip>
         </div>
         {!readonly && (
           <div className="flex items-center px-1">
@@ -106,12 +103,10 @@ const DeliveryMethodForm: React.FC<Props> = ({
           ))}
         </div>
       )}
-      {showUpgradeModal && (
-        <UpgradeModal
-          isShow={showUpgradeModal}
-          onClose={handleCloseUpgradeModal}
-        />
-      )}
+      <UpgradeModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+      />
     </div>
   )
 }

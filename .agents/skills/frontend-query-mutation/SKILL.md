@@ -1,6 +1,6 @@
 ---
 name: frontend-query-mutation
-description: Guide for implementing Dify frontend query and mutation patterns with TanStack Query and oRPC. Trigger when creating or updating contracts in web/contract, wiring router composition, consuming consoleQuery or marketplaceQuery in components or services, deciding whether to call queryOptions() directly or extract a helper or use-* hook, handling conditional queries, cache invalidation, mutation error handling, or migrating legacy service calls to contract-first query and mutation helpers.
+description: Guide for implementing Dify frontend query and mutation patterns with TanStack Query and oRPC. Trigger when creating or updating contracts in web/contract, wiring router composition, consuming consoleQuery or marketplaceQuery in components or services, deciding whether to call queryOptions()/mutationOptions() directly or extract a helper or use-* hook, configuring oRPC experimental_defaults/default options, handling conditional queries, cache updates/invalidation, mutation error handling, or migrating legacy service calls to contract-first query and mutation helpers.
 ---
 
 # Frontend Query & Mutation
@@ -9,22 +9,24 @@ description: Guide for implementing Dify frontend query and mutation patterns wi
 
 - Keep contract as the single source of truth in `web/contract/*`.
 - Prefer contract-shaped `queryOptions()` and `mutationOptions()`.
-- Keep invalidation and mutation flow knowledge in the service layer.
+- Keep default cache behavior with `consoleQuery`/`marketplaceQuery` setup, and keep business orchestration in feature vertical hooks when direct contract calls are not enough.
+- Treat `web/service/use-*` query or mutation wrappers as legacy migration targets, not the preferred destination.
 - Keep abstractions minimal to preserve TypeScript inference.
 
 ## Workflow
 
 1. Identify the change surface.
    - Read `references/contract-patterns.md` for contract files, router composition, client helpers, and query or mutation call-site shape.
-   - Read `references/runtime-rules.md` for conditional queries, invalidation, error handling, and legacy migrations.
+   - Read `references/runtime-rules.md` for conditional queries, default options, cache updates/invalidation, error handling, and legacy migrations.
    - Read both references when a task spans contract shape and runtime behavior.
 2. Implement the smallest abstraction that fits the task.
    - Default to direct `useQuery(...)` or `useMutation(...)` calls with oRPC helpers at the call site.
    - Extract a small shared query helper only when multiple call sites share the same extra options.
-   - Create `web/service/use-{domain}.ts` only for orchestration or shared domain behavior.
+   - Create or keep feature hooks only for real orchestration or shared domain behavior.
+   - When touching thin `web/service/use-*` wrappers, migrate them away when feasible.
 3. Preserve Dify conventions.
    - Keep contract inputs in `{ params, query?, body? }` shape.
-   - Bind invalidation in the service-layer mutation definition.
+   - Bind default cache updates/invalidation in `createTanstackQueryUtils(...experimental_defaults...)`; use feature hooks only for workflows that cannot be expressed as default operation behavior.
    - Prefer `mutate(...)`; use `mutateAsync(...)` only when Promise semantics are required.
 
 ## Files Commonly Touched
@@ -33,7 +35,7 @@ description: Guide for implementing Dify frontend query and mutation patterns wi
 - `web/contract/marketplace.ts`
 - `web/contract/router.ts`
 - `web/service/client.ts`
-- `web/service/use-*.ts`
+- legacy `web/service/use-*.ts` files when migrating wrappers away
 - component and hook call sites using `consoleQuery` or `marketplaceQuery`
 
 ## References

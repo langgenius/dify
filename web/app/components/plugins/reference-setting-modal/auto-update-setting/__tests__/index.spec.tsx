@@ -63,19 +63,19 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 // Mock popover component for ToolPicker and StrategyPicker
-let mockPortalOpen = false
-let forcePortalContentVisible = false // Allow tests to force content visibility
-let mockPortalOnOpenChange: ((open: boolean) => void) | undefined
+let mockPopoverOpen = false
+let forcePopoverContentVisible = false // Allow tests to force content visibility
+let mockPopoverOnOpenChange: ((open: boolean) => void) | undefined
 vi.mock('@langgenius/dify-ui/popover', () => ({
   Popover: ({ children, open = false, onOpenChange }: {
     children: React.ReactNode
     open?: boolean
     onOpenChange?: (open: boolean) => void
   }) => {
-    mockPortalOpen = open
-    mockPortalOnOpenChange = onOpenChange
+    mockPopoverOpen = open
+    mockPopoverOnOpenChange = onOpenChange
     return (
-      <div data-testid="portal-elem" data-open={open}>{children}</div>
+      <div data-testid="popover" data-open={open}>{children}</div>
     )
   },
   PopoverTrigger: ({ children, render, onClick, className }: {
@@ -85,11 +85,11 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
     className?: string
   }) => (
     <div
-      data-testid="portal-trigger"
+      data-testid="popover-trigger"
       onClick={(e) => {
         onClick?.(e)
         if (!onClick)
-          mockPortalOnOpenChange?.(!mockPortalOpen)
+          mockPopoverOnOpenChange?.(!mockPopoverOpen)
       }}
       className={className}
     >
@@ -101,39 +101,9 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
     className?: string
     popupClassName?: string
   }) => {
-    if (!mockPortalOpen && !forcePortalContentVisible)
+    if (!mockPopoverOpen && !forcePopoverContentVisible)
       return null
-    return <div data-testid="portal-content" className={[className, popupClassName].filter(Boolean).join(' ')}>{children}</div>
-  },
-}))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open = false, onOpenChange }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    mockPortalOpen = open
-    mockPortalOnOpenChange = onOpenChange
-    return <div data-testid="portal-elem" data-open={open}>{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: {
-    children?: React.ReactNode
-    onClick?: (e: React.MouseEvent) => void
-    className?: string
-  }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children, className, popupClassName }: {
-    children: React.ReactNode
-    className?: string
-    popupClassName?: string
-  }) => {
-    if (!mockPortalOpen && !forcePortalContentVisible)
-      return null
-    return <div data-testid="portal-content" className={[className, popupClassName].filter(Boolean).join(' ')}>{children}</div>
+    return <div data-testid="popover-content" className={[className, popupClassName].filter(Boolean).join(' ')}>{children}</div>
   },
 }))
 
@@ -362,9 +332,9 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 describe('auto-update-setting', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpen = false
-    mockPortalOnOpenChange = undefined
-    forcePortalContentVisible = false
+    mockPopoverOpen = false
+    mockPopoverOnOpenChange = undefined
+    forcePopoverContentVisible = false
     mockPluginsData.plugins = []
   })
 
@@ -928,12 +898,12 @@ describe('auto-update-setting', () => {
         render(<ToolPicker {...defaultProps} isShow={false} />)
 
         // Assert
-        expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
       })
 
       it('should render search box and tabs when isShow is true', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
 
         // Act
         render(<ToolPicker {...defaultProps} isShow={true} />)
@@ -944,7 +914,7 @@ describe('auto-update-setting', () => {
 
       it('should show NoDataPlaceholder when no plugins and no search query', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
         mockPluginsData.plugins = []
 
         // Act
@@ -986,7 +956,7 @@ describe('auto-update-setting', () => {
 
       it('should filter out non-marketplace plugins', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
 
         // Act
         renderWithQueryClient(<ToolPicker {...defaultProps} isShow={true} />)
@@ -997,7 +967,7 @@ describe('auto-update-setting', () => {
 
       it('should filter by search query', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
 
         // Act
         renderWithQueryClient(<ToolPicker {...defaultProps} isShow={true} />)
@@ -1018,7 +988,7 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<ToolPicker {...defaultProps} onShowChange={onShowChange} />)
-        fireEvent.click(screen.getByTestId('portal-trigger'))
+        fireEvent.click(screen.getByTestId('popover-trigger'))
 
         // Assert
         expect(onShowChange).toHaveBeenCalledWith(true)
@@ -1026,7 +996,7 @@ describe('auto-update-setting', () => {
 
       it('should call onChange when plugin is selected', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
         mockPluginsData.plugins = [
           createMockPluginDetail({
             plugin_id: 'test-plugin',
@@ -1046,7 +1016,7 @@ describe('auto-update-setting', () => {
 
       it('should unselect plugin when already selected', () => {
         // Arrange
-        mockPortalOpen = true
+        mockPopoverOpen = true
         mockPluginsData.plugins = [
           createMockPluginDetail({
             plugin_id: 'test-plugin',
@@ -1070,7 +1040,7 @@ describe('auto-update-setting', () => {
       it('handleCheckChange should be memoized with correct dependencies', () => {
         // Arrange
         const onChange = vi.fn()
-        mockPortalOpen = true
+        mockPopoverOpen = true
         mockPluginsData.plugins = [
           createMockPluginDetail({
             plugin_id: 'plugin-1',

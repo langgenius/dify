@@ -4,6 +4,7 @@ import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../t
 import type { PluginPageTab } from './context'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiBookOpenLine,
   RiDragDropLine,
@@ -15,7 +16,6 @@ import { noop } from 'es-toolkit/function'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TabSlider from '@/app/components/base/tab-slider'
-import Tooltip from '@/app/components/base/tooltip'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useDocLink } from '@/context/i18n'
@@ -218,16 +218,21 @@ const PluginPage = ({
             }
             {
               canSetPermissions && (
-                <Tooltip
-                  popupContent={t('privilege.title', { ns: 'plugin' })}
-                >
-                  <Button
-                    data-testid="plugin-settings-button"
-                    className="group h-full w-full p-2 text-components-button-secondary-text"
-                    onClick={setShowPluginSettingModal}
-                  >
-                    <RiEqualizer2Line className="h-4 w-4" />
-                  </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <Button
+                        data-testid="plugin-settings-button"
+                        className="group h-full w-full p-2 text-components-button-secondary-text"
+                        onClick={setShowPluginSettingModal}
+                      >
+                        <RiEqualizer2Line className="h-4 w-4" />
+                      </Button>
+                    )}
+                  />
+                  <TooltipContent>
+                    {t('privilege.title', { ns: 'plugin' })}
+                  </TooltipContent>
                 </Tooltip>
               )
             }

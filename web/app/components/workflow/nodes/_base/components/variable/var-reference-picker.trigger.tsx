@@ -230,6 +230,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
           ? variablePicker
           : (
               <PopoverTrigger
+                nativeButton={false}
                 render={variablePicker}
                 onClick={handleTriggerReadonlyClick}
               />
@@ -344,6 +345,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
 
     return (
       <PopoverTrigger
+        nativeButton={false}
         render={triggerContent}
         onClick={handleTriggerReadonlyClick}
       />

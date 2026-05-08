@@ -1,4 +1,11 @@
 html[data-theme="dark"] {
+    --color-monaco-sticky-header-bg: var(--color-components-panel-bg);
+    --color-monaco-sticky-header-bg-hover: var(--color-components-panel-on-panel-item-bg-hover);
+    --color-monaco-sticky-header-border: var(--color-components-panel-border);
+    --vscode-editorStickyScroll-background: var(--color-monaco-sticky-header-bg);
+    --vscode-editorStickyScrollHover-background: var(--color-monaco-sticky-header-bg-hover);
+    --vscode-editorStickyScroll-border: var(--color-monaco-sticky-header-border);
+    --vscode-editorStickyScroll-shadow: rgba(0, 0, 0, 0.6);
     --color-chatbot-bg: linear-gradient(180deg,
             rgba(34, 34, 37, 0.9) 0%,
             rgba(29, 29, 32, 0.9) 90.48%);

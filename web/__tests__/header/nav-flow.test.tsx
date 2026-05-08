@@ -195,9 +195,19 @@ describe('Header Nav Flow', () => {
     renderNav()
 
     fireEvent.click(screen.getByRole('button', { name: /Alpha/i }))
-    fireEvent.click(await screen.findByText('menus.newApp'))
+
+    const openCreateMenu = async () => {
+      fireEvent.click(await screen.findByText('menus.newApp'))
+      return screen.findByText('newApp.startFromBlank')
+    }
+
+    await openCreateMenu()
     fireEvent.click(await screen.findByText('newApp.startFromBlank'))
+
+    await openCreateMenu()
     fireEvent.click(await screen.findByText('newApp.startFromTemplate'))
+
+    await openCreateMenu()
     fireEvent.click(await screen.findByText('importDSL'))
 
     expect(mockOnCreate).toHaveBeenNthCalledWith(1, 'blank')

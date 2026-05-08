@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -46,7 +47,7 @@ class TestArchivedWorkflowRunDeletion:
         db_session_with_containers.commit()
         return run
 
-    def _create_archive_log(self, db_session_with_containers, *, run: WorkflowRun) -> None:
+    def _create_archive_log(self, db_session_with_containers: Session, *, run: WorkflowRun) -> None:
         archive_log = WorkflowArchiveLog(
             tenant_id=run.tenant_id,
             app_id=run.app_id,
@@ -72,7 +73,7 @@ class TestArchivedWorkflowRunDeletion:
         db_session_with_containers.add(archive_log)
         db_session_with_containers.commit()
 
-    def test_delete_by_run_id_returns_error_when_run_missing(self, db_session_with_containers):
+    def test_delete_by_run_id_returns_error_when_run_missing(self, db_session_with_containers: Session):
         deleter = ArchivedWorkflowRunDeletion()
         missing_run_id = str(uuid4())
 
@@ -81,7 +82,7 @@ class TestArchivedWorkflowRunDeletion:
         assert result.success is False
         assert result.error == f"Workflow run {missing_run_id} not found"
 
-    def test_delete_by_run_id_returns_error_when_not_archived(self, db_session_with_containers):
+    def test_delete_by_run_id_returns_error_when_not_archived(self, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         run = self._create_workflow_run(
             db_session_with_containers,
@@ -95,7 +96,7 @@ class TestArchivedWorkflowRunDeletion:
         assert result.success is False
         assert result.error == f"Workflow run {run.id} is not archived"
 
-    def test_delete_batch_uses_repo(self, db_session_with_containers):
+    def test_delete_batch_uses_repo(self, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         base_time = datetime.now(UTC)
         run1 = self._create_workflow_run(db_session_with_containers, tenant_id=tenant_id, created_at=base_time)
@@ -124,7 +125,7 @@ class TestArchivedWorkflowRunDeletion:
         ).all()
         assert remaining_runs == []
 
-    def test_delete_run_calls_repo(self, db_session_with_containers):
+    def test_delete_run_calls_repo(self, db_session_with_containers: Session):
         tenant_id = str(uuid4())
         run = self._create_workflow_run(
             db_session_with_containers,
@@ -142,7 +143,7 @@ class TestArchivedWorkflowRunDeletion:
         deleted_run = db_session_with_containers.get(WorkflowRun, run_id)
         assert deleted_run is None
 
-    def test_delete_run_dry_run(self, db_session_with_containers):
+    def test_delete_run_dry_run(self, db_session_with_containers: Session):
         """Dry run should return success without actually deleting."""
         tenant_id = str(uuid4())
         run = self._create_workflow_run(
@@ -161,7 +162,7 @@ class TestArchivedWorkflowRunDeletion:
         db_session_with_containers.expire_all()
         assert db_session_with_containers.get(WorkflowRun, run_id) is not None
 
-    def test_delete_run_exception_returns_error(self, db_session_with_containers):
+    def test_delete_run_exception_returns_error(self, db_session_with_containers: Session):
         """Exception during deletion should return failure result."""
         from unittest.mock import MagicMock, patch
 
@@ -183,7 +184,7 @@ class TestArchivedWorkflowRunDeletion:
         assert result.success is False
         assert result.error == "Database error"
 
-    def test_delete_by_run_id_success(self, db_session_with_containers):
+    def test_delete_by_run_id_success(self, db_session_with_containers: Session):
         """Successfully delete an archived workflow run by ID."""
         tenant_id = str(uuid4())
         base_time = datetime.now(UTC)
@@ -202,7 +203,7 @@ class TestArchivedWorkflowRunDeletion:
         db_session_with_containers.expunge_all()
         assert db_session_with_containers.get(WorkflowRun, run_id) is None
 
-    def test_get_workflow_run_repo_caches_instance(self, db_session_with_containers):
+    def test_get_workflow_run_repo_caches_instance(self, db_session_with_containers: Session):
         """_get_workflow_run_repo should return a cached repo on subsequent calls."""
         deleter = ArchivedWorkflowRunDeletion()
 

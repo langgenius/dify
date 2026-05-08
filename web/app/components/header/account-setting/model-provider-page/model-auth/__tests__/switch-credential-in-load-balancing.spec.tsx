@@ -20,6 +20,7 @@ vi.mock('@/app/components/header/indicator', () => ({
 
 vi.mock('@remixicon/react', () => ({
   RiArrowDownSLine: () => <div data-testid="arrow-icon" />,
+  RiQuestionLine: () => <div data-testid="question-icon" />,
 }))
 
 describe('SwitchCredentialInLoadBalancing', () => {

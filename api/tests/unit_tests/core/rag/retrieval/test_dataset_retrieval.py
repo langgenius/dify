@@ -1106,11 +1106,11 @@ class TestRetrievalService:
 
     def test_deduplicate_documents_non_dify_provider(self):
         """
-        Test deduplication with non-dify provider documents.
+        Test deduplication with non-dify provider documents that have no doc_id.
 
         Verifies:
-        - External provider documents use content-based deduplication
-        - Different providers are handled correctly
+        - External provider documents without doc_id use content-based deduplication
+        - Identical content from the same provider is collapsed to one result
         """
         # Arrange
         doc1 = Document(
@@ -1131,7 +1131,96 @@ class TestRetrievalService:
 
         # Assert
         # External documents without doc_id should use content-based dedup
-        assert len(result) >= 1
+        assert len(result) == 1
+
+    def test_deduplicate_documents_non_dify_provider_with_doc_id_different_sources(self):
+        """
+        Regression test for issue #35707.
+
+        Two chunks from different source documents share identical text content but carry
+        different doc_ids. Before the fix, non-dify providers were forced into content-based
+        deduplication and the second chunk was silently dropped. After the fix, doc_id is used
+        as the dedup key for any provider that exposes it, so both chunks must be retained.
+
+        Verifies:
+        - Non-dify provider documents with different doc_ids are NOT deduplicated even when
+          their page_content is identical.
+        """
+        # Arrange — same content, different doc_ids, non-dify provider (e.g. Weaviate / Qdrant)
+        doc_a = Document(
+            page_content="Shared identical content",
+            metadata={"doc_id": "doc-from-file-a", "score": 0.85},
+            provider="weaviate",
+        )
+        doc_b = Document(
+            page_content="Shared identical content",
+            metadata={"doc_id": "doc-from-file-b", "score": 0.82},
+            provider="weaviate",
+        )
+
+        # Act
+        result = RetrievalService._deduplicate_documents([doc_a, doc_b])
+
+        # Assert — both documents must be kept; losing either silently drops a source citation
+        assert len(result) == 2
+        doc_ids = {doc.metadata["doc_id"] for doc in result}
+        assert doc_ids == {"doc-from-file-a", "doc-from-file-b"}
+
+    def test_deduplicate_documents_non_dify_provider_with_same_doc_id(self):
+        """
+        Test that non-dify provider documents sharing the same doc_id are deduplicated by
+        doc_id key (not by content), and the higher-scored duplicate is retained.
+
+        Verifies:
+        - doc_id-based deduplication now applies to any provider, not only "dify"
+        - The document with the highest score wins when doc_ids collide
+        """
+        # Arrange
+        doc_low = Document(
+            page_content="Content A",
+            metadata={"doc_id": "chunk-1", "score": 0.5},
+            provider="qdrant",
+        )
+        doc_high = Document(
+            page_content="Content A",
+            metadata={"doc_id": "chunk-1", "score": 0.9},
+            provider="qdrant",
+        )
+
+        # Act
+        result = RetrievalService._deduplicate_documents([doc_low, doc_high])
+
+        # Assert
+        assert len(result) == 1
+        assert result[0].metadata["score"] == 0.9
+
+    def test_deduplicate_documents_dify_provider_without_doc_id_falls_back_to_content(self):
+        """
+        Test that a dify provider document without doc_id still falls back to content-based
+        deduplication (no regression from original behaviour).
+
+        Verifies:
+        - Absence of doc_id triggers content-based dedup regardless of provider
+        - First occurrence is kept when content is identical
+        """
+        # Arrange — dify docs with no doc_id, same content
+        doc1 = Document(
+            page_content="Same content",
+            metadata={"score": 0.8},
+            provider="dify",
+        )
+        doc2 = Document(
+            page_content="Same content",
+            metadata={"score": 0.9},
+            provider="dify",
+        )
+
+        # Act
+        result = RetrievalService._deduplicate_documents([doc1, doc2])
+
+        # Assert — collapsed to one; first-seen wins (no score comparison in content branch)
+        assert len(result) == 1
+        assert result[0].metadata["score"] == 0.8
 
     # ==================== Metadata Filtering Tests ====================
 

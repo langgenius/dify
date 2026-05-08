@@ -46,6 +46,12 @@ vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
 }))
 
 vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
+  DSLExportConfirmContent: ({ onConfirm, onClose }: { onConfirm: (include?: boolean) => void, onClose: () => void }) => (
+    <div data-testid="dsl-export-confirm-modal">
+      <button type="button" onClick={() => onConfirm(true)}>Export Include</button>
+      <button type="button" onClick={onClose}>Close Export</button>
+    </div>
+  ),
   default: ({ onConfirm, onClose }: { onConfirm: (include?: boolean) => void, onClose: () => void }) => (
     <div data-testid="dsl-export-confirm-modal">
       <button type="button" onClick={() => onConfirm(true)}>Export Include</button>

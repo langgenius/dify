@@ -58,7 +58,6 @@ const MemberSelector: FC<Props> = ({
         sideOffset={4}
         alignOffset={35}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-        positionerProps={{ style: { zIndex: 1000 } }}
       >
         <MemberList
           searchValue={searchValue}

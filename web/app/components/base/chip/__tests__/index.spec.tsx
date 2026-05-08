@@ -40,7 +40,7 @@ describe('Chip', () => {
 
   // Helper function to get the trigger element
   const getTrigger = (container: HTMLElement) => {
-    return container.querySelector('[data-state]')
+    return container.querySelector('[role="button"][aria-haspopup="menu"]') as HTMLElement | null
   }
 
   // Helper function to open dropdown panel
@@ -102,7 +102,7 @@ describe('Chip', () => {
 
       // When showLeftIcon is false, there should be no filter icon before the text
       const textElement = screen.getByText('All Items')
-      const parent = textElement.closest('div[data-state]')
+      const parent = textElement.closest('[role="button"]')
       const icons = parent?.querySelectorAll('svg')
 
       // Should only have the arrow icon, not the filter icon
@@ -142,20 +142,20 @@ describe('Chip', () => {
     it('should toggle dropdown panel on trigger click', () => {
       const { container } = renderChip()
 
-      // Initially closed - check data-state attribute
+      // Initially closed - check aria-expanded attribute
       const trigger = getTrigger(container)
-      expect(trigger)!.toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
       // Open panel
       openPanel(container)
-      expect(trigger)!.toHaveAttribute('data-state', 'open')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
       // Panel items should be visible
       expect(screen.getAllByText('All Items').length).toBeGreaterThan(1)
 
       // Close panel
       if (trigger)
         fireEvent.click(trigger)
-      expect(trigger)!.toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
     })
 
     it('should close panel after selecting an item', () => {
@@ -163,14 +163,14 @@ describe('Chip', () => {
 
       openPanel(container)
       const trigger = getTrigger(container)
-      expect(trigger)!.toHaveAttribute('data-state', 'open')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
 
       // Click on an item in the dropdown panel
       const activeItems = screen.getAllByText('Active')
       // The second one should be in the dropdown
       fireEvent.click(activeItems[activeItems.length - 1]!)
 
-      expect(trigger)!.toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
     })
   })
 
@@ -208,7 +208,7 @@ describe('Chip', () => {
       const { container } = renderChip({ value: 'active' })
 
       const trigger = getTrigger(container)
-      expect(trigger)!.toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
       // Find the close icon (last SVG) and click its parent
       const svgs = trigger?.querySelectorAll('svg')
@@ -220,7 +220,7 @@ describe('Chip', () => {
 
       // Panel should remain closed
       // Panel should remain closed
-      expect(trigger)!.toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
       expect(onClear).toHaveBeenCalledTimes(1)
     })
 
@@ -232,17 +232,17 @@ describe('Chip', () => {
       // Click 1: open
       if (trigger)
         fireEvent.click(trigger)
-      expect(trigger)!.toHaveAttribute('data-state', 'open')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
 
       // Click 2: close
       if (trigger)
         fireEvent.click(trigger)
-      expect(trigger)!.toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
       // Click 3: open again
       if (trigger)
         fireEvent.click(trigger)
-      expect(trigger)!.toHaveAttribute('data-state', 'open')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
     })
   })
 
@@ -285,10 +285,10 @@ describe('Chip', () => {
 
       // Closed by default
       // Closed by default
-      expect(trigger)!.toHaveAttribute('data-state', 'closed')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'false')
 
       openPanel(container)
-      expect(trigger)!.toHaveAttribute('data-state', 'open')
+      expect(trigger)!.toHaveAttribute('aria-expanded', 'true')
       // Items should be duplicated (once in trigger, once in panel)
       expect(screen.getAllByText('All Items').length).toBeGreaterThan(1)
     })
@@ -327,7 +327,7 @@ describe('Chip', () => {
       const { container } = renderChip({ items: [], value: '' })
 
       // Trigger should still render
-      const trigger = container.querySelector('[data-state]')
+      const trigger = getTrigger(container)
       expect(trigger)!.toBeInTheDocument()
     })
 

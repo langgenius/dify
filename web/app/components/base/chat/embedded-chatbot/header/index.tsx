@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { Theme } from '../theme/theme-context'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -9,7 +10,6 @@ import ActionButton from '@/app/components/base/action-button'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 import Divider from '@/app/components/base/divider'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import Tooltip from '@/app/components/base/tooltip'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { isClient } from '@/utils/client'
 import {
@@ -111,26 +111,36 @@ const Header: FC<IHeaderProps> = ({
           )}
           {
             showToggleExpandButton && (
-              <Tooltip
-                popupContent={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
-              >
-                <ActionButton size="l" onClick={handleToggleExpand} data-testid="expand-button">
-                  {
-                    expanded
-                      ? <div className="i-ri-collapse-diagonal-2-line h-[18px] w-[18px]" />
-                      : <div className="i-ri-expand-diagonal-2-line h-[18px] w-[18px]" />
-                  }
-                </ActionButton>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <ActionButton size="l" onClick={handleToggleExpand} data-testid="expand-button">
+                      {
+                        expanded
+                          ? <div className="i-ri-collapse-diagonal-2-line h-[18px] w-[18px]" />
+                          : <div className="i-ri-expand-diagonal-2-line h-[18px] w-[18px]" />
+                      }
+                    </ActionButton>
+                  )}
+                />
+                <TooltipContent>
+                  {expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
+                </TooltipContent>
               </Tooltip>
             )
           }
           {currentConversationId && allowResetChat && (
-            <Tooltip
-              popupContent={t('chat.resetChat', { ns: 'share' })}
-            >
-              <ActionButton size="l" onClick={onCreateNewChat} data-testid="reset-chat-button">
-                <div className="i-ri-reset-left-line h-[18px] w-[18px]" />
-              </ActionButton>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <ActionButton size="l" onClick={onCreateNewChat} data-testid="reset-chat-button">
+                    <div className="i-ri-reset-left-line h-[18px] w-[18px]" />
+                  </ActionButton>
+                )}
+              />
+              <TooltipContent>
+                {t('chat.resetChat', { ns: 'share' })}
+              </TooltipContent>
             </Tooltip>
           )}
           {currentConversationId && inputsForms.length > 0 && !allInputsHidden && (
@@ -158,26 +168,36 @@ const Header: FC<IHeaderProps> = ({
       <div className="flex items-center gap-1">
         {
           showToggleExpandButton && (
-            <Tooltip
-              popupContent={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
-            >
-              <ActionButton size="l" onClick={handleToggleExpand} data-testid="mobile-expand-button">
-                {
-                  expanded
-                    ? <div className={cn('i-ri-collapse-diagonal-2-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-                    : <div className={cn('i-ri-expand-diagonal-2-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-                }
-              </ActionButton>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <ActionButton size="l" onClick={handleToggleExpand} data-testid="mobile-expand-button">
+                    {
+                      expanded
+                        ? <div className={cn('i-ri-collapse-diagonal-2-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+                        : <div className={cn('i-ri-expand-diagonal-2-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+                    }
+                  </ActionButton>
+                )}
+              />
+              <TooltipContent>
+                {expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
+              </TooltipContent>
             </Tooltip>
           )
         }
         {currentConversationId && allowResetChat && (
-          <Tooltip
-            popupContent={t('chat.resetChat', { ns: 'share' })}
-          >
-            <ActionButton size="l" onClick={onCreateNewChat} data-testid="mobile-reset-chat-button">
-              <div className={cn('i-ri-reset-left-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
-            </ActionButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton size="l" onClick={onCreateNewChat} data-testid="mobile-reset-chat-button">
+                  <div className={cn('i-ri-reset-left-line h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>
+              {t('chat.resetChat', { ns: 'share' })}
+            </TooltipContent>
           </Tooltip>
         )}
         {currentConversationId && inputsForms.length > 0 && !allInputsHidden && (

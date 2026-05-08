@@ -109,7 +109,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
             )}
           </div>
         </SelectTrigger>
-        <SelectContent popupClassName="z-1001 w-[512px]">
+        <SelectContent popupClassName="w-[512px]">
           {versions.map(item => (
             <SelectItem key={item.value} value={String(item.value)}>
               <SelectItemText>{item.name}</SelectItemText>
@@ -141,7 +141,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         <SelectTrigger className="h-9 text-components-input-text-filled">
           {selectedPackageOption?.name ?? t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) ?? ''}
         </SelectTrigger>
-        <SelectContent popupClassName="z-1001 w-[512px]">
+        <SelectContent popupClassName="w-[512px]">
           {packages.map(item => (
             <SelectItem key={item.value} value={String(item.value)}>
               <SelectItemText>{item.name}</SelectItemText>

@@ -298,11 +298,15 @@ describe('Nav Component', () => {
         fireEvent.click(selectorButton)
       })
 
-      const createButton = await screen.findByText('Create New')
-      await act(async () => {
-        fireEvent.click(createButton)
-      })
+      const openCreateMenu = async () => {
+        const createButton = await screen.findByText('Create New')
+        await act(async () => {
+          fireEvent.click(createButton)
+        })
+        return screen.findByText(/app\.newApp\.startFromBlank/i)
+      }
 
+      await openCreateMenu()
       const blankOption = await screen.findByText(
         /app\.newApp\.startFromBlank/i,
       )
@@ -311,6 +315,7 @@ describe('Nav Component', () => {
       })
       expect(mockOnCreate).toHaveBeenCalledWith('blank')
 
+      await openCreateMenu()
       const templateOption = await screen.findByText(
         /app\.newApp\.startFromTemplate/i,
       )
@@ -319,6 +324,7 @@ describe('Nav Component', () => {
       })
       expect(mockOnCreate).toHaveBeenCalledWith('template')
 
+      await openCreateMenu()
       const dslOption = await screen.findByText(/app\.importDSL/i)
       await act(async () => {
         fireEvent.click(dslOption)
