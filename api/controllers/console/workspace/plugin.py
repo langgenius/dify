@@ -1,4 +1,5 @@
 import io
+import json
 from collections.abc import Mapping
 from typing import Any, Literal
 
@@ -21,6 +22,18 @@ from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
+
+
+def _parse_parameter_values_query(raw: str | None) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError("parameter_values must be valid JSON") from e
+    if not isinstance(data, dict):
+        raise ValueError("parameter_values must be a JSON object")
+    return data
 
 
 class ParserList(BaseModel):
@@ -97,6 +110,7 @@ class ParserDynamicOptions(BaseModel):
     parameter: str
     credential_id: str | None = None
     provider_type: Literal["tool", "trigger"]
+    parameter_values: str | None = None
 
 
 class ParserDynamicOptionsWithCredentials(BaseModel):
@@ -106,6 +120,7 @@ class ParserDynamicOptionsWithCredentials(BaseModel):
     parameter: str
     credential_id: str
     credentials: Mapping[str, Any]
+    parameter_values: Mapping[str, Any] | None = None
 
 
 class ParserDynamicTreeOptions(BaseModel):
@@ -114,6 +129,7 @@ class ParserDynamicTreeOptions(BaseModel):
     action: str
     parameter: str
     credential_id: str | None = None
+    parameter_values: str | None = None
 
 
 class PluginPermissionSettingsPayload(BaseModel):
@@ -672,6 +688,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         args = ParserDynamicOptions.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
+            parameter_values = _parse_parameter_values_query(args.parameter_values)
             options = PluginParameterService.get_dynamic_select_options(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -681,6 +698,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 parameter=args.parameter,
                 credential_id=args.credential_id,
                 provider_type=args.provider_type,
+                parameter_values=parameter_values,
             )
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
@@ -712,6 +730,7 @@ class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
                 parameter=args.parameter,
                 credential_id=args.credential_id,
                 credentials=args.credentials,
+                parameter_values=dict(args.parameter_values) if args.parameter_values is not None else None,
             )
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
@@ -733,6 +752,7 @@ class PluginFetchDynamicTreeSelectOptionsApi(Resource):
         args = ParserDynamicTreeOptions.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
+            parameter_values = _parse_parameter_values_query(args.parameter_values)
             options = PluginParameterService.get_dynamic_tree_select_options(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -741,6 +761,7 @@ class PluginFetchDynamicTreeSelectOptionsApi(Resource):
                 action=args.action,
                 parameter=args.parameter,
                 credential_id=args.credential_id,
+                parameter_values=parameter_values,
             )
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400

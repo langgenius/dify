@@ -34,6 +34,7 @@ class PluginParameterService:
         parameter: str,
         credential_id: str | None,
         provider_type: Literal["tool", "trigger"],
+        parameter_values: Mapping[str, Any] | None = None,
     ) -> Sequence[PluginParameterOption]:
         """
         Get dynamic select options for a plugin parameter.
@@ -44,6 +45,7 @@ class PluginParameterService:
             provider: The provider name.
             action: The action name.
             parameter: The parameter name.
+            parameter_values: Optional sibling form values forwarded to the plugin daemon.
         """
         credentials: Mapping[str, Any] = {}
         credential_type: str = CredentialType.UNAUTHORIZED.value
@@ -74,7 +76,15 @@ class PluginParameterService:
         return (
             DynamicSelectClient()
             .fetch_dynamic_select_options(
-                tenant_id, user_id, plugin_id, provider, action, credentials, credential_type, parameter
+                tenant_id,
+                user_id,
+                plugin_id,
+                provider,
+                action,
+                credentials,
+                credential_type,
+                parameter,
+                parameter_values=parameter_values,
             )
             .options
         )
@@ -88,6 +98,7 @@ class PluginParameterService:
         action: str,
         parameter: str,
         credential_id: str | None,
+        parameter_values: Mapping[str, Any] | None = None,
     ) -> Sequence[PluginParameterOption]:
         """
         Get dynamic tree select options for a plugin parameter.
@@ -103,7 +114,15 @@ class PluginParameterService:
         return (
             DynamicSelectClient()
             .fetch_dynamic_select_options(
-                tenant_id, user_id, plugin_id, provider, action, credentials, credential_type, parameter
+                tenant_id,
+                user_id,
+                plugin_id,
+                provider,
+                action,
+                credentials,
+                credential_type,
+                parameter,
+                parameter_values=parameter_values,
             )
             .options
         )
@@ -118,6 +137,7 @@ class PluginParameterService:
         parameter: str,
         credential_id: str,
         credentials: Mapping[str, Any],
+        parameter_values: Mapping[str, Any] | None = None,
     ) -> Sequence[PluginParameterOption]:
         """
         Get dynamic select options using provided credentials directly.
@@ -150,6 +170,7 @@ class PluginParameterService:
                 resolved_credentials,
                 original_subscription.credential_type or CredentialType.UNAUTHORIZED.value,
                 parameter,
+                parameter_values=parameter_values,
             )
             .options
         )

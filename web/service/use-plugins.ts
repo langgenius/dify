@@ -522,8 +522,24 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   })
   const {
     data,
+    error,
+    isError,
+    isPending,
+    isLoading,
+    isFetching,
     isFetched,
+    isFetchedAfterMount,
     isRefetching,
+    isSuccess,
+    isPlaceholderData,
+    isStale,
+    status,
+    fetchStatus,
+    dataUpdatedAt,
+    errorUpdatedAt,
+    failureCount,
+    failureReason,
+    errorUpdateCount,
     refetch,
   } = pluginTaskQuery
 
@@ -552,10 +568,27 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   }, [refetch])
 
   return {
-    ...pluginTaskQuery,
     data,
-    pluginTasks: data?.tasks || [],
+    error,
+    isError,
+    isPending,
+    isLoading,
+    isFetching,
     isFetched,
+    isFetchedAfterMount,
+    isRefetching,
+    isSuccess,
+    isPlaceholderData,
+    isStale,
+    status,
+    fetchStatus,
+    dataUpdatedAt,
+    errorUpdatedAt,
+    failureCount,
+    failureReason,
+    errorUpdateCount,
+    refetch,
+    pluginTasks: data?.tasks || [],
     handleRefetch,
   }
 }
@@ -635,45 +668,84 @@ export const usePluginInfo = (providerName?: string) => {
   })
 }
 
-export const useFetchDynamicOptions = (
-  plugin_id: string,
-  provider: string,
-  action: string,
-  parameter: string,
-  provider_type?: string,
-  extra?: Record<string, unknown>,
-) => {
+export type FetchPluginDynamicOptionsParams = {
+  plugin_id: string
+  provider: string
+  action: string
+  parameter: string
+  provider_type?: 'tool' | 'trigger'
+  credential_id?: string | null
+  parameter_values?: Record<string, unknown>
+}
+
+export const useFetchDynamicOptions = (params: FetchPluginDynamicOptionsParams) => {
+  const {
+    plugin_id,
+    provider,
+    action,
+    parameter,
+    provider_type = 'tool',
+    credential_id,
+    parameter_values,
+  } = params
+
   return useMutation({
-    mutationFn: () => get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-options', {
-      params: {
+    mutationFn: () => {
+      const query: Record<string, string> = {
         plugin_id,
         provider,
         action,
         parameter,
         provider_type,
-        ...extra,
-      },
-    }),
+      }
+      if (credential_id)
+        query.credential_id = credential_id
+      if (parameter_values && Object.keys(parameter_values).length > 0)
+        query.parameter_values = JSON.stringify(parameter_values)
+
+      return get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-options', {
+        params: query,
+      })
+    },
   })
 }
 
-export const useFetchDynamicTreeOptions = (
-  plugin_id: string,
-  provider: string,
-  action: string,
-  parameter: string,
-  extra?: Record<string, unknown>,
-) => {
+export type FetchPluginDynamicTreeOptionsParams = {
+  plugin_id: string
+  provider: string
+  action: string
+  parameter: string
+  credential_id?: string | null
+  parameter_values?: Record<string, unknown>
+}
+
+export const useFetchDynamicTreeOptions = (params: FetchPluginDynamicTreeOptionsParams) => {
+  const {
+    plugin_id,
+    provider,
+    action,
+    parameter,
+    credential_id,
+    parameter_values,
+  } = params
+
   return useMutation({
-    mutationFn: () => get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-tree-options', {
-      params: {
+    mutationFn: () => {
+      const query: Record<string, string> = {
         plugin_id,
         provider,
         action,
         parameter,
-        ...extra,
-      },
-    }),
+      }
+      if (credential_id)
+        query.credential_id = credential_id
+      if (parameter_values && Object.keys(parameter_values).length > 0)
+        query.parameter_values = JSON.stringify(parameter_values)
+
+      return get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-tree-options', {
+        params: query,
+      })
+    },
   })
 }
 

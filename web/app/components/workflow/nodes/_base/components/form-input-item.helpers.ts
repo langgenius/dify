@@ -42,6 +42,20 @@ export type SelectItem = {
   value: string
 }
 
+/** Serialized sibling parameter values for plugin dynamic-options API (`parameter_values` query). */
+export function serializeResourceVarInputsForDynamicOptions(inputs: ResourceVarInputs): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [key, entry] of Object.entries(inputs)) {
+    if (!entry)
+      continue
+    if (entry.type === VarKindType.constant)
+      out[key] = entry.value
+    else
+      out[key] = { kind: entry.type, value: entry.value }
+  }
+  return out
+}
+
 type FormInputState = {
   defaultValue: unknown
   isAppSelector: boolean

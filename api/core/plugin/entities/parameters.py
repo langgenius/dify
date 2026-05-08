@@ -2,7 +2,7 @@ import json
 from enum import StrEnum, auto
 from typing import Any, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from core.entities.parameter_entities import CommonParameterType
 from core.tools.entities.common_entities import I18nObject
@@ -75,6 +75,12 @@ class PluginParameter(BaseModel):
     label: I18nObject = Field(..., description="The label presented to the user")
     placeholder: I18nObject | None = Field(default=None, description="The placeholder presented to the user")
     scope: str | None = None
+    dynamic_select_lazy_load: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("dynamic_select_lazy_load", "dynamicSelectLazyLoad"),
+        description="When true, DYNAMIC_SELECT/DYNAMIC_TREE_SELECT options load on panel open (lazy); "
+        "when false (default), options prefetch after mount.",
+    )
     auto_generate: PluginParameterAutoGenerate | None = None
     template: PluginParameterTemplate | None = None
     required: bool = False

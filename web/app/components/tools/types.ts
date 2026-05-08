@@ -92,6 +92,8 @@ export type ToolParameter = {
   required: boolean
   multiple: boolean
   default: string
+  /** Mirrors plugin YAML `dynamic_select_lazy_load`; omitted/false = prefetch, true = load on open. */
+  dynamic_select_lazy_load?: boolean
   options?: {
     label: LocalizedText
     value: string

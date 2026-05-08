@@ -15,6 +15,8 @@ type Props = {
   language: string
   multiple?: boolean
   onChange: (value: string[]) => void
+  /** Called when the popover opens or closes (after mount); use for lazy-loaded options. */
+  onPanelOpenChange?: (open: boolean) => void
   options: FormOption[]
   placeholder?: string
   value?: string[]
@@ -137,6 +139,7 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
   language,
   multiple = false,
   onChange,
+  onPanelOpenChange,
   options,
   placeholder,
   value,
@@ -200,7 +203,13 @@ const FormInputDynamicTreeSelect: FC<Props> = ({
   const hasSelection = selectedValues.length > 0
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover
+      open={isOpen}
+      onOpenChange={(nextOpen) => {
+        setIsOpen(nextOpen)
+        onPanelOpenChange?.(nextOpen)
+      }}
+    >
       <PopoverTrigger
         disabled={disabled || isLoading}
         render={(

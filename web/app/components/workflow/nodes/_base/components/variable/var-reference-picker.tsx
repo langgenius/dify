@@ -86,6 +86,10 @@ type Props = {
   currentTool?: Tool
   currentProvider?: ToolWithProvider | TriggerWithProvider
   preferSchemaType?: boolean
+  /** Workflow tool dynamic-select: sibling parameter snapshot for API `parameter_values`. */
+  dynamicSelectParameterValues?: Record<string, unknown>
+  /** When true, load dynamic options on dropdown open only (tool only; `dynamic_select_lazy_load` in schema). */
+  dynamicSelectLazy?: boolean
 }
 
 const DEFAULT_VALUE_SELECTOR: Props['value'] = []
@@ -121,6 +125,8 @@ const VarReferencePicker: FC<Props> = ({
   currentTool,
   currentProvider,
   preferSchemaType,
+  dynamicSelectParameterValues,
+  dynamicSelectLazy = false,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -310,13 +316,27 @@ const VarReferencePicker: FC<Props> = ({
 
   const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
-    currentProvider?.plugin_id || '',
-    currentProvider?.name || '',
-    currentTool?.name || '',
-    (schema as CredentialFormSchemaSelect)?.variable || '',
-    'tool',
-  )
+  const dynamicOptionsLazyResetKey = useMemo(() => {
+    const v = (schema as CredentialFormSchemaSelect)?.variable ?? ''
+    return `${currentTool?.name ?? ''}|${currentProvider?.name ?? ''}|${v}`
+  }, [schema, currentTool?.name, currentProvider?.name])
+  const [dynamicOptionsLazyKeyTracker, setDynamicOptionsLazyKeyTracker] = useState(dynamicOptionsLazyResetKey)
+  if (dynamicSelectLazy && dynamicOptionsLazyResetKey !== dynamicOptionsLazyKeyTracker) {
+    setDynamicOptionsLazyKeyTracker(dynamicOptionsLazyResetKey)
+    setDynamicOptions(null)
+  }
+  const providerCredentialId = currentProvider && 'credential_id' in currentProvider
+    ? currentProvider.credential_id
+    : undefined
+  const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions({
+    plugin_id: currentProvider?.plugin_id || '',
+    provider: currentProvider?.name || '',
+    action: currentTool?.name || '',
+    parameter: (schema as CredentialFormSchemaSelect)?.variable || '',
+    provider_type: 'tool',
+    credential_id: providerCredentialId,
+    parameter_values: dynamicSelectParameterValues,
+  })
   const handleFetchDynamicOptions = useCallback(async () => {
     if (schema?.type !== FormTypeEnum.dynamicSelect || !currentTool || !currentProvider)
       return
@@ -328,10 +348,21 @@ const VarReferencePicker: FC<Props> = ({
     finally {
       setIsLoading(false)
     }
-  }, [currentProvider, currentTool, fetchDynamicOptions, schema?.type])
+  }, [schema?.type, currentTool, currentProvider, fetchDynamicOptions])
+
   useEffect(() => {
-    handleFetchDynamicOptions()
-  }, [handleFetchDynamicOptions])
+    if (schema?.type !== FormTypeEnum.dynamicSelect || !currentTool || !currentProvider)
+      return
+    if (dynamicSelectLazy)
+      return
+    void handleFetchDynamicOptions()
+  }, [schema?.type, currentTool, currentProvider, dynamicSelectLazy, handleFetchDynamicOptions])
+
+  const handleDynamicSelectConstantOpen = useCallback((open: boolean) => {
+    if (!open || !dynamicSelectLazy || schema?.type !== FormTypeEnum.dynamicSelect || !currentTool || !currentProvider)
+      return
+    void handleFetchDynamicOptions()
+  }, [dynamicSelectLazy, schema?.type, currentTool, currentProvider, handleFetchDynamicOptions])
 
   const schemaWithDynamicSelect = useMemo(
     () => getDynamicSelectSchema({ dynamicOptions, isLoading, schema, value }),
@@ -406,6 +437,11 @@ const VarReferencePicker: FC<Props> = ({
             varKindTypes={varKindTypes}
             varName={varName}
             variableCategory={variableCategory}
+            onConstantFieldOpenChange={
+              dynamicSelectLazy && schema?.type === FormTypeEnum.dynamicSelect
+                ? handleDynamicSelectConstantOpen
+                : undefined
+            }
           />
         )}
         <PopoverContent

@@ -59,6 +59,7 @@ export type ToolFormSchema = {
   llm_description?: string
   human_description?: TypeWithI18N
   multiple?: boolean
+  dynamic_select_lazy_load?: boolean
   url?: string
   scope?: string
   input_schema?: SchemaRoot

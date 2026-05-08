@@ -56,6 +56,8 @@ type Props = {
   placeholder?: string
   readonly: boolean
   schemaWithDynamicSelect?: Partial<CredentialFormSchema>
+  /** Lazy-load tool dynamic-select options when the constant-mode select opens. */
+  onConstantFieldOpenChange?: (open: boolean) => void
   setControlFocus: (value: number) => void
   setOpen: (value: boolean) => void
   showErrorIcon?: boolean
@@ -100,6 +102,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
   placeholder,
   readonly,
   schemaWithDynamicSelect,
+  onConstantFieldOpenChange,
   setControlFocus,
   setOpen,
   showErrorIcon = false,
@@ -298,6 +301,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                         schema={schemaWithDynamicSelect as CredentialFormSchemaSelect}
                         readonly={readonly}
                         isLoading={isLoading}
+                        onOpenChange={onConstantFieldOpenChange}
                       />
                     )
                   : resolvedVariablePicker}
