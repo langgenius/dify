@@ -12,6 +12,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
@@ -21,7 +22,6 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Drawer from '@/app/components/base/drawer'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import Tooltip from '@/app/components/base/tooltip'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { getIcon } from '../utils/get-icon'
@@ -230,33 +230,45 @@ const DatasetMetadataDrawer: FC<Props> = ({
         </div>
 
         {isShowRenameModal && (
-          <Modal isShow title={t(`${i18nPrefix}.rename`, { ns: 'dataset' })} onClose={() => setIsShowRenameModal(false)}>
-            <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })} className="mt-4">
-              <Input
-                value={templeName}
-                onChange={e => setTempleName(e.target.value)}
-                placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
-              />
-            </Field>
-            <div className="mt-4 flex justify-end">
-              <Button
-                className="mr-2"
-                onClick={() => {
-                  setIsShowRenameModal(false)
-                  setTempleName(currPayload!.name)
-                }}
-              >
-                {t('operation.cancel', { ns: 'common' })}
-              </Button>
-              <Button
-                onClick={handleRenamed}
-                variant="primary"
-                disabled={!templeName}
-              >
-                {t('operation.save', { ns: 'common' })}
-              </Button>
-            </div>
-          </Modal>
+          <Dialog
+            open
+            onOpenChange={(open) => {
+              if (!open)
+                setIsShowRenameModal(false)
+            }}
+          >
+            <DialogContent className="overflow-hidden! border-none text-left align-middle">
+              <DialogTitle className="title-2xl-semi-bold text-text-primary">
+                {t(`${i18nPrefix}.rename`, { ns: 'dataset' })}
+              </DialogTitle>
+
+              <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })} className="mt-4">
+                <Input
+                  value={templeName}
+                  onChange={e => setTempleName(e.target.value)}
+                  placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
+                />
+              </Field>
+              <div className="mt-4 flex justify-end">
+                <Button
+                  className="mr-2"
+                  onClick={() => {
+                    setIsShowRenameModal(false)
+                    setTempleName(currPayload!.name)
+                  }}
+                >
+                  {t('operation.cancel', { ns: 'common' })}
+                </Button>
+                <Button
+                  onClick={handleRenamed}
+                  variant="primary"
+                  disabled={!templeName}
+                >
+                  {t('operation.save', { ns: 'common' })}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
     </Drawer>

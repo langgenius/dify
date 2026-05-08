@@ -2,6 +2,7 @@
 
 import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiAlertFill,
@@ -17,7 +18,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import Modal from '@/app/components/base/modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
@@ -199,90 +199,100 @@ const UpdateDSLModal = ({
 
   return (
     <>
-      <Modal
-        className="w-[520px] rounded-2xl p-6"
-        isShow={show}
-        onClose={onCancel}
+      <Dialog
+        open={show}
+        onOpenChange={(open) => {
+          if (!open)
+            onCancel()
+        }}
       >
-        <div className="mb-3 flex items-center justify-between">
-          <div className="title-2xl-semi-bold text-text-primary">{t('importApp', { ns: 'app' })}</div>
-          <div className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center" onClick={onCancel}>
-            <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
-          </div>
-        </div>
-        <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
-          <div className="absolute top-0 left-0 h-full w-full bg-toast-warning-bg opacity-40" />
-          <div className="flex items-start justify-center p-1">
-            <RiAlertFill className="h-4 w-4 shrink-0 text-text-warning-secondary" />
-          </div>
-          <div className="flex grow flex-col items-start gap-0.5 py-1">
-            <div className="system-xs-medium whitespace-pre-line text-text-primary">{t('common.importDSLTip', { ns: 'workflow' })}</div>
-            <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
-              <Button
-                size="small"
-                variant="secondary"
-                className="z-1000"
-                onClick={onBackup}
-              >
-                <RiFileDownloadLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
-                <div className="flex items-center justify-center gap-1 px-[3px]">
-                  {t('common.backupCurrentDraft', { ns: 'workflow' })}
-                </div>
-              </Button>
+        <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
+
+          <div className="mb-3 flex items-center justify-between">
+            <div className="title-2xl-semi-bold text-text-primary">{t('importApp', { ns: 'app' })}</div>
+            <div className="flex h-[22px] w-[22px] cursor-pointer items-center justify-center" onClick={onCancel}>
+              <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
             </div>
           </div>
-        </div>
-        <div>
-          <div className="pt-2 system-md-semibold text-text-primary">
-            {t('common.chooseDSL', { ns: 'workflow' })}
+          <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
+            <div className="absolute top-0 left-0 h-full w-full bg-toast-warning-bg opacity-40" />
+            <div className="flex items-start justify-center p-1">
+              <RiAlertFill className="h-4 w-4 shrink-0 text-text-warning-secondary" />
+            </div>
+            <div className="flex grow flex-col items-start gap-0.5 py-1">
+              <div className="system-xs-medium whitespace-pre-line text-text-primary">{t('common.importDSLTip', { ns: 'workflow' })}</div>
+              <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
+                <Button
+                  size="small"
+                  variant="secondary"
+                  className="z-1000"
+                  onClick={onBackup}
+                >
+                  <RiFileDownloadLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
+                  <div className="flex items-center justify-center gap-1 px-[3px]">
+                    {t('common.backupCurrentDraft', { ns: 'workflow' })}
+                  </div>
+                </Button>
+              </div>
+            </div>
           </div>
-          <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
-            <Uploader
-              file={currentFile}
-              updateFile={handleFile}
-              className="mt-0! w-full"
-            />
+          <div>
+            <div className="pt-2 system-md-semibold text-text-primary">
+              {t('common.chooseDSL', { ns: 'workflow' })}
+            </div>
+            <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
+              <Uploader
+                file={currentFile}
+                updateFile={handleFile}
+                className="mt-0! w-full"
+              />
+            </div>
           </div>
-        </div>
-        <div className="flex items-center justify-end gap-2 self-stretch pt-5">
-          <Button onClick={onCancel}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button
-            disabled={!currentFile || loading}
-            variant="primary"
-            tone="destructive"
-            onClick={handleImport}
-            loading={loading}
-          >
-            {t('common.overwriteAndImport', { ns: 'workflow' })}
-          </Button>
-        </div>
-      </Modal>
-      <Modal
-        isShow={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
-        className="w-[480px]"
+          <div className="flex items-center justify-end gap-2 self-stretch pt-5">
+            <Button onClick={onCancel}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+            <Button
+              disabled={!currentFile || loading}
+              variant="primary"
+              tone="destructive"
+              onClick={handleImport}
+              loading={loading}
+            >
+              {t('common.overwriteAndImport', { ns: 'workflow' })}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={showErrorModal}
+        onOpenChange={(open) => {
+          if (!open)
+            setShowErrorModal(false)
+        }}
       >
-        <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
-          <div className="flex grow flex-col system-md-regular text-text-secondary">
-            <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
-            <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
-            <br />
-            <div>
-              {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
-              <span className="system-md-medium">{versions?.importedVersion}</span>
-            </div>
-            <div>
-              {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
-              <span className="system-md-medium">{versions?.systemVersion}</span>
+        <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none text-left align-middle">
+
+          <div className="flex flex-col items-start gap-2 self-stretch pb-4">
+            <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+            <div className="flex grow flex-col system-md-regular text-text-secondary">
+              <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
+              <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
+              <br />
+              <div>
+                {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
+                <span className="system-md-medium">{versions?.importedVersion}</span>
+              </div>
+              <div>
+                {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
+                <span className="system-md-medium">{versions?.systemVersion}</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-start justify-end gap-2 self-stretch pt-6">
-          <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button variant="primary" tone="destructive" onClick={onUpdateDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
-        </div>
-      </Modal>
+          <div className="flex items-start justify-end gap-2 self-stretch pt-6">
+            <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+            <Button variant="primary" tone="destructive" onClick={onUpdateDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

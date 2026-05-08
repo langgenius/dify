@@ -11,14 +11,16 @@ vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
 }))
 
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, title, onClose }: { children: React.ReactNode, title: string, onClose: () => void }) => (
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) =>
+    open === false ? null : <>{children}</>,
+  DialogContent: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="modal">
-      <div data-testid="modal-title">{title}</div>
-      <button data-testid="modal-close" onClick={onClose}>close</button>
       {children}
     </div>
   ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <div data-testid="modal-title">{children}</div>,
+  DialogCloseButton: () => <button data-testid="modal-close">close</button>,
 }))
 
 vi.mock('../../../common/image-list', () => ({

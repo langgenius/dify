@@ -3,12 +3,11 @@ import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Modal from '@/app/components/base/modal'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -226,165 +225,164 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   }
 
   return (
-    <Modal
-      isShow
-      onClose={noop}
-      className="mt-14! w-[600px]! max-w-none! p-6!"
-    >
-      <div className="flex items-center justify-between">
-        <div className="title-2xl-semi-bold text-text-primary">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
-        <div
-          role="button"
-          tabIndex={0}
-          className="cursor-pointer p-1"
-          onClick={onCancel}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onCancel()
-            }
-          }}
-        >
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+    <Dialog open>
+      <DialogContent className="mt-14! w-[600px]! max-w-none! overflow-hidden! border-none p-6! text-left align-middle">
+
+        <div className="flex items-center justify-between">
+          <div className="title-2xl-semi-bold text-text-primary">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
+          <div
+            role="button"
+            tabIndex={0}
+            className="cursor-pointer p-1"
+            onClick={onCancel}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onCancel()
+              }
+            }}
+          >
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+          </div>
         </div>
-      </div>
-      <div className="py-2">
-        <div className="text-sm leading-9 font-medium text-text-primary">
-          {t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}
-        </div>
-        <div className="grid grid-cols-3 gap-2.5">
-          {
-            providers.map(provider => (
-              <div
-                key={provider.key}
-                className={cn(
-                  'flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
-                  localeData.type !== provider.key && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-                  localeData.type === provider.key && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
-                  localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !isOpenAIProviderConfigured && 'text-text-disabled',
-                )}
-                onClick={() => handleDataTypeChange(provider.key)}
-              >
-                <div className={cn(
-                  'mr-2 h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
-                  localeData.type === provider.key && 'border-[5px] border-components-radio-border-checked',
-                )}
+        <div className="py-2">
+          <div className="text-sm leading-9 font-medium text-text-primary">
+            {t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            {
+              providers.map(provider => (
+                <div
+                  key={provider.key}
+                  className={cn(
+                    'flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
+                    localeData.type !== provider.key && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                    localeData.type === provider.key && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
+                    localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !isOpenAIProviderConfigured && 'text-text-disabled',
+                  )}
+                  onClick={() => handleDataTypeChange(provider.key)}
                 >
+                  <div className={cn(
+                    'mr-2 h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
+                    localeData.type === provider.key && 'border-[5px] border-components-radio-border-checked',
+                  )}
+                  >
+                  </div>
+                  {provider.name}
                 </div>
-                {provider.name}
+              ))
+            }
+          </div>
+          {
+            !isLoading && !isOpenAIProviderConfigured && localeData.type === 'openai_moderation' && (
+              <div className="mt-2 flex items-center rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 py-2">
+                <span className="mr-1 i-custom-vender-line-general-info-circle h-4 w-4 text-[#F79009]" />
+                <div className="flex items-center text-xs font-medium text-gray-700">
+                  {t('feature.moderation.modal.openaiNotConfig.before', { ns: 'appDebug' })}
+                  <span
+                    className="cursor-pointer text-primary-600"
+                    onClick={handleOpenSettingsModal}
+                  >
+                  &nbsp;
+                    {t('settings.provider', { ns: 'common' })}
+&nbsp;
+                  </span>
+                  {t('feature.moderation.modal.openaiNotConfig.after', { ns: 'appDebug' })}
+                </div>
               </div>
-            ))
+            )
           }
         </div>
         {
-          !isLoading && !isOpenAIProviderConfigured && localeData.type === 'openai_moderation' && (
-            <div className="mt-2 flex items-center rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 py-2">
-              <span className="mr-1 i-custom-vender-line-general-info-circle h-4 w-4 text-[#F79009]" />
-              <div className="flex items-center text-xs font-medium text-gray-700">
-                {t('feature.moderation.modal.openaiNotConfig.before', { ns: 'appDebug' })}
-                <span
-                  className="cursor-pointer text-primary-600"
-                  onClick={handleOpenSettingsModal}
-                >
-                  &nbsp;
-                  {t('settings.provider', { ns: 'common' })}
-&nbsp;
-                </span>
-                {t('feature.moderation.modal.openaiNotConfig.after', { ns: 'appDebug' })}
+          localeData.type === 'keywords' && (
+            <div className="py-2">
+              <div className="mb-1 text-sm font-medium text-text-primary">{t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' })}</div>
+              <div className="mb-2 text-xs text-text-tertiary">{t('feature.moderation.modal.keywords.tip', { ns: 'appDebug' })}</div>
+              <div className="relative h-[88px] rounded-lg bg-components-input-bg-normal px-3 py-2">
+                <textarea
+                  value={localeData.config?.keywords || ''}
+                  onChange={handleDataKeywordsChange}
+                  className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-hidden"
+                  placeholder={t('feature.moderation.modal.keywords.placeholder', { ns: 'appDebug' }) || ''}
+                />
+                <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">
+                  <span>{(localeData.config?.keywords || '').split('\n').filter(Boolean).length}</span>
+                  /
+                  <span className="text-text-tertiary">
+                    100
+                    {t('feature.moderation.modal.keywords.line', { ns: 'appDebug' })}
+                  </span>
+                </div>
               </div>
             </div>
           )
         }
-      </div>
-      {
-        localeData.type === 'keywords' && (
-          <div className="py-2">
-            <div className="mb-1 text-sm font-medium text-text-primary">{t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' })}</div>
-            <div className="mb-2 text-xs text-text-tertiary">{t('feature.moderation.modal.keywords.tip', { ns: 'appDebug' })}</div>
-            <div className="relative h-[88px] rounded-lg bg-components-input-bg-normal px-3 py-2">
-              <textarea
-                value={localeData.config?.keywords || ''}
-                onChange={handleDataKeywordsChange}
-                className="block h-full w-full resize-none appearance-none bg-transparent text-sm text-text-secondary outline-hidden"
-                placeholder={t('feature.moderation.modal.keywords.placeholder', { ns: 'appDebug' }) || ''}
-              />
-              <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">
-                <span>{(localeData.config?.keywords || '').split('\n').filter(Boolean).length}</span>
-                /
-                <span className="text-text-tertiary">
-                  100
-                  {t('feature.moderation.modal.keywords.line', { ns: 'appDebug' })}
-                </span>
+        {
+          localeData.type === 'api' && (
+            <div className="py-2">
+              <div className="flex h-9 items-center justify-between">
+                <div className="text-sm font-medium text-text-primary">{t('apiBasedExtension.selector.title', { ns: 'common' })}</div>
+                <a
+                  href={docLink('/use-dify/workspace/api-extension/api-extension')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center text-xs text-text-tertiary hover:text-primary-600"
+                >
+                  <span className="mr-1 i-custom-vender-line-education-book-open-01 h-3 w-3 text-text-tertiary group-hover:text-primary-600" />
+                  {t('apiBasedExtension.link', { ns: 'common' })}
+                </a>
               </div>
+              <ApiBasedExtensionSelector
+                value={localeData.config?.api_based_extension_id || ''}
+                onChange={handleDataApiBasedChange}
+              />
             </div>
-          </div>
-        )
-      }
-      {
-        localeData.type === 'api' && (
-          <div className="py-2">
-            <div className="flex h-9 items-center justify-between">
-              <div className="text-sm font-medium text-text-primary">{t('apiBasedExtension.selector.title', { ns: 'common' })}</div>
-              <a
-                href={docLink('/use-dify/workspace/api-extension/api-extension')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center text-xs text-text-tertiary hover:text-primary-600"
-              >
-                <span className="mr-1 i-custom-vender-line-education-book-open-01 h-3 w-3 text-text-tertiary group-hover:text-primary-600" />
-                {t('apiBasedExtension.link', { ns: 'common' })}
-              </a>
-            </div>
-            <ApiBasedExtensionSelector
-              value={localeData.config?.api_based_extension_id || ''}
-              onChange={handleDataApiBasedChange}
+          )
+        }
+        {
+          systemTypes.findIndex(t => t === localeData.type) < 0
+          && currentProvider?.form_schema
+          && (
+            <FormGeneration
+              forms={currentProvider?.form_schema}
+              value={localeData.config}
+              onChange={handleDataExtraChange}
             />
-          </div>
-        )
-      }
-      {
-        systemTypes.findIndex(t => t === localeData.type) < 0
-        && currentProvider?.form_schema
-        && (
-          <FormGeneration
-            forms={currentProvider?.form_schema}
-            value={localeData.config}
-            onChange={handleDataExtraChange}
-          />
-        )
-      }
-      <Divider bgStyle="gradient" className="my-3 h-px" />
-      <ModerationContent
-        title={t('feature.moderation.modal.content.input', { ns: 'appDebug' }) || ''}
-        config={localeData.config?.inputs_config || { enabled: false, preset_response: '' }}
-        onConfigChange={config => handleDataContentChange('inputs_config', config)}
-        info={(localeData.type === 'api' && t('feature.moderation.modal.content.fromApi', { ns: 'appDebug' })) || ''}
-        showPreset={localeData.type !== 'api'}
-      />
-      <ModerationContent
-        title={t('feature.moderation.modal.content.output', { ns: 'appDebug' }) || ''}
-        config={localeData.config?.outputs_config || { enabled: false, preset_response: '' }}
-        onConfigChange={config => handleDataContentChange('outputs_config', config)}
-        info={(localeData.type === 'api' && t('feature.moderation.modal.content.fromApi', { ns: 'appDebug' })) || ''}
-        showPreset={localeData.type !== 'api'}
-      />
-      <div className="mt-1 mb-8 text-xs font-medium text-text-tertiary">{t('feature.moderation.modal.content.condition', { ns: 'appDebug' })}</div>
-      <div className="flex items-center justify-end">
-        <Button
-          onClick={onCancel}
-          className="mr-2"
-        >
-          {t('operation.cancel', { ns: 'common' })}
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSave}
-          disabled={localeData.type === 'openai_moderation' && !isOpenAIProviderConfigured}
-        >
-          {t('operation.save', { ns: 'common' })}
-        </Button>
-      </div>
-    </Modal>
+          )
+        }
+        <Divider bgStyle="gradient" className="my-3 h-px" />
+        <ModerationContent
+          title={t('feature.moderation.modal.content.input', { ns: 'appDebug' }) || ''}
+          config={localeData.config?.inputs_config || { enabled: false, preset_response: '' }}
+          onConfigChange={config => handleDataContentChange('inputs_config', config)}
+          info={(localeData.type === 'api' && t('feature.moderation.modal.content.fromApi', { ns: 'appDebug' })) || ''}
+          showPreset={localeData.type !== 'api'}
+        />
+        <ModerationContent
+          title={t('feature.moderation.modal.content.output', { ns: 'appDebug' }) || ''}
+          config={localeData.config?.outputs_config || { enabled: false, preset_response: '' }}
+          onConfigChange={config => handleDataContentChange('outputs_config', config)}
+          info={(localeData.type === 'api' && t('feature.moderation.modal.content.fromApi', { ns: 'appDebug' })) || ''}
+          showPreset={localeData.type !== 'api'}
+        />
+        <div className="mt-1 mb-8 text-xs font-medium text-text-tertiary">{t('feature.moderation.modal.content.condition', { ns: 'appDebug' })}</div>
+        <div className="flex items-center justify-end">
+          <Button
+            onClick={onCancel}
+            className="mr-2"
+          >
+            {t('operation.cancel', { ns: 'common' })}
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            disabled={localeData.type === 'openai_moderation' && !isOpenAIProviderConfigured}
+          >
+            {t('operation.save', { ns: 'common' })}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
