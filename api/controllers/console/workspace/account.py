@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal
 
-import pytz
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -187,14 +186,17 @@ def _to_timestamp(value: datetime | int | str | None) -> int | None:
 
     dt: datetime
     if isinstance(value, str):
-        normalized = value.replace("Z", "+00:00") if value.endswith("Z") else value
-        dt = datetime.fromisoformat(normalized)
+        normalized = value.removesuffix("Z") + "+00:00" if value.endswith("Z") else value
+        try:
+            dt = datetime.fromisoformat(normalized)
+        except ValueError as exc:
+            raise ValueError("Invalid ISO timestamp") from exc
     else:
         dt = value
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=pytz.utc)
+        dt = dt.replace(tzinfo=UTC)
     else:
-        dt = dt.astimezone(pytz.utc)
+        dt = dt.astimezone(UTC)
     return int(dt.timestamp())
 
 
@@ -512,7 +514,7 @@ class EducationVerifyApi(Resource):
         account, _ = current_account_with_tenant()
 
         return EducationVerifyResponse.model_validate(
-            BillingService.EducationIdentity.verify(account.id, account.email)
+            BillingService.EducationIdentity.verify(account.id, account.email) or {}
         ).model_dump(mode="json")
 
 
@@ -541,9 +543,9 @@ class EducationApi(Resource):
     def get(self):
         account, _ = current_account_with_tenant()
 
-        return EducationStatusResponse.model_validate(BillingService.EducationIdentity.status(account.id)).model_dump(
-            mode="json"
-        )
+        return EducationStatusResponse.model_validate(
+            BillingService.EducationIdentity.status(account.id) or {}
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/account/education/autocomplete")
