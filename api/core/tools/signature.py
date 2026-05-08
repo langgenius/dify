@@ -28,9 +28,12 @@ def sign_tool_file(tool_file_id: str, extension: str, for_external: bool = True)
 
 def sign_upload_file(upload_file_id: str, extension: str, for_external: bool = True) -> str:
     """
-    sign file to get a temporary url for plugin access
+    Sign an upload file to get a temporary image preview URL.
+
+    External URLs are the default because uploaded-file previews are returned to
+    user-facing retrieval responses. Internal URLs remain available for callers
+    that need to access files inside the deployment network.
     """
-    # Use internal URL for plugin/tool file access in Docker environments
     base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
     file_preview_url = f"{base_url}/files/{upload_file_id}/image-preview"
 

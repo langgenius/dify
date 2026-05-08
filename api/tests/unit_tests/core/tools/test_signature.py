@@ -89,7 +89,7 @@ def test_verify_tool_file_signature_rejects_expired_signature(monkeypatch: pytes
     assert verify_tool_file_signature("tool-file-id", timestamp, nonce, sign) is False
 
 
-def test_sign_upload_file_prefers_internal_url(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sign_upload_file_for_external_uses_files_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
     monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x03" * 16)
     monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
@@ -97,6 +97,24 @@ def test_sign_upload_file_prefers_internal_url(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "https://internal.example.com")
 
     url = sign_upload_file("upload-id", ".png")
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+
+    assert parsed.netloc == "files.example.com"
+    assert parsed.path == "/files/upload-id/image-preview"
+    assert query["timestamp"][0]
+    assert query["nonce"][0]
+    assert query["sign"][0]
+
+
+def test_sign_upload_file_for_internal_prefers_internal_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("core.tools.signature.time.time", lambda: 1700000000)
+    monkeypatch.setattr("core.tools.signature.os.urandom", lambda _: b"\x08" * 16)
+    monkeypatch.setattr("core.tools.signature.dify_config.SECRET_KEY", "unit-secret")
+    monkeypatch.setattr("core.tools.signature.dify_config.FILES_URL", "https://files.example.com")
+    monkeypatch.setattr("core.tools.signature.dify_config.INTERNAL_FILES_URL", "https://internal.example.com")
+
+    url = sign_upload_file("upload-id", ".png", for_external=False)
     parsed = urlparse(url)
     query = parse_qs(parsed.query)
 
