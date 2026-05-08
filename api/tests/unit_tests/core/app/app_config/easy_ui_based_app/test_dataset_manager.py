@@ -293,7 +293,7 @@ class TestExtractDatasetConfig:
 
 
 class TestIsDatasetExists:
-    def test_dataset_exists_true(self, mocker, valid_uuid):
+    def test_dataset_exists_true(self, mocker: MockerFixture, valid_uuid):
         mock_dataset = MagicMock()
         mock_dataset.tenant_id = "tenant1"
         mocker.patch(
@@ -303,14 +303,14 @@ class TestIsDatasetExists:
 
         assert DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid)
 
-    def test_dataset_exists_false_when_not_found(self, mocker, valid_uuid):
+    def test_dataset_exists_false_when_not_found(self, mocker: MockerFixture, valid_uuid):
         mocker.patch(
             "core.app.app_config.easy_ui_based_app.dataset.manager.DatasetService.get_dataset",
             return_value=None,
         )
         assert not DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid)
 
-    def test_dataset_exists_false_when_tenant_mismatch(self, mocker, valid_uuid):
+    def test_dataset_exists_false_when_tenant_mismatch(self, mocker: MockerFixture, valid_uuid):
         mock_dataset = MagicMock()
         mock_dataset.tenant_id = "other"
         mocker.patch(

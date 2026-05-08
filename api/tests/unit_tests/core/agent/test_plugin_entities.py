@@ -48,7 +48,7 @@ class TestAgentStrategyParameterType:
         "enum_member",
         list(AgentStrategyParameter.AgentStrategyParameterType),
     )
-    def test_as_normal_type_calls_external_function(self, mocker, enum_member) -> None:
+    def test_as_normal_type_calls_external_function(self, mocker: MockerFixture, enum_member) -> None:
         mock_func = mocker.patch(
             "core.agent.plugin_entities.as_normal_type",
             return_value="normalized",
@@ -80,7 +80,7 @@ class TestAgentStrategyParameterType:
             (AgentStrategyParameter.AgentStrategyParameterType.FILES, []),
         ],
     )
-    def test_cast_value_calls_external_function(self, mocker, enum_member, value) -> None:
+    def test_cast_value_calls_external_function(self, mocker: MockerFixture, enum_member, value) -> None:
         mock_func = mocker.patch(
             "core.agent.plugin_entities.cast_parameter_value",
             return_value="casted",

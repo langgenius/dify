@@ -72,7 +72,7 @@ class TestPrintText:
         module.print_text("hello")
         mock_print.assert_called_once_with("hello", end="", file=None)
 
-    def test_print_text_with_color(self, mocker, mock_print):
+    def test_print_text_with_color(self, mocker: MockerFixture, mock_print):
         mock_get_color = mocker.patch(
             "core.callback_handler.agent_tool_callback_handler.get_colored_text",
             return_value="colored_text",

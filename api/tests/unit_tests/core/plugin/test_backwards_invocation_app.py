@@ -82,7 +82,7 @@ class TestPluginAppBackwardsInvocation:
             (AppMode.COMPLETION, "invoke_completion_app"),
         ],
     )
-    def test_invoke_app_routes_by_mode(self, mocker, mode, route_method):
+    def test_invoke_app_routes_by_mode(self, mocker: MockerFixture, mode, route_method):
         app = MagicMock(mode=mode)
         user = MagicMock()
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
@@ -167,7 +167,7 @@ class TestPluginAppBackwardsInvocation:
             (AppMode.CHAT, "core.plugin.backwards_invocation.app.ChatAppGenerator.generate"),
         ],
     )
-    def test_invoke_chat_app_agent_and_chat(self, mocker, mode, generator_path):
+    def test_invoke_chat_app_agent_and_chat(self, mocker: MockerFixture, mode, generator_path):
         app = MagicMock(mode=mode, workflow=None)
         spy = mocker.patch(generator_path, return_value={"result": "ok"})
 

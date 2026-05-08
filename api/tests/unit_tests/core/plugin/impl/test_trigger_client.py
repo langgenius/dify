@@ -196,7 +196,7 @@ class TestPluginTriggerClient:
             )
 
     @pytest.mark.parametrize("method_name", ["subscribe", "unsubscribe", "refresh"])
-    def test_subscription_operations_success(self, mocker, method_name):
+    def test_subscription_operations_success(self, mocker: MockerFixture, method_name):
         client = PluginTriggerClient()
         stream_mock = mocker.patch.object(
             client,
@@ -218,7 +218,7 @@ class TestPluginTriggerClient:
             ("refresh", "No response received from plugin daemon for refresh"),
         ],
     )
-    def test_subscription_operations_no_response(self, mocker, method_name, expected):
+    def test_subscription_operations_no_response(self, mocker: MockerFixture, method_name, expected):
         client = PluginTriggerClient()
         mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
         method = getattr(client, method_name)

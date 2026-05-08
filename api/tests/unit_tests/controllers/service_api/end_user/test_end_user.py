@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 from datetime import UTC, datetime
 from unittest.mock import Mock
 from uuid import UUID, uuid4
@@ -21,7 +22,7 @@ class TestEndUserApi:
         app.tenant_id = str(uuid4())
         return app
 
-    def test_get_end_user_returns_all_attributes(self, mocker, resource: EndUserApi, app_model: App) -> None:
+    def test_get_end_user_returns_all_attributes(self, mocker: MockerFixture, resource: EndUserApi, app_model: App) -> None:
         end_user = Mock(spec=EndUser)
         end_user.id = str(uuid4())
         end_user.tenant_id = app_model.tenant_id
@@ -54,7 +55,7 @@ class TestEndUserApi:
         assert result["created_at"].startswith("2024-01-01T00:00:00")
         assert result["updated_at"].startswith("2024-01-02T00:00:00")
 
-    def test_get_end_user_not_found(self, mocker, resource: EndUserApi, app_model: App) -> None:
+    def test_get_end_user_not_found(self, mocker: MockerFixture, resource: EndUserApi, app_model: App) -> None:
         mocker.patch("controllers.service_api.end_user.end_user.EndUserService.get_end_user_by_id", return_value=None)
 
         with pytest.raises(EndUserNotFoundError):

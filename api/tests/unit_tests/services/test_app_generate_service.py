@@ -215,7 +215,7 @@ class TestGenerate:
     """Tests for AppGenerateService.generate covering each mode."""
 
     @pytest.fixture(autouse=True)
-    def _common(self, mocker, monkeypatch):
+    def _common(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", False)
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
         # Prevent AppExecutionParams.new from touching real models via isinstance
@@ -334,7 +334,7 @@ class TestGenerate:
         retrieve_spy.assert_not_called()
 
     # -- ADVANCED_CHAT streaming --------------------------------------------
-    def test_advanced_chat_streaming(self, mocker, monkeypatch):
+    def test_advanced_chat_streaming(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         mocker.patch(
@@ -391,7 +391,7 @@ class TestGenerate:
         assert call_kwargs["pause_state_config"].state_owner_user_id == "owner-id"
 
     # -- WORKFLOW streaming -------------------------------------------------
-    def test_workflow_streaming(self, mocker, monkeypatch):
+    def test_workflow_streaming(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         mocker.patch(
@@ -440,14 +440,14 @@ class TestGenerate:
 # ---------------------------------------------------------------------------
 class TestGenerateBilling:
     @pytest.fixture(autouse=True)
-    def _common(self, mocker, monkeypatch):
+    def _common(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
         mocker.patch(
             "services.app_generate_service.rate_limit_context",
             _noop_rate_limit_context,
         )
 
-    def test_billing_enabled_consumes_quota(self, mocker, monkeypatch):
+    def test_billing_enabled_consumes_quota(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         quota_charge = MagicMock()
         reserve_mock = mocker.patch(
@@ -473,7 +473,7 @@ class TestGenerateBilling:
         reserve_mock.assert_called_once_with(QuotaType.WORKFLOW, "tenant-id")
         quota_charge.commit.assert_called_once()
 
-    def test_billing_quota_exceeded_raises_rate_limit_error(self, mocker, monkeypatch):
+    def test_billing_quota_exceeded_raises_rate_limit_error(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         from services.errors.app import QuotaExceededError
         from services.errors.llm import InvokeRateLimitError
 
@@ -492,7 +492,7 @@ class TestGenerateBilling:
                 streaming=False,
             )
 
-    def test_exception_refunds_quota_and_exits_rate_limit(self, mocker, monkeypatch):
+    def test_exception_refunds_quota_and_exits_rate_limit(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         quota_charge = MagicMock()
         mocker.patch(
@@ -518,7 +518,7 @@ class TestGenerateBilling:
             )
         quota_charge.refund.assert_called_once()
 
-    def test_rate_limit_exit_called_in_finally_for_blocking(self, mocker, monkeypatch):
+    def test_rate_limit_exit_called_in_finally_for_blocking(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         """For non-streaming (blocking) calls, rate_limit.exit should be called in finally."""
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", False)
 

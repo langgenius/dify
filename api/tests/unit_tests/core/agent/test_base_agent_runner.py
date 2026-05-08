@@ -61,7 +61,7 @@ class TestRepack:
 
 
 class TestUpdatePromptTool:
-    def build_param(self, mocker, **kwargs):
+    def build_param(self, mocker: MockerFixture, **kwargs):
         p = mocker.MagicMock()
         p.form = kwargs.get("form")
 

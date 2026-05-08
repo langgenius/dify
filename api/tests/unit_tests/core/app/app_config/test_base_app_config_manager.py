@@ -108,7 +108,7 @@ class TestBaseAppConfigManager:
         mock_managers["speech_to_text"].assert_called_once_with(config=dict(mock_config_dict.items()))
         mock_managers["text_to_speech"].assert_called_once_with(config=dict(mock_config_dict.items()))
 
-    def test_convert_features_empty_config(self, mocker, mock_app_additional_features, mock_managers):
+    def test_convert_features_empty_config(self, mocker: MockerFixture, mock_app_additional_features, mock_managers):
         # Arrange
         empty_config = {}
         mock_app_mode = MagicMock()
@@ -144,7 +144,7 @@ class TestBaseAppConfigManager:
         with pytest.raises((TypeError, AttributeError)):
             BaseAppConfigManager.convert_features(invalid_config, "CHAT")
 
-    def test_convert_features_manager_exception_propagates(self, mocker, mock_config_dict):
+    def test_convert_features_manager_exception_propagates(self, mocker: MockerFixture, mock_config_dict):
         # Arrange
         mocker.patch(
             "core.app.app_config.base_app_config_manager.RetrievalResourceConfigManager.convert",
@@ -155,7 +155,7 @@ class TestBaseAppConfigManager:
         with pytest.raises(RuntimeError):
             BaseAppConfigManager.convert_features(mock_config_dict, "CHAT")
 
-    def test_convert_features_mapping_subclass(self, mocker, mock_app_additional_features, mock_managers):
+    def test_convert_features_mapping_subclass(self, mocker: MockerFixture, mock_app_additional_features, mock_managers):
         # Arrange
         class CustomMapping(UserDict):
             pass

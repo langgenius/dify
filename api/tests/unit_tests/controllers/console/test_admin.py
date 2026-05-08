@@ -98,7 +98,7 @@ class TestDeleteExploreBannerApi:
     def setup_method(self):
         self.api = DeleteExploreBannerApi()
 
-    def test_delete_banner_not_found(self, mocker, mock_admin_auth):
+    def test_delete_banner_not_found(self, mocker: MockerFixture, mock_admin_auth):
         mocker.patch(
             "controllers.console.admin.db.session.execute",
             return_value=Mock(scalar_one_or_none=lambda: None),
@@ -107,7 +107,7 @@ class TestDeleteExploreBannerApi:
         with pytest.raises(NotFound, match="is not found"):
             self.api.delete(uuid.uuid4())
 
-    def test_delete_banner_success(self, mocker, mock_admin_auth):
+    def test_delete_banner_success(self, mocker: MockerFixture, mock_admin_auth):
         mock_banner = Mock()
 
         mocker.patch(
@@ -127,7 +127,7 @@ class TestInsertExploreBannerApi:
     def setup_method(self):
         self.api = InsertExploreBannerApi()
 
-    def test_insert_banner_success(self, mocker, mock_admin_auth, mock_banner_payload):
+    def test_insert_banner_success(self, mocker: MockerFixture, mock_admin_auth, mock_banner_payload):
         mocker.patch("controllers.console.admin.db.session.add")
         mocker.patch("controllers.console.admin.db.session.commit")
 
@@ -169,7 +169,7 @@ class TestInsertExploreAppApiDelete:
     def setup_method(self):
         self.api = InsertExploreAppApi()
 
-    def test_delete_when_not_in_explore(self, mocker, mock_admin_auth):
+    def test_delete_when_not_in_explore(self, mocker: MockerFixture, mock_admin_auth):
         mocker.patch(
             "controllers.console.admin.session_factory.create_session",
             return_value=Mock(
@@ -184,7 +184,7 @@ class TestInsertExploreAppApiDelete:
         assert status == 204
         assert response["result"] == "success"
 
-    def test_delete_when_in_explore_with_trial_app(self, mocker, mock_admin_auth):
+    def test_delete_when_in_explore_with_trial_app(self, mocker: MockerFixture, mock_admin_auth):
         """Test deleting an app from explore that has a trial app."""
         app_id = uuid.uuid4()
 
@@ -226,7 +226,7 @@ class TestInsertExploreAppApiDelete:
         assert response["result"] == "success"
         assert mock_app.is_public is False
 
-    def test_delete_with_installed_apps(self, mocker, mock_admin_auth):
+    def test_delete_with_installed_apps(self, mocker: MockerFixture, mock_admin_auth):
         """Test deleting an app that has installed apps in other tenants."""
         app_id = uuid.uuid4()
 
@@ -271,7 +271,7 @@ class TestInsertExploreAppListApi:
     def setup_method(self):
         self.api = InsertExploreAppListApi()
 
-    def test_app_not_found(self, mocker, mock_admin_auth, mock_console_payload):
+    def test_app_not_found(self, mocker: MockerFixture, mock_admin_auth, mock_console_payload):
         mocker.patch(
             "controllers.console.admin.db.session.execute",
             return_value=Mock(scalar_one_or_none=lambda: None),
@@ -319,7 +319,7 @@ class TestInsertExploreAppListApi:
         assert response["result"] == "success"
         assert mock_app.is_public is True
 
-    def test_update_recommended_app(self, mocker, mock_admin_auth, mock_console_payload, mock_session_factory):
+    def test_update_recommended_app(self, mocker: MockerFixture, mock_admin_auth, mock_console_payload, mock_session_factory):
         mock_app = Mock(spec=App)
         mock_app.id = "app-id"
         mock_app.site = None

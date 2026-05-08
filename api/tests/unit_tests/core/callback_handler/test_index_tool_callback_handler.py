@@ -35,7 +35,7 @@ class TestOnQuery:
             (InvokeFrom.WEB_APP, "end_user"),
         ],
     )
-    def test_on_query_success_roles(self, mocker, mock_queue_manager, invoke_from, expected_role):
+    def test_on_query_success_roles(self, mocker: MockerFixture, mock_queue_manager, invoke_from, expected_role):
         # Arrange
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
@@ -58,7 +58,7 @@ class TestOnQuery:
         assert dataset_query.created_by_role == expected_role
         mock_db.session.commit.assert_called_once()
 
-    def test_on_query_none_values(self, mocker, mock_queue_manager):
+    def test_on_query_none_values(self, mocker: MockerFixture, mock_queue_manager):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         handler = DatasetIndexToolCallbackHandler(

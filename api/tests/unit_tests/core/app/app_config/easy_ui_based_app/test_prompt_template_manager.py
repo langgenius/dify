@@ -98,7 +98,7 @@ class TestPromptTemplateConfigManagerConvert:
             {"text": "hi", "role": 123},
         ],
     )
-    def test_convert_advanced_invalid_message_fields(self, mocker, message):
+    def test_convert_advanced_invalid_message_fields(self, mocker: MockerFixture, message):
         mock_prompt_entity_cls = MagicMock()
         mock_prompt_entity_cls.PromptType = DummyPromptType()
 
