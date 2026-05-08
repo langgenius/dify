@@ -1,17 +1,13 @@
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiClipboardFill,
-  RiClipboardLine,
-} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
-import Modal from '@/app/components/base/modal'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { basePath } from '@/utils/var'
@@ -86,16 +82,18 @@ const prefixEmbedded = 'overview.appInfo.embedded'
 
 type Option = keyof typeof OPTION_MAP
 
-type OptionStatus = {
-  iframe: boolean
-  scripts: boolean
-  chromePlugin: boolean
+const OPTIONS: Option[] = ['iframe', 'scripts', 'chromePlugin']
+
+const optionIconClassName: Record<Option, string> = {
+  iframe: style.iframeIcon!,
+  scripts: style.scriptsIcon!,
+  chromePlugin: style.chromePluginIcon!,
 }
 
 const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, className }: Props) => {
   const { t } = useTranslation()
   const [option, setOption] = useState<Option>('iframe')
-  const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false, chromePlugin: false })
+  const [copiedOption, setCopiedOption] = useState<Option | null>(null)
 
   const { langGeniusVersionInfo } = useAppContext()
   const themeBuilder = useThemeContext()
@@ -110,97 +108,98 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
     else {
       copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv))
     }
-    setIsCopied({ ...isCopied, [option]: true })
-  }
-
-  // when toggle option, reset then copy status
-  const resetCopyStatus = () => {
-    const cache = { ...isCopied }
-    Object.keys(cache).forEach((key) => {
-      cache[key as keyof OptionStatus] = false
-    })
-    setIsCopied(cache)
+    setCopiedOption(option)
   }
 
   const navigateToChromeUrl = () => {
     window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank', 'noopener,noreferrer')
   }
 
-  useEffect(() => {
-    resetCopyStatus()
-  }, [isShow])
-
   return (
-    <Modal
-      title={t(`${prefixEmbedded}.title`, { ns: 'appOverview' })}
-      isShow={isShow}
-      onClose={onClose}
-      className="w-[640px] max-w-2xl!"
-      wrapperClassName={className}
-      closable={true}
+    <Dialog
+      open={isShow}
+      onOpenChange={(open) => {
+        if (open)
+          return
+        setCopiedOption(null)
+        onClose()
+      }}
     >
-      <div className="mt-8 mb-4 system-sm-medium text-text-primary">
-        {t(`${prefixEmbedded}.explanation`, { ns: 'appOverview' })}
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-y-2">
-        {Object.keys(OPTION_MAP).map((v, index) => {
-          return (
-            <div
-              key={index}
-              className={cn(
-                style.option,
-                style[`${v}Icon`],
-                option === v && style.active,
-              )}
-              onClick={() => {
-                setOption(v as Option)
-                resetCopyStatus()
-              }}
-            >
-            </div>
-          )
-        })}
-      </div>
-      {option === 'chromePlugin' && (
-        <div className="mt-6 w-full">
-          <div className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3', 'shrink-0 cursor-pointer bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm')}>
-            <div className={`relative h-4 w-4 ${style.pluginInstallIcon}`}></div>
-            <div className="font-['Inter'] text-sm leading-tight font-medium text-white" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`, { ns: 'appOverview' })}</div>
-          </div>
+      <DialogContent className={cn('max-h-[calc(100dvh-2rem)] w-[640px] overflow-visible', className)}>
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(`${prefixEmbedded}.title`, { ns: 'appOverview' })}
+        </DialogTitle>
+        <DialogCloseButton />
+        <div className="mt-8 mb-4 system-sm-medium text-text-primary">
+          {t(`${prefixEmbedded}.explanation`, { ns: 'appOverview' })}
         </div>
-      )}
-      <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section', 'mt-6')}>
-        <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
-          <div className="shrink-0 grow system-sm-medium text-text-secondary">
-            {t(`${prefixEmbedded}.${option}`, { ns: 'appOverview' })}
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
+          {OPTIONS.map((v) => {
+            return (
+              <button
+                type="button"
+                key={v}
+                aria-label={t(`${prefixEmbedded}.${v}`, { ns: 'appOverview' }) || v}
+                className={cn(
+                  style.option,
+                  optionIconClassName[v],
+                  option === v && style.active,
+                )}
+                onClick={() => {
+                  setOption(v)
+                  setCopiedOption(null)
+                }}
+              >
+              </button>
+            )
+          })}
+        </div>
+        {option === 'chromePlugin' && (
+          <div className="mt-6 w-full">
+            <button
+              type="button"
+              className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3', 'shrink-0 bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm')}
+              onClick={navigateToChromeUrl}
+            >
+              <div className={`relative h-4 w-4 ${style.pluginInstallIcon}`}></div>
+              <div className="font-['Inter'] text-sm leading-tight font-medium text-white">{t(`${prefixEmbedded}.chromePlugin`, { ns: 'appOverview' })}</div>
+            </button>
           </div>
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <ActionButton>
-                  <div
+        )}
+        <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section', 'mt-6')}>
+          <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1 pr-1 pl-3">
+            <div className="shrink-0 grow system-sm-medium text-text-secondary">
+              {t(`${prefixEmbedded}.${option}`, { ns: 'appOverview' })}
+            </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <ActionButton
+                    aria-label={(copiedOption === option
+                      ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+                      : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''}
                     onClick={onClickCopy}
                   >
-                    {isCopied[option] && <RiClipboardFill className="h-4 w-4" />}
-                    {!isCopied[option] && <RiClipboardLine className="h-4 w-4" />}
-                  </div>
-                </ActionButton>
-              )}
-            />
-            <TooltipContent>
-              {(isCopied[option]
-                ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-                : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-        <div className="flex w-full items-start justify-start gap-2 overflow-x-auto p-3">
-          <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
-            <pre className="select-text">{OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv)}</pre>
+                    {copiedOption === option && <span aria-hidden="true" className="i-ri-clipboard-fill h-4 w-4" />}
+                    {copiedOption !== option && <span aria-hidden="true" className="i-ri-clipboard-line h-4 w-4" />}
+                  </ActionButton>
+                )}
+              />
+              <TooltipContent>
+                {(copiedOption === option
+                  ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+                  : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="flex max-h-[clamp(180px,calc(100dvh-320px),360px)] w-full items-start justify-start gap-2 overflow-auto p-3">
+            <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
+              <pre className="select-text">{OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv)}</pre>
+            </div>
           </div>
         </div>
-      </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   )
 }
 

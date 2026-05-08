@@ -101,7 +101,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           <div className="px-4 pb-2">
             <Field title={t(`${i18nPrefix}.MaxParallelismTitle`, { ns: 'workflow' })} isSubTitle tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.MaxParallelismDesc`, { ns: 'workflow' })}</div>}>
               <div className="row flex">
-                <Input type="number" wrapperClassName="w-18 mr-4 " max={MAX_PARALLEL_LIMIT} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
+                <Input type="number" wrapperClassName="w-18 mr-4" max={MAX_PARALLEL_LIMIT} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
                 <Slider
                   value={inputs.parallel_nums}
                   onValueChange={changeParallelNums}
@@ -133,7 +133,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
             <SelectTrigger className="w-full">
               {selectedResponseMethod?.name ?? t('placeholder.select', { ns: 'common' })}
             </SelectTrigger>
-            <SelectContent popupClassName="w-(--anchor-width)">
+            <SelectContent>
               {responseMethod.map(item => (
                 <SelectItem key={item.value} value={String(item.value)}>
                   <SelectItemText>{item.name}</SelectItemText>

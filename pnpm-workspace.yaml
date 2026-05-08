@@ -138,6 +138,7 @@ catalog:
   abcjs: 6.6.3
   agentation: 3.0.2
   ahooks: 3.9.7
+  c12: 1.10.0
   class-variance-authority: 0.7.1
   client-only: 0.0.1
   clsx: 2.1.1
@@ -166,6 +167,7 @@ catalog:
   eslint-plugin-sonarjs: 4.0.3
   eslint-plugin-storybook: 10.3.6
   fast-deep-equal: 3.1.3
+  fuse.js: 7.2.0
   happy-dom: 20.9.0
   hast-util-to-jsx-runtime: 2.3.6
   hono: 4.12.17

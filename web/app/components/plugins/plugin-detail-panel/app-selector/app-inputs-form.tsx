@@ -70,7 +70,7 @@ const AppInputsForm = ({
           <SelectTrigger className="w-full">
             {selectedOption?.name ?? label}
           </SelectTrigger>
-          <SelectContent popupClassName="z-1050 w-(--anchor-width)">
+          <SelectContent>
             {selectOptions.map(option => (
               <SelectItem key={option.value} value={option.value}>
                 <SelectItemText>{option.name}</SelectItemText>

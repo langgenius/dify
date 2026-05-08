@@ -56,14 +56,14 @@ const KeyWordNumber = ({
         aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
       />
       <NumberField
-        className="w-12 shrink-0"
+        className="w-[74px] shrink-0"
         min={MIN_KEYWORD_NUMBER}
         max={MAX_KEYWORD_NUMBER}
         value={keywordNumber}
         onValueChange={handleInputChange}
       >
         <NumberFieldGroup>
-          <NumberFieldInput />
+          <NumberFieldInput className="w-12 flex-none px-2 text-center" />
           <NumberFieldControls>
             <NumberFieldIncrement />
             <NumberFieldDecrement />

@@ -88,6 +88,7 @@ export default defineConfig(({ mode }) => {
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
+        exclude: ['**/__mocks__/**'],
       },
     },
   }

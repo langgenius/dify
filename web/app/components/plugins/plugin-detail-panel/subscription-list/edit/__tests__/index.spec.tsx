@@ -166,49 +166,6 @@ vi.mock('@/app/components/base/form/components/base', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/modal/modal', () => ({
-  default: ({
-    title,
-    confirmButtonText,
-    onClose,
-    onCancel,
-    onConfirm,
-    disabled,
-    children,
-    showExtraButton,
-    extraButtonText,
-    onExtraButtonClick,
-    bottomSlot,
-  }: {
-    title: string
-    confirmButtonText: string
-    onClose: () => void
-    onCancel: () => void
-    onConfirm: () => void
-    disabled?: boolean
-    children: React.ReactNode
-    showExtraButton?: boolean
-    extraButtonText?: string
-    onExtraButtonClick?: () => void
-    bottomSlot?: React.ReactNode
-  }) => (
-    <div data-testid="modal" data-title={title} data-disabled={disabled}>
-      <div data-testid="modal-content">{children}</div>
-      <button data-testid="modal-confirm-button" onClick={onConfirm} disabled={disabled}>
-        {confirmButtonText}
-      </button>
-      <button data-testid="modal-cancel-button" onClick={onCancel}>Cancel</button>
-      <button data-testid="modal-close-button" onClick={onClose}>Close</button>
-      {showExtraButton && (
-        <button data-testid="modal-extra-button" onClick={onExtraButtonClick}>
-          {extraButtonText}
-        </button>
-      )}
-      {!!bottomSlot && <div data-testid="modal-bottom-slot">{bottomSlot}</div>}
-    </div>
-  ),
-}))
-
 // ==================== Test Utilities ====================
 
 const createSubscription = (overrides: Partial<TriggerSubscription> = {}): TriggerSubscription => ({

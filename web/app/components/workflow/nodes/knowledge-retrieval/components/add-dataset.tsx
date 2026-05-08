@@ -26,17 +26,20 @@ const AddDataset: FC<Props> = ({
   }, [onChange, hideModal])
   return (
     <div>
-      <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={showModal} data-testid="add-button">
-        <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-      </div>
-      {isShowModal && (
-        <SelectDataset
-          isShow={isShowModal}
-          onClose={hideModal}
-          selectedIds={selectedIds}
-          onSelect={handleSelect}
-        />
-      )}
+      <button
+        type="button"
+        className="cursor-pointer rounded-md p-1 outline-hidden select-none hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        onClick={showModal}
+        data-testid="add-button"
+      >
+        <span aria-hidden="true" className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+      </button>
+      <SelectDataset
+        isShow={isShowModal}
+        onClose={hideModal}
+        selectedIds={selectedIds}
+        onSelect={handleSelect}
+      />
     </div>
   )
 }

@@ -1,7 +1,7 @@
+import type * as React from 'react'
 import type { Props } from '../var-picker'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import ContextVar from '../index'
 
 // Mock external dependencies only
@@ -73,57 +73,6 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     Popover,
     PopoverTrigger,
     PopoverContent,
-  }
-})
-
-type PortalToFollowElemProps = {
-  children: React.ReactNode
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-}
-type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode, asChild?: boolean }
-type PortalToFollowElemContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => {
-  const PortalContext = React.createContext({ open: false })
-
-  const PortalToFollowElem = ({ children, open }: PortalToFollowElemProps) => {
-    return (
-      <PortalContext.Provider value={{ open: !!open }}>
-        <div data-testid="portal">{children}</div>
-      </PortalContext.Provider>
-    )
-  }
-
-  const PortalToFollowElemContent = ({ children, ...props }: PortalToFollowElemContentProps) => {
-    const { open } = React.useContext(PortalContext)
-    if (!open)
-      return null
-    return (
-      <div data-testid="portal-content" {...props}>
-        {children}
-      </div>
-    )
-  }
-
-  const PortalToFollowElemTrigger = ({ children, asChild, ...props }: PortalToFollowElemTriggerProps) => {
-    if (asChild && React.isValidElement(children)) {
-      return React.cloneElement(children, {
-        ...props,
-        'data-testid': 'portal-trigger',
-      } as React.HTMLAttributes<HTMLElement>)
-    }
-    return (
-      <div data-testid="portal-trigger" {...props}>
-        {children}
-      </div>
-    )
-  }
-
-  return {
-    PortalToFollowElem,
-    PortalToFollowElemContent,
-    PortalToFollowElemTrigger,
   }
 })
 

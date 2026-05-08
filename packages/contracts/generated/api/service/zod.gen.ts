@@ -327,9 +327,49 @@ export const zWorkflowRunResponse = z.object({
 })
 
 /**
+ * Condition
+ *
+ * Condition detail
+ */
+export const zCondition = z.object({
+  comparison_operator: z.enum([
+    'contains',
+    'not contains',
+    'start with',
+    'end with',
+    'is',
+    'is not',
+    'empty',
+    'not empty',
+    'in',
+    'not in',
+    '=',
+    '≠',
+    '>',
+    '<',
+    '≥',
+    '≤',
+    'before',
+    'after',
+  ]),
+  name: z.string(),
+  value: z.unknown().optional(),
+})
+
+/**
  * DatasetPermissionEnum
  */
 export const zDatasetPermissionEnum = z.enum(['only_me', 'all_team_members', 'partial_members'])
+
+/**
+ * MetadataFilteringCondition
+ *
+ * Metadata Filtering Condition.
+ */
+export const zMetadataFilteringCondition = z.object({
+  conditions: z.array(zCondition).nullish(),
+  logical_operator: z.enum(['and', 'or']).nullish().default('and'),
+})
 
 /**
  * RerankingModel
@@ -378,6 +418,7 @@ export const zWeightModel = z.object({
  * RetrievalModel
  */
 export const zRetrievalModel = z.object({
+  metadata_filtering_conditions: zMetadataFilteringCondition.optional(),
   reranking_enable: z.boolean(),
   reranking_mode: z.string().nullish(),
   reranking_model: zRerankingModel.optional(),
@@ -1082,8 +1123,8 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdR
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   segment_id: z.string(),
-  dataset_id: z.string(),
   document_id: z.string(),
+  dataset_id: z.string(),
 })
 
 /**

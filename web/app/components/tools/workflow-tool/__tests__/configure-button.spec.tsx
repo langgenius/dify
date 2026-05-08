@@ -113,29 +113,6 @@ vi.mock('@/app/components/tools/labels/selector', () => ({
   ),
 }))
 
-// Mock PortalToFollowElem for dropdown tests
-let mockPortalOpenState = false
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange: (open: boolean) => void }) => {
-    mockPortalOpenState = open
-    return (
-      <div data-testid="portal-elem" data-open={open} onClick={() => onOpenChange(!open)}>
-        {children}
-      </div>
-    )
-  },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: { children: React.ReactNode, onClick: () => void, className?: string }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-    if (!mockPortalOpenState)
-      return null
-    return <div data-testid="portal-content" className={className}>{children}</div>
-  },
-}))
-
 // Test data factories
 const createMockEmoji = (overrides = {}) => ({
   content: '🔧',
@@ -246,7 +223,6 @@ const createDefaultModalPayload = (overrides: Partial<WorkflowToolModalPayload> 
 describe('WorkflowToolConfigureButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
     mockIsCurrentWorkspaceManager.mockReturnValue(true)
     mockUseWorkflowToolDetailByAppID.mockImplementation((_appId: string, enabled: boolean) => ({
       data: enabled ? createMockWorkflowToolDetail() : undefined,
@@ -624,7 +600,6 @@ describe('WorkflowToolConfigureButton', () => {
 describe('WorkflowToolAsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
   })
 
   // Rendering Tests (REQUIRED)
@@ -1486,7 +1461,6 @@ describe('WorkflowToolAsModal', () => {
 describe('MethodSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
   })
 
   // Rendering Tests (REQUIRED)
@@ -1709,7 +1683,6 @@ describe('MethodSelector', () => {
 describe('Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
     mockIsCurrentWorkspaceManager.mockReturnValue(true)
     mockUseWorkflowToolDetailByAppID.mockImplementation((_appId: string, enabled: boolean) => ({
       data: enabled ? createMockWorkflowToolDetail() : undefined,

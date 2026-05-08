@@ -491,8 +491,8 @@ describe('InputVarList', () => {
     })
 
     await user.click(screen.getByText('workflow:errorMsg.configureModel'))
-    await user.click(await screen.findByRole('button', { name: 'plugin.detailPanel.configureModel' }))
-    await user.click(await screen.findByRole('button', { name: /GPT-4o/i }))
+    await user.click(await screen.findByRole('combobox', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(await screen.findByRole('option', { name: /GPT-4o/i }))
 
     expect(onChange).toHaveBeenLastCalledWith({
       assistant: {

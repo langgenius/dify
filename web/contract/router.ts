@@ -19,6 +19,14 @@ import { notificationContract, notificationDismissContract } from './console/not
 import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
 import { systemFeaturesContract } from './console/system'
 import {
+  tagBindingCreateContract,
+  tagBindingRemoveContract,
+  tagCreateContract,
+  tagDeleteContract,
+  tagListContract,
+  tagUpdateContract,
+} from './console/tags'
+import {
   triggerOAuthConfigContract,
   triggerOAuthConfigureContract,
   triggerOAuthDeleteContract,
@@ -103,6 +111,14 @@ export const consoleRouterContract = {
   workflowComments: workflowCommentContracts,
   notification: notificationContract,
   notificationDismiss: notificationDismissContract,
+  tags: {
+    list: tagListContract,
+    create: tagCreateContract,
+    update: tagUpdateContract,
+    delete: tagDeleteContract,
+    bind: tagBindingCreateContract,
+    unbind: tagBindingRemoveContract,
+  },
   triggers: {
     list: triggersContract,
     providerInfo: triggerProviderInfoContract,

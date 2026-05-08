@@ -167,7 +167,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         <SelectTrigger className="w-full bg-gray-50">
                           {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
                         </SelectTrigger>
-                        <SelectContent popupClassName="w-(--anchor-width)">
+                        <SelectContent>
                           {(options || []).map(option => (
                             <SelectItem key={option} value={option}>
                               <SelectItemText>{option}</SelectItemText>

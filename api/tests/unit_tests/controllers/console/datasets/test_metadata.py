@@ -269,7 +269,7 @@ class TestDatasetMetadataApi:
 
 
 class TestDatasetMetadataBuiltInFieldApi:
-    def test_get_built_in_fields(self, app):
+    def test_get_built_in_fields(self, app: Flask):
         api = DatasetMetadataBuiltInFieldApi()
         method = unwrap(api.get)
 

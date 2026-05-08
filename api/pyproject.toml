@@ -174,7 +174,7 @@ dev = [
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=0.62.0",
+    "pyrefly>=0.64.0",
     "xinference-client>=2.7.0",
 ]
 

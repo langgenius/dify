@@ -1235,6 +1235,10 @@ describe('Form', () => {
       expect(screen.getByText('Region'))!.toBeInTheDocument()
       expect(screen.getByText('Model'))!.toBeInTheDocument()
       expect(screen.getByText('Agree'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Enter your API key here'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Select region'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Choose model'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Agree tooltip'))!.toBeInTheDocument()
     })
 
     it('should render required asterisk for radio, select, checkbox, and other field types', () => {
