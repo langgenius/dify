@@ -29,7 +29,7 @@ const OPTION_MAP = {
  src="${url}${basePath}/chatbot/${token}"
  style="width: 100%; height: 100%; min-height: 700px"
  frameborder="0"
- allow="microphone">
+ allow="fullscreen">
 </iframe>`,
   },
   scripts: {

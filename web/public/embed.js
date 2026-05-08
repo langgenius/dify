@@ -156,7 +156,13 @@
     // Function to create the iframe for the chatbot
     function createIframe() {
       const iframe = document.createElement("iframe");
-      iframe.allow = "fullscreen;microphone";
+      // Only request microphone permission when explicitly enabled via config
+      // to avoid Chrome mobile triggering permission prompts for basic chat widgets
+      const permissions = ["fullscreen"];
+      if (config?.enableMicrophone) {
+        permissions.push("microphone");
+      }
+      iframe.allow = permissions.join("; ");
       iframe.title = "dify chatbot bubble window";
       iframe.id = iframeId;
       iframe.src = iframeUrl;
