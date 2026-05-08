@@ -858,6 +858,8 @@ class WorkflowResponseConverter:
                 file = cls._get_file_var_from_value(value)
                 if file:
                     files.append(file)
+            case _:
+                pass
 
         return files
 

@@ -72,6 +72,8 @@ class PromptMessageUtil:
                                         "format": content.format,
                                     }
                                 )
+                            case _:
+                                continue
                 else:
                     text = cast(str, prompt_message.content)
 
