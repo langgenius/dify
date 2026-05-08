@@ -1,5 +1,3 @@
-from models.enums import CustomizeTokenStrategy
-from models.enums import AppStatus
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -8,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from constants.model_template import default_app_templates
 from models import Account
+from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, IconType, Site
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password

@@ -10,8 +10,6 @@ All tests use the testcontainers infrastructure to ensure proper database isolat
 and realistic testing scenarios with actual PostgreSQL and Redis instances.
 """
 
-from models import AccountStatus
-from models import TenantStatus
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,6 +18,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
+from models import AccountStatus, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 

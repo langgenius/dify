@@ -1,6 +1,5 @@
 """Integration tests for Feedback Export API endpoints."""
 
-from models.enums import AppStatus
 import json
 import uuid
 from datetime import datetime
@@ -15,7 +14,7 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import FeedbackFromSource, FeedbackRating
+from models.enums import AppStatus, FeedbackFromSource, FeedbackRating
 from models.model import AppMode, MessageFeedback
 from services.feedback_service import FeedbackService
 

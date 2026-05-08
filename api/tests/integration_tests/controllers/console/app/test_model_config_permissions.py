@@ -1,6 +1,5 @@
 """Integration tests for ModelConfigResource permission verification."""
 
-from models.enums import AppStatus
 import uuid
 from unittest import mock
 
@@ -12,6 +11,7 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.enums import AppStatus
 from models.model import AppMode
 from services.app_model_config_service import AppModelConfigService
 

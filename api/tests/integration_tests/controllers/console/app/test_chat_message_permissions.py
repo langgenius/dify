@@ -1,6 +1,5 @@
 """Integration tests for ChatMessageApi permission verification."""
 
-from models.enums import AppStatus
 import uuid
 from types import SimpleNamespace
 from unittest import mock
@@ -14,7 +13,7 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import ConversationFromSource
+from models.enums import AppStatus, ConversationFromSource
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 
