@@ -36,6 +36,23 @@ describe('useModalState', () => {
     expect(result.current.currSegment.isEditMode).toBe(true)
   })
 
+  it('should close child detail when opening segment detail', () => {
+    const { result } = renderUseModalState()
+    const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkDetail
+    const segmentDetail = { id: 'seg-1' } as unknown as SegmentDetailModel
+
+    act(() => {
+      result.current.onClickSlice(childDetail)
+    })
+    act(() => {
+      result.current.onClickCard(segmentDetail)
+    })
+
+    expect(result.current.currSegment.showModal).toBe(true)
+    expect(result.current.currSegment.segInfo).toBe(segmentDetail)
+    expect(result.current.currChildChunk.showModal).toBe(false)
+  })
+
   it('should close segment detail and reset fullscreen', () => {
     const { result } = renderUseModalState()
 
@@ -64,6 +81,23 @@ describe('useModalState', () => {
     expect(result.current.currChildChunk.showModal).toBe(true)
     expect(result.current.currChildChunk.childChunkInfo).toBe(childDetail)
     expect(result.current.currChunkId).toBe('seg-1')
+  })
+
+  it('should close segment detail when opening child detail', () => {
+    const { result } = renderUseModalState()
+    const segmentDetail = { id: 'seg-1' } as unknown as SegmentDetailModel
+    const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkDetail
+
+    act(() => {
+      result.current.onClickCard(segmentDetail)
+    })
+    act(() => {
+      result.current.onClickSlice(childDetail)
+    })
+
+    expect(result.current.currSegment.showModal).toBe(false)
+    expect(result.current.currChildChunk.showModal).toBe(true)
+    expect(result.current.currChildChunk.childChunkInfo).toBe(childDetail)
   })
 
   it('should close child segment detail', () => {

@@ -46,6 +46,7 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
   const [isCollapsed, setIsCollapsed] = useState(true)
 
   const onClickCard = useCallback((detail: SegmentDetailModel, isEditMode = false) => {
+    setCurrChildChunk({ showModal: false })
     setCurrSegment({ segInfo: detail, showModal: true, isEditMode })
   }, [])
 
@@ -55,6 +56,7 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
   }, [])
 
   const onClickSlice = useCallback((detail: ChildChunkDetail) => {
+    setCurrSegment({ showModal: false })
     setCurrChildChunk({ childChunkInfo: detail, showModal: true })
     setCurrChunkId(detail.segment_id)
   }, [])
