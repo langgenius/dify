@@ -163,6 +163,59 @@ describe('ThinkBlock', () => {
       expect(screen.getByText(/Thought/)).toBeInTheDocument()
     })
 
+    it('preserves the final elapsed time when completion is detected after timers were paused', () => {
+      const startTime = new Date('2026-05-08T00:00:00.000Z')
+      vi.setSystemTime(startTime)
+
+      const { rerender } = render(
+        <ChatContextProvider
+          config={undefined}
+          isResponding={true}
+          chatList={[]}
+          showPromptLog={false}
+          questionIcon={undefined}
+          answerIcon={undefined}
+          onSend={undefined}
+          onRegenerate={undefined}
+          onAnnotationEdited={undefined}
+          onAnnotationAdded={undefined}
+          onAnnotationRemoved={undefined}
+          onFeedback={undefined}
+        >
+          <ThinkBlock data-think={true}>
+            <p>Thinking content</p>
+          </ThinkBlock>
+        </ChatContextProvider>,
+      )
+
+      act(() => {
+        vi.setSystemTime(new Date(startTime.getTime() + 1500))
+      })
+
+      rerender(
+        <ChatContextProvider
+          config={undefined}
+          isResponding={true}
+          chatList={[]}
+          showPromptLog={false}
+          questionIcon={undefined}
+          answerIcon={undefined}
+          onSend={undefined}
+          onRegenerate={undefined}
+          onAnnotationEdited={undefined}
+          onAnnotationAdded={undefined}
+          onAnnotationRemoved={undefined}
+          onFeedback={undefined}
+        >
+          <ThinkBlock data-think={true}>
+            <p>Thinking content[ENDTHINKFLAG]</p>
+          </ThinkBlock>
+        </ChatContextProvider>,
+      )
+
+      expect(screen.getByText(/Thought\(1\.5s\)/)).toBeInTheDocument()
+    })
+
     it('should stop timer when isResponding is undefined (historical conversation outside active response)', () => {
       // Render without ChatContextProvider — simulates historical conversation
       render(

@@ -4,53 +4,61 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChatContext } from '../chat/chat/context'
 
-const hasEndThink = (children: any): boolean => {
+const hasEndThink = (children: React.ReactNode): boolean => {
   if (typeof children === 'string')
     return children.includes('[ENDTHINKFLAG]')
 
   if (Array.isArray(children))
     return children.some(child => hasEndThink(child))
 
-  if (children?.props?.children)
+  if (React.isValidElement<{ children?: React.ReactNode }>(children) && children.props.children)
     return hasEndThink(children.props.children)
 
   return false
 }
 
-const removeEndThink = (children: any): any => {
+const removeEndThink = (children: React.ReactNode): React.ReactNode => {
   if (typeof children === 'string')
     return children.replace('[ENDTHINKFLAG]', '')
 
   if (Array.isArray(children))
     return children.map(child => removeEndThink(child))
 
-  if (children?.props?.children) {
+  if (React.isValidElement<{ children?: React.ReactNode }>(children) && children.props.children) {
     return React.cloneElement(
       children,
-      {
-        ...children.props,
-        children: removeEndThink(children.props.children),
-      },
+      undefined,
+      removeEndThink(children.props.children),
     )
   }
 
   return children
 }
 
-const useThinkTimer = (children: any) => {
+const getElapsedSeconds = (startTime: number, endTime: number) => {
+  return Math.floor((endTime - startTime) / 100) / 10
+}
+
+const useThinkTimer = (children: React.ReactNode) => {
   const { isResponding } = useChatContext()
   const endThinkDetected = hasEndThink(children)
   const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
-  const [isComplete, setIsComplete] = useState(() => endThinkDetected)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const finalElapsedTimeRef = useRef<number | null>(null)
+  const completionDetected = endThinkDetected || !isResponding
+
+  if (completionDetected && finalElapsedTimeRef.current === null)
+    finalElapsedTimeRef.current = getElapsedSeconds(startTime, Date.now())
+
+  const isComplete = finalElapsedTimeRef.current !== null
 
   useEffect(() => {
     if (isComplete)
       return
 
     timerRef.current = setInterval(() => {
-      setElapsedTime(Math.floor((Date.now() - startTime) / 100) / 10)
+      setElapsedTime(getElapsedSeconds(startTime, Date.now()))
     }, 100)
 
     return () => {
@@ -59,15 +67,12 @@ const useThinkTimer = (children: any) => {
     }
   }, [startTime, isComplete])
 
-  useEffect(() => {
-    // Stop timer when:
-    // 1. Content has [ENDTHINKFLAG] marker (normal completion)
-    // 2. isResponding is not true (false = user clicked stop, undefined = historical conversation)
-    if (endThinkDetected || !isResponding)
-      setIsComplete(true)
-  }, [endThinkDetected, isResponding])
-
-  return { elapsedTime, isComplete }
+  return {
+    elapsedTime: finalElapsedTimeRef.current === null
+      ? elapsedTime
+      : Math.max(elapsedTime, finalElapsedTimeRef.current),
+    isComplete,
+  }
 }
 
 type ThinkBlockProps = React.ComponentProps<'details'> & {
