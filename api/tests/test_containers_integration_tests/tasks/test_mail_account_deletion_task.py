@@ -1,3 +1,4 @@
+from models import TenantStatus
 from unittest.mock import patch
 
 import pytest
@@ -55,7 +56,7 @@ class TestMailAccountDeletionTask:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()

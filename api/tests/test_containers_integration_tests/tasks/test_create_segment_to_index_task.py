@@ -5,6 +5,8 @@ This module provides comprehensive testing for the create_segment_to_index_task
 which handles asynchronous document segment indexing operations.
 """
 
+from models import TenantStatus
+from models import AccountStatus
 import time
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -73,7 +75,7 @@ class TestCreateSegmentToIndexTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -82,7 +84,7 @@ class TestCreateSegmentToIndexTask:
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
             plan="basic",
         )
         db_session_with_containers.add(tenant)

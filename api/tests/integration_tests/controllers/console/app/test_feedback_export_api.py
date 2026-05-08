@@ -1,5 +1,6 @@
 """Integration tests for Feedback Export API endpoints."""
 
+from models.enums import AppStatus
 import json
 import uuid
 from datetime import datetime
@@ -29,7 +30,7 @@ class TestFeedbackExportApi:
         app.id = str(uuid.uuid4())
         app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
-        app.status = "normal"
+        app.status = AppStatus.NORMAL
         app.name = "Test App"
         return app
 

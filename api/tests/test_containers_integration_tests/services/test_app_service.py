@@ -1,3 +1,5 @@
+from models.enums import CustomizeTokenStrategy
+from models.enums import AppStatus
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -1079,9 +1081,9 @@ class TestAppService:
         site.app_id = app.id
         site.code = fake.postalcode()
         site.title = fake.company()
-        site.status = "normal"
+        site.status = AppStatus.NORMAL
         site.default_language = "en-US"
-        site.customize_token_strategy = "uuid"
+        site.customize_token_strategy = CustomizeTokenStrategy.UUID
 
         db_session_with_containers.add(site)
         db_session_with_containers.commit()

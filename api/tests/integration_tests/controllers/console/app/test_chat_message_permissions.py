@@ -1,5 +1,6 @@
 """Integration tests for ChatMessageApi permission verification."""
 
+from models.enums import AppStatus
 import uuid
 from types import SimpleNamespace
 from unittest import mock
@@ -28,7 +29,7 @@ class TestChatMessageApiPermissions:
         app.id = str(uuid.uuid4())
         app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
-        app.status = "normal"
+        app.status = AppStatus.NORMAL
         return app
 
     @pytest.fixture

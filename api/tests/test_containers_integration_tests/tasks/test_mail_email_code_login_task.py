@@ -10,6 +10,8 @@ All tests use the testcontainers infrastructure to ensure proper database isolat
 and realistic testing scenarios with actual PostgreSQL and Redis instances.
 """
 
+from models import AccountStatus
+from models import TenantStatus
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -91,7 +93,7 @@ class TestSendEmailCodeLoginMailTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
         db_session_with_containers.add(account)
@@ -120,7 +122,7 @@ class TestSendEmailCodeLoginMailTask:
         tenant = Tenant(
             name=fake.company(),
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
 
         db_session_with_containers.add(tenant)
