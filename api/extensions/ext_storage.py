@@ -119,6 +119,9 @@ class Storage:
     def delete(self, filename: str):
         return self.storage_runner.delete(filename)
 
+    def get_public_url(self, filename: str) -> str | None:
+        return self.storage_runner.get_public_url(filename)
+
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         return self.storage_runner.scan(path, files=files, directories=directories)
 

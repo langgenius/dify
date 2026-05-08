@@ -31,6 +31,17 @@ class BaseStorage(ABC):
     def delete(self, filename: str):
         raise NotImplementedError
 
+    def get_public_url(self, filename: str) -> str | None:
+        """
+        Return a publicly accessible URL for the given object, or None if the
+        backend is not configured to serve content publicly.
+
+        When set, file controllers will 302-redirect signed preview requests to
+        this URL after verifying the signature, so that the bytes themselves are
+        served by the object store / CDN instead of streamed through Dify's API.
+        """
+        return None
+
     def scan(self, path, files=True, directories=False) -> list[str]:
         """
         Scan files and directories in the given path.

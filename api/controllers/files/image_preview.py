@@ -1,6 +1,6 @@
 from urllib.parse import quote
 
-from flask import Response, request
+from flask import Response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
@@ -64,7 +64,7 @@ class ImagePreviewApi(Resource):
         sign = args.sign
 
         try:
-            generator, mimetype = FileService(db.engine).get_image_preview(
+            public_url, generator, mimetype = FileService(db.engine).get_image_preview(
                 file_id=file_id,
                 timestamp=timestamp,
                 nonce=nonce,
@@ -72,6 +72,9 @@ class ImagePreviewApi(Resource):
             )
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
+
+        if public_url:
+            return redirect(public_url, code=302)
 
         return Response(generator, mimetype=mimetype)
 
@@ -103,7 +106,7 @@ class FilePreviewApi(Resource):
         args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
-            generator, upload_file = FileService(db.engine).get_file_generator_by_file_id(
+            public_url, generator, upload_file = FileService(db.engine).get_file_generator_by_file_id(
                 file_id=file_id,
                 timestamp=args.timestamp,
                 nonce=args.nonce,
@@ -111,6 +114,9 @@ class FilePreviewApi(Resource):
             )
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
+
+        if public_url:
+            return redirect(public_url, code=302)
 
         response = Response(
             generator,
@@ -175,10 +181,13 @@ class WorkspaceWebappLogoApi(Resource):
             raise NotFound("webapp logo is not found")
 
         try:
-            generator, mimetype = FileService(db.engine).get_public_image_preview(
+            public_url, generator, mimetype = FileService(db.engine).get_public_image_preview(
                 webapp_logo_file_id,
             )
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
+
+        if public_url:
+            return redirect(public_url, code=302)
 
         return Response(generator, mimetype=mimetype)

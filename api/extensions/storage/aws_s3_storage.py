@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Generator
+from urllib.parse import quote
 
 import boto3
 from botocore.client import Config
@@ -17,6 +18,8 @@ class AwsS3Storage(BaseStorage):
     def __init__(self):
         super().__init__()
         self.bucket_name = dify_config.S3_BUCKET_NAME
+        public_base_url = dify_config.S3_PUBLIC_BASE_URL
+        self.public_base_url = public_base_url.rstrip("/") if public_base_url else None
         if dify_config.S3_USE_AWS_MANAGED_IAM:
             logger.info("Using AWS managed IAM role for S3")
 
@@ -85,3 +88,8 @@ class AwsS3Storage(BaseStorage):
 
     def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+
+    def get_public_url(self, filename: str) -> str | None:
+        if not self.public_base_url:
+            return None
+        return f"{self.public_base_url}/{quote(filename, safe='/')}"

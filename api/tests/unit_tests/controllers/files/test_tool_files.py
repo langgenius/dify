@@ -50,6 +50,10 @@ class TestToolFileApi:
         stream = iter([b"data"])
         tool_file = DummyToolFile(size=100)
 
+        mock_tool_file_manager.return_value.get_public_url_and_file_by_tool_file_id.return_value = (
+            None,
+            tool_file,
+        )
         mock_tool_file_manager.return_value.get_file_generator_by_tool_file_id.return_value = (
             stream,
             tool_file,
@@ -68,6 +72,37 @@ class TestToolFileApi:
             nonce="abc",
             sign="sig",
         )
+
+    @patch.object(module, "verify_tool_file_signature", return_value=True)
+    @patch.object(module, "ToolFileManager")
+    def test_redirects_to_public_url(
+        self,
+        mock_tool_file_manager,
+        mock_verify,
+    ):
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+                "as_attachment": False,
+            }
+        )
+
+        tool_file = DummyToolFile(size=100)
+        mock_tool_file_manager.return_value.get_public_url_and_file_by_tool_file_id.return_value = (
+            "https://cdn.example.com/tool_files/abc.txt",
+            tool_file,
+        )
+
+        api = module.ToolFileApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("file-id", "txt")
+
+        assert response.status_code == 302
+        assert response.headers["Location"] == "https://cdn.example.com/tool_files/abc.txt"
+        mock_tool_file_manager.return_value.get_file_generator_by_tool_file_id.assert_not_called()
 
     @patch.object(module, "verify_tool_file_signature", return_value=True)
     @patch.object(module, "ToolFileManager")
@@ -91,6 +126,10 @@ class TestToolFileApi:
             filename="doc.pdf",
         )
 
+        mock_tool_file_manager.return_value.get_public_url_and_file_by_tool_file_id.return_value = (
+            None,
+            tool_file,
+        )
         mock_tool_file_manager.return_value.get_file_generator_by_tool_file_id.return_value = (
             stream,
             tool_file,
@@ -137,6 +176,10 @@ class TestToolFileApi:
             }
         )
 
+        mock_tool_file_manager.return_value.get_public_url_and_file_by_tool_file_id.return_value = (
+            None,
+            None,
+        )
         mock_tool_file_manager.return_value.get_file_generator_by_tool_file_id.return_value = (
             None,
             None,
@@ -164,6 +207,10 @@ class TestToolFileApi:
             }
         )
 
+        mock_tool_file_manager.return_value.get_public_url_and_file_by_tool_file_id.return_value = (
+            None,
+            DummyToolFile(),
+        )
         mock_tool_file_manager.return_value.get_file_generator_by_tool_file_id.side_effect = Exception("boom")
 
         api = module.ToolFileApi()

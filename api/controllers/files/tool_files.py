@@ -1,6 +1,6 @@
 from urllib.parse import quote
 
-from flask import Response, request
+from flask import Response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
@@ -57,6 +57,10 @@ class ToolFileApi(Resource):
 
         try:
             tool_file_manager = ToolFileManager()
+            public_url, tool_file = tool_file_manager.get_public_url_and_file_by_tool_file_id(file_id)
+            if public_url and tool_file:
+                return redirect(public_url, code=302)
+
             stream, tool_file = tool_file_manager.get_file_generator_by_tool_file_id(
                 file_id,
             )

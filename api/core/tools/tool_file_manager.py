@@ -225,6 +225,23 @@ class ToolFileManager:
 
         return stream, self._build_graph_file_reference(tool_file)
 
+    def get_public_url_and_file_by_tool_file_id(self, tool_file_id: str) -> tuple[str | None, File | None]:
+        """
+        Resolve a tool file to a public URL when the storage backend exposes one.
+
+        Returns (public_url, file_reference). If the backend has no public URL
+        configured, returns (None, file_reference) and callers should fall back
+        to the streaming path.
+        """
+        with session_factory.create_session() as session:
+            tool_file: ToolFile | None = session.scalar(select(ToolFile).where(ToolFile.id == tool_file_id).limit(1))
+
+        if not tool_file:
+            return None, None
+
+        public_url = storage.get_public_url(tool_file.file_key)
+        return public_url, self._build_graph_file_reference(tool_file)
+
 
 # init tool_file_parser
 from graphon.file.tool_file_parser import set_tool_file_manager_factory

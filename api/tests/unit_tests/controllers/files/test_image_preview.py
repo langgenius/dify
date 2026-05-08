@@ -49,6 +49,7 @@ class TestImagePreviewApi:
 
         generator = iter([b"img"])
         mock_file_service.return_value.get_image_preview.return_value = (
+            None,
             generator,
             "image/png",
         )
@@ -59,6 +60,30 @@ class TestImagePreviewApi:
         response = get_fn("file-id")
 
         assert response.mimetype == "image/png"
+
+    @patch.object(module, "FileService")
+    def test_redirects_to_public_url(self, mock_file_service):
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+            }
+        )
+
+        mock_file_service.return_value.get_image_preview.return_value = (
+            "https://cdn.example.com/upload_files/tenant/abc.png",
+            None,
+            "image/png",
+        )
+
+        api = module.ImagePreviewApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("file-id")
+
+        assert response.status_code == 302
+        assert response.headers["Location"] == "https://cdn.example.com/upload_files/tenant/abc.png"
 
     @patch.object(module, "FileService")
     def test_unsupported_file_type(self, mock_file_service):
@@ -98,6 +123,7 @@ class TestFilePreviewApi:
         upload_file = DummyUploadFile(size=100)
 
         mock_file_service.return_value.get_file_generator_by_file_id.return_value = (
+            None,
             generator,
             upload_file,
         )
@@ -111,6 +137,32 @@ class TestFilePreviewApi:
         assert response.headers["Content-Length"] == "100"
         assert "Accept-Ranges" not in response.headers
         mock_enforce.assert_called_once()
+
+    @patch.object(module, "FileService")
+    def test_redirects_to_public_url(self, mock_file_service):
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+                "as_attachment": False,
+            }
+        )
+
+        upload_file = DummyUploadFile(size=100)
+        mock_file_service.return_value.get_file_generator_by_file_id.return_value = (
+            "https://cdn.example.com/upload_files/tenant/abc.bin",
+            None,
+            upload_file,
+        )
+
+        api = module.FilePreviewApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("file-id")
+
+        assert response.status_code == 302
+        assert response.headers["Location"] == "https://cdn.example.com/upload_files/tenant/abc.bin"
 
     @patch.object(module, "enforce_download_for_html")
     @patch.object(module, "FileService")
@@ -132,6 +184,7 @@ class TestFilePreviewApi:
         )
 
         mock_file_service.return_value.get_file_generator_by_file_id.return_value = (
+            None,
             generator,
             upload_file,
         )
@@ -175,6 +228,7 @@ class TestWorkspaceWebappLogoApi:
         generator = iter([b"logo"])
 
         mock_file_service.return_value.get_public_image_preview.return_value = (
+            None,
             generator,
             "image/png",
         )
@@ -185,6 +239,24 @@ class TestWorkspaceWebappLogoApi:
         response = get_fn("workspace-id")
 
         assert response.mimetype == "image/png"
+
+    @patch.object(module, "FileService")
+    @patch.object(module.TenantService, "get_custom_config")
+    def test_redirects_to_public_url(self, mock_config, mock_file_service):
+        mock_config.return_value = {"replace_webapp_logo": "logo-id"}
+        mock_file_service.return_value.get_public_image_preview.return_value = (
+            "https://cdn.example.com/upload_files/tenant/logo.png",
+            None,
+            "image/png",
+        )
+
+        api = module.WorkspaceWebappLogoApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("workspace-id")
+
+        assert response.status_code == 302
+        assert response.headers["Location"] == "https://cdn.example.com/upload_files/tenant/logo.png"
 
     @patch.object(module.TenantService, "get_custom_config")
     def test_logo_not_configured(self, mock_config):

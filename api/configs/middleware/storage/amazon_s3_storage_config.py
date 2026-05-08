@@ -43,3 +43,16 @@ class S3StorageConfig(BaseSettings):
         description="Use AWS managed IAM roles for authentication instead of access/secret keys",
         default=False,
     )
+
+    S3_PUBLIC_BASE_URL: str | None = Field(
+        description=(
+            "Optional public base URL for objects in the bucket "
+            "(e.g., a Cloudflare R2 custom domain, MinIO public endpoint, or "
+            "OSS public domain). When set, signed file previews are served via "
+            "302 redirect to '<base>/<object-key>' so that bytes are delivered "
+            "directly by the object store / CDN instead of proxied by Dify's API. "
+            "Trailing slashes are ignored. Leave empty to keep the default "
+            "API-streamed behavior."
+        ),
+        default=None,
+    )

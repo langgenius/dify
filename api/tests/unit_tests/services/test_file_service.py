@@ -253,14 +253,38 @@ class TestFileService:
             patch("services.file_service.storage") as mock_storage,
         ):
             mock_verify.return_value = True
+            mock_storage.get_public_url.return_value = None
             mock_storage.load.return_value = iter([b"chunk1"])
 
             # Execute
-            gen, mime = file_service.get_image_preview("file_id", "ts", "nonce", "sign")
+            public_url, gen, mime = file_service.get_image_preview("file_id", "ts", "nonce", "sign")
 
             # Assert
+            assert public_url is None
             assert list(gen) == [b"chunk1"]
             assert mime == "image/jpeg"
+
+    def test_get_image_preview_redirects_when_storage_has_public_url(self, file_service, mock_db_session):
+        upload_file = MagicMock(spec=UploadFile)
+        upload_file.id = "file_id"
+        upload_file.extension = "jpg"
+        upload_file.mime_type = "image/jpeg"
+        upload_file.key = "upload_files/tenant/abc.jpg"
+        mock_db_session.scalar.return_value = upload_file
+
+        with (
+            patch("services.file_service.file_helpers.verify_image_signature") as mock_verify,
+            patch("services.file_service.storage") as mock_storage,
+        ):
+            mock_verify.return_value = True
+            mock_storage.get_public_url.return_value = "https://cdn.example.com/upload_files/tenant/abc.jpg"
+
+            public_url, gen, mime = file_service.get_image_preview("file_id", "ts", "nonce", "sign")
+
+            assert public_url == "https://cdn.example.com/upload_files/tenant/abc.jpg"
+            assert gen is None
+            assert mime == "image/jpeg"
+            mock_storage.load.assert_not_called()
 
     def test_get_image_preview_invalid_sig(self, file_service):
         with patch("services.file_service.file_helpers.verify_image_signature") as mock_verify:
@@ -296,11 +320,32 @@ class TestFileService:
             patch("services.file_service.storage") as mock_storage,
         ):
             mock_verify.return_value = True
+            mock_storage.get_public_url.return_value = None
             mock_storage.load.return_value = iter([b"chunk"])
 
-            gen, file = file_service.get_file_generator_by_file_id("file_id", "ts", "nonce", "sign")
+            public_url, gen, file = file_service.get_file_generator_by_file_id("file_id", "ts", "nonce", "sign")
+            assert public_url is None
             assert list(gen) == [b"chunk"]
             assert file == upload_file
+
+    def test_get_file_generator_by_file_id_redirects_when_storage_has_public_url(self, file_service, mock_db_session):
+        upload_file = MagicMock(spec=UploadFile)
+        upload_file.id = "file_id"
+        upload_file.key = "upload_files/tenant/abc.bin"
+        mock_db_session.scalar.return_value = upload_file
+
+        with (
+            patch("services.file_service.file_helpers.verify_file_signature") as mock_verify,
+            patch("services.file_service.storage") as mock_storage,
+        ):
+            mock_verify.return_value = True
+            mock_storage.get_public_url.return_value = "https://cdn.example.com/upload_files/tenant/abc.bin"
+
+            public_url, gen, file = file_service.get_file_generator_by_file_id("file_id", "ts", "nonce", "sign")
+            assert public_url == "https://cdn.example.com/upload_files/tenant/abc.bin"
+            assert gen is None
+            assert file == upload_file
+            mock_storage.load.assert_not_called()
 
     def test_get_file_generator_by_file_id_invalid_sig(self, file_service):
         with patch("services.file_service.file_helpers.verify_file_signature") as mock_verify:
@@ -324,10 +369,28 @@ class TestFileService:
         mock_db_session.scalar.return_value = upload_file
 
         with patch("services.file_service.storage") as mock_storage:
+            mock_storage.get_public_url.return_value = None
             mock_storage.load.return_value = b"image content"
-            gen, mime = file_service.get_public_image_preview("file_id")
+            public_url, gen, mime = file_service.get_public_image_preview("file_id")
+            assert public_url is None
             assert gen == b"image content"
             assert mime == "image/png"
+
+    def test_get_public_image_preview_redirects_when_storage_has_public_url(self, file_service, mock_db_session):
+        upload_file = MagicMock(spec=UploadFile)
+        upload_file.id = "file_id"
+        upload_file.extension = "png"
+        upload_file.mime_type = "image/png"
+        upload_file.key = "upload_files/tenant/logo.png"
+        mock_db_session.scalar.return_value = upload_file
+
+        with patch("services.file_service.storage") as mock_storage:
+            mock_storage.get_public_url.return_value = "https://cdn.example.com/upload_files/tenant/logo.png"
+            public_url, gen, mime = file_service.get_public_image_preview("file_id")
+            assert public_url == "https://cdn.example.com/upload_files/tenant/logo.png"
+            assert gen is None
+            assert mime == "image/png"
+            mock_storage.load.assert_not_called()
 
     def test_get_public_image_preview_not_found(self, file_service, mock_db_session):
         mock_db_session.scalar.return_value = None

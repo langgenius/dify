@@ -210,9 +210,12 @@ class FileService:
         if extension.lower() not in IMAGE_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
-        generator = storage.load(upload_file.key, stream=True)
+        public_url = storage.get_public_url(upload_file.key)
+        if public_url:
+            return public_url, None, upload_file.mime_type
 
-        return generator, upload_file.mime_type
+        generator = storage.load(upload_file.key, stream=True)
+        return None, generator, upload_file.mime_type
 
     def get_file_generator_by_file_id(self, file_id: str, timestamp: str, nonce: str, sign: str):
         result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
@@ -225,9 +228,12 @@ class FileService:
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
 
-        generator = storage.load(upload_file.key, stream=True)
+        public_url = storage.get_public_url(upload_file.key)
+        if public_url:
+            return public_url, None, upload_file
 
-        return generator, upload_file
+        generator = storage.load(upload_file.key, stream=True)
+        return None, generator, upload_file
 
     def get_public_image_preview(self, file_id: str):
         with self._session_maker(expire_on_commit=False) as session:
@@ -241,9 +247,12 @@ class FileService:
         if extension.lower() not in IMAGE_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
-        generator = storage.load(upload_file.key)
+        public_url = storage.get_public_url(upload_file.key)
+        if public_url:
+            return public_url, None, upload_file.mime_type
 
-        return generator, upload_file.mime_type
+        generator = storage.load(upload_file.key)
+        return None, generator, upload_file.mime_type
 
     def get_file_content(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:
