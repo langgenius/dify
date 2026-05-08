@@ -174,7 +174,8 @@ describe('AccountSetting', () => {
 
       // Assert
       // Assert
-      expect(screen.getByText('common.userProfile.settings'))!.toBeInTheDocument()
+      expect(screen.getByText('common.settings.workspaceSettings'))!.toBeInTheDocument()
+      expect(screen.queryByText('common.settings.workplaceGroup'))!.not.toBeInTheDocument()
       expect(screen.queryByText('common.settings.provider'))!.not.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
       expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()

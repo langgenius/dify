@@ -59,6 +59,17 @@ vi.mock('../install-from-marketplace', () => ({
   default: () => <div data-testid="install-from-marketplace" />,
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  default: () => ({
+    referenceSetting: { permission: {}, auto_upgrade: {} },
+    setReferenceSettings: vi.fn(),
+  }),
+}))
+
+vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
+  default: () => <div data-testid="reference-setting-modal" />,
+}))
+
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
   const originalPlugins = actual.consoleQuery.plugins as unknown as Record<string, unknown>
@@ -91,7 +102,7 @@ vi.mock('@/service/client', async (importOriginal) => {
 
 describe('ModelProviderPage non-cloud branch', () => {
   it('should skip the quota panel when cloud edition is disabled', () => {
-    renderWithSystemFeatures(<ModelProviderPage searchText="" />, {
+    renderWithSystemFeatures(<ModelProviderPage searchText="" onSearchTextChange={vi.fn()} />, {
       systemFeatures: { enable_marketplace: false },
     })
 

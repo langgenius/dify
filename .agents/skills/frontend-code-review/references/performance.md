@@ -43,3 +43,14 @@ const config = useMemo(() => ({
     config={config}
 />
 ```
+
+## Custom SVG icon generation
+
+IsUrgent: False
+Category: Performance
+
+### Description
+
+New custom SVG icons should be added to `packages/iconify-collections/assets/...`, generated with `pnpm --filter @dify/iconify-collections generate`, checked with `pnpm --filter @dify/iconify-collections check:dimensions`, and consumed through Tailwind `i-custom-*` classes. Do not add new generated React icon components or JSON files under `web/app/components/base/icons/src/...` for new custom SVG icons.
+
+When reviewing generated `packages/iconify-collections/custom-*/icons.json` diffs, verify unrelated existing icons did not lose or change intrinsic `width` / `height`, especially layout-sensitive groups such as `main-nav-*`.

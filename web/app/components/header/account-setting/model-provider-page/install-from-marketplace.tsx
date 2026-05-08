@@ -36,11 +36,11 @@ const InstallFromMarketplace = ({
     if (plugin.type === 'bundle')
       return null
 
-    return <ProviderCard key={plugin.plugin_id} payload={plugin} />
+    return <ProviderCard key={plugin.plugin_id} className="h-[146px]" payload={plugin} />
   }, [])
 
   return (
-    <div className="mb-2">
+    <div id="model-provider-marketplace" className="mb-2 scroll-mt-4">
       <Divider className="mt-4! h-px" />
       <div className="flex items-center justify-between">
         <button
@@ -73,7 +73,7 @@ const InstallFromMarketplace = ({
             marketplaceCollectionPluginsMap={{}}
             plugins={allPlugins}
             showInstallButton
-            cardContainerClassName="grid grid-cols-2 gap-2"
+            cardContainerClassName="grid grid-cols-3 gap-2"
             cardRender={cardRender}
             emptyClassName="h-auto"
           />

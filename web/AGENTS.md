@@ -9,6 +9,14 @@
 - In new or modified code, use only overlay primitives from `@langgenius/dify-ui/*`.
 - Do not introduce overlay imports from `@/app/components/base/*`; when touching existing callers, migrate them.
 
+## SVG Icons (Mandatory)
+
+- New custom SVG icons must be added under `../packages/iconify-collections/assets/...`.
+- Run `pnpm --filter @dify/iconify-collections generate` and consume generated icons with Tailwind `i-custom-*` classes.
+- Restart the web dev server after regenerating icons because Tailwind loads the custom icon collection at startup.
+- Do not add new generated React icon components or JSON files under `app/components/base/icons/src/...`.
+- See `../packages/iconify-collections/README.md` for the full workflow.
+
 ## Design Token Mapping
 
 - When translating Figma designs to code, read `../packages/dify-ui/AGENTS.md` for the Figma `--radius/*` token to Tailwind `rounded-*` class mapping. The two scales are offset by one step.

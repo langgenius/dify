@@ -100,7 +100,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
       <div className={cn('pointer-events-none absolute inset-0', styles.gridBg)} />
       <div className="relative">
         <div className="mb-2 flex h-4 items-center system-xs-medium-uppercase text-text-tertiary">
-          {t('modelProvider.quota', { ns: 'common' })}
+          {t('modelProvider.quotaLabel', { ns: 'common' })}
           <Infotip aria-label={tipText} className="ml-0.5">
             {tipText}
           </Infotip>
@@ -110,6 +110,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
             {credits > 0
               ? <span className="mr-0.5 system-xl-semibold text-text-secondary">{formatNumber(credits)}</span>
               : <span className="mr-0.5 system-xl-semibold text-text-destructive">{t('modelProvider.card.quotaExhausted', { ns: 'common' })}</span>}
+            <span>{t('modelProvider.credits', { ns: 'common' })}</span>
             {nextCreditResetDate
               ? (
                   <>

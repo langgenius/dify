@@ -4,6 +4,7 @@ import type {
   DefaultModelResponse,
 } from '../declarations'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogCloseButton,
@@ -27,6 +28,7 @@ import {
 import ModelSelector from '../model-selector'
 
 type SystemModelSelectorProps = {
+  className?: string
   textGenerationDefaultModel: DefaultModelResponse | undefined
   embeddingsDefaultModel: DefaultModelResponse | undefined
   rerankDefaultModel: DefaultModelResponse | undefined
@@ -51,6 +53,7 @@ type SystemModelTipKey
     | 'modelProvider.ttsModel.tip'
 
 const SystemModel: FC<SystemModelSelectorProps> = ({
+  className,
   textGenerationDefaultModel,
   embeddingsDefaultModel,
   rerankDefaultModel,
@@ -148,7 +151,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   return (
     <>
       <Button
-        className="relative"
+        className={cn('relative', className)}
         variant={notConfigured ? 'primary' : 'secondary'}
         size="small"
         disabled={isLoading}

@@ -21,7 +21,7 @@ const renderModelProviderPage = (
   props: { searchText?: string, enableMarketplace?: boolean } = {},
 ) => {
   const { searchText = '', enableMarketplace = true } = props
-  return renderWithSystemFeatures(<ModelProviderPage searchText={searchText} />, {
+  return renderWithSystemFeatures(<ModelProviderPage searchText={searchText} onSearchTextChange={vi.fn()} />, {
     systemFeatures: { enable_marketplace: enableMarketplace },
   })
 }
@@ -69,6 +69,17 @@ vi.mock('../hooks', () => ({
 
 vi.mock('../install-from-marketplace', () => ({
   default: () => <div data-testid="install-from-marketplace" />,
+}))
+
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  default: () => ({
+    referenceSetting: { permission: {}, auto_upgrade: {} },
+    setReferenceSettings: vi.fn(),
+  }),
+}))
+
+vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
+  default: () => <div data-testid="reference-setting-modal" />,
 }))
 
 vi.mock('../provider-added-card', () => ({
@@ -147,8 +158,9 @@ describe('ModelProviderPage', () => {
 
   it('should render main elements', () => {
     renderModelProviderPage()
-    expect(screen.getByText('common.modelProvider.models')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
     expect(screen.getByTestId('system-model-selector')).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.updateSettings')).toBeInTheDocument()
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
   })
 

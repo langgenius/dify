@@ -5,7 +5,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
@@ -148,16 +147,13 @@ export default function AccountSetting({
       show
       onClose={handleClose}
     >
-      <div className="mx-auto flex h-screen max-w-[1048px]">
-        <div className="flex w-[44px] flex-col border-r border-divider-burn pr-6 pl-4 sm:w-[224px]">
-          <div className="mt-6 mb-8 px-3 py-2 title-2xl-semi-bold text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
+      <div className="mx-auto flex h-screen w-fit max-w-full">
+        <div className="flex w-[44px] flex-col border-r border-divider-burn pr-6 pl-4 sm:w-[260px]">
+          <div className="mt-6 mb-8 px-3 py-2 title-2xl-semi-bold whitespace-nowrap text-text-primary">{t('settings.workspaceSettings', { ns: 'common' })}</div>
           <div className="w-full">
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className="mb-2">
-                  {!isCurrentWorkspaceDatasetOperator && (
-                    <div className="mb-0.5 py-2 pb-1 pl-3 system-xs-medium-uppercase text-text-tertiary">{menuItem.name}</div>
-                  )}
                   <div>
                     {
                       menuItem.items.map(item => (
@@ -212,18 +208,14 @@ export default function AccountSetting({
                   <div className="mt-1 system-sm-regular text-text-tertiary">{activeItem?.description}</div>
                 )}
               </div>
-              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
-                <div className="flex grow justify-end">
-                  <SearchInput
-                    className="w-[200px]"
-                    onChange={setSearchValue}
-                    value={searchValue}
-                  />
-                </div>
-              )}
             </div>
             <div className="px-4 pt-2 sm:px-8">
-              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
+                <ModelProviderPage
+                  searchText={searchValue}
+                  onSearchTextChange={setSearchValue}
+                />
+              )}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}

@@ -7,7 +7,7 @@ export const movedAccountSettingDestinations: Partial<Record<AccountSettingTab, 
   [ACCOUNT_SETTING_TAB.API_BASED_EXTENSION]: '/tools?section=api-based-extension',
 }
 
-export const enableMovedAccountSettingDestinations = false
+export const enableMovedAccountSettingDestinations = true
 
 export const getMovedAccountSettingDestination = (tab: AccountSettingTab) => {
   if (!enableMovedAccountSettingDestinations)
