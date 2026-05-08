@@ -845,7 +845,7 @@ class AppTraceApi(Resource):
         with session_factory.create_session() as session:
             app_trace_config = OpsTraceManager.get_app_tracing_config(app_id, session)
 
-            return app_trace_config
+        return app_trace_config
 
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
