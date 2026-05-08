@@ -1,4 +1,4 @@
-import type { ComponentProps, PropsWithChildren } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -20,6 +20,7 @@ type CompletedDrawerProps = {
   panelClassName?: string
   panelContentClassName?: string
   modal?: boolean
+  children: ReactNode
 }
 
 const SIDE_TO_SWIPE_DIRECTION: Record<DrawerSide, DrawerSwipeDirection> = {
@@ -45,7 +46,7 @@ export function CompletedDrawer({
   panelClassName,
   panelContentClassName,
   modal = false,
-}: PropsWithChildren<CompletedDrawerProps>) {
+}: CompletedDrawerProps) {
   const handleOpenChange: DrawerOpenChange = (nextOpen, eventDetails) => {
     if (nextOpen)
       return

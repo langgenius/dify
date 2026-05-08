@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import { CompletedDrawer } from './drawer'
@@ -8,6 +8,7 @@ type DocumentDetailDrawerProps = {
   onClose?: () => void
   fullScreen: boolean
   modal?: boolean
+  children: ReactNode
 }
 
 export function DocumentDetailDrawer({
@@ -16,7 +17,7 @@ export function DocumentDetailDrawer({
   fullScreen,
   children,
   modal = false,
-}: PropsWithChildren<DocumentDetailDrawerProps>) {
+}: DocumentDetailDrawerProps) {
   return (
     <CompletedDrawer
       open={open}
