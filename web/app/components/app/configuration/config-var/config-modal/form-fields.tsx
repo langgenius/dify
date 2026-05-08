@@ -12,12 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { Trans } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -74,6 +73,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   const { type, label, variable } = tempPayload
   const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
   const docLink = useDocLink()
+  const hiddenDescriptionAriaLabel = t('variableConfig.hiddenDescription', { ns: 'appDebug' }).replace(/<[^>]+>/g, '')
 
   return (
     <div className="space-y-2">
@@ -242,29 +242,25 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
           <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => onPayloadChange('hide')(!tempPayload.hide)} />
           <div className="flex items-center gap-1">
             <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="flex h-4 w-4 items-center justify-center">
-                  <RiQuestionLine className="h-3.5 w-3.5 text-text-tertiary" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <Trans
-                  i18nKey="variableConfig.hiddenDescription"
-                  ns="appDebug"
-                  components={{
-                    docLink: (
-                      <a
-                        href={docLink('/use-dify/nodes/user-input#hide-and-pre-fill-input-fields')}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-text-accent hover:underline"
-                      />
-                    ),
-                  }}
-                />
-              </TooltipContent>
-            </Tooltip>
+            <Infotip
+              aria-label={hiddenDescriptionAriaLabel}
+              popupClassName="max-w-[300px]"
+            >
+              <Trans
+                i18nKey="variableConfig.hiddenDescription"
+                ns="appDebug"
+                components={{
+                  docLink: (
+                    <a
+                      href={docLink('/use-dify/nodes/user-input#hide-and-pre-fill-input-fields')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-text-accent hover:underline"
+                    />
+                  ),
+                }}
+              />
+            </Infotip>
           </div>
         </div>
       )}

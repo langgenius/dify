@@ -205,14 +205,16 @@ describe('ConfigModalFormFields', () => {
     expect(selectProps.payloadChangeHandlers.default).toHaveBeenCalledWith('beta')
   })
 
-  it('should wire file, json schema, and visibility controls', () => {
+  it('should wire file, json schema, and visibility controls', async () => {
     const textInputProps = createBaseProps()
     const textInputView = render(<ConfigModalFormFields {...textInputProps} />)
     expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
-    expect(screen.getByText('variableConfig.hiddenDescription')).toBeInTheDocument()
-    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/user-input#hide-and-pre-fill-input-fields')
-    expect(screen.getByRole('link')).toHaveAttribute('target', '_blank')
-    expect(screen.getByRole('link')).toHaveAttribute('rel', 'noopener noreferrer')
+    fireEvent.click(screen.getByRole('button', { name: 'variableConfig.hiddenDescription' }))
+    expect(await screen.findByText('variableConfig.hiddenDescription')).toBeInTheDocument()
+    const docLink = await screen.findByRole('link')
+    expect(docLink).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/user-input#hide-and-pre-fill-input-fields')
+    expect(docLink).toHaveAttribute('target', '_blank')
+    expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     textInputView.unmount()
 
     const singleFileProps = createBaseProps()
