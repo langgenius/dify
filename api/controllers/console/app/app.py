@@ -1,4 +1,3 @@
-from core.db.session_factory import session_factory
 import logging
 import re
 import uuid
@@ -26,6 +25,7 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
+from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
