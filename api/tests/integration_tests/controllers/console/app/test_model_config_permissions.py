@@ -1,5 +1,6 @@
 """Integration tests for ModelConfigResource permission verification."""
 
+from models.enums import AppStatus
 import uuid
 from unittest import mock
 
@@ -25,7 +26,7 @@ class TestModelConfigResourcePermissions:
         app.id = str(uuid.uuid4())
         app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
-        app.status = "normal"
+        app.status = AppStatus.NORMAL
         app.app_model_config_id = str(uuid.uuid4())
         return app
 
