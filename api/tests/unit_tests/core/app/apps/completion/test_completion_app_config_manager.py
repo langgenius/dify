@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -8,7 +9,7 @@ from models.model import AppMode
 
 
 class TestCompletionAppConfigManager:
-    def test_get_app_config_with_override(self, mocker):
+    def test_get_app_config_with_override(self, mocker: MockerFixture):
         app_model = MagicMock(tenant_id="tenant", id="app1", mode=AppMode.COMPLETION.value)
         app_model_config = MagicMock(id="cfg1")
         app_model_config.to_dict.return_value = {"model": {"provider": "x"}}
@@ -35,8 +36,8 @@ class TestCompletionAppConfigManager:
         assert result.external_data_variables == ["ext1"]
         assert result.app_mode == AppMode.COMPLETION
 
-    def test_get_app_config_without_override_uses_model_config(self, mocker):
-        app_model = MagicMock(tenant_id="tenant", id="app1", mode=AppMode.COMPLETION.value)
+    def test_get_app_config_without_override_uses_model_config(self, mocker: MockerFixture):
+        app_model = MagicMock(tenant_id="tenant", id="app1", mode=AppMode.COMPLETION)
         app_model_config = MagicMock(id="cfg1")
         app_model_config.to_dict.return_value = {"model": {"provider": "x"}}
 
@@ -53,7 +54,7 @@ class TestCompletionAppConfigManager:
         assert result.app_model_config_from == EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
         assert result.app_model_config_dict == {"model": {"provider": "x"}}
 
-    def test_config_validate_filters_related_keys(self, mocker):
+    def test_config_validate_filters_related_keys(self, mocker: MockerFixture):
         config = {
             "model": {"provider": "x"},
             "variables": ["v"],

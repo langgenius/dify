@@ -1,3 +1,4 @@
+from models import TenantAccountRole
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -16,7 +17,7 @@ class TestEndUserServiceFactory:
     """Factory class for creating test data and mock objects for end user service tests."""
 
     @staticmethod
-    def create_app_and_account(db_session_with_containers):
+    def create_app_and_account(db_session_with_containers: Session):
         tenant = Tenant(name=f"Tenant {uuid4()}")
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
@@ -35,7 +36,7 @@ class TestEndUserServiceFactory:
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role="owner",
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db_session_with_containers.add(tenant_join)

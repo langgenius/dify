@@ -1,5 +1,7 @@
 """Integration tests for dataset indexing task SQL behaviors using testcontainers."""
 
+from models import AccountStatus
+from models import TenantStatus
 import uuid
 from collections.abc import Sequence
 from unittest.mock import MagicMock, patch
@@ -54,7 +56,7 @@ class _TrackedSessionContext:
 
 
 @pytest.fixture(autouse=True)
-def _ensure_testcontainers_db(db_session_with_containers):
+def _ensure_testcontainers_db(db_session_with_containers: Session):
     """Ensure this suite always runs on testcontainers infrastructure."""
     return db_session_with_containers
 
@@ -121,12 +123,12 @@ class TestDatasetIndexingTaskIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()
 
-        tenant = Tenant(name=fake.company(), status="normal")
+        tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
 

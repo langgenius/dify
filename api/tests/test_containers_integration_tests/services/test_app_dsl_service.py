@@ -778,8 +778,8 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing model_config"):
             service._create_or_update_app(
-                app=_app_stub(mode=AppMode.CHAT.value),
-                data={"app": {"mode": AppMode.CHAT.value}},
+                app=_app_stub(mode=AppMode.CHAT),
+                data={"app": {"mode": AppMode.CHAT}},
                 account=_account_mock(),
             )
 
@@ -794,7 +794,7 @@ class TestAppDslService:
         service._create_or_update_app(
             app=app,
             data={
-                "app": {"mode": AppMode.CHAT.value},
+                "app": {"mode": AppMode.CHAT},
                 "model_config": {"model": {"provider": "openai"}},
             },
             account=account,
@@ -807,8 +807,8 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Invalid app mode"):
             service._create_or_update_app(
-                app=_app_stub(mode=AppMode.RAG_PIPELINE.value),
-                data={"app": {"mode": AppMode.RAG_PIPELINE.value}},
+                app=_app_stub(mode=AppMode.RAG_PIPELINE),
+                data={"app": {"mode": AppMode.RAG_PIPELINE}},
                 account=_account_mock(),
             )
 
@@ -836,7 +836,7 @@ class TestAppDslService:
         assert workflow_calls == [True]
 
         chat_app = _app_stub(
-            mode=AppMode.CHAT.value,
+            mode=AppMode.CHAT,
             icon_type="emoji",
             app_model_config=SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": []}}),
         )
