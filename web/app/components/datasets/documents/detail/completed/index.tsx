@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type { ProcessStatus } from '../segment-add'
 import type { SegmentListContextValue } from './segment-list-context'
+import type { SegmentImportStatus } from '@/types/dataset'
 import { useCallback, useMemo, useState } from 'react'
 import Divider from '@/app/components/base/divider'
 import Pagination from '@/app/components/base/pagination'
@@ -34,7 +34,7 @@ type ICompletedProps = {
   embeddingAvailable: boolean
   showNewSegmentModal: boolean
   onNewSegmentModalChange: (state: boolean) => void
-  importStatus: ProcessStatus | string | undefined
+  importStatus: SegmentImportStatus | undefined
   archived?: boolean
 }
 

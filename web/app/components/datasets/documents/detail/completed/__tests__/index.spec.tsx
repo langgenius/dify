@@ -568,7 +568,7 @@ describe('Edge Cases', () => {
     expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()
   })
 
-  it('should handle ProcessStatus.COMPLETED importStatus', () => {
+  it('should handle completed importStatus', () => {
     render(<Completed {...defaultProps} importStatus="completed" />, { wrapper: createWrapper() })
 
     expect(screen.getByTestId('general-mode-content'))!.toBeInTheDocument()

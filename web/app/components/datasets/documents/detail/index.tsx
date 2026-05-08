@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSourceInfo, DocumentDisplayStatus, FileItem, FullDocumentDetail, LegacyDataSourceInfo } from '@/models/datasets'
+import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
@@ -17,6 +18,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
+import { segmentImportStatus } from '@/types/dataset'
 import Operations from '../components/operations'
 import StatusItem from '../status-item'
 import BatchModal from './batch-modal'
@@ -24,7 +26,7 @@ import Completed from './completed'
 import { DocumentContext } from './context'
 import { DocumentTitle } from './document-title'
 import Embedding from './embedding'
-import SegmentAdd, { ProcessStatus } from './segment-add'
+import { SegmentAdd } from './segment-add'
 import style from './style.module.css'
 
 type DocumentDetailProps = {
@@ -53,20 +55,20 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const [showMetadata, setShowMetadata] = useState(!isMobile)
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
   const [batchModalVisible, setBatchModalVisible] = useState(false)
-  const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
+  const [importStatus, setImportStatus] = useState<SegmentImportStatus>()
   const showNewSegmentModal = () => setNewSegmentModalVisible(true)
   const showBatchModal = () => setBatchModalVisible(true)
   const hideBatchModal = () => setBatchModalVisible(false)
-  const resetProcessStatus = () => setImportStatus('')
+  const resetImportStatus = () => setImportStatus(undefined)
 
   const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
   const checkProcess = async (jobID: string) => {
     await checkSegmentBatchImportProgress({ jobID }, {
       onSuccess: (res) => {
         setImportStatus(res.job_status)
-        if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
+        if (res.job_status === segmentImportStatus.waiting || res.job_status === segmentImportStatus.processing)
           setTimeout(() => checkProcess(res.job_id), 2500)
-        if (res.job_status === ProcessStatus.ERROR)
+        if (res.job_status === segmentImportStatus.error)
           toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}`)
       },
       onError: (e) => {
@@ -222,7 +224,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               <>
                 <SegmentAdd
                   importStatus={importStatus}
-                  clearProcessStatus={resetProcessStatus}
+                  clearImportStatus={resetImportStatus}
                   showNewSegmentModal={showNewSegmentModal}
                   showBatchModal={showBatchModal}
                   embedding={embedding}
