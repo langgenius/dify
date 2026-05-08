@@ -138,6 +138,7 @@ const OAuthClientSettings = ({
   return (
     <Dialog
       open={open}
+      disablePointerDismissal
       onOpenChange={handleOpenChange}
     >
       <DialogContent

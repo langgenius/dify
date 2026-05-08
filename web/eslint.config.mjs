@@ -11,9 +11,9 @@ import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import {
+  GENERATED_IGNORES,
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
   NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-  OVERLAY_MIGRATION_LEGACY_BASE_FILES,
   OVERLAY_RESTRICTED_IMPORT_PATTERNS,
   WEB_RESTRICTED_IMPORT_PATTERNS,
 } from './eslint.constants.mjs'
@@ -27,7 +27,7 @@ export default antfu(
         'react/no-unnecessary-use-prefix': 'error',
       },
     },
-    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json'],
+    ignores: ['public', 'types/doc-paths.ts', 'eslint-suppressions.json', ...GENERATED_IGNORES],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
@@ -177,7 +177,6 @@ export default antfu(
     ignores: [
       'next/**',
       ...GLOB_TESTS,
-      ...OVERLAY_MIGRATION_LEGACY_BASE_FILES,
     ],
     rules: {
       'no-restricted-imports': ['error', {

@@ -1,31 +1,17 @@
 import type { ReactNode } from 'react'
-import type { Tag } from '@/contract/console/tags'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import {
-  useApplyTagBindingsMutation,
-  useCreateTagMutation,
-  useDeleteTagMutation,
-  useUpdateTagMutation,
-} from '../use-tag-mutations'
+import { useApplyTagBindingsMutation } from '../use-tag-mutations'
 
 const {
   bindTag,
-  createTagMutationOptions,
-  deleteTagMutationOptions,
-  listQueryOptions,
+  listKey,
   unbindTag,
-  updateTagMutationOptions,
 } = vi.hoisted(() => ({
   bindTag: vi.fn(),
-  createTagMutationOptions: vi.fn(),
-  deleteTagMutationOptions: vi.fn(),
-  listQueryOptions: vi.fn((options: { input: { query: { type: string } } }) => ({
-    queryKey: ['console', 'tags', 'list', options.input.query.type],
-  })),
+  listKey: vi.fn((options: { type: 'query', input: { query: { type: string } } }) => ['console', 'tags', 'list', 'query', options.input.query.type]),
   unbindTag: vi.fn(),
-  updateTagMutationOptions: vi.fn(),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -37,29 +23,12 @@ vi.mock('@/service/client', () => ({
   },
   consoleQuery: {
     tags: {
-      create: {
-        mutationOptions: createTagMutationOptions,
-      },
-      update: {
-        mutationOptions: updateTagMutationOptions,
-      },
-      delete: {
-        mutationOptions: deleteTagMutationOptions,
-      },
       list: {
-        queryOptions: listQueryOptions,
+        key: listKey,
       },
     },
   },
 }))
-
-const appTag = (overrides: Partial<Tag> = {}): Tag => ({
-  id: 'tag-1',
-  name: 'Frontend',
-  type: 'app',
-  binding_count: 1,
-  ...overrides,
-})
 
 const createQueryClient = () => new QueryClient({
   defaultOptions: {
@@ -91,127 +60,6 @@ describe('useTagMutations', () => {
     vi.clearAllMocks()
     bindTag.mockResolvedValue(undefined)
     unbindTag.mockResolvedValue(undefined)
-    createTagMutationOptions.mockImplementation((options: Record<string, unknown>) => ({
-      mutationFn: ({ body }: { body: { name: string, type: Tag['type'] } }) => Promise.resolve(appTag({
-        id: 'created-tag',
-        name: body.name,
-        type: body.type,
-        binding_count: 0,
-      })),
-      ...options,
-    }))
-    updateTagMutationOptions.mockImplementation((options: Record<string, unknown>) => ({
-      mutationFn: () => Promise.resolve({ result: 'success' }),
-      ...options,
-    }))
-    deleteTagMutationOptions.mockImplementation((options: Record<string, unknown>) => ({
-      mutationFn: () => Promise.resolve({ result: 'success' }),
-      ...options,
-    }))
-  })
-
-  describe('Create Tag', () => {
-    it('should prepend the created tag to the matching tag list cache', async () => {
-      const { queryClient, result } = renderMutationHook(() => useCreateTagMutation())
-      const cacheKey = ['console', 'tags', 'list', 'app']
-      queryClient.setQueryData<Tag[]>(cacheKey, [
-        appTag({ id: 'existing-tag', name: 'Existing' }),
-      ])
-
-      await act(async () => {
-        await result.current.mutateAsync({
-          body: {
-            name: 'Created',
-            type: 'app',
-          },
-        })
-      })
-
-      expect(queryClient.getQueryData<Tag[]>(cacheKey)).toEqual([
-        appTag({ id: 'created-tag', name: 'Created', binding_count: 0 }),
-        appTag({ id: 'existing-tag', name: 'Existing' }),
-      ])
-      expect(listQueryOptions).toHaveBeenCalledWith({
-        input: {
-          query: {
-            type: 'app',
-          },
-        },
-      })
-    })
-
-    it('should leave an absent tag list cache absent after creating a tag', async () => {
-      const { queryClient, result } = renderMutationHook(() => useCreateTagMutation())
-      const cacheKey = ['console', 'tags', 'list', 'knowledge']
-
-      await act(async () => {
-        await result.current.mutateAsync({
-          body: {
-            name: 'Knowledge',
-            type: 'knowledge',
-          },
-        })
-      })
-
-      expect(queryClient.getQueryData<Tag[]>(cacheKey)).toBeUndefined()
-    })
-  })
-
-  describe('Update Tag', () => {
-    it('should rename only the matching tag in the matching tag list cache', async () => {
-      const { queryClient, result } = renderMutationHook(() => useUpdateTagMutation('app'))
-      const appCacheKey = ['console', 'tags', 'list', 'app']
-      const knowledgeCacheKey = ['console', 'tags', 'list', 'knowledge']
-      queryClient.setQueryData<Tag[]>(appCacheKey, [
-        appTag({ id: 'tag-1', name: 'Old name' }),
-        appTag({ id: 'tag-2', name: 'Unchanged' }),
-      ])
-      queryClient.setQueryData<Tag[]>(knowledgeCacheKey, [
-        appTag({ id: 'tag-1', name: 'Old knowledge name', type: 'knowledge' }),
-      ])
-
-      await act(async () => {
-        await result.current.mutateAsync({
-          params: {
-            tagId: 'tag-1',
-          },
-          body: {
-            name: 'Renamed',
-          },
-        })
-      })
-
-      expect(queryClient.getQueryData<Tag[]>(appCacheKey)).toEqual([
-        appTag({ id: 'tag-1', name: 'Renamed' }),
-        appTag({ id: 'tag-2', name: 'Unchanged' }),
-      ])
-      expect(queryClient.getQueryData<Tag[]>(knowledgeCacheKey)).toEqual([
-        appTag({ id: 'tag-1', name: 'Old knowledge name', type: 'knowledge' }),
-      ])
-    })
-  })
-
-  describe('Delete Tag', () => {
-    it('should remove the deleted tag from the matching tag list cache', async () => {
-      const { queryClient, result } = renderMutationHook(() => useDeleteTagMutation('app'))
-      const cacheKey = ['console', 'tags', 'list', 'app']
-      queryClient.setQueryData<Tag[]>(cacheKey, [
-        appTag({ id: 'tag-1' }),
-        appTag({ id: 'tag-2', name: 'Backend' }),
-      ])
-
-      await act(async () => {
-        await result.current.mutateAsync({
-          params: {
-            tagId: 'tag-1',
-          },
-        })
-      })
-
-      expect(queryClient.getQueryData<Tag[]>(cacheKey)).toEqual([
-        appTag({ id: 'tag-2', name: 'Backend' }),
-      ])
-    })
   })
 
   describe('Apply Tag Bindings', () => {
@@ -244,8 +92,16 @@ describe('useTagMutations', () => {
       })
       await waitFor(() => {
         expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['console', 'tags', 'list', 'app'],
+          queryKey: ['console', 'tags', 'list', 'query', 'app'],
         })
+      })
+      expect(listKey).toHaveBeenCalledWith({
+        type: 'query',
+        input: {
+          query: {
+            type: 'app',
+          },
+        },
       })
     })
 
@@ -266,8 +122,16 @@ describe('useTagMutations', () => {
       expect(unbindTag).not.toHaveBeenCalled()
       await waitFor(() => {
         expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['console', 'tags', 'list', 'knowledge'],
+          queryKey: ['console', 'tags', 'list', 'query', 'knowledge'],
         })
+      })
+      expect(listKey).toHaveBeenCalledWith({
+        type: 'query',
+        input: {
+          query: {
+            type: 'knowledge',
+          },
+        },
       })
     })
   })

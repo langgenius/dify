@@ -109,6 +109,8 @@ jobs:
       - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: vp run lint:tss
 
       - name: Web type check

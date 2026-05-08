@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -239,7 +240,7 @@ class TestDatasetDocumentListApi:
 
         assert "documents" in response
 
-    def test_post_forbidden(self, app):
+    def test_post_forbidden(self, app: Flask):
         api = DatasetDocumentListApi()
         method = unwrap(api.post)
 
@@ -395,7 +396,7 @@ class TestDocumentDownloadApi:
 
 
 class TestDocumentProcessingApi:
-    def test_processing_forbidden_when_not_editor(self, app):
+    def test_processing_forbidden_when_not_editor(self, app: Flask):
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
@@ -1185,7 +1186,7 @@ class TestDocumentPermissionCases:
             "preview": [],
         }
 
-    def test_document_tenant_mismatch(self, app):
+    def test_document_tenant_mismatch(self, app: Flask):
         api = DocumentApi()
         method = unwrap(api.get)
 
@@ -1253,7 +1254,7 @@ class TestDocumentPermissionCases:
         assert status == 200
         assert response["mode"] == "custom"
 
-    def test_process_rule_permission_denied(self, app):
+    def test_process_rule_permission_denied(self, app: Flask):
         api = GetProcessRuleApi()
         method = unwrap(api.get)
 

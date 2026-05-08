@@ -30,29 +30,39 @@ const { mockUseQueryData, createTag } = vi.hoisted(() => ({
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
-}))
-
-vi.mock('../hooks/use-tag-mutations', () => ({
-  useCreateTagMutation: () => ({
+  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
     isPending: false,
-    mutate: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }, options?: { onSuccess?: (tag: Tag) => void, onError?: () => void }) => {
-      const tag = { id: 'new-tag', name: body.name, type: body.type, binding_count: 0 } as Tag
-      Promise.resolve(createTag(body.name, body.type))
-        .then(() => options?.onSuccess?.(tag))
+    mutate: (input: unknown, options?: { onSuccess?: () => void, onError?: () => void }) => {
+      Promise.resolve(mutationOptions.mutationFn(input))
+        .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
     },
   }),
-  useUpdateTagMutation: () => ({
-    mutate: (_input: unknown, options?: { onSuccess?: () => void }) => {
-      options?.onSuccess?.()
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    tags: {
+      list: {
+        queryOptions: () => ({}),
+      },
+      create: {
+        mutationOptions: () => ({
+          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }) => createTag(body.name, body.type),
+        }),
+      },
+      update: {
+        mutationOptions: () => ({
+          mutationFn: () => Promise.resolve(undefined),
+        }),
+      },
+      delete: {
+        mutationOptions: () => ({
+          mutationFn: () => Promise.resolve(undefined),
+        }),
+      },
     },
-  }),
-  useDeleteTagMutation: () => ({
-    isPending: false,
-    mutate: (_input: unknown, options?: { onSuccess?: () => void }) => {
-      options?.onSuccess?.()
-    },
-  }),
+  },
 }))
 
 const mockTags: Tag[] = [

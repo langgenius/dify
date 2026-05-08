@@ -225,7 +225,7 @@ describe('OAuthClientSettings', () => {
     expect(mockOnClose).toHaveBeenCalled()
   })
 
-  it('should close when backdrop is clicked', async () => {
+  it('should stay open when backdrop is clicked', () => {
     const mockOnClose = vi.fn()
     render(<ControlledSettingsHarness OAuthClientSettings={OAuthClientSettings} onClose={mockOnClose} />)
 
@@ -234,10 +234,8 @@ describe('OAuthClientSettings', () => {
 
     fireEvent.click(backdrop!)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')
-    })
-    expect(mockOnClose).toHaveBeenCalled()
+    expect(screen.getByTestId('modal-open-state')).toHaveTextContent('true')
+    expect(mockOnClose).not.toHaveBeenCalled()
   })
 
   it('should save settings on save only button click', async () => {

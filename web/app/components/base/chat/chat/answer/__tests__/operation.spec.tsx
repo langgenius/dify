@@ -441,9 +441,8 @@ describe('Operation', () => {
       renderOperation()
       const thumbDown = screen.getByTestId('operation-bar').querySelector('.i-ri-thumb-down-line')!.closest('button')!
       await user.click(thumbDown)
-      // Check if modal title/labels fallback works
-      // Check if modal title/labels fallback works
-      expect(screen.getByRole('tooltip'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Provide Feedback' }))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Feedback Content'))!.toBeInTheDocument()
       mockT.mockImplementation(key => key)
     })
   })

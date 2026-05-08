@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import json
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -71,6 +71,7 @@ def _pending_yaml_content(version: str = "99.0.0") -> bytes:
 
 
 def _app_stub(**overrides: Any) -> App:
+    """Create a stub App object for testing without hitting the database."""
     defaults = {
         "id": str(uuid4()),
         "tenant_id": _DEFAULT_TENANT_ID,
@@ -83,7 +84,10 @@ def _app_stub(**overrides: Any) -> App:
         "use_icon_as_answer_icon": False,
         "app_model_config": None,
     }
-    return cast(App, SimpleNamespace(**(defaults | overrides)))
+    app = MagicMock(spec=App)
+    for key, value in (defaults | overrides).items():
+        object.__setattr__(app, key, value)
+    return app
 
 
 class TestAppDslService:

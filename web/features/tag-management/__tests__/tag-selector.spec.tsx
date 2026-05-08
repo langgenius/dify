@@ -31,18 +31,32 @@ const { mockUseQueryData, createTag, bindTag, unBindTag } = vi.hoisted(() => {
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
-}))
-
-vi.mock('../hooks/use-tag-mutations', () => ({
-  useCreateTagMutation: () => ({
+  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
     isPending: false,
-    mutate: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }, options?: { onSuccess?: (tag: Tag) => void, onError?: () => void }) => {
-      const tag: Tag = { id: 'new-tag', name: body.name, type: body.type, binding_count: 0 }
-      Promise.resolve(createTag(body.name, body.type))
-        .then(() => options?.onSuccess?.(tag))
+    mutate: (input: unknown, options?: { onSuccess?: () => void, onError?: () => void }) => {
+      Promise.resolve(mutationOptions.mutationFn(input))
+        .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
     },
   }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    tags: {
+      list: {
+        queryOptions: () => ({}),
+      },
+      create: {
+        mutationOptions: () => ({
+          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }) => createTag(body.name, body.type),
+        }),
+      },
+    },
+  },
+}))
+
+vi.mock('../hooks/use-tag-mutations', () => ({
   useApplyTagBindingsMutation: () => ({
     mutate: (
       { currentTagIds, nextTagIds, targetId, type }: { currentTagIds: string[], nextTagIds: string[], targetId: string, type: 'app' | 'knowledge' },
@@ -131,6 +145,22 @@ describe('TagSelector', () => {
     })
     expect(mockToast.success).toHaveBeenCalledWith(i18n.modifiedSuccessfully, {
       id: 'tag-bindings-app-target-1',
+    })
+  })
+
+  it('selects the highlighted tag with keyboard navigation and applies it on close', async () => {
+    const user = userEvent.setup()
+    render(<TagSelector {...defaultProps} />)
+
+    const trigger = screen.getByRole('combobox', { name: /Frontend/i })
+    await user.click(trigger)
+    await user.type(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }), 'Back')
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard('{Enter}')
+    await user.click(trigger)
+
+    await waitFor(() => {
+      expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
     })
   })
 

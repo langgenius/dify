@@ -23,22 +23,32 @@ const tagMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('../hooks/use-tag-mutations', () => ({
-  useUpdateTagMutation: () => ({
-    mutate: ({ params, body }: { params: { tagId: string }, body: { name: string } }, options?: { onSuccess?: () => void, onError?: () => void }) => {
-      Promise.resolve(tagMocks.updateTag(params.tagId, body.name))
-        .then(() => options?.onSuccess?.())
-        .catch(() => options?.onError?.())
-    },
-  }),
-  useDeleteTagMutation: () => ({
+vi.mock('@tanstack/react-query', () => ({
+  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
     isPending: false,
-    mutate: ({ params }: { params: { tagId: string } }, options?: { onSuccess?: () => void, onError?: () => void }) => {
-      Promise.resolve(tagMocks.deleteTag(params.tagId))
+    mutate: (input: unknown, options?: { onSuccess?: () => void, onError?: () => void }) => {
+      Promise.resolve(mutationOptions.mutationFn(input))
         .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
     },
   }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    tags: {
+      update: {
+        mutationOptions: () => ({
+          mutationFn: ({ params, body }: { params: { tagId: string }, body: { name: string } }) => tagMocks.updateTag(params.tagId, body.name),
+        }),
+      },
+      delete: {
+        mutationOptions: () => ({
+          mutationFn: ({ params }: { params: { tagId: string } }) => tagMocks.deleteTag(params.tagId),
+        }),
+      },
+    },
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({

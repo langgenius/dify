@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import controllers.console.explore.message as module
@@ -54,7 +55,7 @@ def make_message():
 
 
 class TestMessageListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = module.MessageListApi()
         method = unwrap(api.get)
 
@@ -96,7 +97,7 @@ class TestMessageListApi:
             with pytest.raises(NotChatAppError):
                 method(installed_app)
 
-    def test_conversation_not_exists(self, app):
+    def test_conversation_not_exists(self, app: Flask):
         api = module.MessageListApi()
         method = unwrap(api.get)
 
@@ -118,7 +119,7 @@ class TestMessageListApi:
             with pytest.raises(NotFound):
                 method(installed_app)
 
-    def test_first_message_not_exists(self, app):
+    def test_first_message_not_exists(self, app: Flask):
         api = module.MessageListApi()
         method = unwrap(api.get)
 
@@ -142,7 +143,7 @@ class TestMessageListApi:
 
 
 class TestMessageFeedbackApi:
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = module.MessageFeedbackApi()
         method = unwrap(api.post)
 
@@ -161,7 +162,7 @@ class TestMessageFeedbackApi:
 
         assert result["result"] == "success"
 
-    def test_message_not_exists(self, app):
+    def test_message_not_exists(self, app: Flask):
         api = module.MessageFeedbackApi()
         method = unwrap(api.post)
 
@@ -182,7 +183,7 @@ class TestMessageFeedbackApi:
 
 
 class TestMessageMoreLikeThisApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
@@ -221,7 +222,7 @@ class TestMessageMoreLikeThisApi:
             with pytest.raises(NotCompletionAppError):
                 method(installed_app, "mid")
 
-    def test_more_like_this_disabled(self, app):
+    def test_more_like_this_disabled(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
@@ -243,7 +244,7 @@ class TestMessageMoreLikeThisApi:
             with pytest.raises(AppMoreLikeThisDisabledError):
                 method(installed_app, "mid")
 
-    def test_message_not_exists_more_like_this(self, app):
+    def test_message_not_exists_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
@@ -265,7 +266,7 @@ class TestMessageMoreLikeThisApi:
             with pytest.raises(NotFound):
                 method(installed_app, "mid")
 
-    def test_provider_not_init_more_like_this(self, app):
+    def test_provider_not_init_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
@@ -287,7 +288,7 @@ class TestMessageMoreLikeThisApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(installed_app, "mid")
 
-    def test_quota_exceeded_more_like_this(self, app):
+    def test_quota_exceeded_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
@@ -309,7 +310,7 @@ class TestMessageMoreLikeThisApi:
             with pytest.raises(ProviderQuotaExceededError):
                 method(installed_app, "mid")
 
-    def test_model_not_support_more_like_this(self, app):
+    def test_model_not_support_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
@@ -331,7 +332,7 @@ class TestMessageMoreLikeThisApi:
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
                 method(installed_app, "mid")
 
-    def test_invoke_error_more_like_this(self, app):
+    def test_invoke_error_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
@@ -353,7 +354,7 @@ class TestMessageMoreLikeThisApi:
             with pytest.raises(CompletionRequestError):
                 method(installed_app, "mid")
 
-    def test_unexpected_error_more_like_this(self, app):
+    def test_unexpected_error_more_like_this(self, app: Flask):
         api = module.MessageMoreLikeThisApi()
         method = unwrap(api.get)
 
