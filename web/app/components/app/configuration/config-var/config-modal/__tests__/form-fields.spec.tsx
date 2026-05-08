@@ -210,7 +210,7 @@ describe('ConfigModalFormFields', () => {
     const textInputView = render(<ConfigModalFormFields {...textInputProps} />)
     expect(screen.getByText('variableConfig.hidden')).toBeInTheDocument()
     expect(screen.getByText('variableConfig.hiddenDescription')).toBeInTheDocument()
-    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/user-input')
+    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/user-input#hide-and-pre-fill-input-fields')
     expect(screen.getByRole('link')).toHaveAttribute('target', '_blank')
     expect(screen.getByRole('link')).toHaveAttribute('rel', 'noopener noreferrer')
     textInputView.unmount()
@@ -229,7 +229,6 @@ describe('ConfigModalFormFields', () => {
     fireEvent.click(screen.getByText('single-file-setting'))
     fireEvent.click(screen.getByText('upload-file'))
     fireEvent.click(screen.getAllByText('unchecked')[0]!)
-    fireEvent.click(screen.getAllByText('unchecked')[1]!)
 
     expect(singleFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 1 })
     expect(singleFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith(expect.objectContaining({
@@ -250,7 +249,7 @@ describe('ConfigModalFormFields', () => {
     render(<ConfigModalFormFields {...multiFileProps} />)
     expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('multi-file-setting'))
-    fireEvent.click(screen.getAllByText('upload-file')[1]!)
+    fireEvent.click(screen.getAllByText('upload-file')[0]!)
     expect(multiFileProps.onFilePayloadChange).toHaveBeenCalledWith({ number_limits: 3 })
     expect(multiFileProps.payloadChangeHandlers.default).toHaveBeenCalledWith([
       expect.objectContaining({ fileId: 'file-1' }),

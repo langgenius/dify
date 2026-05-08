@@ -54,11 +54,11 @@ vi.mock('@/context/web-app-context', () => ({
 }))
 
 const {
-  mockGetRawInputsFromUrlParams,
+  mockGetProcessedInputsFromUrlParams,
   mockGetProcessedSystemVariablesFromUrlParams,
   mockGetProcessedUserVariablesFromUrlParams,
 } = vi.hoisted(() => ({
-  mockGetRawInputsFromUrlParams: vi.fn(),
+  mockGetProcessedInputsFromUrlParams: vi.fn(),
   mockGetProcessedSystemVariablesFromUrlParams: vi.fn(),
   mockGetProcessedUserVariablesFromUrlParams: vi.fn(),
 }))
@@ -67,7 +67,7 @@ vi.mock('../../utils', async () => {
   const actual = await vi.importActual<typeof import('../../utils')>('../../utils')
   return {
     ...actual,
-    getRawInputsFromUrlParams: mockGetRawInputsFromUrlParams,
+    getProcessedInputsFromUrlParams: mockGetProcessedInputsFromUrlParams,
     getProcessedSystemVariablesFromUrlParams: mockGetProcessedSystemVariablesFromUrlParams,
     getProcessedUserVariablesFromUrlParams: mockGetProcessedUserVariablesFromUrlParams,
   }
@@ -152,7 +152,7 @@ describe('useEmbeddedChatbot', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Re-establish default mock implementations after clearAllMocks
-    mockGetRawInputsFromUrlParams.mockResolvedValue({})
+    mockGetProcessedInputsFromUrlParams.mockResolvedValue({})
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
     mockGetProcessedUserVariablesFromUrlParams.mockResolvedValue({})
     localStorage.removeItem(CONVERSATION_ID_INFO)
@@ -409,7 +409,7 @@ describe('useEmbeddedChatbot', () => {
     }
 
     it('should map various types properly with max_length truncation when defaults supplied via URL', async () => {
-      mockGetRawInputsFromUrlParams.mockResolvedValue({
+      mockGetProcessedInputsFromUrlParams.mockResolvedValue({
         p1: 'toolongparagraph', // truncated to 5
         n1: '99',
         c1: true,
@@ -422,7 +422,7 @@ describe('useEmbeddedChatbot', () => {
 
       // Wait for the mock to be called
       await waitFor(() => {
-        expect(mockGetRawInputsFromUrlParams).toHaveBeenCalled()
+        expect(mockGetProcessedInputsFromUrlParams).toHaveBeenCalled()
       })
 
       await waitFor(() => {
@@ -657,7 +657,7 @@ describe('useEmbeddedChatbot', () => {
           { checkbox: { variable: 'c1', default: false } },
         ],
       } as unknown as ChatConfig
-      mockGetRawInputsFromUrlParams.mockResolvedValue({
+      mockGetProcessedInputsFromUrlParams.mockResolvedValue({
         n1: 'not-a-number',
         c1: 'true',
       })
@@ -674,7 +674,7 @@ describe('useEmbeddedChatbot', () => {
           { select: { variable: 's1', options: ['A'], default: 'A' } },
         ],
       } as unknown as ChatConfig
-      mockGetRawInputsFromUrlParams.mockResolvedValue({
+      mockGetProcessedInputsFromUrlParams.mockResolvedValue({
         s1: 'INVALID',
       })
 
