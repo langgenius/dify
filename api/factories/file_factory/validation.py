@@ -18,7 +18,7 @@ def _extension_matches(extension: str, whitelist: Iterable[str]) -> bool:
     normalized = _normalize_extension(extension)
     if not normalized:
         return False
-    return normalized in {ne for e in whitelist if (ne := _normalize_extension(e))}
+    return normalized in {_normalize_extension(e) for e in whitelist}
 
 
 def is_file_valid_with_config(
