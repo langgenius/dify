@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 SWAGGER_MARKDOWN_PACKAGE = "swagger-markdown@3.0.0"
 
 
-def generate_markdown_docs(swagger_dir: Path, markdown_dir: Path) -> list[Path]:
+def generate_markdown_docs(swagger_dir: Path, markdown_dir: Path, *, keep_swagger_json: bool = False) -> list[Path]:
     """Generate Swagger JSON files, convert each one to Markdown, and return Markdown paths."""
 
     swagger_paths = generate_specs(swagger_dir)
@@ -50,6 +51,13 @@ def generate_markdown_docs(swagger_dir: Path, markdown_dir: Path) -> list[Path]:
         )
         written_paths.append(markdown_path)
 
+    if not keep_swagger_json:
+        if swagger_dir == markdown_dir or markdown_dir.is_relative_to(swagger_dir):
+            for path in swagger_paths:
+                path.unlink()
+        else:
+            shutil.rmtree(swagger_dir)
+
     return written_paths
 
 
@@ -67,12 +75,21 @@ def parse_args() -> argparse.Namespace:
         default=Path("openapi/markdown"),
         help="Directory where Markdown API docs will be written.",
     )
+    parser.add_argument(
+        "--keep-swagger-json",
+        action="store_true",
+        help="Keep intermediate Swagger JSON files after Markdown generation.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    written_paths = generate_markdown_docs(args.swagger_dir, args.markdown_dir)
+    written_paths = generate_markdown_docs(
+        args.swagger_dir,
+        args.markdown_dir,
+        keep_swagger_json=args.keep_swagger_json,
+    )
 
     for path in written_paths:
         logger.debug(path)
