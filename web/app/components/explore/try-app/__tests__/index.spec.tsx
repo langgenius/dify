@@ -39,14 +39,14 @@ vi.mock('../app-info', () => ({
   default: ({
     appId,
     appDetail,
-    category,
+    categories,
     className,
     onCreate,
-  }: { appId: string, appDetail: TryAppInfo, category?: string, className?: string, onCreate: () => void }) => (
+  }: { appId: string, appDetail: TryAppInfo, categories?: string[], className?: string, onCreate: () => void }) => (
     <div
       data-testid="app-info-component"
       data-app-id={appId}
-      data-category={category}
+      data-categories={categories?.join(',')}
       className={className}
     >
       <button data-testid="create-button" onClick={onCreate}>Create</button>
@@ -283,12 +283,12 @@ describe('TryApp (main index.tsx)', () => {
     })
   })
 
-  describe('category prop', () => {
-    it('passes category to AppInfo when provided', async () => {
+  describe('categories prop', () => {
+    it('passes categories to AppInfo when provided', async () => {
       render(
         <TryApp
           appId="test-app-id"
-          category="AI Assistant"
+          categories={['AI Assistant', 'Workflow']}
           onClose={vi.fn()}
           onCreate={vi.fn()}
         />,
@@ -296,11 +296,11 @@ describe('TryApp (main index.tsx)', () => {
 
       await waitFor(() => {
         const appInfo = document.body.querySelector('[data-testid="app-info-component"]')
-        expect(appInfo).toHaveAttribute('data-category', 'AI Assistant')
+        expect(appInfo).toHaveAttribute('data-categories', 'AI Assistant,Workflow')
       })
     })
 
-    it('does not pass category to AppInfo when not provided', async () => {
+    it('does not pass categories to AppInfo when not provided', async () => {
       render(
         <TryApp
           appId="test-app-id"
@@ -311,7 +311,7 @@ describe('TryApp (main index.tsx)', () => {
 
       await waitFor(() => {
         const appInfo = document.body.querySelector('[data-testid="app-info-component"]')
-        expect(appInfo).not.toHaveAttribute('data-category', expect.any(String))
+        expect(appInfo).not.toHaveAttribute('data-categories', expect.any(String))
       })
     })
   })
