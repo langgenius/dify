@@ -699,7 +699,7 @@ class TestRetrievalServiceInternals:
 
         assert RetrievalService.format_retrieval_documents(documents) == []
 
-    def test_format_retrieval_documents_with_parent_child_summary_and_attachments(self, monkeypatch):
+    def test_format_retrieval_documents_with_parent_child_summary_and_attachments(self, monkeypatch: pytest.MonkeyPatch):
         dataset_doc_parent = SimpleNamespace(
             id="doc-parent",
             doc_form=IndexStructureType.PARENT_CHILD_INDEX,
@@ -877,7 +877,7 @@ class TestRetrievalServiceInternals:
         assert result_by_segment_id["segment-parent-summary"].summary == "summary for parent"
         assert result_by_segment_id["segment-parent-summary"].child_chunks == []
 
-    def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(self, monkeypatch):
+    def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(self, monkeypatch: pytest.MonkeyPatch):
         rollback = Mock()
         monkeypatch.setattr(retrieval_service_module.db.session, "rollback", rollback)
         monkeypatch.setattr(retrieval_service_module.db.session, "scalars", Mock(side_effect=RuntimeError("db error")))

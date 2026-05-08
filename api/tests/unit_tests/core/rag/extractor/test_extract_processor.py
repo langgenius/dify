@@ -56,7 +56,7 @@ def _patch_all_extractors(monkeypatch) -> _ExtractorFactory:
 
 
 class TestExtractProcessorLoaders:
-    def test_load_from_upload_file_return_docs_and_text(self, monkeypatch):
+    def test_load_from_upload_file_return_docs_and_text(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(processor_module, "ExtractSetting", lambda **kwargs: SimpleNamespace(**kwargs))
 
         monkeypatch.setattr(
@@ -119,7 +119,7 @@ class TestExtractProcessorLoaders:
 
 class TestExtractProcessorFileRouting:
     @pytest.fixture(autouse=True)
-    def _set_unstructured_config(self, monkeypatch):
+    def _set_unstructured_config(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(processor_module.dify_config, "UNSTRUCTURED_API_URL", "https://unstructured")
         monkeypatch.setattr(processor_module.dify_config, "UNSTRUCTURED_API_KEY", "key")
 
@@ -202,7 +202,7 @@ class TestExtractProcessorFileRouting:
 
 
 class TestExtractProcessorDatasourceRouting:
-    def test_extract_routes_notion_datasource(self, monkeypatch):
+    def test_extract_routes_notion_datasource(self, monkeypatch: pytest.MonkeyPatch):
         factory = _patch_all_extractors(monkeypatch)
 
         notion_info = SimpleNamespace(

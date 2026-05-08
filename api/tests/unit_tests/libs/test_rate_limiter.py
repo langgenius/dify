@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import MagicMock
 
 from libs import helper as helper_module
@@ -31,7 +32,7 @@ class _FakeRedis:
         return True
 
 
-def test_rate_limiter_counts_attempts_within_same_second(monkeypatch):
+def test_rate_limiter_counts_attempts_within_same_second(monkeypatch: pytest.MonkeyPatch):
     fake_redis = _FakeRedis()
     monkeypatch.setattr(helper_module.time, "time", lambda: 1000)
 
@@ -48,7 +49,7 @@ def test_rate_limiter_counts_attempts_within_same_second(monkeypatch):
     assert limiter.is_rate_limited("203.0.113.10") is True
 
 
-def test_rate_limiter_uses_injected_redis(monkeypatch):
+def test_rate_limiter_uses_injected_redis(monkeypatch: pytest.MonkeyPatch):
     redis_client = MagicMock()
     redis_client.zcard.return_value = 1
     monkeypatch.setattr(helper_module.time, "time", lambda: 1000)

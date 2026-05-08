@@ -187,7 +187,7 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert isinstance(responses[0], ValueError)
 
-    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch):
+    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
@@ -408,7 +408,7 @@ class TestWorkflowGenerateTaskPipeline:
         assert list(pipeline._handle_human_input_form_timeout_event(timeout_event)) == ["timeout"]
         assert list(pipeline._handle_agent_log_event(agent_event)) == ["log"]
 
-    def test_wrapper_process_stream_response_emits_audio_end(self, monkeypatch):
+    def test_wrapper_process_stream_response_emits_audio_end(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -560,7 +560,7 @@ class TestWorkflowGenerateTaskPipeline:
         responses = list(pipeline._wrapper_process_stream_response())
         assert responses == [PingStreamResponse(task_id="task")]
 
-    def test_wrapper_process_stream_response_final_audio_none_then_finish(self, monkeypatch):
+    def test_wrapper_process_stream_response_final_audio_none_then_finish(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -597,7 +597,7 @@ class TestWorkflowGenerateTaskPipeline:
         assert sleep_spy
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
-    def test_wrapper_process_stream_response_handles_audio_exception(self, monkeypatch):
+    def test_wrapper_process_stream_response_handles_audio_exception(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -633,7 +633,7 @@ class TestWorkflowGenerateTaskPipeline:
         assert logger_exception
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
-    def test_database_session_rolls_back_on_error(self, monkeypatch):
+    def test_database_session_rolls_back_on_error(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         calls = {"enter": 0, "exit_exc": None}
 

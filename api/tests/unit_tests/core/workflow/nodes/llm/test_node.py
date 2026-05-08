@@ -222,7 +222,7 @@ def llm_node(
 
 
 @pytest.fixture
-def model_config(monkeypatch):
+def model_config(monkeypatch: pytest.MonkeyPatch):
     from tests.integration_tests.model_runtime.__mock.plugin_model import MockModelClass
 
     def mock_model_providers(_self):
@@ -1276,7 +1276,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
-    def test_image_content_with_inline_data(self, llm_node_for_multimodal, monkeypatch):
+    def test_image_content_with_inline_data(self, llm_node_for_multimodal, monkeypatch: pytest.MonkeyPatch):
         llm_node, mock_file_saver = llm_node_for_multimodal
 
         image_raw_data = b"PNG_DATA"

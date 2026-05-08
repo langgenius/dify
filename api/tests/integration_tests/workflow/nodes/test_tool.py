@@ -71,7 +71,7 @@ def init_tool_node(config: dict):
     return node
 
 
-def test_tool_variable_invoke(monkeypatch):
+def test_tool_variable_invoke(monkeypatch: pytest.MonkeyPatch):
     node = init_tool_node(
         config={
             "id": "1",
@@ -106,7 +106,7 @@ def test_tool_variable_invoke(monkeypatch):
                 assert item.node_run_result.outputs.get("text") is not None
 
 
-def test_tool_mixed_invoke(monkeypatch):
+def test_tool_mixed_invoke(monkeypatch: pytest.MonkeyPatch):
     node = init_tool_node(
         config={
             "id": "1",

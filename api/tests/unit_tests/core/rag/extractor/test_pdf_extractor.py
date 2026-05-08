@@ -7,7 +7,7 @@ import core.rag.extractor.pdf_extractor as pe
 
 
 @pytest.fixture
-def mock_dependencies(monkeypatch):
+def mock_dependencies(monkeypatch: pytest.MonkeyPatch):
     # Mock storage
     saves = []
 
@@ -122,7 +122,7 @@ def test_extract_images_get_objects_scenarios(mock_dependencies, get_objects_sid
     assert result == ""
 
 
-def test_extract_calls_extract_images(mock_dependencies, monkeypatch):
+def test_extract_calls_extract_images(mock_dependencies, monkeypatch: pytest.MonkeyPatch):
     # Mock pypdfium2
     mock_pdf_doc = MagicMock()
     mock_page = MagicMock()

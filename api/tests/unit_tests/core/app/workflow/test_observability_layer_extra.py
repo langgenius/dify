@@ -1,4 +1,5 @@
 from __future__ import annotations
+import pytest
 
 from types import SimpleNamespace
 
@@ -7,7 +8,7 @@ from graphon.enums import BuiltinNodeTypes
 
 
 class TestObservabilityLayerExtras:
-    def test_init_tracer_enabled_sets_tracer(self, monkeypatch):
+    def test_init_tracer_enabled_sets_tracer(self, monkeypatch: pytest.MonkeyPatch):
         tracer = object()
         monkeypatch.setattr("core.app.workflow.layers.observability.dify_config.ENABLE_OTEL", True)
         monkeypatch.setattr("core.app.workflow.layers.observability.is_instrument_flag_enabled", lambda: False)
@@ -33,7 +34,7 @@ class TestObservabilityLayerExtras:
         assert layer._tracer is None
         assert "Failed to get OpenTelemetry tracer" in caplog.text
 
-    def test_init_tracer_disables_when_otel_disabled(self, monkeypatch):
+    def test_init_tracer_disables_when_otel_disabled(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("core.app.workflow.layers.observability.dify_config.ENABLE_OTEL", False)
         monkeypatch.setattr("core.app.workflow.layers.observability.is_instrument_flag_enabled", lambda: False)
 
@@ -143,7 +144,7 @@ class TestObservabilityLayerExtras:
 
         assert layer._node_contexts == {}
 
-    def test_on_node_run_end_calls_span_end(self, monkeypatch):
+    def test_on_node_run_end_calls_span_end(self, monkeypatch: pytest.MonkeyPatch):
         layer = ObservabilityLayer()
         layer._is_disabled = False
         ended: list[str] = []
@@ -186,7 +187,7 @@ class TestObservabilityLayerExtras:
         assert "Failed to detach OpenTelemetry token" in caplog.text
         assert "exec" not in layer._node_contexts
 
-    def test_on_node_run_start_and_end_creates_span(self, monkeypatch):
+    def test_on_node_run_start_and_end_creates_span(self, monkeypatch: pytest.MonkeyPatch):
         layer = ObservabilityLayer()
         layer._is_disabled = False
 

@@ -88,7 +88,7 @@ class TestFetchMemory:
 
         assert result is None
 
-    def test_returns_none_when_conversation_does_not_exist(self, monkeypatch):
+    def test_returns_none_when_conversation_does_not_exist(self, monkeypatch: pytest.MonkeyPatch):
         class FakeSelect:
             def where(self, *_args):
                 return self
@@ -119,7 +119,7 @@ class TestFetchMemory:
 
         assert result is None
 
-    def test_builds_token_buffer_memory_for_existing_conversation(self, monkeypatch):
+    def test_builds_token_buffer_memory_for_existing_conversation(self, monkeypatch: pytest.MonkeyPatch):
         conversation = sentinel.conversation
         memory = sentinel.memory
 
@@ -189,7 +189,7 @@ class TestDifyGraphInitContext:
 
 
 class TestDefaultWorkflowCodeExecutor:
-    def test_execute_delegates_to_code_executor(self, monkeypatch):
+    def test_execute_delegates_to_code_executor(self, monkeypatch: pytest.MonkeyPatch):
         executor = node_factory.DefaultWorkflowCodeExecutor()
         execute_workflow_code_template = MagicMock(return_value={"answer": "ok"})
         monkeypatch.setattr(
@@ -219,7 +219,7 @@ class TestDefaultWorkflowCodeExecutor:
 
 
 class TestCodeExecutorJinja2TemplateRenderer:
-    def test_render_template_delegates_to_code_executor(self, monkeypatch):
+    def test_render_template_delegates_to_code_executor(self, monkeypatch: pytest.MonkeyPatch):
         renderer = workflow_template_rendering.CodeExecutorJinja2TemplateRenderer()
         execute_workflow_code_template = MagicMock(return_value={"result": "Hello workflow"})
         monkeypatch.setattr(
@@ -237,7 +237,7 @@ class TestCodeExecutorJinja2TemplateRenderer:
             inputs={"name": "workflow"},
         )
 
-    def test_render_template_wraps_code_execution_errors(self, monkeypatch):
+    def test_render_template_wraps_code_execution_errors(self, monkeypatch: pytest.MonkeyPatch):
         renderer = workflow_template_rendering.CodeExecutorJinja2TemplateRenderer()
         monkeypatch.setattr(
             workflow_template_rendering.CodeExecutor,

@@ -120,7 +120,7 @@ class TestWorkflowPersistenceLayer:
         with pytest.raises(ValueError, match="workflow_execution_id must be provided"):
             layer._get_execution_id()
 
-    def test_prepare_workflow_inputs_excludes_conversation_id(self, monkeypatch):
+    def test_prepare_workflow_inputs_excludes_conversation_id(self, monkeypatch: pytest.MonkeyPatch):
         layer, _, _, _ = _make_layer()
 
         monkeypatch.setattr(

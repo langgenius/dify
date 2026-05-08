@@ -46,7 +46,7 @@ class TestDifyNodeFactory:
             lambda **_kwargs: node_class,
         )
 
-    def _factory(self, monkeypatch):
+    def _factory(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_STRING_LENGTH", 10)
         monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MAX_NUMBER", 10)
         monkeypatch.setattr("core.workflow.node_factory.dify_config.CODE_MIN_NUMBER", -10)
@@ -72,20 +72,20 @@ class TestDifyNodeFactory:
             graph_runtime_state=SimpleNamespace(),
         )
 
-    def test_create_node_unknown_type(self, monkeypatch):
+    def test_create_node_unknown_type(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory(monkeypatch)
 
         with pytest.raises(ValueError):
             factory.create_node({"id": "node-1", "data": {"type": "unknown"}})
 
-    def test_create_node_missing_mapping(self, monkeypatch):
+    def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory(monkeypatch)
         monkeypatch.setattr("core.workflow.node_factory.get_node_type_classes_mapping", lambda: {})
 
         with pytest.raises(ValueError):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
-    def test_create_node_missing_latest_class(self, monkeypatch):
+    def test_create_node_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory(monkeypatch)
         monkeypatch.setattr(
             "core.workflow.node_factory.get_node_type_classes_mapping",
@@ -96,7 +96,7 @@ class TestDifyNodeFactory:
         with pytest.raises(ValueError):
             factory.create_node({"id": "node-1", "data": {"type": BuiltinNodeTypes.START}})
 
-    def test_create_node_selects_versioned_class(self, monkeypatch):
+    def test_create_node_selects_versioned_class(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory(monkeypatch)
         selected_versions: list[tuple[str, str]] = []
 
@@ -115,7 +115,7 @@ class TestDifyNodeFactory:
         assert node.id == "node-1"
         assert selected_versions == [("snapshot", "called")]
 
-    def test_create_node_code_branch(self, monkeypatch):
+    def test_create_node_code_branch(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory(monkeypatch)
         self._stub_node_resolution(monkeypatch, DummyCodeNode)
 
@@ -124,7 +124,7 @@ class TestDifyNodeFactory:
         assert isinstance(node, DummyCodeNode)
         assert node.id == "node-1"
 
-    def test_create_node_template_transform_branch(self, monkeypatch):
+    def test_create_node_template_transform_branch(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory(monkeypatch)
         self._stub_node_resolution(monkeypatch, DummyTemplateTransformNode)
 
@@ -133,7 +133,7 @@ class TestDifyNodeFactory:
         assert isinstance(node, DummyTemplateTransformNode)
         assert "jinja2_template_renderer" in node.kwargs
 
-    def test_create_node_http_request_branch(self, monkeypatch):
+    def test_create_node_http_request_branch(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory(monkeypatch)
         self._stub_node_resolution(monkeypatch, DummyHttpRequestNode)
 
@@ -142,7 +142,7 @@ class TestDifyNodeFactory:
         assert isinstance(node, DummyHttpRequestNode)
         assert "http_request_config" in node.kwargs
 
-    def test_create_node_knowledge_retrieval_branch(self, monkeypatch):
+    def test_create_node_knowledge_retrieval_branch(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory(monkeypatch)
         self._stub_node_resolution(monkeypatch, DummyKnowledgeRetrievalNode)
 
@@ -151,7 +151,7 @@ class TestDifyNodeFactory:
         assert isinstance(node, DummyKnowledgeRetrievalNode)
         assert node.kwargs == {}
 
-    def test_create_node_document_extractor_branch(self, monkeypatch):
+    def test_create_node_document_extractor_branch(self, monkeypatch: pytest.MonkeyPatch):
         factory = self._factory(monkeypatch)
         self._stub_node_resolution(monkeypatch, DummyDocumentExtractorNode)
 

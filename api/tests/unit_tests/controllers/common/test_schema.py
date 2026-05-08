@@ -77,7 +77,7 @@ def test_register_schema_models_registers_multiple_models():
     assert called_names == ["UserModel", "ProductModel"]
 
 
-def test_register_schema_models_calls_register_schema_model(monkeypatch):
+def test_register_schema_models_calls_register_schema_model(monkeypatch: pytest.MonkeyPatch):
     from controllers.common.schema import register_schema_models
 
     namespace = MagicMock(spec=Namespace)

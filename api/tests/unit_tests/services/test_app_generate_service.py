@@ -97,7 +97,7 @@ def _noop_rate_limit_context(rate_limit, request_id):
 class TestBuildStreamingTaskOnSubscribe:
     """Tests for AppGenerateService._build_streaming_task_on_subscribe."""
 
-    def test_streams_mode_starts_immediately(self, monkeypatch):
+    def test_streams_mode_starts_immediately(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         called = []
         cb = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
@@ -107,7 +107,7 @@ class TestBuildStreamingTaskOnSubscribe:
         cb()
         assert called == [1]  # not called again
 
-    def test_pubsub_mode_starts_on_subscribe(self, monkeypatch):
+    def test_pubsub_mode_starts_on_subscribe(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
         monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)  # large to prevent timer
         called = []
@@ -119,7 +119,7 @@ class TestBuildStreamingTaskOnSubscribe:
         cb()
         assert called == [1]
 
-    def test_sharded_mode_starts_on_subscribe(self, monkeypatch):
+    def test_sharded_mode_starts_on_subscribe(self, monkeypatch: pytest.MonkeyPatch):
         """sharded is treated like pubsub (i.e. not 'streams')."""
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "sharded")
         monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)
@@ -129,7 +129,7 @@ class TestBuildStreamingTaskOnSubscribe:
         cb()
         assert called == [1]
 
-    def test_pubsub_fallback_timer_fires(self, monkeypatch):
+    def test_pubsub_fallback_timer_fires(self, monkeypatch: pytest.MonkeyPatch):
         """When nobody subscribes fast enough the fallback timer fires."""
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
         monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 50)  # 50 ms
@@ -138,7 +138,7 @@ class TestBuildStreamingTaskOnSubscribe:
         time.sleep(0.2)  # give the timer time to fire
         assert called == [1]
 
-    def test_exception_in_start_task_returns_false(self, monkeypatch):
+    def test_exception_in_start_task_returns_false(self, monkeypatch: pytest.MonkeyPatch):
         """When start_task raises, _try_start returns False and next call retries."""
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         call_count = 0
@@ -155,7 +155,7 @@ class TestBuildStreamingTaskOnSubscribe:
         cb()
         assert call_count == 2
 
-    def test_concurrent_subscribe_only_starts_once(self, monkeypatch):
+    def test_concurrent_subscribe_only_starts_once(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
         monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)
         call_count = 0
@@ -177,31 +177,31 @@ class TestBuildStreamingTaskOnSubscribe:
 # _get_max_active_requests
 # ---------------------------------------------------------------------------
 class TestGetMaxActiveRequests:
-    def test_both_zero_returns_zero(self, monkeypatch):
+    def test_both_zero_returns_zero(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "APP_MAX_ACTIVE_REQUESTS", 0)
         monkeypatch.setattr(ags_module.dify_config, "APP_DEFAULT_ACTIVE_REQUESTS", 0)
         app = _make_app(AppMode.CHAT, max_active_requests=0)
         assert AppGenerateService._get_max_active_requests(app) == 0
 
-    def test_app_limit_only(self, monkeypatch):
+    def test_app_limit_only(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "APP_MAX_ACTIVE_REQUESTS", 0)
         monkeypatch.setattr(ags_module.dify_config, "APP_DEFAULT_ACTIVE_REQUESTS", 0)
         app = _make_app(AppMode.CHAT, max_active_requests=5)
         assert AppGenerateService._get_max_active_requests(app) == 5
 
-    def test_config_limit_only(self, monkeypatch):
+    def test_config_limit_only(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "APP_MAX_ACTIVE_REQUESTS", 10)
         monkeypatch.setattr(ags_module.dify_config, "APP_DEFAULT_ACTIVE_REQUESTS", 0)
         app = _make_app(AppMode.CHAT, max_active_requests=0)
         assert AppGenerateService._get_max_active_requests(app) == 10
 
-    def test_both_non_zero_returns_min(self, monkeypatch):
+    def test_both_non_zero_returns_min(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "APP_MAX_ACTIVE_REQUESTS", 20)
         monkeypatch.setattr(ags_module.dify_config, "APP_DEFAULT_ACTIVE_REQUESTS", 0)
         app = _make_app(AppMode.CHAT, max_active_requests=5)
         assert AppGenerateService._get_max_active_requests(app) == 5
 
-    def test_default_active_requests_used_when_app_has_none(self, monkeypatch):
+    def test_default_active_requests_used_when_app_has_none(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "APP_MAX_ACTIVE_REQUESTS", 0)
         monkeypatch.setattr(ags_module.dify_config, "APP_DEFAULT_ACTIVE_REQUESTS", 15)
         app = _make_app(AppMode.CHAT, max_active_requests=0)

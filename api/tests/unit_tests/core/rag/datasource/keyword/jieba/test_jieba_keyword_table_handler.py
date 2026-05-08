@@ -1,3 +1,4 @@
+import pytest
 import sys
 import types
 from types import SimpleNamespace
@@ -38,7 +39,7 @@ def _install_fake_jieba_modules(
         monkeypatch.delitem(sys.modules, "jieba.analyse.tfidf", raising=False)
 
 
-def test_init_uses_existing_default_tfidf(monkeypatch):
+def test_init_uses_existing_default_tfidf(monkeypatch: pytest.MonkeyPatch):
     analyse_module = types.ModuleType("jieba.analyse")
     default_tfidf = _DummyTFIDF()
     analyse_module.default_tfidf = default_tfidf
@@ -51,7 +52,7 @@ def test_init_uses_existing_default_tfidf(monkeypatch):
     assert handler._tfidf.stop_words == STOPWORDS
 
 
-def test_load_tfidf_extractor_uses_tfidf_class_and_caches_default(monkeypatch):
+def test_load_tfidf_extractor_uses_tfidf_class_and_caches_default(monkeypatch: pytest.MonkeyPatch):
     analyse_module = types.ModuleType("jieba.analyse")
     analyse_module.default_tfidf = None
 
@@ -67,7 +68,7 @@ def test_load_tfidf_extractor_uses_tfidf_class_and_caches_default(monkeypatch):
     assert analyse_module.default_tfidf is handler._tfidf
 
 
-def test_load_tfidf_extractor_imports_from_tfidf_submodule(monkeypatch):
+def test_load_tfidf_extractor_imports_from_tfidf_submodule(monkeypatch: pytest.MonkeyPatch):
     analyse_module = types.ModuleType("jieba.analyse")
     analyse_module.default_tfidf = None
 
@@ -85,7 +86,7 @@ def test_load_tfidf_extractor_imports_from_tfidf_submodule(monkeypatch):
     assert analyse_module.default_tfidf is handler._tfidf
 
 
-def test_load_tfidf_extractor_falls_back_when_tfidf_unavailable(monkeypatch):
+def test_load_tfidf_extractor_falls_back_when_tfidf_unavailable(monkeypatch: pytest.MonkeyPatch):
     analyse_module = types.ModuleType("jieba.analyse")
     analyse_module.default_tfidf = None
     _install_fake_jieba_modules(monkeypatch, analyse_module)
@@ -96,7 +97,7 @@ def test_load_tfidf_extractor_falls_back_when_tfidf_unavailable(monkeypatch):
     assert fallback_keywords == ["two"]
 
 
-def test_build_fallback_tfidf_uses_lcut_when_available(monkeypatch):
+def test_build_fallback_tfidf_uses_lcut_when_available(monkeypatch: pytest.MonkeyPatch):
     analyse_module = types.ModuleType("jieba.analyse")
     _install_fake_jieba_modules(monkeypatch, analyse_module, jieba_attrs={"lcut": lambda _: ["x", "x", "y"]})
 
@@ -105,7 +106,7 @@ def test_build_fallback_tfidf_uses_lcut_when_available(monkeypatch):
     assert tfidf.extract_tags("ignored", topK=1) == ["x"]
 
 
-def test_build_fallback_tfidf_uses_cut_when_lcut_is_missing(monkeypatch):
+def test_build_fallback_tfidf_uses_cut_when_lcut_is_missing(monkeypatch: pytest.MonkeyPatch):
     analyse_module = types.ModuleType("jieba.analyse")
     _install_fake_jieba_modules(
         monkeypatch,
