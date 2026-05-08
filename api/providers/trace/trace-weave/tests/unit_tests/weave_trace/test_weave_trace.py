@@ -583,7 +583,7 @@ class TestFinishCall:
 
 
 class TestWorkflowTrace:
-    def _setup_repo(self, monkeypatch, nodes=None):
+    def _setup_repo(self, monkeypatch: pytest.MonkeyPatch, nodes=None):
         """Helper to patch session/repo dependencies."""
         if nodes is None:
             nodes = []

@@ -244,7 +244,7 @@ class TestUnstructuredPPTAndPPTX:
 
 
 class TestUnstructuredWord:
-    def _install_doc_modules(self, monkeypatch, version: str, filetype_value):
+    def _install_doc_modules(self, monkeypatch: pytest.MonkeyPatch, version: str, filetype_value):
         _register_unstructured_packages(monkeypatch)
 
         class FileType:

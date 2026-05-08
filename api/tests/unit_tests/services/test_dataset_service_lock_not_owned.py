@@ -61,7 +61,7 @@ def fake_lock(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_save_document_with_dataset_id_ignores_lock_not_owned(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     fake_current_user,
     fake_features,
     fake_lock,
@@ -118,7 +118,7 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
 
 
 def test_add_segment_ignores_lock_not_owned(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     fake_current_user,
     fake_lock,
 ):
@@ -161,7 +161,7 @@ def test_add_segment_ignores_lock_not_owned(
 
 
 def test_multi_create_segment_ignores_lock_not_owned(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     fake_current_user,
     fake_lock,
 ):

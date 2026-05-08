@@ -182,7 +182,7 @@ class TestRetrievalServiceInternals:
         app.app_context.return_value.__exit__.return_value = False
         return app
 
-    def test_retrieve_with_attachment_ids_only(self, monkeypatch, internal_dataset):
+    def test_retrieve_with_attachment_ids_only(self, monkeypatch: pytest.MonkeyPatch, internal_dataset):
         with (
             patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", return_value=internal_dataset),
             patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve") as mock_retrieve,
@@ -936,7 +936,7 @@ class TestRetrievalServiceInternals:
         future_ok.cancel.assert_called()
 
     def test_retrieve_internal_raises_value_error_when_exceptions_exist(
-        self, monkeypatch, internal_dataset, internal_flask_app
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app
     ):
         executor = _ImmediateExecutor()
         monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
@@ -958,7 +958,7 @@ class TestRetrievalServiceInternals:
                     query="query",
                 )
 
-    def test_retrieve_internal_hybrid_weighted_attachment_flow(self, monkeypatch, internal_dataset, internal_flask_app):
+    def test_retrieve_internal_hybrid_weighted_attachment_flow(self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app):
         executor = _ImmediateExecutor()
         monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
         monkeypatch.setattr(

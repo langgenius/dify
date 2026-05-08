@@ -434,7 +434,7 @@ class TestDifyNodeFactoryCreateNode:
         with pytest.raises(ValueError, match="No class mapping found for node type: missing"):
             factory.create_node({"id": "node-id", "data": {"type": "missing"}})
 
-    def test_rejects_missing_class_mapping(self, monkeypatch, factory):
+    def test_rejects_missing_class_mapping(self, monkeypatch: pytest.MonkeyPatch, factory):
         monkeypatch.setattr(
             factory,
             "_resolve_node_class",
@@ -444,7 +444,7 @@ class TestDifyNodeFactoryCreateNode:
         with pytest.raises(ValueError, match="No class mapping found for node type: start"):
             factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
 
-    def test_rejects_missing_latest_class(self, monkeypatch, factory):
+    def test_rejects_missing_latest_class(self, monkeypatch: pytest.MonkeyPatch, factory):
         monkeypatch.setattr(
             factory,
             "_resolve_node_class",
@@ -454,7 +454,7 @@ class TestDifyNodeFactoryCreateNode:
         with pytest.raises(ValueError, match="No latest version class found for node type: start"):
             factory.create_node({"id": "node-id", "data": {"type": BuiltinNodeTypes.START}})
 
-    def test_uses_version_specific_class_when_available(self, monkeypatch, factory):
+    def test_uses_version_specific_class_when_available(self, monkeypatch: pytest.MonkeyPatch, factory):
         matched_node = sentinel.matched_node
         latest_node_class = _node_constructor(return_value=sentinel.latest_node)
         matched_node_class = _node_constructor(return_value=matched_node)
@@ -475,7 +475,7 @@ class TestDifyNodeFactoryCreateNode:
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
         latest_node_class.assert_not_called()
 
-    def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(self, monkeypatch, factory):
+    def test_falls_back_to_latest_class_when_version_specific_mapping_is_missing(self, monkeypatch: pytest.MonkeyPatch, factory):
         latest_node = sentinel.latest_node
         latest_node_class = _node_constructor(return_value=latest_node)
         monkeypatch.setattr(
@@ -507,7 +507,7 @@ class TestDifyNodeFactoryCreateNode:
             (BuiltinNodeTypes.DOCUMENT_EXTRACTOR, "DocumentExtractorNode"),
         ],
     )
-    def test_creates_specialized_nodes(self, monkeypatch, factory, node_type, constructor_name):
+    def test_creates_specialized_nodes(self, monkeypatch: pytest.MonkeyPatch, factory, node_type, constructor_name):
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
         constructor._mock_name = constructor_name
@@ -597,7 +597,7 @@ class TestDifyNodeFactoryCreateNode:
         prepared_llm.assert_called_once_with(sentinel.model_instance)
         assert kwargs["model_instance"] is wrapped_model_instance
 
-    def test_create_node_passes_alias_preserving_llm_config_to_constructor(self, monkeypatch, factory):
+    def test_create_node_passes_alias_preserving_llm_config_to_constructor(self, monkeypatch: pytest.MonkeyPatch, factory):
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
         monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
@@ -726,7 +726,7 @@ class TestDifyNodeFactoryModelInstance:
         factory._llm_model_factory = sentinel.model_factory
         return factory
 
-    def test_delegates_to_fetch_model_config(self, monkeypatch, factory):
+    def test_delegates_to_fetch_model_config(self, monkeypatch: pytest.MonkeyPatch, factory):
         node_data_model = SimpleNamespace(
             provider="provider",
             name="model",
@@ -755,7 +755,7 @@ class TestDifyNodeFactoryModelInstance:
             model_factory=sentinel.model_factory,
         )
 
-    def test_propagates_fetch_model_config_errors(self, monkeypatch, factory):
+    def test_propagates_fetch_model_config_errors(self, monkeypatch: pytest.MonkeyPatch, factory):
         fetch_model_config = MagicMock(side_effect=ValueError("broken model config"))
         monkeypatch.setattr(node_factory, "fetch_model_config", fetch_model_config)
 
@@ -780,7 +780,7 @@ class TestDifyNodeFactoryMemory:
         assert result is None
         factory.graph_runtime_state.variable_pool.get.assert_not_called()
 
-    def test_uses_string_segment_conversation_id(self, monkeypatch, factory):
+    def test_uses_string_segment_conversation_id(self, monkeypatch: pytest.MonkeyPatch, factory):
         memory_config = sentinel.memory_config
         factory.graph_runtime_state.variable_pool.get.return_value = StringSegment(value="conversation-id")
         fetch_memory = MagicMock(return_value=sentinel.memory)
@@ -800,7 +800,7 @@ class TestDifyNodeFactoryMemory:
             model_instance=sentinel.model_instance,
         )
 
-    def test_ignores_non_string_segment_conversation_ids(self, monkeypatch, factory):
+    def test_ignores_non_string_segment_conversation_ids(self, monkeypatch: pytest.MonkeyPatch, factory):
         memory_config = sentinel.memory_config
         factory.graph_runtime_state.variable_pool.get.return_value = sentinel.segment
         fetch_memory = MagicMock(return_value=sentinel.memory)
