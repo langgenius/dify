@@ -47,6 +47,7 @@ def _create_recommended_app(
     *,
     app_id: str,
     category: str = "chat",
+    categories: list[str] | None = None,
     language: str = "en-US",
     is_listed: bool = True,
     position: int = 1,
@@ -57,6 +58,7 @@ def _create_recommended_app(
         copyright="copy",
         privacy_policy="pp",
         category=category,
+        categories=[category] if categories is None else categories,
         language=language,
         is_listed=is_listed,
         position=position,
@@ -112,6 +114,53 @@ class TestFetchRecommendedAppsFromDb:
         assert app2.id in app_ids
         assert "assistant" in result["categories"]
         assert "writing" in result["categories"]
+
+    def test_returns_multiple_categories_for_one_app(
+        self, flask_app_with_containers, db_session_with_containers: Session
+    ):
+        tenant_id = str(uuid4())
+        created_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
+        _create_site(db_session_with_containers, app_id=created_app.id)
+        _create_recommended_app(
+            db_session_with_containers,
+            app_id=created_app.id,
+            category="writing",
+            categories=["writing", "assistant"],
+        )
+
+        db_session_with_containers.expire_all()
+
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
+
+        recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
+        assert recommended_app["categories"] == ["writing", "assistant"]
+        assert "writing" in result["categories"]
+        assert "assistant" in result["categories"]
+
+    def test_ignores_legacy_category_when_categories_are_empty(
+        self,
+        flask_app_with_containers,
+        db_session_with_containers: Session,
+    ):
+        legacy_category = f"legacy-empty-{uuid4()}"
+        tenant_id = str(uuid4())
+        created_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
+        _create_site(db_session_with_containers, app_id=created_app.id)
+        _create_recommended_app(
+            db_session_with_containers,
+            app_id=created_app.id,
+            category=legacy_category,
+            categories=[],
+        )
+
+        db_session_with_containers.expire_all()
+
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US")
+
+        recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
+        assert "category" not in recommended_app
+        assert recommended_app["categories"] == []
+        assert legacy_category not in result["categories"]
 
     def test_falls_back_to_default_language_when_empty(
         self, flask_app_with_containers, db_session_with_containers: Session

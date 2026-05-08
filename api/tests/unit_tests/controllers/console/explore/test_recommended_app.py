@@ -126,7 +126,7 @@ class TestRecommendedAppResponseModels:
                         },
                         "app_id": "app-1",
                         "description": "desc",
-                        "category": "cat",
+                        "categories": ["cat", "other"],
                         "position": 1,
                         "is_listed": True,
                         "can_trial": False,
@@ -137,4 +137,5 @@ class TestRecommendedAppResponseModels:
         ).model_dump(mode="json")
 
         assert response["recommended_apps"][0]["app_id"] == "app-1"
+        assert response["recommended_apps"][0]["categories"] == ["cat", "other"]
         assert response["categories"] == ["cat"]
