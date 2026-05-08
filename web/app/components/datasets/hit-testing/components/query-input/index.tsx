@@ -17,7 +17,7 @@ import {
   RiPlayCircleLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
@@ -65,12 +65,30 @@ const QueryInput = ({
 }: QueryInputProps) => {
   const { t } = useTranslation()
   const isMultimodal = useDatasetDetailContextWithSelector(s => !!s.dataset?.is_multimodal)
+  const datasetExternalRetrievalModel = useDatasetDetailContextWithSelector(s => s.dataset?.external_retrieval_model)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [externalRetrievalSettings, setExternalRetrievalSettings] = useState({
     top_k: 4,
     score_threshold: 0.5,
     score_threshold_enabled: false,
   })
+
+  // dataset 是异步加载的，首次挂载时 external_retrieval_model 为 undefined，
+  // useState 的初始值会被固化为上面的默认值。此处在 dataset 第一次就绪后
+  // 一次性同步到本地 state，后续用户通过「设置」弹窗修改的值不会被覆盖。
+  const hasSyncedExternalRetrievalSettingsRef = useRef(false)
+  useEffect(() => {
+    if (hasSyncedExternalRetrievalSettingsRef.current)
+      return
+    if (!datasetExternalRetrievalModel)
+      return
+    setExternalRetrievalSettings({
+      top_k: datasetExternalRetrievalModel.top_k ?? 4,
+      score_threshold: datasetExternalRetrievalModel.score_threshold ?? 0.5,
+      score_threshold_enabled: datasetExternalRetrievalModel.score_threshold_enabled ?? false,
+    })
+    hasSyncedExternalRetrievalSettingsRef.current = true
+  }, [datasetExternalRetrievalModel])
 
   const text = useMemo(() => {
     return queries.find(query => query.content_type === 'text_query')?.content ?? ''

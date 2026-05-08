@@ -132,7 +132,7 @@ export const useFormState = () => {
       return
     }
 
-    if (retrievalConfig.weights) {
+    if (retrievalConfig?.weights) {
       retrievalConfig.weights.vector_setting.embedding_provider_name = embeddingModel.provider || ''
       retrievalConfig.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
     }
@@ -191,20 +191,19 @@ export const useFormState = () => {
     }
   }
 
-  // Computed values
   const showMultiModalTip = useMemo(() => {
     return checkShowMultiModalTip({
       embeddingModel,
-      rerankingEnable: retrievalConfig.reranking_enable,
+      rerankingEnable: retrievalConfig?.reranking_enable,
       rerankModel: {
-        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
-        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+        rerankingProviderName: retrievalConfig?.reranking_model?.reranking_provider_name ?? '',
+        rerankingModelName: retrievalConfig?.reranking_model?.reranking_model_name ?? '',
       },
       indexMethod,
       embeddingModelList,
       rerankModelList,
     })
-  }, [embeddingModel, rerankModelList, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, embeddingModelList, indexMethod])
+  }, [embeddingModel, rerankModelList, retrievalConfig?.reranking_enable, retrievalConfig?.reranking_model, embeddingModelList, indexMethod])
 
   return {
     // Context values
