@@ -13,7 +13,9 @@ import {
 import { useInvalid } from '@/service/use-base'
 import { useDocumentContext } from '../context'
 import BatchAction from './common/batch-action'
-import { DrawerGroup, FullDocModeContent, GeneralModeContent, MenuBar } from './components'
+import { DrawerGroup } from './components/drawer-group'
+import MenuBar from './components/menu-bar'
+import { FullDocModeContent, GeneralModeContent } from './components/segment-list-content'
 import {
   useChildSegmentData,
   useModalState,
