@@ -240,9 +240,9 @@ describe('app-publisher sections', () => {
     )
 
     expect(screen.getByText('common.batchRunApp')).toHaveAttribute('data-link', 'https://example.com/app?mode=batch')
-    fireEvent.click(screen.getAllByRole('button', { name: 'operation.config' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'operation.config' })[0]!)
     expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app')
-    fireEvent.click(screen.getAllByRole('button', { name: 'operation.config' })[1])
+    fireEvent.click(screen.getAllByRole('button', { name: 'operation.config' })[1]!)
     expect(handleOpenRunConfig).toHaveBeenCalledWith('https://example.com/app?mode=batch')
     fireEvent.click(screen.getByText('common.openInExplore'))
     expect(handleOpenInExplore).toHaveBeenCalled()

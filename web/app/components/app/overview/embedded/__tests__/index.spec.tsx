@@ -182,7 +182,7 @@ describe('Embedded', () => {
 
     const optionButtons = document.body.querySelectorAll('[class*="option"]')
     act(() => {
-      fireEvent.click(optionButtons[1])
+      fireEvent.click(optionButtons[1]!)
     })
 
     await waitFor(() => {
