@@ -34,12 +34,28 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     )
   }
 
-  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
+  const PopoverTrigger = ({
+    children,
+    className,
+    render,
+  }: {
+    children?: React.ReactNode
+    className?: string
+    render?: React.ReactNode
+  }) => {
     const { open, setOpen } = React.useContext(PopoverContext)
+    if (render) {
+      return (
+        <div onClick={() => setOpen(!open)}>
+          {render}
+        </div>
+      )
+    }
+
     return (
-      <div onClick={() => setOpen(!open)}>
-        {render}
-      </div>
+      <button type="button" className={className} onClick={() => setOpen(!open)}>
+        {children}
+      </button>
     )
   }
 
@@ -117,6 +133,12 @@ describe('LabelSelector', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
       expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
+    })
+
+    it('should render the trigger as a native button', () => {
+      render(<LabelSelector value={[]} onChange={mockOnChange} />)
+
+      expect(screen.getByRole('button', { name: 'tools.createTool.toolInput.labelPlaceholder' })).toHaveAttribute('type', 'button')
     })
 
     it('should display selected labels as comma-separated list', () => {
