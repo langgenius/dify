@@ -1,4 +1,202 @@
-x-shared-env: &shared-api-worker-env
+# Shared configuration using YAML anchors and env_file
+x-shared-api-worker-config: &shared-api-worker-config
+  env_file:
+    - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/api.env
+      required: false
+    - path: ./envs/security.env
+      required: false
+    - path: ./envs/databases/db-postgres.env
+      required: false
+    - path: ./envs/databases/db-mysql.env
+      required: false
+    - path: ./envs/databases/redis.env
+      required: false
+    - path: ./envs/vectorstores/weaviate.env
+      required: false
+    - path: ./envs/vectorstores/qdrant.env
+      required: false
+    - path: ./envs/vectorstores/oceanbase.env
+      required: false
+    - path: ./envs/vectorstores/seekdb.env
+      required: false
+    - path: ./envs/vectorstores/couchbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvector.env
+      required: false
+    - path: ./envs/vectorstores/vastbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvecto-rs.env
+      required: false
+    - path: ./envs/vectorstores/chroma.env
+      required: false
+    - path: ./envs/vectorstores/iris.env
+      required: false
+    - path: ./envs/vectorstores/oracle.env
+      required: false
+    - path: ./envs/vectorstores/opengauss.env
+      required: false
+    - path: ./envs/vectorstores/myscale.env
+      required: false
+    - path: ./envs/vectorstores/matrixone.env
+      required: false
+    - path: ./envs/vectorstores/elasticsearch.env
+      required: false
+    - path: ./envs/vectorstores/opensearch.env
+      required: false
+    - path: ./envs/vectorstores/milvus.env
+      required: false
+    - path: ./envs/infrastructure/nginx.env
+      required: false
+    - path: ./envs/infrastructure/certbot.env
+      required: false
+    - path: ./envs/infrastructure/ssrf-proxy.env
+      required: false
+    - path: ./envs/infrastructure/etcd.env
+      required: false
+    - path: ./envs/infrastructure/minio.env
+      required: false
+    - path: ./envs/infrastructure/milvus-standalone.env
+      required: false
+    - ./.env
+  networks:
+    - ssrf_proxy_network
+    - default
+  restart: always
+
+x-shared-worker-config: &shared-worker-config
+  env_file:
+    - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/worker.env
+      required: false
+    - path: ./envs/security.env
+      required: false
+    - path: ./envs/databases/db-postgres.env
+      required: false
+    - path: ./envs/databases/db-mysql.env
+      required: false
+    - path: ./envs/databases/redis.env
+      required: false
+    - path: ./envs/vectorstores/weaviate.env
+      required: false
+    - path: ./envs/vectorstores/qdrant.env
+      required: false
+    - path: ./envs/vectorstores/oceanbase.env
+      required: false
+    - path: ./envs/vectorstores/seekdb.env
+      required: false
+    - path: ./envs/vectorstores/couchbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvector.env
+      required: false
+    - path: ./envs/vectorstores/vastbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvecto-rs.env
+      required: false
+    - path: ./envs/vectorstores/chroma.env
+      required: false
+    - path: ./envs/vectorstores/iris.env
+      required: false
+    - path: ./envs/vectorstores/oracle.env
+      required: false
+    - path: ./envs/vectorstores/opengauss.env
+      required: false
+    - path: ./envs/vectorstores/myscale.env
+      required: false
+    - path: ./envs/vectorstores/matrixone.env
+      required: false
+    - path: ./envs/vectorstores/elasticsearch.env
+      required: false
+    - path: ./envs/vectorstores/opensearch.env
+      required: false
+    - path: ./envs/vectorstores/milvus.env
+      required: false
+    - path: ./envs/infrastructure/nginx.env
+      required: false
+    - path: ./envs/infrastructure/certbot.env
+      required: false
+    - path: ./envs/infrastructure/ssrf-proxy.env
+      required: false
+    - path: ./envs/infrastructure/etcd.env
+      required: false
+    - path: ./envs/infrastructure/minio.env
+      required: false
+    - path: ./envs/infrastructure/milvus-standalone.env
+      required: false
+    - ./.env
+  networks:
+    - ssrf_proxy_network
+    - default
+  restart: always
+
+x-shared-worker-beat-config: &shared-worker-beat-config
+  env_file:
+    - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/worker-beat.env
+      required: false
+    - path: ./envs/security.env
+      required: false
+    - path: ./envs/databases/db-postgres.env
+      required: false
+    - path: ./envs/databases/db-mysql.env
+      required: false
+    - path: ./envs/databases/redis.env
+      required: false
+    - path: ./envs/vectorstores/weaviate.env
+      required: false
+    - path: ./envs/vectorstores/qdrant.env
+      required: false
+    - path: ./envs/vectorstores/oceanbase.env
+      required: false
+    - path: ./envs/vectorstores/seekdb.env
+      required: false
+    - path: ./envs/vectorstores/couchbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvector.env
+      required: false
+    - path: ./envs/vectorstores/vastbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvecto-rs.env
+      required: false
+    - path: ./envs/vectorstores/chroma.env
+      required: false
+    - path: ./envs/vectorstores/iris.env
+      required: false
+    - path: ./envs/vectorstores/oracle.env
+      required: false
+    - path: ./envs/vectorstores/opengauss.env
+      required: false
+    - path: ./envs/vectorstores/myscale.env
+      required: false
+    - path: ./envs/vectorstores/matrixone.env
+      required: false
+    - path: ./envs/vectorstores/elasticsearch.env
+      required: false
+    - path: ./envs/vectorstores/opensearch.env
+      required: false
+    - path: ./envs/vectorstores/milvus.env
+      required: false
+    - path: ./envs/infrastructure/nginx.env
+      required: false
+    - path: ./envs/infrastructure/certbot.env
+      required: false
+    - path: ./envs/infrastructure/ssrf-proxy.env
+      required: false
+    - path: ./envs/infrastructure/etcd.env
+      required: false
+    - path: ./envs/infrastructure/minio.env
+      required: false
+    - path: ./envs/infrastructure/milvus-standalone.env
+      required: false
+    - ./.env
+  networks:
+    - ssrf_proxy_network
+    - default
+  restart: always
+
 services:
   # Init container to fix permissions
   init_permissions:
@@ -21,12 +219,9 @@ services:
 
   # API service
   api:
+    <<: *shared-api-worker-config
     image: langgenius/dify-api:1.13.3
-    restart: always
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
-      # Startup mode, 'api' starts the API server.
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
@@ -63,12 +258,9 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
+    <<: *shared-worker-config
     image: langgenius/dify-api:1.13.3
-    restart: always
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
-      # Startup mode, 'worker' starts the Celery worker for processing all queues.
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
@@ -102,12 +294,9 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
+    <<: *shared-worker-beat-config
     image: langgenius/dify-api:1.13.3
-    restart: always
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
-      # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
       MODE: beat
     depends_on:
       init_permissions:
@@ -134,6 +323,12 @@ services:
   web:
     image: langgenius/dify-web:1.13.3
     restart: always
+    env_file:
+      - path: ./envs/core-services/web.env
+        required: false
+      - path: ./envs/security.env
+        required: false
+      - ./.env
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
@@ -248,6 +443,12 @@ services:
   sandbox:
     image: langgenius/dify-sandbox:0.2.14
     restart: always
+    env_file:
+      - path: ./envs/core-services/sandbox.env
+        required: false
+      - path: ./envs/security.env
+        required: false
+      - ./.env
     environment:
       # The DifySandbox configurations
       # Make sure you are changing this key for your deployment with a strong key.
@@ -272,9 +473,24 @@ services:
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.5.3-local
     restart: always
+    env_file:
+      - path: ./envs/core-services/shared.env
+        required: false
+      - path: ./envs/core-services/plugin-daemon.env
+        required: false
+      - path: ./envs/security.env
+        required: false
+      - path: ./envs/databases/db-postgres.env
+        required: false
+      - path: ./envs/databases/db-mysql.env
+        required: false
+      - path: ./envs/databases/redis.env
+        required: false
+      - ./.env
+    networks:
+      - ssrf_proxy_network
+      - default
     environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
       DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
       SERVER_PORT: ${PLUGIN_DAEMON_PORT:-5002}
       SERVER_KEY: ${PLUGIN_DAEMON_KEY:-lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi}
