@@ -68,6 +68,8 @@ describe('DocumentDetailDrawer', () => {
 
       const drawer = screen.getByTestId('drawer-mock')
       expect(drawer.getAttribute('data-panel-class')).toContain('w-full')
+      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=right]:w-full')
+      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=left]:w-full')
     })
 
     it('should pass fullScreen=false to Drawer with fixed width class', () => {
@@ -79,6 +81,8 @@ describe('DocumentDetailDrawer', () => {
 
       const drawer = screen.getByTestId('drawer-mock')
       expect(drawer.getAttribute('data-panel-class')).toContain('w-[568px]')
+      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=right]:w-[568px]')
+      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=left]:w-[568px]')
     })
 
     it('should render as non-modal by default', () => {
