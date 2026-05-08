@@ -5,6 +5,7 @@ import {
   apiDir,
   apiEnvExampleFile,
   dockerDir,
+  dockerEnvFile,
   e2eDir,
   e2eWebEnvOverrides,
   ensureFileExists,
@@ -51,13 +52,53 @@ const composeArgs = [
   'weaviate',
 ]
 
+const applyDockerEnvToApiEnv = (
+  base: Record<string, string>,
+  dockerEnv: Record<string, string>,
+): Record<string, string> => {
+  const next = { ...base }
+
+  const dbPassword = dockerEnv.DB_PASSWORD?.trim()
+  if (dbPassword)
+    next.DB_PASSWORD = dbPassword
+
+  const redisPassword = dockerEnv.REDIS_PASSWORD?.trim()
+  if (redisPassword) {
+    next.REDIS_PASSWORD = redisPassword
+    const broker = next.CELERY_BROKER_URL
+    if (broker) {
+      const updated = broker.replace(
+        /^redis:\/\/:([^@]*)@/,
+        `redis://:${encodeURIComponent(redisPassword)}@`,
+      )
+      next.CELERY_BROKER_URL = updated
+    }
+  }
+
+  const pluginInnerKey = dockerEnv.PLUGIN_DIFY_INNER_API_KEY?.trim()
+  if (pluginInnerKey)
+    next.INNER_API_KEY_FOR_PLUGIN = pluginInnerKey
+
+  return next
+}
+
 const getApiEnvironment = async () => {
   const envFromExample = await readSimpleDotenv(apiEnvExampleFile)
-
-  return {
+  let merged: Record<string, string> = {
     ...envFromExample,
     FLASK_APP: 'app.py',
   }
+
+  try {
+    await access(dockerEnvFile)
+    const dockerEnv = await readSimpleDotenv(dockerEnvFile)
+    merged = applyDockerEnvToApiEnv(merged, dockerEnv)
+  }
+  catch {
+    // Local runs may have no docker/.env; integration example values match middleware.env defaults.
+  }
+
+  return merged
 }
 
 const getServiceContainerId = async (service: string) => {
