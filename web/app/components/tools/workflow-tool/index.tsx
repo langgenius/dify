@@ -175,7 +175,7 @@ const WorkflowToolEmojiPicker = ({ onSelect, onClose }: WorkflowToolEmojiPickerP
   )
 }
 
-function WorkflowToolDrawerComponent({
+export function WorkflowToolDrawer({
   isAdd,
   payload,
   onHide,
@@ -475,5 +475,3 @@ function WorkflowToolDrawerComponent({
 
   )
 }
-
-export const WorkflowToolDrawer = React.memo(WorkflowToolDrawerComponent)
