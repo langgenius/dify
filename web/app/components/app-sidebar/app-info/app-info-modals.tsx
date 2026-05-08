@@ -16,13 +16,13 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
+import { DSLExportConfirmContent } from '@/app/components/workflow/dsl-export-confirm-modal'
 import dynamic from '@/next/dynamic'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), { ssr: false })
 const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), { ssr: false })
 const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), { ssr: false })
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), { ssr: false })
-const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), { ssr: false })
 
 type AppInfoModalsProps = {
   appDetail: App & Partial<AppSSO>
@@ -54,7 +54,14 @@ const AppInfoModals = ({
   const { t } = useTranslation()
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [isConfirmingExport, setIsConfirmingExport] = useState(false)
+  const [isSecretExporting, setIsSecretExporting] = useState(false)
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
+  const exportDialogMode = secretEnvList.length > 0
+    ? 'secret'
+    : activeModal === 'exportWarning'
+      ? 'warning'
+      : null
+  const isExportDialogOpen = exportDialogMode !== null
 
   const handleDeleteDialogClose = () => {
     setConfirmDeleteInput('')
@@ -73,6 +80,22 @@ const AppInfoModals = ({
       setIsConfirmingExport(false)
     }
   }, [handleConfirmExport, isConfirmingExport])
+
+  const handleExportDialogClose = useCallback(() => {
+    if (exportDialogMode === 'secret') {
+      setSecretEnvList([])
+      return
+    }
+
+    closeModal()
+  }, [closeModal, exportDialogMode, setSecretEnvList])
+
+  const handleExportDialogOpenChange = useCallback((open: boolean) => {
+    if (open || isConfirmingExport || isSecretExporting)
+      return
+
+    handleExportDialogClose()
+  }, [handleExportDialogClose, isConfirmingExport, isSecretExporting])
 
   return (
     <>
@@ -163,38 +186,42 @@ const AppInfoModals = ({
           onBackup={exportCheck}
         />
       )}
-      <AlertDialog open={activeModal === 'exportWarning'} onOpenChange={open => !open && closeModal()}>
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('sidebar.exportWarning', { ns: 'workflow' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t('sidebar.exportWarningDesc', { ns: 'workflow' })}
-            </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              tone="default"
-              loading={isConfirmingExport}
-              disabled={isConfirmingExport}
-              onClick={handleExportWarningConfirm}
-            >
-              {isConfirmingExport
-                ? t('operation.exporting', { ns: 'common' })
-                : t('operation.confirm', { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
+      <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
+        {exportDialogMode === 'secret'
+          ? (
+              <DSLExportConfirmContent
+                envList={secretEnvList}
+                onConfirm={onExport}
+                onClose={() => setSecretEnvList([])}
+                onExportingChange={setIsSecretExporting}
+              />
+            )
+          : exportDialogMode === 'warning' && (
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  {t('sidebar.exportWarning', { ns: 'workflow' })}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  {t('sidebar.exportWarningDesc', { ns: 'workflow' })}
+                </AlertDialogDescription>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogConfirmButton
+                  tone="default"
+                  loading={isConfirmingExport}
+                  disabled={isConfirmingExport}
+                  onClick={handleExportWarningConfirm}
+                >
+                  {isConfirmingExport
+                    ? t('operation.exporting', { ns: 'common' })
+                    : t('operation.confirm', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          )}
       </AlertDialog>
-      {secretEnvList.length > 0 && (
-        <DSLExportConfirmModal
-          envList={secretEnvList}
-          onConfirm={onExport}
-          onClose={() => setSecretEnvList([])}
-        />
-      )}
     </>
   )
 }

@@ -1,17 +1,15 @@
 'use client'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
-import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
@@ -43,6 +41,8 @@ export type CreateAppModalProps = {
   confirmDisabled?: boolean
   onHide: () => void
 }
+
+type CreateAppPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
 const CreateAppModal = ({
   show = false,
@@ -84,8 +84,9 @@ const CreateAppModal = ({
       toast(t('appCustomize.nameRequired', { ns: 'explore' }), { type: 'error' })
       return
     }
-    const isValid = maxActiveRequestsInput.trim() !== '' && !isNaN(Number(maxActiveRequestsInput))
-    const payload: any = {
+    const parsedMaxActiveRequests = Number(maxActiveRequestsInput)
+    const isValid = maxActiveRequestsInput.trim() !== '' && !Number.isNaN(parsedMaxActiveRequests)
+    const payload: CreateAppPayload = {
       name,
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
@@ -94,7 +95,7 @@ const CreateAppModal = ({
       use_icon_as_answer_icon: useIconAsAnswerIcon,
     }
     if (isValid)
-      payload.max_active_requests = Number(maxActiveRequestsInput)
+      payload.max_active_requests = parsedMaxActiveRequests
 
     onConfirm(payload)
     onHide()
@@ -107,103 +108,94 @@ const CreateAppModal = ({
       handleSubmit()
   })
 
-  useKeyPress('esc', () => {
-    if (show)
-      onHide()
-  })
-
   return (
     <>
-      <Modal
-        isShow={show}
-        onClose={noop}
-        className="relative max-w-[480px]! px-8"
-      >
-        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onHide}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-        </div>
-        {isEditModal && (
-          <div className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</div>
-        )}
-        {!isEditModal && (
-          <div className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</div>
-        )}
-        <div className="mb-9">
-          {/* icon & name */}
-          <div className="pt-2">
-            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
-            <div className="flex items-center justify-between space-x-2">
-              <AppIcon
-                size="large"
-                onClick={() => { setShowAppIconPicker(true) }}
-                className="cursor-pointer"
-                iconType={appIcon.type}
-                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                background={appIcon.type === 'image' ? undefined : appIcon.background}
-                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-              />
-              <Input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
-                className="h-10 grow"
-              />
-            </div>
-          </div>
-          {/* description */}
-          <div className="pt-2">
-            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
-            <Textarea
-              className="resize-none"
-              placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-            />
-          </div>
-          {/* answer icon */}
-          {isEditModal && (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.ADVANCED_CHAT || appMode === AppModeEnum.AGENT_CHAT) && (
+      <Dialog open={show} onOpenChange={open => !open && onHide()} disablePointerDismissal>
+        <DialogContent className="px-8">
+          <DialogCloseButton />
+          {isEditModal && (
+            <DialogTitle className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</DialogTitle>
+          )}
+          {!isEditModal && (
+            <DialogTitle className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</DialogTitle>
+          )}
+          <div className="mb-9">
+            {/* icon & name */}
             <div className="pt-2">
-              <div className="flex items-center justify-between">
-                <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
-                <Switch
-                  checked={useIconAsAnswerIcon}
-                  onCheckedChange={v => setUseIconAsAnswerIcon(v)}
+              <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
+              <div className="flex items-center justify-between space-x-2">
+                <AppIcon
+                  size="large"
+                  onClick={() => { setShowAppIconPicker(true) }}
+                  className="cursor-pointer"
+                  iconType={appIcon.type}
+                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                  background={appIcon.type === 'image' ? undefined : appIcon.background}
+                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                />
+                <Input
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
+                  className="h-10 grow"
                 />
               </div>
-              <p className="body-xs-regular text-text-tertiary">{t('answerIcon.descriptionInExplore', { ns: 'app' })}</p>
             </div>
-          )}
-          {isEditModal && (
+            {/* description */}
             <div className="pt-2">
-              <div className="mt-2 mb-2 text-sm leading-[20px] font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
-              <Input
-                type="number"
-                min={1}
-                placeholder={t('maxActiveRequestsPlaceholder', { ns: 'app' })}
-                value={maxActiveRequestsInput}
-                onChange={(e) => {
-                  setMaxActiveRequestsInput(e.target.value)
-                }}
-                className="h-10 w-full"
+              <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
+              <Textarea
+                className="resize-none"
+                placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
               />
-              <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">{t('maxActiveRequestsTip', { ns: 'app' })}</p>
             </div>
-          )}
-          {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}
-        </div>
-        <div className="flex flex-row-reverse">
-          <Button
-            disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
-            className="ml-2 w-24 gap-1"
-            variant="primary"
-            onClick={handleSubmit}
-          >
-            <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
-            <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
-          </Button>
-          <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-        </div>
-      </Modal>
+            {/* answer icon */}
+            {isEditModal && (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.ADVANCED_CHAT || appMode === AppModeEnum.AGENT_CHAT) && (
+              <div className="pt-2">
+                <div className="flex items-center justify-between">
+                  <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
+                  <Switch
+                    checked={useIconAsAnswerIcon}
+                    onCheckedChange={v => setUseIconAsAnswerIcon(v)}
+                  />
+                </div>
+                <p className="body-xs-regular text-text-tertiary">{t('answerIcon.descriptionInExplore', { ns: 'app' })}</p>
+              </div>
+            )}
+            {isEditModal && (
+              <div className="pt-2">
+                <div className="mt-2 mb-2 text-sm leading-[20px] font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder={t('maxActiveRequestsPlaceholder', { ns: 'app' })}
+                  value={maxActiveRequestsInput}
+                  onChange={(e) => {
+                    setMaxActiveRequestsInput(e.target.value)
+                  }}
+                  className="h-10 w-full"
+                />
+                <p className="mt-2 mb-0 body-xs-regular text-text-tertiary">{t('maxActiveRequestsTip', { ns: 'app' })}</p>
+              </div>
+            )}
+            {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}
+          </div>
+          <div className="flex flex-row-reverse">
+            <Button
+              disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
+              className="ml-2 w-24 gap-1"
+              variant="primary"
+              onClick={handleSubmit}
+            >
+              <span>{!isEditModal ? t('operation.create', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</span>
+              <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
+            </Button>
+            <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {showAppIconPicker && (
         <AppIconPicker
           initialEmoji={appIcon.type === 'emoji'

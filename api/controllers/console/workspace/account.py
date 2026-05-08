@@ -8,6 +8,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from constants.languages import supported_language
@@ -45,6 +46,8 @@ from libs.helper import EmailStr, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
 from models import AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
@@ -322,9 +325,24 @@ class AccountAvatarApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        current_user, current_tenant_id = current_account_with_tenant()
         args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        avatar = args.avatar
 
-        avatar_url = file_helpers.get_signed_file_url(args.avatar)
+        if avatar.startswith(("http://", "https://")):
+            return {"avatar_url": avatar}
+
+        upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == avatar).limit(1))
+        if upload_file is None:
+            raise NotFound("Avatar file not found")
+
+        if upload_file.tenant_id != current_tenant_id:
+            raise NotFound("Avatar file not found")
+
+        if upload_file.created_by_role != CreatorUserRole.ACCOUNT or upload_file.created_by != current_user.id:
+            raise NotFound("Avatar file not found")
+
+        avatar_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
         return {"avatar_url": avatar_url}
 
     @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])

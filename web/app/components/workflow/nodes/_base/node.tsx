@@ -284,13 +284,15 @@ const BaseNode: FC<BaseNodeProps> = ({
               </div>
             )}
           </div>
-          <NodeHeaderMeta
-            data={data}
-            hasVarValue={hasVarValue}
-            isLoading={isLoading}
-            loopIndex={LoopIndex}
-            t={t}
-          />
+          <div className="flex shrink-0 items-center">
+            <NodeHeaderMeta
+              data={data}
+              hasVarValue={hasVarValue}
+              isLoading={isLoading}
+              loopIndex={LoopIndex}
+              t={t}
+            />
+          </div>
         </div>
         <NodeBody
           data={data}

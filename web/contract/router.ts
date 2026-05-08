@@ -1,6 +1,7 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
+import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
 import { accountAvatarContract } from './console/account'
-import { appDeleteContract, workflowOnlineUsersContract } from './console/apps'
+import { appDeleteContract, appListContract, workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -17,6 +18,14 @@ import { changePreferredProviderTypeContract, modelProvidersModelsContract } fro
 import { notificationContract, notificationDismissContract } from './console/notification'
 import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
 import { systemFeaturesContract } from './console/system'
+import {
+  tagBindingCreateContract,
+  tagBindingRemoveContract,
+  tagCreateContract,
+  tagDeleteContract,
+  tagListContract,
+  tagUpdateContract,
+} from './console/tags'
 import {
   triggerOAuthConfigContract,
   triggerOAuthConfigureContract,
@@ -54,11 +63,13 @@ export const marketplaceRouterContract = {
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
 export const consoleRouterContract = {
+  enterprise: enterpriseContract,
   account: {
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
   apps: {
+    list: appListContract,
     deleteApp: appDeleteContract,
     workflowOnlineUsers: workflowOnlineUsersContract,
   },
@@ -100,6 +111,14 @@ export const consoleRouterContract = {
   workflowComments: workflowCommentContracts,
   notification: notificationContract,
   notificationDismiss: notificationDismissContract,
+  tags: {
+    list: tagListContract,
+    create: tagCreateContract,
+    update: tagUpdateContract,
+    delete: tagDeleteContract,
+    bind: tagBindingCreateContract,
+    unbind: tagBindingRemoveContract,
+  },
   triggers: {
     list: triggersContract,
     providerInfo: triggerProviderInfoContract,

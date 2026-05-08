@@ -121,7 +121,7 @@ type BaseItemProps = {
 }
 function BaseItem({ icon, onRemove, children }: BaseItemProps) {
   return (
-    <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
+    <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
       <div className="h-5 w-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
         <div className="bg-access-app-icon-mask-bg flex h-full w-full items-center justify-center">
           {icon}

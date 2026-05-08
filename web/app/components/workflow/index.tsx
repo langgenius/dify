@@ -81,14 +81,12 @@ import EdgeContextmenu from './edge-contextmenu'
 import HelpLine from './help-line'
 import {
   useEdgesInteractions,
-  useLeaderRestoreListener,
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
   usePanelInteractions,
   useSelectionInteractions,
   useSetWorkflowVarsWithValue,
-  useShortcuts,
   useWorkflow,
   useWorkflowReadOnly,
   useWorkflowRefreshDraft,
@@ -96,7 +94,7 @@ import {
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
-import NodeContextmenu from './node-contextmenu'
+import { NodeContextmenu } from './node-contextmenu'
 import CustomNode from './nodes'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
@@ -111,19 +109,19 @@ import Operator from './operator'
 import Control from './operator/control'
 import PanelContextmenu from './panel-contextmenu'
 import SelectionContextmenu from './selection-contextmenu'
+import { useWorkflowHotkeys } from './shortcuts/use-workflow-hotkeys'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
 import {
   useStore,
   useWorkflowStore,
-} from './store'
+} from './store/workflow'
 import SyncingDataModal from './syncing-data-modal'
 import {
   ControlMode,
   WorkflowRunningStatus,
 } from './types'
 import { setupScrollToNodeListener } from './utils/node-navigation'
-import { WorkflowHistoryProvider } from './workflow-history-store'
 import 'reactflow/dist/style.css'
 import './style.css'
 
@@ -278,6 +276,17 @@ export const Workflow: FC<WorkflowProps> = memo(({
       toast.info(t('collaboration.historyAction.generic', { ns: 'workflow' }))
     })
   }, [t])
+
+  useEffect(() => {
+    return collaborationManager.onRestoreIntent((data) => {
+      toast.info(t('versionHistory.action.restoreInProgress', {
+        ns: 'workflow',
+        userName: data.initiatorName,
+        versionName: data.versionName || data.versionId,
+      }))
+    })
+  }, [t])
+
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -530,11 +539,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
     },
   })
 
-  useShortcuts()
+  useWorkflowHotkeys()
   // Initialize workflow node search functionality
   useWorkflowSearch()
-
-  useLeaderRestoreListener()
 
   // Set up scroll to node event listener using the utility function
   useEffect(() => {
@@ -794,6 +801,30 @@ type WorkflowWithDefaultContextProps
       children: React.ReactNode
     }
 
+const WorkflowHistoryStoreInitializer = ({
+  nodes,
+  edges,
+  children,
+}: WorkflowWithDefaultContextProps) => {
+  const workflowStore = useWorkflowStore()
+  const initializedRef = useRef(false)
+
+  if (!initializedRef.current) {
+    workflowStore.temporal.getState().pause()
+    workflowStore.getState().setWorkflowHistory({
+      nodes,
+      edges,
+      workflowHistoryEvent: undefined,
+      workflowHistoryEventMeta: undefined,
+    })
+    workflowStore.temporal.getState().clear()
+    workflowStore.temporal.getState().resume()
+    initializedRef.current = true
+  }
+
+  return children
+}
+
 const WorkflowWithDefaultContext = ({
   nodes,
   edges,
@@ -801,14 +832,14 @@ const WorkflowWithDefaultContext = ({
 }: WorkflowWithDefaultContextProps) => {
   return (
     <ReactFlowProvider>
-      <WorkflowHistoryProvider
+      <WorkflowHistoryStoreInitializer
         nodes={nodes}
         edges={edges}
       >
         <DatasetsDetailProvider nodes={nodes}>
           {children}
         </DatasetsDetailProvider>
-      </WorkflowHistoryProvider>
+      </WorkflowHistoryStoreInitializer>
     </ReactFlowProvider>
   )
 }

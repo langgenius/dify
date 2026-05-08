@@ -95,7 +95,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
                   <SelectTrigger className="h-8 pr-8 text-sm">
                     {selectedMethod?.name}
                   </SelectTrigger>
-                  <SelectContent popupClassName="z-5 w-26 min-w-26">
+                  <SelectContent popupClassName="w-26 min-w-26">
                     {HTTP_METHODS.map(item => (
                       <SelectItem key={item.value} value={item.value}>
                         <SelectItemText>{item.name}</SelectItemText>
@@ -167,7 +167,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               <SelectTrigger className="h-8 w-full text-sm">
                 {selectedContentType?.name}
               </SelectTrigger>
-              <SelectContent popupClassName="z-5">
+              <SelectContent>
                 {CONTENT_TYPES.map(item => (
                   <SelectItem key={item.value} value={item.value}>
                     <SelectItemText>{item.name}</SelectItemText>
