@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -132,7 +133,10 @@ class TestAppGenerateService:
             }
 
     def _create_test_app_and_account(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, mode="chat"
+        self,
+        db_session_with_containers: Session,
+        mock_external_service_dependencies,
+        mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = "chat",
     ):
         """
         Helper method to create a test app and account for testing.

@@ -1072,24 +1072,20 @@ class TestAppService:
             password=generate_valid_password(fake),
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
-        tenant = account.current_tenant
 
         # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
-
-        app_service = AppService()
+        from services.app_service import CreateAppParams
 
         # Attempt to create app with invalid mode - Pydantic will reject invalid literal
         with pytest.raises(ValidationError):
-            app_args = CreateAppParams(
+            CreateAppParams(
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),
-                mode="invalid_mode",
+                mode="invalid_mode",  # type: ignore[arg-type]
                 icon_type="emoji",
                 icon="❌",
                 icon_background="#D63031",
             )
-            app_service.create_app(tenant.id, app_args, account)
 
     def test_get_apps_with_special_characters_in_name(
         self, db_session_with_containers: Session, mock_external_service_dependencies
