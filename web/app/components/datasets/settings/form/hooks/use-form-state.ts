@@ -46,9 +46,9 @@ export const useFormState = () => {
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
 
   // External retrieval state
-  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
-  const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
-  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
+  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model?.top_k ?? 2)
+  const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model?.score_threshold ?? 0.5)
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model?.score_threshold_enabled ?? false)
 
   // Indexing and retrieval state
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
@@ -127,14 +127,16 @@ export const useFormState = () => {
       return
     }
 
-    if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
-      toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
-      return
-    }
+    if (currentDataset?.provider !== 'external') {
+      if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
+        toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
+        return
+      }
 
-    if (retrievalConfig.weights) {
-      retrievalConfig.weights.vector_setting.embedding_provider_name = embeddingModel.provider || ''
-      retrievalConfig.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
+      if (retrievalConfig?.weights) {
+        retrievalConfig.weights.vector_setting.embedding_provider_name = embeddingModel.provider || ''
+        retrievalConfig.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
+      }
     }
 
     try {
@@ -146,10 +148,12 @@ export const useFormState = () => {
         description,
         permission,
         indexing_technique: indexMethod,
-        retrieval_model: {
-          ...retrievalConfig,
-          score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
-        },
+        retrieval_model: retrievalConfig
+          ? {
+              ...retrievalConfig,
+              score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
+            }
+          : undefined,
         embedding_model: embeddingModel.model,
         embedding_model_provider: embeddingModel.provider,
         keyword_number: keywordNumber,
@@ -193,18 +197,20 @@ export const useFormState = () => {
 
   // Computed values
   const showMultiModalTip = useMemo(() => {
+    if (currentDataset?.provider === 'external' || !retrievalConfig)
+      return false
     return checkShowMultiModalTip({
       embeddingModel,
       rerankingEnable: retrievalConfig.reranking_enable,
       rerankModel: {
-        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
-        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+        rerankingProviderName: retrievalConfig.reranking_model?.reranking_provider_name,
+        rerankingModelName: retrievalConfig.reranking_model?.reranking_model_name,
       },
       indexMethod,
       embeddingModelList,
       rerankModelList,
     })
-  }, [embeddingModel, rerankModelList, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, embeddingModelList, indexMethod])
+  }, [currentDataset?.provider, embeddingModel, rerankModelList, retrievalConfig, embeddingModelList, indexMethod])
 
   return {
     // Context values

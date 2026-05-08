@@ -65,11 +65,12 @@ const QueryInput = ({
 }: QueryInputProps) => {
   const { t } = useTranslation()
   const isMultimodal = useDatasetDetailContextWithSelector(s => !!s.dataset?.is_multimodal)
+  const externalRetrievalModel = useDatasetDetailContextWithSelector(s => s.dataset?.external_retrieval_model)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [externalRetrievalSettings, setExternalRetrievalSettings] = useState({
-    top_k: 4,
-    score_threshold: 0.5,
-    score_threshold_enabled: false,
+    top_k: externalRetrievalModel?.top_k ?? 4,
+    score_threshold: externalRetrievalModel?.score_threshold ?? 0.5,
+    score_threshold_enabled: externalRetrievalModel?.score_threshold_enabled ?? false,
   })
 
   const text = useMemo(() => {
