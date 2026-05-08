@@ -165,8 +165,8 @@ class AppService:
         app = App(**app_template["app"])
         app.name = params.name
         app.description = params.description or ""
-        app.mode = params.mode
-        app.icon_type = params.icon_type or "emoji"
+        app.mode = app_mode
+        app.icon_type = IconType(params.icon_type) if params.icon_type else IconType.EMOJI
         app.icon = params.icon
         app.icon_background = params.icon_background
         app.tenant_id = tenant_id

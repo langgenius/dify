@@ -82,6 +82,9 @@ class TestWorkflowAppService:
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
         # Create app with realistic data
         app_args = CreateAppParams(
             name=fake.company(),
@@ -93,9 +96,6 @@ class TestWorkflowAppService:
             api_rph=100,
             api_rpm=10,
         )
-
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -146,6 +146,9 @@ class TestWorkflowAppService:
         """
         fake = Faker()
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService, CreateAppParams
+
         # Create app with realistic data
         app_args = CreateAppParams(
             name=fake.company(),
@@ -157,9 +160,6 @@ class TestWorkflowAppService:
             api_rph=100,
             api_rpm=10,
         )
-
-        # Import here to avoid circular dependency
-        from services.app_service import AppService, CreateAppParams
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
