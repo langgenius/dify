@@ -540,8 +540,8 @@ Update API-based extension
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| id | path | Extension ID | Yes | string |
 | payload | body |  | Yes | [APIBasedExtensionPayload](#apibasedextensionpayload) |
+| id | path | Extension ID | Yes | string |
 
 ##### Responses
 
@@ -779,8 +779,8 @@ Update application details
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [UpdateAppPayload](#updateapppayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -805,12 +805,12 @@ Get advanced chat workflow run list
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowRunListQuery](#workflowrunlistquery) |
-| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
-| status | query | Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded | No | string |
+| app_id | path | Application ID | Yes | string |
 | last_id | query | Last run ID for pagination | No | string |
 | limit | query | Number of items per page (1-100) | No | string |
+| status | query | Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded | No | string |
+| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
 
 ##### Responses
 
@@ -833,11 +833,11 @@ Get advanced chat workflow runs count statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowRunCountQuery](#workflowruncountquery) |
-| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
-| time_range | query | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No | string |
+| app_id | path | Application ID | Yes | string |
 | status | query | Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded | No | string |
+| time_range | query | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No | string |
+| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
 
 ##### Responses
 
@@ -860,9 +860,9 @@ Get human input form preview for advanced chat workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [HumanInputFormPreviewPayload](#humaninputformpreviewpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
-| payload | body |  | Yes | [HumanInputFormPreviewPayload](#humaninputformpreviewpayload) |
 
 ##### Responses
 
@@ -885,9 +885,9 @@ Submit human input form preview for advanced chat workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
-| payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
 
 ##### Responses
 
@@ -910,9 +910,9 @@ Run draft workflow iteration node for advanced chat
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [IterationNodeRunPayload](#iterationnoderunpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
-| payload | body |  | Yes | [IterationNodeRunPayload](#iterationnoderunpayload) |
 
 ##### Responses
 
@@ -937,9 +937,9 @@ Run draft workflow loop node for advanced chat
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [LoopNodeRunPayload](#loopnoderunpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
-| payload | body |  | Yes | [LoopNodeRunPayload](#loopnoderunpayload) |
 
 ##### Responses
 
@@ -964,8 +964,8 @@ Run draft workflow for advanced chat application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [AdvancedChatWorkflowRunPayload](#advancedchatworkflowrunpayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -990,8 +990,8 @@ Get agent execution logs for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [AgentLogQuery](#agentlogquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1011,9 +1011,9 @@ Enable or disable annotation reply for an app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| action | path | Action to perform (enable/disable) | Yes | string |
 | payload | body |  | Yes | [AnnotationReplyPayload](#annotationreplypayload) |
+| action | path | Action to perform (enable/disable) | Yes | string |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1033,8 +1033,8 @@ Get status of annotation reply action job
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | action | path | Action type | Yes | string |
+| app_id | path | Application ID | Yes | string |
 | job_id | path | Job ID | Yes | string |
 
 ##### Responses
@@ -1075,9 +1075,9 @@ Update annotation settings for an app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| annotation_setting_id | path | Annotation setting ID | Yes | string |
 | payload | body |  | Yes | [AnnotationSettingUpdatePayload](#annotationsettingupdatepayload) |
+| annotation_setting_id | path | Annotation setting ID | Yes | string |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1110,8 +1110,8 @@ Get annotations for an app with pagination
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [AnnotationListQuery](#annotationlistquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1129,8 +1129,8 @@ Create a new annotation for an app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [CreateAnnotationPayload](#createannotationpayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1229,8 +1229,8 @@ Export all annotations for an app with CSV injection protection
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
 | annotation_id | path |  | Yes | string |
+| app_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -1247,9 +1247,9 @@ Update or delete an annotation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| annotation_id | path | Annotation ID | Yes | string |
 | payload | body |  | Yes | [UpdateAnnotationPayload](#updateannotationpayload) |
+| annotation_id | path | Annotation ID | Yes | string |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1270,10 +1270,10 @@ Get hit histories for an annotation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | annotation_id | path | Annotation ID | Yes | string |
-| page | query | Page number | No | integer |
+| app_id | path | Application ID | Yes | string |
 | limit | query | Page size | No | integer |
+| page | query | Page number | No | integer |
 
 ##### Responses
 
@@ -1293,8 +1293,8 @@ Enable or disable app API
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [AppApiStatusPayload](#appapistatuspayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1335,8 +1335,8 @@ Get chat conversations with pagination, filtering and summary
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [ChatConversationQuery](#chatconversationquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1398,8 +1398,8 @@ Get chat messages for a conversation with pagination
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [ChatMessagesQuery](#chatmessagesquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1460,8 +1460,8 @@ Get completion conversations with pagination and filtering
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [CompletionConversationQuery](#completionconversationquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1523,8 +1523,8 @@ Generate completion message for debugging
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [CompletionMessagePayload](#completionmessagepayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1565,8 +1565,8 @@ Get conversation variables for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [ConversationVariablesQuery](#conversationvariablesquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1591,8 +1591,8 @@ Convert Completion App to Workflow App
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [ConvertToWorkflowPayload](#converttoworkflowpayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1617,8 +1617,8 @@ Create a copy of an existing application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID to copy | Yes | string |
 | payload | body |  | Yes | [CopyAppPayload](#copyapppayload) |
+| app_id | path | Application ID to copy | Yes | string |
 
 ##### Responses
 
@@ -1642,8 +1642,8 @@ Export application configuration as DSL
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID to export | Yes | string |
 | payload | body |  | Yes | [AppExportQuery](#appexportquery) |
+| app_id | path | Application ID to export | Yes | string |
 
 ##### Responses
 
@@ -1663,8 +1663,8 @@ Create or update message feedback (like/dislike)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [MessageFeedbackPayload](#messagefeedbackpayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1685,8 +1685,8 @@ Export user feedback data for Google Sheets
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [FeedbackExportQuery](#feedbackexportquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1707,8 +1707,8 @@ Update application icon
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [AppIconPayload](#appiconpayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1753,8 +1753,8 @@ Update application model configuration
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [ModelConfigRequest](#modelconfigrequest) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1775,8 +1775,8 @@ Check if app name is available
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [AppNamePayload](#appnamepayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1831,8 +1831,8 @@ Create MCP server configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [MCPServerCreatePayload](#mcpservercreatepayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1850,8 +1850,8 @@ Update MCP server configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [MCPServerUpdatePayload](#mcpserverupdatepayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1872,8 +1872,8 @@ Update application site configuration
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [AppSiteUpdatePayload](#appsiteupdatepayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1894,8 +1894,8 @@ Enable or disable app site
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [AppSiteStatusPayload](#appsitestatuspayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1936,8 +1936,8 @@ Get average response time statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1956,8 +1956,8 @@ Get average session interaction statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1976,8 +1976,8 @@ Get daily conversation statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -1996,8 +1996,8 @@ Get daily terminal/end-user statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2016,8 +2016,8 @@ Get daily message statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2036,8 +2036,8 @@ Get daily token cost statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2056,8 +2056,8 @@ Get tokens per second statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2076,8 +2076,8 @@ Get user satisfaction rate statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2096,8 +2096,8 @@ Convert text to speech for chat messages
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | App ID | Yes | string |
 | payload | body |  | Yes | [TextToSpeechPayload](#texttospeechpayload) |
+| app_id | path | App ID | Yes | string |
 
 ##### Responses
 
@@ -2117,8 +2117,8 @@ Get available TTS voices for a specific language
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | App ID | Yes | string |
 | payload | body |  | Yes | [TextToSpeechVoiceQuery](#texttospeechvoicequery) |
+| app_id | path | App ID | Yes | string |
 
 ##### Responses
 
@@ -2159,8 +2159,8 @@ Update app tracing configuration
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [AppTracePayload](#apptracepayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2184,8 +2184,8 @@ Delete an existing tracing configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [TraceProviderQuery](#traceproviderquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2203,8 +2203,8 @@ Get tracing configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [TraceProviderQuery](#traceproviderquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2226,8 +2226,8 @@ Update an existing tracing configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [TraceConfigPayload](#traceconfigpayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2249,8 +2249,8 @@ Create a new tracing configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [TraceConfigPayload](#traceconfigpayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2313,8 +2313,8 @@ Get workflow application execution logs
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowAppLogQuery](#workflowapplogquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2337,8 +2337,8 @@ Get workflow archived execution logs
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowAppLogQuery](#workflowapplogquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2361,12 +2361,12 @@ Get workflow run list
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowRunListQuery](#workflowrunlistquery) |
-| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
-| status | query | Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded | No | string |
+| app_id | path | Application ID | Yes | string |
 | last_id | query | Last run ID for pagination | No | string |
 | limit | query | Number of items per page (1-100) | No | string |
+| status | query | Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded | No | string |
+| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
 
 ##### Responses
 
@@ -2389,11 +2389,11 @@ Get workflow runs count statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowRunCountQuery](#workflowruncountquery) |
-| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
-| time_range | query | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No | string |
+| app_id | path | Application ID | Yes | string |
 | status | query | Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded | No | string |
+| time_range | query | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No | string |
+| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
 
 ##### Responses
 
@@ -2533,8 +2533,8 @@ Create a new workflow comment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowCommentCreatePayload](#workflowcommentcreatepayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2624,9 +2624,9 @@ Update a workflow comment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [WorkflowCommentUpdatePayload](#workflowcommentupdatepayload) |
 | app_id | path | Application ID | Yes | string |
 | comment_id | path | Comment ID | Yes | string |
-| payload | body |  | Yes | [WorkflowCommentUpdatePayload](#workflowcommentupdatepayload) |
 
 ##### Responses
 
@@ -2649,9 +2649,9 @@ Add a reply to a workflow comment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [WorkflowCommentReplyPayload](#workflowcommentreplypayload) |
 | app_id | path | Application ID | Yes | string |
 | comment_id | path | Comment ID | Yes | string |
-| payload | body |  | Yes | [WorkflowCommentReplyPayload](#workflowcommentreplypayload) |
 
 ##### Responses
 
@@ -2697,10 +2697,10 @@ Update a comment reply
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [WorkflowCommentReplyPayload](#workflowcommentreplypayload) |
 | app_id | path | Application ID | Yes | string |
 | comment_id | path | Comment ID | Yes | string |
 | reply_id | path | Reply ID | Yes | string |
-| payload | body |  | Yes | [WorkflowCommentReplyPayload](#workflowcommentreplypayload) |
 
 ##### Responses
 
@@ -2743,8 +2743,8 @@ Get workflow average app interaction statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowStatisticQuery](#workflowstatisticquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2763,8 +2763,8 @@ Get workflow daily runs statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowStatisticQuery](#workflowstatisticquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2783,8 +2783,8 @@ Get workflow daily terminals statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowStatisticQuery](#workflowstatisticquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2803,8 +2803,8 @@ Get workflow daily token cost statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowStatisticQuery](#workflowstatisticquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2827,8 +2827,8 @@ Get all published workflows for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowListQuery](#workflowlistquery) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -2874,9 +2874,9 @@ Get default block configuration by type
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [DefaultBlockConfigQuery](#defaultblockconfigquery) |
 | app_id | path | Application ID | Yes | string |
 | block_type | path | Block type | Yes | string |
-| payload | body |  | Yes | [DefaultBlockConfigQuery](#defaultblockconfigquery) |
 
 ##### Responses
 
@@ -2962,8 +2962,8 @@ Update conversation variables for workflow draft
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [ConversationVariableUpdatePayload](#conversationvariableupdatepayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -3004,8 +3004,8 @@ Update environment variables for workflow draft
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [EnvironmentVariableUpdatePayload](#environmentvariableupdatepayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -3024,8 +3024,8 @@ Update draft workflow features
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowFeaturesPayload](#workflowfeaturespayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -3048,9 +3048,9 @@ Test human input delivery for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [HumanInputDeliveryTestPayload](#humaninputdeliverytestpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
-| payload | body |  | Yes | [HumanInputDeliveryTestPayload](#humaninputdeliverytestpayload) |
 
 ##### Responses
 
@@ -3073,9 +3073,9 @@ Get human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [HumanInputFormPreviewPayload](#humaninputformpreviewpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
-| payload | body |  | Yes | [HumanInputFormPreviewPayload](#humaninputformpreviewpayload) |
 
 ##### Responses
 
@@ -3098,9 +3098,9 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
-| payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
 
 ##### Responses
 
@@ -3123,9 +3123,9 @@ Run draft workflow iteration node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [IterationNodeRunPayload](#iterationnoderunpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
-| payload | body |  | Yes | [IterationNodeRunPayload](#iterationnoderunpayload) |
 
 ##### Responses
 
@@ -3150,9 +3150,9 @@ Run draft workflow loop node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [LoopNodeRunPayload](#loopnoderunpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
-| payload | body |  | Yes | [LoopNodeRunPayload](#loopnoderunpayload) |
 
 ##### Responses
 
@@ -3199,9 +3199,9 @@ Run draft workflow node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [DraftWorkflowNodeRunPayload](#draftworkflownoderunpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
-| payload | body |  | Yes | [DraftWorkflowNodeRunPayload](#draftworkflownoderunpayload) |
 
 ##### Responses
 
@@ -3290,8 +3290,8 @@ Run draft workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [DraftWorkflowRunPayload](#draftworkflowrunpayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -3334,8 +3334,8 @@ Poll for trigger events and execute full workflow when event arrives
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [DraftWorkflowTriggerRunRequest](#draftworkflowtriggerrunrequest) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -3360,8 +3360,8 @@ Full workflow debug when the start node is a trigger
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [DraftWorkflowTriggerRunAllPayload](#draftworkflowtriggerrunallpayload) |
+| app_id | path | Application ID | Yes | string |
 
 ##### Responses
 
@@ -3403,10 +3403,10 @@ Get draft workflow variables
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
 | payload | body |  | Yes | [WorkflowDraftVariableListQuery](#workflowdraftvariablelistquery) |
-| page | query | Page number (1-100000) | No | string |
+| app_id | path | Application ID | Yes | string |
 | limit | query | Number of items per page (1-100) | No | string |
+| page | query | Page number (1-100000) | No | string |
 
 ##### Responses
 
@@ -3591,9 +3591,9 @@ Update workflow by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [WorkflowUpdatePayload](#workflowupdatepayload) |
 | app_id | path | Application ID | Yes | string |
 | workflow_id | path | Workflow ID | Yes | string |
-| payload | body |  | Yes | [WorkflowUpdatePayload](#workflowupdatepayload) |
 
 ##### Responses
 
@@ -3685,8 +3685,8 @@ Delete an API key for an app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| resource_id | path | App ID | Yes | string |
 | api_key_id | path | API key ID | Yes | string |
+| resource_id | path | App ID | Yes | string |
 
 ##### Responses
 
@@ -3875,8 +3875,8 @@ Sync partner tenants bindings
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| partner_key | path | Partner key | Yes | string |
 | payload | body |  | Yes | [PartnerTenantsPayload](#partnertenantspayload) |
+| partner_key | path | Partner key | Yes | string |
 
 ##### Responses
 
@@ -3955,8 +3955,8 @@ Get compliance document download link
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| binding_id | path |  | Yes | string |
 | action | path |  | Yes | string |
+| binding_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -3969,8 +3969,8 @@ Get compliance document download link
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| binding_id | path |  | Yes | string |
 | action | path |  | Yes | string |
+| binding_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -3989,12 +3989,12 @@ Get list of datasets
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| page | query | Page number (default: 1) | No | string |
-| limit | query | Number of items per page (default: 20) | No | string |
 | ids | query | Filter by dataset IDs (list) | No | string |
-| keyword | query | Search keyword | No | string |
-| tag_ids | query | Filter by tag IDs (list) | No | string |
 | include_all | query | Include all datasets (default: false) | No | string |
+| keyword | query | Search keyword | No | string |
+| limit | query | Number of items per page (default: 20) | No | string |
+| page | query | Page number (default: 1) | No | string |
+| tag_ids | query | Filter by tag IDs (list) | No | string |
 
 ##### Responses
 
@@ -4134,9 +4134,9 @@ Get external knowledge API templates
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| page | query | Page number (default: 1) | No | string |
-| limit | query | Number of items per page (default: 20) | No | string |
 | keyword | query | Search keyword | No | string |
+| limit | query | Number of items per page (default: 20) | No | string |
+| page | query | Page number (default: 1) | No | string |
 
 ##### Responses
 
@@ -4441,8 +4441,8 @@ Get dataset auto disable logs
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
 | batch | path |  | Yes | string |
+| dataset_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -4457,8 +4457,8 @@ Get dataset auto disable logs
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
 | batch | path |  | Yes | string |
+| dataset_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -4491,11 +4491,11 @@ Get documents in a dataset
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
-| page | query | Page number (default: 1) | No | string |
-| limit | query | Number of items per page (default: 20) | No | string |
-| keyword | query | Search keyword | No | string |
-| sort | query | Sort order (default: -created_at) | No | string |
 | fetch | query | Fetch full details (default: false) | No | string |
+| keyword | query | Search keyword | No | string |
+| limit | query | Number of items per page (default: 20) | No | string |
+| page | query | Page number (default: 1) | No | string |
+| sort | query | Sort order (default: -created_at) | No | string |
 | status | query | Filter documents by display status | No | string |
 
 ##### Responses
@@ -4560,8 +4560,8 @@ then asynchronously generates summary indexes for the provided documents.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [GenerateSummaryPayload](#generatesummarypayload) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -4595,8 +4595,8 @@ then asynchronously generates summary indexes for the provided documents.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
 | action | path |  | Yes | string |
+| dataset_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -4611,8 +4611,8 @@ then asynchronously generates summary indexes for the provided documents.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| document_id | path |  | Yes | string |
 | dataset_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -4714,9 +4714,9 @@ Update document metadata
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [DocumentMetadataUpdatePayload](#documentmetadataupdatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| payload | body |  | Yes | [DocumentMetadataUpdatePayload](#documentmetadataupdatepayload) |
 
 ##### Responses
 
@@ -4809,9 +4809,9 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| action | path | Action to perform (pause/resume) | Yes | string |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| action | path | Action to perform (pause/resume) | Yes | string |
 
 ##### Responses
 
@@ -4862,9 +4862,9 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| action | path |  | Yes | string |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
-| action | path |  | Yes | string |
 
 ##### Responses
 
@@ -5021,10 +5021,10 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| child_chunk_id | path |  | Yes | string |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 | segment_id | path |  | Yes | string |
-| child_chunk_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -5037,10 +5037,10 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| child_chunk_id | path |  | Yes | string |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 | segment_id | path |  | Yes | string |
-| child_chunk_id | path |  | Yes | string |
 | payload | body |  | Yes | [ChildChunkUpdatePayload](#childchunkupdatepayload) |
 
 ##### Responses
@@ -5133,8 +5133,8 @@ Test external knowledge retrieval for dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [ExternalHitTestingPayload](#externalhittestingpayload) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -5155,8 +5155,8 @@ Test dataset knowledge retrieval
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [HitTestingPayload](#hittestingpayload) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -5221,8 +5221,8 @@ Get dataset indexing status
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
 | action | path |  | Yes | string |
+| dataset_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -5434,8 +5434,8 @@ Delete an API key for a dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| resource_id | path | Dataset ID | Yes | string |
 | api_key_id | path | API key ID | Yes | string |
+| resource_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -5854,8 +5854,8 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
 | c_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -5870,8 +5870,8 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
 | c_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string |
 | payload | body |  | Yes | [ConversationRenamePayload](#conversationrenamepayload) |
 
 ##### Responses
@@ -5887,8 +5887,8 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
 | c_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -5903,8 +5903,8 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
 | c_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -6361,8 +6361,8 @@ Sync data from OAuth data source
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| provider | path | Data source provider name (notion) | Yes | string |
 | binding_id | path | Data source binding ID | Yes | string |
+| provider | path | Data source provider name (notion) | Yes | string |
 
 ##### Responses
 
@@ -6833,8 +6833,8 @@ Get default block config
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
 | block_type | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -6889,8 +6889,8 @@ Run rag pipeline datasource
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
 | payload | body |  | Yes | [DatasourceNodeRunPayload](#datasourcenoderunpayload) |
 
 ##### Responses
@@ -6945,8 +6945,8 @@ Run draft workflow iteration node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
 | payload | body |  | Yes | [NodeRunPayload](#noderunpayload) |
 
 ##### Responses
@@ -6966,8 +6966,8 @@ Run draft workflow loop node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
 | payload | body |  | Yes | [NodeRunPayload](#noderunpayload) |
 
 ##### Responses
@@ -6983,8 +6983,8 @@ Run draft workflow loop node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -7003,8 +7003,8 @@ Run draft workflow node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
 | payload | body |  | Yes | [NodeRunRequiredPayload](#noderunrequiredpayload) |
 
 ##### Responses
@@ -7020,8 +7020,8 @@ Run draft workflow node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -7034,8 +7034,8 @@ Run draft workflow node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -7251,8 +7251,8 @@ Run datasource content preview
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
 | payload | body |  | Yes | [Parser](#parser) |
 
 ##### Responses
@@ -7272,8 +7272,8 @@ Run rag pipeline datasource
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
 | payload | body |  | Yes | [DatasourceNodeRunPayload](#datasourcenoderunpayload) |
 
 ##### Responses
@@ -7586,8 +7586,8 @@ Remove one or more tag bindings from a target.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| type | query | Tag type filter. Can be "knowledge" or "app". | No | string |
 | keyword | query | Search keyword for tag name. | No | string |
+| type | query | Tag type filter. Can be "knowledge" or "app". | No | string |
 
 ##### Responses
 
@@ -7901,8 +7901,8 @@ Get website crawl status
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| job_id | path | Crawl job ID | Yes | string |
 | payload | body |  | Yes | [WebsiteCrawlStatusQuery](#websitecrawlstatusquery) |
+| job_id | path | Crawl job ID | Yes | string |
 | provider | query | Crawl provider (firecrawl/watercrawl/jinareader) | No | string |
 
 ##### Responses
@@ -8240,8 +8240,8 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| id | path | Endpoint ID | Yes | string |
 | payload | body |  | Yes | [EndpointUpdatePayload](#endpointupdatepayload) |
+| id | path | Endpoint ID | Yes | string |
 
 ##### Responses
 
@@ -8659,8 +8659,8 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
 | config_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
 | payload | body |  | Yes | [LoadBalancingCredentialPayload](#loadbalancingcredentialpayload) |
 
 ##### Responses
@@ -9065,8 +9065,8 @@ Fetch dynamic options using credentials directly (for edit mode)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path |  | Yes | string |
 | identifier | path |  | Yes | string |
+| task_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -9301,8 +9301,8 @@ Fetch dynamic options using credentials directly (for edit mode)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
 | credential_type | path |  | Yes | string |
+| provider | path |  | Yes | string |
 
 ##### Responses
 
@@ -10052,10 +10052,10 @@ List all trigger providers for the current tenant
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| tenant_id | path |  | Yes | string |
-| provider | path |  | Yes | string |
 | icon_type | path |  | Yes | string |
 | lang | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| tenant_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -10182,7 +10182,7 @@ Get banner list
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| interface_theme | string | *Enum:* `"light"`, `"dark"` | Yes |
+| interface_theme | string | *Enum:* `"dark"`, `"light"` | Yes |
 
 #### AccountNamePayload
 
@@ -10262,7 +10262,7 @@ Get banner list
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string |  | No |
 | created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | object |  | No |
@@ -10278,7 +10278,7 @@ Get banner list
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_f22974b53f29](#_anonymousinlinemodel_f22974b53f29) ] |  | No |
+| data | [ [AdvancedChatWorkflowRunForList](#advancedchatworkflowrunforlist) ] |  | No |
 | has_more | boolean |  | No |
 | limit | integer |  | No |
 
@@ -10405,7 +10405,7 @@ Get banner list
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string | *Enum:* `"enable"`, `"disable"` | Yes |
+| action | string | *Enum:* `"disable"`, `"enable"` | Yes |
 
 #### AnnotationSettingUpdatePayload
 
@@ -10606,7 +10606,7 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | is_created_by_me |  | Filter by creator | No |
 | limit | integer | Page size (1-100) | No |
-| mode | string | App mode filter<br>*Enum:* `"completion"`, `"chat"`, `"advanced-chat"`, `"workflow"`, `"agent-chat"`, `"channel"`, `"all"` | No |
+| mode | string | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name |  | Filter by app name | No |
 | page | integer | Page number (1-99999) | No |
 | tag_ids |  | Filter by tag IDs | No |
@@ -10827,12 +10827,12 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_status | string | Annotation status filter<br>*Enum:* `"annotated"`, `"not_annotated"`, `"all"` | No |
+| annotation_status | string | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
 | end |  | End date (YYYY-MM-DD HH:MM) | No |
 | keyword |  | Search keyword | No |
 | limit | integer | Page size (1-100) | No |
 | page | integer | Page number | No |
-| sort_by | string | Sort field and direction<br>*Enum:* `"created_at"`, `"-created_at"`, `"updated_at"`, `"-updated_at"` | No |
+| sort_by | string | Sort field and direction<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 | start |  | Start date (YYYY-MM-DD HH:MM) | No |
 
 #### ChatMessagePayload
@@ -10915,7 +10915,7 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_status | string | Annotation status filter<br>*Enum:* `"annotated"`, `"not_annotated"`, `"all"` | No |
+| annotation_status | string | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
 | end |  | End date (YYYY-MM-DD HH:MM) | No |
 | keyword |  | Search keyword | No |
 | limit | integer | Page size (1-100) | No |
@@ -10965,7 +10965,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| comparison_operator | string | *Enum:* `"contains"`, `"not contains"`, `"start with"`, `"end with"`, `"is"`, `"is not"`, `"empty"`, `"not empty"`, `"in"`, `"not in"`, `"="`, `"≠"`, `">"`, `"<"`, `"≥"`, `"≤"`, `"before"`, `"after"` | Yes |
+| comparison_operator | string | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
 | name | string |  | Yes |
 | value |  |  | No |
 
@@ -11178,7 +11178,7 @@ Condition detail
 | icon |  | Icon | No |
 | icon_background |  | Icon background color | No |
 | icon_type |  | Icon type | No |
-| mode | string | App mode<br>*Enum:* `"chat"`, `"agent-chat"`, `"advanced-chat"`, `"workflow"`, `"completion"` | Yes |
+| mode | string | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
 | name | string | App name | Yes |
 
 #### CredentialType
@@ -11203,7 +11203,7 @@ Condition detail
 | is_bound | boolean |  | No |
 | link | string |  | No |
 | provider | string |  | No |
-| source_info | [_AnonymousInlineModel_23c2b671ba3a](#_anonymousinlinemodel_23c2b671ba3a) |  | No |
+| source_info | [DataSourceIntegrateWorkspace](#datasourceintegrateworkspace) |  | No |
 
 #### DataSourceIntegrateIcon
 
@@ -11217,13 +11217,13 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_25862ce5f48a](#_anonymousinlinemodel_25862ce5f48a) ] |  | No |
+| data | [ [DataSourceIntegrate](#datasourceintegrate) ] |  | No |
 
 #### DataSourceIntegratePage
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| page_icon | [_AnonymousInlineModel_a0b20ccbcc30](#_anonymousinlinemodel_a0b20ccbcc30) |  | No |
+| page_icon | [DataSourceIntegrateIcon](#datasourceintegrateicon) |  | No |
 | page_id | string |  | No |
 | page_name | string |  | No |
 | parent_id | string |  | No |
@@ -11233,7 +11233,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| pages | [ [_AnonymousInlineModel_2c596168c3fc](#_anonymousinlinemodel_2c596168c3fc) ] |  | No |
+| pages | [ [DataSourceIntegratePage](#datasourceintegratepage) ] |  | No |
 | total | integer |  | No |
 | workspace_icon | string |  | No |
 | workspace_id | string |  | No |
@@ -11266,7 +11266,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | content | string |  | No |
 | content_type | string |  | No |
-| file_info | [_AnonymousInlineModel_b167c49063fd](#_anonymousinlinemodel_b167c49063fd) |  | No |
+| file_info | [DatasetFileInfo](#datasetfileinfo) |  | No |
 
 #### DatasetCreatePayload
 
@@ -11293,15 +11293,15 @@ Condition detail
 | data_source_type | string |  | No |
 | description | string |  | No |
 | doc_form | string |  | No |
-| doc_metadata | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
+| doc_metadata | [ [DatasetDocMetadata](#datasetdocmetadata) ] |  | No |
 | document_count | integer |  | No |
 | embedding_available | boolean |  | No |
 | embedding_model | string |  | No |
 | embedding_model_provider | string |  | No |
 | enable_api | boolean |  | No |
-| external_knowledge_info | [_AnonymousInlineModel_e4e7d3bab76c](#_anonymousinlinemodel_e4e7d3bab76c) |  | No |
-| external_retrieval_model | [_AnonymousInlineModel_c590c00ae173](#_anonymousinlinemodel_c590c00ae173) |  | No |
-| icon_info | [_AnonymousInlineModel_f167e7269491](#_anonymousinlinemodel_f167e7269491) |  | No |
+| external_knowledge_info | [ExternalKnowledgeInfo](#externalknowledgeinfo) |  | No |
+| external_retrieval_model | [ExternalRetrievalModel](#externalretrievalmodel) |  | No |
+| icon_info | [DatasetIconInfo](#dataseticoninfo) |  | No |
 | id | string |  | No |
 | indexing_technique | string |  | No |
 | is_multimodal | boolean |  | No |
@@ -11310,7 +11310,7 @@ Condition detail
 | permission | string |  | No |
 | pipeline_id | string |  | No |
 | provider | string |  | No |
-| retrieval_model_dict | [_AnonymousInlineModel_b60e909e5cf7](#_anonymousinlinemodel_b60e909e5cf7) |  | No |
+| retrieval_model_dict | [DatasetRetrievalModel](#datasetretrievalmodel) |  | No |
 | runtime_mode | string |  | No |
 | summary_index_setting | [_AnonymousInlineModel_b1954337d565](#_anonymousinlinemodel_b1954337d565) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
@@ -11368,7 +11368,7 @@ Condition detail
 | created_by | string |  | No |
 | created_by_role | string |  | No |
 | id | string |  | No |
-| queries | [_AnonymousInlineModel_2127372e7d5f](#_anonymousinlinemodel_2127372e7d5f) |  | No |
+| queries | [DatasetContent](#datasetcontent) |  | No |
 | source | string |  | No |
 | source_app_id | string |  | No |
 
@@ -11398,12 +11398,12 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | reranking_enable | boolean |  | No |
 | reranking_mode | string |  | No |
-| reranking_model | [_AnonymousInlineModel_b1d3cff1a2a3](#_anonymousinlinemodel_b1d3cff1a2a3) |  | No |
+| reranking_model | [DatasetRerankingModel](#datasetrerankingmodel) |  | No |
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | No |
 | search_method | string |  | No |
 | top_k | integer |  | No |
-| weights | [_AnonymousInlineModel_acd4ec746615](#_anonymousinlinemodel_acd4ec746615) |  | No |
+| weights | [DatasetWeightedScore](#datasetweightedscore) |  | No |
 
 #### DatasetUpdatePayload
 
@@ -11436,8 +11436,8 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel_9e0a0acff315](#_anonymousinlinemodel_9e0a0acff315) |  | No |
-| vector_setting | [_AnonymousInlineModel_1172d50d45de](#_anonymousinlinemodel_1172d50d45de) |  | No |
+| keyword_setting | [DatasetKeywordSetting](#datasetkeywordsetting) |  | No |
+| vector_setting | [DatasetVectorSetting](#datasetvectorsetting) |  | No |
 | weight_type | string |  | No |
 
 #### DatasourceCredentialDeletePayload
@@ -12214,7 +12214,7 @@ Form input types.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data_source_type | string | *Enum:* `"upload_file"`, `"notion_import"`, `"website_crawl"` | Yes |
+| data_source_type | string | *Enum:* `"notion_import"`, `"upload_file"`, `"website_crawl"` | Yes |
 | file_info_list |  |  | No |
 | notion_info_list |  |  | No |
 | website_info_list |  |  | No |
@@ -12348,7 +12348,7 @@ Form input types.
 | duplicate | boolean |  | No |
 | embedding_model |  |  | No |
 | embedding_model_provider |  |  | No |
-| indexing_technique | string | *Enum:* `"high_quality"`, `"economy"` | Yes |
+| indexing_technique | string | *Enum:* `"economy"`, `"high_quality"` | Yes |
 | is_multimodal | boolean |  | No |
 | name |  |  | No |
 | original_document_id |  |  | No |
@@ -12591,7 +12591,7 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
-| type | string | *Enum:* `"string"`, `"number"`, `"time"` | Yes |
+| type | string | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### MetadataDetail
 
@@ -12722,14 +12722,14 @@ Enum class for model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| notion_info | [ [_AnonymousInlineModel_6e92789928f6](#_anonymousinlinemodel_6e92789928f6) ] |  | No |
+| notion_info | [ [NotionIntegrateWorkspace](#notionintegrateworkspace) ] |  | No |
 
 #### NotionIntegratePage
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | is_bound | boolean |  | No |
-| page_icon | [_AnonymousInlineModel_a0b20ccbcc30](#_anonymousinlinemodel_a0b20ccbcc30) |  | No |
+| page_icon | [DataSourceIntegrateIcon](#datasourceintegrateicon) |  | No |
 | page_id | string |  | No |
 | page_name | string |  | No |
 | parent_id | string |  | No |
@@ -12739,7 +12739,7 @@ Enum class for model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| pages | [ [_AnonymousInlineModel_8b48161825a0](#_anonymousinlinemodel_8b48161825a0) ] |  | No |
+| pages | [ [NotionIntegratePage](#notionintegratepage) ] |  | No |
 | workspace_icon | string |  | No |
 | workspace_id | string |  | No |
 | workspace_name | string |  | No |
@@ -13047,7 +13047,7 @@ Enum class for model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| preferred_provider_type | string | *Enum:* `"system"`, `"custom"` | Yes |
+| preferred_provider_type | string | *Enum:* `"custom"`, `"system"` | Yes |
 
 #### ParserReadme
 
@@ -13197,7 +13197,7 @@ Default value types for form inputs.
 | inputs | object |  | Yes |
 | is_preview | boolean |  | No |
 | original_document_id |  |  | No |
-| response_mode | string | *Enum:* `"streaming"`, `"blocking"` | No |
+| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
 | start_node_id | string |  | Yes |
 
 #### RagPipelineDatasetImportPayload
@@ -13222,7 +13222,7 @@ Default value types for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| leaked_dependencies | [ [_AnonymousInlineModel_08ac6c00da3e](#_anonymousinlinemodel_08ac6c00da3e) ] |  | No |
+| leaked_dependencies | [ [RagPipelineLeakedDependency](#ragpipelineleakeddependency) ] |  | No |
 
 #### RagPipelineImportPayload
 
@@ -13277,7 +13277,7 @@ Default value types for form inputs.
 | app |  |  | No |
 | app_id | string |  | Yes |
 | can_trial |  |  | No |
-| categories | [ string ] |  | No |
+| category |  |  | No |
 | copyright |  |  | No |
 | custom_disclaimer |  |  | No |
 | description |  |  | No |
@@ -13295,7 +13295,7 @@ Default value types for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_9fd6e9c31846](#_anonymousinlinemodel_9fd6e9c31846) ] |  | No |
+| data | [ [AppDetailKernel](#appdetailkernel) ] |  | No |
 | total | integer |  | No |
 
 #### RerankingModel
@@ -13577,7 +13577,7 @@ Default value types for form inputs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword |  | Search keyword | No |
-| type | string | Tag type filter<br>*Enum:* `"knowledge"`, `"app"`, `""` | No |
+| type | string | Tag type filter<br>*Enum:* `""`, `"app"`, `"knowledge"` | No |
 
 #### TagResponse
 
@@ -13686,7 +13686,7 @@ Tag type
 | api_base_url | string |  | No |
 | created_at | object |  | No |
 | created_by | string |  | No |
-| deleted_tools | [ [_AnonymousInlineModel_dc3986f5aace](#_anonymousinlinemodel_dc3986f5aace) ] |  | No |
+| deleted_tools | [ [TrialDeletedTool](#trialdeletedtool) ] |  | No |
 | description | string |  | No |
 | enable_api | boolean |  | No |
 | enable_site | boolean |  | No |
@@ -13697,14 +13697,14 @@ Tag type
 | id | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | No |
-| model_config | [_AnonymousInlineModel_077bfed82248](#_anonymousinlinemodel_077bfed82248) |  | No |
+| model_config | [TrialAppModelConfig](#trialappmodelconfig) |  | No |
 | name | string |  | No |
-| site | [_AnonymousInlineModel_6aef1ef456af](#_anonymousinlinemodel_6aef1ef456af) |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
+| site | [TrialSite](#trialsite) |  | No |
+| tags | [ [TrialTag](#trialtag) ] |  | No |
 | updated_at | object |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
-| workflow | [_AnonymousInlineModel_1c1826a63eef](#_anonymousinlinemodel_1c1826a63eef) |  | No |
+| workflow | [TrialWorkflowPartial](#trialworkflowpartial) |  | No |
 
 #### TrialAppModelConfig
 
@@ -13813,7 +13813,7 @@ Tag type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel_c10077ce1dea](#_anonymousinlinemodel_c10077ce1dea) ] |  | No |
+| conversation_variables | [ [TrialConversationVariable](#trialconversationvariable) ] |  | No |
 | created_at | object |  | No |
 | created_by | [SimpleAccount](#simpleaccount) |  | No |
 | environment_variables | [ object ] |  | No |
@@ -13823,7 +13823,7 @@ Tag type
 | id | string |  | No |
 | marked_comment | string |  | No |
 | marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel_e05256314b57](#_anonymousinlinemodel_e05256314b57) ] |  | No |
+| rag_pipeline_variables | [ [TrialPipelineVariable](#trialpipelinevariable) ] |  | No |
 | tool_published | boolean |  | No |
 | updated_at | object |  | No |
 | updated_by | [SimpleAccount](#simpleaccount) |  | No |
@@ -13952,14 +13952,14 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | options | object |  | Yes |
-| provider | string | *Enum:* `"firecrawl"`, `"watercrawl"`, `"jinareader"` | Yes |
+| provider | string | *Enum:* `"firecrawl"`, `"jinareader"`, `"watercrawl"` | Yes |
 | url | string |  | Yes |
 
 #### WebsiteCrawlStatusQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| provider | string | *Enum:* `"firecrawl"`, `"watercrawl"`, `"jinareader"` | Yes |
+| provider | string | *Enum:* `"firecrawl"`, `"jinareader"`, `"watercrawl"` | Yes |
 
 #### WebsiteInfo
 
@@ -13996,9 +13996,9 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel_c10077ce1dea](#_anonymousinlinemodel_c10077ce1dea) ] |  | No |
+| conversation_variables | [ [ConversationVariable](#conversationvariable) ] |  | No |
 | created_at | object |  | No |
-| created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| created_by | [SimpleAccount](#simpleaccount) |  | No |
 | environment_variables | [ object ] |  | No |
 | features | object |  | No |
 | graph | object |  | No |
@@ -14006,10 +14006,10 @@ User action configuration.
 | id | string |  | No |
 | marked_comment | string |  | No |
 | marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel_e05256314b57](#_anonymousinlinemodel_e05256314b57) ] |  | No |
+| rag_pipeline_variables | [ [PipelineVariable](#pipelinevariable) ] |  | No |
 | tool_published | boolean |  | No |
 | updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| updated_by | [SimpleAccount](#simpleaccount) |  | No |
 | version | string |  | No |
 
 #### WorkflowAppLogPaginationResponse
@@ -14194,7 +14194,7 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel_20c32aaa61d4](#_anonymousinlinemodel_20c32aaa61d4) ] |  | No |
+| items | [ [WorkflowDraftEnvVariable](#workflowdraftenvvariable) ] |  | No |
 
 #### WorkflowDraftVariable
 
@@ -14216,7 +14216,7 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel_617610cdc8eb](#_anonymousinlinemodel_617610cdc8eb) ] |  | No |
+| items | [ [WorkflowDraftVariable](#workflowdraftvariable) ] |  | No |
 
 #### WorkflowDraftVariableListQuery
 
@@ -14229,7 +14229,7 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel_c521979798aa](#_anonymousinlinemodel_c521979798aa) ] |  | No |
+| items | [ [WorkflowDraftVariableWithoutValue](#workflowdraftvariablewithoutvalue) ] |  | No |
 | total | object |  | No |
 
 #### WorkflowDraftVariablePatchPayload
@@ -14292,7 +14292,7 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | has_more | boolean |  | No |
-| items | [ [_AnonymousInlineModel_887fccb7e3c9](#_anonymousinlinemodel_887fccb7e3c9) ] |  | No |
+| items | [ [Workflow](#workflow) ] |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
 
@@ -14330,8 +14330,8 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| created_by_end_user | [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) |  | No |
+| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
 | error | string |  | No |
@@ -14369,7 +14369,7 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
+| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | object |  | No |
@@ -14410,8 +14410,8 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| created_by_end_user | [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) |  | No |
+| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
 | error | string |  | No |
@@ -14436,13 +14436,13 @@ User action configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_5c48729794fa](#_anonymousinlinemodel_5c48729794fa) ] |  | No |
+| data | [ [WorkflowRunNodeExecution](#workflowrunnodeexecution) ] |  | No |
 
 #### WorkflowRunPagination
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_d9cdfda1ede7](#_anonymousinlinemodel_d9cdfda1ede7) ] |  | No |
+| data | [ [WorkflowRunForList](#workflowrunforlist) ] |  | No |
 | has_more | boolean |  | No |
 | limit | integer |  | No |
 
@@ -14563,183 +14563,6 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 
-#### _AnonymousInlineModel_077bfed82248
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_mode | object |  | No |
-| annotation_reply | object |  | No |
-| chat_prompt_config | object |  | No |
-| completion_prompt_config | object |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| dataset_configs | object |  | No |
-| dataset_query_variable | string |  | No |
-| external_data_tools | object |  | No |
-| file_upload | object |  | No |
-| model | object |  | No |
-| more_like_this | object |  | No |
-| opening_statement | string |  | No |
-| pre_prompt | string |  | No |
-| prompt_type | string |  | No |
-| retriever_resource | object |  | No |
-| sensitive_word_avoidance | object |  | No |
-| speech_to_text | object |  | No |
-| suggested_questions | object |  | No |
-| suggested_questions_after_answer | object |  | No |
-| text_to_speech | object |  | No |
-| updated_at | object |  | No |
-| updated_by | string |  | No |
-| user_input_form | object |  | No |
-
-#### _AnonymousInlineModel_08ac6c00da3e
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| current_identifier | string |  | No |
-| type | string |  | No |
-| value | object |  | No |
-
-#### _AnonymousInlineModel_109e5b50787c
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| created_by_end_user | [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| graph | object |  | No |
-| id | string |  | No |
-| inputs | object |  | No |
-| outputs | object |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel_1172d50d45de
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
-#### _AnonymousInlineModel_1c1826a63eef
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| id | string |  | No |
-| updated_at | object |  | No |
-| updated_by | string |  | No |
-
-#### _AnonymousInlineModel_20c32aaa61d4
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel_2127372e7d5f
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| content_type | string |  | No |
-| file_info | [_AnonymousInlineModel_b167c49063fd](#_anonymousinlinemodel_b167c49063fd) |  | No |
-
-#### _AnonymousInlineModel_23c2b671ba3a
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| pages | [ [_AnonymousInlineModel_2c596168c3fc](#_anonymousinlinemodel_2c596168c3fc) ] |  | No |
-| total | integer |  | No |
-| workspace_icon | string |  | No |
-| workspace_id | string |  | No |
-| workspace_name | string |  | No |
-
-#### _AnonymousInlineModel_25862ce5f48a
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| disabled | boolean |  | No |
-| id | string |  | No |
-| is_bound | boolean |  | No |
-| link | string |  | No |
-| provider | string |  | No |
-| source_info | [_AnonymousInlineModel_23c2b671ba3a](#_anonymousinlinemodel_23c2b671ba3a) |  | No |
-
-#### _AnonymousInlineModel_2c596168c3fc
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| page_icon | [_AnonymousInlineModel_a0b20ccbcc30](#_anonymousinlinemodel_a0b20ccbcc30) |  | No |
-| page_id | string |  | No |
-| page_name | string |  | No |
-| parent_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel_3da888b4ad25
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| presigned_url | string | Pre-signed URL for download | No |
-| presigned_url_expires_at | string | Pre-signed URL expiration time | No |
-| status | string | Export status: success/failed | No |
-
-#### _AnonymousInlineModel_3ecceebc874e
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| id | string |  | No |
-
-#### _AnonymousInlineModel_41eb417dc7a4
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_5c48729794fa](#_anonymousinlinemodel_5c48729794fa) ] |  | No |
-
-#### _AnonymousInlineModel_42fa71dcf115
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| id | string |  | No |
-| mentions | [ [_AnonymousInlineModel_f7ff64cce858](#_anonymousinlinemodel_f7ff64cce858) ] |  | No |
-| position_x | number |  | No |
-| position_y | number |  | No |
-| replies | [ [_AnonymousInlineModel_55c39c6a4b9e](#_anonymousinlinemodel_55c39c6a4b9e) ] |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
-| resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| updated_at | object |  | No |
-
-#### _AnonymousInlineModel_4ab7498f5baa
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| hash | string |  | No |
-| result | string |  | No |
-| updated_at | string |  | No |
-
 #### _AnonymousInlineModel_55c39c6a4b9e
 
 | Name | Type | Description | Required |
@@ -14750,123 +14573,6 @@ Workflow tool configuration
 | created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
 | id | string |  | No |
 
-#### _AnonymousInlineModel_594b64f230a3
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| updated_at | object |  | No |
-
-#### _AnonymousInlineModel_5c48729794fa
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| created_by_end_user | [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| execution_metadata | object |  | No |
-| extras | object |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| index | integer |  | No |
-| inputs | object |  | No |
-| inputs_truncated | boolean |  | No |
-| node_id | string |  | No |
-| node_type | string |  | No |
-| outputs | object |  | No |
-| outputs_truncated | boolean |  | No |
-| predecessor_node_id | string |  | No |
-| process_data | object |  | No |
-| process_data_truncated | boolean |  | No |
-| status | string |  | No |
-| title | string |  | No |
-
-#### _AnonymousInlineModel_5f5165b9b01b
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| failed | integer |  | No |
-| partial_succeeded | integer |  | No |
-| running | integer |  | No |
-| stopped | integer |  | No |
-| succeeded | integer |  | No |
-| total | integer |  | No |
-
-#### _AnonymousInlineModel_617610cdc8eb
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| full_content | object |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel_6aef1ef456af
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| access_token | string |  | No |
-| app_base_url | string |  | No |
-| chat_color_theme | string |  | No |
-| chat_color_theme_inverted | boolean |  | No |
-| code | string |  | No |
-| copyright | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| custom_disclaimer | string |  | No |
-| customize_domain | string |  | No |
-| customize_token_strategy | string |  | No |
-| default_language | string |  | No |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | object |  | No |
-| privacy_policy | string |  | No |
-| prompt_public | boolean |  | No |
-| show_workflow_steps | boolean |  | No |
-| title | string |  | No |
-| updated_at | object |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
-
-#### _AnonymousInlineModel_6e2a3c8f3856
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| is_anonymous | boolean |  | No |
-| session_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel_6e92789928f6
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| pages | [ [_AnonymousInlineModel_8b48161825a0](#_anonymousinlinemodel_8b48161825a0) ] |  | No |
-| workspace_icon | string |  | No |
-| workspace_id | string |  | No |
-| workspace_name | string |  | No |
-
-#### _AnonymousInlineModel_6eb9162bc5b0
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| has_more | boolean |  | No |
-| items | [ [_AnonymousInlineModel_887fccb7e3c9](#_anonymousinlinemodel_887fccb7e3c9) ] |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
-
 #### _AnonymousInlineModel_6fec07cd0d85
 
 | Name | Type | Description | Required |
@@ -14876,217 +14582,6 @@ Workflow tool configuration
 | id | string |  | No |
 | name | string |  | No |
 
-#### _AnonymousInlineModel_7b8b49ca164e
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel_7d1866c8364b
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) ] |  | No |
-| created_at | object |  | No |
-| created_by | [_AnonymousInlineModel_d9cdfda1ede7](#_anonymousinlinemodel_d9cdfda1ede7) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel_d9cdfda1ede7](#_anonymousinlinemodel_d9cdfda1ede7) |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel_7d4493e4fbe7
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| id | string |  | No |
-| mention_count | integer |  | No |
-| participants | [ [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) ] |  | No |
-| position_x | number |  | No |
-| position_y | number |  | No |
-| reply_count | integer |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
-| resolved_by_account | [_AnonymousInlineModel_6fec07cd0d85](#_anonymousinlinemodel_6fec07cd0d85) |  | No |
-| updated_at | object |  | No |
-
-#### _AnonymousInlineModel_815ec6c311d4
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_f22974b53f29](#_anonymousinlinemodel_f22974b53f29) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
-
-#### _AnonymousInlineModel_83ebfb61825d
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [_AnonymousInlineModel_617610cdc8eb](#_anonymousinlinemodel_617610cdc8eb) ] |  | No |
-
-#### _AnonymousInlineModel_887fccb7e3c9
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) ] |  | No |
-| created_at | object |  | No |
-| created_by | [_AnonymousInlineModel_d9cdfda1ede7](#_anonymousinlinemodel_d9cdfda1ede7) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [_AnonymousInlineModel_6e2a3c8f3856](#_anonymousinlinemodel_6e2a3c8f3856) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | object |  | No |
-| updated_by | [_AnonymousInlineModel_d9cdfda1ede7](#_anonymousinlinemodel_d9cdfda1ede7) |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel_8b48161825a0
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| is_bound | boolean |  | No |
-| page_icon | [_AnonymousInlineModel_a0b20ccbcc30](#_anonymousinlinemodel_a0b20ccbcc30) |  | No |
-| page_id | string |  | No |
-| page_name | string |  | No |
-| parent_id | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel_9e0a0acff315
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
-
-#### _AnonymousInlineModel_9e392b037de1
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| created_by_role | string |  | No |
-| id | string |  | No |
-| queries | [_AnonymousInlineModel_2127372e7d5f](#_anonymousinlinemodel_2127372e7d5f) |  | No |
-| source | string |  | No |
-| source_app_id | string |  | No |
-
-#### _AnonymousInlineModel_9f63a959b311
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_count | integer |  | No |
-| author_name | string |  | No |
-| built_in_field_enabled | boolean |  | No |
-| chunk_structure | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| data_source_type | string |  | No |
-| description | string |  | No |
-| doc_form | string |  | No |
-| doc_metadata | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| document_count | integer |  | No |
-| embedding_available | boolean |  | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
-| enable_api | boolean |  | No |
-| external_knowledge_info | [_AnonymousInlineModel_e4e7d3bab76c](#_anonymousinlinemodel_e4e7d3bab76c) |  | No |
-| external_retrieval_model | [_AnonymousInlineModel_c590c00ae173](#_anonymousinlinemodel_c590c00ae173) |  | No |
-| icon_info | [_AnonymousInlineModel_f167e7269491](#_anonymousinlinemodel_f167e7269491) |  | No |
-| id | string |  | No |
-| indexing_technique | string |  | No |
-| is_multimodal | boolean |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| permission | string |  | No |
-| pipeline_id | string |  | No |
-| provider | string |  | No |
-| retrieval_model_dict | [_AnonymousInlineModel_b60e909e5cf7](#_anonymousinlinemodel_b60e909e5cf7) |  | No |
-| runtime_mode | string |  | No |
-| summary_index_setting | [_AnonymousInlineModel_b1954337d565](#_anonymousinlinemodel_b1954337d565) |  | No |
-| tags | [ [Tag](#tag) ] |  | No |
-| total_available_documents | integer |  | No |
-| total_documents | integer |  | No |
-| updated_at | object |  | No |
-| updated_by | string |  | No |
-| word_count | integer |  | No |
-
-#### _AnonymousInlineModel_9fd6e9c31846
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | object |  | No |
-| id | string |  | No |
-| mode | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel_a0b20ccbcc30
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| emoji | string |  | No |
-| type | string |  | No |
-| url | string |  | No |
-
-#### _AnonymousInlineModel_a284d64a9a60
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| features | object | Feature configuration object | No |
-
-#### _AnonymousInlineModel_a3f9c9b23c7b
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| node_id | string | Node ID | Yes |
-
-#### _AnonymousInlineModel_acd4ec746615
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [_AnonymousInlineModel_9e0a0acff315](#_anonymousinlinemodel_9e0a0acff315) |  | No |
-| vector_setting | [_AnonymousInlineModel_1172d50d45de](#_anonymousinlinemodel_1172d50d45de) |  | No |
-| weight_type | string |  | No |
-
-#### _AnonymousInlineModel_b0fd3f86d9d5
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-
-#### _AnonymousInlineModel_b167c49063fd
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| extension | string |  | No |
-| id | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | No |
-| size | integer |  | No |
-| source_url | string |  | No |
-
 #### _AnonymousInlineModel_b1954337d565
 
 | Name | Type | Description | Required |
@@ -15095,167 +14590,6 @@ Workflow tool configuration
 | model_name | string |  | No |
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
-
-#### _AnonymousInlineModel_b1d3cff1a2a3
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
-#### _AnonymousInlineModel_b60e909e5cf7
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_enable | boolean |  | No |
-| reranking_mode | string |  | No |
-| reranking_model | [_AnonymousInlineModel_b1d3cff1a2a3](#_anonymousinlinemodel_b1d3cff1a2a3) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| search_method | string |  | No |
-| top_k | integer |  | No |
-| weights | [_AnonymousInlineModel_acd4ec746615](#_anonymousinlinemodel_acd4ec746615) |  | No |
-
-#### _AnonymousInlineModel_c10077ce1dea
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | object |  | No |
-| value_type | string |  | No |
-
-#### _AnonymousInlineModel_c2fd55515424
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_d9cdfda1ede7](#_anonymousinlinemodel_d9cdfda1ede7) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
-
-#### _AnonymousInlineModel_c521979798aa
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### _AnonymousInlineModel_c590c00ae173
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| top_k | integer |  | No |
-
-#### _AnonymousInlineModel_d9cdfda1ede7
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### _AnonymousInlineModel_dc3986f5aace
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| provider_id | string |  | No |
-| tool_name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel_e05256314b57
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | object |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
-#### _AnonymousInlineModel_e4156c0bccd9
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_9fd6e9c31846](#_anonymousinlinemodel_9fd6e9c31846) ] |  | No |
-| total | integer |  | No |
-
-#### _AnonymousInlineModel_e4e7d3bab76c
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| external_knowledge_api_endpoint | string |  | No |
-| external_knowledge_api_id | string |  | No |
-| external_knowledge_api_name | string |  | No |
-| external_knowledge_id | string |  | No |
-
-#### _AnonymousInlineModel_ea9dd9094a9d
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| features | object | System feature configuration object | No |
-
-#### _AnonymousInlineModel_ebd05b3690b0
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| resolved | boolean |  | No |
-| resolved_at | object |  | No |
-| resolved_by | string |  | No |
-
-#### _AnonymousInlineModel_f167e7269491
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | string |  | No |
-
-#### _AnonymousInlineModel_f22974b53f29
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_id | string |  | No |
-| created_at | object |  | No |
-| created_by_account | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| message_id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
 
 #### _AnonymousInlineModel_f7ff64cce858
 

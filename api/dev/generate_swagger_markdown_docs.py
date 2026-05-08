@@ -34,29 +34,30 @@ def generate_markdown_docs(swagger_dir: Path, markdown_dir: Path, *, keep_swagge
     markdown_dir.mkdir(parents=True, exist_ok=True)
 
     written_paths: list[Path] = []
-    for target in SPEC_TARGETS:
-        swagger_path = swagger_paths_by_name[target.filename]
-        markdown_path = markdown_dir / f"{swagger_path.stem}.md"
-        subprocess.run(
-            [
-                "npx",
-                "--yes",
-                SWAGGER_MARKDOWN_PACKAGE,
-                "-i",
-                str(swagger_path),
-                "-o",
-                str(markdown_path),
-            ],
-            check=True,
-        )
-        written_paths.append(markdown_path)
-
-    if not keep_swagger_json:
-        if swagger_dir == markdown_dir or markdown_dir.is_relative_to(swagger_dir):
-            for path in swagger_paths:
-                path.unlink()
-        else:
-            shutil.rmtree(swagger_dir)
+    try:
+        for target in SPEC_TARGETS:
+            swagger_path = swagger_paths_by_name[target.filename]
+            markdown_path = markdown_dir / f"{swagger_path.stem}.md"
+            subprocess.run(
+                [
+                    "npx",
+                    "--yes",
+                    SWAGGER_MARKDOWN_PACKAGE,
+                    "-i",
+                    str(swagger_path),
+                    "-o",
+                    str(markdown_path),
+                ],
+                check=True,
+            )
+            written_paths.append(markdown_path)
+    finally:
+        if not keep_swagger_json:
+            if swagger_dir == markdown_dir or markdown_dir.is_relative_to(swagger_dir):
+                for path in swagger_paths:
+                    path.unlink(missing_ok=True)
+            else:
+                shutil.rmtree(swagger_dir, ignore_errors=True)
 
     return written_paths
 

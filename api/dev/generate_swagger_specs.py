@@ -17,7 +17,7 @@ import sys
 from collections.abc import MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TypeGuard
 
 from flask import Flask
 from flask_restx.swagger import Swagger
@@ -52,6 +52,14 @@ _ORIGINAL_REGISTER_MODEL = Swagger.register_model
 _ORIGINAL_REGISTER_FIELD = Swagger.register_field
 
 
+def _is_inline_field_map(value: object) -> TypeGuard[dict[object, object]]:
+    """Return whether a nested field map is an anonymous inline mapping."""
+
+    from flask_restx.model import Model, OrderedModel
+
+    return isinstance(value, dict) and not isinstance(value, (Model, OrderedModel))
+
+
 def _jsonable_schema_value(value: object) -> object:
     """Return a deterministic JSON-serializable representation for schema fingerprints."""
 
@@ -61,7 +69,8 @@ def _jsonable_schema_value(value: object) -> object:
         return [_jsonable_schema_value(item) for item in value]
     if isinstance(value, dict):
         return {str(key): _jsonable_schema_value(item) for key, item in value.items()}
-    return repr(value)
+    value_type = type(value)
+    return f"<{value_type.__module__}.{value_type.__qualname__}>"
 
 
 def _field_signature(field: object) -> object:
@@ -77,10 +86,14 @@ def _field_signature(field: object) -> object:
 
     if isinstance(field_instance, fields.Nested):
         nested = getattr(field_instance, "nested", None)
-        if isinstance(nested, dict):
+        if _is_inline_field_map(nested):
             signature["nested"] = _inline_model_signature(nested)
         else:
-            signature["nested"] = getattr(nested, "name", repr(nested))
+            signature["nested"] = getattr(
+                nested,
+                "name",
+                f"<{type(nested).__module__}.{type(nested).__qualname__}>",
+            )
     elif hasattr(field_instance, "container"):
         signature["container"] = _field_signature(field_instance.container)
     else:
@@ -167,14 +180,14 @@ def _patch_swagger_for_inline_nested_dicts() -> None:
         return self.api.models[anonymous_name]
 
     def register_model_with_inline_dict_support(self: Swagger, model: object) -> dict[str, str]:
-        if isinstance(model, dict):
+        if _is_inline_field_map(model):
             model = get_or_create_inline_model(self, model)
 
         return _ORIGINAL_REGISTER_MODEL(self, model)
 
     def register_field_with_inline_dict_support(self: Swagger, field: object) -> None:
         nested = getattr(field, "nested", None)
-        if isinstance(nested, dict):
+        if _is_inline_field_map(nested):
             field.model = get_or_create_inline_model(self, nested)  # type: ignore
 
         _ORIGINAL_REGISTER_FIELD(self, field)
@@ -193,12 +206,19 @@ def create_spec_app() -> Flask:
     app = Flask(__name__)
 
     from controllers.console import bp as console_bp
+    from controllers.console import console_ns
     from controllers.service_api import bp as service_api_bp
+    from controllers.service_api import service_api_ns
     from controllers.web import bp as web_bp
+    from controllers.web import web_ns
 
     app.register_blueprint(console_bp)
     app.register_blueprint(web_bp)
     app.register_blueprint(service_api_bp)
+
+    for namespace in (console_ns, web_ns, service_api_ns):
+        for api in namespace.apis:
+            _materialize_inline_model_definitions(api)
 
     return app
 
@@ -209,8 +229,6 @@ def _registered_models(namespace: str) -> dict[str, object]:
     if namespace == "console":
         from controllers.console import console_ns
 
-        for api in console_ns.apis:
-            _materialize_inline_model_definitions(api)
         models = dict(console_ns.models)
         for api in console_ns.apis:
             models.update(api.models)
@@ -218,8 +236,6 @@ def _registered_models(namespace: str) -> dict[str, object]:
     if namespace == "web":
         from controllers.web import web_ns
 
-        for api in web_ns.apis:
-            _materialize_inline_model_definitions(api)
         models = dict(web_ns.models)
         for api in web_ns.apis:
             models.update(api.models)
@@ -227,8 +243,6 @@ def _registered_models(namespace: str) -> dict[str, object]:
     if namespace == "service":
         from controllers.service_api import service_api_ns
 
-        for api in service_api_ns.apis:
-            _materialize_inline_model_definitions(api)
         models = dict(service_api_ns.models)
         for api in service_api_ns.apis:
             models.update(api.models)
@@ -243,13 +257,38 @@ def _materialize_inline_model_definitions(api: RestxApi) -> None:
     from flask_restx import fields
     from flask_restx.model import Model, OrderedModel, instance
 
-    anonymous_models: dict[int, str] = {}
+    inline_models: dict[int, dict[object, object]] = {}
+    inline_model_names: dict[int, str] = {}
+
+    def collect_field(field: object) -> None:
+        field_instance = instance(field)
+        if isinstance(field_instance, fields.Nested):
+            nested = getattr(field_instance, "nested", None)
+            if _is_inline_field_map(nested) and id(nested) not in inline_models:
+                inline_models[id(nested)] = nested
+                for nested_field in nested.values():
+                    collect_field(nested_field)
+
+        container = getattr(field_instance, "container", None)
+        if container is not None:
+            collect_field(container)
+
+    for model in list(api.models.values()):
+        if isinstance(model, (Model, OrderedModel)):
+            for field in model.values():
+                collect_field(field)
+
+    for nested_fields in sorted(inline_models.values(), key=_inline_model_name):
+        anonymous_name = _inline_model_name(nested_fields)
+        inline_model_names[id(nested_fields)] = anonymous_name
+        if anonymous_name not in api.models:
+            api.model(anonymous_name, nested_fields)
 
     def model_name_for(nested_fields: dict[object, object]) -> str:
-        anonymous_name = anonymous_models.get(id(nested_fields))
+        anonymous_name = inline_model_names.get(id(nested_fields))
         if anonymous_name is None:
             anonymous_name = _inline_model_name(nested_fields)
-            anonymous_models[id(nested_fields)] = anonymous_name
+            inline_model_names[id(nested_fields)] = anonymous_name
             if anonymous_name not in api.models:
                 api.model(anonymous_name, nested_fields)
         return anonymous_name
@@ -258,7 +297,7 @@ def _materialize_inline_model_definitions(api: RestxApi) -> None:
         field_instance = instance(field)
         if isinstance(field_instance, fields.Nested):
             nested = getattr(field_instance, "nested", None)
-            if isinstance(nested, dict):
+            if _is_inline_field_map(nested):
                 field_instance.model = api.models[model_name_for(nested)]  # type: ignore[attr-defined]
 
         container = getattr(field_instance, "container", None)
@@ -282,6 +321,31 @@ def _drop_null_values(value: object) -> object:
     if isinstance(value, list):
         return [_drop_null_values(item) for item in value]
     return value
+
+
+def _sort_swagger_arrays(value: object, *, parent_key: str | None = None) -> object:
+    """Sort order-insensitive Swagger arrays so generated Markdown is stable."""
+
+    if isinstance(value, dict):
+        return {key: _sort_swagger_arrays(item, parent_key=key) for key, item in value.items()}
+    if not isinstance(value, list):
+        return value
+
+    sorted_items = [_sort_swagger_arrays(item, parent_key=parent_key) for item in value]
+    if parent_key == "parameters":
+        return sorted(
+            sorted_items,
+            key=lambda item: (
+                item.get("in", "") if isinstance(item, dict) else "",
+                item.get("name", "") if isinstance(item, dict) else "",
+                json.dumps(item, sort_keys=True, default=str),
+            ),
+        )
+    if parent_key in {"enum", "required", "schemes", "tags"}:
+        string_items = [item for item in sorted_items if isinstance(item, str)]
+        if len(string_items) == len(sorted_items):
+            return sorted(string_items)
+    return sorted_items
 
 
 def _merge_registered_definitions(payload: dict[str, object], namespace: str) -> dict[str, object]:
@@ -318,6 +382,7 @@ def generate_specs(output_dir: Path) -> list[Path]:
             raise RuntimeError(f"unexpected response payload for {target.route}")
         payload = _merge_registered_definitions(payload, target.namespace)
         payload = _drop_null_values(payload)
+        payload = _sort_swagger_arrays(payload)
 
         output_path = output_dir / target.filename
         output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")

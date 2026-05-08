@@ -63,3 +63,14 @@ def test_generate_specs_writes_swagger_with_resolvable_references_and_no_nulls(t
 
         assert refs <= set(definitions)
         assert all(value is not None for value in _walk_values(payload))
+
+
+def test_generate_specs_is_idempotent(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    first_paths = module.generate_specs(tmp_path / "first")
+    second_paths = module.generate_specs(tmp_path / "second")
+
+    assert [path.name for path in first_paths] == [path.name for path in second_paths]
+    for first_path, second_path in zip(first_paths, second_paths):
+        assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")

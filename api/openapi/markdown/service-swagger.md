@@ -65,8 +65,8 @@ Enable or disable annotation reply feature
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action to perform: 'enable' or 'disable' | Yes | string |
 | payload | body |  | Yes | [AnnotationReplyActionPayload](#annotationreplyactionpayload) |
+| action | path | Action to perform: 'enable' or 'disable' | Yes | string |
 
 ##### Responses
 
@@ -180,8 +180,8 @@ Update an existing annotation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| annotation_id | path | Annotation ID | Yes | string |
 | payload | body |  | Yes | [AnnotationCreatePayload](#annotationcreatepayload) |
+| annotation_id | path | Annotation ID | Yes | string |
 
 ##### Responses
 
@@ -390,8 +390,8 @@ Rename a conversation or auto-generate a name
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID | Yes | string |
 | payload | body |  | Yes | [ConversationRenamePayload](#conversationrenamepayload) |
+| c_id | path | Conversation ID | Yes | string |
 
 ##### Responses
 
@@ -417,8 +417,8 @@ Conversational variables are only available for chat applications.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID | Yes | string |
 | payload | body |  | Yes | [ConversationVariablesQuery](#conversationvariablesquery) |
+| c_id | path | Conversation ID | Yes | string |
 
 ##### Responses
 
@@ -445,9 +445,9 @@ The value must match the variable's expected type.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [ConversationVariableUpdatePayload](#conversationvariableupdatepayload) |
 | c_id | path | Conversation ID | Yes | string |
 | variable_id | path | Variable ID | Yes | string |
-| payload | body |  | Yes | [ConversationVariableUpdatePayload](#conversationvariableupdatepayload) |
 
 ##### Responses
 
@@ -712,8 +712,8 @@ Update an existing dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [DatasetUpdatePayload](#datasetupdatepayload) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -756,8 +756,8 @@ Create a new document by providing text content
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [DocumentTextCreatePayload](#documenttextcreatepayload) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -800,8 +800,8 @@ Deprecated legacy alias for creating a new document by providing text content. U
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [DocumentTextCreatePayload](#documenttextcreatepayload) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -843,8 +843,8 @@ Download selected uploaded documents as a single ZIP archive
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [DocumentBatchDownloadZipPayload](#documentbatchdownloadzippayload) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -870,8 +870,8 @@ Update metadata for multiple documents
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [MetadataOperationData](#metadataoperationdata) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -909,8 +909,8 @@ Raises:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | action | path | Action to perform: 'enable', 'disable', 'archive', or 'un_archive' | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -933,8 +933,8 @@ Get indexing status for documents in a batch
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | batch | path | Batch ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -1046,9 +1046,9 @@ List segments in a document
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [SegmentListQuery](#segmentlistquery) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| payload | body |  | Yes | [SegmentListQuery](#segmentlistquery) |
 
 ##### Responses
 
@@ -1067,9 +1067,9 @@ Create segments in a document
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [SegmentCreatePayload](#segmentcreatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| payload | body |  | Yes | [SegmentCreatePayload](#segmentcreatepayload) |
 
 ##### Responses
 
@@ -1112,9 +1112,9 @@ Get a specific segment by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| segment_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
 | dataset_id | path |  | Yes | string |
+| document_id | path |  | Yes | string |
+| segment_id | path |  | Yes | string |
 
 ##### Responses
 
@@ -1133,10 +1133,10 @@ Update a specific segment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [SegmentUpdatePayload](#segmentupdatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Segment ID to update | Yes | string |
-| payload | body |  | Yes | [SegmentUpdatePayload](#segmentupdatepayload) |
 
 ##### Responses
 
@@ -1157,10 +1157,10 @@ List child chunks for a segment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [ChildChunkListQuery](#childchunklistquery) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
-| payload | body |  | Yes | [ChildChunkListQuery](#childchunklistquery) |
 
 ##### Responses
 
@@ -1179,10 +1179,10 @@ Create a new child chunk for a segment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [ChildChunkCreatePayload](#childchunkcreatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
-| payload | body |  | Yes | [ChildChunkCreatePayload](#childchunkcreatepayload) |
 
 ##### Responses
 
@@ -1203,10 +1203,10 @@ Delete a specific child chunk
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| child_chunk_id | path | Child chunk ID to delete | Yes | string |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
-| child_chunk_id | path | Child chunk ID to delete | Yes | string |
 
 ##### Responses
 
@@ -1225,11 +1225,11 @@ Update a specific child chunk
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [ChildChunkUpdatePayload](#childchunkupdatepayload) |
+| child_chunk_id | path | Child chunk ID to update | Yes | string |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
-| child_chunk_id | path | Child chunk ID to update | Yes | string |
-| payload | body |  | Yes | [ChildChunkUpdatePayload](#childchunkupdatepayload) |
 
 ##### Responses
 
@@ -1273,9 +1273,9 @@ Update an existing document by providing text content
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [DocumentTextUpdate](#documenttextupdate) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| payload | body |  | Yes | [DocumentTextUpdate](#documenttextupdate) |
 
 ##### Responses
 
@@ -1320,9 +1320,9 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [DocumentTextUpdate](#documenttextupdate) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| payload | body |  | Yes | [DocumentTextUpdate](#documenttextupdate) |
 
 ##### Responses
 
@@ -1348,8 +1348,8 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [HitTestingPayload](#hittestingpayload) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -1397,8 +1397,8 @@ Create metadata for a dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [MetadataArgs](#metadataargs) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -1447,8 +1447,8 @@ Enable or disable built-in metadata field
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | action | path | Action to perform: 'enable' or 'disable' | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -1497,9 +1497,9 @@ Update metadata name
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| payload | body |  | Yes | [MetadataUpdatePayload](#metadataupdatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | metadata_id | path | Metadata ID | Yes | string |
-| payload | body |  | Yes | [MetadataUpdatePayload](#metadataupdatepayload) |
 
 ##### Responses
 
@@ -1599,8 +1599,8 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
 | payload | body |  | Yes | [HitTestingPayload](#hittestingpayload) |
+| dataset_id | path | Dataset ID | Yes | string |
 
 ##### Responses
 
@@ -1700,8 +1700,8 @@ Files can only be accessed if they belong to messages within the requesting app'
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| file_id | path | UUID of the file to preview | Yes | string |
 | payload | body |  | Yes | [FilePreviewQuery](#filepreviewquery) |
+| file_id | path | UUID of the file to preview | Yes | string |
 
 ##### Responses
 
@@ -1743,8 +1743,8 @@ Submit a paused human input form by token
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| form_token | path | Human input form token | Yes | string |
 | payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
+| form_token | path | Human input form token | Yes | string |
 
 ##### Responses
 
@@ -1818,8 +1818,8 @@ Allows users to rate messages as like/dislike and provide optional feedback cont
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| message_id | path | Message ID | Yes | string |
 | payload | body |  | Yes | [MessageFeedbackPayload](#messagefeedbackpayload) |
+| message_id | path | Message ID | Yes | string |
 
 ##### Responses
 
@@ -1956,9 +1956,9 @@ Get workflow execution events stream after resume
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | Workflow run ID | Yes | string |
-| user | query | End user identifier (query param) | No | string |
-| include_state_snapshot | query | Whether to replay from persisted state snapshot, specify `"true"` to include a status snapshot of executed nodes | No | string |
 | continue_on_pause | query | Whether to keep the stream open across workflow_paused events,specify `"true"` to keep the stream open for `workflow_paused` events. | No | string |
+| include_state_snapshot | query | Whether to replay from persisted state snapshot, specify `"true"` to include a status snapshot of executed nodes | No | string |
+| user | query | End user identifier (query param) | No | string |
 
 ##### Responses
 
@@ -2090,8 +2090,8 @@ Executes a specific workflow version identified by its ID.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| workflow_id | path | Workflow ID to execute | Yes | string |
 | payload | body |  | Yes | [WorkflowRunPayload](#workflowrunpayload) |
+| workflow_id | path | Workflow ID to execute | Yes | string |
 
 ##### Responses
 
@@ -2216,7 +2216,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| comparison_operator | string | *Enum:* `"contains"`, `"not contains"`, `"start with"`, `"end with"`, `"is"`, `"is not"`, `"empty"`, `"not empty"`, `"in"`, `"not in"`, `"="`, `"≠"`, `">"`, `"<"`, `"≥"`, `"≤"`, `"before"`, `"after"` | Yes |
+| comparison_operator | string | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
 | name | string |  | Yes |
 | value |  |  | No |
 
@@ -2226,7 +2226,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | last_id |  | Last conversation ID for pagination | No |
 | limit | integer | Number of conversations to return | No |
-| sort_by | string | Sort order for conversations<br>*Enum:* `"created_at"`, `"-created_at"`, `"updated_at"`, `"-updated_at"` | No |
+| sort_by | string | Sort order for conversations<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 
 #### ConversationRenamePayload
 
@@ -2460,7 +2460,7 @@ Request payload for bulk downloading documents as a zip archive.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
-| type | string | *Enum:* `"string"`, `"number"`, `"time"` | Yes |
+| type | string | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### MetadataDetail
 

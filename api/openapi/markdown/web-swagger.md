@@ -198,8 +198,8 @@ Rename a specific conversation with a custom name or auto-generate one.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | c_id | path | Conversation UUID | Yes | string |
-| name | query | New conversation name | No | string |
 | auto_generate | query | Auto-generate conversation name | No | boolean |
+| name | query | New conversation name | No | string |
 
 ##### Responses
 
@@ -553,8 +553,8 @@ Submit feedback (like/dislike) for a specific message.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | message_id | path | Message UUID | Yes | string |
-| rating | query | Feedback rating | No | string |
 | content | query | Feedback content | No | string |
+| rating | query | Feedback rating | No | string |
 
 ##### Responses
 
@@ -917,8 +917,8 @@ Retrieve the access mode for a web application (public or restricted).
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| appId | query | Application ID | No | string |
 | appCode | query | Application code | No | string |
+| appId | query | Application ID | No | string |
 
 ##### Responses
 
@@ -1074,7 +1074,7 @@ Returns Server-Sent Events stream.
 | last_id |  |  | No |
 | limit | integer |  | No |
 | pinned |  |  | No |
-| sort_by | string | *Enum:* `"created_at"`, `"-created_at"`, `"updated_at"`, `"-updated_at"` | No |
+| sort_by | string | *Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 
 #### ConversationRenamePayload
 
