@@ -14,7 +14,6 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { useUpdateTriggerSubscription, useVerifyTriggerSubscription } from '@/service/use-triggers'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
-import { ReadmeShowType } from '../../../readme-panel/store'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 
@@ -318,7 +317,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           </div>
           <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginDetail && (
-              <ReadmeEntrance pluginDetail={pluginDetail} showType={ReadmeShowType.modal} />
+              <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />
             )}
 
             <MultiSteps currentStep={currentStep} onStepClick={handleBack} />

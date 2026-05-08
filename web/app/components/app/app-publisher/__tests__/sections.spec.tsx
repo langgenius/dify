@@ -242,15 +242,16 @@ describe('app-publisher sections', () => {
           hide: true,
         } as any]}
         missingStartNode={false}
-        onRefreshData={vi.fn()}
-        outputs={[]}
-        published={true}
         publishedAt={Date.now()}
         showBatchRunConfig
         showRunConfig
         toolPublished
         workflowToolAvailable={false}
+        workflowToolIsLoading={false}
+        workflowToolOutdated={false}
+        workflowToolIsCurrentWorkspaceManager
         workflowToolMessage="workflow-disabled"
+        onConfigureWorkflowTool={vi.fn()}
       />,
     )
 
@@ -280,14 +281,14 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode={false}
-        inputs={[]}
         missingStartNode
-        onRefreshData={vi.fn()}
-        outputs={[]}
-        published={false}
         publishedAt={Date.now()}
         toolPublished={false}
         workflowToolAvailable
+        workflowToolIsLoading={false}
+        workflowToolOutdated={false}
+        workflowToolIsCurrentWorkspaceManager
+        onConfigureWorkflowTool={vi.fn()}
       />,
     )
 
@@ -306,13 +307,14 @@ describe('app-publisher sections', () => {
         handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode
-        inputs={[]}
         missingStartNode={false}
-        outputs={[]}
-        published={false}
         publishedAt={undefined}
         toolPublished={false}
         workflowToolAvailable
+        workflowToolIsLoading={false}
+        workflowToolOutdated={false}
+        workflowToolIsCurrentWorkspaceManager
+        onConfigureWorkflowTool={vi.fn()}
       />,
     )
 
