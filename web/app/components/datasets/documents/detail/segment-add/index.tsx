@@ -7,9 +7,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
+import { useProviderContext } from '@/context/provider-context'
 
 type ISegmentAddProps = {
   importStatus: ProcessStatus | string | undefined
@@ -34,9 +38,25 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
   embedding,
 }) => {
   const { t } = useTranslation()
+  const [isShowPlanUpgradeModal, {
+    setTrue: showPlanUpgradeModal,
+    setFalse: hidePlanUpgradeModal,
+  }] = useBoolean(false)
+  const { plan, enableBilling } = useProviderContext()
+  const { type } = plan
+  const canAdd = enableBilling ? type !== Plan.sandbox : true
   const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false)
   const batchMenuAnchorRef = useRef<HTMLDivElement>(null)
 
+  const withNeedUpgradeCheck = useCallback((fn: () => void) => {
+    return () => {
+      if (!canAdd) {
+        showPlanUpgradeModal()
+        return
+      }
+      fn()
+    }
+  }, [canAdd, showPlanUpgradeModal])
   const textColor = useMemo(() => {
     return embedding
       ? 'text-components-button-secondary-accent-text-disabled'
@@ -96,7 +116,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
         type="button"
         className={`inline-flex items-center rounded-l-lg border-r border-r-divider-subtle px-2.5 py-2
           hover:bg-state-base-hover disabled:cursor-not-allowed disabled:hover:bg-transparent`}
-        onClick={showNewSegmentModal}
+        onClick={withNeedUpgradeCheck(showNewSegmentModal)}
         disabled={embedding}
       >
         <span aria-hidden className={cn('i-ri-add-line h-4 w-4', textColor)} />
@@ -128,13 +148,21 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
             className="system-md-regular"
             onClick={() => {
               setIsBatchMenuOpen(false)
-              showBatchModal()
+              withNeedUpgradeCheck(showBatchModal)()
             }}
           >
             {t('list.action.batchAdd', { ns: 'datasetDocuments' })}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {isShowPlanUpgradeModal && (
+        <PlanUpgradeModal
+          show
+          onClose={hidePlanUpgradeModal}
+          title={t('upgrade.addChunks.title', { ns: 'billing' })!}
+          description={t('upgrade.addChunks.description', { ns: 'billing' })!}
+        />
+      )}
     </div>
 
   )
