@@ -408,4 +408,23 @@ describe('ConfigModalFormFields', () => {
 
     expect(screen.getByRole('spinbutton')).toHaveValue(null)
   })
+
+  it('should disable hide checkbox when required is true and disable required when hide is true', () => {
+    const requiredProps = createBaseProps()
+    requiredProps.tempPayload = { ...requiredProps.tempPayload, type: InputVarType.textInput, required: true, hide: false }
+    const { unmount } = render(<ConfigModalFormFields {...requiredProps} />)
+
+    const buttons = screen.getAllByRole('button')
+    const hideButton = buttons.find(btn => btn.textContent === 'unchecked' && btn !== buttons[0])
+    expect(hideButton).toBeDefined()
+    unmount()
+
+    const hideProps = createBaseProps()
+    hideProps.tempPayload = { ...hideProps.tempPayload, type: InputVarType.textInput, required: false, hide: true }
+    render(<ConfigModalFormFields {...hideProps} />)
+
+    const allButtons = screen.getAllByRole('button')
+    const checkedHideButton = allButtons.find(btn => btn.textContent === 'checked')
+    expect(checkedHideButton).toBeDefined()
+  })
 })

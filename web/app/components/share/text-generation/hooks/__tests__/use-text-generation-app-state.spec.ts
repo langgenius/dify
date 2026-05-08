@@ -355,4 +355,186 @@ describe('useTextGenerationAppState', () => {
     expect(getRawInputsFromUrlParamsMock).toHaveBeenCalled()
     expect(fetchSavedMessageMock).not.toHaveBeenCalled()
   })
+
+  it('should coerce checkbox url defaults from string and boolean values', async () => {
+    mockWebAppState.appParams = {
+      ...defaultAppParams,
+      user_input_form: [
+        {
+          checkbox: {
+            label: 'Bool True',
+            variable: 'bool_true',
+            required: false,
+            default: false,
+            hide: true,
+          },
+        },
+        {
+          checkbox: {
+            label: 'String True',
+            variable: 'str_true',
+            required: false,
+            default: false,
+            hide: true,
+          },
+        },
+        {
+          checkbox: {
+            label: 'String False',
+            variable: 'str_false',
+            required: false,
+            default: true,
+            hide: true,
+          },
+        },
+        {
+          checkbox: {
+            label: 'Invalid',
+            variable: 'invalid_cb',
+            required: false,
+            default: false,
+            hide: true,
+          },
+        },
+      ],
+    }
+    getRawInputsFromUrlParamsMock.mockResolvedValue({
+      bool_true: true,
+      str_true: 'true',
+      str_false: 'false',
+      invalid_cb: 'invalid',
+    })
+
+    const { result } = renderHook(() => useTextGenerationAppState({
+      isInstalledApp: false,
+      isWorkflow: true,
+    }))
+
+    await waitFor(() => {
+      expect(result.current.promptConfig?.prompt_variables).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: 'bool_true', default: true }),
+        expect.objectContaining({ key: 'str_true', default: true }),
+        expect.objectContaining({ key: 'str_false', default: false }),
+        expect.objectContaining({ key: 'invalid_cb', default: false }),
+      ]))
+    })
+  })
+
+  it('should coerce number url defaults and ignore NaN values', async () => {
+    mockWebAppState.appParams = {
+      ...defaultAppParams,
+      user_input_form: [
+        {
+          number: {
+            label: 'Valid Number',
+            variable: 'num_valid',
+            required: false,
+            default: 0,
+            hide: true,
+          },
+        },
+        {
+          number: {
+            label: 'NaN Number',
+            variable: 'num_nan',
+            required: false,
+            default: 0,
+            hide: true,
+          },
+        },
+      ],
+    }
+    getRawInputsFromUrlParamsMock.mockResolvedValue({
+      num_valid: '42',
+      num_nan: 'not-a-number',
+    })
+
+    const { result } = renderHook(() => useTextGenerationAppState({
+      isInstalledApp: false,
+      isWorkflow: true,
+    }))
+
+    await waitFor(() => {
+      expect(result.current.promptConfig?.prompt_variables).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: 'num_valid', default: 42 }),
+        expect.objectContaining({ key: 'num_nan', default: 0 }),
+      ]))
+    })
+  })
+
+  it('should coerce select url defaults and ignore invalid options', async () => {
+    mockWebAppState.appParams = {
+      ...defaultAppParams,
+      user_input_form: [
+        {
+          select: {
+            label: 'Valid Option',
+            variable: 'sel_valid',
+            required: false,
+            default: '',
+            options: ['alpha', 'beta'],
+            hide: true,
+          },
+        },
+        {
+          select: {
+            label: 'Invalid Option',
+            variable: 'sel_invalid',
+            required: false,
+            default: 'alpha',
+            options: ['alpha', 'beta'],
+            hide: true,
+          },
+        },
+      ],
+    }
+    getRawInputsFromUrlParamsMock.mockResolvedValue({
+      sel_valid: 'beta',
+      sel_invalid: 'gamma',
+    })
+
+    const { result } = renderHook(() => useTextGenerationAppState({
+      isInstalledApp: false,
+      isWorkflow: true,
+    }))
+
+    await waitFor(() => {
+      expect(result.current.promptConfig?.prompt_variables).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: 'sel_valid', default: 'beta' }),
+        expect.objectContaining({ key: 'sel_invalid', default: 'alpha' }),
+      ]))
+    })
+  })
+
+  it('should ignore non-string url values for text inputs', async () => {
+    mockWebAppState.appParams = {
+      ...defaultAppParams,
+      user_input_form: [
+        {
+          'text-input': {
+            label: 'Text Field',
+            variable: 'text_field',
+            required: false,
+            max_length: 48,
+            default: 'original',
+            hide: true,
+          },
+        },
+      ],
+    }
+    getRawInputsFromUrlParamsMock.mockResolvedValue({
+      text_field: 12345,
+    })
+
+    const { result } = renderHook(() => useTextGenerationAppState({
+      isInstalledApp: false,
+      isWorkflow: true,
+    }))
+
+    await waitFor(() => {
+      expect(result.current.promptConfig?.prompt_variables).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: 'text_field', default: 'original' }),
+      ]))
+    })
+  })
 })

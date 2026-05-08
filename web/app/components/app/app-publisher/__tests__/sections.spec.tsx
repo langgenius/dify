@@ -194,6 +194,21 @@ describe('app-publisher sections', () => {
     expect(render(<AccessModeDisplay />).container).toBeEmptyDOMElement()
   })
 
+  it('should hide access control content when enabled is false', () => {
+    render(
+      <PublisherAccessSection
+        enabled={false}
+        isAppAccessSet
+        isLoading={false}
+        accessMode={AccessMode.PUBLIC}
+        onClick={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText('publishApp.title')).not.toBeInTheDocument()
+    expect(screen.queryByText('accessControlDialog.accessItems.anyone')).not.toBeInTheDocument()
+  })
+
   it('should render workflow actions, batch run links, and workflow tool configuration', () => {
     const handleOpenInExplore = vi.fn()
     const handleEmbed = vi.fn()

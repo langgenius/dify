@@ -190,4 +190,57 @@ describe('Embedded', () => {
       expect(codeBlock?.textContent ?? '').toContain('secret: "top-secret"')
     })
   })
+
+  it('copies script content when scripts option is selected', async () => {
+    await act(async () => {
+      render(<Embedded {...baseProps} />)
+    })
+
+    const optionButtons = document.body.querySelectorAll('[class*="option"]')
+    act(() => {
+      fireEvent.click(optionButtons[1]!)
+    })
+
+    await waitFor(() => {
+      const codeBlock = document.querySelector('pre')
+      expect(codeBlock?.textContent ?? '').toContain('token: \'token\'')
+    })
+
+    const actionButton = getCopyButton()
+    const innerDiv = actionButton.querySelector('div')
+    await act(async () => {
+      fireEvent.click(innerDiv ?? actionButton)
+    })
+
+    await waitFor(() => {
+      expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('token: \'token\''))
+    })
+  })
+
+  it('copies chrome plugin URL (without prefix) when chromePlugin option is selected', async () => {
+    await act(async () => {
+      render(<Embedded {...baseProps} />)
+    })
+
+    const optionButtons = document.body.querySelectorAll('[class*="option"]')
+    act(() => {
+      fireEvent.click(optionButtons[2]!)
+    })
+
+    await waitFor(() => {
+      const codeBlock = document.querySelector('pre')
+      expect(codeBlock?.textContent ?? '').toContain('ChatBot URL:')
+    })
+
+    const actionButton = getCopyButton()
+    const innerDiv = actionButton.querySelector('div')
+    await act(async () => {
+      fireEvent.click(innerDiv ?? actionButton)
+    })
+
+    await waitFor(() => {
+      expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))
+      expect(mockedCopy).not.toHaveBeenCalledWith(expect.stringContaining('ChatBot URL:'))
+    })
+  })
 })
