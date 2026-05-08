@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 from collections import UserDict
 from unittest.mock import MagicMock
 
@@ -12,7 +13,7 @@ class TestBaseAppConfigManager:
         return {"key": "value", "another": 123}
 
     @pytest.fixture
-    def mock_app_additional_features(self, mocker):
+    def mock_app_additional_features(self, mocker: MockerFixture):
         mock_instance = MagicMock()
         mocker.patch(
             "core.app.app_config.base_app_config_manager.AppAdditionalFeatures",
@@ -21,7 +22,7 @@ class TestBaseAppConfigManager:
         return mock_instance
 
     @pytest.fixture
-    def mock_managers(self, mocker):
+    def mock_managers(self, mocker: MockerFixture):
         retrieval = mocker.patch(
             "core.app.app_config.base_app_config_manager.RetrievalResourceConfigManager.convert",
             return_value="retrieval_result",
@@ -72,7 +73,7 @@ class TestBaseAppConfigManager:
     )
     def test_convert_features_all_modes(
         self,
-        mocker,
+        mocker: MockerFixture,
         mock_config_dict,
         mock_app_additional_features,
         mock_managers,

@@ -17,7 +17,7 @@ class DummyAccount:
 
 
 @pytest.fixture
-def generator(mocker):
+def generator(mocker: MockerFixture):
     gen = AgentChatAppGenerator()
     mocker.patch(
         "core.app.apps.agent_chat.app_generator.current_app",

@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 import binascii
 import datetime
 from enum import StrEnum
@@ -34,7 +35,7 @@ from graphon.model_runtime.entities.message_entities import (
 
 
 class TestEndpointEntity:
-    def test_endpoint_entity_with_instance_renders_url(self, mocker):
+    def test_endpoint_entity_with_instance_renders_url(self, mocker: MockerFixture):
         mocker.patch("core.plugin.entities.endpoint.dify_config.ENDPOINT_URL_TEMPLATE", "https://dify.test/{hook_id}")
         now = datetime.datetime.now(datetime.UTC)
 

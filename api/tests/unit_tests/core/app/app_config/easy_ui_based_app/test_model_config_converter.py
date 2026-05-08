@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -16,7 +17,7 @@ from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 class TestModelConfigConverter:
     @pytest.fixture(autouse=True)
-    def patch_response_entity(self, mocker):
+    def patch_response_entity(self, mocker: MockerFixture):
         """
         Patch ModelConfigWithCredentialsEntity to bypass Pydantic validation
         and return a simple namespace object instead.
@@ -69,7 +70,7 @@ class TestModelConfigConverter:
         return bundle
 
     @pytest.fixture
-    def patch_provider_manager(self, mocker, mock_provider_bundle):
+    def patch_provider_manager(self, mocker: MockerFixture, mock_provider_bundle):
         mock_manager = MagicMock()
         mock_manager.get_provider_model_bundle.return_value = mock_provider_bundle
         mocker.patch(
@@ -99,7 +100,7 @@ class TestModelConfigConverter:
         assert result.parameters == {"temperature": 0.7}
         assert result.stop == ["\n"]
 
-    def test_convert_mode_from_schema_valid(self, mock_app_config, mock_provider_bundle, mocker):
+    def test_convert_mode_from_schema_valid(self, mock_app_config, mock_provider_bundle, mocker: MockerFixture):
         mock_app_config.model.mode = None
 
         mock_provider_bundle.model_type_instance.get_model_schema.return_value.model_properties = {
@@ -116,7 +117,7 @@ class TestModelConfigConverter:
         result = ModelConfigConverter.convert(mock_app_config)
         assert result.mode == LLMMode.COMPLETION
 
-    def test_convert_mode_from_schema_invalid_fallback(self, mock_app_config, mock_provider_bundle, mocker):
+    def test_convert_mode_from_schema_invalid_fallback(self, mock_app_config, mock_provider_bundle, mocker: MockerFixture):
         mock_provider_bundle.model_type_instance.get_model_schema.return_value.model_properties = {
             ModelPropertyKey.MODE: "invalid"
         }
@@ -135,7 +136,7 @@ class TestModelConfigConverter:
     # Credential Errors
     # =============================
 
-    def test_convert_credentials_none_raises(self, mock_app_config, mock_provider_bundle, mocker):
+    def test_convert_credentials_none_raises(self, mock_app_config, mock_provider_bundle, mocker: MockerFixture):
         mock_provider_bundle.configuration.get_current_credentials.return_value = None
 
         mock_manager = MagicMock()
@@ -152,7 +153,7 @@ class TestModelConfigConverter:
     # Provider Model Errors
     # =============================
 
-    def test_convert_provider_model_none_raises(self, mock_app_config, mock_provider_bundle, mocker):
+    def test_convert_provider_model_none_raises(self, mock_app_config, mock_provider_bundle, mocker: MockerFixture):
         mock_provider_bundle.configuration.get_provider_model.return_value = None
 
         mock_manager = MagicMock()
@@ -194,7 +195,7 @@ class TestModelConfigConverter:
     # Schema Errors
     # =============================
 
-    def test_convert_model_schema_none_raises(self, mock_app_config, mock_provider_bundle, mocker):
+    def test_convert_model_schema_none_raises(self, mock_app_config, mock_provider_bundle, mocker: MockerFixture):
         mock_provider_bundle.model_type_instance.get_model_schema.return_value = None
 
         mock_manager = MagicMock()

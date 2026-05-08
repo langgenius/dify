@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 from collections.abc import Generator
 
 from core.datasource.datasource_manager import DatasourceManager
@@ -19,7 +20,7 @@ def _gen_var_stream() -> Generator[DatasourceMessage, None, None]:
     )
 
 
-def test_stream_node_events_accumulates_variables(mocker):
+def test_stream_node_events_accumulates_variables(mocker: MockerFixture):
     mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_var_stream())
     events = list(
         DatasourceManager.stream_node_events(

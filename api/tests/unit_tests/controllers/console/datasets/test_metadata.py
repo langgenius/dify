@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 import uuid
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -60,7 +61,7 @@ def metadata_id():
 
 
 @pytest.fixture(autouse=True)
-def bypass_decorators(mocker):
+def bypass_decorators(mocker: MockerFixture):
     """Bypass setup/login/license decorators."""
     mocker.patch(
         "controllers.console.datasets.metadata.setup_required",

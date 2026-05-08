@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 import time
 import uuid
 from unittest.mock import Mock
@@ -50,7 +51,7 @@ def mock_graph_runtime_state():
 
 
 @pytest.fixture
-def mock_index_processor(mocker):
+def mock_index_processor(mocker: MockerFixture):
     """Create mock IndexProcessorProtocol."""
     mock_processor = Mock(spec=IndexProcessorProtocol)
     mocker.patch(
@@ -61,7 +62,7 @@ def mock_index_processor(mocker):
 
 
 @pytest.fixture
-def mock_summary_index_service(mocker):
+def mock_summary_index_service(mocker: MockerFixture):
     """Create mock SummaryIndexServiceProtocol."""
     mock_service = Mock(spec=SummaryIndexServiceProtocol)
     mocker.patch(

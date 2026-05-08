@@ -13,6 +13,7 @@ Covers:
   - get_response_generator              (ended / non-ended workflow run)
 """
 
+from pytest_mock import MockerFixture
 import threading
 import time
 import uuid
@@ -224,7 +225,7 @@ class TestGenerate:
         )
 
     # -- COMPLETION ---------------------------------------------------------
-    def test_completion_mode(self, mocker):
+    def test_completion_mode(self, mocker: MockerFixture):
         gen_spy = mocker.patch(
             "services.app_generate_service.CompletionAppGenerator.generate",
             return_value={"result": "ok"},
@@ -244,7 +245,7 @@ class TestGenerate:
         gen_spy.assert_called_once()
 
     # -- AGENT_CHAT via mode ------------------------------------------------
-    def test_agent_chat_mode(self, mocker):
+    def test_agent_chat_mode(self, mocker: MockerFixture):
         gen_spy = mocker.patch(
             "services.app_generate_service.AgentChatAppGenerator.generate",
             return_value={"result": "agent"},
@@ -264,7 +265,7 @@ class TestGenerate:
         gen_spy.assert_called_once()
 
     # -- AGENT_CHAT via is_agent flag (non-AGENT_CHAT mode) -----------------
-    def test_agent_via_is_agent_flag(self, mocker):
+    def test_agent_via_is_agent_flag(self, mocker: MockerFixture):
         gen_spy = mocker.patch(
             "services.app_generate_service.AgentChatAppGenerator.generate",
             return_value={"result": "agent-via-flag"},
@@ -285,7 +286,7 @@ class TestGenerate:
         gen_spy.assert_called_once()
 
     # -- CHAT ---------------------------------------------------------------
-    def test_chat_mode(self, mocker):
+    def test_chat_mode(self, mocker: MockerFixture):
         gen_spy = mocker.patch(
             "services.app_generate_service.ChatAppGenerator.generate",
             return_value={"result": "chat"},
@@ -306,7 +307,7 @@ class TestGenerate:
         gen_spy.assert_called_once()
 
     # -- ADVANCED_CHAT blocking ---------------------------------------------
-    def test_advanced_chat_blocking(self, mocker):
+    def test_advanced_chat_blocking(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
 
@@ -365,7 +366,7 @@ class TestGenerate:
         delay_spy.assert_called_once()
 
     # -- WORKFLOW blocking --------------------------------------------------
-    def test_workflow_blocking(self, mocker):
+    def test_workflow_blocking(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         gen_spy = mocker.patch(
@@ -422,7 +423,7 @@ class TestGenerate:
         delay_spy.assert_called_once()
 
     # -- Invalid mode -------------------------------------------------------
-    def test_invalid_mode_raises(self, mocker):
+    def test_invalid_mode_raises(self, mocker: MockerFixture):
         app = _make_app("invalid-mode", is_agent=False)
         with pytest.raises(ValueError, match="Invalid app mode"):
             AppGenerateService.generate(
@@ -552,7 +553,7 @@ class TestGenerateBilling:
 # _get_workflow
 # ---------------------------------------------------------------------------
 class TestGetWorkflow:
-    def test_debugger_fetches_draft(self, mocker):
+    def test_debugger_fetches_draft(self, mocker: MockerFixture):
         draft_wf = _make_workflow()
         ws = MagicMock()
         ws.get_draft_workflow.return_value = draft_wf
@@ -562,7 +563,7 @@ class TestGetWorkflow:
         assert result is draft_wf
         ws.get_draft_workflow.assert_called_once()
 
-    def test_debugger_raises_when_no_draft(self, mocker):
+    def test_debugger_raises_when_no_draft(self, mocker: MockerFixture):
         ws = MagicMock()
         ws.get_draft_workflow.return_value = None
         mocker.patch("services.app_generate_service.WorkflowService", return_value=ws)
@@ -570,7 +571,7 @@ class TestGetWorkflow:
         with pytest.raises(ValueError, match="Workflow not initialized"):
             AppGenerateService._get_workflow(_make_app(AppMode.WORKFLOW), InvokeFrom.DEBUGGER)
 
-    def test_non_debugger_fetches_published(self, mocker):
+    def test_non_debugger_fetches_published(self, mocker: MockerFixture):
         pub_wf = _make_workflow()
         ws = MagicMock()
         ws.get_published_workflow.return_value = pub_wf
@@ -580,7 +581,7 @@ class TestGetWorkflow:
         assert result is pub_wf
         ws.get_published_workflow.assert_called_once()
 
-    def test_non_debugger_raises_when_no_published(self, mocker):
+    def test_non_debugger_raises_when_no_published(self, mocker: MockerFixture):
         ws = MagicMock()
         ws.get_published_workflow.return_value = None
         mocker.patch("services.app_generate_service.WorkflowService", return_value=ws)
@@ -588,7 +589,7 @@ class TestGetWorkflow:
         with pytest.raises(ValueError, match="Workflow not published"):
             AppGenerateService._get_workflow(_make_app(AppMode.WORKFLOW), InvokeFrom.SERVICE_API)
 
-    def test_specific_workflow_id_valid_uuid(self, mocker):
+    def test_specific_workflow_id_valid_uuid(self, mocker: MockerFixture):
         valid_uuid = str(uuid.uuid4())
         specific_wf = _make_workflow(workflow_id=valid_uuid)
         ws = MagicMock()
@@ -601,7 +602,7 @@ class TestGetWorkflow:
         assert result is specific_wf
         ws.get_published_workflow_by_id.assert_called_once()
 
-    def test_specific_workflow_id_invalid_uuid(self, mocker):
+    def test_specific_workflow_id_invalid_uuid(self, mocker: MockerFixture):
         ws = MagicMock()
         mocker.patch("services.app_generate_service.WorkflowService", return_value=ws)
 
@@ -610,7 +611,7 @@ class TestGetWorkflow:
                 _make_app(AppMode.WORKFLOW), InvokeFrom.SERVICE_API, workflow_id="not-a-uuid"
             )
 
-    def test_specific_workflow_id_not_found(self, mocker):
+    def test_specific_workflow_id_not_found(self, mocker: MockerFixture):
         valid_uuid = str(uuid.uuid4())
         ws = MagicMock()
         ws.get_published_workflow_by_id.return_value = None
@@ -626,7 +627,7 @@ class TestGetWorkflow:
 # generate_single_iteration
 # ---------------------------------------------------------------------------
 class TestGenerateSingleIteration:
-    def test_advanced_chat_mode(self, mocker):
+    def test_advanced_chat_mode(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         gen_spy = mocker.patch(
@@ -644,7 +645,7 @@ class TestGenerateSingleIteration:
         iter_spy.assert_called_once()
         assert result == {"event": "iteration"}
 
-    def test_workflow_mode(self, mocker):
+    def test_workflow_mode(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         mocker.patch(
@@ -662,7 +663,7 @@ class TestGenerateSingleIteration:
         iter_spy.assert_called_once()
         assert result == {"event": "wf-iteration"}
 
-    def test_invalid_mode_raises(self, mocker):
+    def test_invalid_mode_raises(self, mocker: MockerFixture):
         app = _make_app(AppMode.CHAT)
         with pytest.raises(ValueError, match="Invalid app mode"):
             AppGenerateService.generate_single_iteration(app_model=app, user=_make_user(), node_id="n1", args={})
@@ -672,7 +673,7 @@ class TestGenerateSingleIteration:
 # generate_single_loop
 # ---------------------------------------------------------------------------
 class TestGenerateSingleLoop:
-    def test_advanced_chat_mode(self, mocker):
+    def test_advanced_chat_mode(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         mocker.patch(
@@ -690,7 +691,7 @@ class TestGenerateSingleLoop:
         loop_spy.assert_called_once()
         assert result == {"event": "loop"}
 
-    def test_workflow_mode(self, mocker):
+    def test_workflow_mode(self, mocker: MockerFixture):
         workflow = _make_workflow()
         mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
         mocker.patch(
@@ -708,7 +709,7 @@ class TestGenerateSingleLoop:
         loop_spy.assert_called_once()
         assert result == {"event": "wf-loop"}
 
-    def test_invalid_mode_raises(self, mocker):
+    def test_invalid_mode_raises(self, mocker: MockerFixture):
         app = _make_app(AppMode.COMPLETION)
         with pytest.raises(ValueError, match="Invalid app mode"):
             AppGenerateService.generate_single_loop(app_model=app, user=_make_user(), node_id="n1", args=MagicMock())
@@ -718,7 +719,7 @@ class TestGenerateSingleLoop:
 # generate_more_like_this
 # ---------------------------------------------------------------------------
 class TestGenerateMoreLikeThis:
-    def test_delegates_to_completion_generator(self, mocker):
+    def test_delegates_to_completion_generator(self, mocker: MockerFixture):
         gen_spy = mocker.patch(
             "services.app_generate_service.CompletionAppGenerator.generate_more_like_this",
             return_value={"result": "similar"},
@@ -739,7 +740,7 @@ class TestGenerateMoreLikeThis:
 # get_response_generator
 # ---------------------------------------------------------------------------
 class TestGetResponseGenerator:
-    def test_non_ended_workflow_run(self, mocker):
+    def test_non_ended_workflow_run(self, mocker: MockerFixture):
         app = _make_app(AppMode.ADVANCED_CHAT)
         workflow_run = MagicMock()
         workflow_run.id = "run-1"
@@ -756,7 +757,7 @@ class TestGetResponseGenerator:
         result = AppGenerateService.get_response_generator(app_model=app, workflow_run=workflow_run)
         gen_instance.retrieve_events.assert_called_once()
 
-    def test_ended_workflow_run_still_returns_generator(self, mocker):
+    def test_ended_workflow_run_still_returns_generator(self, mocker: MockerFixture):
         """Even when the run is ended, the current code still returns a generator (TODO branch)."""
         app = _make_app(AppMode.WORKFLOW)
         workflow_run = MagicMock()

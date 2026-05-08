@@ -282,7 +282,7 @@ class TestInsertExploreAppListApi:
 
     def test_create_recommended_app(
         self,
-        mocker,
+        mocker: MockerFixture,
         mock_admin_auth,
         mock_console_payload,
     ):
@@ -345,7 +345,7 @@ class TestInsertExploreAppListApi:
 
     def test_site_data_overrides_payload(
         self,
-        mocker,
+        mocker: MockerFixture,
         mock_admin_auth,
         mock_console_payload,
         mock_session_factory,
@@ -382,7 +382,7 @@ class TestInsertExploreAppListApi:
 
     def test_create_trial_app_when_can_trial_enabled(
         self,
-        mocker,
+        mocker: MockerFixture,
         mock_admin_auth,
         mock_console_payload,
         mock_session_factory,
@@ -414,7 +414,7 @@ class TestInsertExploreAppListApi:
 
     def test_update_recommended_app_with_trial(
         self,
-        mocker,
+        mocker: MockerFixture,
         mock_admin_auth,
         mock_console_payload,
         mock_session_factory,
@@ -451,7 +451,7 @@ class TestInsertExploreAppListApi:
 
     def test_update_recommended_app_without_trial(
         self,
-        mocker,
+        mocker: MockerFixture,
         mock_admin_auth,
         mock_console_payload,
         mock_session_factory,

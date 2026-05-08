@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 import uuid
 from unittest.mock import MagicMock
 
@@ -69,7 +70,7 @@ class TestDatasetConfigManagerConvert:
         assert result.dataset_ids == [valid_uuid]
         assert result.retrieve_config.query_variable == "query"
 
-    def test_convert_single_with_metadata_configs(self, valid_uuid, mocker):
+    def test_convert_single_with_metadata_configs(self, valid_uuid, mocker: MockerFixture):
         mock_retrieve_config = MagicMock()
         mock_entity = MagicMock()
         mock_entity.dataset_ids = [valid_uuid]
@@ -258,7 +259,7 @@ class TestExtractDatasetConfig:
         with pytest.raises(ValueError):
             DatasetConfigManager.extract_dataset_config_for_legacy_compatibility("tenant1", AppMode.CHAT, config)
 
-    def test_extract_invalid_uuid(self, mocker):
+    def test_extract_invalid_uuid(self, mocker: MockerFixture):
         invalid_uuid = "not-a-uuid"
         config = {
             "agent_mode": {
@@ -270,7 +271,7 @@ class TestExtractDatasetConfig:
         with pytest.raises(ValueError):
             DatasetConfigManager.extract_dataset_config_for_legacy_compatibility("tenant1", AppMode.CHAT, config)
 
-    def test_extract_dataset_not_exists(self, valid_uuid, mocker):
+    def test_extract_dataset_not_exists(self, valid_uuid, mocker: MockerFixture):
         mocker.patch(
             "core.app.app_config.easy_ui_based_app.dataset.manager.DatasetService.get_dataset",
             return_value=None,

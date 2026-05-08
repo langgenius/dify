@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 import time
 import uuid
 from unittest.mock import Mock
@@ -56,7 +57,7 @@ def mock_graph_runtime_state():
 
 
 @pytest.fixture
-def mock_rag_retrieval(mocker):
+def mock_rag_retrieval(mocker: MockerFixture):
     """Create mock RAGRetrievalProtocol."""
     mock_retrieval = Mock(spec=RAGRetrievalProtocol)
     mock_retrieval.knowledge_retrieval.return_value = []

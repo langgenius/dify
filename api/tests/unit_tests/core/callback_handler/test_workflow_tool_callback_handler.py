@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -26,7 +27,7 @@ def handler():
 
 
 @pytest.fixture
-def mock_print_text(mocker):
+def mock_print_text(mocker: MockerFixture):
     """Mock print_text to avoid real stdout printing."""
     return mocker.patch("core.callback_handler.workflow_tool_callback_handler.print_text")
 

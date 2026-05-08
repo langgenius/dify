@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 import dataclasses
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock
@@ -177,7 +178,7 @@ def test_get_form_definition_by_token_for_console_uses_repository(sample_form_re
     assert form.get_definition() == console_record.definition
 
 
-def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, mock_session_factory, mocker):
+def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, mock_session_factory, mocker: MockerFixture):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
@@ -204,7 +205,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, m
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
 
 
-def test_submit_form_by_token_skips_enqueue_for_delivery_test(sample_form_record, mock_session_factory, mocker):
+def test_submit_form_by_token_skips_enqueue_for_delivery_test(sample_form_record, mock_session_factory, mocker: MockerFixture):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     test_record = dataclasses.replace(
@@ -227,7 +228,7 @@ def test_submit_form_by_token_skips_enqueue_for_delivery_test(sample_form_record
     enqueue_spy.assert_not_called()
 
 
-def test_submit_form_by_token_passes_submission_user_id(sample_form_record, mock_session_factory, mocker):
+def test_submit_form_by_token_passes_submission_user_id(sample_form_record, mock_session_factory, mocker: MockerFixture):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
@@ -314,7 +315,7 @@ def test_form_submitted_error_init():
     assert error.code == 412
 
 
-def test_human_input_service_init_with_engine(mocker):
+def test_human_input_service_init_with_engine(mocker: MockerFixture):
     engine = MagicMock(spec=human_input_service_module.Engine)
     sessionmaker_mock = mocker.patch("services.human_input_service.sessionmaker")
 
@@ -371,7 +372,7 @@ def test_submit_form_by_token_delivery_not_enabled(mock_session_factory):
         service.submit_form_by_token(RecipientType.STANDALONE_WEB_APP, "token", "action", {})
 
 
-def test_submit_form_by_token_no_workflow_run_id(sample_form_record, mock_session_factory, mocker):
+def test_submit_form_by_token_no_workflow_run_id(sample_form_record, mock_session_factory, mocker: MockerFixture):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
