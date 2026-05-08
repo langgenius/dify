@@ -282,11 +282,6 @@
       "count": 4
     }
   },
-  "web/app/components/app/app-publisher/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 5
-    }
-  },
   "web/app/components/app/app-publisher/version-info-modal.tsx": {
     "no-restricted-imports": {
       "count": 1
