@@ -876,10 +876,10 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         payload = BuiltinProviderDefaultCredentialPayload.model_validate(console_ns.payload or {})
         return BuiltinToolManageService.set_default_provider(
-            tenant_id=current_tenant_id, user_id=current_user.id, provider=provider, id=payload.id
+            tenant_id=current_tenant_id, provider=provider, id=payload.id
         )
 
 

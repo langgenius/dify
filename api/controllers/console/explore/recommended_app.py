@@ -52,7 +52,7 @@ class RecommendedAppResponse(ResponseModel):
     copyright: str | None = None
     privacy_policy: str | None = None
     custom_disclaimer: str | None = None
-    category: str | None = None
+    categories: list[str] = Field(default_factory=list)
     position: int | None = None
     is_listed: bool | None = None
     can_trial: bool | None = None

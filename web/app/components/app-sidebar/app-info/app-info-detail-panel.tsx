@@ -97,7 +97,7 @@ const AppInfoDetailPanel = ({
     <ContentDialog
       show={show}
       onClose={onClose}
-      className="absolute top-2 bottom-2 left-2 flex w-[420px] flex-col rounded-2xl p-0!"
+      className="absolute top-2 bottom-2 left-2 flex w-[452px] max-w-[calc(100vw-1rem)] flex-col rounded-2xl p-0!"
     >
       <div className="flex shrink-0 flex-col items-start justify-center gap-3 self-stretch p-4">
         <div className="flex items-center gap-3 self-stretch">

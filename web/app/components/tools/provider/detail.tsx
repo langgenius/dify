@@ -1,6 +1,6 @@
 'use client'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
-import type { WorkflowToolModalPayload } from '@/app/components/tools/workflow-tool'
+import type { WorkflowToolDrawerPayload } from '@/app/components/tools/workflow-tool'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -31,7 +31,7 @@ import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import Title from '@/app/components/plugins/card/base/title'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
-import WorkflowToolModal from '@/app/components/tools/workflow-tool'
+import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
@@ -140,7 +140,7 @@ const ProviderDetail = ({
     setIsShowEditCustomCollectionModal(false)
   }
   // workflow provider
-  const [isShowEditWorkflowToolModal, setIsShowEditWorkflowToolModal] = useState(false)
+  const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
     setIsDetailLoading(true)
     const res = await fetchWorkflowToolDetail(collection.id)
@@ -164,7 +164,7 @@ const ProviderDetail = ({
     await deleteWorkflowTool(collection.id)
     onRefreshData()
     toast.success(t('api.actionSuccess', { ns: 'common' }))
-    setIsShowEditWorkflowToolModal(false)
+    setWorkflowToolDrawerOpen(false)
   }
   const updateWorkflowToolProvider = async (data: WorkflowToolProviderRequest & Partial<{
     workflow_app_id: string
@@ -175,7 +175,7 @@ const ProviderDetail = ({
     onRefreshData()
     getWorkflowToolProvider()
     toast.success(t('api.actionSuccess', { ns: 'common' }))
-    setIsShowEditWorkflowToolModal(false)
+    setWorkflowToolDrawerOpen(false)
   }
   const onClickCustomToolDelete = () => {
     setDeleteAction('customTool')
@@ -287,7 +287,7 @@ const ProviderDetail = ({
               </Button>
               <Button
                 className={cn('my-3 w-[183px] shrink-0')}
-                onClick={() => setIsShowEditWorkflowToolModal(true)}
+                onClick={() => setWorkflowToolDrawerOpen(true)}
                 disabled={!isCurrentWorkspaceManager}
               >
                 <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
@@ -401,10 +401,10 @@ const ProviderDetail = ({
             onRemove={onClickCustomToolDelete}
           />
         )}
-        {isShowEditWorkflowToolModal && (
-          <WorkflowToolModal
-            payload={customCollection as unknown as WorkflowToolModalPayload}
-            onHide={() => setIsShowEditWorkflowToolModal(false)}
+        {workflowToolDrawerOpen && (
+          <WorkflowToolDrawer
+            payload={customCollection as unknown as WorkflowToolDrawerPayload}
+            onHide={() => setWorkflowToolDrawerOpen(false)}
             onRemove={onClickWorkflowToolDelete}
             onSave={updateWorkflowToolProvider}
           />

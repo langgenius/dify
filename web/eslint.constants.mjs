@@ -66,6 +66,15 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
     ],
     message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
   },
+  {
+    group: [
+      '**/base/drawer',
+      '**/base/drawer/index',
+      '**/base/drawer-plus',
+      '**/base/drawer-plus/index',
+    ],
+    message: 'Deprecated: use @langgenius/dify-ui/drawer instead. See issue #32767.',
+  },
 ]
 
 export const HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS = {

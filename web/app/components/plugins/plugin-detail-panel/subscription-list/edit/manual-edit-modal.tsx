@@ -12,7 +12,6 @@ import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { useUpdateTriggerSubscription } from '@/service/use-triggers'
-import { ReadmeShowType } from '../../../readme-panel/store'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 
@@ -159,7 +158,7 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           </div>
           <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginDetail && (
-              <ReadmeEntrance pluginDetail={pluginDetail} showType={ReadmeShowType.modal} />
+              <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />
             )}
             <BaseForm
               formSchemas={formSchemas}

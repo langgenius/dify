@@ -19,7 +19,6 @@ import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
-import { ReadmeShowType } from '../../readme-panel/store'
 import {
   useAddPluginCredentialHook,
   useGetPluginCredentialSchemaHook,
@@ -159,7 +158,7 @@ const ApiKeyModal = ({
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginPayload.detail && (
-              <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+              <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
             )}
             {
               isLoading && (

@@ -28,6 +28,7 @@ Always import from a **subpath export** — there is no barrel:
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { Drawer, DrawerPopup, DrawerTrigger } from '@langgenius/dify-ui/drawer'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import '@langgenius/dify-ui/styles.css' // once, in the app root
 ```
@@ -36,12 +37,12 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category | Subpath                                                                                                                                            | Notes                                             |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Overlay  | `./alert-dialog`, `./autocomplete`, `./combobox`, `./context-menu`, `./dialog`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below. |
-| Form     | `./autocomplete`, `./combobox`, `./number-field`, `./slider`, `./switch`                                                                           | Controlled / uncontrolled per Base UI defaults.   |
-| Layout   | `./scroll-area`                                                                                                                                    | Custom-styled scrollbar over the host viewport.   |
-| Media    | `./avatar`, `./button`                                                                                                                             | Button exposes `cva` variants.                    |
+| Category | Subpath                                                                                                                                                        | Notes                                             |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Overlay  | `./alert-dialog`, `./autocomplete`, `./combobox`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./select`, `./toast`, `./tooltip` | Portalled. See [Overlay & portal contract] below. |
+| Form     | `./autocomplete`, `./combobox`, `./number-field`, `./slider`, `./switch`                                                                                       | Controlled / uncontrolled per Base UI defaults.   |
+| Layout   | `./scroll-area`                                                                                                                                                | Custom-styled scrollbar over the host viewport.   |
+| Media    | `./avatar`, `./button`                                                                                                                                         | Button exposes `cva` variants.                    |
 
 Utilities:
 
@@ -65,7 +66,7 @@ If a consumer uses Dify UI source files through the workspace, add an explicit s
 
 ## Overlay & portal contract
 
-All overlay primitives (`dialog`, `alert-dialog`, `autocomplete`, `combobox`, `popover`, `dropdown-menu`, `context-menu`, `select`, `tooltip`, `toast`) render their content inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Consumers **do not** need to wrap anything in a portal manually.
+Overlay primitives render their floating surfaces inside a [Base UI Portal] attached to `document.body`. This is the Base UI default — see the upstream [Portals][Base UI Portal] docs for the underlying behavior. Convenience content components such as `DialogContent`, `PopoverContent`, and `SelectContent` own their portal internally; primitives with explicit portal anatomy such as `Drawer` expose the matching `DrawerPortal` part so consumers can compose the full Base UI structure.
 
 ### Root isolation requirement
 
@@ -83,19 +84,19 @@ Equivalent: any root element with `isolation: isolate` in CSS. Without it, overl
 
 Every overlay primitive uses a single, shared z-index. Do **not** override it at call sites.
 
-| Layer                                                                                                       | z-index  | Where                                                                      |
-| ----------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
-| Overlays (Dialog, AlertDialog, Autocomplete, Combobox, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-1002` | Positioner / Backdrop                                                      |
-| Toast viewport                                                                                              | `z-1003` | One layer above overlays so notifications are never hidden under a dialog. |
+| Layer                                                                                                               | z-index  | Where                                                                      |
+| ------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
+| Overlays (Dialog, AlertDialog, Autocomplete, Combobox, Drawer, Popover, DropdownMenu, ContextMenu, Select, Tooltip) | `z-1002` | Positioner / Backdrop                                                      |
+| Toast viewport                                                                                                      | `z-1003` | One layer above overlays so notifications are never hidden under a dialog. |
 
-Rationale: during Dify's migration from legacy `base/modal` / `base/dialog` overlays to this package, new and old overlays coexist in the DOM. `z-1002` sits above any common legacy layer, eliminating per-call-site z-index hacks. Among themselves, new primitives share the same z-index and **rely on DOM order** for stacking — the portal mounted later wins.
+Rationale: during Dify's migration from legacy `base/modal` / `base/dialog` / `base/drawer` / `base/drawer-plus` overlays to this package, new and old overlays coexist in the DOM. `z-1002` sits above any common legacy layer, eliminating per-call-site z-index hacks. Among themselves, new primitives share the same z-index and **rely on DOM order** for stacking — the portal mounted later wins.
 
 See `[web/docs/overlay-migration.md](../../web/docs/overlay-migration.md)` for the Dify-web migration history. Once the legacy overlays are gone, the values in this table can drop back to `z-50` / `z-51`.
 
 ### Rules
 
 - Never add `z-1003` / `z-9999` / etc. overrides on primitives from this package. If something is getting clipped, the **parent** overlay (typically a legacy one) is the problem and should be migrated.
-- Never portal an overlay manually on top of our primitives — use `DialogTrigger`, `PopoverTrigger`, etc. Base UI handles focus management, scroll-locking, and dismissal.
+- Never create an extra manual portal on top of our primitives — use the exported content / portal parts such as `DialogContent`, `PopoverContent`, and `DrawerPortal`. Base UI handles focus management, scroll-locking, and dismissal.
 - When a primitive needs additional presentation chrome (e.g. a custom backdrop), add it **inside** the exported component, not at call sites.
 
 ## Development

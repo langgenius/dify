@@ -115,7 +115,7 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   copyright: overrides.copyright ?? '',
   privacy_policy: overrides.privacy_policy ?? null,
   custom_disclaimer: overrides.custom_disclaimer ?? null,
-  category: overrides.category ?? 'Writing',
+  categories: overrides.categories ?? ['Writing'],
   position: overrides.position ?? 1,
   is_listed: overrides.is_listed ?? true,
   install_count: overrides.install_count ?? 0,
@@ -185,7 +185,7 @@ describe('AppList', () => {
     it('should render app cards when data is available', () => {
       mockExploreData = {
         categories: ['Writing', 'Translate'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, category: 'Translate' })],
+        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, categories: ['Translate'] })],
       }
 
       renderAppList()
@@ -199,7 +199,7 @@ describe('AppList', () => {
     it('should filter apps by selected category', () => {
       mockExploreData = {
         categories: ['Writing', 'Translate'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, category: 'Translate' })],
+        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, categories: ['Translate'] })],
       }
 
       renderAppList(false, undefined, { category: 'Writing' })

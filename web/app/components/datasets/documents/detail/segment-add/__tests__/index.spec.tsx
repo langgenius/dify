@@ -1,8 +1,10 @@
+import type { SegmentImportStatus } from '@/types/dataset'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Plan } from '@/app/components/billing/type'
+import { segmentImportStatus } from '@/types/dataset'
 
-import SegmentAdd, { ProcessStatus } from '../index'
+import { SegmentAdd } from '../index'
 
 // Mock provider context
 let mockPlan = { type: Plan.professional }
@@ -22,8 +24,8 @@ describe('SegmentAdd', () => {
   })
 
   const defaultProps = {
-    importStatus: undefined as ProcessStatus | string | undefined,
-    clearProcessStatus: vi.fn(),
+    importStatus: undefined as SegmentImportStatus | undefined,
+    clearImportStatus: vi.fn(),
     showNewSegmentModal: vi.fn(),
     showBatchModal: vi.fn(),
     embedding: false,
@@ -52,33 +54,33 @@ describe('SegmentAdd', () => {
   // Import Status displays
   describe('Import Status Display', () => {
     it('should show processing indicator when status is WAITING', () => {
-      render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.WAITING} />)
+      render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.waiting} />)
 
       expect(screen.getByText(/list\.batchModal\.processing/i)).toBeInTheDocument()
     })
 
     it('should show processing indicator when status is PROCESSING', () => {
-      render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.PROCESSING} />)
+      render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />)
 
       expect(screen.getByText(/list\.batchModal\.processing/i)).toBeInTheDocument()
     })
 
     it('should show completed status with ok button', () => {
-      render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.COMPLETED} />)
+      render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.completed} />)
 
       expect(screen.getByText(/list\.batchModal\.completed/i)).toBeInTheDocument()
       expect(screen.getByText(/list\.batchModal\.ok/i)).toBeInTheDocument()
     })
 
     it('should show error status with ok button', () => {
-      render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.ERROR} />)
+      render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.error} />)
 
       expect(screen.getByText(/list\.batchModal\.error/i)).toBeInTheDocument()
       expect(screen.getByText(/list\.batchModal\.ok/i)).toBeInTheDocument()
     })
 
     it('should not show add button when importStatus is set', () => {
-      render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.PROCESSING} />)
+      render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />)
 
       expect(screen.queryByText(/list\.action\.addButton/i)).not.toBeInTheDocument()
     })
@@ -94,34 +96,34 @@ describe('SegmentAdd', () => {
       expect(mockShowNewSegmentModal).toHaveBeenCalledTimes(1)
     })
 
-    it('should call clearProcessStatus when ok is clicked on completed status', () => {
-      const mockClearProcessStatus = vi.fn()
+    it('should call clearImportStatus when ok is clicked on completed status', () => {
+      const mockClearImportStatus = vi.fn()
       render(
         <SegmentAdd
           {...defaultProps}
-          importStatus={ProcessStatus.COMPLETED}
-          clearProcessStatus={mockClearProcessStatus}
+          importStatus={segmentImportStatus.completed}
+          clearImportStatus={mockClearImportStatus}
         />,
       )
 
       fireEvent.click(screen.getByText(/list\.batchModal\.ok/i))
 
-      expect(mockClearProcessStatus).toHaveBeenCalledTimes(1)
+      expect(mockClearImportStatus).toHaveBeenCalledTimes(1)
     })
 
-    it('should call clearProcessStatus when ok is clicked on error status', () => {
-      const mockClearProcessStatus = vi.fn()
+    it('should call clearImportStatus when ok is clicked on error status', () => {
+      const mockClearImportStatus = vi.fn()
       render(
         <SegmentAdd
           {...defaultProps}
-          importStatus={ProcessStatus.ERROR}
-          clearProcessStatus={mockClearProcessStatus}
+          importStatus={segmentImportStatus.error}
+          clearImportStatus={mockClearImportStatus}
         />,
       )
 
       fireEvent.click(screen.getByText(/list\.batchModal\.ok/i))
 
-      expect(mockClearProcessStatus).toHaveBeenCalledTimes(1)
+      expect(mockClearImportStatus).toHaveBeenCalledTimes(1)
     })
 
     it('should render batch add option in dropdown', async () => {
@@ -215,14 +217,14 @@ describe('SegmentAdd', () => {
   // Progress bar width tests
   describe('Progress Bar', () => {
     it('should show 3/12 width progress bar for WAITING status', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.WAITING} />)
+      const { container } = render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.waiting} />)
 
       const progressBar = container.querySelector('.w-3\\/12')
       expect(progressBar).toBeInTheDocument()
     })
 
     it('should show 2/3 width progress bar for PROCESSING status', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus={ProcessStatus.PROCESSING} />)
+      const { container } = render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />)
 
       const progressBar = container.querySelector('.w-2\\/3')
       expect(progressBar).toBeInTheDocument()
@@ -230,15 +232,6 @@ describe('SegmentAdd', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle unknown importStatus string', () => {
-      // Arrange & Act - pass unknown status
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus="unknown" />)
-
-      // Assert - empty fragment is rendered for unknown status (container exists but has no visible content)
-      expect(container).toBeInTheDocument()
-      expect(container.textContent).toBe('')
-    })
-
     it('should maintain structure when rerendered', () => {
       const { rerender } = render(<SegmentAdd {...defaultProps} />)
 
