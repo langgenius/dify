@@ -145,3 +145,15 @@ def test_normalize_handles_whitespace_and_empty_consistently():
             allowed_file_extensions=[noisy_entry],
         )
         assert _validate(input_file_type="custom", file_extension=".png", config=config) is False
+
+
+def test_empty_extension_does_not_spuriously_match_empty_whitelist_entry():
+    """Defensive: even if the whitelist contains an empty / whitespace entry
+    (e.g., a stray comma in DSL), an extensionless file must not pass via
+    a both-sides-empty match. Real entries in the same whitelist still match."""
+    config = FileUploadConfig(
+        allowed_file_types=[FileType.CUSTOM],
+        allowed_file_extensions=["", ".png"],
+    )
+    assert _validate(input_file_type="custom", file_extension=".png", config=config) is True
+    assert _validate(input_file_type="custom", file_extension="", config=config) is False
