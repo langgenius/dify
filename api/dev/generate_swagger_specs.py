@@ -13,8 +13,10 @@ import json
 import logging
 import os
 import sys
+from collections.abc import MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 from flask import Flask
 from flask_restx.swagger import Swagger
@@ -30,12 +32,19 @@ if str(API_ROOT) not in sys.path:
 class SpecTarget:
     route: str
     filename: str
+    namespace: str
+
+
+class RestxApi(Protocol):
+    models: MutableMapping[str, object]
+
+    def model(self, name: str, model: dict[object, object]) -> object: ...
 
 
 SPEC_TARGETS: tuple[SpecTarget, ...] = (
-    SpecTarget(route="/console/api/swagger.json", filename="console-swagger.json"),
-    SpecTarget(route="/api/swagger.json", filename="web-swagger.json"),
-    SpecTarget(route="/v1/swagger.json", filename="service-swagger.json"),
+    SpecTarget(route="/console/api/swagger.json", filename="console-swagger.json", namespace="console"),
+    SpecTarget(route="/api/swagger.json", filename="web-swagger.json", namespace="web"),
+    SpecTarget(route="/v1/swagger.json", filename="service-swagger.json", namespace="service"),
 )
 
 _ORIGINAL_REGISTER_MODEL = Swagger.register_model
@@ -74,7 +83,7 @@ def _patch_swagger_for_inline_nested_dicts() -> None:
         anonymous_models = getattr(self, "_anonymous_inline_models", None)
         if anonymous_models is None:
             anonymous_models = {}
-            self._anonymous_inline_models = anonymous_models
+            self.__dict__["_anonymous_inline_models"] = anonymous_models
 
         anonymous_name = anonymous_models.get(id(nested_fields))
         if anonymous_name is None:
@@ -121,6 +130,108 @@ def create_spec_app() -> Flask:
     return app
 
 
+def _registered_models(namespace: str) -> dict[str, object]:
+    """Return the Flask-RESTX models registered for a Swagger namespace."""
+
+    if namespace == "console":
+        from controllers.console import console_ns
+
+        for api in console_ns.apis:
+            _materialize_inline_model_definitions(api)
+        models = dict(console_ns.models)
+        for api in console_ns.apis:
+            models.update(api.models)
+        return models
+    if namespace == "web":
+        from controllers.web import web_ns
+
+        for api in web_ns.apis:
+            _materialize_inline_model_definitions(api)
+        models = dict(web_ns.models)
+        for api in web_ns.apis:
+            models.update(api.models)
+        return models
+    if namespace == "service":
+        from controllers.service_api import service_api_ns
+
+        for api in service_api_ns.apis:
+            _materialize_inline_model_definitions(api)
+        models = dict(service_api_ns.models)
+        for api in service_api_ns.apis:
+            models.update(api.models)
+        return models
+
+    raise ValueError(f"unknown Swagger namespace: {namespace}")
+
+
+def _materialize_inline_model_definitions(api: RestxApi) -> None:
+    """Convert inline `fields.Nested({...})` maps into named API models."""
+
+    from flask_restx import fields
+    from flask_restx.model import Model, OrderedModel, instance
+
+    anonymous_models: dict[int, str] = {}
+    next_anonymous_index = 1
+
+    def model_name_for(nested_fields: dict[object, object]) -> str:
+        nonlocal next_anonymous_index
+
+        anonymous_name = anonymous_models.get(id(nested_fields))
+        if anonymous_name is None:
+            anonymous_name = f"_AnonymousInlineModel{next_anonymous_index}"
+            while anonymous_name in api.models:
+                next_anonymous_index += 1
+                anonymous_name = f"_AnonymousInlineModel{next_anonymous_index}"
+            anonymous_models[id(nested_fields)] = anonymous_name
+            next_anonymous_index += 1
+            api.model(anonymous_name, nested_fields)
+        return anonymous_name
+
+    def materialize_field(field: object) -> None:
+        field_instance = instance(field)
+        if isinstance(field_instance, fields.Nested):
+            nested = getattr(field_instance, "nested", None)
+            if isinstance(nested, dict):
+                field_instance.model = api.models[model_name_for(nested)]  # type: ignore[attr-defined]
+
+        container = getattr(field_instance, "container", None)
+        if container is not None:
+            materialize_field(container)
+
+    index = 0
+    while index < len(api.models):
+        model = list(api.models.values())[index]
+        index += 1
+        if isinstance(model, (Model, OrderedModel)):
+            for field in model.values():
+                materialize_field(field)
+
+
+def _drop_null_values(value: object) -> object:
+    """Remove JSON null values that make the Markdown converter crash."""
+
+    if isinstance(value, dict):
+        return {key: _drop_null_values(item) for key, item in value.items() if item is not None}
+    if isinstance(value, list):
+        return [_drop_null_values(item) for item in value]
+    return value
+
+
+def _merge_registered_definitions(payload: dict[str, object], namespace: str) -> dict[str, object]:
+    """Include registered but route-indirect models in the exported Swagger definitions."""
+
+    definitions = payload.setdefault("definitions", {})
+    if not isinstance(definitions, dict):
+        raise RuntimeError("unexpected Swagger definitions payload")
+
+    for name, model in _registered_models(namespace).items():
+        schema = getattr(model, "__schema__", None)
+        if isinstance(schema, dict):
+            definitions.setdefault(name, schema)
+
+    return payload
+
+
 def generate_specs(output_dir: Path) -> list[Path]:
     """Write all Swagger specs to `output_dir` and return the written paths."""
 
@@ -138,6 +249,8 @@ def generate_specs(output_dir: Path) -> list[Path]:
         payload = response.get_json()
         if not isinstance(payload, dict):
             raise RuntimeError(f"unexpected response payload for {target.route}")
+        payload = _merge_registered_definitions(payload, target.namespace)
+        payload = _drop_null_values(payload)
 
         output_path = output_dir / target.filename
         output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")

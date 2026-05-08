@@ -17,6 +17,14 @@ class ProductModel(BaseModel):
     price: float
 
 
+class ChildModel(BaseModel):
+    value: str
+
+
+class ParentModel(BaseModel):
+    child: ChildModel
+
+
 @pytest.fixture(autouse=True)
 def mock_console_ns():
     """Mock the console_ns to avoid circular imports during test collection."""
@@ -62,6 +70,22 @@ def test_register_schema_model_passes_schema_from_pydantic():
     expected_schema = UserModel.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 
     assert schema == expected_schema
+
+
+def test_register_schema_model_promotes_nested_pydantic_definitions():
+    from controllers.common.schema import DEFAULT_REF_TEMPLATE_SWAGGER_2_0, register_schema_model
+
+    namespace = MagicMock(spec=Namespace)
+
+    register_schema_model(namespace, ParentModel)
+
+    called_schemas = {call.args[0]: call.args[1] for call in namespace.schema_model.call_args_list}
+    parent_schema = ParentModel.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+
+    assert set(called_schemas) == {"ParentModel", "ChildModel"}
+    assert "$defs" not in called_schemas["ParentModel"]
+    assert called_schemas["ParentModel"]["properties"]["child"]["$ref"] == "#/definitions/ChildModel"
+    assert called_schemas["ChildModel"] == parent_schema["$defs"]["ChildModel"]
 
 
 def test_register_schema_models_registers_multiple_models():

@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from configs import dify_config
 from constants.languages import supported_language
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import only_edition_cloud
 from core.db.session_factory import session_factory
@@ -301,15 +302,7 @@ class BatchAddNotificationAccountsPayload(BaseModel):
     user_email: list[str] = Field(..., description="List of account email addresses")
 
 
-console_ns.schema_model(
-    UpsertNotificationPayload.__name__,
-    UpsertNotificationPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    BatchAddNotificationAccountsPayload.__name__,
-    BatchAddNotificationAccountsPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_schema_models(console_ns, UpsertNotificationPayload, BatchAddNotificationAccountsPayload)
 
 
 @console_ns.route("/admin/upsert_notification")

@@ -1,4 +1,10 @@
-"""Helpers for registering Pydantic models with Flask-RESTX namespaces."""
+"""Helpers for registering Pydantic models with Flask-RESTX namespaces.
+
+Flask-RESTX treats `SchemaModel` bodies as opaque JSON schemas; it does not
+promote Pydantic's nested `$defs` into top-level Swagger `definitions`.
+These helpers keep that translation centralized so models registered through
+`register_schema_models` emit resolvable Swagger 2.0 references.
+"""
 
 from enum import StrEnum
 
@@ -8,10 +14,32 @@ from pydantic import BaseModel, TypeAdapter
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-def register_schema_model(namespace: Namespace, model: type[BaseModel]) -> None:
-    """Register a single BaseModel with a namespace for Swagger documentation."""
+def _register_json_schema(namespace: Namespace, name: str, schema: dict) -> None:
+    """Register a JSON schema and promote any nested Pydantic `$defs`."""
 
-    namespace.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+    nested_definitions = schema.get("$defs")
+    schema_to_register = dict(schema)
+    if isinstance(nested_definitions, dict):
+        schema_to_register.pop("$defs")
+
+    namespace.schema_model(name, schema_to_register)
+
+    if not isinstance(nested_definitions, dict):
+        return
+
+    for nested_name, nested_schema in nested_definitions.items():
+        if isinstance(nested_schema, dict):
+            _register_json_schema(namespace, nested_name, nested_schema)
+
+
+def register_schema_model(namespace: Namespace, model: type[BaseModel]) -> None:
+    """Register a BaseModel and its nested schema definitions for Swagger documentation."""
+
+    _register_json_schema(
+        namespace,
+        model.__name__,
+        model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+    )
 
 
 def register_schema_models(namespace: Namespace, *models: type[BaseModel]) -> None:
@@ -34,8 +62,10 @@ def get_or_create_model(model_name: str, field_def):
 def register_enum_models(namespace: Namespace, *models: type[StrEnum]) -> None:
     """Register multiple StrEnum with a namespace."""
     for model in models:
-        namespace.schema_model(
-            model.__name__, TypeAdapter(model).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+        _register_json_schema(
+            namespace,
+            model.__name__,
+            TypeAdapter(model).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
         )
 
 
