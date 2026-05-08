@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiQuestionLine } from '@remixicon/react'
 import * as React from 'react'
 import { Trans } from 'react-i18next'
@@ -19,7 +20,6 @@ import Checkbox from '@/app/components/base/checkbox'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -255,7 +255,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                   components={{
                     docLink: (
                       <a
-                        href={docLink('/use-dify/nodes/user-input')}
+                        href={docLink('/use-dify/nodes/user-input#hide-and-pre-fill-input-fields')}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-text-accent hover:underline"
