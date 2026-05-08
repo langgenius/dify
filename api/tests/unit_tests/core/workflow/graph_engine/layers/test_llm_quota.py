@@ -112,6 +112,16 @@ def test_non_llm_node_is_ignored() -> None:
     mock_deduct.assert_not_called()
 
 
+def test_precheck_ignores_non_quota_node() -> None:
+    layer = LLMQuotaLayer(tenant_id="tenant-id")
+    node = _build_node(node_type=BuiltinNodeTypes.START)
+
+    with patch("core.app.workflow.layers.llm_quota.ensure_llm_quota_available_for_model", autospec=True) as mock_check:
+        layer.on_node_run_start(node)
+
+    mock_check.assert_not_called()
+
+
 def test_quota_error_is_handled_in_layer(caplog) -> None:
     layer = LLMQuotaLayer(tenant_id="tenant-id")
     stop_event = threading.Event()
@@ -140,6 +150,18 @@ def test_quota_error_is_handled_in_layer(caplog) -> None:
     )
     assert "LLM quota deduction failed, node_id=node-id" in caplog.text
     assert not stop_event.is_set()
+    layer.command_channel.send_command.assert_not_called()
+
+
+def test_send_abort_command_is_noop_without_channel_or_after_abort() -> None:
+    layer = LLMQuotaLayer(tenant_id="tenant-id")
+
+    layer._send_abort_command(reason="no channel")
+
+    layer.command_channel = MagicMock()
+    layer._abort_sent = True
+    layer._send_abort_command(reason="already aborted")
+
     layer.command_channel.send_command.assert_not_called()
 
 
@@ -248,6 +270,42 @@ def test_quota_precheck_passes_without_abort() -> None:
         model="gpt-4o",
     )
     layer.command_channel.send_command.assert_not_called()
+
+
+def test_precheck_reads_model_identity_from_data_when_node_data_is_absent() -> None:
+    layer = LLMQuotaLayer(tenant_id="tenant-id")
+    node = SimpleNamespace(
+        id="node-id",
+        node_type=BuiltinNodeTypes.LLM,
+        data=_build_node_data(model=_build_public_model_identity(provider="anthropic", model_name="claude")),
+    )
+
+    with patch("core.app.workflow.layers.llm_quota.ensure_llm_quota_available_for_model", autospec=True) as mock_check:
+        layer.on_node_run_start(node)
+
+    mock_check.assert_called_once_with(
+        tenant_id="tenant-id",
+        provider="anthropic",
+        model="claude",
+    )
+
+
+def test_precheck_rejects_invalid_public_model_identity() -> None:
+    layer = LLMQuotaLayer(tenant_id="tenant-id")
+    stop_event = threading.Event()
+    layer.command_channel = MagicMock()
+
+    node = _build_node(node_type=BuiltinNodeTypes.LLM)
+    node.node_data = _build_node_data(model=_build_public_model_identity(provider="", model_name="gpt-4o"))
+    node.graph_runtime_state = MagicMock()
+    node.graph_runtime_state.stop_event = stop_event
+
+    with patch("core.app.workflow.layers.llm_quota.ensure_llm_quota_available_for_model", autospec=True) as mock_check:
+        layer.on_node_run_start(node)
+
+    assert stop_event.is_set()
+    mock_check.assert_not_called()
+    layer.command_channel.send_command.assert_called_once()
 
 
 def test_precheck_requires_public_node_model_config() -> None:

@@ -46,6 +46,33 @@ def test_check_and_deduct_credits_deducts_exact_amount_when_sufficient() -> None
     assert _get_quota_used(engine=engine, pool_id=pool_id) == 5
 
 
+def test_check_and_deduct_credits_returns_zero_for_non_positive_request() -> None:
+    assert CreditPoolService.check_and_deduct_credits(tenant_id=str(uuid4()), credits_required=0) == 0
+
+
+def test_check_and_deduct_credits_raises_when_pool_is_missing() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    TenantCreditPool.__table__.create(engine)
+
+    with (
+        patch("services.credit_pool_service.db", SimpleNamespace(engine=engine)),
+        pytest.raises(QuotaExceededError, match="Credit pool not found"),
+    ):
+        CreditPoolService.check_and_deduct_credits(tenant_id=str(uuid4()), credits_required=1)
+
+
+def test_check_and_deduct_credits_raises_when_pool_is_empty() -> None:
+    engine, tenant_id, pool_id = _create_engine_with_pool(quota_limit=10, quota_used=10)
+
+    with (
+        patch("services.credit_pool_service.db", SimpleNamespace(engine=engine)),
+        pytest.raises(QuotaExceededError, match="No credits remaining"),
+    ):
+        CreditPoolService.check_and_deduct_credits(tenant_id=tenant_id, credits_required=1)
+
+    assert _get_quota_used(engine=engine, pool_id=pool_id) == 10
+
+
 def test_check_and_deduct_credits_raises_without_partial_deduction_when_insufficient() -> None:
     engine, tenant_id, pool_id = _create_engine_with_pool(quota_limit=10, quota_used=9)
 
@@ -58,6 +85,43 @@ def test_check_and_deduct_credits_raises_without_partial_deduction_when_insuffic
     assert _get_quota_used(engine=engine, pool_id=pool_id) == 9
 
 
+def test_check_and_deduct_credits_wraps_unexpected_deduction_errors() -> None:
+    engine, tenant_id, pool_id = _create_engine_with_pool(quota_limit=10, quota_used=2)
+
+    with (
+        patch("services.credit_pool_service.db", SimpleNamespace(engine=engine)),
+        patch.object(CreditPoolService, "_get_locked_pool", side_effect=RuntimeError("database unavailable")),
+        pytest.raises(QuotaExceededError, match="Failed to deduct credits"),
+    ):
+        CreditPoolService.check_and_deduct_credits(tenant_id=tenant_id, credits_required=1)
+
+    assert _get_quota_used(engine=engine, pool_id=pool_id) == 2
+
+
+def test_deduct_credits_capped_returns_zero_for_non_positive_request() -> None:
+    assert CreditPoolService.deduct_credits_capped(tenant_id=str(uuid4()), credits_required=0) == 0
+
+
+def test_deduct_credits_capped_returns_zero_when_pool_is_missing() -> None:
+    engine = create_engine("sqlite:///:memory:")
+    TenantCreditPool.__table__.create(engine)
+
+    with patch("services.credit_pool_service.db", SimpleNamespace(engine=engine)):
+        deducted_credits = CreditPoolService.deduct_credits_capped(tenant_id=str(uuid4()), credits_required=1)
+
+    assert deducted_credits == 0
+
+
+def test_deduct_credits_capped_returns_zero_when_pool_is_empty() -> None:
+    engine, tenant_id, pool_id = _create_engine_with_pool(quota_limit=10, quota_used=10)
+
+    with patch("services.credit_pool_service.db", SimpleNamespace(engine=engine)):
+        deducted_credits = CreditPoolService.deduct_credits_capped(tenant_id=tenant_id, credits_required=1)
+
+    assert deducted_credits == 0
+    assert _get_quota_used(engine=engine, pool_id=pool_id) == 10
+
+
 def test_deduct_credits_capped_deducts_only_remaining_balance_when_insufficient() -> None:
     engine, tenant_id, pool_id = _create_engine_with_pool(quota_limit=10, quota_used=9)
 
@@ -66,3 +130,29 @@ def test_deduct_credits_capped_deducts_only_remaining_balance_when_insufficient(
 
     assert deducted_credits == 1
     assert _get_quota_used(engine=engine, pool_id=pool_id) == 10
+
+
+def test_deduct_credits_capped_wraps_unexpected_deduction_errors() -> None:
+    engine, tenant_id, pool_id = _create_engine_with_pool(quota_limit=10, quota_used=2)
+
+    with (
+        patch("services.credit_pool_service.db", SimpleNamespace(engine=engine)),
+        patch.object(CreditPoolService, "_get_locked_pool", side_effect=RuntimeError("database unavailable")),
+        pytest.raises(QuotaExceededError, match="Failed to deduct credits"),
+    ):
+        CreditPoolService.deduct_credits_capped(tenant_id=tenant_id, credits_required=1)
+
+    assert _get_quota_used(engine=engine, pool_id=pool_id) == 2
+
+
+def test_deduct_credits_capped_reraises_quota_exceeded_errors() -> None:
+    engine, tenant_id, pool_id = _create_engine_with_pool(quota_limit=10, quota_used=2)
+
+    with (
+        patch("services.credit_pool_service.db", SimpleNamespace(engine=engine)),
+        patch.object(CreditPoolService, "_get_locked_pool", side_effect=QuotaExceededError("quota unavailable")),
+        pytest.raises(QuotaExceededError, match="quota unavailable"),
+    ):
+        CreditPoolService.deduct_credits_capped(tenant_id=tenant_id, credits_required=1)
+
+    assert _get_quota_used(engine=engine, pool_id=pool_id) == 2
