@@ -91,6 +91,21 @@ vi.mock('@/service/use-workflow', () => ({
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
 }))
 
+vi.mock('@/service/use-tools', () => ({
+  useWorkflowToolDetailByAppID: () => ({
+    data: undefined,
+    isLoading: false,
+  }),
+  useInvalidateAllWorkflowTools: () => vi.fn(),
+  useInvalidateWorkflowToolDetailByAppID: () => vi.fn(),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    isCurrentWorkspaceManager: true,
+  }),
+}))
+
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
@@ -121,6 +136,15 @@ vi.mock('../../app-access-control', () => ({
   ),
 }))
 
+vi.mock('@/app/components/tools/workflow-tool', () => ({
+  default: ({ onHide }: { onHide: () => void }) => (
+    <div data-testid="workflow-tool-modal">
+      workflow tool modal
+      <button onClick={onHide}>close-workflow-tool-modal</button>
+    </div>
+  ),
+}))
+
 vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 vi.mock('../sections', () => ({
@@ -143,6 +167,7 @@ vi.mock('../sections', () => ({
       <div>
         <button onClick={props.handleEmbed}>publisher-embed</button>
         <button onClick={() => void props.handleOpenInExplore()}>publisher-open-in-explore</button>
+        <button onClick={props.onConfigureWorkflowTool}>publisher-workflow-tool</button>
       </div>
     )
   },
@@ -229,6 +254,25 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('publisher-embed'))
 
     expect(screen.getByTestId('embedded-modal'))!.toBeInTheDocument()
+  })
+
+  it('should keep workflow tool modal mounted after closing the publish popover', () => {
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-workflow-tool'))
+
+    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    expect(screen.getByTestId('workflow-tool-modal')).toBeInTheDocument()
   })
 
   it('should close embedded and access control panels through child callbacks', async () => {

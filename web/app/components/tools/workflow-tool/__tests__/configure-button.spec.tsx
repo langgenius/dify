@@ -1,10 +1,9 @@
 import type { WorkflowToolModalPayload } from '../index'
 import type { WorkflowToolProviderResponse } from '@/app/components/tools/types'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { InputVarType, VarType } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 import WorkflowToolConfigureButton from '../configure-button'
 import WorkflowToolAsModal from '../index'
 import MethodSelector from '../method-selector'
@@ -120,22 +119,6 @@ const createMockEmoji = (overrides = {}) => ({
   ...overrides,
 })
 
-const createMockInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
-  variable: 'test_var',
-  label: 'Test Variable',
-  type: InputVarType.textInput,
-  required: true,
-  max_length: 100,
-  options: [],
-  ...overrides,
-} as InputVar)
-
-const createMockVariable = (overrides: Partial<Variable> = {}): Variable => ({
-  variable: 'output_var',
-  value_type: 'string',
-  ...overrides,
-} as Variable)
-
 const createMockWorkflowToolDetail = (overrides: Partial<WorkflowToolProviderResponse> = {}): WorkflowToolProviderResponse => ({
   workflow_app_id: 'workflow-app-123',
   workflow_tool_id: 'workflow-tool-456',
@@ -179,15 +162,10 @@ const createMockWorkflowToolDetail = (overrides: Partial<WorkflowToolProviderRes
 const createDefaultConfigureButtonProps = (overrides = {}) => ({
   disabled: false,
   published: false,
-  detailNeedUpdate: false,
-  workflowAppId: 'workflow-app-123',
-  icon: createMockEmoji(),
-  name: 'Test Workflow',
-  description: 'Test workflow description',
-  inputs: [createMockInputVar()],
-  outputs: [createMockVariable()],
-  handlePublish: vi.fn().mockResolvedValue(undefined),
-  onRefreshData: vi.fn(),
+  isLoading: false,
+  outdated: false,
+  isCurrentWorkspaceManager: true,
+  onConfigure: vi.fn(),
   ...overrides,
 })
 
@@ -297,8 +275,7 @@ describe('WorkflowToolConfigureButton', () => {
 
     it('should render loading state when published and fetching details', () => {
       // Arrange
-      mockUseWorkflowToolDetailByAppID.mockReturnValue({ data: undefined, isLoading: true })
-      const props = createDefaultConfigureButtonProps({ published: true })
+      const props = createDefaultConfigureButtonProps({ published: true, isLoading: true })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
@@ -324,8 +301,7 @@ describe('WorkflowToolConfigureButton', () => {
 
     it('should render different UI for non-workspace manager', () => {
       // Arrange
-      mockIsCurrentWorkspaceManager.mockReturnValue(false)
-      const props = createDefaultConfigureButtonProps()
+      const props = createDefaultConfigureButtonProps({ isCurrentWorkspaceManager: false })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
@@ -346,23 +322,17 @@ describe('WorkflowToolConfigureButton', () => {
       expect(() => render(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
     })
 
-    it('should handle undefined inputs and outputs', () => {
+    it('should render without disabled reason', () => {
       // Arrange
-      const props = createDefaultConfigureButtonProps({
-        inputs: undefined,
-        outputs: undefined,
-      })
+      const props = createDefaultConfigureButtonProps({ disabledReason: undefined })
 
       // Act & Assert
       expect(() => render(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
     })
 
-    it('should handle empty inputs and outputs arrays', () => {
+    it('should handle configured callback props', () => {
       // Arrange
-      const props = createDefaultConfigureButtonProps({
-        inputs: [],
-        outputs: [],
-      })
+      const props = createDefaultConfigureButtonProps({ onConfigure: vi.fn() })
 
       // Act & Assert
       expect(() => render(<WorkflowToolConfigureButton {...props} />)).not.toThrow()
@@ -371,10 +341,11 @@ describe('WorkflowToolConfigureButton', () => {
 
   // Modal behavior tests
   describe('Modal Behavior', () => {
-    it('should toggle modal visibility', async () => {
+    it('should request configuration from the unpublished entry point', async () => {
       // Arrange
       const user = userEvent.setup()
-      const props = createDefaultConfigureButtonProps()
+      const onConfigure = vi.fn()
+      const props = createDefaultConfigureButtonProps({ onConfigure })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
@@ -383,16 +354,14 @@ describe('WorkflowToolConfigureButton', () => {
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(triggerArea!)
 
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer'))!.toBeInTheDocument()
-      })
+      expect(onConfigure).toHaveBeenCalledTimes(1)
     })
 
-    it('should not open modal when disabled', async () => {
+    it('should not request configuration when disabled', async () => {
       // Arrange
       const user = userEvent.setup()
-      const props = createDefaultConfigureButtonProps({ disabled: true })
+      const onConfigure = vi.fn()
+      const props = createDefaultConfigureButtonProps({ disabled: true, onConfigure })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
@@ -400,45 +369,14 @@ describe('WorkflowToolConfigureButton', () => {
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(triggerArea!)
 
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
+      expect(onConfigure).not.toHaveBeenCalled()
     })
 
-    it('should not open modal when published (use configure button instead)', async () => {
+    it('should request configuration from the published configure button only', async () => {
       // Arrange
       const user = userEvent.setup()
-      const props = createDefaultConfigureButtonProps({ published: true })
+      const onConfigure = vi.fn()
+      const props = createDefaultConfigureButtonProps({ published: true, onConfigure })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
@@ -451,47 +389,12 @@ describe('WorkflowToolConfigureButton', () => {
       const mainArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(mainArea!)
 
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      // Should not open modal from main click
-      expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
+      expect(onConfigure).not.toHaveBeenCalled()
 
       // Click configure button
       await user.click(screen.getByText('workflow.common.configure'))
 
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer'))!.toBeInTheDocument()
-      })
+      expect(onConfigure).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -541,12 +444,11 @@ describe('WorkflowToolConfigureButton', () => {
       expect(screen.getByText('workflow.common.workflowAsTool'))!.toBeInTheDocument()
     })
 
-    it('should handle paragraph type input conversion', async () => {
+    it('should keep the configure entry independent from workflow parameter shape', async () => {
       // Arrange
       const user = userEvent.setup()
-      const props = createDefaultConfigureButtonProps({
-        inputs: [createMockInputVar({ variable: 'test_var', type: InputVarType.paragraph })],
-      })
+      const onConfigure = vi.fn()
+      const props = createDefaultConfigureButtonProps({ onConfigure })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
@@ -554,10 +456,7 @@ describe('WorkflowToolConfigureButton', () => {
       const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
       await user.click(triggerArea!)
 
-      // Assert - should render without error
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer'))!.toBeInTheDocument()
-      })
+      expect(onConfigure).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -579,8 +478,7 @@ describe('WorkflowToolConfigureButton', () => {
 
     it('should disable configure button when not workspace manager', async () => {
       // Arrange
-      mockIsCurrentWorkspaceManager.mockReturnValue(false)
-      const props = createDefaultConfigureButtonProps({ published: true })
+      const props = createDefaultConfigureButtonProps({ published: true, isCurrentWorkspaceManager: false })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
@@ -1695,20 +1593,17 @@ describe('Integration Tests', () => {
     it('should complete full create workflow', async () => {
       // Arrange
       const user = userEvent.setup()
-      mockCreateWorkflowToolProvider.mockResolvedValue({})
-      const onRefreshData = vi.fn()
-      const props = createDefaultConfigureButtonProps({ onRefreshData })
+      const onCreate = vi.fn()
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Open modal
-      const triggerArea = screen.getByText('workflow.common.workflowAsTool').closest('.flex')
-      await user.click(triggerArea!)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer'))!.toBeInTheDocument()
-      })
+      render(
+        <WorkflowToolAsModal
+          isAdd
+          payload={createDefaultModalPayload()}
+          onHide={vi.fn()}
+          onCreate={onCreate}
+        />,
+      )
 
       // Fill form
       const labelInput = screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder')
@@ -1716,6 +1611,7 @@ describe('Integration Tests', () => {
       await user.type(labelInput, 'My Custom Tool')
 
       const nameInput = screen.getByPlaceholderText('tools.createTool.nameForToolCallPlaceHolder')
+      await user.clear(nameInput)
       await user.type(nameInput, 'my_custom_tool')
 
       const descInput = screen.getByPlaceholderText('tools.createTool.descriptionPlaceholder')
@@ -1727,7 +1623,7 @@ describe('Integration Tests', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockCreateWorkflowToolProvider).toHaveBeenCalledWith(
+        expect(onCreate).toHaveBeenCalledWith(
           expect.objectContaining({
             name: 'my_custom_tool',
             label: 'My Custom Tool',
@@ -1735,36 +1631,22 @@ describe('Integration Tests', () => {
           }),
         )
       })
-
-      await waitFor(() => {
-        expect(onRefreshData).toHaveBeenCalled()
-      })
     })
 
     it('should complete full update workflow', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handlePublish = vi.fn().mockResolvedValue(undefined)
-      mockSaveWorkflowToolProvider.mockResolvedValue({})
-      const props = createDefaultConfigureButtonProps({
-        published: true,
-        handlePublish,
-      })
+      const onSave = vi.fn()
 
       // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Wait for detail to load
-      await waitFor(() => {
-        expect(screen.getByText('workflow.common.configure'))!.toBeInTheDocument()
-      })
-
-      // Open modal
-      await user.click(screen.getByText('workflow.common.configure'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('drawer'))!.toBeInTheDocument()
-      })
+      render(
+        <WorkflowToolAsModal
+          isAdd={false}
+          payload={createDefaultModalPayload({ workflow_tool_id: 'workflow-tool-1' })}
+          onHide={vi.fn()}
+          onSave={onSave}
+        />,
+      )
 
       // Modify description
       const descInput = screen.getByPlaceholderText('tools.createTool.descriptionPlaceholder')
@@ -1782,8 +1664,10 @@ describe('Integration Tests', () => {
 
       // Assert
       await waitFor(() => {
-        expect(handlePublish).toHaveBeenCalled()
-        expect(mockSaveWorkflowToolProvider).toHaveBeenCalled()
+        expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+          workflow_tool_id: 'workflow-tool-1',
+          description: 'Updated description',
+        }))
       })
     })
   })
@@ -1792,11 +1676,9 @@ describe('Integration Tests', () => {
   describe('Callback Stability', () => {
     it('should maintain callback references across rerenders', async () => {
       // Arrange
-      const handlePublish = vi.fn().mockResolvedValue(undefined)
-      const onRefreshData = vi.fn()
+      const onConfigure = vi.fn()
       const props = createDefaultConfigureButtonProps({
-        handlePublish,
-        onRefreshData,
+        onConfigure,
       })
 
       // Act

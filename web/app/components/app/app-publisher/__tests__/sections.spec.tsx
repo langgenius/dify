@@ -190,18 +190,17 @@ describe('app-publisher sections', () => {
         disabledFunctionTooltip="disabled"
         handleEmbed={handleEmbed}
         handleOpenInExplore={handleOpenInExplore}
-        handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode={false}
-        inputs={[]}
         missingStartNode={false}
-        onRefreshData={vi.fn()}
-        outputs={[]}
-        published={true}
         publishedAt={Date.now()}
         toolPublished
         workflowToolAvailable={false}
+        workflowToolIsLoading={false}
+        workflowToolOutdated={false}
+        workflowToolIsCurrentWorkspaceManager
         workflowToolMessage="workflow-disabled"
+        onConfigureWorkflowTool={vi.fn()}
       />,
     )
 
@@ -223,17 +222,16 @@ describe('app-publisher sections', () => {
         disabledFunctionTooltip="disabled"
         handleEmbed={handleEmbed}
         handleOpenInExplore={handleOpenInExplore}
-        handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode={false}
-        inputs={[]}
         missingStartNode
-        onRefreshData={vi.fn()}
-        outputs={[]}
-        published={false}
         publishedAt={Date.now()}
         toolPublished={false}
         workflowToolAvailable
+        workflowToolIsLoading={false}
+        workflowToolOutdated={false}
+        workflowToolIsCurrentWorkspaceManager
+        onConfigureWorkflowTool={vi.fn()}
       />,
     )
 
@@ -248,16 +246,16 @@ describe('app-publisher sections', () => {
         disabledFunctionButton={false}
         handleEmbed={handleEmbed}
         handleOpenInExplore={handleOpenInExplore}
-        handlePublish={vi.fn()}
         hasHumanInputNode={false}
         hasTriggerNode
-        inputs={[]}
         missingStartNode={false}
-        outputs={[]}
-        published={false}
         publishedAt={undefined}
         toolPublished={false}
         workflowToolAvailable
+        workflowToolIsLoading={false}
+        workflowToolOutdated={false}
+        workflowToolIsCurrentWorkspaceManager
+        onConfigureWorkflowTool={vi.fn()}
       />,
     )
 

@@ -10,11 +10,9 @@ import {
 } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import { appDefaultIconBackground } from '@/config'
 import { AppModeEnum } from '@/types/app'
 import ShortcutsName from '../../workflow/shortcuts-name'
 import PublishWithMultipleModel from './publish-with-multiple-model'
@@ -46,11 +44,8 @@ type AccessSectionProps = {
 
 type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
   | 'hasTriggerNode'
-  | 'inputs'
   | 'missingStartNode'
-  | 'onRefreshData'
   | 'toolPublished'
-  | 'outputs'
   | 'publishedAt'
   | 'workflowToolAvailable'> & {
     appDetail: {
@@ -67,9 +62,11 @@ type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
     disabledFunctionTooltip?: string
     handleEmbed: () => void
     handleOpenInExplore: () => void
-    handlePublish: (params?: ModelAndParameter | PublishWorkflowParams) => Promise<void>
-    published: boolean
+    workflowToolIsLoading: boolean
+    workflowToolOutdated: boolean
+    workflowToolIsCurrentWorkspaceManager: boolean
     workflowToolMessage?: string
+    onConfigureWorkflowTool: () => void
   }
 
 export const AccessModeDisplay = ({ mode }: { mode?: keyof typeof ACCESS_MODE_MAP }) => {
@@ -256,18 +253,17 @@ export const PublisherActionsSection = ({
   disabledFunctionTooltip,
   handleEmbed,
   handleOpenInExplore,
-  handlePublish,
   hasHumanInputNode = false,
   hasTriggerNode = false,
-  inputs,
   missingStartNode = false,
-  onRefreshData,
-  outputs,
-  published,
   publishedAt,
   toolPublished,
   workflowToolAvailable = true,
+  workflowToolIsLoading,
+  workflowToolOutdated,
+  workflowToolIsCurrentWorkspaceManager,
   workflowToolMessage,
+  onConfigureWorkflowTool,
 }: ActionsSectionProps) => {
   const { t } = useTranslation()
 
@@ -305,7 +301,7 @@ export const PublisherActionsSection = ({
             <SuggestedAction
               onClick={handleEmbed}
               disabled={!publishedAt}
-              icon={<CodeBrowser className="h-4 w-4" />}
+              icon={<span className="i-custom-vender-line-development-code-browser h-4 w-4" />}
             >
               {t('common.embedIntoSite', { ns: 'workflow' })}
             </SuggestedAction>
@@ -340,18 +336,10 @@ export const PublisherActionsSection = ({
         <WorkflowToolConfigureButton
           disabled={workflowToolDisabled}
           published={!!toolPublished}
-          detailNeedUpdate={!!toolPublished && published}
-          workflowAppId={appDetail?.id ?? ''}
-          icon={{
-            content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
-            background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
-          }}
-          name={appDetail?.name ?? ''}
-          description={appDetail?.description ?? ''}
-          inputs={inputs}
-          outputs={outputs}
-          handlePublish={handlePublish}
-          onRefreshData={onRefreshData}
+          isLoading={workflowToolIsLoading}
+          outdated={workflowToolOutdated}
+          isCurrentWorkspaceManager={workflowToolIsCurrentWorkspaceManager}
+          onConfigure={onConfigureWorkflowTool}
           disabledReason={workflowToolMessage}
         />
       )}
