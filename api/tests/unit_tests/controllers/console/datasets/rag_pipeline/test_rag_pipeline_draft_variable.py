@@ -324,3 +324,6 @@ class TestSystemAndEnvironmentVariablesApi:
             result = method(api, pipeline)
 
         assert len(result["items"]) == 1
+        assert result["items"][0]["value"] == "x"
+        assert result["items"][0]["value_type"] == "string"
+        assert result["items"][0]["editable"] is True

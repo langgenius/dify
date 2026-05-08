@@ -24,6 +24,7 @@ from extensions.ext_database import db
 from factories import variable_factory
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
+from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
@@ -94,7 +95,7 @@ def _serialize_workflow_draft_variable(variable: WorkflowDraftVariable, *, inclu
         "value_type": _serialize_variable_type(variable),
         "edited": variable.edited,
         "visible": variable.visible,
-        "is_truncated": variable.file_id is not None,
+        "is_truncated": variable.is_truncated(),
     }
     if include_value:
         result["value"] = _serialize_var_value(variable)
@@ -189,8 +190,6 @@ class WorkflowDraftEnvVariableResponse(ResponseModel):
     @model_validator(mode="before")
     @classmethod
     def _normalize_model(cls, value: Any) -> Any:
-        if isinstance(value, dict):
-            return _serialize_env_variable(value)
         return _serialize_env_variable(value)
 
 
@@ -301,7 +300,7 @@ _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
     "value_type": fields.String(attribute=_serialize_variable_type),
     "edited": fields.Boolean(attribute=lambda model: model.edited),
     "visible": fields.Boolean,
-    "is_truncated": fields.Boolean(attribute=lambda model: model.file_id is not None),
+    "is_truncated": fields.Boolean(attribute=lambda model: model.is_truncated()),
 }
 
 _WORKFLOW_DRAFT_VARIABLE_FIELDS = {

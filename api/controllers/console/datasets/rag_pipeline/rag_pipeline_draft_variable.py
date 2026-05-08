@@ -105,12 +105,12 @@ class RagPipelineVariableCollectionApi(Resource):
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
-        workflow_vars = draft_var_srv.list_variables_without_values(
-            app_id=pipeline.id,
-            page=query.page,
-            limit=query.limit,
-            user_id=current_user.id,
-        )
+            workflow_vars = draft_var_srv.list_variables_without_values(
+                app_id=pipeline.id,
+                page=query.page,
+                limit=query.limit,
+                user_id=current_user.id,
+            )
 
         return WorkflowDraftVariableListWithoutValueResponse.model_validate(workflow_vars).model_dump(mode="json")
 
