@@ -391,7 +391,7 @@ class TestPublishedPipelineApis:
     def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_publish_success(self, app, db_session_with_containers: Session):
+    def test_publish_success(self, app: Flask, db_session_with_containers: Session):
         from models.dataset import Pipeline
 
         api = PublishedRagPipelineApi()

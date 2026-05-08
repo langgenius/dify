@@ -53,13 +53,12 @@ export const TagPanel = ({
       </div>
       {filteredItems.length > 0 && (
         <ComboboxList className="max-h-58">
-          {(tag: TagComboboxItem, index) => {
+          {(tag: TagComboboxItem) => {
             if (isCreateTagOption(tag)) {
               return (
                 <Fragment key={tag.id}>
                   <ComboboxItem
                     value={tag}
-                    index={index}
                     data-testid="create-tag-option"
                   >
                     <ComboboxItemText className="flex items-center gap-x-1 px-0">
@@ -76,7 +75,7 @@ export const TagPanel = ({
             }
 
             return (
-              <ComboboxItem key={tag.id} value={tag} index={index}>
+              <ComboboxItem key={tag.id} value={tag}>
                 <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
                 <ComboboxItemIndicator />
               </ComboboxItem>

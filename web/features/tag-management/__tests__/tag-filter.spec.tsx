@@ -103,6 +103,19 @@ describe('TagFilter', () => {
       expect(onChange).toHaveBeenCalledWith(['tag-1'])
     })
 
+    it('should select the highlighted tag with keyboard navigation', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      render(<TagFilter {...defaultProps} onChange={onChange} />)
+
+      await user.click(screen.getByText(i18n.placeholder))
+      await user.type(screen.getByRole('combobox', { name: i18n.selectorPlaceholder }), 'Back')
+      await user.keyboard('{ArrowDown}')
+      await user.keyboard('{Enter}')
+
+      expect(onChange).toHaveBeenCalledWith(['tag-2'])
+    })
+
     it('should call onChange to deselect when an already-selected tag is clicked', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()

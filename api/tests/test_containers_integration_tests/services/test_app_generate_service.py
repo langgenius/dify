@@ -7,6 +7,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models import App
 from models.model import EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
@@ -184,7 +185,7 @@ class TestAppGenerateService:
 
         return app, account
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app):
+    def _create_test_workflow(self, db_session_with_containers: Session, app: App):
         """
         Helper method to create a test workflow for testing.
 

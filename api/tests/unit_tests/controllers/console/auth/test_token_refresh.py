@@ -74,7 +74,7 @@ class TestRefreshTokenApi:
         assert response.json["result"] == "success"
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
-    def test_refresh_fails_without_token(self, mock_extract_token, app):
+    def test_refresh_fails_without_token(self, mock_extract_token, app: Flask):
         """
         Test token refresh failure when no refresh token provided.
 
@@ -98,7 +98,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_fails_with_invalid_token(self, mock_refresh_token, mock_extract_token, app):
+    def test_refresh_fails_with_invalid_token(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
         Test token refresh failure with invalid refresh token.
 
@@ -123,7 +123,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_fails_with_expired_token(self, mock_refresh_token, mock_extract_token, app):
+    def test_refresh_fails_with_expired_token(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
         Test token refresh failure with expired refresh token.
 
@@ -148,7 +148,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_with_empty_token(self, mock_refresh_token, mock_extract_token, app):
+    def test_refresh_with_empty_token(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
         Test token refresh with empty string token.
 

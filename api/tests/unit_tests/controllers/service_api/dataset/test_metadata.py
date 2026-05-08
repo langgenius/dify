@@ -19,6 +19,7 @@ import uuid
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api.dataset.metadata import (
@@ -76,7 +77,7 @@ class TestDatasetMetadataCreatePost:
         mock_dataset_svc,
         mock_meta_svc,
         mock_marshal,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -106,7 +107,7 @@ class TestDatasetMetadataCreatePost:
     def test_create_metadata_dataset_not_found(
         self,
         mock_dataset_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -136,7 +137,7 @@ class TestDatasetMetadataCreateGet:
         self,
         mock_dataset_svc,
         mock_meta_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -160,7 +161,7 @@ class TestDatasetMetadataCreateGet:
     def test_get_metadata_dataset_not_found(
         self,
         mock_dataset_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -201,7 +202,7 @@ class TestDatasetMetadataServiceApiPatch:
         mock_dataset_svc,
         mock_meta_svc,
         mock_marshal,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -232,7 +233,7 @@ class TestDatasetMetadataServiceApiPatch:
     def test_update_metadata_dataset_not_found(
         self,
         mock_dataset_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -273,7 +274,7 @@ class TestDatasetMetadataServiceApiDelete:
         mock_current_user,
         mock_dataset_svc,
         mock_meta_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -302,7 +303,7 @@ class TestDatasetMetadataServiceApiDelete:
     def test_delete_metadata_dataset_not_found(
         self,
         mock_dataset_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -336,7 +337,7 @@ class TestDatasetMetadataBuiltInFieldGet:
     def test_get_built_in_fields_success(
         self,
         mock_meta_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -382,7 +383,7 @@ class TestDatasetMetadataBuiltInFieldAction:
         mock_current_user,
         mock_dataset_svc,
         mock_meta_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -414,7 +415,7 @@ class TestDatasetMetadataBuiltInFieldAction:
         mock_current_user,
         mock_dataset_svc,
         mock_meta_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -441,7 +442,7 @@ class TestDatasetMetadataBuiltInFieldAction:
     def test_action_dataset_not_found(
         self,
         mock_dataset_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -485,7 +486,7 @@ class TestDocumentMetadataEditPost:
         mock_current_user,
         mock_dataset_svc,
         mock_meta_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -513,7 +514,7 @@ class TestDocumentMetadataEditPost:
     def test_update_documents_metadata_dataset_not_found(
         self,
         mock_dataset_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):

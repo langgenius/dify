@@ -195,7 +195,7 @@ class TestEmailCodeLoginSendEmailApi:
         mock_get_user,
         mock_is_ip_limit,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         language_input,
         expected_language,
@@ -267,7 +267,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -315,7 +315,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -431,7 +431,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
     ):
         """
@@ -474,7 +474,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
     ):
         """
@@ -515,7 +515,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
     ):
         """

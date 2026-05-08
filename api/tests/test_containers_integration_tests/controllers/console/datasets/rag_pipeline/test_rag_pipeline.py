@@ -30,7 +30,7 @@ class TestPipelineTemplateListApi:
     def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = PipelineTemplateListApi()
         method = unwrap(api.get)
 
@@ -54,7 +54,7 @@ class TestPipelineTemplateDetailApi:
     def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
@@ -75,7 +75,7 @@ class TestPipelineTemplateDetailApi:
         assert status == 200
         assert response == template
 
-    def test_get_returns_404_when_template_not_found(self, app):
+    def test_get_returns_404_when_template_not_found(self, app: Flask):
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
@@ -94,7 +94,7 @@ class TestPipelineTemplateDetailApi:
         assert status == 404
         assert "error" in response
 
-    def test_get_returns_404_for_customized_type_not_found(self, app):
+    def test_get_returns_404_for_customized_type_not_found(self, app: Flask):
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
@@ -119,7 +119,7 @@ class TestCustomizedPipelineTemplateApi:
     def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_patch_success(self, app):
+    def test_patch_success(self, app: Flask):
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.patch)
 
@@ -141,7 +141,7 @@ class TestCustomizedPipelineTemplateApi:
         update_mock.assert_called_once()
         assert response == 200
 
-    def test_delete_success(self, app):
+    def test_delete_success(self, app: Flask):
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.delete)
 
@@ -156,7 +156,7 @@ class TestCustomizedPipelineTemplateApi:
         delete_mock.assert_called_once_with("tpl-1")
         assert response == 200
 
-    def test_post_success(self, app, db_session_with_containers: Session):
+    def test_post_success(self, app: Flask, db_session_with_containers: Session):
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.post)
 
@@ -183,7 +183,7 @@ class TestCustomizedPipelineTemplateApi:
         assert status == 200
         assert response == {"data": "yaml-data"}
 
-    def test_post_template_not_found(self, app):
+    def test_post_template_not_found(self, app: Flask):
         api = CustomizedPipelineTemplateApi()
         method = unwrap(api.post)
 
@@ -197,7 +197,7 @@ class TestPublishCustomizedPipelineTemplateApi:
     def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = PublishCustomizedPipelineTemplateApi()
         method = unwrap(api.post)
 
