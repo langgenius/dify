@@ -669,7 +669,7 @@ class TestDifyNodeFactoryCreateNode:
     )
     def test_creates_model_backed_nodes(
         self,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         factory,
         node_type,
         constructor_name,

@@ -155,7 +155,7 @@ class TestMagicImportWarnings:
     )
     def test_magic_import_warning_per_platform(
         self,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         platform_name,
         expected_message,
     ):

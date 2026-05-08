@@ -71,7 +71,7 @@ def enable_request_logging(monkeypatch: pytest.MonkeyPatch):
 class TestRequestLoggingExtension:
     def test_receiver_should_not_be_invoked_if_configuration_is_disabled(
         self,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         mock_request_receiver,
         mock_response_receiver,
     ):

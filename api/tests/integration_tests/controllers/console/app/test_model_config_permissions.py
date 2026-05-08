@@ -73,7 +73,7 @@ class TestModelConfigResourcePermissions:
         self,
         test_client: FlaskClient,
         auth_header,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         mock_app_model,
         mock_account,
         role: TenantAccountRole,
