@@ -1,0 +1,102 @@
+# docker-compose.override.yaml
+# 每個 service 就是未來 k8s 的一個 Deployment/StatefulSet
+# 用 labels 標明 tier 歸屬
+
+services:
+  # ============================================================
+  # TIER 2: RAG Stack
+  # ============================================================
+  
+  # qdrant 已在主 compose（profile: qdrant），這邊只加 labels
+  qdrant:
+    labels:
+      tier: rag
+      role: vector-store
+      k8s-kind: StatefulSet     # 提示未來 k8s 怎麼翻譯
+  
+  # Embedding (bge-m3 via TEI)
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:89-latest
+    container_name: tei
+    restart: unless-stopped
+    runtime: nvidia
+    ports:
+      - "9997:80"
+    volumes:
+      - ./volumes/tei-cache:/data
+    environment:
+      MODEL_ID: BAAI/bge-m3
+      MAX_CLIENT_BATCH_SIZE: "32"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    labels:
+      tier: rag
+      role: embedding
+      k8s-kind: Deployment
+  
+  # ETL (Unstructured) — compose（profile: unstructured），加 labels
+  unstructured:
+    labels:
+      tier: rag
+      role: etl
+      k8s-kind: Deployment
+
+  # ============================================================
+  # TIER 3: LLM Service
+  # ============================================================
+  
+  vllm:
+    image: vllm/vllm-openai:nightly-aarch64       # ← 官方 ARM64 image
+    container_name: vllm
+    restart: unless-stopped
+    runtime: nvidia
+    pull_policy: always                            # ← 對應官方的 --pull always
+    ports:
+      - "8000:8000"                                # ← 對應 --network host 的 8000
+    volumes:
+      - ./volumes/vllm-cache:/root/.cache/huggingface   # ← 模型權重快取（重啟不重下）
+      - ./volumes/vllm-pip:/usr/local/lib/python3.12/site-packages   # ← pip install 也快取
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}        # ← Qwen 不是 gated 但留著無害
+      VLLM_USE_V1: "1"                             # ← 用 vLLM V1 engine（更快）
+    # 把官方的 bash -c 一字不漏搬過來
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        pip install -q 'vllm[audio]' && \
+        vllm serve RedHatAI/Qwen3.6-35B-A3B-NVFP4 \
+          --gpu-memory-utilization 0.8 \
+          --enable-prefix-caching \
+          --reasoning-parser qwen3 \
+          --enable-auto-tool-choice \
+          --tool-call-parser qwen3_coder \
+          --host 0.0.0.0 \
+          --port 8000 \
+          --served-model-name qwen3.6-35b
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 600s                           # ← 第一次跑要下載 + pip install + 載入，10分鐘 buffer
+    labels:
+      tier: llm
+      role: llm-inference
+
