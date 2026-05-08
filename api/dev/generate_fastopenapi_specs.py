@@ -13,7 +13,7 @@ API_ROOT = Path(__file__).resolve().parents[1]
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
-from dev.generate_swagger_specs import _apply_runtime_defaults, _drop_null_values, _sort_swagger_arrays
+from dev.generate_swagger_specs import apply_runtime_defaults, drop_null_values, sort_openapi_arrays
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ FASTOPENAPI_SPEC_TARGETS: tuple[FastOpenApiSpecTarget, ...] = (
 def create_fastopenapi_spec_app():
     """Build a minimal Flask app that only mounts FastOpenAPI docs routes."""
 
-    _apply_runtime_defaults()
+    apply_runtime_defaults()
 
     from app_factory import create_flask_app_with_configs
     from extensions import ext_fastopenapi
@@ -59,8 +59,8 @@ def generate_fastopenapi_specs(output_dir: Path) -> list[Path]:
         payload = response.get_json()
         if not isinstance(payload, dict):
             raise RuntimeError(f"unexpected response payload for {target.route}")
-        payload = _drop_null_values(payload)
-        payload = _sort_swagger_arrays(payload)
+        payload = drop_null_values(payload)
+        payload = sort_openapi_arrays(payload)
 
         output_path = output_dir / target.filename
         output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")

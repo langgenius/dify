@@ -136,7 +136,7 @@ def _inline_model_name(nested_fields: dict[object, object]) -> str:
     return f"_AnonymousInlineModel_{digest}"
 
 
-def _apply_runtime_defaults() -> None:
+def apply_runtime_defaults() -> None:
     """Force the small config surface required for Swagger generation."""
 
     os.environ.setdefault("SECRET_KEY", "spec-export")
@@ -200,7 +200,7 @@ def _patch_swagger_for_inline_nested_dicts() -> None:
 def create_spec_app() -> Flask:
     """Build a minimal Flask app that only mounts the Swagger-producing blueprints."""
 
-    _apply_runtime_defaults()
+    apply_runtime_defaults()
     _patch_swagger_for_inline_nested_dicts()
 
     app = Flask(__name__)
@@ -313,25 +313,25 @@ def _materialize_inline_model_definitions(api: RestxApi) -> None:
                 materialize_field(field)
 
 
-def _drop_null_values(value: object) -> object:
+def drop_null_values(value: object) -> object:
     """Remove JSON null values that make the Markdown converter crash."""
 
     if isinstance(value, dict):
-        return {key: _drop_null_values(item) for key, item in value.items() if item is not None}
+        return {key: drop_null_values(item) for key, item in value.items() if item is not None}
     if isinstance(value, list):
-        return [_drop_null_values(item) for item in value]
+        return [drop_null_values(item) for item in value]
     return value
 
 
-def _sort_swagger_arrays(value: object, *, parent_key: str | None = None) -> object:
+def sort_openapi_arrays(value: object, *, parent_key: str | None = None) -> object:
     """Sort order-insensitive Swagger arrays so generated Markdown is stable."""
 
     if isinstance(value, dict):
-        return {key: _sort_swagger_arrays(item, parent_key=key) for key, item in value.items()}
+        return {key: sort_openapi_arrays(item, parent_key=key) for key, item in value.items()}
     if not isinstance(value, list):
         return value
 
-    sorted_items = [_sort_swagger_arrays(item, parent_key=parent_key) for item in value]
+    sorted_items = [sort_openapi_arrays(item, parent_key=parent_key) for item in value]
     if parent_key == "parameters":
         return sorted(
             sorted_items,
@@ -381,8 +381,8 @@ def generate_specs(output_dir: Path) -> list[Path]:
         if not isinstance(payload, dict):
             raise RuntimeError(f"unexpected response payload for {target.route}")
         payload = _merge_registered_definitions(payload, target.namespace)
-        payload = _drop_null_values(payload)
-        payload = _sort_swagger_arrays(payload)
+        payload = drop_null_values(payload)
+        payload = sort_openapi_arrays(payload)
 
         output_path = output_dir / target.filename
         output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
