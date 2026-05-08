@@ -227,10 +227,10 @@ class VariableTruncator(BaseTruncator):
                 # throughout the code. Therefore, we approximate the size using the string's length.
                 # Rough estimate: number of characters, plus 2 for quotes
                 return len(value) + 2
-            case int() | float():
-                return len(str(value))
             case bool():
                 return 4 if value else 5  # "true" or "false"
+            case int() | float():
+                return len(str(value))
             case None:
                 return 4  # "null"
             case list():
