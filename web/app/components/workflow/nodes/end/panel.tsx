@@ -3,7 +3,6 @@ import type { EndNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import AddButton from '@/app/components/base/button/add-button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import useConfig from './use-config'
@@ -32,7 +31,13 @@ const Panel: FC<NodePanelProps<EndNodeType>> = ({
           title={t(`${i18nPrefix}.output.variable`, { ns: 'workflow' })}
           required
           operations={
-            !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
+            !readOnly
+              ? (
+                  <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={handleAddVariable} data-testid="add-button">
+                    <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+                  </div>
+                )
+              : undefined
           }
         >
           <VarList

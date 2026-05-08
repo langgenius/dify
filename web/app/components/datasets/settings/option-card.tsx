@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { cn } from '@/utils/classnames'
 import { ArrowShape } from '../../base/icons/src/vender/knowledge'
 import { EffectColor } from './chunk-structure/types'
 
@@ -70,7 +70,7 @@ const OptionCard = <T,>({
         {
           effectColor && showEffectColor && (
             <div className={cn(
-              'absolute left-[-2px] top-[-2px] h-14 w-14 rounded-full blur-[80px]',
+              'absolute top-[-2px] left-[-2px] h-14 w-14 rounded-full blur-[80px]',
               `${HEADER_EFFECT_MAP[effectColor]}`,
             )}
             />
@@ -112,7 +112,7 @@ const OptionCard = <T,>({
       {
         !!(children && showChildren) && (
           <div className="relative rounded-b-xl bg-components-panel-bg p-4">
-            <ArrowShape className="absolute left-[14px] top-[-11px] size-4 text-components-panel-bg" />
+            <ArrowShape className="absolute top-[-11px] left-[14px] size-4 text-components-panel-bg" />
             {children}
           </div>
         )

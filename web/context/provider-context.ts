@@ -20,6 +20,7 @@ export type ProviderContextState = {
     reset: UsageResetInfo
   }
   isFetchedPlan: boolean
+  isFetchedPlanInfo: boolean
   enableBilling: boolean
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
@@ -53,6 +54,7 @@ export const baseProviderContextValue: ProviderContextState = {
   isAPIKeySet: true,
   plan: defaultPlan,
   isFetchedPlan: false,
+  isFetchedPlanInfo: false,
   enableBilling: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
@@ -86,5 +88,3 @@ export const useProviderContext = () => useContext(ProviderContext)
 // https://github.com/microsoft/TypeScript/issues/15713
 export const useProviderContextSelector = <T>(selector: (state: ProviderContextState) => T): T =>
   useContextSelector(ProviderContext, selector)
-
-export default ProviderContext

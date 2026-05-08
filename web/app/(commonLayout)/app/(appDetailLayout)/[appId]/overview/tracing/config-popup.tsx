@@ -1,15 +1,15 @@
 'use client'
 import type { FC, JSX } from 'react'
 import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
 import ProviderConfigModal from './provider-config-modal'
 import ProviderPanel from './provider-panel'
 import TracingIcon from './tracing-icon'
@@ -94,8 +94,8 @@ const ConfigPopup: FC<PopupProps> = ({
   const switchContent = (
     <Switch
       className="ml-3"
-      value={enabled}
-      onChange={onStatusChange}
+      checked={enabled}
+      onCheckedChange={onStatusChange}
       disabled={providerAllNotConfigured}
     />
   )
@@ -331,17 +331,20 @@ const ConfigPopup: FC<PopupProps> = ({
         </div>
         <div className="flex items-center">
           <Indicator color={enabled ? 'green' : 'gray'} />
-          <div className={cn('system-xs-semibold-uppercase ml-1 text-text-tertiary', enabled && 'text-util-colors-green-green-600')}>
+          <div className={cn('ml-1 system-xs-semibold-uppercase text-text-tertiary', enabled && 'text-util-colors-green-green-600')}>
             {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
           </div>
           {!readOnly && (
             <>
               {providerAllNotConfigured
                 ? (
-                    <Tooltip
-                      popupContent={t(`${I18N_PREFIX}.disabledTip`, { ns: 'app' })}
-                    >
-                      {switchContent}
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={switchContent}
+                      />
+                      <TooltipContent>
+                        {t(`${I18N_PREFIX}.disabledTip`, { ns: 'app' })}
+                      </TooltipContent>
                     </Tooltip>
                   )
                 : switchContent}
@@ -350,7 +353,7 @@ const ConfigPopup: FC<PopupProps> = ({
         </div>
       </div>
 
-      <div className="system-xs-regular mt-2 text-text-tertiary">
+      <div className="mt-2 system-xs-regular text-text-tertiary">
         {t(`${I18N_PREFIX}.tracingDescription`, { ns: 'app' })}
       </div>
       <Divider className="my-3" />
@@ -379,7 +382,7 @@ const ConfigPopup: FC<PopupProps> = ({
                 <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
                   {configuredProviderPanel()}
                 </div>
-                <div className="system-xs-medium-uppercase mt-3 text-text-tertiary">{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`, { ns: 'app' })}</div>
+                <div className="mt-3 system-xs-medium-uppercase text-text-tertiary">{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`, { ns: 'app' })}</div>
                 <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
                   {moreProviderPanel()}
                 </div>

@@ -114,13 +114,9 @@ class TestOnToolEnd:
         document = mocker.Mock()
         document.metadata = {"document_id": "doc-1", "doc_id": "node-1"}
 
-        mock_query = mocker.Mock()
-        mock_db.session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-
         handler.on_tool_end([document])
 
-        mock_query.update.assert_called_once()
+        mock_db.session.execute.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
     def test_on_tool_end_non_parent_child_index(self, handler, mocker):
@@ -138,13 +134,9 @@ class TestOnToolEnd:
             "dataset_id": "dataset-1",
         }
 
-        mock_query = mocker.Mock()
-        mock_db.session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-
         handler.on_tool_end([document])
 
-        mock_query.update.assert_called_once()
+        mock_db.session.execute.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
     def test_on_tool_end_empty_documents(self, handler):

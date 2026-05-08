@@ -1,3 +1,5 @@
+@reference "../../../../styles/globals.css";
+
 .pageHeader {
   @apply px-16 flex justify-between items-center;
   position: sticky;
@@ -252,7 +254,7 @@
 
 .input {
   @apply inline-flex h-9 w-full py-1 px-2 pr-14 rounded-lg text-xs leading-normal;
-  @apply bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none focus:bg-white placeholder:text-gray-400;
+  @apply bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus:bg-white focus-visible:outline-hidden placeholder:text-gray-400;
 }
 
 .source {

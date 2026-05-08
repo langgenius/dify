@@ -260,11 +260,10 @@ class TestInstalledAppsCreateApi:
         app_entity.tenant_id = "t2"
 
         session = MagicMock()
-        session.query.return_value.where.return_value.first.side_effect = [
-            recommended,
-            app_entity,
-            None,
-        ]
+        # scalar() is called for recommended_app and installed_app lookups
+        session.scalar.side_effect = [recommended, None]
+        # get() is called for app PK lookup
+        session.get.return_value = app_entity
 
         with (
             app.test_request_context("/", json={"app_id": "a1"}),
@@ -282,7 +281,7 @@ class TestInstalledAppsCreateApi:
         method = unwrap(api.post)
 
         session = MagicMock()
-        session.query.return_value.where.return_value.first.return_value = None
+        session.scalar.return_value = None
 
         with (
             app.test_request_context("/", json={"app_id": "a1"}),
@@ -300,10 +299,10 @@ class TestInstalledAppsCreateApi:
         app_entity = MagicMock(is_public=False)
 
         session = MagicMock()
-        session.query.return_value.where.return_value.first.side_effect = [
-            recommended,
-            app_entity,
-        ]
+        # scalar() returns recommended_app
+        session.scalar.return_value = recommended
+        # get() returns the app entity
+        session.get.return_value = app_entity
 
         with (
             app.test_request_context("/", json={"app_id": "a1"}),

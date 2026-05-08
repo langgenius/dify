@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -24,6 +25,7 @@ from models.dataset import (
     DatasetProcessRule,
     DatasetQuery,
 )
+from models.enums import DatasetQuerySource, DataSourceType, ProcessRuleMode
 from models.model import Tag, TagBinding
 from services.dataset_service import DatasetService, DocumentService
 
@@ -100,8 +102,8 @@ class DatasetRetrievalTestDataFactory:
             tenant_id=tenant_id,
             name=name,
             description="desc",
-            data_source_type="upload_file",
-            indexing_technique="high_quality",
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=created_by,
             permission=permission,
             provider="vendor",
@@ -149,7 +151,7 @@ class DatasetRetrievalTestDataFactory:
         dataset_query = DatasetQuery(
             dataset_id=dataset_id,
             content=content,
-            source="web",
+            source=DatasetQuerySource.APP,
             source_app_id=None,
             created_by_role="account",
             created_by=created_by,
@@ -601,7 +603,7 @@ class TestDatasetServiceGetProcessRules:
             db_session_with_containers,
             dataset_id=dataset.id,
             created_by=account.id,
-            mode="custom",
+            mode=ProcessRuleMode.CUSTOM,
             rules=rules_data,
         )
 

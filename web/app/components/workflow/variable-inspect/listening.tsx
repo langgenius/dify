@@ -3,11 +3,11 @@ import type { FC } from 'react'
 import type { Node } from 'reactflow'
 import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
 import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
+import { Button } from '@langgenius/dify-ui/button'
 import copy from 'copy-to-clipboard'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -70,7 +70,7 @@ const resolveMultipleListeningDescription = (
   return t('debug.variableInspect.listening.tipFallback', { ns: 'workflow' })
 }
 
-export type ListeningProps = {
+type ListeningProps = {
   onStop: () => void
   message?: string
 }
@@ -166,7 +166,7 @@ const Listening: FC<ListeningProps> = ({
             type={icon.type}
             toolIcon={icon.toolIcon}
             size="md"
-            className="!h-10 !w-10 !rounded-xl [&_svg]:!h-7 [&_svg]:!w-7"
+            className="h-10! w-10! rounded-xl! [&_svg]:h-7! [&_svg]:w-7!"
           />
         ))}
       </div>
@@ -176,14 +176,14 @@ const Listening: FC<ListeningProps> = ({
       </div>
       {webhookDebugUrl && (
         <div className="flex items-center gap-2">
-          <div className="system-xs-regular shrink-0 whitespace-pre-line text-text-tertiary">
+          <div className="shrink-0 system-xs-regular whitespace-pre-line text-text-tertiary">
             {t('nodes.triggerWebhook.debugUrlTitle', { ns: 'workflow' })}
           </div>
           <Tooltip
             popupContent={debugUrlCopied
               ? t('nodes.triggerWebhook.debugUrlCopied', { ns: 'workflow' })
               : t('nodes.triggerWebhook.debugUrlCopy', { ns: 'workflow' })}
-            popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
+            popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-xs rounded-md px-1.5 py-1"
             position="top"
             offset={{ mainAxis: -4 }}
             needsDelay={true}
@@ -191,7 +191,7 @@ const Listening: FC<ListeningProps> = ({
             <button
               type="button"
               aria-label={t('nodes.triggerWebhook.debugUrlCopy', { ns: 'workflow' }) || ''}
-              className={`inline-flex items-center rounded-[6px] border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-[2px] font-mono text-[13px] leading-[18px] text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-components-panel-border ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
+              className={`inline-flex items-center rounded-md border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-[2px] font-mono text-[13px] leading-[18px] text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-components-panel-border focus-visible:outline-solid ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
               onClick={() => {
                 copy(webhookDebugUrl)
                 setDebugUrlCopied(true)

@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => {
 })
 
 // --- External mocks ---
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
   useSearchParams: () => new URLSearchParams(mocks.state.searchParams),
 }))
@@ -74,7 +74,7 @@ vi.mock('@/service/use-base', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: mocks.toastNotify },
 }))
 
@@ -120,18 +120,12 @@ vi.mock('../document-title', () => ({
 }))
 
 vi.mock('../segment-add', () => ({
-  default: ({ showNewSegmentModal, showBatchModal, embedding }: { showNewSegmentModal?: () => void, showBatchModal?: () => void, embedding?: boolean }) => (
+  SegmentAdd: ({ showNewSegmentModal, showBatchModal, embedding }: { showNewSegmentModal?: () => void, showBatchModal?: () => void, embedding?: boolean }) => (
     <div data-testid="segment-add" data-embedding={embedding}>
       <button data-testid="new-segment-btn" onClick={showNewSegmentModal}>New Segment</button>
       <button data-testid="batch-btn" onClick={showBatchModal}>Batch Import</button>
     </div>
   ),
-  ProcessStatus: {
-    WAITING: 'waiting',
-    PROCESSING: 'processing',
-    ERROR: 'error',
-    COMPLETED: 'completed',
-  },
 }))
 
 vi.mock('../../components/operations', () => ({

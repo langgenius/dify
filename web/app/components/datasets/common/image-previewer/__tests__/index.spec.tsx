@@ -65,7 +65,8 @@ describe('ImagePreviewer', () => {
       })
 
       // Should render in portal
-      expect(document.body.querySelector('.image-previewer')).toBeInTheDocument()
+      // Should render in portal
+      expect(document.body.querySelector('.image-previewer'))!.toBeInTheDocument()
     })
 
     it('should render close button', async () => {
@@ -77,7 +78,8 @@ describe('ImagePreviewer', () => {
       })
 
       // Esc text should be visible
-      expect(screen.getByText('Esc')).toBeInTheDocument()
+      // Esc text should be visible
+      expect(screen.getByText('Esc'))!.toBeInTheDocument()
     })
 
     it('should show loading state initially', async () => {
@@ -92,7 +94,8 @@ describe('ImagePreviewer', () => {
       })
 
       // Loading component should be visible
-      expect(document.body.querySelector('.image-previewer')).toBeInTheDocument()
+      // Loading component should be visible
+      expect(document.body.querySelector('.image-previewer'))!.toBeInTheDocument()
     })
   })
 
@@ -107,7 +110,8 @@ describe('ImagePreviewer', () => {
 
       await waitFor(() => {
         // Should start at second image
-        expect(screen.getByText('image2.png')).toBeInTheDocument()
+        // Should start at second image
+        expect(screen.getByText('image2.png'))!.toBeInTheDocument()
       })
     })
 
@@ -120,7 +124,7 @@ describe('ImagePreviewer', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('image1.png')).toBeInTheDocument()
+        expect(screen.getByText('image1.png'))!.toBeInTheDocument()
       })
     })
   })
@@ -151,7 +155,7 @@ describe('ImagePreviewer', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('image1.png')).toBeInTheDocument()
+        expect(screen.getByText('image1.png'))!.toBeInTheDocument()
       })
 
       // Find and click next button (right arrow)
@@ -166,7 +170,7 @@ describe('ImagePreviewer', () => {
         })
 
         await waitFor(() => {
-          expect(screen.getByText('image2.png')).toBeInTheDocument()
+          expect(screen.getByText('image2.png'))!.toBeInTheDocument()
         })
       }
     })
@@ -180,7 +184,7 @@ describe('ImagePreviewer', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('image2.png')).toBeInTheDocument()
+        expect(screen.getByText('image2.png'))!.toBeInTheDocument()
       })
 
       // Find and click prev button (left arrow)
@@ -195,7 +199,7 @@ describe('ImagePreviewer', () => {
         })
 
         await waitFor(() => {
-          expect(screen.getByText('image1.png')).toBeInTheDocument()
+          expect(screen.getByText('image1.png'))!.toBeInTheDocument()
         })
       }
     })
@@ -213,7 +217,7 @@ describe('ImagePreviewer', () => {
         btn.className.includes('left-8'),
       )
 
-      expect(prevButton).toBeDisabled()
+      expect(prevButton)!.toBeDisabled()
     })
 
     it('should disable next button at last image', async () => {
@@ -229,7 +233,7 @@ describe('ImagePreviewer', () => {
         btn.className.includes('right-8'),
       )
 
-      expect(nextButton).toBeDisabled()
+      expect(nextButton)!.toBeDisabled()
     })
   })
 
@@ -258,7 +262,7 @@ describe('ImagePreviewer', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText(/Failed to load image/)).toBeInTheDocument()
+        expect(screen.getByText(/Failed to load image/))!.toBeInTheDocument()
       })
     })
 
@@ -275,7 +279,7 @@ describe('ImagePreviewer', () => {
       await waitFor(() => {
         // Retry button should be visible
         const retryButton = document.querySelector('button.rounded-full')
-        expect(retryButton).toBeInTheDocument()
+        expect(retryButton)!.toBeInTheDocument()
       })
     })
   })
@@ -290,7 +294,7 @@ describe('ImagePreviewer', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('image1.png')).toBeInTheDocument()
+        expect(screen.getByText('image1.png'))!.toBeInTheDocument()
       })
 
       const buttons = document.querySelectorAll('button')
@@ -306,7 +310,7 @@ describe('ImagePreviewer', () => {
 
         // Should still be at first image
         await waitFor(() => {
-          expect(screen.getByText('image1.png')).toBeInTheDocument()
+          expect(screen.getByText('image1.png'))!.toBeInTheDocument()
         })
       }
     })
@@ -320,7 +324,7 @@ describe('ImagePreviewer', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('image3.png')).toBeInTheDocument()
+        expect(screen.getByText('image3.png'))!.toBeInTheDocument()
       })
 
       const buttons = document.querySelectorAll('button')
@@ -336,7 +340,7 @@ describe('ImagePreviewer', () => {
 
         // Should still be at last image
         await waitFor(() => {
-          expect(screen.getByText('image3.png')).toBeInTheDocument()
+          expect(screen.getByText('image3.png'))!.toBeInTheDocument()
         })
       }
     })
@@ -366,7 +370,7 @@ describe('ImagePreviewer', () => {
 
       // Wait for error state
       await waitFor(() => {
-        expect(screen.getByText(/Failed to load image/)).toBeInTheDocument()
+        expect(screen.getByText(/Failed to load image/))!.toBeInTheDocument()
       })
 
       const retryButton = document.querySelector('button.rounded-full')
@@ -393,7 +397,7 @@ describe('ImagePreviewer', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText(/Failed to load image/)).toBeInTheDocument()
+        expect(screen.getByText(/Failed to load image/))!.toBeInTheDocument()
       })
 
       // Find and click the retry button (not the nav buttons)
@@ -402,7 +406,7 @@ describe('ImagePreviewer', () => {
         btn.className.includes('rounded-full') && !btn.className.includes('left-8') && !btn.className.includes('right-8'),
       )
 
-      expect(retryButton).toBeInTheDocument()
+      expect(retryButton)!.toBeInTheDocument()
 
       if (retryButton) {
         mockFetch.mockClear()
@@ -451,7 +455,7 @@ describe('ImagePreviewer', () => {
   describe('Edge Cases', () => {
     it('should handle single image', async () => {
       const onClose = vi.fn()
-      const images = [createMockImages()[0]]
+      const images = [createMockImages()[0]!]
 
       await act(async () => {
         render(<ImagePreviewer images={images} onClose={onClose} />)
@@ -466,8 +470,8 @@ describe('ImagePreviewer', () => {
         btn.className.includes('right-8'),
       )
 
-      expect(prevButton).toBeDisabled()
-      expect(nextButton).toBeDisabled()
+      expect(prevButton)!.toBeDisabled()
+      expect(nextButton)!.toBeDisabled()
     })
 
     it('should stop event propagation on container click', async () => {
@@ -500,7 +504,8 @@ describe('ImagePreviewer', () => {
 
       await waitFor(() => {
         // Should display dimensions (800 × 600 from MockImage)
-        expect(screen.getByText(/800.*600/)).toBeInTheDocument()
+        // Should display dimensions (800 × 600 from MockImage)
+        expect(screen.getByText(/800.*600/))!.toBeInTheDocument()
       })
     })
 
@@ -514,7 +519,8 @@ describe('ImagePreviewer', () => {
 
       await waitFor(() => {
         // Should display formatted file size
-        expect(screen.getByText('image1.png')).toBeInTheDocument()
+        // Should display formatted file size
+        expect(screen.getByText('image1.png'))!.toBeInTheDocument()
       })
     })
   })

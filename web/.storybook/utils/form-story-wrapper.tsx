@@ -47,7 +47,7 @@ export const FormStoryWrapper = ({
         {children(form)}
       </div>
       <aside className="w-full max-w-sm rounded-xl border border-divider-subtle bg-components-panel-bg p-4 text-xs text-text-secondary shadow-sm">
-        <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-text-tertiary">
+        <div className="flex items-center justify-between text-[11px] tracking-wide text-text-tertiary uppercase">
           <span>Form State</span>
           <span>
             {submitCount}

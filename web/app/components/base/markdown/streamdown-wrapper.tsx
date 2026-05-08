@@ -1,7 +1,6 @@
 import type { ComponentType } from 'react'
 import type { Components, StreamdownProps } from 'streamdown'
 import { createMathPlugin } from '@streamdown/math'
-import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import RemarkBreaks from 'remark-breaks'
 import { defaultRehypePlugins, defaultRemarkPlugins, Streamdown } from 'streamdown'
@@ -17,7 +16,8 @@ import {
   ThinkBlock,
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
-import { ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
+import { ALLOW_INLINE_STYLES, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
+import dynamic from '@/next/dynamic'
 import { customUrlTransform } from './markdown-utils'
 import 'katex/dist/katex.min.css'
 
@@ -86,7 +86,7 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
   ])
 
   const mergedAttributes: Record<string, AttributeDefinition[]> = {
-    ...(defaultSanitizeSchema.attributes ?? {}),
+    ...defaultSanitizeSchema.attributes,
   }
 
   for (const tag of Object.keys(ALLOWED_TAGS)) {
@@ -101,10 +101,10 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
         const name = typeof entry === 'string' ? entry : entry[0]
         return !overrideNames.has(name as string)
       })
-      mergedAttributes[tag] = [...filtered, ...ALLOWED_TAGS[tag]]
+      mergedAttributes[tag] = [...filtered, ...(ALLOWED_TAGS[tag] ?? [])]
     }
     else {
-      mergedAttributes[tag] = ALLOWED_TAGS[tag]
+      mergedAttributes[tag] = ALLOWED_TAGS[tag]!
     }
   }
 
@@ -118,6 +118,11 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
   // component validates names with `isSafeName()`, so remove it.
   const clobber = (defaultSanitizeSchema.clobber ?? []).filter(k => k !== 'name')
 
+  if (ALLOW_INLINE_STYLES) {
+    const globalAttrs = mergedAttributes['*'] ?? []
+    mergedAttributes['*'] = [...globalAttrs, 'style']
+  }
+
   const customSchema: SanitizeSchema = {
     ...defaultSanitizeSchema,
     tagNames: [...tagNamesSet],
@@ -127,10 +132,10 @@ function buildRehypePlugins(extraPlugins?: PluggableList): PluggableList {
   }
 
   return [
-    defaultRehypePlugins.raw,
+    defaultRehypePlugins.raw!,
     ...(extraPlugins ?? []),
     [sanitizePlugin, customSchema] as Pluggable,
-    defaultRehypePlugins.harden,
+    defaultRehypePlugins.harden!,
   ]
 }
 

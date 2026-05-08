@@ -89,8 +89,8 @@ describe('VideoPlayer', () => {
       render(<VideoPlayer srcs={mockSrcs} />)
       const sources = screen.getByTestId('video-element').querySelectorAll('source')
       expect(sources).toHaveLength(2)
-      expect(sources[0].src).toContain(mockSrcs[0])
-      expect(sources[1].src).toContain(mockSrcs[1])
+      expect(sources[0]!.src).toContain(mockSrcs[0])
+      expect(sources[1]!.src).toContain(mockSrcs[1])
     })
   })
 
@@ -155,11 +155,11 @@ describe('VideoPlayer', () => {
       const video = screen.getByTestId('video-element') as HTMLVideoElement
 
       fireEvent(video, new Event('loadedmetadata'))
-      expect(screen.getByTestId('video-time-display')).toHaveTextContent('00:00 / 01:40')
+      expect(screen.getByTestId('video-time-display'))!.toHaveTextContent('00:00 / 01:40')
 
       Object.defineProperty(video, 'currentTime', { value: 30, configurable: true })
       fireEvent(video, new Event('timeupdate'))
-      expect(screen.getByTestId('video-time-display')).toHaveTextContent('00:30 / 01:40')
+      expect(screen.getByTestId('video-time-display'))!.toHaveTextContent('00:30 / 01:40')
     })
 
     it('should handle video end', async () => {
@@ -171,7 +171,7 @@ describe('VideoPlayer', () => {
       await user.click(playPauseBtn)
       fireEvent(video, new Event('ended'))
 
-      expect(playPauseBtn).toBeInTheDocument()
+      expect(playPauseBtn)!.toBeInTheDocument()
     })
 
     it('should show/hide controls on mouse move and timeout', () => {
@@ -198,7 +198,7 @@ describe('VideoPlayer', () => {
 
       // Hover
       fireEvent.mouseMove(progressBar, { clientX: 50 })
-      expect(screen.getByTestId('video-hover-time')).toHaveTextContent('00:50')
+      expect(screen.getByTestId('video-hover-time'))!.toHaveTextContent('00:50')
       fireEvent.mouseLeave(progressBar)
       expect(screen.queryByTestId('video-hover-time')).not.toBeInTheDocument()
 
@@ -262,7 +262,7 @@ describe('VideoPlayer', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByTestId('video-time-display')).toBeInTheDocument()
+        expect(screen.getByTestId('video-time-display'))!.toBeInTheDocument()
       })
     })
 
@@ -318,7 +318,7 @@ describe('VideoPlayer', () => {
 
       // mouseLeave while dragging — hoverTime should remain visible
       fireEvent.mouseLeave(progressBar)
-      expect(screen.getByTestId('video-hover-time')).toBeInTheDocument()
+      expect(screen.getByTestId('video-hover-time'))!.toBeInTheDocument()
 
       // End drag
       fireEvent.mouseUp(document)
@@ -345,7 +345,7 @@ describe('VideoPlayer', () => {
     it('should render without src or srcs', () => {
       render(<VideoPlayer />)
       const video = screen.getByTestId('video-element') as HTMLVideoElement
-      expect(video).toBeInTheDocument()
+      expect(video)!.toBeInTheDocument()
       expect(video.getAttribute('src')).toBeNull()
       expect(video.querySelectorAll('source')).toHaveLength(0)
     })
@@ -357,18 +357,19 @@ describe('VideoPlayer', () => {
       const controls = screen.getByTestId('video-controls')
 
       // Initial state: visible
-      expect(controls).toHaveAttribute('data-is-visible', 'true')
+      // Initial state: visible
+      expect(controls)!.toHaveAttribute('data-is-visible', 'true')
 
       // Let controls hide
       fireEvent.mouseMove(container)
       act(() => {
         vi.advanceTimersByTime(3001)
       })
-      expect(controls).toHaveAttribute('data-is-visible', 'false')
+      expect(controls)!.toHaveAttribute('data-is-visible', 'false')
 
       // mouseEnter should show controls again
       fireEvent.mouseEnter(container)
-      expect(controls).toHaveAttribute('data-is-visible', 'true')
+      expect(controls)!.toHaveAttribute('data-is-visible', 'true')
 
       vi.useRealTimers()
     })

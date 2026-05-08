@@ -4,8 +4,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from dify_graph.nodes.human_input.entities import FormInput
-from dify_graph.nodes.human_input.enums import TimeoutUnit
+from graphon.nodes.human_input.entities import FormInput
+from graphon.nodes.human_input.enums import TimeoutUnit
+from libs.datetime_utils import naive_utc_now
 
 
 # Exceptions
@@ -49,7 +50,7 @@ class HumanInputForm:
     timeout: int
     timeout_unit: TimeoutUnit
     form_token: str | None = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=naive_utc_now)
     expires_at: datetime | None = None
     submitted_at: datetime | None = None
     submitted_data: dict[str, Any] | None = None
@@ -61,7 +62,7 @@ class HumanInputForm:
 
     @property
     def is_expired(self) -> bool:
-        return self.expires_at is not None and datetime.utcnow() > self.expires_at
+        return self.expires_at is not None and naive_utc_now() > self.expires_at
 
     @property
     def is_submitted(self) -> bool:
@@ -70,7 +71,7 @@ class HumanInputForm:
     def mark_submitted(self, inputs: dict[str, Any], action: str) -> None:
         self.submitted_data = inputs
         self.submitted_action = action
-        self.submitted_at = datetime.utcnow()
+        self.submitted_at = naive_utc_now()
 
     def submit(self, inputs: dict[str, Any], action: str) -> None:
         self.mark_submitted(inputs, action)
@@ -107,7 +108,7 @@ class FormSubmissionData:
     form_id: str
     inputs: dict[str, Any]
     action: str
-    submitted_at: datetime = field(default_factory=datetime.utcnow)
+    submitted_at: datetime = field(default_factory=naive_utc_now)
 
     @classmethod
     def from_request(cls, form_id: str, request: FormSubmissionRequest) -> FormSubmissionData:  # type: ignore

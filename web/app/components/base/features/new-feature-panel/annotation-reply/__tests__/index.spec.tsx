@@ -7,7 +7,7 @@ import AnnotationReply from '../index'
 const originalConsoleError = console.error
 const mockPush = vi.fn()
 let mockPathname = '/app/test-app-id/configuration'
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
   usePathname: () => mockPathname,
 }))

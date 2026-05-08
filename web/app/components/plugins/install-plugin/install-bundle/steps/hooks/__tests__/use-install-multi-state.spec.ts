@@ -1,6 +1,7 @@
 import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '@/app/components/plugins/types'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { getPluginKey, useInstallMultiState } from '../use-install-multi-state'
 
@@ -21,10 +22,6 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   default: () => ({
     installedInfo: mockInstalledInfo,
   }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: () => ({}),
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit', () => ({
@@ -266,10 +263,117 @@ describe('useInstallMultiState', () => {
         expect(result.current.plugins[1]).toBeDefined()
       })
     })
+
+    it('should fall back to latest_version when marketplace plugin version is missing', async () => {
+      mockMarketplaceData = {
+        data: {
+          list: [{
+            plugin: {
+              plugin_id: 'test-org/plugin-0',
+              org: 'test-org',
+              name: 'Test Plugin 0',
+              version: '',
+              latest_version: '2.0.0',
+            },
+            version: {
+              unique_identifier: 'plugin-0-uid',
+            },
+          }],
+        },
+      }
+
+      const params = createDefaultParams({
+        allPlugins: [createMarketplaceDependency(0)] as Dependency[],
+      })
+      const { result } = renderHook(() => useInstallMultiState(params))
+
+      await waitFor(() => {
+        expect(result.current.plugins[0]?.version).toBe('2.0.0')
+      })
+    })
+
+    it('should resolve marketplace dependency from organization and plugin fields', async () => {
+      mockMarketplaceData = createMarketplaceApiData([0])
+
+      const params = createDefaultParams({
+        allPlugins: [
+          {
+            type: 'marketplace',
+            value: {
+              organization: 'test-org',
+              plugin: 'plugin-0',
+              version: '1.0.0',
+            },
+          } as GitHubItemAndMarketPlaceDependency,
+        ] as Dependency[],
+      })
+      const { result } = renderHook(() => useInstallMultiState(params))
+
+      await waitFor(() => {
+        expect(result.current.plugins[0]).toBeDefined()
+        expect(result.current.errorIndexes).not.toContain(0)
+      })
+    })
   })
 
   // ==================== Error Handling ====================
   describe('Error Handling', () => {
+    it('should mark marketplace index as error when identifier misses plugin and version parts', async () => {
+      const params = createDefaultParams({
+        allPlugins: [
+          {
+            type: 'marketplace',
+            value: {
+              marketplace_plugin_unique_identifier: 'invalid-identifier',
+              version: '1.0.0',
+            },
+          } as GitHubItemAndMarketPlaceDependency,
+        ] as Dependency[],
+      })
+      const { result } = renderHook(() => useInstallMultiState(params))
+
+      await waitFor(() => {
+        expect(result.current.errorIndexes).toContain(0)
+      })
+    })
+
+    it('should mark marketplace index as error when identifier has an empty plugin segment', async () => {
+      const params = createDefaultParams({
+        allPlugins: [
+          {
+            type: 'marketplace',
+            value: {
+              marketplace_plugin_unique_identifier: 'test-org/:1.0.0',
+              version: '1.0.0',
+            },
+          } as GitHubItemAndMarketPlaceDependency,
+        ] as Dependency[],
+      })
+      const { result } = renderHook(() => useInstallMultiState(params))
+
+      await waitFor(() => {
+        expect(result.current.errorIndexes).toContain(0)
+      })
+    })
+
+    it('should mark marketplace index as error when identifier is missing', async () => {
+      const params = createDefaultParams({
+        allPlugins: [
+          {
+            type: 'marketplace',
+            value: {
+              version: '1.0.0',
+            },
+          } as GitHubItemAndMarketPlaceDependency,
+        ] as Dependency[],
+      })
+      const { result } = renderHook(() => useInstallMultiState(params))
+
+      await waitFor(() => {
+        expect(result.current.errorIndexes).toContain(0)
+      })
+    })
+
     it('should mark all marketplace indexes as errors on fetch failure', async () => {
       mockMarketplaceError = new Error('Fetch failed')
 
@@ -302,6 +406,19 @@ describe('useInstallMultiState', () => {
         expect(result.current.errorIndexes).toContain(1)
         expect(result.current.errorIndexes).not.toContain(0)
       })
+    })
+
+    it('should ignore marketplace requests whose dsl index cannot be mapped', () => {
+      const duplicatedMarketplaceDependency = createMarketplaceDependency(0)
+      const allPlugins = [duplicatedMarketplaceDependency] as Dependency[]
+
+      allPlugins.filter = vi.fn(() => [duplicatedMarketplaceDependency, duplicatedMarketplaceDependency]) as typeof allPlugins.filter
+
+      const params = createDefaultParams({ allPlugins })
+      const { result } = renderHook(() => useInstallMultiState(params))
+
+      expect(result.current.plugins).toHaveLength(1)
+      expect(result.current.errorIndexes).toEqual([])
     })
   })
 

@@ -1,8 +1,17 @@
+import type { ReactElement } from 'react'
 import type { PluginDeclaration, PluginDetail } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginCategoryEnum, PluginSource } from '../../types'
 import PluginItem from '../index'
+
+const mockEnableMarketplace = vi.fn(() => true)
+
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { enable_marketplace: mockEnableMarketplace() },
+  })
 
 const mockTheme = vi.fn(() => 'light')
 vi.mock('@/hooks/use-theme', () => ({
@@ -52,12 +61,6 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     langGeniusVersionInfo: mockLangGeniusVersionInfo(),
   }),
-}))
-
-const mockEnableMarketplace = vi.fn(() => true)
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector({ systemFeatures: { enable_marketplace: mockEnableMarketplace() } }),
 }))
 
 vi.mock('../action', () => ({

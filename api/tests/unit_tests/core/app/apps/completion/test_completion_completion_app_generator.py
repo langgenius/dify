@@ -9,7 +9,7 @@ import core.app.apps.completion.app_generator as module
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from dify_graph.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
 

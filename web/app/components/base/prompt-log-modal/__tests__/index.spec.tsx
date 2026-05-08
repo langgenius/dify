@@ -32,8 +32,8 @@ describe('PromptLogModal', () => {
   describe('Render', () => {
     it('renders correctly when currentLogItem is provided', () => {
       render(<PromptLogModal {...defaultProps} />)
-      expect(screen.getByText('PROMPT LOG')).toBeInTheDocument()
-      expect(screen.getByText('Hello')).toBeInTheDocument()
+      expect(screen.getByText('PROMPT LOG'))!.toBeInTheDocument()
+      expect(screen.getByText('Hello'))!.toBeInTheDocument()
     })
 
     it('returns null when currentLogItem is missing', () => {
@@ -43,7 +43,7 @@ describe('PromptLogModal', () => {
 
     it('renders copy feedback when log length is 1', () => {
       render(<PromptLogModal {...defaultProps} />)
-      expect(screen.getByTestId('close-btn-container')).toBeInTheDocument()
+      expect(screen.getByTestId('close-btn-container'))!.toBeInTheDocument()
     })
 
     it('renders multiple logs in Card correctly', () => {
@@ -58,9 +58,9 @@ describe('PromptLogModal', () => {
         },
       } as unknown as Parameters<typeof PromptLogModal>[0]
       render(<PromptLogModal {...props} />)
-      expect(screen.getByText('USER')).toBeInTheDocument()
-      expect(screen.getByText('ASSISTANT')).toBeInTheDocument()
-      expect(screen.getByText('Hi there')).toBeInTheDocument()
+      expect(screen.getByText('USER'))!.toBeInTheDocument()
+      expect(screen.getByText('ASSISTANT'))!.toBeInTheDocument()
+      expect(screen.getByText('Hi there'))!.toBeInTheDocument()
     })
 
     it('returns null when currentLogItem.log is missing', () => {
@@ -73,7 +73,7 @@ describe('PromptLogModal', () => {
     it('calls onCancel when close button is clicked', () => {
       render(<PromptLogModal {...defaultProps} />)
       const closeBtn = screen.getByTestId('close-btn')
-      expect(closeBtn).toBeInTheDocument()
+      expect(closeBtn)!.toBeInTheDocument()
       fireEvent.click(closeBtn)
       expect(defaultProps.onCancel).toHaveBeenCalled()
     })
@@ -88,7 +88,8 @@ describe('PromptLogModal', () => {
       expect(clickAwayHandlers.length).toBeGreaterThan(0)
 
       // Call the last registered handler (simulating click away)
-      clickAwayHandlers[clickAwayHandlers.length - 1]()
+      // Call the last registered handler (simulating click away)
+      clickAwayHandlers[clickAwayHandlers.length - 1]!()
       expect(onCancel).toHaveBeenCalled()
     })
 
@@ -98,7 +99,8 @@ describe('PromptLogModal', () => {
 
       expect(clickAwayHandlers.length).toBeGreaterThan(0)
       // The first handler in the array is captured during the initial render before useEffect runs
-      clickAwayHandlers[0]()
+      // The first handler in the array is captured during the initial render before useEffect runs
+      clickAwayHandlers[0]!()
       expect(onCancel).not.toHaveBeenCalled()
     })
   })

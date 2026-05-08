@@ -3,7 +3,7 @@ import json
 import pytest
 
 from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
-from dify_graph.model_runtime.entities.message_entities import (
+from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     TextPromptMessageContent,

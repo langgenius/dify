@@ -10,7 +10,7 @@ from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
 )
-from dify_graph.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
 def test_convert_blocking_full_and_simple_response():

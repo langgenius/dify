@@ -175,8 +175,16 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 // ---------------------------------------------------------------------------
 // Toast context
 // ---------------------------------------------------------------------------
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify, close: vi.fn() }),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  default: {
+    notify: (args: unknown) => mockNotify(args),
+  },
+  toast: {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+    warning: (message: string) => mockNotify({ type: 'warning', message }),
+    info: (message: string) => mockNotify({ type: 'info', message }),
+  },
 }))
 
 // ---------------------------------------------------------------------------
@@ -208,7 +216,7 @@ vi.mock('../../check-input-forms-hooks', () => ({
 // ---------------------------------------------------------------------------
 // Next.js navigation
 // ---------------------------------------------------------------------------
-vi.mock('next/navigation', () => ({
+vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: 'test-token' }),
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',

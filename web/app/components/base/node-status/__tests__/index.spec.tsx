@@ -41,7 +41,7 @@ describe('NodeStatus', () => {
 
   it('applies styleCss correctly', () => {
     const { container } = render(<NodeStatus styleCss={{ color: 'red' }} />)
-    expect(container.firstChild).toHaveStyle({ color: 'rgb(255, 0, 0)' })
+    expect(container.firstChild).toHaveStyle({ color: 'red' })
   })
 
   it('applies iconClassName to the icon', () => {

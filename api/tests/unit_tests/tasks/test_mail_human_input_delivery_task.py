@@ -120,4 +120,37 @@ def test_dispatch_human_input_email_task_replaces_body_variables(monkeypatch: py
         session_factory=lambda: _DummySession(form),
     )
 
-    assert mail.sent[0]["html"] == "Body OK"
+    assert mail.sent[0]["html"] == "<p>Body OK</p>"
+
+
+@pytest.mark.parametrize("line_break", ["\r\n", "\r", "\n"])
+def test_dispatch_human_input_email_task_sanitizes_subject(
+    monkeypatch: pytest.MonkeyPatch,
+    line_break: str,
+):
+    mail = _DummyMail()
+    form = SimpleNamespace(id="form-1", tenant_id="tenant-1", workflow_run_id=None)
+    job = task_module._EmailDeliveryJob(
+        form_id="form-1",
+        subject=f"Notice{line_break}BCC:attacker@example.com <b>Alert</b>",
+        body="Body",
+        form_content="content",
+        recipients=[task_module._EmailRecipient(email="user@example.com", token="token-1")],
+    )
+
+    monkeypatch.setattr(task_module, "mail", mail)
+    monkeypatch.setattr(
+        task_module.FeatureService,
+        "get_features",
+        lambda _tenant_id: SimpleNamespace(human_input_email_delivery_enabled=True),
+    )
+    monkeypatch.setattr(task_module, "_load_email_jobs", lambda _session, _form: [job])
+    monkeypatch.setattr(task_module, "_load_variable_pool", lambda _workflow_run_id: None)
+
+    task_module.dispatch_human_input_email_task(
+        form_id="form-1",
+        node_title="Approve",
+        session_factory=lambda: _DummySession(form),
+    )
+
+    assert mail.sent[0]["subject"] == "Notice BCC:attacker@example.com Alert"

@@ -68,7 +68,7 @@ class TestGitHubOAuth(BaseOAuthTest):
             ({}, None, True),
         ],
     )
-    @patch("httpx.post", autospec=True)
+    @patch("libs.oauth._http_client.post", autospec=True)
     def test_should_retrieve_access_token(
         self, mock_post, oauth, mock_response, response_data, expected_token, should_raise
     ):
@@ -86,7 +86,7 @@ class TestGitHubOAuth(BaseOAuthTest):
     @pytest.mark.parametrize(
         ("user_data", "email_data", "expected_email"),
         [
-            # User with primary email
+            # User with primary email from /user/emails (no email in profile)
             (
                 {"id": 12345, "login": "testuser", "name": "Test User"},
                 [
@@ -95,17 +95,21 @@ class TestGitHubOAuth(BaseOAuthTest):
                 ],
                 "primary@example.com",
             ),
-            # User with no emails - fallback to noreply
-            ({"id": 12345, "login": "testuser", "name": "Test User"}, [], "12345+testuser@users.noreply.github.com"),
-            # User with only secondary email - fallback to noreply
+            # User with private email (null email and name from API)
+            (
+                {"id": 12345, "login": "testuser", "name": None, "email": None},
+                [{"email": "primary@example.com", "primary": True}],
+                "primary@example.com",
+            ),
+            # User with only verified (non-primary) email
             (
                 {"id": 12345, "login": "testuser", "name": "Test User"},
-                [{"email": "secondary@example.com", "primary": False}],
-                "12345+testuser@users.noreply.github.com",
+                [{"email": "verified@example.com", "primary": False, "verified": True}],
+                "verified@example.com",
             ),
         ],
     )
-    @patch("httpx.get", autospec=True)
+    @patch("libs.oauth._http_client.get", autospec=True)
     def test_should_retrieve_user_info_correctly(self, mock_get, oauth, user_data, email_data, expected_email):
         user_response = MagicMock()
         user_response.json.return_value = user_data
@@ -118,10 +122,79 @@ class TestGitHubOAuth(BaseOAuthTest):
         user_info = oauth.get_user_info("test_token")
 
         assert user_info.id == str(user_data["id"])
-        assert user_info.name == user_data["name"]
+        assert user_info.name == (user_data["name"] or "")
         assert user_info.email == expected_email
+        # The profile email is absent/null, so /user/emails should be called
+        assert mock_get.call_count == 2
 
-    @patch("httpx.get", autospec=True)
+    @patch("libs.oauth._http_client.get", autospec=True)
+    def test_should_skip_email_endpoint_when_profile_email_present(self, mock_get, oauth):
+        """When the /user profile already contains an email, do not call /user/emails."""
+        user_response = MagicMock()
+        user_response.json.return_value = {
+            "id": 12345,
+            "login": "testuser",
+            "name": "Test User",
+            "email": "profile@example.com",
+        }
+        mock_get.return_value = user_response
+
+        user_info = oauth.get_user_info("test_token")
+
+        assert user_info.email == "profile@example.com"
+        # Only /user should be called; /user/emails should be skipped
+        mock_get.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("user_data", "email_data"),
+        [
+            # User with no emails at all
+            ({"id": 12345, "login": "testuser", "name": "Test User"}, []),
+            # User with only unverified secondary email
+            (
+                {"id": 12345, "login": "testuser", "name": "Test User"},
+                [{"email": "secondary@example.com", "primary": False, "verified": False}],
+            ),
+            # User with private email and no entries in emails endpoint
+            (
+                {"id": 12345, "login": "testuser", "name": None, "email": None},
+                [],
+            ),
+        ],
+    )
+    @patch("libs.oauth._http_client.get", autospec=True)
+    def test_should_use_noreply_email_when_no_usable_email(self, mock_get, oauth, user_data, email_data):
+        user_response = MagicMock()
+        user_response.json.return_value = user_data
+
+        email_response = MagicMock()
+        email_response.json.return_value = email_data
+
+        mock_get.side_effect = [user_response, email_response]
+
+        user_info = oauth.get_user_info("test_token")
+
+        assert user_info.id == str(user_data["id"])
+        assert user_info.email == "12345@users.noreply.github.com"
+
+    @patch("libs.oauth._http_client.get", autospec=True)
+    def test_should_use_noreply_email_when_email_endpoint_fails(self, mock_get, oauth):
+        user_response = MagicMock()
+        user_response.json.return_value = {"id": 12345, "login": "testuser", "name": "Test User"}
+
+        email_response = MagicMock()
+        email_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Forbidden", request=MagicMock(), response=MagicMock()
+        )
+
+        mock_get.side_effect = [user_response, email_response]
+
+        user_info = oauth.get_user_info("test_token")
+
+        assert user_info.id == "12345"
+        assert user_info.email == "12345@users.noreply.github.com"
+
+    @patch("libs.oauth._http_client.get", autospec=True)
     def test_should_handle_network_errors(self, mock_get, oauth):
         mock_get.side_effect = httpx.RequestError("Network error")
 
@@ -167,7 +240,7 @@ class TestGoogleOAuth(BaseOAuthTest):
             ({}, None, True),
         ],
     )
-    @patch("httpx.post", autospec=True)
+    @patch("libs.oauth._http_client.post", autospec=True)
     def test_should_retrieve_access_token(
         self, mock_post, oauth, oauth_config, mock_response, response_data, expected_token, should_raise
     ):
@@ -201,7 +274,7 @@ class TestGoogleOAuth(BaseOAuthTest):
             ({"sub": "123", "email": "test@example.com", "name": "Test User"}, ""),  # Always returns empty string
         ],
     )
-    @patch("httpx.get", autospec=True)
+    @patch("libs.oauth._http_client.get", autospec=True)
     def test_should_retrieve_user_info_correctly(self, mock_get, oauth, mock_response, user_data, expected_name):
         mock_response.json.return_value = user_data
         mock_get.return_value = mock_response
@@ -222,7 +295,7 @@ class TestGoogleOAuth(BaseOAuthTest):
             httpx.TimeoutException,
         ],
     )
-    @patch("httpx.get", autospec=True)
+    @patch("libs.oauth._http_client.get", autospec=True)
     def test_should_handle_http_errors(self, mock_get, oauth, exception_type):
         mock_response = MagicMock()
         mock_response.raise_for_status.side_effect = exception_type("Error")

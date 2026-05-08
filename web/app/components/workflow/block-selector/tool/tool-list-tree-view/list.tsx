@@ -48,7 +48,7 @@ const ToolListTreeView: FC<Props> = ({
         <Item
           key={groupName}
           groupName={getI18nGroupName(groupName)}
-          toolList={payload[groupName]}
+          toolList={payload[groupName]!}
           hasSearchText={hasSearchText}
           onSelect={onSelect}
           canNotSelectMultiple={canNotSelectMultiple}

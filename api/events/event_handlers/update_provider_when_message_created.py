@@ -135,37 +135,40 @@ def handle(sender: Message, **kwargs):
             model_name=model_config.model,
         )
         if used_quota is not None:
-            if provider_configuration.system_configuration.current_quota_type == ProviderQuotaType.TRIAL:
-                from services.credit_pool_service import CreditPoolService
+            match provider_configuration.system_configuration.current_quota_type:
+                case ProviderQuotaType.TRIAL:
+                    from services.credit_pool_service import CreditPoolService
 
-                CreditPoolService.check_and_deduct_credits(
-                    tenant_id=tenant_id,
-                    credits_required=used_quota,
-                    pool_type="trial",
-                )
-            elif provider_configuration.system_configuration.current_quota_type == ProviderQuotaType.PAID:
-                from services.credit_pool_service import CreditPoolService
-
-                CreditPoolService.check_and_deduct_credits(
-                    tenant_id=tenant_id,
-                    credits_required=used_quota,
-                    pool_type="paid",
-                )
-            else:
-                quota_update = _ProviderUpdateOperation(
-                    filters=_ProviderUpdateFilters(
+                    CreditPoolService.check_and_deduct_credits(
                         tenant_id=tenant_id,
-                        provider_name=ModelProviderID(model_config.provider).provider_name,
-                        provider_type=ProviderType.SYSTEM.value,
-                        quota_type=provider_configuration.system_configuration.current_quota_type.value,
-                    ),
-                    values=_ProviderUpdateValues(quota_used=Provider.quota_used + used_quota, last_used=current_time),
-                    additional_filters=_ProviderUpdateAdditionalFilters(
-                        quota_limit_check=True  # Provider.quota_limit > Provider.quota_used
-                    ),
-                    description="quota_deduction_update",
-                )
-                updates_to_perform.append(quota_update)
+                        credits_required=used_quota,
+                        pool_type="trial",
+                    )
+                case ProviderQuotaType.PAID:
+                    from services.credit_pool_service import CreditPoolService
+
+                    CreditPoolService.check_and_deduct_credits(
+                        tenant_id=tenant_id,
+                        credits_required=used_quota,
+                        pool_type="paid",
+                    )
+                case ProviderQuotaType.FREE:
+                    quota_update = _ProviderUpdateOperation(
+                        filters=_ProviderUpdateFilters(
+                            tenant_id=tenant_id,
+                            provider_name=ModelProviderID(model_config.provider).provider_name,
+                            provider_type=ProviderType.SYSTEM.value,
+                            quota_type=provider_configuration.system_configuration.current_quota_type,
+                        ),
+                        values=_ProviderUpdateValues(
+                            quota_used=Provider.quota_used + used_quota, last_used=current_time
+                        ),
+                        additional_filters=_ProviderUpdateAdditionalFilters(
+                            quota_limit_check=True  # Provider.quota_limit > Provider.quota_used
+                        ),
+                        description="quota_deduction_update",
+                    )
+                    updates_to_perform.append(quota_update)
 
     # Execute all updates
     start_time = time_module.perf_counter()

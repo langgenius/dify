@@ -24,7 +24,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolInvokeError
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from dify_graph.file import FILE_MODEL_IDENTITY
+from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 
 
 class StubScalars:
@@ -439,6 +439,32 @@ def _setup_transform_args_tool(monkeypatch: pytest.MonkeyPatch) -> WorkflowTool:
 def test_transform_args_valid_files(monkeypatch: pytest.MonkeyPatch):
     """Transform args into parameters and files payloads."""
     tool = _setup_transform_args_tool(monkeypatch)
+    build_file_from_stored_mapping = MagicMock(
+        side_effect=[
+            SimpleNamespace(
+                transfer_method=FileTransferMethod.TOOL_FILE,
+                type=FileType.IMAGE,
+                reference="tool-1",
+                generate_url=lambda: None,
+            ),
+            SimpleNamespace(
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                type=FileType.DOCUMENT,
+                reference="upload-1",
+                generate_url=lambda: None,
+            ),
+            SimpleNamespace(
+                transfer_method=FileTransferMethod.REMOTE_URL,
+                type=FileType.DOCUMENT,
+                reference=None,
+                generate_url=lambda: "https://example.com/a.pdf",
+            ),
+        ]
+    )
+    monkeypatch.setattr(
+        "core.tools.workflow_as_tool.tool.build_file_from_stored_mapping",
+        build_file_from_stored_mapping,
+    )
 
     params, files = tool._transform_args(
         {
@@ -470,6 +496,8 @@ def test_transform_args_valid_files(monkeypatch: pytest.MonkeyPatch):
     assert any(file_item.get("tool_file_id") == "tool-1" for file_item in files)
     assert any(file_item.get("upload_file_id") == "upload-1" for file_item in files)
     assert any(file_item.get("url") == "https://example.com/a.pdf" for file_item in files)
+    assert build_file_from_stored_mapping.call_count == 3
+    assert all(call.kwargs["tenant_id"] == "test_tool" for call in build_file_from_stored_mapping.call_args_list)
 
 
 def test_transform_args_invalid_files(monkeypatch: pytest.MonkeyPatch):

@@ -2,13 +2,13 @@ import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { OnlineDriveFile, PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
 import { noop } from 'es-toolkit/function'
-import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
+import { useRouter } from '@/next/navigation'
 import { useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { usePipelineExecutionLog, useRunPublishedPipeline } from '@/service/use-pipeline'
 import ChunkPreview from '../../../create-from-pipeline/preview/chunk-preview'
@@ -185,7 +185,7 @@ const PipelineSettings = ({
       </div>
       {/* Preview */}
       <div className="h-full min-w-0 flex-1">
-        <div className="flex h-full flex-col pl-2 pt-2">
+        <div className="flex h-full flex-col pt-2 pl-2">
           <ChunkPreview
             dataSourceType={lastRunData!.datasource_type}
             localFiles={files}

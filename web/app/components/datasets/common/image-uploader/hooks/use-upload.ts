@@ -1,10 +1,10 @@
 import type { FileEntity, FileUploadConfig } from '../types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { fileUpload, getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import Toast from '@/app/components/base/toast'
 import { useFileUploadConfig } from '@/service/use-common'
 import { ACCEPT_TYPES } from '../constants'
 import { useFileStore } from '../store'
@@ -44,7 +44,7 @@ export const useUpload = () => {
 
   const checkFileType = useCallback((file: File) => {
     const ext = getFileType(file)
-    return ACCEPT_TYPES.includes(ext.toLowerCase())
+    return ACCEPT_TYPES.includes(ext!.toLowerCase())
   }, [])
 
   const checkFileSize = useCallback((file: File) => {
@@ -54,9 +54,9 @@ export const useUpload = () => {
 
   const showErrorMessage = useCallback((type: 'type' | 'size') => {
     if (type === 'type')
-      Toast.notify({ type: 'error', message: t('fileUploader.fileExtensionNotSupport', { ns: 'common' }) })
+      toast.error(t('fileUploader.fileExtensionNotSupport', { ns: 'common' }))
     else
-      Toast.notify({ type: 'error', message: t('imageUploader.fileSizeLimitExceeded', { ns: 'dataset', size: fileUploadConfig.imageFileSizeLimit }) })
+      toast.error(t('imageUploader.fileSizeLimitExceeded', { ns: 'dataset', size: fileUploadConfig.imageFileSizeLimit }))
   }, [fileUploadConfig, t])
 
   const getValidFiles = useCallback((files: File[]) => {
@@ -131,13 +131,13 @@ export const useUpload = () => {
     const index = files.findIndex(file => file.id === fileId)
 
     if (index > -1) {
-      const uploadingFile = files[index]
+      const uploadingFile = files[index]!
       const newFiles = produce(files, (draft) => {
-        draft[index].progress = 0
+        draft[index]!.progress = 0
       })
       setFiles(newFiles)
       fileUpload({
-        file: uploadingFile.originalFile!,
+        file: uploadingFile!.originalFile!,
         onProgressCallback: (progress) => {
           handleUpdateFile({ ...uploadingFile, progress })
         },
@@ -146,7 +146,7 @@ export const useUpload = () => {
         },
         onErrorCallback: (error?: any) => {
           const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
-          Toast.notify({ type: 'error', message: errorMessage })
+          toast.error(errorMessage)
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
       })
@@ -188,7 +188,7 @@ export const useUpload = () => {
           },
           onErrorCallback: (error?: any) => {
             const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
-            Toast.notify({ type: 'error', message: errorMessage })
+            toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
         })
@@ -198,7 +198,7 @@ export const useUpload = () => {
     reader.addEventListener(
       'error',
       () => {
-        Toast.notify({ type: 'error', message: t('fileUploader.uploadFromComputerReadError', { ns: 'common' }) })
+        toast.error(t('fileUploader.uploadFromComputerReadError', { ns: 'common' }))
       },
       false,
     )
@@ -211,10 +211,7 @@ export const useUpload = () => {
     if (newFiles.length === 0)
       return
     if (files.length + newFiles.length > singleChunkAttachmentLimit) {
-      Toast.notify({
-        type: 'error',
-        message: t('imageUploader.singleChunkAttachmentLimitTooltip', { ns: 'datasetHitTesting', limit: singleChunkAttachmentLimit }),
-      })
+      toast.error(t('imageUploader.singleChunkAttachmentLimitTooltip', { ns: 'datasetHitTesting', limit: singleChunkAttachmentLimit }))
       return
     }
     for (const file of newFiles)

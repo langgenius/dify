@@ -1,6 +1,18 @@
 'use client'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
-import type { WorkflowToolModalPayload } from '@/app/components/tools/workflow-tool'
+import type { WorkflowToolDrawerPayload } from '@/app/components/tools/workflow-tool'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   RiCloseLine,
 } from '@remixicon/react'
@@ -8,12 +20,9 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
-import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer'
 import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -22,12 +31,12 @@ import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import Title from '@/app/components/plugins/card/base/title'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
-import WorkflowToolModal from '@/app/components/tools/workflow-tool'
+import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 
+import { useProviderContext } from '@/context/provider-context'
 import { getLanguage } from '@/i18n-config/language'
 import {
   deleteWorkflowTool,
@@ -43,7 +52,6 @@ import {
   updateCustomCollection,
 } from '@/service/tools'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'
@@ -122,23 +130,17 @@ const ProviderDetail = ({
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
     setCustomCollection(prev => prev ? { ...prev, labels: data.labels } : null)
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   const doRemoveCustomToolCollection = async () => {
     await removeCustomCollection(collection?.name as string)
     onRefreshData()
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   // workflow provider
-  const [isShowEditWorkflowToolModal, setIsShowEditWorkflowToolModal] = useState(false)
+  const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
     setIsDetailLoading(true)
     const res = await fetchWorkflowToolDetail(collection.id)
@@ -161,11 +163,8 @@ const ProviderDetail = ({
   const removeWorkflowToolProvider = async () => {
     await deleteWorkflowTool(collection.id)
     onRefreshData()
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
-    setIsShowEditWorkflowToolModal(false)
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    setWorkflowToolDrawerOpen(false)
   }
   const updateWorkflowToolProvider = async (data: WorkflowToolProviderRequest & Partial<{
     workflow_app_id: string
@@ -175,11 +174,8 @@ const ProviderDetail = ({
     invalidateAllWorkflowTools()
     onRefreshData()
     getWorkflowToolProvider()
-    Toast.notify({
-      type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
-    })
-    setIsShowEditWorkflowToolModal(false)
+    toast.success(t('api.actionSuccess', { ns: 'common' }))
+    setWorkflowToolDrawerOpen(false)
   }
   const onClickCustomToolDelete = () => {
     setDeleteAction('customTool')
@@ -240,7 +236,7 @@ const ProviderDetail = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
+      panelClassName={cn('mt-[64px] mr-2 mb-2 w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
     >
       <div className="flex h-full flex-col p-4">
         <div className="shrink-0">
@@ -248,9 +244,9 @@ const ProviderDetail = ({
             <Icon src={collection.icon} />
             <div className="ml-3 w-0 grow">
               <div className="flex h-5 items-center">
-                <Title title={collection.label[language]} />
+                <Title title={collection.label[language]!} />
               </div>
-              <div className="mb-1 mt-0.5 flex h-4 items-center justify-between">
+              <div className="mt-0.5 mb-1 flex h-4 items-center justify-between">
                 <OrgInfo
                   packageNameClassName="w-auto"
                   orgName={collection.author}
@@ -291,7 +287,7 @@ const ProviderDetail = ({
               </Button>
               <Button
                 className={cn('my-3 w-[183px] shrink-0')}
-                onClick={() => setIsShowEditWorkflowToolModal(true)}
+                onClick={() => setWorkflowToolDrawerOpen(true)}
                 disabled={!isCurrentWorkspaceManager}
               >
                 <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
@@ -305,7 +301,7 @@ const ProviderDetail = ({
             <>
               <div className="shrink-0">
                 {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && isAuthed && (
-                  <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
+                  <div className="mb-1 flex h-6 items-center justify-between system-sm-semibold-uppercase text-text-secondary">
                     {t('detailPanel.actionNum', { ns: 'plugin', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
                     {needAuth && (
                       <Button
@@ -385,19 +381,13 @@ const ProviderDetail = ({
             onCancel={() => setShowSettingAuth(false)}
             onSaved={async (value) => {
               await updateBuiltInToolCredential(collection.name, value)
-              Toast.notify({
-                type: 'success',
-                message: t('api.actionSuccess', { ns: 'common' }),
-              })
+              toast.success(t('api.actionSuccess', { ns: 'common' }))
               await onRefreshData()
               setShowSettingAuth(false)
             }}
             onRemove={async () => {
               await removeBuiltInToolCredential(collection.name)
-              Toast.notify({
-                type: 'success',
-                message: t('api.actionSuccess', { ns: 'common' }),
-              })
+              toast.success(t('api.actionSuccess', { ns: 'common' }))
               await onRefreshData()
               setShowSettingAuth(false)
             }}
@@ -411,23 +401,32 @@ const ProviderDetail = ({
             onRemove={onClickCustomToolDelete}
           />
         )}
-        {isShowEditWorkflowToolModal && (
-          <WorkflowToolModal
-            payload={customCollection as unknown as WorkflowToolModalPayload}
-            onHide={() => setIsShowEditWorkflowToolModal(false)}
+        {workflowToolDrawerOpen && (
+          <WorkflowToolDrawer
+            payload={customCollection as unknown as WorkflowToolDrawerPayload}
+            onHide={() => setWorkflowToolDrawerOpen(false)}
             onRemove={onClickWorkflowToolDelete}
             onSave={updateWorkflowToolProvider}
           />
         )}
-        {showConfirmDelete && (
-          <Confirm
-            title={t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
-            content={t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
-            isShow={showConfirmDelete}
-            onConfirm={handleConfirmDelete}
-            onCancel={() => setShowConfirmDelete(false)}
-          />
-        )}
+        <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={handleConfirmDelete}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Drawer>
   )

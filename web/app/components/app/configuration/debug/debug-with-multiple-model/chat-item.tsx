@@ -2,12 +2,12 @@ import type { FC } from 'react'
 import type { ModelAndParameter } from '../types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
-import { Avatar } from '@/app/components/base/avatar'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer } from '@/app/components/base/chat/utils'

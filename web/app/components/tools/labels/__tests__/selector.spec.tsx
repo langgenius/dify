@@ -2,6 +2,81 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LabelSelector from '../selector'
 
+vi.mock('@langgenius/dify-ui/popover', async () => {
+  const React = await import('react')
+  const PopoverContext = React.createContext({
+    open: false,
+    setOpen: (_open: boolean) => {},
+  })
+
+  const Popover = ({
+    children,
+    open: controlledOpen,
+    onOpenChange,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => {
+    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? !!controlledOpen : uncontrolledOpen
+    const setOpen = (nextOpen: boolean) => {
+      if (!isControlled)
+        setUncontrolledOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    }
+
+    return (
+      <PopoverContext.Provider value={{ open, setOpen }}>
+        {children}
+      </PopoverContext.Provider>
+    )
+  }
+
+  const PopoverTrigger = ({
+    children,
+    className,
+    render,
+  }: {
+    children?: React.ReactNode
+    className?: string
+    render?: React.ReactNode
+  }) => {
+    const { open, setOpen } = React.useContext(PopoverContext)
+    if (render) {
+      return (
+        <div onClick={() => setOpen(!open)}>
+          {render}
+        </div>
+      )
+    }
+
+    return (
+      <button type="button" className={className} onClick={() => setOpen(!open)}>
+        {children}
+      </button>
+    )
+  }
+
+  const PopoverContent = ({
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => {
+    const { open } = React.useContext(PopoverContext)
+    if (!open)
+      return null
+
+    return <div {...props}>{children}</div>
+  }
+
+  return {
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
+  }
+})
+
 // Mock useTags hook with controlled test data
 const mockTags = [
   { name: 'agent', label: 'Agent' },
@@ -58,6 +133,12 @@ describe('LabelSelector', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
       expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
+    })
+
+    it('should render the trigger as a native button', () => {
+      render(<LabelSelector value={[]} onChange={mockOnChange} />)
+
+      expect(screen.getByRole('button', { name: 'tools.createTool.toolInput.labelPlaceholder' })).toHaveAttribute('type', 'button')
     })
 
     it('should display selected labels as comma-separated list', () => {

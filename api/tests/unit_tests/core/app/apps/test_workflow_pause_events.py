@@ -10,13 +10,14 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
-from dify_graph.entities.pause_reason import HumanInputRequired
-from dify_graph.entities.workflow_start_reason import WorkflowStartReason
-from dify_graph.graph_events.graph import GraphRunPausedEvent
-from dify_graph.nodes.human_input.entities import FormInput, UserAction
-from dify_graph.nodes.human_input.enums import FormInputType
-from dify_graph.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.graph_events import GraphRunPausedEvent
+from graphon.nodes.human_input.entities import FormInput, UserAction
+from graphon.nodes.human_input.enums import FormInputType
 from models.account import Account
+from models.human_input import RecipientType
 
 
 class _RecordingWorkflowAppRunner(WorkflowAppRunner):
@@ -74,7 +75,6 @@ def test_graph_run_paused_event_emits_queue_pause_event():
         actions=[],
         node_id="node-human",
         node_title="Human Step",
-        form_token="tok",
     )
     event = GraphRunPausedEvent(reasons=[reason], outputs={"foo": "bar"})
     workflow_entry = SimpleNamespace(
@@ -98,7 +98,7 @@ def _build_converter():
         invoke_from=InvokeFrom.SERVICE_API,
         app_config=SimpleNamespace(app_id="app-id", tenant_id="tenant-id"),
     )
-    system_variables = SystemVariable(
+    system_variables = build_system_variables(
         user_id="user",
         app_id="app-id",
         workflow_id="workflow-id",
@@ -128,7 +128,21 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
 
     class _FakeSession:
         def execute(self, _stmt):
-            return [("form-1", expiration_time)]
+            return [("form-1", expiration_time, '{"display_in_ui": true}')]
+
+        def scalars(self, _stmt):
+            return [
+                SimpleNamespace(
+                    form_id="form-1",
+                    recipient_type=RecipientType.CONSOLE,
+                    access_token="console-token",
+                ),
+                SimpleNamespace(
+                    form_id="form-1",
+                    recipient_type=RecipientType.BACKSTAGE,
+                    access_token="backstage-token",
+                ),
+            ]
 
         def __enter__(self):
             return self
@@ -146,10 +160,8 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
             FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="field", default=None),
         ],
         actions=[UserAction(id="approve", title="Approve")],
-        display_in_ui=True,
         node_id="node-id",
         node_title="Human Step",
-        form_token="token",
     )
     queue_event = QueueWorkflowPausedEvent(
         reasons=[reason],
@@ -170,7 +182,6 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
     assert pause_resp.data.paused_nodes == ["node-id"]
     assert pause_resp.data.outputs == {}
     assert pause_resp.data.reasons[0]["form_id"] == "form-1"
-    assert pause_resp.data.reasons[0]["display_in_ui"] is True
 
     assert isinstance(responses[0], HumanInputRequiredResponse)
     hi_resp = responses[0]
@@ -180,4 +191,5 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
     assert hi_resp.data.inputs[0].output_variable_name == "field"
     assert hi_resp.data.actions[0].id == "approve"
     assert hi_resp.data.display_in_ui is True
+    assert hi_resp.data.form_token == "backstage-token"
     assert hi_resp.data.expiration_time == int(expiration_time.timestamp())

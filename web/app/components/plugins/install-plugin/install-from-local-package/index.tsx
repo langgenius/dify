@@ -1,12 +1,12 @@
 'use client'
 
 import type { Dependency, PluginDeclaration } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
-import { cn } from '@/utils/classnames'
 import { InstallStep } from '../../types'
 import useHideLogic from '../hooks/use-hide-logic'
 import ReadyToInstallBundle from '../install-bundle/ready-to-install'
@@ -92,8 +92,8 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       className={cn(modalClassName, 'shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0')}
       closable
     >
-      <div className="flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
-        <div className="title-2xl-semi-bold self-stretch text-text-primary">
+      <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
+        <div className="self-stretch title-2xl-semi-bold text-text-primary">
           {getTitle()}
         </div>
       </div>

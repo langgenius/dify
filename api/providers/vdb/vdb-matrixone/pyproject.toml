@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-matrixone"
+version = "0.0.1"
+
+dependencies = [
+    "mo-vector~=0.1.13",
+]
+description = "Dify vector store backend (dify-vdb-matrixone)."
+
+[project.entry-points."dify.vector_backends"]
+matrixone = "dify_vdb_matrixone.matrixone_vector:MatrixoneVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -11,9 +11,20 @@ import logging
 from unittest.mock import MagicMock, patch
 
 from faker import Faker
+from sqlalchemy.orm import Session
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from models import Account, Dataset, Document, DocumentSegment, Tenant
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from models import (
+    Account,
+    AccountStatus,
+    Dataset,
+    DatasetPermissionEnum,
+    Document,
+    DocumentSegment,
+    Tenant,
+    TenantStatus,
+)
+from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, IndexingStatus, SegmentStatus
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 
 logger = logging.getLogger(__name__)
@@ -36,7 +47,7 @@ class TestDeleteSegmentFromIndexTask:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_tenant(self, db_session_with_containers, fake=None):
+    def _create_test_tenant(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
         Helper method to create a test tenant with realistic data.
 
@@ -48,7 +59,7 @@ class TestDeleteSegmentFromIndexTask:
             Tenant: Created test tenant instance
         """
         fake = fake or Faker()
-        tenant = Tenant(name=f"Test Tenant {fake.company()}", plan="basic", status="active")
+        tenant = Tenant(name=f"Test Tenant {fake.company()}", plan="basic", status=TenantStatus.NORMAL)
         tenant.id = fake.uuid4()
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
@@ -57,7 +68,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return tenant
 
-    def _create_test_account(self, db_session_with_containers, tenant, fake=None):
+    def _create_test_account(self, db_session_with_containers: Session, tenant, fake: Faker | None = None):
         """
         Helper method to create a test account with realistic data.
 
@@ -74,7 +85,7 @@ class TestDeleteSegmentFromIndexTask:
             name=fake.name(),
             email=fake.email(),
             avatar=fake.url(),
-            status="active",
+            status=AccountStatus.ACTIVE,
             interface_language="en-US",
         )
         account.id = fake.uuid4()
@@ -85,7 +96,9 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return account
 
-    def _create_test_dataset(self, db_session_with_containers, tenant, account, fake=None):
+    def _create_test_dataset(
+        self, db_session_with_containers: Session, tenant: Tenant, account: Account, fake: Faker | None = None
+    ):
         """
         Helper method to create a test dataset with realistic data.
 
@@ -105,9 +118,9 @@ class TestDeleteSegmentFromIndexTask:
         dataset.name = f"Test Dataset {fake.word()}"
         dataset.description = fake.text(max_nb_chars=200)
         dataset.provider = "vendor"
-        dataset.permission = "only_me"
-        dataset.data_source_type = "upload_file"
-        dataset.indexing_technique = "high_quality"
+        dataset.permission = DatasetPermissionEnum.ONLY_ME
+        dataset.data_source_type = DataSourceType.UPLOAD_FILE
+        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
         dataset.index_struct = '{"type": "paragraph"}'
         dataset.created_by = account.id
         dataset.created_at = fake.date_time_this_year()
@@ -121,7 +134,7 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return dataset
 
-    def _create_test_document(self, db_session_with_containers, dataset, account, fake=None, **kwargs):
+    def _create_test_document(self, db_session_with_containers: Session, dataset, account, fake=None, **kwargs):
         """
         Helper method to create a test document with realistic data.
 
@@ -145,7 +158,7 @@ class TestDeleteSegmentFromIndexTask:
         document.data_source_info = kwargs.get("data_source_info", "{}")
         document.batch = kwargs.get("batch", fake.uuid4())
         document.name = kwargs.get("name", f"Test Document {fake.word()}")
-        document.created_from = kwargs.get("created_from", "api")
+        document.created_from = kwargs.get("created_from", DocumentCreatedFrom.API)
         document.created_by = account.id
         document.created_at = fake.date_time_this_year()
         document.processing_started_at = kwargs.get("processing_started_at", fake.date_time_this_year())
@@ -162,7 +175,7 @@ class TestDeleteSegmentFromIndexTask:
         document.enabled = kwargs.get("enabled", True)
         document.archived = kwargs.get("archived", False)
         document.updated_at = fake.date_time_this_year()
-        document.doc_type = kwargs.get("doc_type", "text")
+        document.doc_type = kwargs.get("doc_type", DocumentDocType.PERSONAL_DOCUMENT)
         document.doc_metadata = kwargs.get("doc_metadata", {})
         document.doc_form = kwargs.get("doc_form", IndexStructureType.PARAGRAPH_INDEX)
         document.doc_language = kwargs.get("doc_language", "en")
@@ -171,7 +184,14 @@ class TestDeleteSegmentFromIndexTask:
         db_session_with_containers.commit()
         return document
 
-    def _create_test_document_segments(self, db_session_with_containers, document, account, count=3, fake=None):
+    def _create_test_document_segments(
+        self,
+        db_session_with_containers: Session,
+        document: Document,
+        account: Account,
+        count: int = 3,
+        fake: Faker | None = None,
+    ):
         """
         Helper method to create test document segments with realistic data.
 
@@ -204,7 +224,7 @@ class TestDeleteSegmentFromIndexTask:
             segment.index_node_hash = fake.sha256()
             segment.hit_count = 0
             segment.enabled = True
-            segment.status = "completed"
+            segment.status = SegmentStatus.COMPLETED
             segment.created_by = account.id
             segment.created_at = fake.date_time_this_year()
             segment.updated_by = account.id
@@ -217,7 +237,9 @@ class TestDeleteSegmentFromIndexTask:
         return segments
 
     @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_success(self, mock_index_processor_factory, db_session_with_containers):
+    def test_delete_segment_from_index_task_success(
+        self, mock_index_processor_factory, db_session_with_containers: Session
+    ):
         """
         Test successful segment deletion from index with comprehensive verification.
 
@@ -266,7 +288,7 @@ class TestDeleteSegmentFromIndexTask:
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True
 
-    def test_delete_segment_from_index_task_dataset_not_found(self, db_session_with_containers):
+    def test_delete_segment_from_index_task_dataset_not_found(self, db_session_with_containers: Session):
         """
         Test task behavior when dataset is not found.
 
@@ -287,7 +309,7 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when dataset not found
 
-    def test_delete_segment_from_index_task_document_not_found(self, db_session_with_containers):
+    def test_delete_segment_from_index_task_document_not_found(self, db_session_with_containers: Session):
         """
         Test task behavior when document is not found.
 
@@ -313,7 +335,7 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when document not found
 
-    def test_delete_segment_from_index_task_document_disabled(self, db_session_with_containers):
+    def test_delete_segment_from_index_task_document_disabled(self, db_session_with_containers: Session):
         """
         Test task behavior when document is disabled.
 
@@ -341,7 +363,7 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when document is disabled
 
-    def test_delete_segment_from_index_task_document_archived(self, db_session_with_containers):
+    def test_delete_segment_from_index_task_document_archived(self, db_session_with_containers: Session):
         """
         Test task behavior when document is archived.
 
@@ -369,7 +391,7 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when document is archived
 
-    def test_delete_segment_from_index_task_document_not_completed(self, db_session_with_containers):
+    def test_delete_segment_from_index_task_document_not_completed(self, db_session_with_containers: Session):
         """
         Test task behavior when document indexing is not completed.
 
@@ -386,7 +408,7 @@ class TestDeleteSegmentFromIndexTask:
         account = self._create_test_account(db_session_with_containers, tenant, fake)
         dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
         document = self._create_test_document(
-            db_session_with_containers, dataset, account, fake, indexing_status="indexing"
+            db_session_with_containers, dataset, account, fake, indexing_status=IndexingStatus.INDEXING
         )
         segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
 

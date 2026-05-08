@@ -2,15 +2,16 @@
 'use client'
 import type { FC } from 'react'
 import type { App as AppType } from '@/models/explore'
+import { Button } from '@langgenius/dify-ui/button'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal/index'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useGetTryAppInfo } from '@/service/use-try-app'
-import Button from '../../base/button'
 import App from './app'
 import AppInfo from './app-info'
 import Preview from './preview'
@@ -19,7 +20,7 @@ import Tab, { TypeEnum } from './tab'
 type Props = {
   appId: string
   app?: AppType
-  category?: string
+  categories?: string[]
   onClose: () => void
   onCreate: () => void
 }
@@ -27,11 +28,11 @@ type Props = {
 const TryApp: FC<Props> = ({
   appId,
   app,
-  category,
+  categories,
   onClose,
   onCreate,
 }) => {
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isTrialApp = !!(app && app.can_trial && systemFeatures.enable_trial_app)
   const canUseTryTab = IS_CLOUD_EDITION && (app ? isTrialApp : true)
   const [type, setType] = useState<TypeEnum>(() => (canUseTryTab ? TypeEnum.TRY : TypeEnum.DETAIL))
@@ -42,7 +43,7 @@ const TryApp: FC<Props> = ({
     <Modal
       isShow
       onClose={onClose}
-      className="h-[calc(100vh-32px)] min-w-[1280px] max-w-[calc(100vw-32px)] overflow-x-auto p-2"
+      className="h-[calc(100vh-32px)] max-w-[calc(100vw-32px)] min-w-[1280px] overflow-x-auto p-2"
     >
       {isLoading ? (
         <div className="flex h-full items-center justify-center">
@@ -80,7 +81,7 @@ const TryApp: FC<Props> = ({
               className="w-[360px] shrink-0"
               appDetail={appDetail}
               appId={appId}
-              category={category}
+              categories={categories}
               onCreate={onCreate}
             />
           </div>

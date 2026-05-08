@@ -1,8 +1,8 @@
 export const normalizeViteModuleId = (id: string): string => {
-  const withoutQuery = id.split('?', 1)[0]
+  const withoutQuery = id.split('?', 1)[0]!
 
-  if (withoutQuery.startsWith('/@fs/'))
-    return withoutQuery.slice('/@fs'.length)
+  if (withoutQuery!.startsWith('/@fs/'))
+    return withoutQuery!.slice('/@fs'.length)
 
   return withoutQuery
 }
