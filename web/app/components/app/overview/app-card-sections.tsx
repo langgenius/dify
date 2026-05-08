@@ -31,6 +31,7 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiSettings2Line, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
+import { Trans } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import ShareQRCode from '@/app/components/base/qrcode'
@@ -49,9 +50,9 @@ type OperationIcon = ComponentType<{ className?: string }>
 
 type AccessModeLabelKey
   = | 'accessControlDialog.accessItems.organization'
-  | 'accessControlDialog.accessItems.specific'
-  | 'accessControlDialog.accessItems.anyone'
-  | 'accessControlDialog.accessItems.external'
+    | 'accessControlDialog.accessItems.specific'
+    | 'accessControlDialog.accessItems.anyone'
+    | 'accessControlDialog.accessItems.external'
 
 type AppCardOperation = {
   key: OverviewOperationKey
@@ -143,7 +144,11 @@ export const WorkflowLaunchDialog = ({
             {t('overview.appInfo.workflowLaunchHiddenInputs.title', { ns: 'appOverview' })}
           </DialogTitle>
           <DialogDescription className="system-md-regular text-text-tertiary">
-            {t('overview.appInfo.workflowLaunchHiddenInputs.description', { ns: 'appOverview' })}
+            <Trans
+              i18nKey="overview.appInfo.workflowLaunchHiddenInputs.description"
+              ns="appOverview"
+              components={{ bold: <span className="system-md-medium" /> }}
+            />
           </DialogDescription>
         </div>
         <form onSubmit={onSubmit}>
