@@ -35,7 +35,7 @@ describe('PdfPreview', () => {
   }
 
   const getControl = (rightClass: 'right-24' | 'right-16' | 'right-6') => {
-    const control = document.querySelector(`div.absolute.${rightClass}.top-6`) as HTMLDivElement | null
+    const control = document.querySelector(`button.absolute.${rightClass}.top-6`) as HTMLButtonElement | null
     expect(control).toBeInTheDocument()
     return control!
   }

@@ -120,7 +120,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       }
     }
     shareImage()
-  }, [title, url])
+  }, [t, title, url])
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     if (e.deltaY < 0)

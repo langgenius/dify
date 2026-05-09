@@ -3,9 +3,9 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import { t } from 'i18next'
 import { useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PdfHighlighter, PdfLoader } from './pdf-highlighter-adapter'
@@ -19,6 +19,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
   url,
   onCancel,
 }) => {
+  const { t } = useTranslation()
   const media = useBreakpoints()
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -43,6 +44,10 @@ const PdfPreview: FC<PdfPreviewProps> = ({
 
   useHotkeys('up', zoomIn)
   useHotkeys('down', zoomOut)
+
+  const zoomOutLabel = t('operation.zoomOut', { ns: 'common' })
+  const zoomInLabel = t('operation.zoomIn', { ns: 'common' })
+  const cancelLabel = t('operation.cancel', { ns: 'common' })
 
   return (
     <Dialog
@@ -87,46 +92,52 @@ const PdfPreview: FC<PdfPreviewProps> = ({
         <Tooltip>
           <TooltipTrigger
             render={(
-              <div
+              <button
+                type="button"
+                aria-label={zoomOutLabel}
                 className="absolute top-6 right-24 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomOut}
               >
                 <RiZoomOutLine className="h-4 w-4 text-gray-500" />
-              </div>
+              </button>
             )}
           />
           <TooltipContent>
-            {t('operation.zoomOut', { ns: 'common' })}
+            {zoomOutLabel}
           </TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
             render={(
-              <div
+              <button
+                type="button"
+                aria-label={zoomInLabel}
                 className="absolute top-6 right-16 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomIn}
               >
                 <RiZoomInLine className="h-4 w-4 text-gray-500" />
-              </div>
+              </button>
             )}
           />
           <TooltipContent>
-            {t('operation.zoomIn', { ns: 'common' })}
+            {zoomInLabel}
           </TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
             render={(
-              <div
+              <button
+                type="button"
+                aria-label={cancelLabel}
                 className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
                 onClick={onCancel}
               >
                 <RiCloseLine className="h-4 w-4 text-gray-500" />
-              </div>
+              </button>
             )}
           />
           <TooltipContent>
-            {t('operation.cancel', { ns: 'common' })}
+            {cancelLabel}
           </TooltipContent>
         </Tooltip>
       </DialogContent>
