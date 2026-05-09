@@ -17,7 +17,7 @@ const ContinueWork = ({
   const { t } = useTranslation()
 
   return (
-    <section className={cn('px-12', className)} aria-labelledby="continue-work-title">
+    <section className={cn('px-12 pb-6', className)} aria-labelledby="continue-work-title">
       <div className="flex items-center justify-between">
         <h2 id="continue-work-title" className="min-w-0 truncate system-xl-semibold text-text-primary">
           {t('continueWork.title', { ns: 'explore' })}

@@ -18,7 +18,7 @@ const ContinueWorkItem = ({
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   return (
-    <article className="flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 pt-4 pb-3 shadow-md">
+    <article className="flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 pt-4 pb-5 shadow-md">
       <div className="relative shrink-0">
         <AppIcon
           size="large"
@@ -29,7 +29,7 @@ const ContinueWorkItem = ({
         />
         <AppTypeIcon
           type={item.mode}
-          wrapperClassName="absolute -right-0.5 -bottom-0.5 size-4 rounded-xs border-components-panel-on-panel-item-bg shadow-sm"
+          wrapperClassName="absolute -right-0.5 -bottom-0.5 size-4 rounded-sm border-components-panel-on-panel-item-bg shadow-sm"
           className="size-3"
         />
       </div>
