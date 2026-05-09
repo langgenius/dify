@@ -192,11 +192,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/annotation/add-annotation-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/annotation/batch-add-annotation-modal/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -222,11 +217,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/annotation/edit-annotation-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/app/annotation/header-opts/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -247,9 +237,6 @@
   },
   "web/app/components/app/annotation/view-annotation-modal/index.tsx": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     },
     "react/set-state-in-effect": {
@@ -2875,9 +2862,6 @@
     }
   },
   "web/app/components/tools/edit-custom-collection-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 4
     },
@@ -2886,9 +2870,6 @@
     }
   },
   "web/app/components/tools/edit-custom-collection-modal/test-api.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 1
     }
@@ -2929,9 +2910,6 @@
     }
   },
   "web/app/components/tools/setting/build-in/config-credentials.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
