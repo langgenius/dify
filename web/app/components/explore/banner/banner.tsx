@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { Banner as BannerType } from '@/models/app'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -80,6 +81,7 @@ const Banner: FC = () => {
   )
 
   const isPaused = isHovered || isResizing
+  const notShowSlider = isError || enabledBanners.length === 0
 
   // Handle window resize to pause animation
   useEffect(() => {
@@ -106,16 +108,13 @@ const Banner: FC = () => {
   if (isLoading)
     return <LoadingState />
 
-  if (isError || enabledBanners.length === 0)
-    return null
-
   return (
     <div
       className="relative flex w-full flex-col items-start overflow-hidden rounded-[24px] bg-background-default-dodge transition-shadow hover:shadow-xs"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="flex w-full flex-col gap-1 px-8 pt-8">
+      <div className={cn('flex w-full flex-col gap-1 px-8 pt-8', notShowSlider && 'pb-8')}>
         <p className="truncate title-5xl-semi-bold text-dify-logo-black">
           {t('banner.greeting', { name: userName, ns: 'explore' })}
         </p>
@@ -124,39 +123,42 @@ const Banner: FC = () => {
         </p>
       </div>
 
-      <Carousel
-        opts={{ loop: true }}
-        plugins={[
-          Carousel.Plugin.Fade(),
-          Carousel.Plugin.Autoplay({
-            delay: AUTOPLAY_DELAY,
-            stopOnInteraction: false,
-            stopOnMouseEnter: true,
-          }),
-        ]}
-        className="w-full rounded-2xl shadow-xs"
-      >
-        <BannerImpressionTracker
-          banners={enabledBanners}
-          accountId={accountId}
-          language={locale}
-          trackedBannerIdsRef={trackedBannerIdsRef}
-        />
-        <Carousel.Content>
-          {enabledBanners.map((banner, index) => (
-            <Carousel.Item key={banner.id}>
-              <BannerItem
-                banner={banner}
-                autoplayDelay={AUTOPLAY_DELAY}
-                isPaused={isPaused}
-                sort={index + 1}
-                language={locale}
-                accountId={accountId}
-              />
-            </Carousel.Item>
-          ))}
-        </Carousel.Content>
-      </Carousel>
+      {!notShowSlider
+        && (
+          <Carousel
+            opts={{ loop: true }}
+            plugins={[
+              Carousel.Plugin.Fade(),
+              Carousel.Plugin.Autoplay({
+                delay: AUTOPLAY_DELAY,
+                stopOnInteraction: false,
+                stopOnMouseEnter: true,
+              }),
+            ]}
+            className="w-full rounded-2xl shadow-xs"
+          >
+            <BannerImpressionTracker
+              banners={enabledBanners}
+              accountId={accountId}
+              language={locale}
+              trackedBannerIdsRef={trackedBannerIdsRef}
+            />
+            <Carousel.Content>
+              {enabledBanners.map((banner, index) => (
+                <Carousel.Item key={banner.id}>
+                  <BannerItem
+                    banner={banner}
+                    autoplayDelay={AUTOPLAY_DELAY}
+                    isPaused={isPaused}
+                    sort={index + 1}
+                    language={locale}
+                    accountId={accountId}
+                  />
+                </Carousel.Item>
+              ))}
+            </Carousel.Content>
+          </Carousel>
+        )}
     </div>
   )
 }
