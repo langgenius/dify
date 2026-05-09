@@ -60,7 +60,7 @@ class _StubToolNode(Node[_StubToolNodeData]):
     def __init__(
         self,
         node_id: str,
-        config: _StubToolNodeData,
+        data: _StubToolNodeData,
         *,
         graph_init_params,
         graph_runtime_state,
@@ -68,7 +68,7 @@ class _StubToolNode(Node[_StubToolNodeData]):
     ) -> None:
         super().__init__(
             node_id=node_id,
-            config=config,
+            data=data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
@@ -169,7 +169,7 @@ def _build_graph(runtime_state: GraphRuntimeState, *, pause_on: str | None) -> G
 
 
 def _build_runtime_state(run_id: str) -> GraphRuntimeState:
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="user", app_id="app", workflow_id="workflow"),
         user_inputs={},
         conversation_variables=[],

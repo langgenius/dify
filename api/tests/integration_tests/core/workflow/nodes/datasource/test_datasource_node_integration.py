@@ -73,7 +73,7 @@ def test_node_integration_minimal_stream(mocker: MockerFixture):
 
     node = DatasourceNode(
         node_id="n",
-        config=DatasourceNodeData(
+        data=DatasourceNodeData(
             type="datasource",
             version="1",
             title="Datasource",

@@ -210,7 +210,9 @@ class TestPauseStatePersistenceLayerTestContainers:
         execution_id = workflow_run_id or getattr(self, "test_workflow_run_id", None) or str(uuid.uuid4())
 
         # Create variable pool
-        variable_pool = VariablePool(system_variables=build_system_variables(workflow_execution_id=execution_id))
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(workflow_execution_id=execution_id)
+        )
         if variables:
             for (node_id, var_key), value in variables.items():
                 variable_pool.add([node_id, var_key], value)
