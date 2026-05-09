@@ -10,7 +10,7 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Sliding panel built on Headless UI dialog primitives. Supports optional mask, custom footer, and close behaviour.',
+        component: 'Sliding panel built on Base UI dialog primitives. Supports optional mask, custom footer, and close behaviour.',
       },
     },
   },

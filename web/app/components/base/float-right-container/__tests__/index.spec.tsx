@@ -153,10 +153,11 @@ describe('FloatRightContainer', () => {
       )
 
       const dialog = await screen.findByRole('dialog')
-      expect(dialog).toHaveClass('custom-dialog-class')
+      expect(document.querySelector('.custom-dialog-class')).toBeInTheDocument()
 
       const panel = document.querySelector('.custom-panel-class')
       expect(panel).toBeInTheDocument()
+      expect(dialog).toHaveClass('custom-panel-class')
     })
   })
 

@@ -1,5 +1,5 @@
 'use client'
-// eslint-disable-next-line no-restricted-imports -- Temporary legacy drawer exception: remove Headless UI here without expanding dify-ui before this component is deleted.
+// eslint-disable-next-line no-restricted-imports -- Temporary legacy drawer exception: remove this direct Base UI wrapper after callers migrate to dify-ui drawer primitives.
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'

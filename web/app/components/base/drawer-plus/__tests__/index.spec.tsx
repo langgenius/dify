@@ -172,8 +172,7 @@ describe('DrawerPlus', () => {
         />,
       )
 
-      const dialog = screen.getByRole('dialog')
-      expect(dialog.className).toContain('custom-dialog')
+      expect(document.querySelector('.custom-dialog')).toBeInTheDocument()
     })
 
     it('should apply custom contentClassName', () => {
