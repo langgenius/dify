@@ -1485,11 +1485,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/modal-like-wrap/index.stories.tsx": {
-    "no-console": {
-      "count": 3
-    }
-  },
   "web/app/components/base/new-audio-button/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2139,21 +2134,6 @@
     },
     "ts/no-non-null-asserted-optional-chain": {
       "count": 2
-    }
-  },
-  "web/app/components/datasets/metadata/metadata-dataset/create-content.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/metadata/metadata-dataset/create-metadata-modal.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/metadata/metadata-dataset/select-metadata-modal.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
     }
   },
   "web/app/components/datasets/metadata/types.ts": {
