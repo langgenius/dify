@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -42,6 +43,35 @@ def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
+
+
+def make_node_execution(**overrides):
+    payload = {
+        "id": "node-exec-1",
+        "index": 1,
+        "predecessor_node_id": None,
+        "node_id": "node1",
+        "node_type": "start",
+        "title": "Start",
+        "inputs_dict": {"query": "hello"},
+        "process_data_dict": {},
+        "outputs_dict": {"answer": "world"},
+        "status": "succeeded",
+        "error": None,
+        "elapsed_time": 1.0,
+        "execution_metadata_dict": {},
+        "extras": {},
+        "created_at": datetime(2026, 1, 1, 0, 0, 0),
+        "created_by_role": "account",
+        "created_by_account": None,
+        "created_by_end_user": None,
+        "finished_at": datetime(2026, 1, 1, 0, 0, 1),
+        "inputs_truncated": False,
+        "outputs_truncated": False,
+        "process_data_truncated": False,
+    }
+    payload.update(overrides)
+    return SimpleNamespace(**payload)
 
 
 class TestDraftWorkflowApi:
@@ -743,7 +773,7 @@ class TestRagPipelineWorkflowLastRunApi:
 
         pipeline = MagicMock()
         workflow = MagicMock()
-        node_exec = MagicMock()
+        node_exec = make_node_execution()
 
         service = MagicMock()
         service.get_draft_workflow.return_value = workflow
@@ -757,7 +787,9 @@ class TestRagPipelineWorkflowLastRunApi:
             ),
         ):
             result = method(api, pipeline, "node1")
-            assert result == node_exec
+            assert result["id"] == "node-exec-1"
+            assert result["inputs"] == {"query": "hello"}
+            assert result["outputs"] == {"answer": "world"}
 
     def test_last_run_not_found(self, app: Flask):
         api = RagPipelineWorkflowLastRunApi()
@@ -799,7 +831,7 @@ class TestRagPipelineDatasourceVariableApi:
         }
 
         service = MagicMock()
-        service.set_datasource_variables.return_value = MagicMock()
+        service.set_datasource_variables.return_value = make_node_execution(node_id="n1")
 
         with (
             app.test_request_context("/", json=payload),
@@ -814,4 +846,5 @@ class TestRagPipelineDatasourceVariableApi:
             ),
         ):
             result = method(api, pipeline)
-            assert result is not None
+            assert result["node_id"] == "n1"
+            assert result["process_data"] == {}

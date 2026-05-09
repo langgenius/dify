@@ -47,6 +47,10 @@ class QueryModel(BaseModel):
     ambiguous: int | str | None = Field(default=None, description="Ambiguous query parameter")
 
 
+class ResponseAliasModel(BaseModel):
+    public_name: str = Field(validation_alias="internal_name")
+
+
 @pytest.fixture(autouse=True)
 def mock_console_ns():
     """Mock the console_ns to avoid circular imports during test collection."""
@@ -144,6 +148,20 @@ def test_register_schema_models_calls_register_schema_model(monkeypatch: pytest.
         (namespace, UserModel),
         (namespace, ProductModel),
     ]
+
+
+def test_register_response_schema_model_uses_serialized_field_names():
+    from controllers.common.schema import register_response_schema_model
+
+    namespace = MagicMock(spec=Namespace)
+
+    register_response_schema_model(namespace, ResponseAliasModel)
+
+    model_name, schema = namespace.schema_model.call_args.args
+
+    assert model_name == "ResponseAliasModel"
+    assert "public_name" in schema["properties"]
+    assert "internal_name" not in schema["properties"]
 
 
 def test_get_or_create_model_returns_existing_model(mock_console_ns):
