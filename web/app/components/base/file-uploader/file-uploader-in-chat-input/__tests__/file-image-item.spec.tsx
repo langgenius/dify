@@ -95,8 +95,7 @@ describe('FileImageItem', () => {
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
 
-    // ImagePreview renders via createPortal with class "image-preview-container", not role="dialog"
-    // ImagePreview renders via createPortal with class "image-preview-container", not role="dialog"
+    // ImagePreview renders through Dialog with class "image-preview-container"
     expect(document.querySelector('.image-preview-container'))!.toBeInTheDocument()
   })
 
@@ -114,7 +113,7 @@ describe('FileImageItem', () => {
 
     const img = screen.getByRole('img')
     fireEvent.click(img.parentElement!)
-    // ImagePreview renders via createPortal with class "image-preview-container"
+    // ImagePreview renders through Dialog with class "image-preview-container"
     const previewContainer = document.querySelector('.image-preview-container')!
     expect(previewContainer)!.toBeInTheDocument()
 

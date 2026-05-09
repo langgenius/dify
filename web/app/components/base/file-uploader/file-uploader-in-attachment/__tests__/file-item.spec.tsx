@@ -186,7 +186,7 @@ describe('FileInAttachmentItem', () => {
     const buttons = screen.getAllByRole('button')
     fireEvent.click(buttons[0]!)
 
-    // ImagePreview renders via createPortal with class "image-preview-container"
+    // ImagePreview renders through Dialog with class "image-preview-container"
     const previewContainer = document.querySelector('.image-preview-container')!
     expect(previewContainer)!.toBeInTheDocument()
 

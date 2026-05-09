@@ -51,7 +51,7 @@ describe('VideoPreview', () => {
 
       const overlay = getOverlay()
       expect(overlay).toBeInTheDocument()
-      expect(overlay.parentElement).toBe(document.body)
+      expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
     })
   })
 

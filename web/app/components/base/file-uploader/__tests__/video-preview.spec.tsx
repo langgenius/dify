@@ -64,6 +64,6 @@ describe('VideoPreview', () => {
     render(<VideoPreview url="https://example.com/video.mp4" title="Test Video" onCancel={vi.fn()} />)
 
     const video = document.querySelector('video')
-    expect(video?.closest('[tabindex="-1"]')?.parentElement).toBe(document.body)
+    expect(video?.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
   })
 })

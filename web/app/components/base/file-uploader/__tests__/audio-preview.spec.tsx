@@ -64,6 +64,6 @@ describe('AudioPreview', () => {
     render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
 
     const audio = document.querySelector('audio')
-    expect(audio?.closest('[tabindex="-1"]')?.parentElement).toBe(document.body)
+    expect(audio?.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
   })
 })
