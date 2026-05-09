@@ -24,7 +24,14 @@ if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
 
 
 class _StubToolRuntime:
-    def get_runtime(self, *, node_id: str, node_data: Any, variable_pool: Any) -> ToolRuntimeHandle:
+    def get_runtime(
+        self,
+        *,
+        node_id: str,
+        node_data: Any,
+        variable_pool: Any,
+        node_execution_id: str | None = None,
+    ) -> ToolRuntimeHandle:
         raise NotImplementedError
 
     def get_runtime_parameters(self, *, tool_runtime: ToolRuntimeHandle) -> list[Any]:

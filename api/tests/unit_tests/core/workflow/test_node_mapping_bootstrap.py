@@ -7,6 +7,11 @@ from pathlib import Path
 
 def test_moved_core_nodes_resolve_after_importing_production_entrypoints():
     api_root = Path(__file__).resolve().parents[4]
+    env = os.environ.copy()
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        str(api_root) if not existing_pythonpath else os.pathsep.join([str(api_root), existing_pythonpath])
+    )
     script = textwrap.dedent(
         """
         from core.app.apps import workflow_app_runner
@@ -34,7 +39,7 @@ def test_moved_core_nodes_resolve_after_importing_production_entrypoints():
     completed = subprocess.run(
         [sys.executable, "-c", script],
         cwd=api_root,
-        env=os.environ.copy(),
+        env=env,
         capture_output=True,
         text=True,
         check=False,
