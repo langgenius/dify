@@ -1,5 +1,5 @@
-from uuid import UUID
 from typing import Any
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource

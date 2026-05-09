@@ -1,5 +1,5 @@
-from uuid import UUID
 from typing import Any, Literal
+from uuid import UUID
 
 from flask import abort, make_response, request
 from flask_restx import Resource
@@ -363,7 +363,6 @@ class AnnotationBatchImportApi(Resource):
     @edit_permission_required
     def post(self, app_id: UUID):
         from configs import dify_config
-
 
         # check file
         if "file" not in request.files:

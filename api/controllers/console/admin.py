@@ -1,9 +1,9 @@
-from uuid import UUID
 import csv
 import io
 from collections.abc import Callable
 from functools import wraps
 from typing import cast
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource

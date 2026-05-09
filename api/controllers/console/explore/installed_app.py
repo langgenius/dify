@@ -1,4 +1,3 @@
-from uuid import UUID
 import logging
 from datetime import datetime
 from typing import Any

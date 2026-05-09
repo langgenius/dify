@@ -1,9 +1,9 @@
-from uuid import UUID
 import logging
 import re
 import uuid
 from datetime import datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
