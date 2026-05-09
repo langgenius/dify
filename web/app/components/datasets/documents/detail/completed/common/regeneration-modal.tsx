@@ -1,9 +1,6 @@
 import type { FC } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
@@ -29,18 +26,18 @@ const DefaultContent: FC<IDefaultContentProps> = React.memo(({
 
   return (
     <>
-      <div className="p-6 pb-4">
+      <div className="pb-4">
         <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">{t('segment.regenerationConfirmTitle', { ns: 'datasetDocuments' })}</AlertDialogTitle>
         <AlertDialogDescription className="system-md-regular text-text-secondary">{t('segment.regenerationConfirmMessage', { ns: 'datasetDocuments' })}</AlertDialogDescription>
       </div>
-      <AlertDialogActions>
-        <AlertDialogCancelButton variant="secondary" onClick={onCancel}>
+      <div className="flex justify-end gap-x-2 pt-6">
+        <Button onClick={onCancel}>
           {t('operation.cancel', { ns: 'common' })}
-        </AlertDialogCancelButton>
-        <AlertDialogConfirmButton onClick={onConfirm}>
+        </Button>
+        <Button variant="primary" tone="destructive" onClick={onConfirm}>
           {t('operation.regenerate', { ns: 'common' })}
-        </AlertDialogConfirmButton>
-      </AlertDialogActions>
+        </Button>
+      </div>
     </>
   )
 })
@@ -52,11 +49,11 @@ const RegeneratingContent: FC = React.memo(() => {
 
   return (
     <>
-      <div className="p-6 pb-4">
+      <div className="pb-4">
         <span className="title-2xl-semi-bold text-text-primary">{t('segment.regeneratingTitle', { ns: 'datasetDocuments' })}</span>
         <p className="system-md-regular text-text-secondary">{t('segment.regeneratingMessage', { ns: 'datasetDocuments' })}</p>
       </div>
-      <div className="flex justify-end p-6">
+      <div className="flex justify-end pt-6">
         <Button variant="primary" tone="destructive" disabled className="inline-flex items-center gap-x-0.5">
           <RiLoader2Line className="h-4 w-4 animate-spin text-components-button-destructive-primary-text-disabled" />
           <span>{t('operation.regenerate', { ns: 'common' })}</span>
@@ -86,11 +83,11 @@ const RegenerationCompletedContent: FC<IRegenerationCompletedContentProps> = Rea
 
   return (
     <>
-      <div className="p-6 pb-4">
+      <div className="pb-4">
         <span className="title-2xl-semi-bold text-text-primary">{t('segment.regenerationSuccessTitle', { ns: 'datasetDocuments' })}</span>
         <p className="system-md-regular text-text-secondary">{t('segment.regenerationSuccessMessage', { ns: 'datasetDocuments' })}</p>
       </div>
-      <div className="flex justify-end p-6">
+      <div className="flex justify-end pt-6">
         <Button variant="primary" onClick={onClose}>
           {`${t('operation.close', { ns: 'common' })}${countdown === 0 ? '' : `(${Math.round(countdown / 1000)})`}`}
         </Button>
@@ -131,7 +128,7 @@ const RegenerationModal: FC<IRegenerationModalProps> = ({
 
   return (
     <AlertDialog open={isShow}>
-      <AlertDialogContent className="max-w-[480px]! overflow-hidden! rounded-2xl border-none text-left align-middle shadow-xl">
+      <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-[480px]! overflow-hidden! rounded-2xl! border-none p-6 text-left align-middle shadow-xl">
         {!loading && !updateSucceeded && <DefaultContent onCancel={onCancel} onConfirm={onConfirm} />}
         {loading && !updateSucceeded && <RegeneratingContent />}
         {!loading && updateSucceeded && <RegenerationCompletedContent onClose={onClose} />}

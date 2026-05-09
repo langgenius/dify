@@ -34,8 +34,8 @@ const DSLConfirmModal = ({
           onCancel()
       }}
     >
-      <AlertDialogContent className="w-[480px] overflow-hidden! border-none text-left align-middle shadow-xl">
-        <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
+      <AlertDialogContent className="w-[480px] max-w-none! overflow-hidden! border-none p-6 text-left align-middle shadow-xl">
+        <div className="flex flex-col items-start gap-2 self-stretch pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</AlertDialogTitle>
           <AlertDialogDescription render={<div />} className="flex grow flex-col system-md-regular text-text-secondary">
             <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
@@ -51,7 +51,7 @@ const DSLConfirmModal = ({
             </div>
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogActions className="items-start p-0 pt-6">
           <AlertDialogCancelButton variant="secondary">{t('newApp.Cancel', { ns: 'app' })}</AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>{t('newApp.Confirm', { ns: 'app' })}</AlertDialogConfirmButton>
         </AlertDialogActions>

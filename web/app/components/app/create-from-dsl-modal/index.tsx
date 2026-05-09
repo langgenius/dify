@@ -5,9 +5,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
@@ -46,7 +45,7 @@ export enum CreateFromDSLModalTab {
 const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
-  const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
+  const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
@@ -55,22 +54,22 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
 
-  const readFile = (file: File) => {
+  const readFile = useCallback((file: File) => {
     const reader = new FileReader()
     reader.onload = function (event) {
       const content = event.target?.result
       setFileContent(content as string)
     }
     reader.readAsText(file)
-  }
+  }, [])
 
-  const handleFile = (file?: File) => {
-    setDSLFile(file)
+  const handleFile = useCallback((file?: File) => {
+    setCurrentFile(file)
     if (file)
       readFile(file)
     if (!file)
       setFileContent('')
-  }
+  }, [readFile])
 
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
@@ -81,7 +80,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   useEffect(() => {
     if (droppedFile)
       handleFile(droppedFile)
-  }, [droppedFile])
+  }, [droppedFile, handleFile])
 
   const onCreate = async (_e?: React.MouseEvent) => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
@@ -140,11 +139,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         setImportId(id)
       }
       else {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))
       }
     }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    catch (e) {
+    catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
@@ -186,11 +184,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))
       }
     }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    catch (e) {
+    catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
@@ -227,7 +224,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
               className="flex h-8 w-8 cursor-pointer items-center"
               onClick={() => onClose()}
             >
-              <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+              <span className="i-ri-close-line h-5 w-5 text-text-tertiary" />
             </div>
           </div>
           <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">

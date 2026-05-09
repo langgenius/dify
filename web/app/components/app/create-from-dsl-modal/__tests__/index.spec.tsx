@@ -397,6 +397,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSL.mockResolvedValueOnce({
       id: 'import-failed',
       status: DSLImportStatus.FAILED,
+      error: 'Invalid YAML format',
     })
     mockImportDSL.mockRejectedValueOnce(new Error('boom'))
 
@@ -412,7 +413,7 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(getCreateButton())
     })
-    expect(toastMocks.error).toHaveBeenCalledWith('newApp.appCreateFailed')
+    expect(toastMocks.error).toHaveBeenCalledWith('Invalid YAML format')
 
     rerender(
       <CreateFromDSLModal
@@ -427,6 +428,7 @@ describe('CreateFromDSLModal', () => {
       fireEvent.click(getCreateButton())
     })
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
+    expect(toastMocks.error).toHaveBeenLastCalledWith('newApp.appCreateFailed')
   })
 
   it('should handle pending import confirmation failures and cancellation', async () => {
@@ -438,7 +440,7 @@ describe('CreateFromDSLModal', () => {
       current_dsl_version: '2.0.0',
     })
     mockImportDSLConfirm
-      .mockResolvedValueOnce({ status: DSLImportStatus.FAILED })
+      .mockResolvedValueOnce({ status: DSLImportStatus.FAILED, error: 'Confirm failed' })
       .mockRejectedValueOnce(new Error('boom'))
 
     render(
@@ -465,11 +467,12 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
     })
-    expect(toastMocks.error).toHaveBeenCalledWith('newApp.appCreateFailed')
+    expect(toastMocks.error).toHaveBeenCalledWith('Confirm failed')
 
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
     })
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
+    expect(toastMocks.error).toHaveBeenLastCalledWith('newApp.appCreateFailed')
   })
 })

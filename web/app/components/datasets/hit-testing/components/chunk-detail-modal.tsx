@@ -59,8 +59,14 @@ const ChunkDetailModal = ({
           onHide()
       }}
     >
-      <DialogContent className={cn('w-full overflow-hidden! border-none text-left align-middle', cn(isParentChildRetrieval ? 'min-w-[1200px]!' : 'min-w-[800px]!'))}>
-        <DialogCloseButton data-testid="modal-close-button" />
+      <DialogContent className={cn('max-h-none overflow-hidden! border-none p-6 text-left align-middle', isParentChildRetrieval ? 'w-[1200px] max-w-none! min-w-[1200px]!' : 'w-[800px] max-w-none! min-w-[800px]!')}>
+        <DialogCloseButton
+          data-testid="modal-close-button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onHide()
+          }}
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
         </DialogTitle>

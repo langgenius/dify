@@ -160,7 +160,7 @@ const TemplateCard = ({
               closeEditModal()
           }}
         >
-          <DialogContent className="w-full max-w-[520px] overflow-hidden! border-none p-0 text-left align-middle">
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-[520px]! overflow-hidden! border-none p-0 text-left align-middle">
 
             <EditPipelineInfo
               pipeline={pipeline}
@@ -195,7 +195,7 @@ const TemplateCard = ({
               closeDetailsModal()
           }}
         >
-          <DialogContent className="h-[calc(100vh-64px)] max-h-none w-full max-w-[1680px] overflow-hidden! rounded-3xl border-none p-0 text-left align-middle">
+          <DialogContent className="h-[calc(100vh-64px)] max-h-none w-[calc(100vw-2rem)] max-w-[1680px]! overflow-hidden! rounded-3xl border-none p-0 text-left align-middle">
 
             <Details
               id={pipeline.id}

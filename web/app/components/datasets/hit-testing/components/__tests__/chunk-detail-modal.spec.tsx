@@ -1,5 +1,5 @@
 import type { HitTesting } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChunkDetailModal from '../chunk-detail-modal'
 
@@ -20,7 +20,7 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
     </div>
   ),
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div data-testid="modal-title">{children}</div>,
-  DialogCloseButton: () => <button data-testid="modal-close">close</button>,
+  DialogCloseButton: (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>close</button>,
 }))
 
 vi.mock('../../../common/image-list', () => ({
@@ -135,5 +135,11 @@ describe('ChunkDetailModal', () => {
   it('should render mask overlay', () => {
     render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
     expect(screen.getByTestId('mask')).toBeInTheDocument()
+  })
+
+  it('should call onHide when close button is clicked', () => {
+    render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
+    fireEvent.click(screen.getByTestId('modal-close-button'))
+    expect(onHide).toHaveBeenCalledTimes(1)
   })
 })
