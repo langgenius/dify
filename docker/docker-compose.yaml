@@ -267,6 +267,31 @@ services:
       - ssrf_proxy_network
       - default
 
+  # WebSocket service for workflow collaboration.
+  api_websocket:
+    <<: *shared-api-worker-config
+    image: langgenius/dify-api:1.14.0
+    profiles:
+      - collaboration
+    environment:
+      MODE: api
+      SERVER_WORKER_AMOUNT: 1
+      SERVER_WORKER_CLASS: ${API_WEBSOCKET_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker}
+      SERVER_WORKER_CONNECTIONS: ${API_WEBSOCKET_WORKER_CONNECTIONS:-1000}
+      GUNICORN_TIMEOUT: ${API_WEBSOCKET_GUNICORN_TIMEOUT:-360}
+    depends_on:
+      db_postgres:
+        condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_started
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
@@ -667,6 +692,7 @@ services:
       NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
       NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
       NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
+      NGINX_SOCKET_IO_UPSTREAM: ${NGINX_SOCKET_IO_UPSTREAM:-api_websocket:5001}
       CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
     depends_on:
       - api
