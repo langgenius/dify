@@ -44,11 +44,3 @@ class Keyword:
 
     def search(self, query: str, **kwargs: Any) -> list[Document]:
         return self._keyword_processor.search(query, **kwargs)
-
-    def __getattr__(self, name):
-        if self._keyword_processor is not None:
-            method = getattr(self._keyword_processor, name)
-            if callable(method):
-                return method
-
-        raise AttributeError(f"'Keyword' object has no attribute '{name}'")
