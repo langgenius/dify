@@ -468,9 +468,60 @@ class HostedFetchPipelineTemplateConfig(BaseSettings):
     )
 
 
+class HostedAstraflowConfig(BaseSettings):
+    """
+    Configuration for hosted Astraflow service.
+    Astraflow (by UCloud) is an OpenAI-compatible AI model aggregation platform
+    supporting 200+ models via a single API key.
+    Global endpoint: https://api-us-ca.umodelverse.ai/v1
+    China  endpoint: https://api.modelverse.cn/v1
+    """
+
+    HOSTED_ASTRAFLOW_API_KEY: str | None = Field(
+        description="API key for hosted Astraflow service (global endpoint, env: ASTRAFLOW_API_KEY)",
+        default=None,
+    )
+
+    HOSTED_ASTRAFLOW_API_BASE: str | None = Field(
+        description="Base URL for hosted Astraflow API (defaults to global endpoint)",
+        default="https://api-us-ca.umodelverse.ai/v1",
+    )
+
+    HOSTED_ASTRAFLOW_CN_API_KEY: str | None = Field(
+        description="API key for hosted Astraflow China endpoint (env: ASTRAFLOW_CN_API_KEY)",
+        default=None,
+    )
+
+    HOSTED_ASTRAFLOW_CN_API_BASE: str | None = Field(
+        description="Base URL for hosted Astraflow China API",
+        default="https://api.modelverse.cn/v1",
+    )
+
+    HOSTED_ASTRAFLOW_TRIAL_ENABLED: bool = Field(
+        description="Enable trial access to hosted Astraflow service",
+        default=False,
+    )
+
+    HOSTED_ASTRAFLOW_TRIAL_MODELS: str = Field(
+        description="Comma-separated list of available models for trial access",
+        default="",
+    )
+
+    HOSTED_ASTRAFLOW_PAID_ENABLED: bool = Field(
+        description="Enable paid access to hosted Astraflow service",
+        default=False,
+    )
+
+    HOSTED_ASTRAFLOW_PAID_MODELS: str = Field(
+        description="Comma-separated list of available models for paid access",
+        default="",
+    )
+
+
 class HostedServiceConfig(
     # place the configs in alphabet order
     HostedAnthropicConfig,
+    HostedAstraflowConfig,
     HostedAzureOpenAiConfig,
     HostedFetchAppTemplateConfig,
     HostedFetchPipelineTemplateConfig,
