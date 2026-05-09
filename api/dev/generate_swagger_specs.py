@@ -20,7 +20,6 @@ from pathlib import Path
 from typing import Protocol, TypeGuard
 
 from flask import Flask
-from flask_restx.swagger import Swagger
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +46,6 @@ SPEC_TARGETS: tuple[SpecTarget, ...] = (
     SpecTarget(route="/api/swagger.json", filename="web-swagger.json", namespace="web"),
     SpecTarget(route="/v1/swagger.json", filename="service-swagger.json", namespace="service"),
 )
-
-_ORIGINAL_REGISTER_MODEL = Swagger.register_model
-_ORIGINAL_REGISTER_FIELD = Swagger.register_field
 
 
 def _is_inline_field_map(value: object) -> TypeGuard[dict[object, object]]:
@@ -152,56 +148,14 @@ def apply_runtime_defaults() -> None:
     dify_config.SWAGGER_UI_ENABLED = os.environ["SWAGGER_UI_ENABLED"].lower() == "true"
 
 
-def _patch_swagger_for_inline_nested_dicts() -> None:
-    """Teach Flask-RESTX Swagger generation to tolerate inline nested field maps.
-
-    Some existing controllers use `fields.Nested({...})` with a raw field mapping
-    instead of a named `api.model(...)`. Flask-RESTX crashes on those anonymous
-    dicts during schema registration, so this helper upgrades them into temporary
-    named models at export time.
-    """
-
-    if getattr(Swagger, "_dify_inline_nested_dict_patch", False):
-        return
-
-    def get_or_create_inline_model(self: Swagger, nested_fields: dict[object, object]) -> object:
-        anonymous_models = getattr(self, "_anonymous_inline_models", None)
-        if anonymous_models is None:
-            anonymous_models = {}
-            self.__dict__["_anonymous_inline_models"] = anonymous_models
-
-        anonymous_name = anonymous_models.get(id(nested_fields))
-        if anonymous_name is None:
-            anonymous_name = _inline_model_name(nested_fields)
-            anonymous_models[id(nested_fields)] = anonymous_name
-            if anonymous_name not in self.api.models:
-                self.api.model(anonymous_name, nested_fields)
-
-        return self.api.models[anonymous_name]
-
-    def register_model_with_inline_dict_support(self: Swagger, model: object) -> dict[str, str]:
-        if _is_inline_field_map(model):
-            model = get_or_create_inline_model(self, model)
-
-        return _ORIGINAL_REGISTER_MODEL(self, model)
-
-    def register_field_with_inline_dict_support(self: Swagger, field: object) -> None:
-        nested = getattr(field, "nested", None)
-        if _is_inline_field_map(nested):
-            field.model = get_or_create_inline_model(self, nested)  # type: ignore
-
-        _ORIGINAL_REGISTER_FIELD(self, field)
-
-    Swagger.register_model = register_model_with_inline_dict_support
-    Swagger.register_field = register_field_with_inline_dict_support
-    Swagger._dify_inline_nested_dict_patch = True
-
-
 def create_spec_app() -> Flask:
     """Build a minimal Flask app that only mounts the Swagger-producing blueprints."""
 
     apply_runtime_defaults()
-    _patch_swagger_for_inline_nested_dicts()
+
+    from libs.flask_restx_compat import patch_swagger_for_inline_nested_dicts
+
+    patch_swagger_for_inline_nested_dicts()
 
     app = Flask(__name__)
 
