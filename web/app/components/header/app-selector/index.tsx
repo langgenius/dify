@@ -1,9 +1,14 @@
 'use client'
 import type { AppDetailResponse } from '@/models/app'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { noop } from 'es-toolkit/function'
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateAppDialog from '@/app/components/app/create-app-dialog'
 import AppIcon from '@/app/components/base/app-icon'
@@ -22,91 +27,68 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const { t } = useTranslation()
 
-  const itemClassName = `
-    flex items-center w-full h-10 px-3 text-gray-700 text-[14px]
-    rounded-lg font-normal hover:bg-gray-100 cursor-pointer
-  `
-
   return (
     <div className="">
-      <Menu as="div" className="relative inline-block text-left">
-        <div>
-          <MenuButton
-            className="
-              inline-flex h-7 w-full items-center justify-center
-              rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold
-              text-[#1C64F2] hover:bg-[#EBF5FF]
-            "
-          >
-            {curApp?.name}
-            <ChevronDownIcon
-              className="ml-1 h-3 w-3"
-              aria-hidden="true"
-            />
-          </MenuButton>
-        </div>
-        <Transition
-          as={Fragment}
-          enter="transition ease-out duration-100"
-          enterFrom="transform opacity-0 scale-95"
-          enterTo="transform opacity-100 scale-100"
-          leave="transition ease-in duration-75"
-          leaveFrom="transform opacity-100 scale-100"
-          leaveTo="transform opacity-0 scale-95"
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger
+          className={cn(
+            'inline-flex h-7 w-full items-center justify-center rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold text-[#1C64F2] outline-hidden',
+            'hover:bg-[#EBF5FF] focus-visible:bg-[#EBF5FF] focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-popup-open:bg-[#EBF5FF]',
+          )}
         >
-          <MenuItems
-            className="
-              absolute right-0 -left-11 mt-1.5 w-60 max-w-80
-              origin-top-right divide-y divide-gray-100 rounded-lg bg-white
-              shadow-lg
-            "
-          >
-            {!!appItems.length && (
-              <div className="overflow-auto px-1 py-1" style={{ maxHeight: '50vh' }}>
-                {
-                  appItems.map((app: AppDetailResponse) => (
-                    <MenuItem key={app.id}>
-                      <div
-                        className={itemClassName}
-                        onClick={() =>
-                          router.push(`/app/${app.id}/${isCurrentWorkspaceEditor ? 'configuration' : 'overview'}`)}
-                      >
-                        <div className="relative mr-2 h-6 w-6 rounded-md bg-[#D5F5F6]">
-                          <AppIcon size="tiny" />
-                          <div className="absolute -right-0.5 -bottom-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-sm bg-white">
-                            <Indicator />
-                          </div>
-                        </div>
-                        {app.name}
-                      </div>
-                    </MenuItem>
-                  ))
-                }
-              </div>
-            )}
-            {isCurrentWorkspaceEditor && (
-              <MenuItem>
-                <div className="p-1" onClick={() => setShowNewAppDialog(true)}>
-                  <div
-                    className="flex h-12 cursor-pointer items-center rounded-lg hover:bg-gray-100"
+          <span className="min-w-0 truncate">{curApp?.name}</span>
+          <span
+            className="ml-1 i-heroicons-chevron-down h-3 w-3 shrink-0"
+            aria-hidden="true"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-end"
+          sideOffset={6}
+          popupClassName="w-60 max-w-80 divide-y divide-gray-100 bg-white p-0"
+        >
+          {!!appItems.length && (
+            <div className="max-h-[50vh] overflow-auto px-1 py-1">
+              {
+                appItems.map((app: AppDetailResponse) => (
+                  <DropdownMenuItem
+                    key={app.id}
+                    className="h-10 px-3 text-[14px] font-normal text-gray-700 hover:bg-gray-100 data-highlighted:bg-gray-100"
+                    onClick={() =>
+                      router.push(`/app/${app.id}/${isCurrentWorkspaceEditor ? 'configuration' : 'overview'}`)}
                   >
-                    <div
-                      className="
-                      mr-2 ml-4 flex
-                      h-6 w-6 items-center justify-center rounded-md border-[0.5px]
-                      border-dashed border-gray-200 bg-gray-100
-                    "
-                    >
-                      <PlusIcon className="h-4 w-4 text-gray-500" />
+                    <div className="relative mr-2 h-6 w-6 shrink-0 rounded-md bg-[#D5F5F6]">
+                      <AppIcon size="tiny" />
+                      <div className="absolute -right-0.5 -bottom-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-sm bg-white">
+                        <Indicator />
+                      </div>
                     </div>
-                    <div className="text-[14px] font-normal text-gray-700">{t('menus.newApp', { ns: 'common' })}</div>
-                  </div>
+                    <span className="min-w-0 truncate">{app.name}</span>
+                  </DropdownMenuItem>
+                ))
+              }
+            </div>
+          )}
+          {isCurrentWorkspaceEditor && (
+            <div className="p-1">
+              <DropdownMenuItem
+                className="h-12 px-3 text-[14px] font-normal text-gray-700 hover:bg-gray-100 data-highlighted:bg-gray-100"
+                onClick={() => setShowNewAppDialog(true)}
+              >
+                <div
+                  className="
+                    mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px]
+                    border-dashed border-gray-200 bg-gray-100
+                  "
+                >
+                  <span className="i-heroicons-plus h-4 w-4 text-gray-500" />
                 </div>
-              </MenuItem>
-            )}
-          </MenuItems>
-        </Transition>
-      </Menu>
+                <span>{t('menus.newApp', { ns: 'common' })}</span>
+              </DropdownMenuItem>
+            </div>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <CreateAppDialog
         show={showNewAppDialog}
         onClose={() => setShowNewAppDialog(false)}

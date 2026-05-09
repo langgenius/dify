@@ -1,16 +1,17 @@
 'use client'
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
-import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useCSVDownloader,
@@ -79,58 +80,47 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
         <span aria-hidden className="i-custom-vender-line-files-file-plus-02 h-4 w-4 text-text-tertiary" />
         <span className="grow text-left system-sm-regular text-text-secondary">{t('table.header.bulkImport', { ns: 'appAnnotation' })}</span>
       </button>
-      <Menu as="div" className="relative h-full w-full">
-        <MenuButton className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger className="mx-1 h-9 w-[calc(100%-8px)] space-x-2 px-3 py-2">
           <span aria-hidden className="i-custom-vender-line-files-file-download-02 h-4 w-4 text-text-tertiary" />
           <span className="grow text-left system-sm-regular text-text-secondary">{t('table.header.bulkExport', { ns: 'appAnnotation' })}</span>
-          <span aria-hidden className="i-custom-vender-line-arrows-chevron-right h-[14px] w-[14px] shrink-0 text-text-tertiary" />
-        </MenuButton>
-        <Transition
-          as={Fragment}
-          enter="transition ease-out duration-100"
-          enterFrom="transform opacity-0 scale-95"
-          enterTo="transform opacity-100 scale-100"
-          leave="transition ease-in duration-75"
-          leaveFrom="transform opacity-100 scale-100"
-          leaveTo="transform opacity-0 scale-95"
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent
+          placement="left-start"
+          sideOffset={4}
+          popupClassName="min-w-[100px] border-components-panel-on-panel-item-bg bg-components-panel-bg py-1"
         >
-          <MenuItems
-            className={cn(
-              'absolute top-px left-1 z-10 min-w-[100px] origin-top-right -translate-x-full rounded-xl border-[0.5px] border-components-panel-on-panel-item-bg bg-components-panel-bg py-1 shadow-xs',
-            )}
+          <CSVDownloader
+            type={Type.Link}
+            filename={`annotations-${locale}`}
+            bom={true}
+            data={[
+              locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
+              ...list.map(item => [item.question, item.answer]),
+            ]}
           >
-            <CSVDownloader
-              type={Type.Link}
-              filename={`annotations-${locale}`}
-              bom={true}
-              data={[
-                locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
-                ...list.map(item => [item.question, item.answer]),
-              ]}
-            >
-              <button
-                type="button"
-                disabled={annotationUnavailable}
-                className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50"
-                onClick={onClose}
-              >
-                <span className="grow text-left system-sm-regular text-text-secondary">CSV</span>
-              </button>
-            </CSVDownloader>
             <button
               type="button"
               disabled={annotationUnavailable}
-              className={cn('mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50', 'border-0!')}
-              onClick={() => {
-                onClose()
-                onExportJsonl()
-              }}
+              className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={onClose}
             >
-              <span className="grow text-left system-sm-regular text-text-secondary">JSONL</span>
+              <span className="grow text-left system-sm-regular text-text-secondary">CSV</span>
             </button>
-          </MenuItems>
-        </Transition>
-      </Menu>
+          </CSVDownloader>
+          <button
+            type="button"
+            disabled={annotationUnavailable}
+            className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg border-0 px-3 py-2 outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => {
+              onClose()
+              onExportJsonl()
+            }}
+          >
+            <span className="grow text-left system-sm-regular text-text-secondary">JSONL</span>
+          </button>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
       <button
         type="button"
         onClick={() => {
@@ -204,7 +194,7 @@ const HeaderOptions: FC<Props> = ({
         <span aria-hidden className="mr-0.5 i-ri-add-line h-4 w-4" />
         <div>{t('table.header.addAnnotation', { ns: 'appAnnotation' })}</div>
       </Button>
-      <DropdownMenu open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+      <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
         <DropdownMenuTrigger
           aria-label={t('operation.more', { ns: 'common' })}
           className="mr-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"

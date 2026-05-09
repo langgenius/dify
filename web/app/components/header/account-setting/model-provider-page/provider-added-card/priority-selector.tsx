@@ -1,12 +1,13 @@
 import type { FC } from 'react'
-import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiCheckLine,
-  RiMoreFill,
-} from '@remixicon/react'
-import { Fragment } from 'react'
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 import { PreferredProviderTypeEnum } from '../declarations'
 
@@ -31,45 +32,45 @@ const Selector: FC<SelectorProps> = ({
   ]
 
   return (
-    <Popover className="relative">
-      <PopoverButton as="div">
-        {
-          ({ open }) => (
-            <Button className={cn(
-              'h-6 w-6 rounded-md px-0',
-              open && 'bg-components-button-secondary-bg-hover',
+    <Popover>
+      <PopoverTrigger
+        aria-label={t('modelProvider.card.priorityUse', { ns: 'common' })}
+        render={(
+          <Button
+            className={cn(
+              'h-6 w-6 rounded-md px-0 data-popup-open:bg-components-button-secondary-bg-hover',
             )}
-            >
-              <RiMoreFill className="h-3 w-3" />
-            </Button>
-          )
-        }
-      </PopoverButton>
-      <Transition
-        as={Fragment}
-        leave="transition ease-in duration-100"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
+          >
+            <span className="i-ri-more-fill h-3 w-3" aria-hidden="true" />
+          </Button>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="w-[144px] rounded-lg p-1"
       >
-        <PopoverPanel className="absolute top-7 right-0 z-10 w-[144px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
-          <div className="p-1">
-            <div className="px-3 pt-2 pb-1 text-sm font-medium text-text-secondary">{t('modelProvider.card.priorityUse', { ns: 'common' })}</div>
-            {
-              options.map(option => (
-                <PopoverButton as={Fragment} key={option.key}>
-                  <div
-                    className="flex h-9 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover"
-                    onClick={() => onSelect(option.key)}
-                  >
-                    <div className="grow">{option.text}</div>
-                    {value === option.key && <RiCheckLine className="h-4 w-4 text-text-accent" />}
-                  </div>
-                </PopoverButton>
-              ))
-            }
-          </div>
-        </PopoverPanel>
-      </Transition>
+        <PopoverTitle className="px-3 pt-2 pb-1 text-sm font-medium text-text-secondary">
+          {t('modelProvider.card.priorityUse', { ns: 'common' })}
+        </PopoverTitle>
+        {
+          options.map(option => (
+            <PopoverClose
+              key={option.key}
+              render={(
+                <button
+                  type="button"
+                  className="flex h-9 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                  onClick={() => onSelect(option.key)}
+                />
+              )}
+            >
+              <span className="grow text-left">{option.text}</span>
+              {value === option.key && <span className="i-ri-check-line h-4 w-4 text-text-accent" aria-hidden="true" />}
+            </PopoverClose>
+          ))
+        }
+      </PopoverContent>
     </Popover>
   )
 }

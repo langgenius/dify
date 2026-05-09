@@ -1,11 +1,13 @@
 'use client'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiGraduationCapFill,
-} from '@remixicon/react'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
@@ -38,73 +40,48 @@ export default function AppSelector() {
   }
 
   return (
-    <Menu as="div" className="relative inline-block text-left">
-      {
-        ({ open }) => (
-          <>
-            <div>
-              <MenuButton
-                className={`
-                    p-1x inline-flex
-                    items-center rounded-[20px] text-sm
-                    text-text-primary
-                    mobile:px-1
-                    ${open && 'bg-components-panel-bg-blur'}
-                  `}
-              >
-                <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
-              </MenuButton>
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        aria-label={userProfile.name}
+        className={cn(
+          'inline-flex items-center rounded-[20px] text-sm text-text-primary outline-hidden mobile:px-1',
+          'hover:bg-components-panel-bg-blur focus-visible:bg-components-panel-bg-blur focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-popup-open:bg-components-panel-bg-blur',
+        )}
+      >
+        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="w-60 max-w-80 divide-y divide-divider-subtle bg-components-panel-bg-blur p-0"
+      >
+        <div className="p-1">
+          <div className="flex flex-nowrap items-center px-3 py-2">
+            <div className="min-w-0 grow">
+              <div className="system-md-medium break-all text-text-primary">
+                {userProfile.name}
+                {isEducationAccount && (
+                  <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
+                    <span className="mr-1 i-ri-graduation-cap-fill h-3 w-3" />
+                    <span className="system-2xs-medium">EDU</span>
+                  </PremiumBadge>
+                )}
+              </div>
+              <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
             </div>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <MenuItems
-                className="
-                    absolute -top-1 -right-2 w-60 max-w-80
-                    origin-top-right divide-y divide-divider-subtle rounded-lg bg-components-panel-bg-blur
-                    shadow-lg
-                  "
-              >
-                <MenuItem>
-                  <div className="p-1">
-                    <div className="flex flex-nowrap items-center px-3 py-2">
-                      <div className="grow">
-                        <div className="system-md-medium break-all text-text-primary">
-                          {userProfile.name}
-                          {isEducationAccount && (
-                            <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
-                              <RiGraduationCapFill className="mr-1 h-3 w-3" />
-                              <span className="system-2xs-medium">EDU</span>
-                            </PremiumBadge>
-                          )}
-                        </div>
-                        <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
-                      </div>
-                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
-                    </div>
-                  </div>
-                </MenuItem>
-                <MenuItem>
-                  <div className="p-1" onClick={() => handleLogout()}>
-                    <div
-                      className="group flex h-9 cursor-pointer items-center justify-start rounded-lg px-3 hover:bg-state-base-hover"
-                    >
-                      <LogOut01 className="mr-1 flex h-4 w-4 text-text-tertiary" />
-                      <div className="text-[14px] font-normal text-text-secondary">{t('userProfile.logout', { ns: 'common' })}</div>
-                    </div>
-                  </div>
-                </MenuItem>
-              </MenuItems>
-            </Transition>
-          </>
-        )
-      }
-    </Menu>
+            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />
+          </div>
+        </div>
+        <div className="p-1">
+          <DropdownMenuItem
+            className="h-9 justify-start px-3"
+            onClick={handleLogout}
+          >
+            <LogOut01 className="mr-1 flex h-4 w-4 text-text-tertiary" />
+            <span className="text-[14px] font-normal text-text-secondary">{t('userProfile.logout', { ns: 'common' })}</span>
+          </DropdownMenuItem>
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
