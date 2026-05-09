@@ -173,7 +173,7 @@ class AudioServiceTestDataFactory:
         file = Mock(spec=FileStorage)
         file.filename = filename
         file.mimetype = mimetype
-        file.read = Mock(return_value=content)
+        file.stream.read = Mock(return_value=content)
         for key, value in kwargs.items():
             setattr(file, key, value)
         return file
