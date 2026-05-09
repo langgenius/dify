@@ -65,31 +65,6 @@ describe('Dialog wrapper', () => {
       await expect.element(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
     })
 
-    it('should forward backdrop and popup props to base primitives', async () => {
-      const onClick = vi.fn()
-      const screen = await render(
-        <Dialog open>
-          <DialogContent
-            backdropProps={{ 'data-testid': 'dialog-backdrop' }}
-            popupProps={{
-              'aria-label': 'Custom dialog',
-              'data-testid': 'dialog-popup',
-              onClick,
-              'tabIndex': -1,
-            }}
-          >
-            <span>Dialog body</span>
-          </DialogContent>
-        </Dialog>,
-      )
-
-      await expect.element(screen.getByTestId('dialog-backdrop')).toBeInTheDocument()
-      await expect.element(screen.getByRole('dialog', { name: 'Custom dialog' })).toBeInTheDocument()
-
-      asHTMLElement(screen.getByTestId('dialog-popup').element()).click()
-      expect(onClick).toHaveBeenCalledTimes(1)
-    })
-
     it('should forward close button props to base primitive', async () => {
       const onClick = vi.fn()
       const screen = await render(

@@ -33,7 +33,6 @@ export default function FullScreenModal({
       }}
     >
       <DialogContent
-        backdropProps={{ 'data-testid': 'fullscreen-modal-backdrop' }}
         backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
         className={cn(
           'top-0 left-0 h-screen w-screen max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-none bg-transparent p-4 shadow-none',

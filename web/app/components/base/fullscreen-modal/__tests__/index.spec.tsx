@@ -151,7 +151,7 @@ describe('FullScreenModal Component', () => {
         </FullScreenModal>,
       )
 
-      await user.click(screen.getByTestId('fullscreen-modal-backdrop'))
+      await user.click(screen.getByRole('dialog'))
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
