@@ -18,6 +18,9 @@ export const DialogDescription = BaseDialog.Description
 export const DialogPortal = BaseDialog.Portal
 
 type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children'>
+type DataAttributes = {
+  [key: `data-${string}`]: string | number | boolean | undefined
+}
 
 export function DialogCloseButton({
   className,
@@ -42,7 +45,8 @@ type DialogContentProps = {
   children: ReactNode
   className?: string
   backdropClassName?: string
-  backdropProps?: Omit<BaseDialog.Backdrop.Props, 'className'>
+  backdropProps?: Omit<BaseDialog.Backdrop.Props, 'className'> & DataAttributes
+  popupProps?: Omit<BaseDialog.Popup.Props, 'children' | 'className'> & DataAttributes
 }
 
 export function DialogContent({
@@ -50,6 +54,7 @@ export function DialogContent({
   className,
   backdropClassName,
   backdropProps,
+  popupProps,
 }: DialogContentProps) {
   return (
     <DialogPortal>
@@ -62,6 +67,7 @@ export function DialogContent({
         )}
       />
       <BaseDialog.Popup
+        {...popupProps}
         className={cn(
           'fixed top-1/2 left-1/2 z-1002 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl',
           'transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
