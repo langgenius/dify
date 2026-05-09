@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Fragment, useCallback } from 'react'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { useCallback } from 'react'
 
 type DialogProps = {
   className?: string
@@ -20,37 +20,34 @@ const DialogWrapper = ({
 }: DialogProps) => {
   const close = useCallback(() => onClose?.(), [onClose])
   return (
-    <Transition appear show={show} as={Fragment}>
-      <Dialog as="div" className="relative z-40" onClose={close}>
-        <TransitionChild>
-          <div className={cn(
-            'fixed inset-0 bg-black/25',
-            'data-closed:opacity-0',
-            'data-enter:opacity-100 data-enter:duration-300 data-enter:ease-out',
-            'data-leave:opacity-0 data-leave:duration-200 data-leave:ease-in',
-          )}
-          />
-        </TransitionChild>
-
-        <div className="fixed inset-0">
-          <div className={cn('flex min-h-full flex-col items-end justify-center pb-2', inWorkflow ? 'pt-[112px]' : 'pt-[64px] pr-2')} data-testid="dialog-layout-container">
-            <TransitionChild>
-              <DialogPanel className={cn(
-                'relative flex h-0 w-[420px] grow flex-col overflow-hidden border-components-panel-border bg-components-panel-bg-alt p-0 text-left align-middle shadow-xl transition-all',
-                inWorkflow ? 'rounded-l-2xl border-t-[0.5px] border-b-[0.5px] border-l-[0.5px]' : 'rounded-2xl border-[0.5px]',
-                'data-closed:scale-95 data-closed:opacity-0',
-                'data-enter:scale-100 data-enter:opacity-100 data-enter:duration-300 data-enter:ease-out',
-                'data-leave:scale-95 data-leave:opacity-0 data-leave:duration-200 data-leave:ease-in',
-                className,
-              )}
-              >
-                {children}
-              </DialogPanel>
-            </TransitionChild>
+    <Dialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open)
+          close()
+      }}
+    >
+      <DialogContent
+        backdropClassName="bg-black/25"
+        className="top-0 left-0 h-screen max-h-none w-screen max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-none bg-transparent p-0 shadow-none"
+        popupProps={{
+          onClick: close,
+        }}
+      >
+        <div className={cn('flex h-full min-h-full w-full flex-col items-end justify-center pb-2', inWorkflow ? 'pt-[112px]' : 'pt-[64px] pr-2')} data-testid="dialog-layout-container">
+          <div
+            className={cn(
+              'relative flex h-0 w-[420px] grow flex-col overflow-hidden border-components-panel-border bg-components-panel-bg-alt p-0 text-left align-middle shadow-xl transition-all',
+              inWorkflow ? 'rounded-l-2xl border-t-[0.5px] border-b-[0.5px] border-l-[0.5px]' : 'rounded-2xl border-[0.5px]',
+              className,
+            )}
+            onClick={e => e.stopPropagation()}
+          >
+            {children}
           </div>
         </div>
-      </Dialog>
-    </Transition>
+      </DialogContent>
+    </Dialog>
   )
 }
 

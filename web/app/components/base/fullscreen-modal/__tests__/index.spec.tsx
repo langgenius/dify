@@ -37,7 +37,7 @@ describe('FullScreenModal Component', () => {
   })
 
   describe('Props Handling', () => {
-    it('should apply wrapperClassName to the dialog root', async () => {
+    it('should apply wrapperClassName to the dialog content', async () => {
       render(
         <FullScreenModal
           open={true}
@@ -47,10 +47,9 @@ describe('FullScreenModal Component', () => {
         </FullScreenModal>,
       )
 
-      await screen.findByRole('dialog')
-      const element = document.querySelector('.custom-wrapper-class')
-      expect(element).toBeInTheDocument()
-      expect(element).toHaveClass('relative', 'z-50')
+      const dialog = await screen.findByRole('dialog')
+      expect(dialog).toHaveClass('custom-wrapper-class')
+      expect(dialog).toHaveClass('h-screen', 'w-screen')
     })
 
     it('should apply className to the inner panel', async () => {
@@ -109,8 +108,7 @@ describe('FullScreenModal Component', () => {
           </FullScreenModal>,
         )
       })
-      const closeButton = document.querySelector('.bg-components-button-tertiary-bg')
-      expect(closeButton).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Close' })).toHaveClass('bg-components-button-tertiary-bg')
     })
 
     it('should not render close button when closable is false', async () => {
@@ -121,8 +119,7 @@ describe('FullScreenModal Component', () => {
           </FullScreenModal>,
         )
       })
-      const closeButton = document.querySelector('.bg-components-button-tertiary-bg')
-      expect(closeButton).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
     })
   })
 
@@ -137,10 +134,10 @@ describe('FullScreenModal Component', () => {
         </FullScreenModal>,
       )
 
-      const closeBtn = document.querySelector('.bg-components-button-tertiary-bg')
+      const closeBtn = screen.getByRole('button', { name: 'Close' })
       expect(closeBtn).toBeInTheDocument()
 
-      await user.click(closeBtn!)
+      await user.click(closeBtn)
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
@@ -154,14 +151,8 @@ describe('FullScreenModal Component', () => {
         </FullScreenModal>,
       )
 
-      const dialog = document.querySelector('.relative.z-50')
-      if (dialog) {
-        await user.click(dialog)
-        expect(onClose).toHaveBeenCalled()
-      }
-      else {
-        throw new Error('Dialog root not found')
-      }
+      await user.click(screen.getByRole('dialog'))
+      expect(onClose).toHaveBeenCalledTimes(1)
     })
 
     it('should call onClose when Escape key is pressed', async () => {
@@ -207,8 +198,7 @@ describe('FullScreenModal Component', () => {
       const user = userEvent.setup()
       render(<FullScreenModal open={true} closable={true}>Content</FullScreenModal>)
 
-      const closeButton = document.querySelector('.bg-components-button-tertiary-bg')
-      await user.click(closeButton!)
+      await user.click(screen.getByRole('button', { name: 'Close' }))
     })
   })
 })
