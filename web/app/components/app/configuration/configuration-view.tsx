@@ -12,6 +12,15 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
@@ -21,7 +30,6 @@ import AgentSettingButton from '@/app/components/app/configuration/config/agent-
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import Debug from '@/app/components/app/configuration/debug'
 import Divider from '@/app/components/base/divider'
-import Drawer from '@/app/components/base/drawer'
 import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import Loading from '@/app/components/base/loading'
@@ -192,19 +200,43 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
           )}
 
           {isMobile && (
-            <Drawer showClose isOpen={isShowDebugPanel} onClose={onHideDebugPanel} mask footer={null}>
-              <Debug
-                isAPIKeySet={contextValue.isAPIKeySet}
-                onSetting={onOpenAccountSettings}
-                inputs={contextValue.inputs}
-                modelParameterParams={{
-                  setModel: onModelChange,
-                  onCompletionParamsChange,
-                }}
-                debugWithMultipleModel={!!debugWithMultipleModel}
-                multipleModelConfigs={multipleModelConfigs}
-                onMultipleModelConfigsChange={onMultipleModelConfigsChange}
-              />
+            <Drawer
+              open={isShowDebugPanel}
+              modal
+              swipeDirection="right"
+              onOpenChange={(open) => {
+                if (!open)
+                  onHideDebugPanel()
+              }}
+            >
+              <DrawerPortal>
+                <DrawerBackdrop className="bg-black/30" />
+                <DrawerViewport>
+                  <DrawerPopup className="data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-sm">
+                    <DrawerContent className="flex min-h-0 flex-1 flex-col">
+                      <div className="mb-4 flex shrink-0 justify-end">
+                        <DrawerCloseButton
+                          aria-label={t('operation.close', { ns: 'common' })}
+                          className="h-6 w-6 rounded-md"
+                          data-testid="close-icon"
+                        />
+                      </div>
+                      <Debug
+                        isAPIKeySet={contextValue.isAPIKeySet}
+                        onSetting={onOpenAccountSettings}
+                        inputs={contextValue.inputs}
+                        modelParameterParams={{
+                          setModel: onModelChange,
+                          onCompletionParamsChange,
+                        }}
+                        debugWithMultipleModel={!!debugWithMultipleModel}
+                        multipleModelConfigs={multipleModelConfigs}
+                        onMultipleModelConfigsChange={onMultipleModelConfigsChange}
+                      />
+                    </DrawerContent>
+                  </DrawerPopup>
+                </DrawerViewport>
+              </DrawerPortal>
             </Drawer>
           )}
 

@@ -32,7 +32,6 @@ describe('FloatRightContainer', () => {
           isMobile={true}
           isOpen={false}
           onClose={vi.fn()}
-          unmount={true}
         >
           <div>Closed mobile content</div>
         </FloatRightContainer>,
@@ -99,53 +98,12 @@ describe('FloatRightContainer', () => {
       expect(onClose).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClose when close is done using escape key', async () => {
-      const onClose = vi.fn()
-      render(
-        <FloatRightContainer
-          isMobile={true}
-          isOpen={true}
-          onClose={onClose}
-          showClose={true}
-        >
-          <div>Closable content</div>
-        </FloatRightContainer>,
-      )
-
-      const closeIcon = screen.getByTestId('close-icon')
-      closeIcon.focus()
-      await userEvent.keyboard('{Enter}')
-
-      expect(onClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onClose when close is done using space key', async () => {
-      const onClose = vi.fn()
-      render(
-        <FloatRightContainer
-          isMobile={true}
-          isOpen={true}
-          onClose={onClose}
-          showClose={true}
-        >
-          <div>Closable content</div>
-        </FloatRightContainer>,
-      )
-
-      const closeIcon = screen.getByTestId('close-icon')
-      closeIcon.focus()
-      await userEvent.keyboard(' ')
-
-      expect(onClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should apply drawer className props in mobile drawer mode', async () => {
+    it('should apply panel className in mobile drawer mode', async () => {
       render(
         <FloatRightContainer
           isMobile={true}
           isOpen={true}
           onClose={vi.fn()}
-          dialogClassName="custom-dialog-class"
           panelClassName="custom-panel-class"
         >
           <div>Class forwarding content</div>
@@ -153,7 +111,6 @@ describe('FloatRightContainer', () => {
       )
 
       const dialog = await screen.findByRole('dialog')
-      expect(document.querySelector('.custom-dialog-class')).toBeInTheDocument()
 
       const panel = document.querySelector('.custom-panel-class')
       expect(panel).toBeInTheDocument()

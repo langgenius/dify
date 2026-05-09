@@ -305,9 +305,6 @@
     }
   },
   "web/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
@@ -357,16 +354,6 @@
     },
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/app/configuration/configuration-view.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/configuration/dataset-config/card-item/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/app/configuration/dataset-config/index.tsx": {
@@ -475,9 +462,6 @@
     }
   },
   "web/app/components/app/log/list.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 6
     },
@@ -519,9 +503,6 @@
     }
   },
   "web/app/components/app/workflow-log/list.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     }
@@ -931,11 +912,6 @@
   "web/app/components/base/file-uploader/utils.ts": {
     "ts/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/base/float-right-container/index.tsx": {
-    "no-restricted-imports": {
-      "count": 2
     }
   },
   "web/app/components/base/form/components/base/base-form.tsx": {
@@ -2092,9 +2068,6 @@
     }
   },
   "web/app/components/datasets/hit-testing/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "react/unsupported-syntax": {
       "count": 1
     }
@@ -2540,16 +2513,8 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/endpoint-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 7
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-detail-panel/model-list.tsx": {
@@ -2573,9 +2538,6 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 2
     }
@@ -2634,9 +2596,6 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/trigger/event-detail-drawer.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 5
     }
@@ -2874,11 +2833,6 @@
       "count": 1
     }
   },
-  "web/app/components/tools/mcp/detail/provider-detail.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -2891,11 +2845,6 @@
   },
   "web/app/components/tools/provider-list.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/provider/detail.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3708,11 +3657,6 @@
   },
   "web/app/components/workflow/nodes/knowledge-base/utils.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/components/dataset-item.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
