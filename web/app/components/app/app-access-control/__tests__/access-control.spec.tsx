@@ -147,7 +147,7 @@ describe('AccessControlItem', () => {
   })
 })
 
-// AccessControlDialog renders a dify-ui dialog with a manual close control
+// AccessControlDialog renders the shared dialog primitive with a close control.
 describe('AccessControlDialog', () => {
   it('should render dialog content when visible', () => {
     render(

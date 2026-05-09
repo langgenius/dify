@@ -22,8 +22,7 @@ describe('AccessControlDialog', () => {
       </AccessControlDialog>,
     )
 
-    const closeButton = screen.getByRole('button', { name: 'Close' })
-    fireEvent.click(closeButton)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledTimes(1)

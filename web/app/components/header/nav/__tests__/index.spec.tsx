@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { use } from 'react'
 import { vi } from 'vitest'
@@ -291,45 +292,24 @@ describe('Nav Component', () => {
     })
 
     it('should show sub-menu and call onCreate with types when isApp is true', async () => {
-      render(<Nav {...defaultProps} curNav={curNav} isApp />)
-      const selectorButton = screen.getByRole('button', { name: /Item 1/i })
-
-      await act(async () => {
-        fireEvent.click(selectorButton)
-      })
-
-      const openCreateMenu = async () => {
-        const createButton = await screen.findByText('Create New')
-        await act(async () => {
-          fireEvent.click(createButton)
-        })
-        return screen.findByText(/app\.newApp\.startFromBlank/i)
+      const user = userEvent.setup()
+      const clickCreateBranch = async (optionName: RegExp) => {
+        const { unmount } = render(<Nav {...defaultProps} curNav={curNav} isApp />)
+        await user.click(screen.getByRole('button', { name: /Item 1/i }))
+        const createButton = await screen.findByRole('menuitem', { name: /Create New/i })
+        await user.hover(createButton)
+        fireEvent.click(await screen.findByRole('menuitem', { name: optionName }))
+        unmount()
       }
 
-      await openCreateMenu()
-      const blankOption = await screen.findByText(
-        /app\.newApp\.startFromBlank/i,
-      )
-      await act(async () => {
-        fireEvent.click(blankOption)
-      })
-      expect(mockOnCreate).toHaveBeenCalledWith('blank')
+      await clickCreateBranch(/app\.newApp\.startFromBlank/i)
+      await clickCreateBranch(/app\.newApp\.startFromTemplate/i)
+      await clickCreateBranch(/app\.importDSL/i)
 
-      await openCreateMenu()
-      const templateOption = await screen.findByText(
-        /app\.newApp\.startFromTemplate/i,
-      )
-      await act(async () => {
-        fireEvent.click(templateOption)
-      })
-      expect(mockOnCreate).toHaveBeenCalledWith('template')
-
-      await openCreateMenu()
-      const dslOption = await screen.findByText(/app\.importDSL/i)
-      await act(async () => {
-        fireEvent.click(dslOption)
-      })
-      expect(mockOnCreate).toHaveBeenCalledWith('dsl')
+      expect(mockOnCreate).toHaveBeenNthCalledWith(1, 'blank')
+      expect(mockOnCreate).toHaveBeenNthCalledWith(2, 'template')
+      expect(mockOnCreate).toHaveBeenNthCalledWith(3, 'dsl')
+      expect(mockOnCreate).toHaveBeenCalledTimes(3)
     })
 
     it('should not show create button if NOT an editor', async () => {
