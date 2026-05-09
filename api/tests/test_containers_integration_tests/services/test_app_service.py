@@ -1218,7 +1218,7 @@ class TestAppService:
         """Test get_app_code_by_id raises ValueError when site is missing."""
         from uuid import uuid4
 
-        from services.app_service import AppService, CreateAppParams
+        from services.app_service import AppService
 
         with pytest.raises(ValueError, match="not found"):
             AppService.get_app_code_by_id(str(uuid4()))
@@ -1227,7 +1227,7 @@ class TestAppService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """Test get_app_id_by_code raises ValueError when code does not exist."""
-        from services.app_service import AppService, CreateAppParams
+        from services.app_service import AppService
 
         with pytest.raises(ValueError, match="not found"):
             AppService.get_app_id_by_code("nonexistent-code")
@@ -1238,7 +1238,7 @@ class TestAppService:
         """Test get_app_meta returns empty tool_icons when workflow is None."""
         from types import SimpleNamespace
 
-        from services.app_service import AppService, CreateAppParams
+        from services.app_service import AppService
 
         app_service = AppService()
         workflow_app = SimpleNamespace(mode="workflow", workflow=None)
@@ -1252,7 +1252,7 @@ class TestAppService:
         """Test get_app_meta returns empty tool_icons when app_model_config is None."""
         from types import SimpleNamespace
 
-        from services.app_service import AppService, CreateAppParams
+        from services.app_service import AppService
 
         app_service = AppService()
         chat_app = SimpleNamespace(mode="chat", app_model_config=None)
