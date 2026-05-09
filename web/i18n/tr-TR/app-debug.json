@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Resim",
   "variableConfig.file.supportFileTypes": "Destek Dosya Türleri",
   "variableConfig.file.video.name": "Video",
+  "variableConfig.hidden": "Gizlenmiş ve Önceden Doldurulmuş",
+  "variableConfig.hiddenDescription": "Bu alanı son kullanıcılardan gizleyin ve değeri kendiniz girin. Gerekli ile karşılıklı olarak dışlayıcıdır. <docLink>Daha fazla bilgi</docLink>",
   "variableConfig.hide": "Gizle",
   "variableConfig.inputPlaceholder": "Lütfen girin",
   "variableConfig.json": "JSON Kodu",

@@ -41,10 +41,6 @@ vi.mock('../../../readme-panel/entrance', () => ({
   ReadmeEntrance: () => <div data-testid="readme-entrance" />,
 }))
 
-vi.mock('../../../readme-panel/store', () => ({
-  ReadmeShowType: { modal: 'modal' },
-}))
-
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => {
   const MockAuthForm = ({ ref, ...props }: { ref?: React.Ref<unknown> } & Record<string, unknown>) => {
     mockAuthFormProps = props

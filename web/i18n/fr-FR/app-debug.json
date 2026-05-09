@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Image",
   "variableConfig.file.supportFileTypes": "Types de fichiers de support",
   "variableConfig.file.video.name": "Vidéo",
+  "variableConfig.hidden": "Masqué et pré-rempli",
+  "variableConfig.hiddenDescription": "Masquez ce champ aux utilisateurs finaux et fournissez sa valeur vous-même. Incompatible avec Requis. <docLink>En savoir plus</docLink>",
   "variableConfig.hide": "Caché",
   "variableConfig.inputPlaceholder": "Please input",
   "variableConfig.json": "Code JSON",
