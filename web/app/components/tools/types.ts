@@ -82,6 +82,11 @@ export type Collection = {
   workflow_app_id?: string
 }
 
+export type ToolParameterShowOnCondition = {
+  variable: string
+  value: string
+}
+
 export type ToolParameter = {
   name: string
   label: LocalizedText
@@ -95,7 +100,10 @@ export type ToolParameter = {
   options?: {
     label: LocalizedText
     value: string
+    show_on?: ToolParameterShowOnCondition[]
   }[]
+  /** Plugin YAML `show_on`: AND-joined sibling param equality conditions. Empty/missing means always show. */
+  show_on?: ToolParameterShowOnCondition[]
   min?: number
   max?: number
 }
@@ -148,7 +156,9 @@ export type ToolCredential = {
   options?: {
     label: LocalizedText
     value: string
+    show_on?: ToolParameterShowOnCondition[]
   }[]
+  show_on?: ToolParameterShowOnCondition[]
 }
 
 export type CustomCollectionBackend = {

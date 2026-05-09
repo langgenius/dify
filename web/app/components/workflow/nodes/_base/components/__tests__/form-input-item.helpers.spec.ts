@@ -127,6 +127,32 @@ describe('form-input-item helpers', () => {
     expect(hasOptionIcon(visibleOptions)).toBe(false)
   })
 
+  it('should hide option-level show_on targets when sibling uses variable reference', () => {
+    const options = [
+      createOption('tier-x', {
+        show_on: [{ variable: 'mode', value: 'pro' }],
+      }),
+    ]
+    const values = {
+      mode: { type: VarKindType.variable, value: ['node', 'x'] },
+    }
+
+    expect(filterVisibleOptions(options, values)).toHaveLength(0)
+  })
+
+  it('should treat boolean true as matching show_on string true', () => {
+    const options = [
+      createOption('beta', {
+        show_on: [{ variable: 'flag', value: 'true' }],
+      }),
+    ]
+    const values = {
+      flag: { type: VarKindType.constant, value: true },
+    }
+
+    expect(filterVisibleOptions(options, values)).toHaveLength(1)
+  })
+
   it('should compute selected labels and checkbox state from visible options', () => {
     const options = [
       createOption('alpha'),
