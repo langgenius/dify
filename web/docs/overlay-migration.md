@@ -19,6 +19,7 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
   - `@langgenius/dify-ui/dialog`
   - `@langgenius/dify-ui/drawer`
   - `@langgenius/dify-ui/alert-dialog`
+  - `@langgenius/dify-ui/preview-card`
   - `@langgenius/dify-ui/autocomplete`
   - `@langgenius/dify-ui/combobox`
   - `@langgenius/dify-ui/select`
@@ -45,29 +46,61 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
 
 ## z-index strategy
 
-All new overlay primitives in `@langgenius/dify-ui/*` share a single z-index value:
+All new body-portalled overlay primitives in `@langgenius/dify-ui/*` share a single z-index value:
 **`z-1002`**, except Toast which stays one layer above at **`z-1003`**.
+
+This section compares only overlay surfaces that portal to `document.body`.
+Regular React-tree layers such as sticky headers, canvas chrome, editor helper
+panels, and other in-tree `z-*` values are outside this overlay stacking
+contract.
 
 ### Why z-[1002]?
 
-During the migration period, legacy and new overlays coexist. Legacy overlays
-portal to `document.body` with explicit z-index values:
+As of 2026-05-09, the repo is **not ready** to reduce the shared overlay layer
+to `z-50`. New primitives can drop to `z-50` only after the remaining
+body-portalled legacy drawers are gone.
 
-| Layer                 | z-index      | Components                                                                               |
-| --------------------- | ------------ | ---------------------------------------------------------------------------------------- |
-| Legacy Drawer         | `z-30`       | `base/drawer`, `base/drawer-plus`                                                        |
-| Legacy Modal          | `z-60`       | `base/modal` (default)                                                                   |
-| **New UI primitives** | **`z-1002`** | `@langgenius/dify-ui/*` (Drawer, Popover, Dialog, Autocomplete, Combobox, Tooltip, etc.) |
-| Toast                 | `z-1003`     | `@langgenius/dify-ui/toast`                                                              |
+During the migration period, legacy and new overlays coexist. The remaining
+legacy body-portalled overlay implementation is `base/drawer`, with
+`base/drawer-plus` wrapping it. It uses explicit z-index values:
 
-`z-1002` sits above all common legacy overlays, so new primitives always
-render on top without needing per-call-site z-index hacks. Among themselves,
-new primitives share the same z-index and rely on **DOM order** for stacking
-(later portal = on top).
+| Layer                  | z-index      | Components                                                                                            |
+| ---------------------- | ------------ | ----------------------------------------------------------------------------------------------------- |
+| Legacy Drawer shell    | `z-30`       | `base/drawer`, wrapped by `base/drawer-plus`                                                          |
+| Legacy Drawer backdrop | `z-40`       | `base/drawer`, wrapped by `base/drawer-plus`                                                          |
+| Legacy Drawer popup    | `z-50`       | `base/drawer`, wrapped by `base/drawer-plus`                                                          |
+| **New UI primitives**  | **`z-1002`** | `@langgenius/dify-ui/*` (Drawer, Popover, PreviewCard, Dialog, Autocomplete, Combobox, Tooltip, etc.) |
+| Toast                  | `z-1003`     | `@langgenius/dify-ui/toast`                                                                           |
+
+`z-1002` sits above the remaining legacy drawer popup, so new primitives always
+render on top without needing per-call-site z-index hacks. Dropping new
+primitives to `z-50` while these drawers still exist would put new overlays on
+the same layer as the legacy drawer popup and make cross-portal ordering depend
+on DOM order instead of a clear contract.
+
+Among themselves, new primitives share the same z-index and rely on **DOM
+order** for stacking (later portal = on top).
 
 Toast stays one layer above the overlay primitives so notifications remain
 visible above dialogs, popovers, and other portalled surfaces without falling
 back to `z-9999`.
+
+### Current inventory
+
+- `packages/dify-ui/src/*` still owns the body-portalled overlay layer:
+  `Dialog`, `AlertDialog`, `Autocomplete`, `Combobox`, `ContextMenu`,
+  `Drawer`, `DropdownMenu`, `Popover`, `PreviewCard`, `Select`, and `Tooltip`
+  use `z-1002`; `Toast` uses `z-1003`.
+- `web/app/components/base/drawer` is still present and portals to
+  `document.body`; `web/app/components/base/drawer-plus` wraps it.
+- Production imports of the deprecated drawer APIs still exist under `web/`.
+  No `web/app/components/base/modal` or `web/app/components/base/dialog`
+  implementation remains in the current tree.
+- `web/app/components/billing/pricing/plans/cloud-plan-item/index.tsx` contains
+  one standalone `z-1002` backdrop next to a new `AlertDialog`. It is not a
+  body-portal primitive override, so it does not change the body overlay layer
+  decision, but it should be removed or rechecked when the actual z-index
+  reduction happens.
 
 ### Rules
 
@@ -84,6 +117,12 @@ back to `z-9999`.
 
 Once all legacy overlays are removed:
 
+1. Confirm there are no production imports of `@/app/components/base/drawer` or
+   `@/app/components/base/drawer-plus`.
+1. Confirm no body-portalled legacy overlay remains outside
+   `@langgenius/dify-ui/*`.
+1. Remove or recheck any standalone `z-1002` web call sites that were paired
+   with migrated overlays.
 1. Reduce `z-1002` back to `z-50` across all `@langgenius/dify-ui/*` primitives.
 1. Reduce Toast from `z-1003` to `z-51`.
 1. Remove this section from the migration guide.
