@@ -73,8 +73,6 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
     group: [
       '**/base/drawer',
       '**/base/drawer/index',
-      '**/base/drawer-plus',
-      '**/base/drawer-plus/index',
     ],
     message: 'Deprecated: use @langgenius/dify-ui/drawer instead. See issue #32767.',
   },

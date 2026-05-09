@@ -57,7 +57,7 @@ describe('EditWorkspaceModal', () => {
   it('should render on the dify-ui overlay layer', async () => {
     renderModal()
 
-    expect(await screen.findByRole('dialog')).toHaveClass('z-1002')
+    expect(await screen.findByRole('dialog')).toHaveClass('z-50')
   })
 
   it('should let user edit workspace name', async () => {

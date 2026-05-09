@@ -64,9 +64,13 @@ export default function ConfigCredential({
       modal
       disablePointerDismissal
       swipeDirection="right"
+      onOpenChange={(open) => {
+        if (!open)
+          onHide()
+      }}
     >
       <DrawerPortal>
-        <DrawerBackdrop className="sm:bg-transparent" />
+        <DrawerBackdrop forceRender />
         <DrawerViewport>
           <DrawerPopup
             className={cn(
@@ -85,7 +89,6 @@ export default function ConfigCredential({
                   <DrawerCloseButton
                     aria-label={t('operation.close', { ns: 'common' })}
                     className="h-6 w-6 rounded-md"
-                    onClick={onHide}
                   />
                 </div>
               </div>

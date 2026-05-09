@@ -258,7 +258,7 @@ describe('InputsFormContent', () => {
     renderWithContext(<InputsFormContent />, context)
     await user.click(screen.getByText('B'))
 
-    expect(screen.getByText('A').closest('.z-1002')).not.toBeNull()
+    expect(screen.getByText('A').closest('.z-50')).not.toBeNull()
   })
 
   it('handles select input with existing value (value not in options -> shows placeholder)', () => {

@@ -172,7 +172,7 @@ export default antfu(
     },
   },
   {
-    name: 'dify/overlay-migration',
+    name: 'dify/overlay-import-policy',
     files: [GLOB_TS, GLOB_TSX],
     ignores: [
       'next/**',

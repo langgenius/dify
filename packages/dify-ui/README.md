@@ -91,11 +91,11 @@ Every overlay primitive uses a single, shared z-index. Do **not** override it at
 
 Rationale: Dify UI owns the normal application overlay layer. Overlay primitives share `z-50` and **rely on DOM order** for stacking — the portal mounted later wins. Toast owns `z-60` so notifications remain visible above dialogs, popovers, and other portalled surfaces without falling back to `z-9999`.
 
-See `[web/docs/overlay-migration.md](../../web/docs/overlay-migration.md)` for the Dify-web migration history and the remaining legacy cleanup rules.
+See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay best practices.
 
 ### Rules
 
-- Never add ad hoc `z-*` overrides on primitives from this package. If something is getting clipped, the **parent** overlay (typically a legacy one) is the problem and should be migrated.
+- Never add ad hoc `z-*` overrides on primitives from this package. If something is getting clipped, fix the parent overlay structure instead of raising the child primitive.
 - Never create an extra manual portal on top of our primitives — use the exported content / portal parts such as `DialogContent`, `PopoverContent`, and `DrawerPortal`. Base UI handles focus management, scroll-locking, and dismissal.
 - When a primitive needs additional presentation chrome (e.g. a custom backdrop), add it **inside** the exported component, not at call sites.
 
