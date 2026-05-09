@@ -9,66 +9,12 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { use } from 'react'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import { useRouter, useSelectedLayoutSegment } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../index'
-
-vi.mock('@headlessui/react', () => {
-  type MenuContextValue = { open: boolean, setOpen: (open: boolean) => void }
-  const MenuContext = React.createContext<MenuContextValue | null>(null)
-
-  const Menu = ({ children }: { children: React.ReactNode | ((props: { open: boolean }) => React.ReactNode) }) => {
-    const [open, setOpen] = React.useState(false)
-    const value = React.useMemo(() => ({ open, setOpen }), [open])
-    return (
-      <MenuContext value={value}>
-        {typeof children === 'function' ? children({ open }) : children}
-      </MenuContext>
-    )
-  }
-
-  const MenuButton = ({ onClick, children, ...props }: { onClick?: () => void, children?: React.ReactNode }) => {
-    const context = use(MenuContext)
-    const handleClick = () => {
-      context?.setOpen(!context.open)
-      onClick?.()
-    }
-    return (
-      <button type="button" aria-expanded={context?.open ?? false} onClick={handleClick} {...props}>
-        {children}
-      </button>
-    )
-  }
-
-  const MenuItems = ({ as: Component = 'div', role, children, ...props }: { as?: React.ElementType, role?: string, children: React.ReactNode }) => {
-    const context = use(MenuContext)
-    if (!context?.open)
-      return null
-    return (
-      <Component role={role ?? 'menu'} {...props}>
-        {children}
-      </Component>
-    )
-  }
-
-  const MenuItem = ({ as: Component = 'div', role, children, ...props }: { as?: React.ElementType, role?: string, children: React.ReactNode }) => (
-    <Component role={role ?? 'menuitem'} {...props}>
-      {children}
-    </Component>
-  )
-
-  return {
-    Menu,
-    MenuButton,
-    MenuItems,
-    MenuItem,
-    Transition: ({ show = true, children }: { show?: boolean, children: React.ReactNode }) => (show ? <>{children}</> : null),
-  }
-})
 
 // Mock next/navigation
 vi.mock('@/next/navigation', () => ({

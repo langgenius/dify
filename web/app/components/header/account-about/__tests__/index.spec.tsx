@@ -90,7 +90,7 @@ describe('AccountAbout', () => {
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       renderWithSystemFeatures(<AccountAbout langGeniusVersionInfo={mockVersionInfo} onCancel={mockOnCancel} />)
-      // Modal uses Headless UI Dialog which renders into a portal, so we need to use document
+      // Modal content renders into a portal, so we need to use document.
       const closeButton = document.querySelector('div.absolute.cursor-pointer')
 
       if (!closeButton)
