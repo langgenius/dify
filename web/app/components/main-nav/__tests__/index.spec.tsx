@@ -6,6 +6,7 @@ import type { InstalledApp } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
+import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { GOTO_ANYTHING_OPEN_EVENT } from '@/app/components/goto-anything/hooks'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
@@ -69,6 +70,10 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
     },
   }
 })
+
+vi.mock('@/app/components/header/github-star', () => ({
+  default: ({ className }: { className?: string }) => <span className={className}>1,234</span>,
+}))
 
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
@@ -156,6 +161,7 @@ const renderMainNav = () => renderWithSystemFeatures(<MainNav />, {
 describe('MainNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     mockPathname = '/apps'
     mockInstalledApps = []
 
@@ -333,6 +339,20 @@ describe('MainNav', () => {
 
     expect(handleOpen).toHaveBeenCalledTimes(1)
     window.removeEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
+  })
+
+  it('shows hidden Learn Dify in help menu and restores it from localStorage', async () => {
+    localStorage.setItem(LEARN_DIFY_HIDDEN_STORAGE_KEY, 'true')
+
+    renderMainNav()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    fireEvent.click(await screen.findByText('common.mainNav.help.learnDify'))
+
+    await waitFor(() => {
+      expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('false')
+    })
+    expect(mockPush).toHaveBeenCalledWith('/explore/apps')
   })
 
   it('opens workspace settings, members, provider credits, upgrade, and workspace switching actions', async () => {

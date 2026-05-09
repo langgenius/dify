@@ -13,6 +13,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLearnDifyHiddenState } from '@/app/components/explore/learn-dify/storage'
 import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
@@ -23,6 +24,7 @@ import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { env } from '@/env'
+import { useRouter } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 const HelpMenu = () => {
@@ -30,6 +32,8 @@ const HelpMenu = () => {
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const router = useRouter()
+  const [learnDifyHidden, setLearnDifyHidden] = useLearnDifyHiddenState()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
 
@@ -38,8 +42,9 @@ const HelpMenu = () => {
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           aria-label={t('mainNav.help.openMenu', { ns: 'common' })}
+          data-learn-dify-help-target
           className={cn(
-            'flex items-center justify-center overflow-hidden rounded-full border border-components-card-border bg-components-card-bg p-0.5 text-components-main-nav-text shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam)] transition-colors hover:bg-components-card-bg-alt hover:text-text-accent hover:shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam),0px_1px_2px_0px_var(--color-shadow-shadow-3)]',
+            'text-components-main-nav-text flex items-center justify-center overflow-hidden rounded-full border border-components-card-border bg-components-card-bg p-0.5 shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam)] transition-colors hover:bg-components-card-bg-alt hover:text-text-accent hover:shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam),0px_1px_2px_0px_var(--color-shadow-shadow-3)]',
             open && 'bg-components-card-bg-alt text-text-accent shadow-[0px_0px_0px_1px_var(--color-components-button-button-seam),0px_1px_2px_0px_var(--color-shadow-shadow-3)]',
           )}
         >
@@ -61,6 +66,21 @@ const HelpMenu = () => {
                   />
                 </DropdownMenuLinkItem>
                 <Support closeAccountDropdown={() => setOpen(false)} />
+                {learnDifyHidden && (
+                  <DropdownMenuItem
+                    className="mx-0 h-8 gap-1 px-3 py-1.5"
+                    onClick={() => {
+                      setLearnDifyHidden(false)
+                      setOpen(false)
+                      router.push('/explore/apps')
+                    }}
+                  >
+                    <MenuItemContent
+                      iconClassName="i-ri-graduation-cap-line"
+                      label={t('mainNav.help.learnDify', { ns: 'common' })}
+                    />
+                  </DropdownMenuItem>
+                )}
                 {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
               </DropdownMenuGroup>
               <DropdownMenuSeparator className="my-0!" />

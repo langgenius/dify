@@ -9,6 +9,7 @@ import { fetchAppDetail } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
+import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/storage'
 import AppList from '../index'
 
 let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
@@ -170,6 +171,7 @@ describe('AppList', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    localStorage.clear()
     mockExploreData = { categories: [], allList: [] }
     mockIsLoading = false
     mockIsError = false
@@ -233,6 +235,28 @@ describe('AppList', () => {
       expect(screen.queryByText('Then try this')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow')).not.toBeInTheDocument()
       expect(screen.queryByText('3 min')).not.toBeInTheDocument()
+    })
+
+    it('should collapse learn dify and persist hidden state when hide is clicked', async () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+
+      renderAppList()
+
+      fireEvent.click(screen.getByRole('button', { name: 'explore.learnDify.hide' }))
+
+      const learnDifySection = screen.getByRole('heading', { name: 'explore.learnDify.title' }).closest('section')
+      expect(learnDifySection).toHaveClass('z-50', 'opacity-20')
+      expect(learnDifySection).toHaveStyle({ transform: 'scale(0.08)' })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(800)
+      })
+
+      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('true')
     })
   })
 
