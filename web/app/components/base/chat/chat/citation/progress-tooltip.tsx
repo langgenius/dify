@@ -4,7 +4,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type ProgressTooltipProps = {
@@ -15,18 +14,12 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
 
   return (
-    <Tooltip
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <Tooltip>
       <TooltipTrigger
         data-testid="progress-trigger-content"
         className="flex grow items-center border-0 bg-transparent p-0 text-left"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
       >
         <div className="mr-1 h-1.5 w-16 overflow-hidden rounded-[3px] border border-components-progress-gray-border">
           <div

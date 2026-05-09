@@ -5,7 +5,6 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
-import { useState } from 'react'
 
 type TooltipProps = {
   data: number | string
@@ -18,18 +17,11 @@ const Tooltip: FC<TooltipProps> = ({
   text,
   icon,
 }) => {
-  const [open, setOpen] = useState(false)
-
   return (
-    <DifyTooltip
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DifyTooltip>
       <TooltipTrigger
         data-testid="tooltip-trigger-content"
         className="mr-6 flex items-center border-0 bg-transparent p-0 text-left"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
       >
         {icon}
         {data}
