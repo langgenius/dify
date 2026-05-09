@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import DialogWrapper from '../dialog-wrapper'
+import { FeaturePanelDrawer } from '../feature-panel-drawer'
 
-describe('DialogWrapper', () => {
+describe('FeaturePanelDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -9,9 +9,9 @@ describe('DialogWrapper', () => {
   describe('Rendering', () => {
     it('should render children when show is true', () => {
       render(
-        <DialogWrapper show>
+        <FeaturePanelDrawer show>
           <div data-testid="content">Content</div>
-        </DialogWrapper>,
+        </FeaturePanelDrawer>,
       )
 
       expect(screen.getByTestId('content')).toBeInTheDocument()
@@ -19,9 +19,9 @@ describe('DialogWrapper', () => {
 
     it('should not render children when show is false', () => {
       render(
-        <DialogWrapper show={false}>
+        <FeaturePanelDrawer show={false}>
           <div data-testid="content">Content</div>
-        </DialogWrapper>,
+        </FeaturePanelDrawer>,
       )
 
       expect(screen.queryByTestId('content')).not.toBeInTheDocument()
@@ -31,45 +31,44 @@ describe('DialogWrapper', () => {
   describe('Props', () => {
     it('should apply workflow styles by default', () => {
       render(
-        <DialogWrapper show>
+        <FeaturePanelDrawer show>
           <div data-testid="content">Content</div>
-        </DialogWrapper>,
+        </FeaturePanelDrawer>,
       )
 
-      const wrapper = screen.getByTestId('content').parentElement
-      expect(wrapper).toHaveClass('rounded-l-2xl')
-      expect(wrapper).not.toHaveClass('rounded-2xl')
+      const drawer = screen.getByRole('dialog')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:!top-[112px]')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:!rounded-l-2xl')
+      expect(drawer).not.toHaveClass('data-[swipe-direction=right]:!rounded-2xl')
     })
 
     it('should apply non-workflow styles when inWorkflow is false', () => {
       render(
-        <DialogWrapper show inWorkflow={false}>
+        <FeaturePanelDrawer show inWorkflow={false}>
           <div data-testid="content">Content</div>
-        </DialogWrapper>,
+        </FeaturePanelDrawer>,
       )
 
-      const content = screen.getByTestId('content')
-      const panel = content.parentElement
-      const layoutContainer = screen.getByTestId('dialog-layout-container')
+      const drawer = screen.getByRole('dialog')
+      const layoutContainer = screen.getByTestId('feature-panel-drawer-layout')
 
-      expect(layoutContainer).toHaveClass('pr-2')
-      expect(layoutContainer).toHaveClass('pt-[64px]')
-      expect(layoutContainer).not.toHaveClass('pt-[112px]')
+      expect(layoutContainer).toBeInTheDocument()
 
-      expect(panel).toHaveClass('rounded-2xl')
-      expect(panel).toHaveClass('border-[0.5px]')
-      expect(panel).not.toHaveClass('rounded-l-2xl')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:!top-[64px]')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:!right-2')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:!rounded-2xl')
+      expect(drawer).toHaveClass('data-[swipe-direction=right]:!border-[0.5px]')
+      expect(drawer).not.toHaveClass('data-[swipe-direction=right]:!rounded-l-2xl')
     })
 
     it('should accept custom className', () => {
       render(
-        <DialogWrapper show className="custom-class">
+        <FeaturePanelDrawer show className="custom-class">
           <div data-testid="content">Content</div>
-        </DialogWrapper>,
+        </FeaturePanelDrawer>,
       )
 
-      const wrapper = screen.getByTestId('content').parentElement
-      expect(wrapper).toHaveClass('custom-class')
+      expect(screen.getByRole('dialog')).toHaveClass('custom-class')
     })
   })
 
@@ -78,9 +77,9 @@ describe('DialogWrapper', () => {
       const onClose = vi.fn()
 
       render(
-        <DialogWrapper show onClose={onClose}>
+        <FeaturePanelDrawer show onClose={onClose}>
           <div>Content</div>
-        </DialogWrapper>,
+        </FeaturePanelDrawer>,
       )
 
       fireEvent.keyDown(document, { key: 'Escape' })
@@ -92,9 +91,9 @@ describe('DialogWrapper', () => {
 
     it('should not throw when escape is pressed without onClose', () => {
       render(
-        <DialogWrapper show>
+        <FeaturePanelDrawer show>
           <div>Content</div>
-        </DialogWrapper>,
+        </FeaturePanelDrawer>,
       )
 
       expect(() => {
