@@ -106,7 +106,7 @@
   "overview.appInfo.settings.workflow.subTitle": "ワークフローの詳細",
   "overview.appInfo.settings.workflow.title": "ワークフローステップ",
   "overview.appInfo.title": "Web App",
-  "overview.appInfo.workflowLaunchHiddenInputs.description": "非表示フィールドに値を入力後、<bold>起動</bold>をクリックすると、事前入力された値が適用された WebApp が開きます。",
+  "overview.appInfo.workflowLaunchHiddenInputs.description": "非表示フィールドに値を入力後、<bold>公開</bold>をクリックすると、事前入力された値が適用された WebApp が開きます。",
   "overview.appInfo.workflowLaunchHiddenInputs.title": "非表示フィールドを事前入力",
   "overview.disableTooltip.triggerMode": "トリガーノードモードでは{{feature}}機能を使用できません。",
   "overview.status.disable": "無効",
