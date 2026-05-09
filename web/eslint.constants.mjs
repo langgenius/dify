@@ -49,8 +49,9 @@ export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
     group: [
       '**/base/tooltip',
       '**/base/tooltip/index',
+      '**/base/tooltip/content',
     ],
-    message: 'Deprecated: use @langgenius/dify-ui/tooltip instead. See issue #32767.',
+    message: 'Deprecated: use @langgenius/dify-ui/tooltip for short labels; use Popover/Infotip for rich or explanatory content. See issue #32767.',
   },
   {
     group: [

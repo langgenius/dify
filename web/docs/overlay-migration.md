@@ -8,6 +8,7 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
 
 - Deprecated imports:
   - `@/app/components/base/tooltip`
+  - `@/app/components/base/tooltip/content`
   - `@/app/components/base/modal`
   - `@/app/components/base/dialog`
   - `@/app/components/base/drawer`
@@ -36,6 +37,8 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
 1. Business/UI features outside `app/components/base/**`
    - Migrate old calls to semantic primitives from `@langgenius/dify-ui/*`.
    - Keep deprecated imports out of newly touched files.
+   - Use `@langgenius/dify-ui/tooltip` only for short, non-interactive labels where the trigger already has its own accessible name.
+   - Use `@langgenius/dify-ui/popover` or the web `Infotip` wrapper for explanatory, long-form, structured, or interactive content.
 1. Legacy base components
    - Migrate legacy base callers gradually.
    - Keep deprecated imports out of newly touched files.
@@ -75,6 +78,11 @@ back to `z-9999`.
   parent legacy overlay should be migrated instead.
 - When migrating a legacy overlay that has a high z-index, remove the z-index
   entirely — the new primitive's default `z-1002` handles it.
+- Do not preserve legacy tooltip offsets at call sites. Choose the nearest
+  `placement`/side alignment and let the primitive own its default spacing.
+- When using Base UI trigger `render`, render a real `button` for button-like
+  triggers. If the trigger must render a non-button element, the primitive must
+  explicitly opt out of the native button behavior where that API is available.
 
 ### Post-migration cleanup
 
