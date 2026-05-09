@@ -106,6 +106,11 @@ class ParserDeleteCredential(ParserCredentialBase):
 class ParserParameter(BaseModel):
     model: str
 
+class ParserSwitch(BaseModel):
+    model: str
+    model_type: ModelType
+    credential_id: str
+
 
 register_schema_models(
     console_ns,
@@ -386,11 +391,6 @@ class ModelProviderModelCredentialApi(Resource):
 
         return {"result": "success"}, 204
 
-
-class ParserSwitch(BaseModel):
-    model: str
-    model_type: ModelType
-    credential_id: str
 
 
 
