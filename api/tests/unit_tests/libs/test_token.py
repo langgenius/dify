@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 
+import pytest
 from werkzeug.wrappers import Response
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
@@ -30,7 +31,7 @@ def test_extract_access_token():
         assert extract_webapp_access_token(request) == expected_webapp  # pyright: ignore[reportArgumentType]
 
 
-def test_real_cookie_name_uses_host_prefix_without_domain(monkeypatch):
+def test_real_cookie_name_uses_host_prefix_without_domain(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(token.dify_config, "CONSOLE_WEB_URL", "https://console.example.com", raising=False)
     monkeypatch.setattr(token.dify_config, "CONSOLE_API_URL", "https://api.example.com", raising=False)
     monkeypatch.setattr(token.dify_config, "COOKIE_DOMAIN", "", raising=False)
@@ -38,7 +39,7 @@ def test_real_cookie_name_uses_host_prefix_without_domain(monkeypatch):
     assert token._real_cookie_name("csrf_token") == "__Host-csrf_token"
 
 
-def test_real_cookie_name_without_host_prefix_when_domain_present(monkeypatch):
+def test_real_cookie_name_without_host_prefix_when_domain_present(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(token.dify_config, "CONSOLE_WEB_URL", "https://console.example.com", raising=False)
     monkeypatch.setattr(token.dify_config, "CONSOLE_API_URL", "https://api.example.com", raising=False)
     monkeypatch.setattr(token.dify_config, "COOKIE_DOMAIN", ".example.com", raising=False)
@@ -46,7 +47,7 @@ def test_real_cookie_name_without_host_prefix_when_domain_present(monkeypatch):
     assert token._real_cookie_name("csrf_token") == "csrf_token"
 
 
-def test_set_csrf_cookie_includes_domain_when_configured(monkeypatch):
+def test_set_csrf_cookie_includes_domain_when_configured(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(token.dify_config, "CONSOLE_WEB_URL", "https://console.example.com", raising=False)
     monkeypatch.setattr(token.dify_config, "CONSOLE_API_URL", "https://api.example.com", raising=False)
     monkeypatch.setattr(token.dify_config, "COOKIE_DOMAIN", ".example.com", raising=False)

@@ -31,7 +31,7 @@ from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 
 @pytest.fixture(autouse=True)
-def cleanup_database(db_session_with_containers):
+def cleanup_database(db_session_with_containers: Session):
     db_session_with_containers.execute(delete(HumanInputFormRecipient))
     db_session_with_containers.execute(delete(HumanInputDelivery))
     db_session_with_containers.execute(delete(HumanInputForm))
@@ -43,7 +43,7 @@ def cleanup_database(db_session_with_containers):
     db_session_with_containers.commit()
 
 
-def _create_workspace_member(db_session_with_containers):
+def _create_workspace_member(db_session_with_containers: Session):
     account = Account(
         email="owner@example.com",
         name="Owner",

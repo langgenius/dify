@@ -6,9 +6,9 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Drawer from '@/app/components/base/drawer-plus'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import Radio from '@/app/components/base/radio/ui'
-import Tooltip from '@/app/components/base/tooltip'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 
 type Props = {
@@ -123,14 +123,13 @@ const ConfigCredential: FC<Props> = ({
                 <div>
                   <div className="flex items-center py-2 system-sm-medium text-text-primary">
                     {t('createTool.authMethod.key', { ns: 'tools' })}
-                    <Tooltip
-                      popupContent={(
-                        <div className="w-[261px] text-text-tertiary">
-                          {t('createTool.authMethod.keyTooltip', { ns: 'tools' })}
-                        </div>
-                      )}
-                      triggerClassName="ml-0.5 w-4 h-4"
-                    />
+                    <Infotip
+                      aria-label={t('createTool.authMethod.keyTooltip', { ns: 'tools' })}
+                      className="ml-0.5 h-4 w-4"
+                      popupClassName="w-[261px] text-text-tertiary"
+                    >
+                      {t('createTool.authMethod.keyTooltip', { ns: 'tools' })}
+                    </Infotip>
                   </div>
                   <Input
                     value={tempCredential.api_key_header}
@@ -153,14 +152,13 @@ const ConfigCredential: FC<Props> = ({
                 <div>
                   <div className="flex items-center py-2 system-sm-medium text-text-primary">
                     {t('createTool.authMethod.queryParam', { ns: 'tools' })}
-                    <Tooltip
-                      popupContent={(
-                        <div className="w-[261px] text-text-tertiary">
-                          {t('createTool.authMethod.queryParamTooltip', { ns: 'tools' })}
-                        </div>
-                      )}
-                      triggerClassName="ml-0.5 w-4 h-4"
-                    />
+                    <Infotip
+                      aria-label={t('createTool.authMethod.queryParamTooltip', { ns: 'tools' })}
+                      className="ml-0.5 h-4 w-4"
+                      popupClassName="w-[261px] text-text-tertiary"
+                    >
+                      {t('createTool.authMethod.queryParamTooltip', { ns: 'tools' })}
+                    </Infotip>
                   </div>
                   <Input
                     value={tempCredential.api_key_query_param}

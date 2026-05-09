@@ -60,7 +60,10 @@ def _make_layer(
         workflow_execution_id="run-id",
         conversation_id="conv-id",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(system_variables=system_variables), start_at=0.0)
+    runtime_state = GraphRuntimeState(
+        variable_pool=VariablePool.from_bootstrap(system_variables=system_variables),
+        start_at=0.0,
+    )
     read_only_state = ReadOnlyGraphRuntimeStateWrapper(runtime_state)
 
     application_generate_entity = WorkflowAppGenerateEntity.model_construct(
@@ -120,7 +123,7 @@ class TestWorkflowPersistenceLayer:
         with pytest.raises(ValueError, match="workflow_execution_id must be provided"):
             layer._get_execution_id()
 
-    def test_prepare_workflow_inputs_excludes_conversation_id(self, monkeypatch):
+    def test_prepare_workflow_inputs_excludes_conversation_id(self, monkeypatch: pytest.MonkeyPatch):
         layer, _, _, _ = _make_layer()
 
         monkeypatch.setattr(

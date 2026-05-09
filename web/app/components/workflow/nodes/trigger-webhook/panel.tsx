@@ -11,12 +11,12 @@ import {
 } from '@langgenius/dify-ui/number-field'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import InputWithCopy from '@/app/components/base/input-with-copy'
-import Tooltip from '@/app/components/base/tooltip'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -118,32 +118,38 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
             </div>
             {inputs.webhook_debug_url && (
               <div className="space-y-2">
-                <Tooltip
-                  popupContent={debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`, { ns: 'workflow' }) : t(`${i18nPrefix}.debugUrlCopy`, { ns: 'workflow' })}
-                  popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-xs rounded-md px-1.5 py-1"
-                  position="top"
-                  offset={{ mainAxis: -20 }}
-                  needsDelay={true}
-                >
-                  <div
-                    className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 transition-colors"
-                    style={{ width: '368px', height: '38px' }}
-                    onClick={() => {
-                      copy(inputs.webhook_debug_url || '')
-                      setDebugUrlCopied(true)
-                      setTimeout(() => setDebugUrlCopied(false), 2000)
-                    }}
+                <Tooltip>
+                  <TooltipTrigger
+                    render={(
+                      <button
+                        type="button"
+                        aria-label={t(`${i18nPrefix}.debugUrlCopy`, { ns: 'workflow' })}
+                        className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 text-left transition-colors"
+                        style={{ width: '368px', height: '38px' }}
+                        onClick={() => {
+                          copy(inputs.webhook_debug_url || '')
+                          setDebugUrlCopied(true)
+                          setTimeout(() => setDebugUrlCopied(false), 2000)
+                        }}
+                      >
+                        <span className="mt-0.5 w-0.5 bg-divider-regular" style={{ height: '28px' }} />
+                        <span className="flex-1" style={{ width: '352px', height: '32px' }}>
+                          <span className="block text-xs leading-4 text-text-tertiary">
+                            {t(`${i18nPrefix}.debugUrlTitle`, { ns: 'workflow' })}
+                          </span>
+                          <span className="block truncate text-xs leading-4 text-text-primary">
+                            {inputs.webhook_debug_url}
+                          </span>
+                        </span>
+                      </button>
+                    )}
+                  />
+                  <TooltipContent
+                    placement="top"
+                    className="rounded-md border border-components-panel-border bg-components-tooltip-bg px-1.5 py-1 system-xs-regular text-text-primary shadow-lg backdrop-blur-xs"
                   >
-                    <div className="mt-0.5 w-0.5 bg-divider-regular" style={{ height: '28px' }}></div>
-                    <div className="flex-1" style={{ width: '352px', height: '32px' }}>
-                      <div className="text-xs leading-4 text-text-tertiary">
-                        {t(`${i18nPrefix}.debugUrlTitle`, { ns: 'workflow' })}
-                      </div>
-                      <div className="truncate text-xs leading-4 text-text-primary">
-                        {inputs.webhook_debug_url}
-                      </div>
-                    </div>
-                  </div>
+                    {debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`, { ns: 'workflow' }) : t(`${i18nPrefix}.debugUrlCopy`, { ns: 'workflow' })}
+                  </TooltipContent>
                 </Tooltip>
                 {isPrivateOrLocalAddress(inputs.webhook_debug_url) && (
                   <div className="mt-1 px-0 py-[2px] system-xs-regular text-text-warning">

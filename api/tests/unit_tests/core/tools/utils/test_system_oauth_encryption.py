@@ -34,7 +34,7 @@ def test_system_encrypter_raises_error_for_invalid_ciphertext():
         encrypter.decrypt_params("not-base64")
 
 
-def test_system_helpers_use_global_cached_instance(monkeypatch):
+def test_system_helpers_use_global_cached_instance(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(encryption, "_encrypter", None)
     monkeypatch.setattr("core.tools.utils.system_encryption.dify_config.SECRET_KEY", "global-secret")
 

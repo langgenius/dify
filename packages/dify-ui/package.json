@@ -77,6 +77,14 @@
       "types": "./src/switch/index.tsx",
       "import": "./src/switch/index.tsx"
     },
+    "./tabs": {
+      "types": "./src/tabs/index.tsx",
+      "import": "./src/tabs/index.tsx"
+    },
+    "./toggle-group": {
+      "types": "./src/toggle-group/index.tsx",
+      "import": "./src/toggle-group/index.tsx"
+    },
     "./toast": {
       "types": "./src/toast/index.tsx",
       "import": "./src/toast/index.tsx"

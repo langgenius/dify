@@ -241,7 +241,7 @@ describe('CloudPlanItem', () => {
       )
 
       // Sandbox viewed from a higher plan is disabled, but let's verify no API calls
-      const button = screen.getByRole('button')
+      const button = screen.getByRole('button', { name: 'billing.plansCommon.startForFree' })
       fireEvent.click(button)
 
       await waitFor(() => {

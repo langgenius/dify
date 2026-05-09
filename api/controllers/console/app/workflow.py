@@ -11,9 +11,9 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.schema import register_response_schema_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
-from controllers.console.app.workflow_run import workflow_run_node_execution_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -37,6 +37,7 @@ from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
 from fields.online_user_fields import online_user_list_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
+from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
 from graphon.enums import NodeType
 from graphon.file import File
 from graphon.file import helpers as file_helpers
@@ -56,6 +57,7 @@ from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
+
 _file_access_controller = DatabaseFileAccessController()
 LISTENING_RETRY_IN = 2000
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
@@ -176,25 +178,25 @@ class DraftWorkflowTriggerRunAllPayload(BaseModel):
     node_ids: list[str]
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(SyncDraftWorkflowPayload)
-reg(AdvancedChatWorkflowRunPayload)
-reg(IterationNodeRunPayload)
-reg(LoopNodeRunPayload)
-reg(DraftWorkflowRunPayload)
-reg(DraftWorkflowNodeRunPayload)
-reg(PublishWorkflowPayload)
-reg(DefaultBlockConfigQuery)
-reg(ConvertToWorkflowPayload)
-reg(WorkflowListQuery)
-reg(WorkflowUpdatePayload)
-reg(WorkflowFeaturesPayload)
-reg(WorkflowOnlineUsersPayload)
-reg(DraftWorkflowTriggerRunPayload)
-reg(DraftWorkflowTriggerRunAllPayload)
+register_schema_models(
+    console_ns,
+    SyncDraftWorkflowPayload,
+    AdvancedChatWorkflowRunPayload,
+    IterationNodeRunPayload,
+    LoopNodeRunPayload,
+    DraftWorkflowRunPayload,
+    DraftWorkflowNodeRunPayload,
+    PublishWorkflowPayload,
+    DefaultBlockConfigQuery,
+    ConvertToWorkflowPayload,
+    WorkflowListQuery,
+    WorkflowUpdatePayload,
+    WorkflowFeaturesPayload,
+    WorkflowOnlineUsersPayload,
+    DraftWorkflowTriggerRunPayload,
+    DraftWorkflowTriggerRunAllPayload,
+)
+register_response_schema_model(console_ns, WorkflowRunNodeExecutionResponse)
 
 
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
@@ -540,9 +542,12 @@ class HumanInputDeliveryTestPayload(BaseModel):
     )
 
 
-reg(HumanInputFormPreviewPayload)
-reg(HumanInputFormSubmitPayload)
-reg(HumanInputDeliveryTestPayload)
+register_schema_models(
+    console_ns,
+    HumanInputFormPreviewPayload,
+    HumanInputFormSubmitPayload,
+    HumanInputDeliveryTestPayload,
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/preview")
@@ -760,14 +765,17 @@ class DraftWorkflowNodeRunApi(Resource):
     @console_ns.doc(description="Run draft workflow node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[DraftWorkflowNodeRunPayload.__name__])
-    @console_ns.response(200, "Node run started successfully", workflow_run_node_execution_model)
+    @console_ns.response(
+        200,
+        "Node run started successfully",
+        console_ns.models[WorkflowRunNodeExecutionResponse.__name__],
+    )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_model)
     @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
@@ -799,7 +807,9 @@ class DraftWorkflowNodeRunApi(Resource):
             files=files,
         )
 
-        return workflow_node_execution
+        return WorkflowRunNodeExecutionResponse.model_validate(
+            workflow_node_execution, from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
@@ -1143,14 +1153,17 @@ class DraftWorkflowNodeLastRunApi(Resource):
     @console_ns.doc("get_draft_workflow_node_last_run")
     @console_ns.doc(description="Get last run result for draft workflow node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.response(200, "Node last run retrieved successfully", workflow_run_node_execution_model)
+    @console_ns.response(
+        200,
+        "Node last run retrieved successfully",
+        console_ns.models[WorkflowRunNodeExecutionResponse.__name__],
+    )
     @console_ns.response(404, "Node last run not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_model)
     def get(self, app_model: App, node_id: str):
         srv = WorkflowService()
         workflow = srv.get_draft_workflow(app_model)
@@ -1163,7 +1176,7 @@ class DraftWorkflowNodeLastRunApi(Resource):
         )
         if node_exec is None:
             raise NotFound("last run not found")
-        return node_exec
+        return WorkflowRunNodeExecutionResponse.model_validate(node_exec, from_attributes=True).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run")

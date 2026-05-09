@@ -42,7 +42,7 @@ class _QueueRecorder:
 
 
 class TestAppRunner:
-    def test_recalc_llm_max_tokens_updates_parameters(self, monkeypatch):
+    def test_recalc_llm_max_tokens_updates_parameters(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
 
         model_schema = SimpleNamespace(
@@ -65,7 +65,7 @@ class TestAppRunner:
 
         assert model_config.parameters["max_tokens"] == 20
 
-    def test_recalc_llm_max_tokens_returns_minus_one_when_no_context(self, monkeypatch):
+    def test_recalc_llm_max_tokens_returns_minus_one_when_no_context(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
 
         model_schema = SimpleNamespace(
@@ -86,7 +86,7 @@ class TestAppRunner:
 
         assert runner.recalc_llm_max_tokens(model_config, prompt_messages=[]) == -1
 
-    def test_direct_output_streaming_publishes_chunks_and_end(self, monkeypatch):
+    def test_direct_output_streaming_publishes_chunks_and_end(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         queue = _QueueRecorder()
         app_generate_entity = SimpleNamespace(model_conf=SimpleNamespace(model="mock"), stream=True)
@@ -133,7 +133,7 @@ class TestAppRunner:
                 stream=True,
             )
 
-    def test_organize_prompt_messages_simple_template(self, monkeypatch):
+    def test_organize_prompt_messages_simple_template(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         model_config = SimpleNamespace(mode="chat", stop=["STOP"])
         prompt_template_entity = PromptTemplateEntity(
@@ -158,7 +158,7 @@ class TestAppRunner:
         assert prompt_messages == ["simple-message"]
         assert stop == ["simple-stop"]
 
-    def test_organize_prompt_messages_advanced_completion_template(self, monkeypatch):
+    def test_organize_prompt_messages_advanced_completion_template(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         model_config = SimpleNamespace(mode="completion", stop=["<END>"])
         captured: dict[str, object] = {}
@@ -191,7 +191,7 @@ class TestAppRunner:
         assert memory_config.role_prefix.user == "U"
         assert memory_config.role_prefix.assistant == "A"
 
-    def test_organize_prompt_messages_advanced_chat_template(self, monkeypatch):
+    def test_organize_prompt_messages_advanced_chat_template(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         model_config = SimpleNamespace(mode="chat", stop=["<END>"])
         captured: dict[str, object] = {}
@@ -245,7 +245,7 @@ class TestAppRunner:
                 files=[],
             )
 
-    def test_handle_invoke_result_stream_routes_chunks_and_builds_message(self, monkeypatch):
+    def test_handle_invoke_result_stream_routes_chunks_and_builds_message(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         queue = _QueueRecorder()
         warning_logger = MagicMock()
@@ -284,7 +284,7 @@ class TestAppRunner:
         assert queue.events[-1].llm_result.message.content == "abc"
         warning_logger.assert_called_once()
 
-    def test_handle_invoke_result_stream_agent_mode_handles_multimodal_errors(self, monkeypatch):
+    def test_handle_invoke_result_stream_agent_mode_handles_multimodal_errors(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         queue = _QueueRecorder()
         exception_logger = MagicMock()
@@ -331,7 +331,7 @@ class TestAppRunner:
         assert queue.events[-1].llm_result.usage == usage
         exception_logger.assert_called_once()
 
-    def test_handle_multimodal_image_content_fallback_return_branch(self, monkeypatch):
+    def test_handle_multimodal_image_content_fallback_return_branch(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
 
         class _ToggleBool:
@@ -367,7 +367,7 @@ class TestAppRunner:
         db_session.add.assert_not_called()
         queue_manager.publish.assert_not_called()
 
-    def test_check_hosting_moderation_direct_output_called(self, monkeypatch):
+    def test_check_hosting_moderation_direct_output_called(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         queue = _QueueRecorder()
         app_generate_entity = SimpleNamespace(stream=False)
@@ -388,7 +388,7 @@ class TestAppRunner:
         assert result is True
         assert direct_output.called
 
-    def test_fill_in_inputs_from_external_data_tools(self, monkeypatch):
+    def test_fill_in_inputs_from_external_data_tools(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         monkeypatch.setattr(
             "core.app.apps.base_app_runner.ExternalDataFetch.fetch",
@@ -405,7 +405,7 @@ class TestAppRunner:
 
         assert result == {"foo": "bar"}
 
-    def test_moderation_for_inputs_returns_result(self, monkeypatch):
+    def test_moderation_for_inputs_returns_result(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         monkeypatch.setattr(
             "core.app.apps.base_app_runner.InputModeration.check",
@@ -424,7 +424,7 @@ class TestAppRunner:
 
         assert result == (True, {}, "")
 
-    def test_query_app_annotations_to_reply(self, monkeypatch):
+    def test_query_app_annotations_to_reply(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         monkeypatch.setattr(
             "core.app.apps.base_app_runner.AnnotationReplyFeature.query",

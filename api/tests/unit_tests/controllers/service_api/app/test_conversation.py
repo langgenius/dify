@@ -340,7 +340,7 @@ class TestConversationAppModeValidation:
     @pytest.mark.parametrize(
         "mode",
         [
-            AppMode.CHAT.value,
+            AppMode.CHAT,
             AppMode.AGENT_CHAT.value,
             AppMode.ADVANCED_CHAT.value,
         ],
@@ -365,7 +365,7 @@ class TestConversationAppModeValidation:
         app raises NotChatAppError.
         """
         app = Mock(spec=App)
-        app.mode = AppMode.COMPLETION.value
+        app.mode = AppMode.COMPLETION
 
         app_mode = AppMode.value_of(app.mode)
         assert app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}
@@ -498,7 +498,7 @@ class TestConversationApiController:
     def test_list_not_chat(self, app) -> None:
         api = ConversationApi()
         handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations", method="GET"):
@@ -531,7 +531,7 @@ class TestConversationApiController:
 
         api = ConversationApi()
         handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -546,7 +546,7 @@ class TestConversationDetailApiController:
     def test_delete_not_chat(self, app) -> None:
         api = ConversationDetailApi()
         handler = _unwrap(api.delete)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations/1", method="DELETE"):
@@ -562,7 +562,7 @@ class TestConversationDetailApiController:
 
         api = ConversationDetailApi()
         handler = _unwrap(api.delete)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations/1", method="DELETE"):
@@ -580,7 +580,7 @@ class TestConversationRenameApiController:
 
         api = ConversationRenameApi()
         handler = _unwrap(api.post)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -596,7 +596,7 @@ class TestConversationVariablesApiController:
     def test_not_chat(self, app) -> None:
         api = ConversationVariablesApi()
         handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
+        app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace()
 
         with app.test_request_context("/conversations/1/variables", method="GET"):
@@ -612,7 +612,7 @@ class TestConversationVariablesApiController:
 
         api = ConversationVariablesApi()
         handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -645,7 +645,7 @@ class TestConversationVariablesApiController:
 
         api = ConversationVariablesApi()
         handler = _unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -671,7 +671,7 @@ class TestConversationVariableDetailApiController:
 
         api = ConversationVariableDetailApi()
         handler = _unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -697,7 +697,7 @@ class TestConversationVariableDetailApiController:
 
         api = ConversationVariableDetailApi()
         handler = _unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(
@@ -731,7 +731,7 @@ class TestConversationVariableDetailApiController:
 
         api = ConversationVariableDetailApi()
         handler = _unwrap(api.put)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
+        app_model = SimpleNamespace(mode=AppMode.CHAT)
         end_user = SimpleNamespace()
 
         with app.test_request_context(

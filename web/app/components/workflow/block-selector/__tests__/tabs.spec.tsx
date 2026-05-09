@@ -23,21 +23,6 @@ const {
   },
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({
-    children,
-    popupContent,
-  }: {
-    children: React.ReactNode
-    popupContent: React.ReactNode
-  }) => (
-    <div>
-      <span>{popupContent}</span>
-      {children}
-    </div>
-  ),
-}))
-
 vi.mock('@/service/use-plugins', () => ({
   useFeaturedToolsRecommendations: () => ({
     plugins: [],
@@ -121,11 +106,13 @@ describe('Tabs', () => {
     filterElem: <div>filter</div>,
   }
 
-  it('should render start content and disabled tab tooltip text', () => {
+  it('should render start content and disabled tab tooltip text', async () => {
+    const user = userEvent.setup()
     render(<Tabs {...baseProps} />)
 
     expect(screen.getByText('start-content'))!.toBeInTheDocument()
-    expect(screen.getByText('workflow.tabs.startDisabledTip'))!.toBeInTheDocument()
+    await user.hover(screen.getByText('Blocks'))
+    expect(await screen.findByText('workflow.tabs.startDisabledTip'))!.toBeInTheDocument()
   })
 
   it('should switch tabs through click handlers and render tools content with normalized icons', () => {

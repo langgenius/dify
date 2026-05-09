@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { WorkflowToolDrawerPayload } from '../index'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -24,21 +23,6 @@ vi.mock('@/app/components/tools/labels/selector', () => ({
     <div data-testid="label-selector">
       <span>{value.join(',')}</span>
       <button data-testid="append-label" onClick={() => onChange([...value, 'new-label'])}>Add</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({
-    children,
-    popupContent,
-  }: {
-    children?: ReactNode
-    popupContent?: ReactNode
-  }) => (
-    <div>
-      {children}
-      {popupContent}
     </div>
   ),
 }))

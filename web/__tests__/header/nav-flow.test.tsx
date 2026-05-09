@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Nav from '@/app/components/header/nav'
@@ -192,27 +193,23 @@ describe('Header Nav Flow', () => {
   })
 
   it('opens the nested create menu and emits all app creation branches', async () => {
-    renderNav()
-
-    fireEvent.click(screen.getByRole('button', { name: /Alpha/i }))
-
-    const openCreateMenu = async () => {
-      fireEvent.click(await screen.findByText('menus.newApp'))
-      return screen.findByText('newApp.startFromBlank')
+    const user = userEvent.setup()
+    const clickCreateBranch = async (optionName: string) => {
+      const { unmount } = renderNav()
+      await user.click(screen.getByRole('button', { name: /Alpha/i }))
+      await user.hover(await screen.findByRole('menuitem', { name: /menus\.newApp/i }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: optionName }))
+      unmount()
     }
 
-    await openCreateMenu()
-    fireEvent.click(await screen.findByText('newApp.startFromBlank'))
-
-    await openCreateMenu()
-    fireEvent.click(await screen.findByText('newApp.startFromTemplate'))
-
-    await openCreateMenu()
-    fireEvent.click(await screen.findByText('importDSL'))
+    await clickCreateBranch('newApp.startFromBlank')
+    await clickCreateBranch('newApp.startFromTemplate')
+    await clickCreateBranch('importDSL')
 
     expect(mockOnCreate).toHaveBeenNthCalledWith(1, 'blank')
     expect(mockOnCreate).toHaveBeenNthCalledWith(2, 'template')
     expect(mockOnCreate).toHaveBeenNthCalledWith(3, 'dsl')
+    expect(mockOnCreate).toHaveBeenCalledTimes(3)
   })
 
   it('keeps the current nav label in sync with prop updates', async () => {

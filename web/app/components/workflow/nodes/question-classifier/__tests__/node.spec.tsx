@@ -1,24 +1,9 @@
 import type { QuestionClassifierNodeType, Topic } from '../types'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  __esModule: true,
-  default: ({
-    children,
-    popupContent,
-  }: {
-    children: React.ReactNode
-    popupContent: React.ReactNode
-  }) => (
-    <div>
-      {children}
-      {popupContent}
-    </div>
-  ),
-}))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: vi.fn(),
@@ -101,7 +86,8 @@ describe('question-classifier/node', () => {
     expect(screen.getByText('handle-topic-2')).toBeInTheDocument()
   })
 
-  it('returns nothing when neither model nor classes are configured and truncates long class names', () => {
+  it('returns nothing when neither model nor classes are configured and truncates long class names', async () => {
+    const user = userEvent.setup()
     const longName = 'L'.repeat(60)
     const { container, rerender } = render(
       <Node
@@ -119,7 +105,8 @@ describe('question-classifier/node', () => {
     )
 
     expect(screen.getByText(`${longName.slice(0, 50)}...`)).toBeInTheDocument()
-    expect(screen.getByText(longName)).toBeInTheDocument()
+    await user.hover(screen.getByRole('button', { name: longName }))
+    expect(await screen.findByText(longName)).toBeInTheDocument()
 
     rerender(
       <Node

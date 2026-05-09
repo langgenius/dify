@@ -7,8 +7,8 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Tooltip from '@/app/components/base/tooltip'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
@@ -129,14 +129,14 @@ const VariableModal = ({
               onClick={() => setType('secret')}
             >
               <span>Secret</span>
-              <Tooltip
-                popupContent={(
-                  <div className="w-[240px]">
-                    {t('env.modal.secretTip', { ns: 'workflow' })}
-                  </div>
-                )}
-                triggerClassName="ml-0.5 w-3.5 h-3.5"
-              />
+              <Infotip
+                aria-label={t('env.modal.secretTip', { ns: 'workflow' })}
+                className="ml-0.5 h-3.5 w-3.5"
+                iconClassName="h-3.5 w-3.5"
+                popupClassName="w-[240px]"
+              >
+                {t('env.modal.secretTip', { ns: 'workflow' })}
+              </Infotip>
             </div>
           </div>
         </div>

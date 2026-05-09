@@ -354,7 +354,8 @@ def test_validate_provider_credentials_handles_hidden_secret_value() -> None:
 
     with _patched_session(mock_session):
         with patch(
-            "core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory
+            "core.entities.provider_configuration.create_plugin_model_assembly",
+            return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
         ):
             with patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="restored-key"):
                 with patch(
@@ -379,7 +380,10 @@ def test_validate_provider_credentials_without_credential_id() -> None:
     mock_factory = Mock()
     mock_factory.provider_credentials_validate.return_value = {"region": "us"}
 
-    with patch("core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory):
+    with patch(
+        "core.entities.provider_configuration.create_plugin_model_assembly",
+        return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
+    ):
         validated = configuration.validate_provider_credentials(credentials={"region": "us"})
 
     assert validated == {"region": "us"}
@@ -426,23 +430,37 @@ def test_switch_preferred_provider_type_creates_record_when_missing() -> None:
 
 def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
     configuration = _build_provider_configuration()
-    mock_factory = Mock()
     mock_model_type_instance = Mock()
     mock_schema = _build_ai_model("gpt-4o")
-    mock_factory.get_model_type_instance.return_value = mock_model_type_instance
+    mock_factory = Mock()
+    mock_factory.get_provider_schema.return_value = configuration.provider
     mock_factory.get_model_schema.return_value = mock_schema
+    mock_assembly = Mock()
+    mock_assembly.model_runtime = Mock()
+    mock_assembly.model_provider_factory = mock_factory
 
-    with patch(
-        "core.entities.provider_configuration.create_plugin_model_provider_factory",
-        return_value=mock_factory,
-    ) as mock_factory_builder:
+    with (
+        patch(
+            "core.entities.provider_configuration.create_plugin_model_assembly",
+            return_value=mock_assembly,
+        ) as mock_assembly_builder,
+        patch(
+            "core.entities.provider_configuration.create_model_type_instance",
+            return_value=mock_model_type_instance,
+        ) as mock_model_builder,
+    ):
         model_type_instance = configuration.get_model_type_instance(ModelType.LLM)
         model_schema = configuration.get_model_schema(ModelType.LLM, "gpt-4o", {"api_key": "x"})
 
     assert model_type_instance is mock_model_type_instance
     assert model_schema is mock_schema
-    assert mock_factory_builder.call_count == 2
-    mock_factory.get_model_type_instance.assert_called_once_with(provider="openai", model_type=ModelType.LLM)
+    assert mock_assembly_builder.call_count == 2
+    mock_factory.get_provider_schema.assert_called_once_with(provider="openai")
+    mock_model_builder.assert_called_once_with(
+        runtime=mock_assembly.model_runtime,
+        provider_schema=configuration.provider,
+        model_type=ModelType.LLM,
+    )
     mock_factory.get_model_schema.assert_called_once_with(
         provider="openai",
         model_type=ModelType.LLM,
@@ -456,17 +474,21 @@ def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> Non
     bound_runtime = Mock()
     configuration.bind_model_runtime(bound_runtime)
 
-    mock_factory = Mock()
     mock_model_type_instance = Mock()
     mock_schema = _build_ai_model("gpt-4o")
-    mock_factory.get_model_type_instance.return_value = mock_model_type_instance
+    mock_factory = Mock()
+    mock_factory.get_provider_schema.return_value = configuration.provider
     mock_factory.get_model_schema.return_value = mock_schema
 
     with (
         patch(
             "core.entities.provider_configuration.ModelProviderFactory", return_value=mock_factory
         ) as mock_factory_cls,
-        patch("core.entities.provider_configuration.create_plugin_model_provider_factory") as mock_factory_builder,
+        patch("core.entities.provider_configuration.create_plugin_model_assembly") as mock_assembly_builder,
+        patch(
+            "core.entities.provider_configuration.create_model_type_instance",
+            return_value=mock_model_type_instance,
+        ) as mock_model_builder,
     ):
         model_type_instance = configuration.get_model_type_instance(ModelType.LLM)
         model_schema = configuration.get_model_schema(ModelType.LLM, "gpt-4o", {"api_key": "x"})
@@ -474,8 +496,14 @@ def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> Non
     assert model_type_instance is mock_model_type_instance
     assert model_schema is mock_schema
     assert mock_factory_cls.call_count == 2
-    mock_factory_cls.assert_called_with(model_runtime=bound_runtime)
-    mock_factory_builder.assert_not_called()
+    mock_factory_cls.assert_called_with(runtime=bound_runtime)
+    mock_assembly_builder.assert_not_called()
+    mock_factory.get_provider_schema.assert_called_once_with(provider="openai")
+    mock_model_builder.assert_called_once_with(
+        runtime=bound_runtime,
+        provider_schema=configuration.provider,
+        model_type=ModelType.LLM,
+    )
 
 
 def test_get_provider_model_returns_none_when_model_not_found() -> None:
@@ -504,7 +532,10 @@ def test_get_provider_models_system_deduplicates_sorts_and_filters_active() -> N
     mock_factory = Mock()
     mock_factory.get_provider_schema.return_value = provider_schema
 
-    with patch("core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory):
+    with patch(
+        "core.entities.provider_configuration.create_plugin_model_assembly",
+        return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
+    ):
         all_models = configuration.get_provider_models(model_type=ModelType.LLM, only_active=False)
         active_models = configuration.get_provider_models(model_type=ModelType.LLM, only_active=True)
 
@@ -722,7 +753,8 @@ def test_validate_provider_credentials_handles_invalid_original_json() -> None:
 
     with _patched_session(mock_session):
         with patch(
-            "core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory
+            "core.entities.provider_configuration.create_plugin_model_assembly",
+            return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
         ):
             with patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-key"):
                 validated = configuration.validate_provider_credentials(
@@ -1069,7 +1101,8 @@ def test_validate_custom_model_credentials_supports_hidden_reuse_and_sessionless
 
     with _patched_session(mock_session):
         with patch(
-            "core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory
+            "core.entities.provider_configuration.create_plugin_model_assembly",
+            return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
         ):
             with patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="raw"):
                 with patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"):
@@ -1083,7 +1116,10 @@ def test_validate_custom_model_credentials_supports_hidden_reuse_and_sessionless
 
     mock_factory2 = Mock()
     mock_factory2.model_credentials_validate.return_value = {"region": "us"}
-    with patch("core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory2):
+    with patch(
+        "core.entities.provider_configuration.create_plugin_model_assembly",
+        return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory2),
+    ):
         validated = configuration.validate_custom_model_credentials(
             model_type=ModelType.LLM,
             model="gpt-4o",
@@ -1575,7 +1611,8 @@ def test_validate_provider_credentials_uses_empty_original_when_record_missing()
 
     with _patched_session(mock_session):
         with patch(
-            "core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory
+            "core.entities.provider_configuration.create_plugin_model_assembly",
+            return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
         ):
             with patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"):
                 validated = configuration.validate_provider_credentials(
@@ -1701,7 +1738,8 @@ def test_validate_custom_model_credentials_handles_invalid_original_json() -> No
 
     with _patched_session(mock_session):
         with patch(
-            "core.entities.provider_configuration.create_plugin_model_provider_factory", return_value=mock_factory
+            "core.entities.provider_configuration.create_plugin_model_assembly",
+            return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
         ):
             with patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"):
                 validated = configuration.validate_custom_model_credentials(

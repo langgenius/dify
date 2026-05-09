@@ -2,6 +2,7 @@ import types
 from collections.abc import Generator
 
 import pytest
+from pytest_mock import MockerFixture
 
 from contexts.wrapper import RecyclableContextVar
 from core.datasource.datasource_manager import DatasourceManager
@@ -37,7 +38,7 @@ def _invalidate_recyclable_contextvars() -> None:
     RecyclableContextVar.increment_thread_recycles()
 
 
-def test_get_icon_url_calls_runtime(mocker):
+def test_get_icon_url_calls_runtime(mocker: MockerFixture):
     fake_runtime = mocker.Mock()
     fake_runtime.get_icon_url.return_value = "https://icon"
     mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=fake_runtime)
@@ -52,7 +53,7 @@ def test_get_icon_url_calls_runtime(mocker):
     DatasourceManager.get_datasource_runtime.assert_called_once()
 
 
-def test_get_datasource_runtime_delegates_to_provider_controller(mocker):
+def test_get_datasource_runtime_delegates_to_provider_controller(mocker: MockerFixture):
     provider_controller = mocker.Mock()
     provider_controller.get_datasource.return_value = object()
     mocker.patch.object(DatasourceManager, "get_datasource_plugin_provider", return_value=provider_controller)
@@ -114,7 +115,7 @@ def test_get_datasource_plugin_provider_creates_controller_and_caches(mocker, da
     assert ctrl_cls.call_count == 1
 
 
-def test_get_datasource_plugin_provider_raises_when_provider_entity_missing(mocker):
+def test_get_datasource_plugin_provider_raises_when_provider_entity_missing(mocker: MockerFixture):
     _invalidate_recyclable_contextvars()
     mocker.patch(
         "core.datasource.datasource_manager.PluginDatasourceManager.fetch_datasource_provider",
@@ -129,7 +130,7 @@ def test_get_datasource_plugin_provider_raises_when_provider_entity_missing(mock
         )
 
 
-def test_get_datasource_plugin_provider_raises_for_unsupported_type(mocker):
+def test_get_datasource_plugin_provider_raises_for_unsupported_type(mocker: MockerFixture):
     _invalidate_recyclable_contextvars()
     provider_entity = types.SimpleNamespace(declaration=object(), plugin_id="plugin", plugin_unique_identifier="uniq")
     mocker.patch(
@@ -145,7 +146,7 @@ def test_get_datasource_plugin_provider_raises_for_unsupported_type(mocker):
         )
 
 
-def test_get_datasource_plugin_provider_raises_when_controller_none(mocker):
+def test_get_datasource_plugin_provider_raises_when_controller_none(mocker: MockerFixture):
     _invalidate_recyclable_contextvars()
     provider_entity = types.SimpleNamespace(declaration=object(), plugin_id="plugin", plugin_unique_identifier="uniq")
     mocker.patch(
@@ -165,7 +166,7 @@ def test_get_datasource_plugin_provider_raises_when_controller_none(mocker):
         )
 
 
-def test_stream_online_results_yields_messages_online_document(mocker):
+def test_stream_online_results_yields_messages_online_document(mocker: MockerFixture):
     # stub runtime to yield a text message
     def _doc_messages(**_):
         yield from _gen_messages_text_only("hello")
@@ -195,7 +196,7 @@ def test_stream_online_results_yields_messages_online_document(mocker):
     assert msgs[0].message.text == "hello"
 
 
-def test_stream_online_results_sets_credentials_and_returns_empty_dict_online_document(mocker):
+def test_stream_online_results_sets_credentials_and_returns_empty_dict_online_document(mocker: MockerFixture):
     class _Runtime:
         def __init__(self) -> None:
             self.runtime = types.SimpleNamespace(credentials=None)
@@ -229,7 +230,7 @@ def test_stream_online_results_sets_credentials_and_returns_empty_dict_online_do
     assert final_value == {}
 
 
-def test_stream_online_results_raises_when_missing_params(mocker):
+def test_stream_online_results_raises_when_missing_params(mocker: MockerFixture):
     class _Runtime:
         def __init__(self) -> None:
             self.runtime = types.SimpleNamespace(credentials=None)
@@ -279,7 +280,7 @@ def test_stream_online_results_raises_when_missing_params(mocker):
         )
 
 
-def test_stream_online_results_yields_messages_and_returns_empty_dict_online_drive(mocker):
+def test_stream_online_results_yields_messages_and_returns_empty_dict_online_drive(mocker: MockerFixture):
     class _Runtime:
         def __init__(self) -> None:
             self.runtime = types.SimpleNamespace(credentials=None)
@@ -313,7 +314,7 @@ def test_stream_online_results_yields_messages_and_returns_empty_dict_online_dri
     assert final_value == {}
 
 
-def test_stream_online_results_raises_for_unsupported_stream_type(mocker):
+def test_stream_online_results_raises_for_unsupported_stream_type(mocker: MockerFixture):
     mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=mocker.Mock())
     mocker.patch(
         "core.datasource.datasource_manager.DatasourceProviderService.get_datasource_credentials",
@@ -337,7 +338,7 @@ def test_stream_online_results_raises_for_unsupported_stream_type(mocker):
         )
 
 
-def test_stream_node_events_emits_events_online_document(mocker):
+def test_stream_node_events_emits_events_online_document(mocker: MockerFixture):
     # make manager's low-level stream produce TEXT only
     mocker.patch.object(
         DatasourceManager,
@@ -370,7 +371,7 @@ def test_stream_node_events_emits_events_online_document(mocker):
     assert events[-1].node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
 
 
-def test_stream_node_events_builds_file_and_variables_from_messages(mocker):
+def test_stream_node_events_builds_file_and_variables_from_messages(mocker: MockerFixture):
     mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_messages_text_only("ignored"))
 
     def _transformed(**_kwargs):
@@ -478,7 +479,7 @@ def test_stream_node_events_builds_file_and_variables_from_messages(mocker):
     assert events[-1].node_run_result.outputs["x"] == 1
 
 
-def test_stream_node_events_raises_when_toolfile_missing(mocker):
+def test_stream_node_events_raises_when_toolfile_missing(mocker: MockerFixture):
     mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_messages_text_only("ignored"))
 
     def _transformed(**_kwargs):
@@ -526,7 +527,7 @@ def test_stream_node_events_raises_when_toolfile_missing(mocker):
         )
 
 
-def test_stream_node_events_online_drive_sets_variable_pool_file_and_outputs(mocker):
+def test_stream_node_events_online_drive_sets_variable_pool_file_and_outputs(mocker: MockerFixture):
     mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_messages_text_only("ignored"))
 
     file_in = File(
@@ -580,7 +581,7 @@ def test_stream_node_events_online_drive_sets_variable_pool_file_and_outputs(moc
     assert completed.node_run_result.outputs["datasource_type"] == DatasourceProviderType.ONLINE_DRIVE
 
 
-def test_stream_node_events_skips_file_build_for_non_online_types(mocker):
+def test_stream_node_events_skips_file_build_for_non_online_types(mocker: MockerFixture):
     mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_messages_text_only("ignored"))
 
     def _transformed(**_kwargs):
@@ -620,7 +621,7 @@ def test_stream_node_events_skips_file_build_for_non_online_types(mocker):
     assert events[-1].node_run_result.outputs["file"] is None
 
 
-def test_get_upload_file_by_id_builds_file(mocker):
+def test_get_upload_file_by_id_builds_file(mocker: MockerFixture):
     # fake UploadFile row
     fake_row = types.SimpleNamespace(
         id="fid",
@@ -654,7 +655,7 @@ def test_get_upload_file_by_id_builds_file(mocker):
     assert f.storage_key == "k"
 
 
-def test_get_upload_file_by_id_raises_when_missing(mocker):
+def test_get_upload_file_by_id_raises_when_missing(mocker: MockerFixture):
     class _S:
         def __enter__(self):
             return self

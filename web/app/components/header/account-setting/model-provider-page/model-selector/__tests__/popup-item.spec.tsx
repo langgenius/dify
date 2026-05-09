@@ -42,10 +42,6 @@ vi.mock('../feature-icon', () => ({
   default: ({ feature }: { feature: string }) => <span data-testid="feature-icon">{feature}</span>,
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}))
-
 const mockCredentialPanelState = vi.hoisted(() => vi.fn())
 vi.mock('../../provider-added-card/use-credential-panel-state', () => ({
   useCredentialPanelState: mockCredentialPanelState,
