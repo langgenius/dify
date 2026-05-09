@@ -62,6 +62,7 @@ class HostingConfiguration:
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/x/x"] = self.init_xai()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/deepseek/deepseek"] = self.init_deepseek()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/tongyi/tongyi"] = self.init_tongyi()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/astraflow/astraflow"] = self.init_astraflow()
 
         self.moderation_config = self.init_moderation_config()
 
@@ -358,6 +359,36 @@ class HostingConfiguration:
                 quota_unit=quota_unit,
                 quotas=quotas,
             )
+
+        return HostingProvider(
+            enabled=False,
+            quota_unit=quota_unit,
+        )
+
+    def init_astraflow(self) -> HostingProvider:
+        quota_unit = QuotaUnit.CREDITS
+        quotas: list[HostingQuota] = []
+
+        if dify_config.HOSTED_ASTRAFLOW_TRIAL_ENABLED:
+            hosted_quota_limit = 0
+            trial_models = self.parse_restrict_models_from_env("HOSTED_ASTRAFLOW_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trial_models)
+            quotas.append(trial_quota)
+
+        if dify_config.HOSTED_ASTRAFLOW_PAID_ENABLED:
+            paid_models = self.parse_restrict_models_from_env("HOSTED_ASTRAFLOW_PAID_MODELS")
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
+            quotas.append(paid_quota)
+
+        if len(quotas) > 0:
+            credentials = {
+                "openai_api_key": dify_config.HOSTED_ASTRAFLOW_API_KEY,
+            }
+
+            if dify_config.HOSTED_ASTRAFLOW_API_BASE:
+                credentials["openai_api_base"] = dify_config.HOSTED_ASTRAFLOW_API_BASE
+
+            return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
 
         return HostingProvider(
             enabled=False,
