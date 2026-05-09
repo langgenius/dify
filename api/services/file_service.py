@@ -112,8 +112,6 @@ class FileService:
             session.add(upload_file)
             session.commit()
 
-        # The `UploadFile` ID is generated within its constructor, so flushing to retrieve the ID is unnecessary.
-        # We can directly generate the `source_url` here before committing.
         if not upload_file.source_url:
             upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
