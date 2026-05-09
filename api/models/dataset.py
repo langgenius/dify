@@ -1020,7 +1020,7 @@ class DocumentSegment(Base):
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            reference_url = dify_config.CONSOLE_API_URL or ""
+            reference_url = dify_config.FILES_URL or dify_config.CONSOLE_API_URL or ""
             base_url = f"{reference_url}/files/{upload_file_id}/image-preview"
             source_url = f"{base_url}?{params}"
             attachment_list.append(
