@@ -138,14 +138,14 @@ const PublishAsKnowledgePipelineModal = ({
               {t('common.publish', { ns: 'workflow' })}
             </Button>
           </div>
+          {showAppIconPicker && (
+            <AppIconPicker
+              onSelect={handleSelectIcon}
+              onClose={handleCloseIconPicker}
+            />
+          )}
         </DialogContent>
       </Dialog>
-      {showAppIconPicker && (
-        <AppIconPicker
-          onSelect={handleSelectIcon}
-          onClose={handleCloseIconPicker}
-        />
-      )}
     </>
   )
 }
