@@ -7,8 +7,11 @@ resolved :class:`~gateway.registry.CustomerEntry` on ``request.state.customer``.
 Routes that do not need authentication (e.g. ``/health``) are excluded by
 ``EXEMPT_PATHS``.
 
-Failures raise :class:`~gateway.errors.InvalidSdkKeyError`, which the global
-exception handler renders as a 401 OpenAI-shaped envelope.
+Failures are caught **inside** ``dispatch`` and rendered as 401 JSON responses
+directly. We cannot rely on FastAPI's ``@app.exception_handler(GatewayError)``
+here: ``BaseHTTPMiddleware`` runs *outside* Starlette's ``ExceptionMiddleware``,
+so exceptions raised before ``call_next`` returns propagate up the ASGI chain
+and become 500s instead of being shaped by our handler.
 """
 
 from __future__ import annotations
@@ -16,9 +19,10 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from gateway.errors import InvalidSdkKeyError
+from gateway.errors import GatewayError, InvalidSdkKeyError
 from gateway.registry import CustomerRegistry
 
 EXEMPT_PATHS: frozenset[str] = frozenset({"/health", "/", "/docs", "/openapi.json", "/redoc"})
@@ -72,12 +76,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if request.url.path in EXEMPT_PATHS:
             return await call_next(request)
 
-        # Raises InvalidSdkKeyError on failure → caught by global handler.
-        sdk_key = extract_sdk_key(request.headers.get("authorization"))
-
-        customer = self._registry.lookup(sdk_key)
-        if customer is None:
-            raise InvalidSdkKeyError("unknown SDK key", param="authorization")
+        try:
+            sdk_key = extract_sdk_key(request.headers.get("authorization"))
+            customer = self._registry.lookup(sdk_key)
+            if customer is None:
+                raise InvalidSdkKeyError("unknown SDK key", param="authorization")
+        except GatewayError as exc:
+            # Render directly: BaseHTTPMiddleware runs outside FastAPI's
+            # ExceptionMiddleware, so raising would skip the global handler
+            # and become a 500. See module docstring for details.
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=exc.to_openai_envelope(),
+            )
 
         # Stash on state for downstream handlers/middleware. We deliberately
         # avoid attaching the raw SDK key to keep it out of logs/metrics that
