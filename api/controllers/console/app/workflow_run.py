@@ -1,30 +1,28 @@
 from datetime import UTC, datetime, timedelta
-from typing import Literal, TypedDict, cast
+from typing import Literal, cast
 
 from flask import request
-from flask_restx import Resource, fields, marshal_with
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import NotFoundError
 from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
 from extensions.ext_database import db
-from fields.end_user_fields import simple_end_user_fields
-from fields.member_fields import simple_account_fields
+from fields.base import ResponseModel
 from fields.workflow_run_fields import (
-    advanced_chat_workflow_run_for_list_fields,
-    advanced_chat_workflow_run_pagination_fields,
-    workflow_run_count_fields,
-    workflow_run_detail_fields,
-    workflow_run_for_list_fields,
-    workflow_run_node_execution_fields,
-    workflow_run_node_execution_list_fields,
-    workflow_run_pagination_fields,
+    AdvancedChatWorkflowRunPaginationResponse,
+    WorkflowRunCountResponse,
+    WorkflowRunDetailResponse,
+    WorkflowRunNodeExecutionListResponse,
+    WorkflowRunNodeExecutionResponse,
+    WorkflowRunPaginationResponse,
 )
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
@@ -52,82 +50,6 @@ def _build_backstage_input_url(form_token: str | None) -> str | None:
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
 EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
 
-# Register models for flask_restx to avoid dict type issues in Swagger
-# Register in dependency order: base models first, then dependent models
-
-# Base models
-simple_account_model = console_ns.model("SimpleAccount", simple_account_fields)
-
-simple_end_user_model = console_ns.model("SimpleEndUser", simple_end_user_fields)
-
-# Models that depend on simple_account_fields
-workflow_run_for_list_fields_copy = workflow_run_for_list_fields.copy()
-workflow_run_for_list_fields_copy["created_by_account"] = fields.Nested(
-    simple_account_model, attribute="created_by_account", allow_null=True
-)
-workflow_run_for_list_model = console_ns.model("WorkflowRunForList", workflow_run_for_list_fields_copy)
-
-advanced_chat_workflow_run_for_list_fields_copy = advanced_chat_workflow_run_for_list_fields.copy()
-advanced_chat_workflow_run_for_list_fields_copy["created_by_account"] = fields.Nested(
-    simple_account_model, attribute="created_by_account", allow_null=True
-)
-advanced_chat_workflow_run_for_list_model = console_ns.model(
-    "AdvancedChatWorkflowRunForList", advanced_chat_workflow_run_for_list_fields_copy
-)
-
-workflow_run_detail_fields_copy = workflow_run_detail_fields.copy()
-workflow_run_detail_fields_copy["created_by_account"] = fields.Nested(
-    simple_account_model, attribute="created_by_account", allow_null=True
-)
-workflow_run_detail_fields_copy["created_by_end_user"] = fields.Nested(
-    simple_end_user_model, attribute="created_by_end_user", allow_null=True
-)
-workflow_run_detail_model = console_ns.model("WorkflowRunDetail", workflow_run_detail_fields_copy)
-
-workflow_run_node_execution_fields_copy = workflow_run_node_execution_fields.copy()
-workflow_run_node_execution_fields_copy["created_by_account"] = fields.Nested(
-    simple_account_model, attribute="created_by_account", allow_null=True
-)
-workflow_run_node_execution_fields_copy["created_by_end_user"] = fields.Nested(
-    simple_end_user_model, attribute="created_by_end_user", allow_null=True
-)
-workflow_run_node_execution_model = console_ns.model(
-    "WorkflowRunNodeExecution", workflow_run_node_execution_fields_copy
-)
-
-# Simple models without nested dependencies
-workflow_run_count_model = console_ns.model("WorkflowRunCount", workflow_run_count_fields)
-
-# Pagination models that depend on list models
-advanced_chat_workflow_run_pagination_fields_copy = advanced_chat_workflow_run_pagination_fields.copy()
-advanced_chat_workflow_run_pagination_fields_copy["data"] = fields.List(
-    fields.Nested(advanced_chat_workflow_run_for_list_model), attribute="data"
-)
-advanced_chat_workflow_run_pagination_model = console_ns.model(
-    "AdvancedChatWorkflowRunPagination", advanced_chat_workflow_run_pagination_fields_copy
-)
-
-workflow_run_pagination_fields_copy = workflow_run_pagination_fields.copy()
-workflow_run_pagination_fields_copy["data"] = fields.List(fields.Nested(workflow_run_for_list_model), attribute="data")
-workflow_run_pagination_model = console_ns.model("WorkflowRunPagination", workflow_run_pagination_fields_copy)
-
-workflow_run_node_execution_list_fields_copy = workflow_run_node_execution_list_fields.copy()
-workflow_run_node_execution_list_fields_copy["data"] = fields.List(fields.Nested(workflow_run_node_execution_model))
-workflow_run_node_execution_list_model = console_ns.model(
-    "WorkflowRunNodeExecutionList", workflow_run_node_execution_list_fields_copy
-)
-
-workflow_run_export_fields = console_ns.model(
-    "WorkflowRunExport",
-    {
-        "status": fields.String(description="Export status: success/failed"),
-        "presigned_url": fields.String(description="Pre-signed URL for download", required=False),
-        "presigned_url_expires_at": fields.String(description="Pre-signed URL expiration time", required=False),
-    },
-)
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
 
 class WorkflowRunListQuery(BaseModel):
     last_id: str | None = Field(default=None, description="Last run ID for pagination")
@@ -136,7 +58,7 @@ class WorkflowRunListQuery(BaseModel):
         default=None, description="Workflow run status filter"
     )
     triggered_from: Literal["debugging", "app-run"] | None = Field(
-        default=None, description="Filter by trigger source: debugging or app-run"
+        default=None, description="Filter by trigger source: debugging or app-run. Default: debugging"
     )
 
     @field_validator("last_id")
@@ -151,9 +73,15 @@ class WorkflowRunCountQuery(BaseModel):
     status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
         default=None, description="Workflow run status filter"
     )
-    time_range: str | None = Field(default=None, description="Time range filter (e.g., 7d, 4h, 30m, 30s)")
+    time_range: str | None = Field(
+        default=None,
+        description=(
+            "Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), "
+            "30m (30 minutes), 30s (30 seconds). Filters by created_at field."
+        ),
+    )
     triggered_from: Literal["debugging", "app-run"] | None = Field(
-        default=None, description="Filter by trigger source: debugging or app-run"
+        default=None, description="Filter by trigger source: debugging or app-run. Default: debugging"
     )
 
     @field_validator("time_range")
@@ -164,30 +92,47 @@ class WorkflowRunCountQuery(BaseModel):
         return time_duration(value)
 
 
-console_ns.schema_model(
-    WorkflowRunListQuery.__name__, WorkflowRunListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    WorkflowRunCountQuery.__name__,
-    WorkflowRunCountQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+class WorkflowRunExportResponse(ResponseModel):
+    status: str = Field(description="Export status: success/failed")
+    presigned_url: str | None = Field(default=None, description="Pre-signed URL for download")
+    presigned_url_expires_at: str | None = Field(default=None, description="Pre-signed URL expiration time")
 
 
-class HumanInputPauseTypeResponse(TypedDict):
+class HumanInputPauseTypeResponse(ResponseModel):
     type: Literal["human_input"]
     form_id: str
-    backstage_input_url: str | None
+    backstage_input_url: str | None = None
 
 
-class PausedNodeResponse(TypedDict):
+class PausedNodeResponse(ResponseModel):
     node_id: str
     node_title: str
     pause_type: HumanInputPauseTypeResponse
 
 
-class WorkflowPauseDetailsResponse(TypedDict):
-    paused_at: str | None
+class WorkflowPauseDetailsResponse(ResponseModel):
+    paused_at: str | None = None
     paused_nodes: list[PausedNodeResponse]
+
+
+register_schema_models(
+    console_ns,
+    WorkflowRunListQuery,
+    WorkflowRunCountQuery,
+)
+register_response_schema_models(
+    console_ns,
+    AdvancedChatWorkflowRunPaginationResponse,
+    WorkflowRunPaginationResponse,
+    WorkflowRunCountResponse,
+    WorkflowRunDetailResponse,
+    WorkflowRunNodeExecutionResponse,
+    WorkflowRunNodeExecutionListResponse,
+    WorkflowRunExportResponse,
+    HumanInputPauseTypeResponse,
+    PausedNodeResponse,
+    WorkflowPauseDetailsResponse,
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
@@ -195,20 +140,16 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @console_ns.doc("get_advanced_chat_workflow_runs")
     @console_ns.doc(description="Get advanced chat workflow run list")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params={"last_id": "Last run ID for pagination", "limit": "Number of items per page (1-100)"})
-    @console_ns.doc(
-        params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"}
+    @console_ns.doc(params=query_params_from_model(WorkflowRunListQuery))
+    @console_ns.response(
+        200,
+        "Workflow runs retrieved successfully",
+        console_ns.models[AdvancedChatWorkflowRunPaginationResponse.__name__],
     )
-    @console_ns.doc(
-        params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
-    )
-    @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
-    @console_ns.response(200, "Workflow runs retrieved successfully", advanced_chat_workflow_run_pagination_model)
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    @marshal_with(advanced_chat_workflow_run_pagination_model)
     def get(self, app_model: App):
         """
         Get advanced chat app workflow run list
@@ -232,7 +173,9 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
             app_model=app_model, args=args, triggered_from=triggered_from
         )
 
-        return result
+        return AdvancedChatWorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/export")
@@ -240,7 +183,7 @@ class WorkflowRunExportApi(Resource):
     @console_ns.doc("get_workflow_run_export_url")
     @console_ns.doc(description="Generate a download URL for an archived workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(200, "Export URL generated", workflow_run_export_fields)
+    @console_ns.response(200, "Export URL generated", console_ns.models[WorkflowRunExportResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -278,11 +221,14 @@ class WorkflowRunExportApi(Resource):
             expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
         )
         expires_at = datetime.now(UTC) + timedelta(seconds=EXPORT_SIGNED_URL_EXPIRE_SECONDS)
-        return {
-            "status": "success",
-            "presigned_url": presigned_url,
-            "presigned_url_expires_at": expires_at.isoformat(),
-        }, 200
+        response = WorkflowRunExportResponse.model_validate(
+            {
+                "status": "success",
+                "presigned_url": presigned_url,
+                "presigned_url_expires_at": expires_at.isoformat(),
+            }
+        )
+        return response.model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
@@ -290,27 +236,16 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
     @console_ns.doc("get_advanced_chat_workflow_runs_count")
     @console_ns.doc(description="Get advanced chat workflow runs count statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(
-        params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"}
+    @console_ns.doc(params=query_params_from_model(WorkflowRunCountQuery))
+    @console_ns.response(
+        200,
+        "Workflow runs count retrieved successfully",
+        console_ns.models[WorkflowRunCountResponse.__name__],
     )
-    @console_ns.doc(
-        params={
-            "time_range": (
-                "Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), "
-                "30m (30 minutes), 30s (30 seconds). Filters by created_at field."
-            )
-        }
-    )
-    @console_ns.doc(
-        params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
-    )
-    @console_ns.response(200, "Workflow runs count retrieved successfully", workflow_run_count_model)
-    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
-    @marshal_with(workflow_run_count_model)
     def get(self, app_model: App):
         """
         Get advanced chat workflow runs count statistics
@@ -333,7 +268,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
             triggered_from=triggered_from,
         )
 
-        return result
+        return WorkflowRunCountResponse.model_validate(result).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs")
@@ -341,20 +276,16 @@ class WorkflowRunListApi(Resource):
     @console_ns.doc("get_workflow_runs")
     @console_ns.doc(description="Get workflow run list")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params={"last_id": "Last run ID for pagination", "limit": "Number of items per page (1-100)"})
-    @console_ns.doc(
-        params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"}
+    @console_ns.doc(params=query_params_from_model(WorkflowRunListQuery))
+    @console_ns.response(
+        200,
+        "Workflow runs retrieved successfully",
+        console_ns.models[WorkflowRunPaginationResponse.__name__],
     )
-    @console_ns.doc(
-        params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
-    )
-    @console_ns.response(200, "Workflow runs retrieved successfully", workflow_run_pagination_model)
-    @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_pagination_model)
     def get(self, app_model: App):
         """
         Get workflow run list
@@ -378,7 +309,7 @@ class WorkflowRunListApi(Resource):
             app_model=app_model, args=args, triggered_from=triggered_from
         )
 
-        return result
+        return WorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/count")
@@ -386,27 +317,16 @@ class WorkflowRunCountApi(Resource):
     @console_ns.doc("get_workflow_runs_count")
     @console_ns.doc(description="Get workflow runs count statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(
-        params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"}
+    @console_ns.doc(params=query_params_from_model(WorkflowRunCountQuery))
+    @console_ns.response(
+        200,
+        "Workflow runs count retrieved successfully",
+        console_ns.models[WorkflowRunCountResponse.__name__],
     )
-    @console_ns.doc(
-        params={
-            "time_range": (
-                "Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), "
-                "30m (30 minutes), 30s (30 seconds). Filters by created_at field."
-            )
-        }
-    )
-    @console_ns.doc(
-        params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
-    )
-    @console_ns.response(200, "Workflow runs count retrieved successfully", workflow_run_count_model)
-    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_count_model)
     def get(self, app_model: App):
         """
         Get workflow runs count statistics
@@ -429,7 +349,7 @@ class WorkflowRunCountApi(Resource):
             triggered_from=triggered_from,
         )
 
-        return result
+        return WorkflowRunCountResponse.model_validate(result).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>")
@@ -437,13 +357,16 @@ class WorkflowRunDetailApi(Resource):
     @console_ns.doc("get_workflow_run_detail")
     @console_ns.doc(description="Get workflow run detail")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(200, "Workflow run detail retrieved successfully", workflow_run_detail_model)
+    @console_ns.response(
+        200,
+        "Workflow run detail retrieved successfully",
+        console_ns.models[WorkflowRunDetailResponse.__name__],
+    )
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_detail_model)
     def get(self, app_model: App, run_id):
         """
         Get workflow run detail
@@ -452,8 +375,10 @@ class WorkflowRunDetailApi(Resource):
 
         workflow_run_service = WorkflowRunService()
         workflow_run = workflow_run_service.get_workflow_run(app_model=app_model, run_id=run_id)
+        if workflow_run is None:
+            raise NotFoundError("Workflow run not found")
 
-        return workflow_run
+        return WorkflowRunDetailResponse.model_validate(workflow_run, from_attributes=True).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions")
@@ -461,13 +386,16 @@ class WorkflowRunNodeExecutionListApi(Resource):
     @console_ns.doc("get_workflow_run_node_executions")
     @console_ns.doc(description="Get workflow run node execution list")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(200, "Node executions retrieved successfully", workflow_run_node_execution_list_model)
+    @console_ns.response(
+        200,
+        "Node executions retrieved successfully",
+        console_ns.models[WorkflowRunNodeExecutionListResponse.__name__],
+    )
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_list_model)
     def get(self, app_model: App, run_id):
         """
         Get workflow run node execution list
@@ -482,13 +410,24 @@ class WorkflowRunNodeExecutionListApi(Resource):
             user=user,
         )
 
-        return {"data": node_executions}
+        return WorkflowRunNodeExecutionListResponse.model_validate(
+            {"data": node_executions}, from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/workflow/<string:workflow_run_id>/pause-details")
 class ConsoleWorkflowPauseDetailsApi(Resource):
     """Console API for getting workflow pause details."""
 
+    @console_ns.doc("get_workflow_pause_details")
+    @console_ns.doc(description="Get workflow pause details")
+    @console_ns.doc(params={"workflow_run_id": "Workflow run ID"})
+    @console_ns.response(
+        200,
+        "Workflow pause details retrieved successfully",
+        console_ns.models[WorkflowPauseDetailsResponse.__name__],
+    )
+    @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -515,11 +454,8 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         # Check if workflow is suspended
         is_paused = workflow_run.status == WorkflowExecutionStatus.PAUSED
         if not is_paused:
-            empty_response: WorkflowPauseDetailsResponse = {
-                "paused_at": None,
-                "paused_nodes": [],
-            }
-            return empty_response, 200
+            empty_response = WorkflowPauseDetailsResponse(paused_at=None, paused_nodes=[])
+            return empty_response.model_dump(mode="json"), 200
 
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
         pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
@@ -530,27 +466,25 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         # Build response
         paused_at = pause_entity.paused_at if pause_entity else None
         paused_nodes: list[PausedNodeResponse] = []
-        response: WorkflowPauseDetailsResponse = {
-            "paused_at": paused_at.isoformat() + "Z" if paused_at else None,
-            "paused_nodes": paused_nodes,
-        }
 
         for reason in pause_reasons:
             if isinstance(reason, HumanInputRequired):
                 paused_nodes.append(
-                    {
-                        "node_id": reason.node_id,
-                        "node_title": reason.node_title,
-                        "pause_type": {
-                            "type": "human_input",
-                            "form_id": reason.form_id,
-                            "backstage_input_url": _build_backstage_input_url(
-                                form_tokens_by_form_id.get(reason.form_id)
-                            ),
-                        },
-                    }
+                    PausedNodeResponse(
+                        node_id=reason.node_id,
+                        node_title=reason.node_title,
+                        pause_type=HumanInputPauseTypeResponse(
+                            type="human_input",
+                            form_id=reason.form_id,
+                            backstage_input_url=_build_backstage_input_url(form_tokens_by_form_id.get(reason.form_id)),
+                        ),
+                    )
                 )
             else:
                 raise AssertionError("unimplemented.")
 
-        return response, 200
+        response = WorkflowPauseDetailsResponse(
+            paused_at=paused_at.isoformat() + "Z" if paused_at else None,
+            paused_nodes=paused_nodes,
+        )
+        return response.model_dump(mode="json"), 200
