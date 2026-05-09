@@ -2307,11 +2307,8 @@
     }
   },
   "web/app/components/develop/code.tsx": {
-    "ts/no-empty-object-type": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 9
+      "count": 7
     }
   },
   "web/app/components/develop/md.tsx": {
