@@ -216,6 +216,24 @@ describe('AppList', () => {
       expect(screen.getAllByText('explore.continueWork.editedAt:{"time":"3 minutes ago"}')).toHaveLength(5)
       expect(screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' })).toHaveAttribute('href', '/apps')
     })
+
+    it('should render learn dify templates without badges or template metadata', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+
+      renderAppList()
+
+      expect(screen.getByRole('heading', { name: 'explore.learnDify.title' })).toBeInTheDocument()
+      expect(screen.getByText('Your first Workflow - say hello to AI')).toBeInTheDocument()
+      expect(screen.getByText('Build a working Agent with Workflow')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'explore.learnDify.moreTemplates' })).toHaveAttribute('href', '/explore/apps')
+      expect(screen.queryByText('Run this first')).not.toBeInTheDocument()
+      expect(screen.queryByText('Then try this')).not.toBeInTheDocument()
+      expect(screen.queryByText('workflow')).not.toBeInTheDocument()
+      expect(screen.queryByText('3 min')).not.toBeInTheDocument()
+    })
   })
 
   describe('Props', () => {

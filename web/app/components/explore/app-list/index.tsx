@@ -19,6 +19,7 @@ import Banner from '@/app/components/explore/banner/banner'
 import Category from '@/app/components/explore/category'
 import ContinueWork from '@/app/components/explore/continue-work'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
+import LearnDify from '@/app/components/explore/learn-dify'
 import { useAppContext } from '@/context/app-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import {
@@ -193,6 +194,7 @@ const Apps = ({
           </div>
         )}
         <ContinueWork className="mt-10" />
+        <LearnDify className="mt-4" />
 
         <div className="sticky top-0 z-10 bg-background-body">
           <div className={cn(
