@@ -259,6 +259,11 @@
       "count": 1
     }
   },
+  "web/app/components/app/app-access-control/add-member-or-group-pop.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/app/app-publisher/features-wrapper.tsx": {
     "ts/no-explicit-any": {
       "count": 4
@@ -1510,6 +1515,11 @@
       "count": 4
     }
   },
+  "web/app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/base/prompt-editor/plugins/component-picker-block/menu.tsx": {
     "erasable-syntax-only/parameter-properties": {
       "count": 1
@@ -1592,6 +1602,11 @@
     },
     "react-refresh/only-export-components": {
       "count": 2
+    }
+  },
+  "web/app/components/base/prompt-editor/plugins/shortcuts-popup-plugin/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/base/prompt-editor/plugins/update-block.tsx": {
@@ -2079,6 +2094,16 @@
       "count": 1
     }
   },
+  "web/app/components/datasets/formatted-text/flavours/edit-slice.tsx": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "web/app/components/datasets/formatted-text/flavours/preview-slice.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/datasets/formatted-text/flavours/type.ts": {
     "ts/no-empty-object-type": {
       "count": 1
@@ -2307,6 +2332,11 @@
       "count": 4
     }
   },
+  "web/app/components/header/account-setting/model-provider-page/model-auth/authorized/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 6
@@ -2450,6 +2480,11 @@
   },
   "web/app/components/plugins/plugin-auth/authorized-in-node.tsx": {
     "ts/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-auth/authorized/index.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2606,9 +2641,19 @@
       "count": 7
     }
   },
+  "web/app/components/plugins/plugin-detail-panel/tool-selector/components/tool-base-form.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/plugins/plugin-detail-panel/tool-selector/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
+    }
+  },
+  "web/app/components/plugins/plugin-detail-panel/tool-selector/index.tsx": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/app/components/plugins/plugin-detail-panel/trigger/event-detail-drawer.tsx": {
@@ -2995,6 +3040,11 @@
       "count": 1
     }
   },
+  "web/app/components/workflow/block-selector/main.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/block-selector/market-place-plugin/action.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -3007,6 +3057,11 @@
   },
   "web/app/components/workflow/block-selector/rag-tool-recommendations/index.tsx": {
     "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "web/app/components/workflow/block-selector/tool-picker.tsx": {
+    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -4107,6 +4162,9 @@
     }
   },
   "web/app/components/workflow/note-node/note-editor/plugins/link-editor-plugin/component.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -4117,6 +4175,9 @@
     }
   },
   "web/app/components/workflow/operator/add-block.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    },
     "ts/no-explicit-any": {
       "count": 1
     }

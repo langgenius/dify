@@ -39,9 +39,19 @@ const BASE_UI_RESTRICTED_IMPORT_PATTERNS = [
   },
 ]
 
+const FLOATING_UI_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@floating-ui/*',
+    ],
+    message: 'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+  },
+]
+
 export const WEB_RESTRICTED_IMPORT_PATTERNS = [
   ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
   ...BASE_UI_RESTRICTED_IMPORT_PATTERNS,
+  ...FLOATING_UI_RESTRICTED_IMPORT_PATTERNS,
 ]
 
 export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
