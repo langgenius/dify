@@ -53,7 +53,7 @@ const CreateFromDSLModal = ({
   useKeyPress('esc', () => {
     if (show && !showConfirmModal)
       onClose()
-  })
+  }, { target: () => document })
 
   return (
     <>

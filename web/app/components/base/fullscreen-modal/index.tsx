@@ -40,7 +40,8 @@ export default function FullScreenModal({
           wrapperClassName,
         )}
         popupProps={{
-          onClick: () => onClose(),
+          'aria-modal': 'true',
+          'onClick': () => onClose(),
         }}
       >
         <div

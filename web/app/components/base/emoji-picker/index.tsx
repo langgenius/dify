@@ -20,6 +20,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
   isModal = true,
   onSelect,
   onClose,
+  className,
 }) => {
   const { t } = useTranslation()
   const [selectedEmoji, setSelectedEmoji] = useState('')
@@ -33,7 +34,13 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
   return isModal
     ? (
         <Dialog open>
-          <DialogContent className={cn('max-h-none w-full overflow-hidden! text-left align-middle', 'flex max-h-[552px] flex-col rounded-xl border-[0.5px] border-divider-subtle p-0 shadow-xl')}>
+          <DialogContent
+            className={cn(
+              'max-h-none w-full overflow-hidden! text-left align-middle',
+              'flex max-h-[552px] flex-col rounded-xl border-[0.5px] border-divider-subtle p-0 shadow-xl',
+              className,
+            )}
+          >
 
             <EmojiPickerInner
               className="pt-3"
