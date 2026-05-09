@@ -468,7 +468,7 @@ class TestAudioServiceTTS:
     @patch("services.audio_service.WorkflowService", autospec=True)
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_workflow_mode_with_draft(
-        self, mock_model_manager_class, mock_workflow_service_class, factory
+        self, mock_model_manager_class, mock_workflow_service_class, factory:AudioServiceTestDataFactory
     ):
         """Test TTS in WORKFLOW mode with draft workflow."""
         # Arrange
