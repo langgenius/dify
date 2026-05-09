@@ -6,52 +6,60 @@ import Drawer from '../index'
 // Capture dialog onClose for testing
 let capturedDialogOnClose: (() => void) | null = null
 
-// Mock @headlessui/react
-vi.mock('@headlessui/react', () => ({
-  Dialog: ({ children, open, onClose, className, unmount }: {
-    children: React.ReactNode
-    open: boolean
-    onClose: () => void
-    className: string
-    unmount: boolean
-  }) => {
-    capturedDialogOnClose = onClose
-    if (!open)
-      return null
-    return (
+// Mock Base UI Dialog anatomy; behavior is covered at the legacy wrapper boundary here.
+vi.mock('@base-ui/react/dialog', () => ({
+  Dialog: {
+    Root: ({ children, open, onOpenChange }: {
+      children: React.ReactNode
+      open: boolean
+      onOpenChange: (open: boolean) => void
+    }) => {
+      capturedDialogOnClose = () => onOpenChange(false)
+      if (!open)
+        return null
+      return <>{children}</>
+    },
+    Portal: ({ children }: {
+      children: React.ReactNode
+    }) => <>{children}</>,
+    Backdrop: ({ children, className }: {
+      children?: React.ReactNode
+      className: string
+    }) => (
       <div
-        data-testid="dialog"
-        data-open={open}
-        data-unmount={unmount}
+        data-testid="dialog-backdrop"
         className={className}
-        role="dialog"
+        onClick={() => capturedDialogOnClose?.()}
       >
         {children}
       </div>
-    )
+    ),
+    Popup: ({ children, className, ...props }: {
+      children: React.ReactNode
+      className: string
+    }) => (
+      <div
+        data-testid="dialog"
+        className={className}
+        role="dialog"
+        {...props}
+      >
+        {children}
+      </div>
+    ),
+    Title: ({ children, className, render, ...props }: {
+      children: React.ReactNode
+      className?: string
+      render?: React.ReactElement
+    }) => {
+      const Component = render?.type ?? 'h2'
+      return (
+        <Component data-testid="dialog-title" className={className} {...props}>
+          {children}
+        </Component>
+      )
+    },
   },
-  DialogBackdrop: ({ children, className, onClick }: {
-    children?: React.ReactNode
-    className: string
-    onClick: () => void
-  }) => (
-    <div
-      data-testid="dialog-backdrop"
-      className={className}
-      onClick={onClick}
-    >
-      {children}
-    </div>
-  ),
-  DialogTitle: ({ children, as: _as, className, ...props }: {
-    children: React.ReactNode
-    as?: string
-    className?: string
-  }) => (
-    <div data-testid="dialog-title" className={className} {...props}>
-      {children}
-    </div>
-  ),
 }))
 
 // Mock XMarkIcon
@@ -343,10 +351,10 @@ describe('Drawer', () => {
   describe('Custom ClassNames', () => {
     it('should apply custom dialogClassName', () => {
       // Arrange & Act
-      renderDrawer({ dialogClassName: 'custom-dialog-class' })
+      const { container } = renderDrawer({ dialogClassName: 'custom-dialog-class' })
 
       // Assert
-      expect(screen.getByRole('dialog').className).toContain('custom-dialog-class')
+      expect(container.querySelector('.custom-dialog-class')).toBeInTheDocument()
     })
 
     it('should apply custom dialogBackdropClassName', () => {
