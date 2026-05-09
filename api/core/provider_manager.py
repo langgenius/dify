@@ -673,24 +673,25 @@ class ProviderManager:
                                 quota_used=0,
                                 is_valid=True,
                             )
-                            db.session.add(new_provider_record)
-                            db.session.commit()
+                            with session_factory.create_session() as session:
+                                session.add(new_provider_record)
+                                session.commit()
                             provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
                         except IntegrityError:
-                            db.session.rollback()
                             stmt = select(Provider).where(
                                 Provider.tenant_id == tenant_id,
                                 Provider.provider_name == ModelProviderID(provider_name).provider_name,
                                 Provider.provider_type == ProviderType.SYSTEM.value,
                                 Provider.quota_type == quota.quota_type,
                             )
-                            existed_provider_record = db.session.scalar(stmt)
-                            if not existed_provider_record:
-                                continue
+                            with session_factory.create_session() as session:
+                                existed_provider_record = session.scalar(stmt)
+                                if not existed_provider_record:
+                                    continue
 
-                            if not existed_provider_record.is_valid:
-                                existed_provider_record.is_valid = True
-                                db.session.commit()
+                                if not existed_provider_record.is_valid:
+                                    existed_provider_record.is_valid = True
+                                    session.commit()
 
                             provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 

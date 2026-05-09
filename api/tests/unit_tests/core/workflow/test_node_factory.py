@@ -89,14 +89,15 @@ class TestFetchMemory:
         assert result is None
 
     def test_returns_none_when_conversation_does_not_exist(self, monkeypatch):
+        """fetch_memory must use session_factory (not db.engine) so it works
+        outside the Flask application context (e.g. iteration parallel threads).
+        """
+
         class FakeSelect:
             def where(self, *_args):
                 return self
 
         class FakeSession:
-            def __init__(self, *_args, **_kwargs):
-                pass
-
             def __enter__(self):
                 return self
 
@@ -106,9 +107,9 @@ class TestFetchMemory:
             def scalar(self, _stmt):
                 return None
 
-        monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
+        fake_session_factory = SimpleNamespace(create_session=MagicMock(return_value=FakeSession()))
+        monkeypatch.setattr(node_factory, "session_factory", fake_session_factory)
         monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-        monkeypatch.setattr(node_factory, "Session", FakeSession)
 
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
@@ -118,6 +119,7 @@ class TestFetchMemory:
         )
 
         assert result is None
+        fake_session_factory.create_session.assert_called_once()
 
     def test_builds_token_buffer_memory_for_existing_conversation(self, monkeypatch):
         conversation = sentinel.conversation
@@ -128,9 +130,6 @@ class TestFetchMemory:
                 return self
 
         class FakeSession:
-            def __init__(self, *_args, **_kwargs):
-                pass
-
             def __enter__(self):
                 return self
 
@@ -141,9 +140,9 @@ class TestFetchMemory:
                 return conversation
 
         token_buffer_memory = MagicMock(return_value=memory)
-        monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
+        fake_session_factory = SimpleNamespace(create_session=MagicMock(return_value=FakeSession()))
+        monkeypatch.setattr(node_factory, "session_factory", fake_session_factory)
         monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
-        monkeypatch.setattr(node_factory, "Session", FakeSession)
         monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
 
         result = node_factory.fetch_memory(
@@ -158,6 +157,7 @@ class TestFetchMemory:
             conversation=conversation,
             model_instance=sentinel.model_instance,
         )
+        fake_session_factory.create_session.assert_called_once()
 
 
 class TestDifyGraphInitContext:
