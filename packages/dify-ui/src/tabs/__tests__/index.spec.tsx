@@ -1,7 +1,6 @@
 import { render } from 'vitest-browser-react'
 import {
   Tabs,
-  TabsDivider,
   TabsList,
   TabsPanel,
   TabsTab,
@@ -28,7 +27,7 @@ describe('Tabs wrappers', () => {
     await expect.element(screen.getByText('JS panel')).toBeInTheDocument()
   })
 
-  it('uses segmented control styling by default', async () => {
+  it('keeps tabs styling minimal by default', async () => {
     const screen = await render(
       <Tabs defaultValue="first">
         <TabsList>
@@ -39,15 +38,11 @@ describe('Tabs wrappers', () => {
     )
 
     await expect.element(screen.getByRole('tablist')).toHaveClass(
-      'bg-components-segmented-control-bg-normal',
-      'p-0.5',
-      'rounded-[10px]',
+      'flex',
     )
     await expect.element(screen.getByRole('tab', { name: 'First' })).toHaveClass(
-      'h-7',
-      'px-2',
-      'system-sm-medium',
-      'data-active:text-text-accent-light-mode-only',
+      'touch-manipulation',
+      'focus-visible:outline-hidden',
     )
   })
 
@@ -73,7 +68,6 @@ describe('Tabs wrappers', () => {
       <Tabs defaultValue="first">
         <TabsList className="custom-list">
           <TabsTab value="first" className="custom-tab">First</TabsTab>
-          <TabsDivider className="custom-divider" data-testid="divider" />
         </TabsList>
         <TabsPanel value="first" className="custom-panel">Panel</TabsPanel>
       </Tabs>,
@@ -81,7 +75,6 @@ describe('Tabs wrappers', () => {
 
     await expect.element(screen.getByRole('tablist')).toHaveClass('custom-list')
     await expect.element(screen.getByRole('tab', { name: 'First' })).toHaveClass('custom-tab')
-    await expect.element(screen.getByTestId('divider')).toHaveClass('custom-divider')
     expect(screen.getByText('Panel').element()).toHaveClass('custom-panel')
   })
 })
