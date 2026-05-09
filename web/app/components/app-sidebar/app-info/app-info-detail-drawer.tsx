@@ -30,7 +30,7 @@ export function AppInfoDetailDrawer({
       onOpenChange={handleOpenChange}
     >
       {open && (
-        <div className="absolute inset-0 isolate">
+        <div className="absolute inset-0 z-50">
           <button
             type="button"
             aria-label="Close app info"
