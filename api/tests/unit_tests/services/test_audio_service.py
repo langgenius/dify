@@ -242,7 +242,9 @@ class TestAudioServiceASR:
         mock_model_manager_class.assert_called_once_with(tenant_id=app.tenant_id, user_id="user-123")
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_asr_success_advanced_chat_mode(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
+    def test_transcript_asr_success_advanced_chat_mode(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
         """Test successful ASR transcription in ADVANCED_CHAT mode."""
         # Arrange
         workflow = factory.create_workflow_mock(features_dict={"speech_to_text": {"enabled": True}})
@@ -278,7 +280,9 @@ class TestAudioServiceASR:
         with pytest.raises(ValueError, match="Speech to text is not enabled"):
             AudioService.transcript_asr(app_model=app, file=file)
 
-    def test_transcript_asr_raises_error_when_feature_disabled_workflow_mode(self, factory: AudioServiceTestDataFactory):
+    def test_transcript_asr_raises_error_when_feature_disabled_workflow_mode(
+        self, factory: AudioServiceTestDataFactory
+    ):
         """Test that ASR raises error when speech-to-text is disabled in WORKFLOW mode."""
         # Arrange
         workflow = factory.create_workflow_mock(features_dict={"speech_to_text": {"enabled": False}})
@@ -349,7 +353,9 @@ class TestAudioServiceASR:
             AudioService.transcript_asr(app_model=app, file=file)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_asr_raises_error_when_no_model_instance(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
+    def test_transcript_asr_raises_error_when_no_model_instance(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
         """Test that ASR raises error when no model instance is available."""
         # Arrange
         app_model_config = factory.create_app_model_config_mock(speech_to_text_dict={"enabled": True})
@@ -436,7 +442,9 @@ class TestAudioServiceTTS:
         assert call_args.kwargs["voice"] == "default-voice"
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_tts_gets_first_available_voice_when_none_configured(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
+    def test_transcript_tts_gets_first_available_voice_when_none_configured(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
         """Test TTS gets first available voice when none is configured."""
         # Arrange
         app_model_config = factory.create_app_model_config_mock(
@@ -468,7 +476,7 @@ class TestAudioServiceTTS:
     @patch("services.audio_service.WorkflowService", autospec=True)
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
     def test_transcript_tts_workflow_mode_with_draft(
-        self, mock_model_manager_class, mock_workflow_service_class, factory:AudioServiceTestDataFactory
+        self, mock_model_manager_class, mock_workflow_service_class, factory: AudioServiceTestDataFactory
     ):
         """Test TTS in WORKFLOW mode with draft workflow."""
         # Arrange
@@ -510,7 +518,9 @@ class TestAudioServiceTTS:
             AudioService.transcript_tts(app_model=app, text=None)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_tts_raises_error_when_no_voices_available(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
+    def test_transcript_tts_raises_error_when_no_voices_available(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
         """Test that TTS raises error when no voices are available."""
         # Arrange
         app_model_config = factory.create_app_model_config_mock(
@@ -561,7 +571,9 @@ class TestAudioServiceTTSVoices:
         mock_model_instance.get_tts_voices.assert_called_once_with(language)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_tts_voices_raises_error_when_no_model_instance(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
+    def test_transcript_tts_voices_raises_error_when_no_model_instance(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
         """Test that TTS voices raises error when no model instance is available."""
         # Arrange
         tenant_id = "tenant-123"
@@ -576,7 +588,9 @@ class TestAudioServiceTTSVoices:
             AudioService.transcript_tts_voices(tenant_id=tenant_id, language=language)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
-    def test_transcript_tts_voices_propagates_exceptions(self, mock_model_manager_class, factory: AudioServiceTestDataFactory):
+    def test_transcript_tts_voices_propagates_exceptions(
+        self, mock_model_manager_class, factory: AudioServiceTestDataFactory
+    ):
         """Test that TTS voices propagates exceptions from model instance."""
         # Arrange
         tenant_id = "tenant-123"
