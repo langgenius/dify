@@ -158,7 +158,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
   }, [setCurrPayload, setIsShowRenameModal])
 
   const [open, setOpen] = useState(false)
-  const handleAdd = useCallback(async (data: MetadataItemWithValueLength) => {
+  const handleAdd = useCallback(async (data: BuiltInMetadataItem) => {
     await onAdd(data)
     toast.success(t('api.actionSuccess', { ns: 'common' }))
     setOpen(false)
