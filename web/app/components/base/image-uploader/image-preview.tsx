@@ -3,10 +3,10 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { noop } from 'es-toolkit/function'
-import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { useTranslation } from 'react-i18next'
 import { downloadUrl } from '@/utils/download'
 
 type ImagePreviewProps = {
@@ -33,6 +33,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   onPrev,
   onNext,
 }) => {
+  const { t } = useTranslation()
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -172,6 +173,13 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   useHotkeys('left', onPrev || noop)
   useHotkeys('right', onNext || noop)
 
+  const copyImageLabel = t('operation.copyImage', { ns: 'common' })
+  const zoomOutLabel = t('operation.zoomOut', { ns: 'common' })
+  const zoomInLabel = t('operation.zoomIn', { ns: 'common' })
+  const downloadLabel = t('operation.download', { ns: 'common' })
+  const openInNewTabLabel = t('operation.openInNewTab', { ns: 'common' })
+  const cancelLabel = t('operation.cancel', { ns: 'common' })
+
   return (
     <Dialog
       open
@@ -212,93 +220,105 @@ const ImagePreview: FC<ImagePreviewProps> = ({
         <Tooltip>
           <TooltipTrigger
             render={(
-              <div
+              <button
+                type="button"
+                aria-label={copyImageLabel}
                 className="absolute top-6 right-48 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={imageCopy}
               >
                 {isCopied
                   ? <span className="i-ri-file-copy-line h-4 w-4 text-green-500" data-testid="image-preview-copied-icon" />
                   : <span className="i-ri-file-copy-line h-4 w-4 text-gray-500" data-testid="image-preview-copy-button" />}
-              </div>
+              </button>
             )}
           />
           <TooltipContent>
-            {t('operation.copyImage', { ns: 'common' })}
+            {copyImageLabel}
           </TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
             render={(
-              <div
+              <button
+                type="button"
+                aria-label={zoomOutLabel}
                 className="absolute top-6 right-40 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomOut}
               >
                 <span className="i-ri-zoom-out-line h-4 w-4 text-gray-500" data-testid="image-preview-zoom-out-button" />
-              </div>
+              </button>
             )}
           />
           <TooltipContent>
-            {t('operation.zoomOut', { ns: 'common' })}
+            {zoomOutLabel}
           </TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
             render={(
-              <div
+              <button
+                type="button"
+                aria-label={zoomInLabel}
                 className="absolute top-6 right-32 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomIn}
               >
                 <span className="i-ri-zoom-in-line h-4 w-4 text-gray-500" data-testid="image-preview-zoom-in-button" />
-              </div>
+              </button>
             )}
           />
           <TooltipContent>
-            {t('operation.zoomIn', { ns: 'common' })}
+            {zoomInLabel}
           </TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
             render={(
-              <div
+              <button
+                type="button"
+                aria-label={downloadLabel}
                 className="absolute top-6 right-24 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={downloadImage}
               >
                 <span className="i-ri-download-cloud-2-line h-4 w-4 text-gray-500" data-testid="image-preview-download-button" />
-              </div>
+              </button>
             )}
           />
           <TooltipContent>
-            {t('operation.download', { ns: 'common' })}
+            {downloadLabel}
           </TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
             render={(
-              <div
+              <button
+                type="button"
+                aria-label={openInNewTabLabel}
                 className="absolute top-6 right-16 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={openInNewTab}
               >
                 <span className="i-ri-add-box-line h-4 w-4 text-gray-500" data-testid="image-preview-open-in-tab-button" />
-              </div>
+              </button>
             )}
           />
           <TooltipContent>
-            {t('operation.openInNewTab', { ns: 'common' })}
+            {openInNewTabLabel}
           </TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger
             render={(
-              <div
+              <button
+                type="button"
+                aria-label={cancelLabel}
                 className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
                 onClick={onCancel}
               >
                 <span className="i-ri-close-line h-4 w-4 text-gray-500" data-testid="image-preview-close-button" />
-              </div>
+              </button>
             )}
           />
           <TooltipContent>
-            {t('operation.cancel', { ns: 'common' })}
+            {cancelLabel}
           </TooltipContent>
         </Tooltip>
       </DialogContent>
