@@ -1,8 +1,8 @@
 'use client'
 
 //   z-index strategy (relies on root `isolation: isolate` in layout.tsx):
-//   All @langgenius/dify-ui/* overlay primitives — z-1002
-//   Toast stays one layer above overlays at z-1003.
+//   All @langgenius/dify-ui/* overlay primitives — z-50
+//   Toast stays one layer above overlays at z-60.
 //   Overlays share the same z-index; DOM order handles stacking when multiple are open.
 //   This ensures overlays inside a Dialog (e.g. a Tooltip on a dialog button) render
 //   above the dialog backdrop instead of being clipped by it.
@@ -56,14 +56,14 @@ export function DialogContent({
       <BaseDialog.Backdrop
         {...backdropProps}
         className={cn(
-          'fixed inset-0 z-1002 bg-background-overlay',
+          'fixed inset-0 z-50 bg-background-overlay',
           'transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none',
           backdropClassName,
         )}
       />
       <BaseDialog.Popup
         className={cn(
-          'fixed top-1/2 left-1/2 z-1002 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl',
+          'fixed top-1/2 left-1/2 z-50 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl',
           'transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
           className,
         )}
