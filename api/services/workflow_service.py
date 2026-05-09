@@ -1251,7 +1251,7 @@ class WorkflowService:
         node_data = HumanInputNode.validate_node_data(adapt_human_input_node_data_for_graph(node_config["data"]))
         node = HumanInputNode(
             node_id=node_config["id"],
-            config=node_data,
+            data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             runtime=DifyHumanInputNodeRuntime(run_context),

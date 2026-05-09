@@ -95,7 +95,9 @@ class TestWorkflowGenerateTaskPipeline:
     def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=build_test_variable_pool(
+                variables=build_system_variables(workflow_execution_id="run-id"),
+            ),
             start_at=0.0,
             total_tokens=5,
             node_run_steps=2,
@@ -283,7 +285,9 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
@@ -725,7 +729,9 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
 
@@ -753,7 +759,9 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
         pipeline._handle_ping_event = lambda event, **kwargs: iter(["ping"])
@@ -769,7 +777,9 @@ class TestWorkflowGenerateTaskPipeline:
     def test_process_stream_response_main_match_paths_and_cleanup(self):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
         pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(

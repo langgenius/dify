@@ -984,14 +984,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/form/components/field/variable-or-constant-input.tsx": {
-    "no-console": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/base/form/components/field/variable-selector.tsx": {
     "no-console": {
       "count": 1
@@ -2147,11 +2139,8 @@
     }
   },
   "web/app/components/develop/code.tsx": {
-    "ts/no-empty-object-type": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
-      "count": 9
+      "count": 7
     }
   },
   "web/app/components/develop/md.tsx": {

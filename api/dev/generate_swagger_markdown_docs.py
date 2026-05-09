@@ -29,18 +29,39 @@ STALE_COMBINED_MARKDOWN_FILENAME = "api-reference.md"
 
 
 def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
-    subprocess.run(
-        [
-            "npx",
-            "--yes",
-            SWAGGER_MARKDOWN_PACKAGE,
-            "-i",
-            str(spec_path),
-            "-o",
-            str(markdown_path),
-        ],
-        check=True,
-    )
+    markdown_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=f"{markdown_path.stem}-", dir=markdown_path.parent) as temp_dir:
+        temp_markdown_path = Path(temp_dir) / markdown_path.name
+        result = subprocess.run(
+            [
+                "npx",
+                "--yes",
+                SWAGGER_MARKDOWN_PACKAGE,
+                "-i",
+                str(spec_path),
+                "-o",
+                str(temp_markdown_path),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(
+                result.returncode,
+                result.args,
+                output=result.stdout,
+                stderr=result.stderr,
+            )
+        if not temp_markdown_path.exists():
+            converter_output = "\n".join(item for item in (result.stdout, result.stderr) if item).strip()
+            raise RuntimeError(f"swagger-markdown did not write {markdown_path}: {converter_output}")
+
+        converted_markdown = temp_markdown_path.read_text(encoding="utf-8")
+        if not converted_markdown.strip():
+            raise RuntimeError(f"swagger-markdown wrote an empty document for {markdown_path}")
+
+    markdown_path.write_text(converted_markdown, encoding="utf-8")
 
 
 def _demote_markdown_headings(markdown: str, *, levels: int = 1) -> str:

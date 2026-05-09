@@ -43,7 +43,7 @@ def init_tool_node(config: dict):
     )
 
     # construct variable pool
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
@@ -64,7 +64,7 @@ def init_tool_node(config: dict):
 
     node = ToolNode(
         node_id=str(uuid.uuid4()),
-        config=ToolNodeData.model_validate(config["data"]),
+        data=ToolNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         tool_file_manager_factory=tool_file_manager_factory,
