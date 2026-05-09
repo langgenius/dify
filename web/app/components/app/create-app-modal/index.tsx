@@ -7,11 +7,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
-import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
@@ -28,12 +27,17 @@ import { trackCreateApp } from '@/utils/create-app-tracking'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
 import ShortcutsName from '../../workflow/shortcuts-name'
+import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
   onSuccess: () => void
   onClose: () => void
   onCreateFromTemplate?: () => void
   defaultAppMode?: AppModeEnum
+}
+
+const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
+  return appMode === AppModeEnum.CHAT || appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.COMPLETION
 }
 
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
@@ -45,18 +49,13 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(false)
+  const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(() => shouldExpandBeginnerAppTypes(defaultAppMode))
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
   const { isCurrentWorkspaceEditor } = useAppContext()
 
   const isCreatingRef = useRef(false)
-
-  useEffect(() => {
-    if (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.COMPLETION)
-      setIsAppTypeExpanded(true)
-  }, [appMode])
 
   const onCreate = useCallback(async () => {
     if (!appMode) {
@@ -88,8 +87,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceEditor, app, push)
     }
-    catch (e: any) {
-      toast.error(e.message || t('newApp.appCreateFailed', { ns: 'app' }))
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
   }, [name, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
@@ -290,15 +289,17 @@ type CreateAppDialogProps = CreateAppProps & {
   show: boolean
 }
 const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppDialogProps) => {
+  const { t } = useTranslation()
+
   return (
-    <FullScreenModal
-      overflowVisible
-      closable
-      open={show}
+    <CreateAppDialogShell
+      show={show}
+      title={t('newApp.startFromBlank', { ns: 'app' })}
+      contentClassName="overflow-visible"
       onClose={onClose}
     >
       <CreateApp onClose={onClose} onSuccess={onSuccess} onCreateFromTemplate={onCreateFromTemplate} defaultAppMode={defaultAppMode} />
-    </FullScreenModal>
+    </CreateAppDialogShell>
   )
 }
 
