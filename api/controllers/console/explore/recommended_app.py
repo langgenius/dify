@@ -5,7 +5,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, computed_field, field_validator
 
 from constants.languages import languages
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required
 from fields.base import ResponseModel
@@ -15,7 +15,7 @@ from services.recommended_app_service import RecommendedAppService
 
 
 class RecommendedAppsQuery(BaseModel):
-    language: str | None = Field(default=None)
+    language: str | None = Field(default=None, description="Language code for recommended app localization")
 
 
 class RecommendedAppInfoResponse(ResponseModel):
@@ -74,7 +74,7 @@ register_schema_models(
 
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
-    @console_ns.expect(console_ns.models[RecommendedAppsQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(RecommendedAppsQuery))
     @console_ns.response(200, "Success", console_ns.models[RecommendedAppListResponse.__name__])
     @login_required
     @account_initialization_required
