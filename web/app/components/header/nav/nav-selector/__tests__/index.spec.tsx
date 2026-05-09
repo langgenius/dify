@@ -1,6 +1,7 @@
 import type { INavSelectorProps, NavItem } from '../index'
 import type { AppContextValue } from '@/context/app-context'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -198,6 +199,7 @@ describe('NavSelector Component', () => {
     })
 
     it('should show extended create menu in app mode', async () => {
+      const user = userEvent.setup()
       render(<NavSelector {...defaultProps} isApp />)
       const button = screen.getByRole('button')
       await act(async () => {
@@ -205,10 +207,10 @@ describe('NavSelector Component', () => {
       })
 
       const openCreateMenu = async () => {
-        const createBtn = screen.getByText('Create New')
-        await act(async () => {
-          fireEvent.click(createBtn)
-        })
+        if (!screen.queryByRole('menuitem', { name: /Create New/i }))
+          await user.click(screen.getByRole('button', { name: /Item 1/i }))
+        const createBtn = await screen.findByRole('menuitem', { name: /Create New/i })
+        await user.hover(createBtn)
         return screen.findByText(/app\.newApp\.startFromBlank/i)
       }
 
@@ -235,16 +237,15 @@ describe('NavSelector Component', () => {
     })
 
     it('should open extended create menu on hover in app mode', async () => {
+      const user = userEvent.setup()
       render(<NavSelector {...defaultProps} isApp />)
       const button = screen.getByRole('button')
       await act(async () => {
         fireEvent.click(button)
       })
 
-      const createBtn = screen.getByText('Create New')
-      await act(async () => {
-        fireEvent.mouseEnter(createBtn)
-      })
+      const createBtn = await screen.findByRole('menuitem', { name: /Create New/i })
+      await user.hover(createBtn)
 
       expect(await screen.findByText(/app\.newApp\.startFromBlank/i))!.toBeInTheDocument()
     })

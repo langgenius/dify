@@ -176,7 +176,7 @@ describe('AccessControlItem', () => {
   })
 })
 
-// AccessControlDialog renders a headless UI dialog with a manual close control
+// AccessControlDialog renders the shared dialog primitive with a close control.
 describe('AccessControlDialog', () => {
   it('should render dialog content when visible', () => {
     render(
@@ -191,13 +191,13 @@ describe('AccessControlDialog', () => {
 
   it('should trigger onClose when clicking the close control', async () => {
     const handleClose = vi.fn()
-    const { container } = render(
+    render(
       <AccessControlDialog show onClose={handleClose}>
         <div>Dialog Content</div>
       </AccessControlDialog>,
     )
 
-    const closeButton = container.querySelector('.absolute.right-5.top-5') as HTMLElement
+    const closeButton = screen.getByRole('button', { name: 'Close' })
     fireEvent.click(closeButton)
 
     await waitFor(() => {

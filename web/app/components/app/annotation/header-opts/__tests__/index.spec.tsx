@@ -194,10 +194,8 @@ const openOperationsPopover = async (user: ReturnType<typeof userEvent.setup>) =
 
 const expandExportMenu = async (user: ReturnType<typeof userEvent.setup>) => {
   await openOperationsPopover(user)
-  const exportLabel = await screen.findByText('appAnnotation.table.header.bulkExport')
-  const exportButton = exportLabel.closest('button') as HTMLButtonElement
-  expect(exportButton).toBeTruthy()
-  await user.click(exportButton)
+  const exportItem = await screen.findByRole('menuitem', { name: /appAnnotation\.table\.header\.bulkExport/i })
+  await user.hover(exportItem)
 }
 
 const getExportButtons = async () => {
@@ -357,7 +355,7 @@ describe('HeaderOptions', () => {
     await waitFor(() => expect(mockCSVDownloader).toHaveBeenCalled())
 
     const { jsonButton } = await getExportButtons()
-    await user.click(jsonButton)
+    jsonButton.click()
 
     expect(createElementSpy).toHaveBeenCalled()
     expect(anchor.download).toBe(`annotations-${LanguagesSupported[1]}.jsonl`)
