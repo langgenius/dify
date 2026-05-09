@@ -124,6 +124,7 @@ register_schema_models(
     ParserDeleteCredential,
     ParserParameter,
     Inner,
+    ParserSwitch,
 )
 
 register_enum_models(console_ns, ModelType)
