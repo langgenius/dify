@@ -21,10 +21,10 @@ describe('StatusIndicators', () => {
     installedPlugins = [{ name: 'demo-plugin', plugin_unique_identifier: 'demo@1.0.0' }]
   })
 
-  const getTooltipTrigger = (container: HTMLElement) => {
-    const trigger = container.querySelector('[role="button"][aria-haspopup="dialog"]')
+  const getPopoverTrigger = (name: string) => {
+    const trigger = screen.getByRole('button', { name })
     expect(trigger).toBeInTheDocument()
-    return trigger as HTMLElement
+    return trigger
   }
 
   it('should render nothing when model is available and enabled', () => {
@@ -43,7 +43,7 @@ describe('StatusIndicators', () => {
 
   it('should render deprecated tooltip when provider model is disabled and in model list', async () => {
     const user = userEvent.setup()
-    const { container } = render(
+    render(
       <StatusIndicators
         needsConfiguration={false}
         modelProvider={true}
@@ -54,14 +54,14 @@ describe('StatusIndicators', () => {
       />,
     )
 
-    await user.hover(getTooltipTrigger(container))
+    await user.hover(getPopoverTrigger('nodes.agent.modelSelectorTooltips.deprecated'))
 
     expect(await screen.findByText('nodes.agent.modelSelectorTooltips.deprecated')).toBeInTheDocument()
   })
 
   it('should render model-not-support tooltip when disabled model is not in model list and has no pluginInfo', async () => {
     const user = userEvent.setup()
-    const { container } = render(
+    render(
       <StatusIndicators
         needsConfiguration={false}
         modelProvider={true}
@@ -72,7 +72,7 @@ describe('StatusIndicators', () => {
       />,
     )
 
-    await user.hover(getTooltipTrigger(container))
+    await user.hover(getPopoverTrigger('nodes.agent.modelNotSupport.title'))
 
     expect(await screen.findByText('nodes.agent.modelNotSupport.title')).toBeInTheDocument()
   })
@@ -125,7 +125,7 @@ describe('StatusIndicators', () => {
 
   it('should render marketplace warning tooltip when provider is unavailable', async () => {
     const user = userEvent.setup()
-    const { container } = render(
+    render(
       <StatusIndicators
         needsConfiguration={false}
         modelProvider={false}
@@ -136,7 +136,7 @@ describe('StatusIndicators', () => {
       />,
     )
 
-    await user.hover(getTooltipTrigger(container))
+    await user.hover(getPopoverTrigger('nodes.agent.modelNotInMarketplace.title'))
 
     expect(await screen.findByText('nodes.agent.modelNotInMarketplace.title')).toBeInTheDocument()
   })

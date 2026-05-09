@@ -1,5 +1,6 @@
 import type { CustomModel, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import SwitchCredentialInLoadBalancing from '../switch-credential-in-load-balancing'
 
@@ -105,7 +106,8 @@ describe('SwitchCredentialInLoadBalancing', () => {
     expect(mockSetCustomModelCredential).toHaveBeenCalledWith(mockCredentials[0])
   })
 
-  it('should show tooltip when empty and custom credentials not allowed', () => {
+  it('should show tooltip when empty and custom credentials not allowed', async () => {
+    const user = userEvent.setup()
     const restrictedProvider = { ...mockProvider, allow_custom_token: false }
     render(
       <SwitchCredentialInLoadBalancing
@@ -117,8 +119,8 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    fireEvent.mouseEnter(screen.getByText(/auth.credentialUnavailableInButton/))
-    expect(screen.getByText('plugin.auth.credentialUnavailable'))!.toBeInTheDocument()
+    await user.hover(screen.getByRole('button', { name: /auth.credentialUnavailableInButton/ }))
+    expect(await screen.findByText('plugin.auth.credentialUnavailable'))!.toBeInTheDocument()
   })
 
   // Empty credentials with allowed custom: no tooltip but still shows unavailable text
