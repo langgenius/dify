@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch, sentinel
 
@@ -11,19 +12,20 @@ from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.code.entities import CodeLanguage
 from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.llm.node import LLMNode
 from graphon.variables.segments import StringSegment
 
 
-def _assert_typed_node_config(config, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
+def _assert_constructor_node_data(data, *, node_id: str, node_type: NodeType, version: str = "1") -> None:
     _ = node_id
-    if isinstance(config, BaseNodeData):
-        assert config.type == node_type
-        assert config.version == version
+    if isinstance(data, BaseNodeData):
+        assert data.type == node_type
+        assert data.version == version
         return
 
-    assert isinstance(config, dict)
-    assert config["type"] == node_type
-    assert config["version"] == version
+    assert isinstance(data, Mapping)
+    assert data["type"] == node_type
+    assert data.get("version", "1") == version
 
 
 def _node_constructor(*, return_value):
@@ -470,7 +472,7 @@ class TestDifyNodeFactoryCreateNode:
         matched_node_class.assert_called_once()
         kwargs = matched_node_class.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
-        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
+        _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
         latest_node_class.assert_not_called()
@@ -492,7 +494,7 @@ class TestDifyNodeFactoryCreateNode:
         latest_node_class.assert_called_once()
         kwargs = latest_node_class.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
-        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
+        _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=BuiltinNodeTypes.START, version="9")
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
 
@@ -530,7 +532,7 @@ class TestDifyNodeFactoryCreateNode:
         assert result is created_node
         kwargs = constructor.call_args.kwargs
         assert kwargs["node_id"] == "node-id"
-        _assert_typed_node_config(kwargs["config"], node_id="node-id", node_type=node_type)
+        _assert_constructor_node_data(kwargs["data"], node_id="node-id", node_type=node_type)
         assert kwargs["graph_init_params"] is sentinel.graph_init_params
         assert kwargs["graph_runtime_state"] is factory.graph_runtime_state
 
@@ -599,11 +601,12 @@ class TestDifyNodeFactoryCreateNode:
         prepared_llm.assert_called_once_with(sentinel.model_instance)
         assert kwargs["model_instance"] is wrapped_model_instance
 
-    def test_create_node_passes_alias_preserving_llm_config_to_constructor(
-        self, monkeypatch: pytest.MonkeyPatch, factory
-    ):
+    def test_create_node_passes_alias_preserving_llm_data_to_constructor(self, monkeypatch, factory):
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
+        constructor.validate_node_data.side_effect = lambda node_data: LLMNodeData.model_validate(
+            node_data.model_dump(mode="python") if isinstance(node_data, BaseNodeData) else node_data
+        )
         monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=constructor))
         monkeypatch.setattr(factory, "_build_llm_compatible_node_init_kwargs", MagicMock(return_value={}))
 
@@ -629,10 +632,56 @@ class TestDifyNodeFactoryCreateNode:
 
         factory.create_node(node_config)
 
-        config = constructor.call_args.kwargs["config"]
-        assert isinstance(config, dict)
-        assert config["structured_output_enabled"] is True
-        assert "structured_output_switch_on" not in config
+        data = constructor.call_args.kwargs["data"]
+        assert isinstance(data, Mapping)
+        assert data["structured_output_enabled"] is True
+        assert "structured_output_switch_on" not in data
+        assert LLMNodeData.model_validate(data).structured_output_enabled is True
+
+    def test_create_node_preserves_structured_output_switch_after_graphon_constructor(self, monkeypatch, factory):
+        factory.graph_init_params = SimpleNamespace(
+            workflow_id="workflow-id",
+            graph_config={},
+            run_context={},
+            call_depth=0,
+        )
+        monkeypatch.setattr(factory, "_resolve_node_class", MagicMock(return_value=LLMNode))
+        monkeypatch.setattr(
+            factory,
+            "_build_llm_compatible_node_init_kwargs",
+            MagicMock(
+                return_value={
+                    "model_instance": sentinel.model_instance,
+                    "llm_file_saver": sentinel.llm_file_saver,
+                    "prompt_message_serializer": sentinel.prompt_message_serializer,
+                }
+            ),
+        )
+
+        node_config = {
+            "id": "llm-node-id",
+            "data": {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+                "structured_output_enabled": True,
+                "structured_output": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {"type": {"type": "string"}},
+                        "required": ["type"],
+                    }
+                },
+            },
+        }
+
+        node = factory.create_node(node_config)
+
+        assert node.node_data.structured_output_switch_on is True
+        assert node.node_data.structured_output_enabled is True
 
     @pytest.mark.parametrize(
         ("node_type", "constructor_name", "expected_extra_kwargs"),
@@ -711,7 +760,7 @@ class TestDifyNodeFactoryCreateNode:
 
         constructor_kwargs = constructor.call_args.kwargs
         assert constructor_kwargs["node_id"] == "node-id"
-        _assert_typed_node_config(constructor_kwargs["config"], node_id="node-id", node_type=node_type)
+        _assert_constructor_node_data(constructor_kwargs["data"], node_id="node-id", node_type=node_type)
         assert constructor_kwargs["graph_init_params"] is sentinel.graph_init_params
         assert constructor_kwargs["graph_runtime_state"] is factory.graph_runtime_state
         assert constructor_kwargs["credentials_provider"] is sentinel.credentials_provider

@@ -44,7 +44,7 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
     )
     node = TriggerWebhookNode(
         node_id="1",
-        config=webhook_data,
+        data=webhook_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
     )

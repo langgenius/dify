@@ -81,7 +81,7 @@ def test_datasource_node_delegates_to_manager_stream(mocker: MockerFixture):
 
     node = DatasourceNode(
         node_id="n",
-        config=DatasourceNodeData(
+        data=DatasourceNodeData(
             type="datasource",
             version="1",
             title="Datasource",

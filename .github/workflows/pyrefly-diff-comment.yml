@@ -77,10 +77,28 @@ jobs:
             }
 
             if (diff.trim()) {
-              await github.rest.issues.createComment({
+              const body = '### Pyrefly Diff\n<details>\n<summary>base → PR</summary>\n\n```diff\n' + diff + '\n```\n</details>';
+              const marker = '### Pyrefly Diff';
+              const { data: comments } = await github.rest.issues.listComments({
                 issue_number: prNumber,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: '### Pyrefly Diff\n<details>\n<summary>base → PR</summary>\n\n```diff\n' + diff + '\n```\n</details>',
               });
+              const existing = comments.find((comment) => comment.body.startsWith(marker));
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  comment_id: existing.id,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  issue_number: prNumber,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body,
+                });
+              }
             }
