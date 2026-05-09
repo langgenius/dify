@@ -6,12 +6,12 @@ import type {
   NodeProps,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   cloneElement,
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   BlockEnum,
@@ -91,19 +91,21 @@ const BaseCard = ({
             </div>
             {
               data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
-                <Tooltip popupContent={(
-                  <div className="w-[180px]">
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    aria-label={t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
+                    className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning bg-transparent px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning"
+                  >
+                    {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
+                  </PopoverTrigger>
+                  <PopoverContent popupClassName="w-[180px] px-3 py-2 system-xs-regular text-text-tertiary">
                     <div className="font-extrabold">
                       {t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
                     </div>
                     {t('nodes.iteration.parallelModeEnableDesc', { ns: 'workflow' })}
-                  </div>
-                )}
-                >
-                  <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning">
-                    {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
-                  </div>
-                </Tooltip>
+                  </PopoverContent>
+                </Popover>
               )
             }
           </div>

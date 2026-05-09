@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { replace } from 'string-ts'
 import AudioBtn from '@/app/components/base/audio-btn'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import { languages } from '@/i18n-config/language'
 import { usePathname } from '@/next/navigation'
 import { useAppVoices } from '@/service/use-apps'
@@ -89,17 +89,16 @@ const VoiceParamConfig = ({
       <div className="mb-3">
         <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
           {t('voice.voiceSettings.language', { ns: 'appDebug' })}
-          <Tooltip
-            popupContent={(
-              <div className="w-[180px]">
-                {t('voice.voiceSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
-                  <div key={item}>
-                    {item}
-                  </div>
-                ))}
+          <Infotip
+            aria-label={t('voice.voiceSettings.resolutionTooltip', { ns: 'appDebug' })}
+            popupClassName="w-[180px]"
+          >
+            {t('voice.voiceSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
+              <div key={item}>
+                {item}
               </div>
-            )}
-          />
+            ))}
+          </Infotip>
         </div>
         <Listbox
           value={languageItem}

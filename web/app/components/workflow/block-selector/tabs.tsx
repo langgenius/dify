@@ -6,10 +6,10 @@ import type {
   ToolWithProvider,
 } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
@@ -129,19 +129,22 @@ const TabHeaderItem = ({
 
   if (tab.disabled) {
     return (
-      <Tooltip
-        key={tab.key}
-        position="top"
-        popupClassName="max-w-[200px]"
-        popupContent={disabledTip}
-      >
-        <div
-          className={className}
-          aria-disabled={tab.disabled}
-          onClick={handleClick}
-        >
-          {tab.name}
-        </div>
+      <Tooltip key={tab.key}>
+        <TooltipTrigger
+          render={(
+            <button
+              type="button"
+              className={className}
+              aria-disabled={tab.disabled}
+              onClick={handleClick}
+            >
+              {tab.name}
+            </button>
+          )}
+        />
+        <TooltipContent placement="top" className="max-w-[200px]">
+          {disabledTip}
+        </TooltipContent>
       </Tooltip>
     )
   }

@@ -20,9 +20,9 @@ import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Drawer from '@/app/components/base/drawer'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Tooltip from '@/app/components/base/tooltip'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { getIcon } from '../utils/get-icon'
 import Field from './field'
@@ -215,7 +215,9 @@ const DatasetMetadataDrawer: FC<Props> = ({
             onCheckedChange={onIsBuiltInEnabledChange}
           />
           <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
-          <Tooltip popupContent={<div className="max-w-[100px]">{t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}</div>} />
+          <Infotip aria-label={t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })} popupClassName="max-w-[100px]">
+            {t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}
+          </Infotip>
         </div>
 
         <div className="mt-1 space-y-1">

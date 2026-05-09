@@ -23,14 +23,10 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({
       onOpenChange={setOpen}
     >
       <TooltipTrigger
-        render={(
-          <div
-            data-testid="progress-trigger-content"
-            className="flex grow items-center"
-            onMouseEnter={() => setOpen(true)}
-            onMouseLeave={() => setOpen(false)}
-          />
-        )}
+        data-testid="progress-trigger-content"
+        className="flex grow items-center border-0 bg-transparent p-0 text-left"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
       >
         <div className="mr-1 h-1.5 w-16 overflow-hidden rounded-[3px] border border-components-progress-gray-border">
           <div
@@ -45,7 +41,6 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({
       <TooltipContent
         data-testid="progress-tooltip-popup"
         placement="top-start"
-        sideOffset={0}
         className="rounded-lg bg-components-tooltip-bg p-3 system-xs-medium text-text-quaternary shadow-lg"
       >
         {t('chat.citation.hitScore', { ns: 'common' })}

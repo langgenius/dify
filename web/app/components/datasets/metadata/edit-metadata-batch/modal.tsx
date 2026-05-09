@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiQuestionLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -11,8 +10,8 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
 import Checkbox from '../../../base/checkbox'
+import { Infotip } from '../../../base/infotip'
 import Modal from '../../../base/modal'
-import Tooltip from '../../../base/tooltip'
 import AddMetadataButton from '../add-metadata-button'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
 import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
@@ -115,11 +114,14 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
         <div className="flex items-center select-none">
           <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} id="apply-to-all" />
           <div className="mr-1 ml-2 system-xs-medium text-text-secondary">{t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}</div>
-          <Tooltip popupContent={<div className="max-w-[240px]">{t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}</div>}>
-            <div className="cursor-pointer p-px">
-              <RiQuestionLine className="size-3.5 text-text-tertiary" />
-            </div>
-          </Tooltip>
+          <Infotip
+            aria-label={t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
+            className="p-px"
+            iconClassName="size-3.5 text-text-tertiary"
+            popupClassName="max-w-[240px]"
+          >
+            {t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
+          </Infotip>
         </div>
         <div className="flex items-center space-x-2">
           <Button onClick={onHide}>
