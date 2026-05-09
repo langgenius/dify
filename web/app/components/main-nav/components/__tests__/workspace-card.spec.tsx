@@ -8,6 +8,7 @@ import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
+import { LicenseStatus } from '@/types/feature'
 import WorkspaceCard from '../workspace-card'
 
 vi.mock('@/config', async (importOriginal) => {
@@ -86,6 +87,7 @@ describe('WorkspaceCard', () => {
     vi.mocked(useProviderContext).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
+      isEducationWorkspace: false,
       isFetchedPlan: true,
       plan: { type: Plan.sandbox },
     } as ProviderContextState)
@@ -106,5 +108,27 @@ describe('WorkspaceCard', () => {
     expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /common\.mainNav\.workspace\.credits/ })).not.toBeInTheDocument()
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+  })
+
+  it('shows the license status instead of a billing plan when billing is disabled', () => {
+    vi.mocked(useProviderContext).mockReturnValue({
+      enableBilling: false,
+      isEducationAccount: false,
+      isEducationWorkspace: false,
+      isFetchedPlan: false,
+      plan: { type: Plan.sandbox },
+    } as ProviderContextState)
+
+    renderWithSystemFeatures(<WorkspaceCard />, {
+      systemFeatures: {
+        license: {
+          status: LicenseStatus.ACTIVE,
+          expired_at: null,
+        },
+      },
+    })
+
+    expect(screen.getByText('Enterprise')).toBeInTheDocument()
+    expect(screen.queryByText(Plan.sandbox)).not.toBeInTheDocument()
   })
 })

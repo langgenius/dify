@@ -1,24 +1,15 @@
 'use client'
 
-import type { Plan } from '@/app/components/billing/type'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import AccountDropdown from '@/app/components/header/account-dropdown'
 import { useAppContext } from '@/context/app-context'
-import WorkspacePlanBadge from './workspace-plan-badge'
 
-type AccountSectionProps = {
-  workspacePlan: Plan
-}
-
-const AccountSection = ({
-  workspacePlan,
-}: AccountSectionProps) => {
+const AccountSection = () => {
   const { userProfile } = useAppContext()
 
   return (
     <AccountDropdown
-      mainNavBadge={<WorkspacePlanBadge plan={workspacePlan} />}
       variant="mainNav"
       trigger={({ isOpen, ariaLabel }) => (
         <button

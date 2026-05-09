@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -23,14 +23,12 @@ type AccountDropdownProps = {
     isOpen: boolean
     ariaLabel: string
   }) => ReactElement
-  mainNavBadge?: ReactNode
   variant?: 'default' | 'mainNav'
 }
 
 const mainNavMenuPopupClassName = 'w-60 max-w-80 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]'
 
 export default function AppSelector({
-  mainNavBadge,
   trigger,
   variant = 'default',
 }: AccountDropdownProps = {}) {
@@ -82,7 +80,7 @@ export default function AppSelector({
           popupClassName={variant === 'mainNav' ? mainNavMenuPopupClassName : 'w-60 max-w-80 bg-components-panel-bg-blur! py-0! backdrop-blur-xs'}
         >
           {variant === 'mainNav'
-            ? <MainNavMenuContent mainNavBadge={mainNavBadge} onLogout={handleLogout} />
+            ? <MainNavMenuContent onLogout={handleLogout} />
             : (
                 <DefaultMenuContent
                   closeAccountDropdown={() => setIsAccountMenuOpen(false)}

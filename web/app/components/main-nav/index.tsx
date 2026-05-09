@@ -1,15 +1,13 @@
 'use client'
 
 import type { MainNavItem, MainNavProps } from './types'
-import type { Plan } from '@/app/components/billing/type'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
+import EnvNav from '@/app/components/header/env-nav'
 import { useAppContext } from '@/context/app-context'
-import { useProviderContext } from '@/context/provider-context'
-import { useWorkspacesContext } from '@/context/workspace-context'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
@@ -25,40 +23,50 @@ const MainNav = ({
 }: MainNavProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const { currentWorkspace } = useAppContext()
-  const { plan } = useProviderContext()
-  const { workspaces } = useWorkspacesContext()
+  const { langGeniusVersionInfo, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const workspacePlan = (workspaces.find(workspace => workspace.current)?.plan || currentWorkspace.plan || plan.type) as Plan
+  const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const navItems = useMemo<MainNavItem[]>(() => [
-    {
-      href: '/explore/apps',
-      label: t('mainNav.home', { ns: 'common' }),
-      active: path => path.startsWith('/explore'),
-      icon: 'i-custom-vender-main-nav-home',
-      activeIcon: 'i-custom-vender-main-nav-home-active',
-    },
-    {
-      href: '/apps',
-      label: t('menus.apps', { ns: 'common' }),
-      active: path => path.startsWith('/apps') || path.startsWith('/app/'),
-      icon: 'i-custom-vender-main-nav-studio',
-      activeIcon: 'i-custom-vender-main-nav-studio-active',
-    },
-    {
-      href: '/datasets',
-      label: t('menus.datasets', { ns: 'common' }),
-      active: path => path.startsWith('/datasets'),
-      icon: 'i-custom-vender-main-nav-knowledge',
-      activeIcon: 'i-custom-vender-main-nav-knowledge-active',
-    },
-    {
-      href: '/tools?section=provider',
-      label: t('mainNav.integrations', { ns: 'common' }),
-      active: path => path.startsWith('/tools'),
-      icon: 'i-custom-vender-main-nav-integrations',
-      activeIcon: 'i-custom-vender-main-nav-integrations-active',
-    },
+    ...(!isCurrentWorkspaceDatasetOperator
+      ? [
+          {
+            href: '/explore/apps',
+            label: t('mainNav.home', { ns: 'common' }),
+            active: (path: string) => path.startsWith('/explore'),
+            icon: 'i-custom-vender-main-nav-home',
+            activeIcon: 'i-custom-vender-main-nav-home-active',
+          },
+          {
+            href: '/apps',
+            label: t('menus.apps', { ns: 'common' }),
+            active: (path: string) => path.startsWith('/apps') || path.startsWith('/app/'),
+            icon: 'i-custom-vender-main-nav-studio',
+            activeIcon: 'i-custom-vender-main-nav-studio-active',
+          },
+        ]
+      : []),
+    ...((isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
+      ? [
+          {
+            href: '/datasets',
+            label: t('menus.datasets', { ns: 'common' }),
+            active: (path: string) => path.startsWith('/datasets'),
+            icon: 'i-custom-vender-main-nav-knowledge',
+            activeIcon: 'i-custom-vender-main-nav-knowledge-active',
+          },
+        ]
+      : []),
+    ...(!isCurrentWorkspaceDatasetOperator
+      ? [
+          {
+            href: '/tools?section=provider',
+            label: t('mainNav.integrations', { ns: 'common' }),
+            active: (path: string) => path.startsWith('/tools'),
+            icon: 'i-custom-vender-main-nav-integrations',
+            activeIcon: 'i-custom-vender-main-nav-integrations-active',
+          },
+        ]
+      : []),
     {
       href: '/plugins',
       label: t('mainNav.marketplace', { ns: 'common' }),
@@ -66,11 +74,11 @@ const MainNav = ({
       icon: 'i-custom-vender-main-nav-marketplace',
       activeIcon: 'i-custom-vender-main-nav-marketplace-active',
     },
-  ], [t])
+  ], [isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
 
   const renderLogo = () => (
     <h1 className="min-w-0">
-      <Link href="/apps" className="flex h-8 shrink-0 items-center overflow-hidden px-2 indent-[-9999px] whitespace-nowrap">
+      <Link href={isCurrentWorkspaceDatasetOperator ? '/datasets' : '/apps'} className="flex h-8 shrink-0 items-center overflow-hidden px-2 indent-[-9999px] whitespace-nowrap">
         {systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
         {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
           ? (
@@ -100,10 +108,17 @@ const MainNav = ({
             <MainNavLink key={item.href} item={item} pathname={pathname} />
           ))}
         </nav>
-        <WebAppsSection />
+        {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+        {showEnvTag && (
+          <div className="relative z-30 px-3 pb-2">
+            <EnvNav />
+          </div>
+        )}
       </div>
       <div className="flex w-[240px] items-center justify-between bg-gradient-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">
-        <AccountSection workspacePlan={workspacePlan} />
+        <div className="flex min-w-0 items-center gap-1">
+          <AccountSection />
+        </div>
         <HelpMenu />
       </div>
     </aside>

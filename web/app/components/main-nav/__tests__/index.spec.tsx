@@ -71,6 +71,7 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
 })
 
 vi.mock('@/context/i18n', () => ({
+  useLocale: () => 'en-US',
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
@@ -171,6 +172,7 @@ describe('MainNav', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
+      isEducationWorkspace: false,
       isFetchedPlan: true,
       plan: { type: Plan.sandbox },
     } as ProviderContextState)
@@ -208,6 +210,91 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/tools?section=provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/plugins')
+  })
+
+  it('renders the desktop environment tag from the old header contract', () => {
+    ;(useAppContext as Mock).mockReturnValue({
+      ...appContextValue,
+      langGeniusVersionInfo: {
+        ...appContextValue.langGeniusVersionInfo,
+        current_env: 'TESTING',
+      },
+    })
+
+    renderMainNav()
+
+    expect(screen.getByText('common.environment.testing')).toBeInTheDocument()
+  })
+
+  it('does not reserve environment tag space when the environment is not shown', () => {
+    const { container } = renderMainNav()
+
+    expect(screen.queryByText('common.environment.testing')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.environment.development')).not.toBeInTheDocument()
+    expect(container.querySelector('.relative.z-30')).not.toBeInTheDocument()
+  })
+
+  it('shows the user education badge in the account popup without adding the workspace plan there', async () => {
+    ;(useProviderContext as Mock).mockReturnValue({
+      enableBilling: true,
+      isEducationAccount: true,
+      isEducationWorkspace: false,
+      isFetchedPlan: true,
+      plan: { type: Plan.sandbox },
+    } as ProviderContextState)
+
+    renderMainNav()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
+
+    expect(await screen.findByText('EDU')).toBeInTheDocument()
+    expect(screen.getByText('evan@example.com')).toBeInTheDocument()
+    expect(screen.getAllByText(Plan.team)).toHaveLength(1)
+  })
+
+  it('hides app and tools entries for dataset operators', () => {
+    ;(useAppContext as Mock).mockReturnValue({
+      ...appContextValue,
+      currentWorkspace: {
+        ...appContextValue.currentWorkspace,
+        role: 'dataset_operator',
+      },
+      isCurrentWorkspaceDatasetOperator: true,
+      isCurrentWorkspaceEditor: false,
+      isCurrentWorkspaceManager: false,
+      isCurrentWorkspaceOwner: false,
+    })
+
+    renderMainNav()
+
+    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
+    expect(screen.queryByRole('link', { name: /common.mainNav.integrations/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/plugins')
+    expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+  })
+
+  it('hides datasets for members without editor or dataset-operator access', () => {
+    ;(useAppContext as Mock).mockReturnValue({
+      ...appContextValue,
+      currentWorkspace: {
+        ...appContextValue.currentWorkspace,
+        role: 'normal',
+      },
+      isCurrentWorkspaceDatasetOperator: false,
+      isCurrentWorkspaceEditor: false,
+      isCurrentWorkspaceManager: false,
+      isCurrentWorkspaceOwner: false,
+    })
+
+    renderMainNav()
+
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toBeInTheDocument()
   })
 
   it('marks the matching primary route active', () => {
@@ -270,6 +357,60 @@ describe('MainNav', () => {
     await waitFor(() => {
       expect(switchWorkspace).toHaveBeenCalledWith({ url: '/workspaces/switch', body: { tenant_id: 'workspace-2' } })
     })
+  })
+
+  it('hides the upgrade shortcut for paid plans', () => {
+    ;(useProviderContext as Mock).mockReturnValue({
+      enableBilling: true,
+      isEducationAccount: false,
+      isEducationWorkspace: false,
+      isFetchedPlan: true,
+      plan: { type: Plan.team },
+    } as ProviderContextState)
+
+    renderMainNav()
+
+    expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+  })
+
+  it('limits workspace settings and invite actions by role', async () => {
+    ;(useAppContext as Mock).mockReturnValue({
+      ...appContextValue,
+      currentWorkspace: {
+        ...appContextValue.currentWorkspace,
+        role: 'normal',
+      },
+      isCurrentWorkspaceManager: false,
+      isCurrentWorkspaceOwner: false,
+    })
+
+    renderMainNav()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    expect(await screen.findByText('common.mainNav.workspace.settings')).toBeInTheDocument()
+    expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
+  })
+
+  it('hides workspace settings actions for dataset operators', () => {
+    ;(useAppContext as Mock).mockReturnValue({
+      ...appContextValue,
+      currentWorkspace: {
+        ...appContextValue.currentWorkspace,
+        role: 'dataset_operator',
+      },
+      isCurrentWorkspaceDatasetOperator: true,
+      isCurrentWorkspaceEditor: false,
+      isCurrentWorkspaceManager: false,
+      isCurrentWorkspaceOwner: false,
+    })
+
+    renderMainNav()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    expect(screen.queryByText('common.mainNav.workspace.settings')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
   it('filters installed web apps and navigates to an installed app', () => {

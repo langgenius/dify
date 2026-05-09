@@ -21,8 +21,10 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import PremiumBadge from '@/app/components/base/premium-badge'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
+import { useProviderContext } from '@/context/provider-context'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
@@ -190,29 +192,33 @@ function LanguageSubmenu() {
 }
 
 type MainNavMenuContentProps = {
-  mainNavBadge?: ReactNode
   onLogout: () => Promise<void>
 }
 
 export function MainNavMenuContent({
-  mainNavBadge,
   onLogout,
 }: MainNavMenuContentProps) {
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
+  const { isEducationAccount } = useProviderContext()
 
   return (
     <>
       <DropdownMenuGroup className={mainNavMenuGroupClassName}>
-        <div className="flex items-center gap-1 rounded-xl bg-gradient-to-b from-background-section-burn to-background-section p-3">
+        <div className="flex items-center gap-3 rounded-xl bg-gradient-to-b from-background-section-burn to-background-section p-3">
           <div className="flex min-w-0 grow flex-col gap-1">
             <div className="flex min-w-0 items-center gap-1">
-              <div className="max-w-[80px] min-w-0 truncate body-md-medium text-text-primary" title={userProfile.name}>{userProfile.name}</div>
-              {mainNavBadge}
+              <div className="min-w-0 flex-1 truncate body-md-medium text-text-primary" title={userProfile.name}>{userProfile.name}</div>
+              {isEducationAccount && (
+                <PremiumBadge size="s" color="blue" className="shrink-0 px-2!">
+                  <span aria-hidden className="mr-1 i-ri-graduation-cap-fill h-3 w-3" />
+                  <span className="system-2xs-medium">EDU</span>
+                </PremiumBadge>
+              )}
             </div>
             <div className="truncate system-xs-regular text-text-tertiary" title={userProfile.email}>{userProfile.email}</div>
           </div>
-          <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
+          <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" className="shrink-0" />
         </div>
       </DropdownMenuGroup>
       <DropdownMenuGroup className={mainNavMenuGroupClassName}>
