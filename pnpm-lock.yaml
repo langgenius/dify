@@ -300,6 +300,9 @@ catalogs:
     embla-carousel-autoplay:
       specifier: 8.6.0
       version: 8.6.0
+    embla-carousel-fade:
+      specifier: 8.6.0
+      version: 8.6.0
     embla-carousel-react:
       specifier: 8.6.0
       version: 8.6.0
@@ -1011,6 +1014,9 @@ importers:
         specifier: 'catalog:'
         version: 0.11.1
       embla-carousel-autoplay:
+        specifier: 'catalog:'
+        version: 8.6.0(embla-carousel@8.6.0)
+      embla-carousel-fade:
         specifier: 'catalog:'
         version: 8.6.0(embla-carousel@8.6.0)
       embla-carousel-react:
@@ -5342,6 +5348,11 @@ packages:
 
   embla-carousel-autoplay@8.6.0:
     resolution: {integrity: sha512-OBu5G3nwaSXkZCo1A6LTaFMZ8EpkYbwIaH+bPqdBnDGQ2fh4+NbzjXjs2SktoPNKCtflfVMc75njaDHOYXcrsA==}
+    peerDependencies:
+      embla-carousel: 8.6.0
+
+  embla-carousel-fade@8.6.0:
+    resolution: {integrity: sha512-qaYsx5mwCz72ZrjlsXgs1nKejSrW+UhkbOMwLgfRT7w2LtdEB03nPRI06GHuHv5ac2USvbEiX2/nAHctcDwvpg==}
     peerDependencies:
       embla-carousel: 8.6.0
 
@@ -12412,6 +12423,10 @@ snapshots:
     dependencies:
       embla-carousel: 8.6.0
 
+  embla-carousel-fade@8.6.0(embla-carousel@8.6.0):
+    dependencies:
+      embla-carousel: 8.6.0
+
   embla-carousel-react@8.6.0(react@19.2.6):
     dependencies:
       embla-carousel: 8.6.0
@@ -16280,6 +16295,7 @@ time:
   echarts@6.0.0: '2025-07-30T02:38:34.897Z'
   elkjs@0.11.1: '2026-03-03T12:21:48.463Z'
   embla-carousel-autoplay@8.6.0: '2025-04-04T17:37:46.303Z'
+  embla-carousel-fade@8.6.0: '2025-04-04T17:37:50.278Z'
   embla-carousel-react@8.6.0: '2025-04-04T17:37:53.976Z'
   emoji-mart@5.6.0: '2024-04-25T14:22:21.440Z'
   es-toolkit@1.46.1: '2026-04-29T09:42:09.686Z'

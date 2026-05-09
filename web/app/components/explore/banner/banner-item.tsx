@@ -1,8 +1,6 @@
-/* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
+/* eslint-disable react/set-state-in-effect */
 import type { FC } from 'react'
 import type { Banner } from '@/models/app'
-import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowRightLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -22,7 +20,7 @@ const RESPONSIVE_BREAKPOINT = 1200
 const MAX_RESPONSIVE_WIDTH = 600
 const INDICATOR_WIDTH = 20
 const INDICATOR_GAP = 8
-const MIN_VIEW_MORE_WIDTH = 480
+const MIN_VIEW_MORE_WIDTH = 160
 
 export const BannerItem: FC<BannerItemProps> = ({
   banner,
@@ -58,9 +56,10 @@ export const BannerItem: FC<BannerItemProps> = ({
   const viewMoreStyle = useMemo(() => {
     if (!maxWidth)
       return undefined
+    const availableWidth = maxWidth - indicatorsWidth
     return {
       maxWidth: `${maxWidth}px`,
-      minWidth: indicatorsWidth ? `${Math.min(maxWidth - indicatorsWidth, MIN_VIEW_MORE_WIDTH)}px` : undefined,
+      minWidth: indicatorsWidth && availableWidth > 0 ? `${Math.min(availableWidth, MIN_VIEW_MORE_WIDTH)}px` : undefined,
     }
   }, [maxWidth, indicatorsWidth])
 
@@ -100,6 +99,11 @@ export const BannerItem: FC<BannerItemProps> = ({
     incrementResetKey()
   }, [selectedIndex, incrementResetKey])
 
+  const handleIndicatorClick = useCallback((index: number) => {
+    incrementResetKey()
+    api?.scrollTo(index)
+  }, [api, incrementResetKey])
+
   const handleBannerClick = useCallback(() => {
     incrementResetKey()
 
@@ -118,91 +122,79 @@ export const BannerItem: FC<BannerItemProps> = ({
       window.open(banner.link, '_blank', 'noopener,noreferrer')
   }, [accountId, banner, incrementResetKey, language, sort])
 
-  const handleIndicatorClick = useCallback((index: number) => {
-    incrementResetKey()
-    api?.scrollTo(index)
-  }, [api, incrementResetKey])
-
   return (
     <div
-      className="relative flex w-full min-w-[784px] cursor-pointer overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg pr-[288px] transition-shadow hover:shadow-md"
+      className="flex min-h-[168px] w-full cursor-pointer items-center gap-2 overflow-hidden rounded-2xl px-8"
       onClick={handleBannerClick}
     >
-      {/* Left content area */}
-      <div className="min-w-0 flex-1">
-        <div className="flex h-full flex-col gap-3 py-6 pr-0 pl-8">
-          {/* Text section */}
-          <div className="flex min-h-24 flex-wrap items-end gap-1 py-1">
-            {/* Title area */}
-            <div
-              ref={textAreaRef}
-              className="flex max-w-[680px] min-w-[480px] flex-[1_0_0] flex-col pr-4"
-              style={responsiveStyle}
-            >
-              <p className="line-clamp-1 title-4xl-semi-bold text-dify-logo-blue">
-                {category}
-              </p>
-              <p className="line-clamp-2 title-4xl-semi-bold text-dify-logo-black">
-                {title}
-              </p>
+      <div className="flex h-[200px] min-w-px flex-1 flex-col items-end gap-3 rounded-2xl pt-4 pb-8">
+        <div className="flex min-h-24 w-full flex-wrap items-end gap-1 py-1">
+          <div
+            ref={textAreaRef}
+            className="flex max-w-[680px] min-w-[480px] flex-[1_1_480px] flex-col pr-4 max-xl:min-w-0"
+            style={responsiveStyle}
+          >
+            <p className="line-clamp-1 title-4xl-semi-bold text-dify-logo-blue">
+              {category}
+            </p>
+            <p className="line-clamp-2 title-4xl-semi-bold text-dify-logo-black">
+              {title}
+            </p>
+          </div>
+          <div
+            className="max-w-[600px] min-w-0 flex-[1_1_240px] self-end overflow-hidden py-1 pr-4"
+            style={responsiveStyle}
+          >
+            <p className="line-clamp-4 overflow-hidden body-sm-regular text-text-tertiary">
+              {description}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions section */}
+        <div className="flex w-full flex-wrap items-center gap-1">
+          {/* View more button */}
+          <div
+            className="flex max-w-[680px] min-w-[480px] flex-[1_1_480px] items-center gap-[6px] py-1 max-xl:min-w-0"
+            style={viewMoreStyle}
+          >
+            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-text-accent p-[2px]">
+              <span className="i-ri-arrow-right-line h-3 w-3 text-text-primary-on-surface" />
             </div>
-            {/* Description area */}
-            <div
-              className="max-w-[600px] min-w-60 flex-[1_0_0] self-end overflow-hidden py-1 pr-4"
-              style={responsiveStyle}
-            >
-              <p className="line-clamp-4 overflow-hidden body-sm-regular text-text-tertiary">
-                {description}
-              </p>
-            </div>
+            <span className="system-sm-semibold-uppercase text-text-accent">
+              {t('banner.viewMore', { ns: 'explore' })}
+            </span>
           </div>
 
-          {/* Actions section */}
-          <div className="flex items-center gap-1">
-            {/* View more button */}
-            <div
-              className="flex max-w-[680px] min-w-[480px] flex-[1_0_0] items-center gap-[6px] py-1 pr-8"
-              style={viewMoreStyle}
-            >
-              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-text-accent p-[2px]">
-                <RiArrowRightLine className="h-3 w-3 text-text-primary-on-surface" />
-              </div>
-              <span className="system-sm-semibold-uppercase text-text-accent">
-                {t('banner.viewMore', { ns: 'explore' })}
-              </span>
+          <div
+            className="flex max-w-[600px] min-w-60 flex-[1_1_240px] items-center gap-2 py-1 pr-10 max-xl:min-w-0"
+            style={responsiveStyle}
+          >
+            {/* Slide navigation indicators */}
+            <div className="flex items-center gap-1">
+              {slideInfo.slides.map((_: unknown, index: number) => (
+                <IndicatorButton
+                  key={index}
+                  index={index}
+                  selectedIndex={selectedIndex}
+                  isNextSlide={index === slideInfo.nextIndex}
+                  autoplayDelay={autoplayDelay}
+                  resetKey={resetKey}
+                  isPaused={isPaused}
+                  onClick={() => handleIndicatorClick(index)}
+                />
+              ))}
             </div>
-
-            <div
-              className={cn('flex max-w-[600px] flex-[1_0_0] items-center gap-2 py-1 pr-10', maxWidth ? '' : 'min-w-60')}
-              style={responsiveStyle}
-            >
-              {/* Slide navigation indicators */}
-              <div className="flex items-center gap-2">
-                {slideInfo.slides.map((_: unknown, index: number) => (
-                  <IndicatorButton
-                    key={index}
-                    index={index}
-                    selectedIndex={selectedIndex}
-                    isNextSlide={index === slideInfo.nextIndex}
-                    autoplayDelay={autoplayDelay}
-                    resetKey={resetKey}
-                    isPaused={isPaused}
-                    onClick={() => handleIndicatorClick(index)}
-                  />
-                ))}
-              </div>
-              <div className="hidden h-px flex-1 bg-divider-regular min-[1380px]:block" />
-            </div>
+            <div className="hidden h-px flex-1 bg-divider-regular min-[1380px]:block" />
           </div>
         </div>
       </div>
 
-      {/* Right image area */}
-      <div className="absolute top-0 right-0 flex h-full items-center p-2">
+      <div className="flex max-w-60 shrink-0 flex-col items-center justify-center p-4 max-lg:hidden">
         <img
           src={imgSrc}
           alt={title}
-          className="aspect-4/3 h-full max-w-[296px] rounded-xl"
+          className="h-[168px] w-56 shrink-0 rounded-xl object-cover"
         />
       </div>
     </div>

@@ -108,16 +108,16 @@ describe('BannerItem', () => {
       expect(screen.getByText('Test banner description text')).toBeInTheDocument()
     })
 
+    it('renders view more text', () => {
+      renderBannerItem()
+      expect(screen.getByText('explore.banner.viewMore')).toBeInTheDocument()
+    })
+
     it('renders banner image with correct src and alt', () => {
       renderBannerItem()
       const image = screen.getByRole('img')
       expect(image).toHaveAttribute('src', 'https://example.com/image.png')
       expect(image).toHaveAttribute('alt', 'Test Banner Title')
-    })
-
-    it('renders view more text', () => {
-      renderBannerItem()
-      expect(screen.getByText('explore.banner.viewMore')).toBeInTheDocument()
     })
   })
 

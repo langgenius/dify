@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import type { Banner as BannerType } from '@/models/app'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
 import { useSelector } from '@/context/app-context'
@@ -16,7 +17,7 @@ const RESIZE_DEBOUNCE_DELAY = 50
 
 const LoadingState: FC = () => (
   <div
-    className="flex items-center justify-center rounded-2xl bg-components-panel-on-panel-item-bg shadow-md"
+    className="flex items-center justify-center rounded-[24px] bg-background-default-dodge shadow-xs"
     style={{ minHeight: MIN_LOADING_HEIGHT }}
   >
     <Loading />
@@ -63,9 +64,11 @@ const BannerImpressionTracker: FC<BannerImpressionTrackerProps> = ({
 }
 
 const Banner: FC = () => {
+  const { t } = useTranslation()
   const locale = useLocale()
   const { data: banners, isLoading, isError } = useGetBanners(locale)
   const accountId = useSelector(s => s.userProfile.id)
+  const userName = useSelector(s => s.userProfile.name)
   const [isHovered, setIsHovered] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const resizeTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -107,40 +110,54 @@ const Banner: FC = () => {
     return null
 
   return (
-    <Carousel
-      opts={{ loop: true }}
-      plugins={[
-        Carousel.Plugin.Autoplay({
-          delay: AUTOPLAY_DELAY,
-          stopOnInteraction: false,
-          stopOnMouseEnter: true,
-        }),
-      ]}
-      className="rounded-2xl"
+    <div
+      className="relative flex w-full flex-col items-start overflow-hidden rounded-[24px] bg-background-default-dodge transition-shadow hover:shadow-xs"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <BannerImpressionTracker
-        banners={enabledBanners}
-        accountId={accountId}
-        language={locale}
-        trackedBannerIdsRef={trackedBannerIdsRef}
-      />
-      <Carousel.Content>
-        {enabledBanners.map((banner, index) => (
-          <Carousel.Item key={banner.id}>
-            <BannerItem
-              banner={banner}
-              autoplayDelay={AUTOPLAY_DELAY}
-              isPaused={isPaused}
-              sort={index + 1}
-              language={locale}
-              accountId={accountId}
-            />
-          </Carousel.Item>
-        ))}
-      </Carousel.Content>
-    </Carousel>
+      <div className="flex w-full flex-col gap-1 px-8 pt-8">
+        <p className="truncate title-5xl-semi-bold text-dify-logo-black">
+          {t('banner.greeting', { name: userName, ns: 'explore' })}
+        </p>
+        <p className="truncate body-md-regular text-text-secondary">
+          {t('banner.tagline', { ns: 'explore' })}
+        </p>
+      </div>
+
+      <Carousel
+        opts={{ loop: true }}
+        plugins={[
+          Carousel.Plugin.Fade(),
+          Carousel.Plugin.Autoplay({
+            delay: AUTOPLAY_DELAY,
+            stopOnInteraction: false,
+            stopOnMouseEnter: true,
+          }),
+        ]}
+        className="w-full rounded-2xl shadow-xs"
+      >
+        <BannerImpressionTracker
+          banners={enabledBanners}
+          accountId={accountId}
+          language={locale}
+          trackedBannerIdsRef={trackedBannerIdsRef}
+        />
+        <Carousel.Content>
+          {enabledBanners.map((banner, index) => (
+            <Carousel.Item key={banner.id}>
+              <BannerItem
+                banner={banner}
+                autoplayDelay={AUTOPLAY_DELAY}
+                isPaused={isPaused}
+                sort={index + 1}
+                language={locale}
+                accountId={accountId}
+              />
+            </Carousel.Item>
+          ))}
+        </Carousel.Content>
+      </Carousel>
+    </div>
   )
 }
 

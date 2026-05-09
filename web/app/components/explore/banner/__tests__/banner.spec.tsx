@@ -32,19 +32,27 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, unknown>) => {
+      if (key === 'banner.greeting')
+        return `Welcome back, ${opts?.name} 👋`
+      if (key === 'banner.tagline')
+        return 'What if… this is where your next idea begins.'
+      return key
+    },
+  }),
+}))
+
 vi.mock('@/app/components/base/carousel', () => ({
   Carousel: Object.assign(
-    ({ children, onMouseEnter, onMouseLeave, className }: {
+    ({ children, className }: {
       children: React.ReactNode
-      onMouseEnter?: () => void
-      onMouseLeave?: () => void
       className?: string
     }) => (
       <div
         data-testid="carousel"
         className={className}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
       >
         {children}
       </div>
@@ -58,6 +66,7 @@ vi.mock('@/app/components/base/carousel', () => ({
       ),
       Plugin: {
         Autoplay: (config: Record<string, unknown>) => ({ type: 'autoplay', ...config }),
+        Fade: () => ({ type: 'fade' }),
       },
     },
   ),
@@ -113,7 +122,7 @@ const createMockBanner = (id: string, status: string = 'enabled', title: string 
     'category': 'Featured',
     title,
     'description': 'Test description',
-    'img-src': 'https://example.com/image.png',
+    'img-src': `https://example.com/image-${id}.png`,
   },
 } as BannerType)
 
@@ -126,6 +135,7 @@ describe('Banner', () => {
     mockUseSelector.mockImplementation(selector => selector({
       userProfile: {
         id: 'account-123',
+        name: 'Evan',
       },
     }))
   })
@@ -218,6 +228,53 @@ describe('Banner', () => {
     })
   })
 
+  describe('greeting section', () => {
+    it('renders static greeting with user name', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
+    })
+
+    it('renders tagline', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [createMockBanner('1', 'enabled')],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      expect(screen.getByText('What if… this is where your next idea begins.')).toBeInTheDocument()
+    })
+
+    it('greeting does not change when carousel slides', () => {
+      mockUseGetBanners.mockReturnValue({
+        data: [
+          createMockBanner('1', 'enabled', 'Banner 1'),
+          createMockBanner('2', 'enabled', 'Banner 2'),
+        ],
+        isLoading: false,
+        isError: false,
+      })
+
+      render(<Banner />)
+
+      expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
+
+      act(() => {
+        setMockSelectedIndex(1)
+      })
+
+      expect(screen.getByText('Welcome back, Evan 👋')).toBeInTheDocument()
+    })
+  })
+
   describe('successful render', () => {
     it('renders carousel when enabled banners exist', () => {
       mockUseGetBanners.mockReturnValue({
@@ -262,18 +319,6 @@ describe('Banner', () => {
 
       const bannerItem = screen.getByTestId('banner-item')
       expect(bannerItem).toHaveAttribute('data-autoplay-delay', '5000')
-    })
-
-    it('renders carousel with correct class', () => {
-      mockUseGetBanners.mockReturnValue({
-        data: [createMockBanner('1', 'enabled')],
-        isLoading: false,
-        isError: false,
-      })
-
-      render(<Banner />)
-
-      expect(screen.getByTestId('carousel')).toHaveClass('rounded-2xl')
     })
 
     it('tracks only the current banner impression and reports the next one after slide changes', () => {
@@ -322,6 +367,7 @@ describe('Banner', () => {
       mockUseSelector.mockImplementation(selector => selector({
         userProfile: {
           id: '',
+          name: '',
         },
       }))
       mockUseGetBanners.mockReturnValue({
@@ -346,8 +392,8 @@ describe('Banner', () => {
 
       render(<Banner />)
 
-      const carousel = screen.getByTestId('carousel')
-      fireEvent.mouseEnter(carousel)
+      const wrapper = screen.getByText('Welcome back, Evan 👋').closest('.relative')!
+      fireEvent.mouseEnter(wrapper)
 
       const bannerItem = screen.getByTestId('banner-item')
       expect(bannerItem).toHaveAttribute('data-is-paused', 'true')
@@ -362,10 +408,10 @@ describe('Banner', () => {
 
       render(<Banner />)
 
-      const carousel = screen.getByTestId('carousel')
+      const wrapper = screen.getByText('Welcome back, Evan 👋').closest('.relative')!
 
-      fireEvent.mouseEnter(carousel)
-      fireEvent.mouseLeave(carousel)
+      fireEvent.mouseEnter(wrapper)
+      fireEvent.mouseLeave(wrapper)
 
       const bannerItem = screen.getByTestId('banner-item')
       expect(bannerItem).toHaveAttribute('data-is-paused', 'false')
