@@ -1,7 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
 import type { TFunction } from 'i18next'
-import type { ComponentType, ReactNode } from 'react'
-import type { OverviewOperationKey } from './app-card-utils'
+import type { ComponentType, FormEvent, ReactNode } from 'react'
+import type {
+  OverviewOperationKey,
+  WorkflowHiddenStartVariable,
+  WorkflowLaunchInputValue,
+} from './app-card-utils'
 import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
@@ -16,11 +20,18 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
-import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
+import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiSettings2Line, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
+import { Trans } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
 import ShareQRCode from '@/app/components/base/qrcode'
@@ -31,6 +42,7 @@ import CustomizeModal from './customize'
 import EmbeddedModal from './embedded'
 import SettingsModal from './settings'
 import style from './style.module.css'
+import WorkflowHiddenInputFields from './workflow-hidden-input-fields'
 
 type AppInfo = AppDetailResponse & Partial<AppSSO>
 
@@ -46,6 +58,12 @@ type AppCardOperation = {
   key: OverviewOperationKey
   label: string
   Icon: OperationIcon
+  disabled: boolean
+  onClick: () => void
+}
+
+type LaunchConfigAction = {
+  label: string
   disabled: boolean
   onClick: () => void
 }
@@ -93,6 +111,65 @@ const MaybeTooltip = ({
         {content}
       </TooltipContent>
     </Tooltip>
+  )
+}
+
+export const WorkflowLaunchDialog = ({
+  t,
+  open,
+  hiddenVariables,
+  unsupportedVariables,
+  values,
+  onOpenChange,
+  onValueChange,
+  onSubmit,
+}: {
+  t: TFunction
+  open: boolean
+  hiddenVariables: WorkflowHiddenStartVariable[]
+  unsupportedVariables: WorkflowHiddenStartVariable[]
+  values: Record<string, WorkflowLaunchInputValue>
+  onOpenChange: (open: boolean) => void
+  onValueChange: (variable: string, value: WorkflowLaunchInputValue) => void
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) => {
+  if (!hiddenVariables.length && !unsupportedVariables.length)
+    return null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[560px]! max-w-[calc(100vw-2rem)]! p-0!">
+        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+            {t('overview.appInfo.workflowLaunchHiddenInputs.title', { ns: 'appOverview' })}
+          </DialogTitle>
+          <DialogDescription className="system-md-regular text-text-tertiary">
+            <Trans
+              i18nKey="overview.appInfo.workflowLaunchHiddenInputs.description"
+              ns="appOverview"
+              components={{ bold: <span className="system-md-medium" /> }}
+            />
+          </DialogDescription>
+        </div>
+        <form onSubmit={onSubmit}>
+          <div className="space-y-4 px-6 pb-4">
+            <WorkflowHiddenInputFields
+              hiddenVariables={hiddenVariables}
+              values={values}
+              onValueChange={onValueChange}
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
+            <Button onClick={() => onOpenChange(false)}>
+              {t('operation.cancel', { ns: 'common' })}
+            </Button>
+            <Button type="submit" variant="primary">
+              {t('overview.appInfo.launch', { ns: 'appOverview' })}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -251,20 +328,15 @@ export const AppCardAccessControlSection = ({
 export const AppCardOperations = ({
   t,
   operations,
+  launchConfigAction,
 }: {
   t: TFunction
   operations: AppCardOperation[]
+  launchConfigAction?: LaunchConfigAction
 }) => (
   <>
-    {operations.map(({ key, label, Icon, disabled, onClick }) => (
-      <Button
-        className="mr-1 min-w-[88px]"
-        size="small"
-        variant="ghost"
-        key={key}
-        onClick={onClick}
-        disabled={disabled}
-      >
+    {operations.map(({ key, label, Icon, disabled, onClick }) => {
+      const buttonContent = (
         <MaybeTooltip
           content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
           tooltipClassName="mt-[-8px]"
@@ -275,8 +347,72 @@ export const AppCardOperations = ({
             <div className={`${disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary'} px-[3px] system-xs-medium`}>{label}</div>
           </div>
         </MaybeTooltip>
-      </Button>
-    ))}
+      )
+
+      if (key === 'launch' && launchConfigAction) {
+        return (
+          <MaybeTooltip
+            key={key}
+            content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
+            tooltipClassName="mt-[-8px]"
+            show={disabled}
+          >
+            <Button
+              className="mr-1 border-0 px-0 py-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg"
+              size="small"
+              variant="secondary"
+              onClick={onClick}
+              disabled={disabled}
+            >
+              <div className="flex h-full min-w-[88px] items-center justify-center rounded-l-md px-2 hover:bg-components-button-secondary-bg-hover">
+                <div className="flex items-center justify-center gap-px">
+                  <Icon className="h-3.5 w-3.5" />
+                  <div className="px-[3px] system-xs-medium">{label}</div>
+                </div>
+              </div>
+              <div
+                aria-hidden="true"
+                className="h-4 w-px shrink-0 bg-divider-regular opacity-100"
+              />
+              <div
+                className="flex h-full w-8 shrink-0 items-center justify-center rounded-r-md hover:bg-components-button-secondary-bg-hover"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  launchConfigAction.onClick()
+                }}
+                aria-label={launchConfigAction.label}
+                role="button"
+                tabIndex={disabled ? -1 : 0}
+                onKeyDown={(event) => {
+                  if (disabled)
+                    return
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    launchConfigAction.onClick()
+                  }
+                }}
+              >
+                <RiSettings2Line className="h-3.5 w-3.5" />
+              </div>
+            </Button>
+          </MaybeTooltip>
+        )
+      }
+
+      return (
+        <Button
+          className="mr-1 min-w-[88px]"
+          size="small"
+          variant="ghost"
+          key={key}
+          onClick={onClick}
+          disabled={disabled}
+        >
+          {buttonContent}
+        </Button>
+      )
+    })}
   </>
 )
 
@@ -295,6 +431,7 @@ export const AppCardDialogs = ({
   onCloseAccessControl,
   onSaveSiteConfig,
   onConfirmAccessControl,
+  hiddenInputs,
 }: {
   isApp: boolean
   appInfo: AppInfo
@@ -310,6 +447,7 @@ export const AppCardDialogs = ({
   onCloseAccessControl: () => void
   onSaveSiteConfig?: (params: ConfigParams) => Promise<void>
   onConfirmAccessControl: () => Promise<void>
+  hiddenInputs?: WorkflowHiddenStartVariable[]
 }) => {
   if (!isApp)
     return null
@@ -329,6 +467,7 @@ export const AppCardDialogs = ({
         onClose={onCloseEmbedded}
         appBaseUrl={appInfo.site?.app_base_url}
         accessToken={appInfo.site?.access_token}
+        hiddenInputs={hiddenInputs}
       />
       <CustomizeModal
         isShow={showCustomizeModal}

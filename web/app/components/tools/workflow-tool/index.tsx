@@ -1,9 +1,19 @@
 'use client'
-import type { FC } from 'react'
+import type { DrawerRootProps } from '@langgenius/dify-ui/drawer'
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerTitle,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { produce } from 'immer'
@@ -26,7 +36,7 @@ import {
   isWorkflowToolNameValid,
 } from './helpers'
 
-export type WorkflowToolModalPayload = {
+export type WorkflowToolDrawerPayload = {
   icon: Emoji
   label: string
   name: string
@@ -42,9 +52,9 @@ export type WorkflowToolModalPayload = {
   workflow_app_id?: string
 }
 
-type Props = {
+export type WorkflowToolDrawerProps = {
   isAdd?: boolean
-  payload: WorkflowToolModalPayload
+  payload: WorkflowToolDrawerPayload
   onHide: () => void
   onRemove?: () => void
   onCreate?: (payload: WorkflowToolProviderRequest & { workflow_app_id: string }) => void
@@ -54,8 +64,9 @@ type Props = {
   }>) => void
 }
 
-type WorkflowToolDrawerProps = {
+type WorkflowToolDrawerFrameProps = {
   title: string
+  closeLabel: string
   onHide: () => void
   children: React.ReactNode
 }
@@ -77,39 +88,45 @@ const InfoTooltip = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
-const WorkflowToolDrawer = ({ title, onHide, children }: WorkflowToolDrawerProps) => {
+const WorkflowToolDrawerFrame = ({ title, closeLabel, onHide, children }: WorkflowToolDrawerFrameProps) => {
+  const handleOpenChange = React.useCallback<NonNullable<DrawerRootProps['onOpenChange']>>((open) => {
+    if (!open)
+      onHide()
+  }, [onHide])
+
   return (
-    <Dialog open disablePointerDismissal>
-      <DialogContent
-        className={cn(
-          'top-2 right-2 bottom-2 left-auto h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-[640px]! max-w-[calc(100vw-16px)]! translate-x-0! translate-y-0! overflow-hidden rounded-xl border-none bg-transparent p-0 shadow-none',
-          'data-ending-style:translate-x-4 data-ending-style:scale-100 data-starting-style:translate-x-4 data-starting-style:scale-100',
-        )}
-        backdropClassName="bg-background-overlay"
-      >
-        <div data-testid="drawer" className="flex h-full w-full flex-col rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg shadow-xl">
-          <div className="shrink-0 border-b border-divider-subtle py-4">
-            <div className="flex h-6 items-center justify-between pr-5 pl-6">
-              <DialogTitle data-testid="drawer-title" className="system-xl-semibold text-text-primary">
-                {title}
-              </DialogTitle>
-              <button
-                type="button"
-                data-testid="drawer-close"
-                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover"
-                aria-label="Close"
-                onClick={onHide}
-              >
-                <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-              </button>
-            </div>
-          </div>
-          <div className="grow overflow-hidden">
-            {children}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <Drawer open modal disablePointerDismissal swipeDirection="right" onOpenChange={handleOpenChange}>
+      <DrawerPortal>
+        <DrawerBackdrop />
+        <DrawerViewport>
+          <DrawerPopup
+            data-testid="drawer"
+            className={cn(
+              'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-160 data-[swipe-direction=right]:max-w-[calc(100vw-16px)]',
+              'data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
+            )}
+          >
+            <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
+              <div className="shrink-0 border-b border-divider-subtle py-4">
+                <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                  <DrawerTitle data-testid="drawer-title" className="min-w-0 truncate system-xl-semibold text-text-primary">
+                    {title}
+                  </DrawerTitle>
+                  <DrawerCloseButton
+                    data-testid="drawer-close"
+                    className="h-6 w-6 rounded-md"
+                    aria-label={closeLabel}
+                  />
+                </div>
+              </div>
+              <div className="grow overflow-hidden">
+                {children}
+              </div>
+            </DrawerContent>
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
+    </Drawer>
   )
 }
 
@@ -158,15 +175,14 @@ const WorkflowToolEmojiPicker = ({ onSelect, onClose }: WorkflowToolEmojiPickerP
   )
 }
 
-// Add and Edit
-const WorkflowToolAsModal: FC<Props> = ({
+export function WorkflowToolDrawer({
   isAdd,
   payload,
   onHide,
   onRemove,
   onSave,
   onCreate,
-}) => {
+}: WorkflowToolDrawerProps) {
   const { t } = useTranslation()
 
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
@@ -200,7 +216,7 @@ const WorkflowToolAsModal: FC<Props> = ({
     setLabels(value)
   }
   const [privacyPolicy, setPrivacyPolicy] = useState(payload.privacy_policy)
-  const [showModal, setShowModal] = useState(false)
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false)
 
   const onConfirm = () => {
     let errorMessage = ''
@@ -243,9 +259,10 @@ const WorkflowToolAsModal: FC<Props> = ({
 
   return (
     <>
-      <WorkflowToolDrawer
+      <WorkflowToolDrawerFrame
         onHide={onHide}
         title={t('common.workflowAsTool', { ns: 'workflow' })!}
+        closeLabel={t('operation.close', { ns: 'common' })!}
       >
         <div className="flex h-full flex-col">
           <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
@@ -427,7 +444,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                   if (isAdd)
                     onConfirm()
                   else
-                    setShowModal(true)
+                    setConfirmModalOpen(true)
                 }}
               >
                 {t('operation.save', { ns: 'common' })}
@@ -435,7 +452,7 @@ const WorkflowToolAsModal: FC<Props> = ({
             </div>
           </div>
         </div>
-      </WorkflowToolDrawer>
+      </WorkflowToolDrawerFrame>
       {showEmojiPicker && (
         <WorkflowToolEmojiPicker
           onSelect={(icon, icon_background) => {
@@ -447,10 +464,10 @@ const WorkflowToolAsModal: FC<Props> = ({
           }}
         />
       )}
-      {showModal && (
+      {confirmModalOpen && (
         <ConfirmModal
-          show={showModal}
-          onClose={() => setShowModal(false)}
+          show={confirmModalOpen}
+          onClose={() => setConfirmModalOpen(false)}
           onConfirm={onConfirm}
         />
       )}
@@ -458,4 +475,3 @@ const WorkflowToolAsModal: FC<Props> = ({
 
   )
 }
-export default React.memo(WorkflowToolAsModal)

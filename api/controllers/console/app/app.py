@@ -25,6 +25,7 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
+from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -841,7 +842,8 @@ class AppTraceApi(Resource):
     @account_initialization_required
     def get(self, app_id):
         """Get app trace"""
-        app_trace_config = OpsTraceManager.get_app_tracing_config(app_id=app_id)
+        with session_factory.create_session() as session:
+            app_trace_config = OpsTraceManager.get_app_tracing_config(app_id, session)
 
         return app_trace_config
 

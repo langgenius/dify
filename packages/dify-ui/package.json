@@ -37,6 +37,10 @@
       "types": "./src/dialog/index.tsx",
       "import": "./src/dialog/index.tsx"
     },
+    "./drawer": {
+      "types": "./src/drawer/index.tsx",
+      "import": "./src/drawer/index.tsx"
+    },
     "./dropdown-menu": {
       "types": "./src/dropdown-menu/index.tsx",
       "import": "./src/dropdown-menu/index.tsx"
