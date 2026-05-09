@@ -103,7 +103,7 @@ class PluginUploadFileApi(Resource):
             tool_file = ToolFileManager().create_file_by_raw(
                 user_id=user.id,
                 tenant_id=tenant_id,
-                file_binary=file.read(),
+                file_binary=file.stream.read(),
                 mimetype=mimetype,
                 filename=filename,
                 conversation_id=None,

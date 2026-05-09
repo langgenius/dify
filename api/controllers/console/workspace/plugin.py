@@ -177,7 +177,7 @@ def _read_upload_content(file: FileStorage, max_size: int) -> bytes:
     FileStorage.content_length is not reliable for multipart test uploads and may be zero even when
     content exists, so the controllers validate against the loaded bytes instead.
     """
-    content = file.read()
+    content = file.stream.read()
     if len(content) > max_size:
         raise ValueError("File size exceeds the maximum allowed size")
 

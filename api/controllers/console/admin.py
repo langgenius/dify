@@ -405,11 +405,11 @@ class BatchAddNotificationAccountsApi(Resource):
             raise BadRequest("Invalid file type. Only CSV (.csv) and TXT (.txt) files are allowed.")
 
         try:
-            content = file.read().decode("utf-8")
+            content = file.stream.read().decode("utf-8")
         except UnicodeDecodeError:
             try:
-                file.seek(0)
-                content = file.read().decode("gbk")
+                file.stream.seek(0)
+                content = file.stream.read().decode("gbk")
             except UnicodeDecodeError:
                 raise BadRequest("Unable to decode the file. Please use UTF-8 or GBK encoding.")
 
