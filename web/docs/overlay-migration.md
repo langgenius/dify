@@ -7,8 +7,6 @@ This document tracks the Dify-web migration away from legacy overlay APIs.
 ## Scope
 
 - Deprecated imports:
-  - `@/app/components/base/tooltip`
-  - `@/app/components/base/tooltip/content`
   - `@/app/components/base/modal`
   - `@/app/components/base/dialog`
   - `@/app/components/base/drawer`
@@ -78,8 +76,6 @@ back to `z-9999`.
   parent legacy overlay should be migrated instead.
 - When migrating a legacy overlay that has a high z-index, remove the z-index
   entirely — the new primitive's default `z-1002` handles it.
-- Do not preserve legacy tooltip offsets at call sites. Choose the nearest
-  `placement`/side alignment and let the primitive own its default spacing.
 - When using Base UI trigger `render`, render a real `button` for button-like
   triggers. If the trigger must render a non-button element, the primitive must
   explicitly opt out of the native button behavior where that API is available.
