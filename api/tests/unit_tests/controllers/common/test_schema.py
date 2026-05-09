@@ -1,10 +1,11 @@
 import sys
 from enum import StrEnum
+from typing import Literal
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask_restx import Namespace
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserModel(BaseModel):
@@ -23,6 +24,27 @@ class ChildModel(BaseModel):
 
 class ParentModel(BaseModel):
     child: ChildModel
+
+
+class StatusEnum(StrEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+class PriorityEnum(StrEnum):
+    HIGH = "high"
+    LOW = "low"
+
+
+class QueryModel(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    page: int = Field(default=1, ge=1, le=100, description="Page number")
+    keyword: str | None = Field(default=None, min_length=1, max_length=50, description="Search keyword")
+    status: Literal["active", "inactive"] | None = Field(default=None, description="Status filter")
+    app_id: str = Field(..., alias="appId", description="Application ID")
+    tag_ids: list[str] = Field(default_factory=list, min_length=1, max_length=3, description="Tag IDs")
+    ambiguous: int | str | None = Field(default=None, description="Ambiguous query parameter")
 
 
 @pytest.fixture(autouse=True)
@@ -124,16 +146,6 @@ def test_register_schema_models_calls_register_schema_model(monkeypatch: pytest.
     ]
 
 
-class StatusEnum(StrEnum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-
-
-class PriorityEnum(StrEnum):
-    HIGH = "high"
-    LOW = "low"
-
-
 def test_get_or_create_model_returns_existing_model(mock_console_ns):
     from controllers.common.schema import get_or_create_model
 
@@ -211,3 +223,54 @@ def test_register_enum_models_uses_correct_ref_template():
 
     # Verify the schema contains enum values
     assert "enum" in schema or "anyOf" in schema
+
+
+def test_query_params_from_model_builds_flask_restx_doc_params():
+    from controllers.common.schema import query_params_from_model
+
+    params = query_params_from_model(QueryModel)
+
+    assert params["page"] == {
+        "in": "query",
+        "required": False,
+        "description": "Page number",
+        "type": "integer",
+        "default": 1,
+        "minimum": 1,
+        "maximum": 100,
+    }
+    assert params["keyword"] == {
+        "in": "query",
+        "required": False,
+        "description": "Search keyword",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 50,
+    }
+    assert params["status"] == {
+        "in": "query",
+        "required": False,
+        "description": "Status filter",
+        "type": "string",
+        "enum": ["active", "inactive"],
+    }
+    assert params["appId"] == {
+        "in": "query",
+        "required": True,
+        "description": "Application ID",
+        "type": "string",
+    }
+    assert params["tag_ids"] == {
+        "in": "query",
+        "required": False,
+        "description": "Tag IDs",
+        "type": "array",
+        "items": {"type": "string"},
+        "minItems": 1,
+        "maxItems": 3,
+    }
+    assert params["ambiguous"] == {
+        "in": "query",
+        "required": False,
+        "description": "Ambiguous query parameter",
+    }

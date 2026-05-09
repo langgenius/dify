@@ -5507,7 +5507,7 @@ Delete an API key for a dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [RecommendedAppsQuery](#recommendedappsquery) |
+| language | query | Language code for recommended app localization | No | string |
 
 ##### Responses
 
@@ -13289,7 +13289,7 @@ Default value types for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| language |  |  | No |
+| language |  | Language code for recommended app localization | No |
 
 #### RelatedAppList
 
