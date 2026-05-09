@@ -1,3 +1,4 @@
+import type { AppIconType } from '@/types/app'
 import { AppModeEnum } from '@/types/app'
 
 export type ContinueWorkItem = {
@@ -5,8 +6,10 @@ export type ContinueWorkItem = {
   title: string
   author: string
   updatedAt: number
-  emoji: string
-  avatarClassName: string
+  icon_type: AppIconType | null
+  icon: string
+  icon_background: string | null
+  icon_url: string | null
   mode: AppModeEnum
 }
 
@@ -18,8 +21,10 @@ export const continueWorkItems: ContinueWorkItem[] = [
     title: 'Automated Email Reply',
     author: 'Evan',
     updatedAt: currentTime - 30 * 1000,
-    emoji: '🕹️',
-    avatarClassName: 'bg-components-icon-bg-pink-soft',
+    icon_type: 'emoji',
+    icon: '🕹️',
+    icon_background: '#FDF2FA',
+    icon_url: null,
     mode: AppModeEnum.CHAT,
   },
   {
@@ -27,8 +32,10 @@ export const continueWorkItems: ContinueWorkItem[] = [
     title: 'Dify Feature Request Copilot',
     author: 'Evan',
     updatedAt: currentTime - 3 * 60 * 1000,
-    emoji: '🪼',
-    avatarClassName: 'bg-components-icon-bg-blue-soft',
+    icon_type: 'emoji',
+    icon: '🪼',
+    icon_background: '#EFF4FF',
+    icon_url: null,
     mode: AppModeEnum.CHAT,
   },
   {
@@ -36,8 +43,10 @@ export const continueWorkItems: ContinueWorkItem[] = [
     title: 'Book Translation',
     author: 'Evan',
     updatedAt: currentTime - 2 * 60 * 60 * 1000,
-    emoji: '📙',
-    avatarClassName: 'bg-components-icon-bg-orange-dark-soft',
+    icon_type: 'emoji',
+    icon: '📙',
+    icon_background: '#FFF4ED',
+    icon_url: null,
     mode: AppModeEnum.WORKFLOW,
   },
   {
@@ -45,8 +54,10 @@ export const continueWorkItems: ContinueWorkItem[] = [
     title: 'SVG Logo Design',
     author: 'Evan',
     updatedAt: currentTime - 24 * 60 * 60 * 1000,
-    emoji: '🖌️',
-    avatarClassName: 'bg-components-icon-bg-indigo-soft',
+    icon_type: 'emoji',
+    icon: '🖌️',
+    icon_background: '#EEF4FF',
+    icon_url: null,
     mode: AppModeEnum.AGENT_CHAT,
   },
   {
@@ -54,8 +65,10 @@ export const continueWorkItems: ContinueWorkItem[] = [
     title: 'Customer Feedback Summary',
     author: 'Evan',
     updatedAt: currentTime - 5 * 24 * 60 * 60 * 1000,
-    emoji: '📊',
-    avatarClassName: 'bg-components-icon-bg-teal-soft',
+    icon_type: 'emoji',
+    icon: '📊',
+    icon_background: '#F0FDF9',
+    icon_url: null,
     mode: AppModeEnum.COMPLETION,
   },
 ]
