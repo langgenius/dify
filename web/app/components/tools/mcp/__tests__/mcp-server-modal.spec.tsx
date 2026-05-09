@@ -3,8 +3,11 @@ import type { MCPServerDetail } from '@/app/components/tools/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MCPServerModal from '../mcp-server-modal'
+
+const mockGetSocket = vi.hoisted(() => vi.fn())
+const mockSocketEmit = vi.hoisted(() => vi.fn())
 
 // Mock the services
 vi.mock('@/service/use-tools', () => ({
@@ -17,6 +20,12 @@ vi.mock('@/service/use-tools', () => ({
     isPending: false,
   }),
   useInvalidateMCPServerDetail: () => vi.fn(),
+}))
+
+vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
+  webSocketClient: {
+    getSocket: mockGetSocket,
+  },
 }))
 
 describe('MCPServerModal', () => {
@@ -37,6 +46,11 @@ describe('MCPServerModal', () => {
     show: true,
     onHide: vi.fn(),
   }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetSocket.mockReturnValue(null)
+  })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
@@ -166,6 +180,15 @@ describe('MCPServerModal', () => {
         fireEvent.click(closeButton)
         expect(onHide).toHaveBeenCalled()
       }
+    })
+
+    it('should call onHide when the dialog requests close', () => {
+      const onHide = vi.fn()
+      render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+      expect(onHide).toHaveBeenCalledTimes(1)
     })
 
     it('should disable confirm button when description is empty', () => {
@@ -343,6 +366,48 @@ describe('MCPServerModal', () => {
 
       await waitFor(() => {
         expect(onHide).toHaveBeenCalled()
+      })
+    })
+
+    it('should ignore parameters without variables when rendering and submitting', async () => {
+      const onHide = vi.fn()
+      const latestParams = [
+        { label: 'Missing variable', type: 'string' },
+      ]
+
+      render(
+        <MCPServerModal {...defaultProps} latestParams={latestParams} onHide={onHide} />,
+        { wrapper: createWrapper() },
+      )
+
+      expect(screen.queryByText('Missing variable')).not.toBeInTheDocument()
+
+      fireEvent.change(screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder'), {
+        target: { value: 'Test description' },
+      })
+      fireEvent.click(screen.getByText('tools.mcp.server.modal.confirm'))
+
+      await waitFor(() => {
+        expect(onHide).toHaveBeenCalled()
+      })
+    })
+
+    it('should emit a created update when socket exists', async () => {
+      const onHide = vi.fn()
+      mockGetSocket.mockReturnValue({ emit: mockSocketEmit })
+
+      render(<MCPServerModal {...defaultProps} onHide={onHide} />, { wrapper: createWrapper() })
+
+      fireEvent.change(screen.getByPlaceholderText('tools.mcp.server.modal.descriptionPlaceholder'), {
+        target: { value: 'Test description' },
+      })
+      fireEvent.click(screen.getByText('tools.mcp.server.modal.confirm'))
+
+      await waitFor(() => {
+        expect(mockSocketEmit).toHaveBeenCalledWith('collaboration_event', expect.objectContaining({
+          type: 'mcp_server_update',
+          data: expect.objectContaining({ action: 'created' }),
+        }))
       })
     })
 

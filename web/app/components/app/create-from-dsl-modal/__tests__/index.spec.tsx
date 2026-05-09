@@ -307,6 +307,78 @@ describe('CreateFromDSLModal', () => {
     expect(mockTrackCreateApp).toHaveBeenCalledWith({ appMode: AppModeEnum.WORKFLOW })
   })
 
+  it('should close the DSL mismatch modal when dialog requests close', async () => {
+    vi.useFakeTimers()
+    mockImportDSL.mockResolvedValue({
+      id: 'import-close',
+      status: DSLImportStatus.PENDING,
+      imported_dsl_version: '1.0.0',
+      current_dsl_version: '2.0.0',
+    })
+
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+        activeTab={CreateFromDSLModalTab.FROM_URL}
+        dslUrl="https://example.com/app.yml"
+      />,
+    )
+
+    await act(async () => {
+      fireEvent.click(getCreateButton())
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+
+    expect(screen.getByText('newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
+
+    vi.useRealTimers()
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    await waitFor(() => {
+      expect(screen.queryByText('newApp.appCreateDSLErrorTitle')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should close the DSL mismatch modal when cancel is clicked', async () => {
+    vi.useFakeTimers()
+    mockImportDSL.mockResolvedValue({
+      id: 'import-cancel',
+      status: DSLImportStatus.PENDING,
+      imported_dsl_version: '1.0.0',
+      current_dsl_version: '2.0.0',
+    })
+
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+        activeTab={CreateFromDSLModalTab.FROM_URL}
+        dslUrl="https://example.com/app.yml"
+      />,
+    )
+
+    await act(async () => {
+      fireEvent.click(getCreateButton())
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(300)
+    })
+
+    expect(screen.getByText('newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
+
+    vi.useRealTimers()
+    fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Cancel' }).at(-1)!)
+
+    await waitFor(() => {
+      expect(screen.queryByText('newApp.appCreateDSLErrorTitle')).not.toBeInTheDocument()
+    })
+  })
+
   it('should ignore empty import responses and prevent duplicate submissions while a request is in flight', async () => {
     let resolveImport!: (value: { id: string, status: DSLImportStatus, app_id: string, app_mode: string }) => void
     mockImportDSL.mockImplementationOnce(() => new Promise((resolve) => {

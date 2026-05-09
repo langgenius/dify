@@ -11,18 +11,6 @@ vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
 }))
 
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) =>
-    open === false ? null : <>{children}</>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="modal">
-      {children}
-    </div>
-  ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div data-testid="modal-title">{children}</div>,
-  DialogCloseButton: (props: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>close</button>,
-}))
-
 vi.mock('../../../common/image-list', () => ({
   default: () => <div data-testid="image-list" />,
 }))
@@ -87,7 +75,7 @@ describe('ChunkDetailModal', () => {
 
   it('should render modal with title', () => {
     render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
-    expect(screen.getByTestId('modal-title')).toHaveTextContent('chunkDetail')
+    expect(screen.getByRole('dialog')).toHaveTextContent('chunkDetail')
   })
 
   it('should render segment index tag and score', () => {
@@ -140,6 +128,14 @@ describe('ChunkDetailModal', () => {
   it('should call onHide when close button is clicked', () => {
     render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
     fireEvent.click(screen.getByTestId('modal-close-button'))
+    expect(onHide).toHaveBeenCalled()
+  })
+
+  it('should call onHide when the dialog requests close', () => {
+    render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
     expect(onHide).toHaveBeenCalledTimes(1)
   })
 })

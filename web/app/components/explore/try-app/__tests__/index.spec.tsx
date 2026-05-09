@@ -120,6 +120,42 @@ describe('TryApp (main index.tsx)', () => {
 
       expect(document.body.querySelector('[role="status"]')).toBeInTheDocument()
     })
+
+    it('renders unavailable state when the app detail request fails', () => {
+      mockUseGetTryAppInfo.mockReturnValue({
+        data: null,
+        isError: true,
+        error: new Error('App is unavailable'),
+      })
+
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText('App is unavailable')).toBeInTheDocument()
+    })
+
+    it('renders unknown unavailable state when app detail is empty', () => {
+      mockUseGetTryAppInfo.mockReturnValue({
+        data: null,
+        isLoading: false,
+        isError: false,
+      })
+
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText('share.common.appUnknownError')).toBeInTheDocument()
+    })
   })
 
   describe('content rendering', () => {
@@ -256,6 +292,26 @@ describe('TryApp (main index.tsx)', () => {
       })
 
       expect(mockOnClose).toHaveBeenCalled()
+    })
+
+    it('calls onClose when the dialog requests close', async () => {
+      const mockOnClose = vi.fn()
+
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={mockOnClose}
+          onCreate={vi.fn()}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
   })
 

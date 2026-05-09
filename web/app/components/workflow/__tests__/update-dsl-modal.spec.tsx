@@ -126,6 +126,15 @@ describe('UpdateDSLModal', () => {
     expect(defaultProps.onBackup).toHaveBeenCalledTimes(1)
   })
 
+  it('should call cancel handler when the import dialog requests close', () => {
+    const onCancel = vi.fn()
+    renderModal({ ...defaultProps, onCancel })
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
   it('should import a valid file and emit workflow update payload', async () => {
     renderModal()
 
@@ -222,6 +231,32 @@ describe('UpdateDSLModal', () => {
     }, { timeout: 1000 })
 
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'app.newApp.Confirm' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('should close the pending modal when dialog requests close', async () => {
+    mockImportDSL.mockResolvedValue({
+      id: 'import-8',
+      status: DSLImportStatus.PENDING,
+      imported_dsl_version: '1.0.0',
+      current_dsl_version: '2.0.0',
+    })
+
+    renderModal()
+
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
+    })
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'app.newApp.Confirm' })).not.toBeInTheDocument()
