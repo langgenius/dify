@@ -47,13 +47,6 @@ export const WEB_RESTRICTED_IMPORT_PATTERNS = [
 export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: [
-      '**/base/tooltip',
-      '**/base/tooltip/index',
-    ],
-    message: 'Deprecated: use @langgenius/dify-ui/tooltip instead. See issue #32767.',
-  },
-  {
-    group: [
       '**/base/modal',
       '**/base/modal/index',
     ],

@@ -3,6 +3,7 @@ import uuid
 from unittest.mock import Mock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.nodes.knowledge_retrieval.entities import (
@@ -56,7 +57,7 @@ def mock_graph_runtime_state():
 
 
 @pytest.fixture
-def mock_rag_retrieval(mocker):
+def mock_rag_retrieval(mocker: MockerFixture):
     """Create mock RAGRetrievalProtocol."""
     mock_retrieval = Mock(spec=RAGRetrievalProtocol)
     mock_retrieval.knowledge_retrieval.return_value = []

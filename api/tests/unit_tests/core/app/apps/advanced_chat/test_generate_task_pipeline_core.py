@@ -224,7 +224,7 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert isinstance(responses[0], ValueError)
 
-    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch):
+    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
@@ -368,7 +368,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_loop_next_event(loop_next)) == ["loop_next"]
         assert list(pipeline._handle_loop_completed_event(loop_done)) == ["loop_done"]
 
-    def test_workflow_finish_handlers(self, monkeypatch):
+    def test_workflow_finish_handlers(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._workflow_run_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
@@ -593,7 +593,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert message.answer == "hello"
         assert message.message_metadata
 
-    def test_handle_stop_event_saves_message_for_moderation(self, monkeypatch):
+    def test_handle_stop_event_saves_message_for_moderation(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._message_end_to_stream_response = lambda: "end"
         saved: list[str] = []
@@ -614,7 +614,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert responses == ["end"]
         assert saved == ["saved"]
 
-    def test_handle_message_end_event_applies_output_moderation(self, monkeypatch):
+    def test_handle_message_end_event_applies_output_moderation(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),

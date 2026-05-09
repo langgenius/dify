@@ -19,7 +19,7 @@ from graphon.variables.variables import StringVariable
 
 
 @pytest.fixture(autouse=True)
-def _mock_ssrf_head(monkeypatch):
+def _mock_ssrf_head(monkeypatch: pytest.MonkeyPatch):
     """Avoid any real network requests during tests.
 
     factories.file_factory.remote.get_remote_file_info() uses ssrf_proxy.head

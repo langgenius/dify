@@ -110,8 +110,7 @@ describe('ParamConfigContent', () => {
 
       const languageLabel = screen.getByText(/voice\.voiceSettings\.language/)
       expect(languageLabel)!.toBeInTheDocument()
-      const tooltip = languageLabel.parentElement as HTMLElement
-      expect(tooltip.querySelector('svg'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /voice\.voiceSettings\.resolutionTooltip/ }))!.toBeInTheDocument()
     })
 
     it('should display language listbox button', () => {

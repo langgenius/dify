@@ -198,7 +198,7 @@ class TestAppDslService:
     def test_check_version_compatibility_newer_version_returns_pending(self):
         assert _check_version_compatibility("99.0.0") == ImportStatus.PENDING
 
-    def test_check_version_compatibility_major_older_returns_pending(self, monkeypatch):
+    def test_check_version_compatibility_major_older_returns_pending(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(app_dsl_service, "CURRENT_DSL_VERSION", "1.0.0")
         assert _check_version_compatibility("0.9.9") == ImportStatus.PENDING
 
@@ -272,7 +272,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert "Missing app data" in result.error
 
-    def test_import_app_yaml_error_returns_failed(self, db_session_with_containers: Session, monkeypatch):
+    def test_import_app_yaml_error_returns_failed(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         def bad_safe_load(_content: str):
             raise yaml.YAMLError("bad")
 
@@ -287,7 +289,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert result.error.startswith("Invalid YAML format:")
 
-    def test_import_app_unexpected_error_returns_failed(self, db_session_with_containers: Session, monkeypatch):
+    def test_import_app_unexpected_error_returns_failed(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         monkeypatch.setattr(
             AppDslService,
             "_create_or_update_app",
@@ -305,7 +309,9 @@ class TestAppDslService:
 
     # ── Import: YAML URL ──────────────────────────────────────────────
 
-    def test_import_app_yaml_url_fetch_error_returns_failed(self, db_session_with_containers: Session, monkeypatch):
+    def test_import_app_yaml_url_fetch_error_returns_failed(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         monkeypatch.setattr(
             app_dsl_service.ssrf_proxy,
             "get",
@@ -321,7 +327,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert "Error fetching YAML from URL: boom" in result.error
 
-    def test_import_app_yaml_url_empty_content_returns_failed(self, db_session_with_containers: Session, monkeypatch):
+    def test_import_app_yaml_url_empty_content_returns_failed(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         response = MagicMock()
         response.content = b""
         response.raise_for_status.return_value = None
@@ -336,7 +344,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert "Empty content" in result.error
 
-    def test_import_app_yaml_url_file_too_large_returns_failed(self, db_session_with_containers: Session, monkeypatch):
+    def test_import_app_yaml_url_file_too_large_returns_failed(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         response = MagicMock()
         response.content = b"x" * (DSL_MAX_SIZE + 1)
         response.raise_for_status.return_value = None
@@ -379,7 +389,9 @@ class TestAppDslService:
         assert result.imported_dsl_version == "99.0.0"
         assert requested_urls == [yaml_url]
 
-    def test_import_app_yaml_url_github_blob_rewrites_to_raw(self, db_session_with_containers: Session, monkeypatch):
+    def test_import_app_yaml_url_github_blob_rewrites_to_raw(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         yaml_url = "https://github.com/acme/repo/blob/main/app.yml"
         raw_url = "https://raw.githubusercontent.com/acme/repo/main/app.yml"
         yaml_bytes = _pending_yaml_content()
@@ -491,7 +503,7 @@ class TestAppDslService:
 
     @pytest.mark.parametrize("has_workflow", [True, False])
     def test_import_app_legacy_versions_extract_dependencies(
-        self, db_session_with_containers: Session, monkeypatch, has_workflow: bool
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch, has_workflow: bool
     ):
         monkeypatch.setattr(
             AppDslService,
@@ -554,7 +566,9 @@ class TestAppDslService:
         assert result.status == ImportStatus.FAILED
         assert "expired" in result.error
 
-    def test_confirm_import_success_deletes_redis_key(self, db_session_with_containers: Session, monkeypatch):
+    def test_confirm_import_success_deletes_redis_key(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         import_id = str(uuid4())
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
 
@@ -614,7 +628,9 @@ class TestAppDslService:
         result = service.check_dependencies(app_model=app_model)
         assert result.leaked_dependencies == []
 
-    def test_check_dependencies_calls_analysis_service(self, db_session_with_containers: Session, monkeypatch):
+    def test_check_dependencies_calls_analysis_service(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         app_id = str(uuid4())
         pending = CheckDependenciesPendingData(dependencies=[], app_id=app_id)
         redis_client.setex(
@@ -665,7 +681,9 @@ class TestAppDslService:
         with pytest.raises(ValueError, match="loss app mode"):
             service._create_or_update_app(app=None, data={"app": {}}, account=_account_mock())
 
-    def test_create_or_update_app_existing_app_updates_fields(self, db_session_with_containers: Session, monkeypatch):
+    def test_create_or_update_app_existing_app_updates_fields(
+        self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         fixed_now = object()
         monkeypatch.setattr(app_dsl_service, "naive_utc_now", lambda: fixed_now)
 
@@ -778,8 +796,8 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing model_config"):
             service._create_or_update_app(
-                app=_app_stub(mode=AppMode.CHAT.value),
-                data={"app": {"mode": AppMode.CHAT.value}},
+                app=_app_stub(mode=AppMode.CHAT),
+                data={"app": {"mode": AppMode.CHAT}},
                 account=_account_mock(),
             )
 
@@ -794,7 +812,7 @@ class TestAppDslService:
         service._create_or_update_app(
             app=app,
             data={
-                "app": {"mode": AppMode.CHAT.value},
+                "app": {"mode": AppMode.CHAT},
                 "model_config": {"model": {"provider": "openai"}},
             },
             account=account,
@@ -807,14 +825,14 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Invalid app mode"):
             service._create_or_update_app(
-                app=_app_stub(mode=AppMode.RAG_PIPELINE.value),
-                data={"app": {"mode": AppMode.RAG_PIPELINE.value}},
+                app=_app_stub(mode=AppMode.RAG_PIPELINE),
+                data={"app": {"mode": AppMode.RAG_PIPELINE}},
                 account=_account_mock(),
             )
 
     # ── Export ─────────────────────────────────────────────────────────
 
-    def test_export_dsl_delegates_by_mode(self, monkeypatch):
+    def test_export_dsl_delegates_by_mode(self, monkeypatch: pytest.MonkeyPatch):
         workflow_calls: list[bool] = []
         model_calls: list[bool] = []
         monkeypatch.setattr(
@@ -836,14 +854,14 @@ class TestAppDslService:
         assert workflow_calls == [True]
 
         chat_app = _app_stub(
-            mode=AppMode.CHAT.value,
+            mode=AppMode.CHAT,
             icon_type="emoji",
             app_model_config=SimpleNamespace(to_dict=lambda: {"agent_mode": {"tools": []}}),
         )
         AppDslService.export_dsl(chat_app)
         assert model_calls == [True]
 
-    def test_export_dsl_preserves_icon_and_icon_type(self, monkeypatch):
+    def test_export_dsl_preserves_icon_and_icon_type(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             AppDslService,
             "_append_workflow_export_data",
@@ -1011,7 +1029,7 @@ class TestAppDslService:
 
     # ── Workflow Export Data ───────────────────────────────────────────
 
-    def test_append_workflow_export_data_filters_and_overrides(self, monkeypatch):
+    def test_append_workflow_export_data_filters_and_overrides(self, monkeypatch: pytest.MonkeyPatch):
         workflow_dict = {
             "graph": {
                 "nodes": [
@@ -1111,7 +1129,7 @@ class TestAppDslService:
         assert nodes[5]["data"]["subscription_id"] == ""
         assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
 
-    def test_append_workflow_export_data_missing_workflow_raises(self, monkeypatch):
+    def test_append_workflow_export_data_missing_workflow_raises(self, monkeypatch: pytest.MonkeyPatch):
         workflow_service = MagicMock()
         workflow_service.get_draft_workflow.return_value = None
         monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
@@ -1126,7 +1144,7 @@ class TestAppDslService:
 
     # ── Model Config Export Data ──────────────────────────────────────
 
-    def test_append_model_config_export_data_filters_credential_id(self, monkeypatch):
+    def test_append_model_config_export_data_filters_credential_id(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             AppDslService,
             "_extract_dependencies_from_model_config",
@@ -1160,7 +1178,7 @@ class TestAppDslService:
 
     # ── Dependency Extraction ─────────────────────────────────────────
 
-    def test_extract_dependencies_from_workflow_graph_covers_all_node_types(self, monkeypatch):
+    def test_extract_dependencies_from_workflow_graph_covers_all_node_types(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             app_dsl_service.DependenciesAnalysisService,
             "analyze_tool_dependency",
@@ -1230,7 +1248,7 @@ class TestAppDslService:
             "model:m4",
         ]
 
-    def test_extract_dependencies_from_workflow_graph_handles_exceptions(self, monkeypatch):
+    def test_extract_dependencies_from_workflow_graph_handles_exceptions(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             app_dsl_service.ToolNodeData,
             "model_validate",
@@ -1241,7 +1259,7 @@ class TestAppDslService:
         )
         assert deps == []
 
-    def test_extract_dependencies_from_model_config_parses_providers(self, monkeypatch):
+    def test_extract_dependencies_from_model_config_parses_providers(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             app_dsl_service.DependenciesAnalysisService,
             "analyze_model_provider_dependency",
@@ -1264,7 +1282,7 @@ class TestAppDslService:
         )
         assert deps == ["model:p1", "model:p2", "tool:t1"]
 
-    def test_extract_dependencies_from_model_config_handles_exceptions(self, monkeypatch):
+    def test_extract_dependencies_from_model_config_handles_exceptions(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             app_dsl_service.DependenciesAnalysisService,
             "analyze_model_provider_dependency",
@@ -1278,7 +1296,7 @@ class TestAppDslService:
     def test_get_leaked_dependencies_empty_returns_empty(self):
         assert AppDslService.get_leaked_dependencies(_DEFAULT_TENANT_ID, []) == []
 
-    def test_get_leaked_dependencies_delegates(self, monkeypatch):
+    def test_get_leaked_dependencies_delegates(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             app_dsl_service.DependenciesAnalysisService,
             "get_leaked_dependencies",
@@ -1289,7 +1307,7 @@ class TestAppDslService:
 
     # ── Encryption/Decryption ─────────────────────────────────────────
 
-    def test_encrypt_decrypt_dataset_id_respects_config(self, monkeypatch):
+    def test_encrypt_decrypt_dataset_id_respects_config(self, monkeypatch: pytest.MonkeyPatch):
         tenant_id = _DEFAULT_TENANT_ID
         dataset_uuid = "00000000-0000-0000-0000-000000000000"
 
@@ -1314,7 +1332,7 @@ class TestAppDslService:
         value = "00000000-0000-0000-0000-000000000000"
         assert AppDslService.decrypt_dataset_id(encrypted_data=value, tenant_id=_DEFAULT_TENANT_ID) == value
 
-    def test_decrypt_dataset_id_returns_none_on_invalid_data(self, monkeypatch):
+    def test_decrypt_dataset_id_returns_none_on_invalid_data(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             app_dsl_service.dify_config,
             "DSL_EXPORT_ENCRYPT_DATASET_ID",
@@ -1322,7 +1340,7 @@ class TestAppDslService:
         )
         assert AppDslService.decrypt_dataset_id(encrypted_data="not-base64", tenant_id=_DEFAULT_TENANT_ID) is None
 
-    def test_decrypt_dataset_id_returns_none_when_decrypted_is_not_uuid(self, monkeypatch):
+    def test_decrypt_dataset_id_returns_none_when_decrypted_is_not_uuid(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             app_dsl_service.dify_config,
             "DSL_EXPORT_ENCRYPT_DATASET_ID",

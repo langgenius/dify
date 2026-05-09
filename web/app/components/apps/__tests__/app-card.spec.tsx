@@ -296,11 +296,6 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
   }
 })
 
-// Tooltip uses portals - minimal mock preserving popup content as title attribute
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: React.ReactNode }) => React.createElement('div', { title: popupContent }, children),
-}))
-
 // AppCardTags has tag API dependencies - mock for isolated testing
 vi.mock('@/features/tag-management/components/app-card-tags', () => ({
   AppCardTags: ({ tags }: { tags?: { id: string, name: string }[] }) => {

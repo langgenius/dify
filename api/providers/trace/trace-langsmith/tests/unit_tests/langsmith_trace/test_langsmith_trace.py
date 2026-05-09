@@ -35,7 +35,7 @@ def langsmith_config():
 
 
 @pytest.fixture
-def trace_instance(langsmith_config, monkeypatch):
+def trace_instance(langsmith_config, monkeypatch: pytest.MonkeyPatch):
     # Mock LangSmith client
     mock_client = MagicMock()
     monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.Client", lambda **kwargs: mock_client)
@@ -44,7 +44,7 @@ def trace_instance(langsmith_config, monkeypatch):
     return instance
 
 
-def test_init(langsmith_config, monkeypatch):
+def test_init(langsmith_config, monkeypatch: pytest.MonkeyPatch):
     mock_client_class = MagicMock()
     monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.Client", mock_client_class)
     monkeypatch.setenv("FILES_URL", "http://test.url")
@@ -57,7 +57,7 @@ def test_init(langsmith_config, monkeypatch):
     assert instance.file_base_url == "http://test.url"
 
 
-def test_trace_dispatch(trace_instance, monkeypatch):
+def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
     methods = [
         "workflow_trace",
         "message_trace",
@@ -107,7 +107,7 @@ def test_trace_dispatch(trace_instance, monkeypatch):
     mocks["generate_name_trace"].assert_called_once_with(info)
 
 
-def test_workflow_trace(trace_instance, monkeypatch):
+def test_workflow_trace(trace_instance, monkeypatch: pytest.MonkeyPatch):
     # Setup trace info
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
@@ -223,7 +223,7 @@ def test_workflow_trace(trace_instance, monkeypatch):
     assert call_args[4].run_type == LangSmithRunType.retriever
 
 
-def test_workflow_trace_no_start_time(trace_instance, monkeypatch):
+def test_workflow_trace_no_start_time(trace_instance, monkeypatch: pytest.MonkeyPatch):
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
     workflow_data.finished_at = _dt() + timedelta(seconds=1)
@@ -266,7 +266,7 @@ def test_workflow_trace_no_start_time(trace_instance, monkeypatch):
     assert trace_instance.add_run.called
 
 
-def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
+def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     trace_info = MagicMock(spec=WorkflowTraceInfo)
     trace_info.trace_id = "trace-1"
     trace_info.message_id = None
@@ -290,7 +290,7 @@ def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
         trace_instance.workflow_trace(trace_info)
 
 
-def test_message_trace(trace_instance, monkeypatch):
+def test_message_trace(trace_instance, monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.id = "msg-1"
     message_data.from_account_id = "acc-1"
@@ -516,7 +516,7 @@ def test_update_run_error(trace_instance):
         trace_instance.update_run(update_data)
 
 
-def test_workflow_trace_usage_extraction_error(trace_instance, monkeypatch, caplog):
+def test_workflow_trace_usage_extraction_error(trace_instance, monkeypatch: pytest.MonkeyPatch, caplog):
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
     workflow_data.finished_at = _dt() + timedelta(seconds=1)

@@ -1,8 +1,8 @@
 'use client'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useClipboard } from '@/hooks/use-clipboard'
-import Tooltip from '../tooltip'
 
 type Props = {
   content: string
@@ -25,14 +25,25 @@ const CopyIcon = ({ content }: Props) => {
   const safeTooltipText = tooltipText || ''
 
   return (
-    <Tooltip
-      popupContent={safeTooltipText}
-    >
-      <div onMouseLeave={reset}>
-        {!copied
-          ? (<span className="mx-1 i-custom-vender-line-files-copy h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={handleCopy} data-testid="copy-icon" />)
-          : (<span className="mx-1 i-custom-vender-line-files-copy-check h-3.5 w-3.5 text-text-tertiary" data-testid="copied-icon" />)}
-      </div>
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <button
+            type="button"
+            aria-label={safeTooltipText}
+            className="mx-1 inline-flex h-3.5 w-3.5 cursor-pointer border-0 bg-transparent p-0 text-text-tertiary"
+            onClick={handleCopy}
+            onMouseLeave={reset}
+          >
+            {!copied
+              ? (<span aria-hidden className="i-custom-vender-line-files-copy h-3.5 w-3.5" data-testid="copy-icon" />)
+              : (<span aria-hidden className="i-custom-vender-line-files-copy-check h-3.5 w-3.5" data-testid="copied-icon" />)}
+          </button>
+        )}
+      />
+      <TooltipContent>
+        {safeTooltipText}
+      </TooltipContent>
     </Tooltip>
   )
 }

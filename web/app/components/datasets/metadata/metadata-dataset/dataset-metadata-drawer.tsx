@@ -13,6 +13,16 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerTitle,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
@@ -20,9 +30,8 @@ import { useBoolean, useHover } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Drawer from '@/app/components/base/drawer'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Tooltip from '@/app/components/base/tooltip'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
 import { getIcon } from '../utils/get-icon'
 import Field from './field'
@@ -176,101 +185,123 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
   return (
     <Drawer
-      isOpen={true}
-      onClose={onClose}
-      showClose
-      title={t('metadata.metadata', { ns: 'dataset' })}
-      footer={null}
-      panelClassName="px-4 block max-w-[420px]! my-2 rounded-l-2xl"
+      open
+      modal
+      swipeDirection="right"
+      onOpenChange={(open) => {
+        if (!open)
+          onClose()
+      }}
     >
-      <div className="h-full overflow-y-auto">
-        <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
-        <CreateModal
-          open={open}
-          setOpen={setOpen}
-          trigger={(
-            <Button variant="primary" className="mt-3">
-              <RiAddLine className="mr-1" />
-              {t(`${i18nPrefix}.addMetaData`, { ns: 'dataset' })}
-            </Button>
-          )}
-          hasBack
-          onSave={handleAdd}
-        />
-
-        <div className="mt-3 space-y-1">
-          {userMetadata.map(payload => (
-            <Item
-              key={payload.id}
-              payload={payload}
-              onRename={handleRename(payload)}
-              onDelete={handleDelete(payload)}
-            />
-          ))}
-        </div>
-
-        <div className="mt-3 flex h-6 items-center">
-          <Switch
-            checked={isBuiltInEnabled}
-            onCheckedChange={onIsBuiltInEnabledChange}
-          />
-          <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
-          <Tooltip popupContent={<div className="max-w-[100px]">{t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}</div>} />
-        </div>
-
-        <div className="mt-1 space-y-1">
-          {builtInMetadata.map(payload => (
-            <Item
-              key={payload.name}
-              readonly
-              disabled={!isBuiltInEnabled}
-              payload={payload as MetadataItemWithValueLength}
-            />
-          ))}
-        </div>
-
-        {isShowRenameModal && (
-          <Dialog
-            open
-            onOpenChange={(open) => {
-              if (!open)
-                setIsShowRenameModal(false)
-            }}
-          >
-            <DialogContent className="overflow-hidden! border-none text-left align-middle">
-              <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                {t(`${i18nPrefix}.rename`, { ns: 'dataset' })}
-              </DialogTitle>
-
-              <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })} className="mt-4">
-                <Input
-                  value={templeName}
-                  onChange={e => setTempleName(e.target.value)}
-                  placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
+      <DrawerPortal>
+        <DrawerBackdrop />
+        <DrawerViewport>
+          <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[420px]">
+            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+              <div className="flex shrink-0 justify-between px-4 pt-6 pb-4">
+                <DrawerTitle className="text-lg leading-6 font-medium text-text-primary">
+                  {t('metadata.metadata', { ns: 'dataset' })}
+                </DrawerTitle>
+                <DrawerCloseButton
+                  aria-label={t('operation.close', { ns: 'common' })}
+                  className="h-6 w-6 rounded-md"
+                  data-testid="close-icon"
                 />
-              </Field>
-              <div className="mt-4 flex justify-end">
-                <Button
-                  className="mr-2"
-                  onClick={() => {
-                    setIsShowRenameModal(false)
-                    setTempleName(currPayload!.name)
-                  }}
-                >
-                  {t('operation.cancel', { ns: 'common' })}
-                </Button>
-                <Button
-                  onClick={handleRenamed}
-                  variant="primary"
-                  disabled={!templeName}
-                >
-                  {t('operation.save', { ns: 'common' })}
-                </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+                <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
+                <CreateModal
+                  open={open}
+                  setOpen={setOpen}
+                  trigger={(
+                    <Button variant="primary" className="mt-3">
+                      <RiAddLine className="mr-1" />
+                      {t(`${i18nPrefix}.addMetaData`, { ns: 'dataset' })}
+                    </Button>
+                  )}
+                  hasBack
+                  onSave={handleAdd}
+                />
+
+                <div className="mt-3 space-y-1">
+                  {userMetadata.map(payload => (
+                    <Item
+                      key={payload.id}
+                      payload={payload}
+                      onRename={handleRename(payload)}
+                      onDelete={handleDelete(payload)}
+                    />
+                  ))}
+                </div>
+
+                <div className="mt-3 flex h-6 items-center">
+                  <Switch
+                    checked={isBuiltInEnabled}
+                    onCheckedChange={onIsBuiltInEnabledChange}
+                  />
+                  <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
+                  <Infotip aria-label={t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })} popupClassName="max-w-[100px]">
+                    {t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}
+                  </Infotip>
+                </div>
+
+                <div className="mt-1 space-y-1">
+                  {builtInMetadata.map(payload => (
+                    <Item
+                      key={payload.name}
+                      readonly
+                      disabled={!isBuiltInEnabled}
+                      payload={payload as MetadataItemWithValueLength}
+                    />
+                  ))}
+                </div>
+
+                {isShowRenameModal && (
+                  <Dialog
+                    open
+                    onOpenChange={(open) => {
+                      if (!open)
+                        setIsShowRenameModal(false)
+                    }}
+                  >
+                    <DialogContent className="overflow-hidden! border-none text-left align-middle">
+                      <DialogTitle className="title-2xl-semi-bold text-text-primary">
+                        {t(`${i18nPrefix}.rename`, { ns: 'dataset' })}
+                      </DialogTitle>
+
+                      <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })} className="mt-4">
+                        <Input
+                          value={templeName}
+                          onChange={e => setTempleName(e.target.value)}
+                          placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
+                        />
+                      </Field>
+                      <div className="mt-4 flex justify-end">
+                        <Button
+                          className="mr-2"
+                          onClick={() => {
+                            setIsShowRenameModal(false)
+                            setTempleName(currPayload!.name)
+                          }}
+                        >
+                          {t('operation.cancel', { ns: 'common' })}
+                        </Button>
+                        <Button
+                          onClick={handleRenamed}
+                          variant="primary"
+                          disabled={!templeName}
+                        >
+                          {t('operation.save', { ns: 'common' })}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+            </DrawerContent>
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
     </Drawer>
   )
 }

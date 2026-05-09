@@ -1,3 +1,5 @@
+from pytest_mock import MockerFixture
+
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
 from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 from core.workflow.nodes.datasource.entities import DatasourceNodeData
@@ -44,7 +46,7 @@ class _GP:
     call_depth = 0
 
 
-def test_node_integration_minimal_stream(mocker):
+def test_node_integration_minimal_stream(mocker: MockerFixture):
     sys_d = {
         "sys": {
             "datasource_type": "online_document",

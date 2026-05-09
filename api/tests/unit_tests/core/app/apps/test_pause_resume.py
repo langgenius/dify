@@ -3,6 +3,8 @@ import time
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
+from pytest_mock import MockerFixture
+
 import graphon.nodes.human_input.entities  # noqa: F401
 from core.app.apps.advanced_chat import app_generator as adv_app_gen_module
 from core.app.apps.workflow import app_generator as wf_app_gen_module
@@ -101,7 +103,7 @@ class _StubToolNode(Node[_StubToolNodeData]):
         yield self._convert_node_run_result_to_graph_node_event(result)
 
 
-def _patch_tool_node(mocker):
+def _patch_tool_node(mocker: MockerFixture):
     original_resolve_node_class = node_factory_module.resolve_workflow_node_class
 
     def _patched_resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
@@ -196,7 +198,7 @@ def _node_successes(events: list[GraphEngineEvent]) -> list[str]:
     return [evt.node_id for evt in events if isinstance(evt, NodeRunSucceededEvent)]
 
 
-def test_workflow_app_pause_resume_matches_baseline(mocker):
+def test_workflow_app_pause_resume_matches_baseline(mocker: MockerFixture):
     _patch_tool_node(mocker)
 
     baseline_state = _build_runtime_state("baseline")
@@ -236,7 +238,7 @@ def test_workflow_app_pause_resume_matches_baseline(mocker):
     assert resumed_state.outputs == baseline_outputs
 
 
-def test_advanced_chat_pause_resume_matches_baseline(mocker):
+def test_advanced_chat_pause_resume_matches_baseline(mocker: MockerFixture):
     _patch_tool_node(mocker)
 
     baseline_state = _build_runtime_state("adv-baseline")

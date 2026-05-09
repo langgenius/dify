@@ -2,6 +2,8 @@ import time
 import uuid
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.node_factory import DifyNodeFactory
@@ -71,7 +73,7 @@ def init_tool_node(config: dict):
     return node
 
 
-def test_tool_variable_invoke(monkeypatch):
+def test_tool_variable_invoke(monkeypatch: pytest.MonkeyPatch):
     node = init_tool_node(
         config={
             "id": "1",
@@ -106,7 +108,7 @@ def test_tool_variable_invoke(monkeypatch):
                 assert item.node_run_result.outputs.get("text") is not None
 
 
-def test_tool_mixed_invoke(monkeypatch):
+def test_tool_mixed_invoke(monkeypatch: pytest.MonkeyPatch):
     node = init_tool_node(
         config={
             "id": "1",

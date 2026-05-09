@@ -1,5 +1,6 @@
 import type { ModelItem, ModelProvider } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useQueryClient } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
@@ -7,7 +8,6 @@ import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import Tooltip from '@/app/components/base/tooltip'
 import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
@@ -102,14 +102,12 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
         {
           model.deprecated
             ? (
-                <Tooltip
-                  popupContent={
-                    <span className="font-semibold">{t('modelProvider.modelHasBeenDeprecated', { ns: 'common' })}</span>
-                  }
-                  offset={{ mainAxis: 4 }}
-                >
-                  <Switch checked={false} disabled size="md" />
-                </Tooltip>
+                <Popover>
+                  <PopoverTrigger nativeButton={false} openOnHover render={<span><Switch checked={false} disabled size="md" /></span>} />
+                  <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
+                    {t('modelProvider.modelHasBeenDeprecated', { ns: 'common' })}
+                  </PopoverContent>
+                </Popover>
               )
             : (isCurrentWorkspaceManager && (
                 <Switch

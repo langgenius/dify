@@ -2,9 +2,9 @@ import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { NodeProps } from 'reactflow'
 import type { QuestionClassifierNodeType } from './types'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -47,15 +47,18 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
       </div>
       {shouldShowTooltip
         ? (
-            <Tooltip
-              popupContent={(
-                <div className="max-w-[300px] wrap-break-word">
-                  <ReadonlyInputWithSelectVar value={topic.name} nodeId={nodeId} />
-                </div>
-              )}
-            >
-              {content}
-            </Tooltip>
+            <Popover>
+              <PopoverTrigger
+                openOnHover
+                aria-label={topic.name}
+                className="w-full border-0 bg-transparent p-0 text-left"
+              >
+                {content}
+              </PopoverTrigger>
+              <PopoverContent popupClassName="max-w-[300px] px-3 py-2 system-xs-regular wrap-break-word text-text-tertiary">
+                <ReadonlyInputWithSelectVar value={topic.name} nodeId={nodeId} />
+              </PopoverContent>
+            </Popover>
           )
         : content}
     </div>

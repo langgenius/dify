@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -60,7 +61,7 @@ def metadata_id():
 
 
 @pytest.fixture(autouse=True)
-def bypass_decorators(mocker):
+def bypass_decorators(mocker: MockerFixture):
     """Bypass setup/login/license decorators."""
     mocker.patch(
         "controllers.console.datasets.metadata.setup_required",

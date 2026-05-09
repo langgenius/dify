@@ -182,7 +182,7 @@ class TestRetrievalServiceInternals:
         app.app_context.return_value.__exit__.return_value = False
         return app
 
-    def test_retrieve_with_attachment_ids_only(self, monkeypatch, internal_dataset):
+    def test_retrieve_with_attachment_ids_only(self, monkeypatch: pytest.MonkeyPatch, internal_dataset):
         with (
             patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", return_value=internal_dataset),
             patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve") as mock_retrieve,
@@ -699,7 +699,9 @@ class TestRetrievalServiceInternals:
 
         assert RetrievalService.format_retrieval_documents(documents) == []
 
-    def test_format_retrieval_documents_with_parent_child_summary_and_attachments(self, monkeypatch):
+    def test_format_retrieval_documents_with_parent_child_summary_and_attachments(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         dataset_doc_parent = SimpleNamespace(
             id="doc-parent",
             doc_form=IndexStructureType.PARENT_CHILD_INDEX,
@@ -877,7 +879,7 @@ class TestRetrievalServiceInternals:
         assert result_by_segment_id["segment-parent-summary"].summary == "summary for parent"
         assert result_by_segment_id["segment-parent-summary"].child_chunks == []
 
-    def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(self, monkeypatch):
+    def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(self, monkeypatch: pytest.MonkeyPatch):
         rollback = Mock()
         monkeypatch.setattr(retrieval_service_module.db.session, "rollback", rollback)
         monkeypatch.setattr(retrieval_service_module.db.session, "scalars", Mock(side_effect=RuntimeError("db error")))
@@ -936,7 +938,7 @@ class TestRetrievalServiceInternals:
         future_ok.cancel.assert_called()
 
     def test_retrieve_internal_raises_value_error_when_exceptions_exist(
-        self, monkeypatch, internal_dataset, internal_flask_app
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app
     ):
         executor = _ImmediateExecutor()
         monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
@@ -958,7 +960,9 @@ class TestRetrievalServiceInternals:
                     query="query",
                 )
 
-    def test_retrieve_internal_hybrid_weighted_attachment_flow(self, monkeypatch, internal_dataset, internal_flask_app):
+    def test_retrieve_internal_hybrid_weighted_attachment_flow(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app
+    ):
         executor = _ImmediateExecutor()
         monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
         monkeypatch.setattr(

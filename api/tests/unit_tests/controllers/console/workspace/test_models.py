@@ -32,7 +32,7 @@ class TestDefaultModelApi:
         with (
             app.test_request_context(
                 "/",
-                query_string={"model_type": ModelType.LLM.value},
+                query_string={"model_type": ModelType.LLM},
             ),
             patch(
                 "controllers.console.workspace.models.current_account_with_tenant",
@@ -53,7 +53,7 @@ class TestDefaultModelApi:
         payload = {
             "model_settings": [
                 {
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                     "provider": "openai",
                     "model": "gpt-4",
                 }
@@ -77,7 +77,7 @@ class TestDefaultModelApi:
         method = unwrap(api.get)
 
         with (
-            app.test_request_context("/", query_string={"model_type": ModelType.LLM.value}),
+            app.test_request_context("/", query_string={"model_type": ModelType.LLM}),
             patch("controllers.console.workspace.models.current_account_with_tenant", return_value=(MagicMock(), "t1")),
             patch("controllers.console.workspace.models.ModelProviderService") as service,
         ):
@@ -113,7 +113,7 @@ class TestModelProviderModelApi:
 
         payload = {
             "model": "gpt-4",
-            "model_type": ModelType.LLM.value,
+            "model_type": ModelType.LLM,
             "load_balancing": {
                 "configs": [{"weight": 1}],
                 "enabled": True,
@@ -139,7 +139,7 @@ class TestModelProviderModelApi:
 
         payload = {
             "model": "gpt-4",
-            "model_type": ModelType.LLM.value,
+            "model_type": ModelType.LLM,
         }
 
         with (
@@ -180,7 +180,7 @@ class TestModelProviderModelCredentialApi:
                 "/",
                 query_string={
                     "model": "gpt-4",
-                    "model_type": ModelType.LLM.value,
+                    "model_type": ModelType.LLM,
                 },
             ),
             patch(
@@ -208,7 +208,7 @@ class TestModelProviderModelCredentialApi:
 
         payload = {
             "model": "gpt-4",
-            "model_type": ModelType.LLM.value,
+            "model_type": ModelType.LLM,
             "credentials": {"key": "val"},
         }
 
@@ -229,7 +229,7 @@ class TestModelProviderModelCredentialApi:
         method = unwrap(api.get)
 
         with (
-            app.test_request_context("/", query_string={"model": "gpt", "model_type": ModelType.LLM.value}),
+            app.test_request_context("/", query_string={"model": "gpt", "model_type": ModelType.LLM}),
             patch("controllers.console.workspace.models.current_account_with_tenant", return_value=(MagicMock(), "t1")),
             patch("controllers.console.workspace.models.ModelProviderService") as service,
             patch("controllers.console.workspace.models.ModelLoadBalancingService") as lb,
@@ -248,7 +248,7 @@ class TestModelProviderModelCredentialApi:
 
         payload = {
             "model": "gpt",
-            "model_type": ModelType.LLM.value,
+            "model_type": ModelType.LLM,
             "credential_id": "123e4567-e89b-12d3-a456-426614174000",
         }
 
@@ -269,7 +269,7 @@ class TestModelProviderModelCredentialSwitchApi:
 
         payload = {
             "model": "gpt-4",
-            "model_type": ModelType.LLM.value,
+            "model_type": ModelType.LLM,
             "credential_id": "abc",
         }
 
@@ -293,7 +293,7 @@ class TestModelEnableDisableApis:
 
         payload = {
             "model": "gpt-4",
-            "model_type": ModelType.LLM.value,
+            "model_type": ModelType.LLM,
         }
 
         with (
@@ -314,7 +314,7 @@ class TestModelEnableDisableApis:
 
         payload = {
             "model": "gpt-4",
-            "model_type": ModelType.LLM.value,
+            "model_type": ModelType.LLM,
         }
 
         with (
@@ -337,7 +337,7 @@ class TestModelProviderModelValidateApi:
 
         payload = {
             "model": "gpt-4",
-            "model_type": ModelType.LLM.value,
+            "model_type": ModelType.LLM,
             "credentials": {"key": "val"},
         }
 
@@ -360,7 +360,7 @@ class TestModelProviderModelValidateApi:
 
         payload = {
             "model": model_name,
-            "model_type": ModelType.LLM.value,
+            "model_type": ModelType.LLM,
             "credentials": {},
         }
 
@@ -412,7 +412,7 @@ class TestParameterAndAvailableModels:
         ):
             service_mock.return_value.get_models_by_model_type.return_value = []
 
-            result = method(api, ModelType.LLM.value)
+            result = method(api, ModelType.LLM)
 
         assert "data" in result
 
@@ -442,6 +442,6 @@ class TestParameterAndAvailableModels:
         ):
             service.return_value.get_models_by_model_type.return_value = []
 
-            result = method(api, ModelType.LLM.value)
+            result = method(api, ModelType.LLM)
 
         assert result["data"] == []

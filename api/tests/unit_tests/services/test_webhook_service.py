@@ -140,7 +140,7 @@ class TestWebhookServiceUnit:
             assert args[1] == "text/plain"
             assert args[2] is webhook_trigger
 
-    def test_detect_binary_mimetype_uses_magic(self, monkeypatch):
+    def test_detect_binary_mimetype_uses_magic(self, monkeypatch: pytest.MonkeyPatch):
         """python-magic output should be used when available."""
         fake_magic = MagicMock()
         fake_magic.from_buffer.return_value = "image/png"
@@ -151,7 +151,7 @@ class TestWebhookServiceUnit:
         assert result == "image/png"
         fake_magic.from_buffer.assert_called_once()
 
-    def test_detect_binary_mimetype_fallback_without_magic(self, monkeypatch):
+    def test_detect_binary_mimetype_fallback_without_magic(self, monkeypatch: pytest.MonkeyPatch):
         """Fallback MIME type should be used when python-magic is unavailable."""
         monkeypatch.setattr("services.trigger.webhook_service.magic", None)
 
@@ -159,7 +159,7 @@ class TestWebhookServiceUnit:
 
         assert result == "application/octet-stream"
 
-    def test_detect_binary_mimetype_handles_magic_exception(self, monkeypatch):
+    def test_detect_binary_mimetype_handles_magic_exception(self, monkeypatch: pytest.MonkeyPatch):
         """Fallback MIME type should be used when python-magic raises an exception."""
         try:
             import magic as real_magic

@@ -3,6 +3,7 @@ import queue
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.base.tts.app_generator_tts_publisher import (
     AppGeneratorTTSPublisher,
@@ -17,7 +18,7 @@ from core.base.tts.app_generator_tts_publisher import (
 
 
 @pytest.fixture
-def mock_model_instance(mocker):
+def mock_model_instance(mocker: MockerFixture):
     model = mocker.MagicMock()
     model.invoke_tts.return_value = [b"audio1", b"audio2"]
     model.get_tts_voices.return_value = [{"value": "voice1"}, {"value": "voice2"}]
@@ -33,7 +34,7 @@ def mock_model_manager(mocker, mock_model_instance):
 
 
 @pytest.fixture(autouse=True)
-def patch_threads(mocker):
+def patch_threads(mocker: MockerFixture):
     """Prevent real threads from starting during tests"""
     mocker.patch("threading.Thread.start", return_value=None)
 
@@ -114,7 +115,7 @@ class TestProcessFuture:
         finish = audio_queue.get()
         assert finish.status == "finish"
 
-    def test_process_future_exception(self, mocker):
+    def test_process_future_exception(self, mocker: MockerFixture):
         future_queue = queue.Queue()
         audio_queue = queue.Queue()
 
@@ -222,7 +223,7 @@ class TestAppGeneratorTTSPublisher:
 
         publisher.executor.submit.assert_not_called()
 
-    def test_runtime_sentence_threshold_triggers_submit(self, mock_model_manager, mocker):
+    def test_runtime_sentence_threshold_triggers_submit(self, mock_model_manager, mocker: MockerFixture):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
 
@@ -297,7 +298,7 @@ class TestAppGeneratorTTSPublisher:
 
         publisher.executor.submit.assert_not_called()
 
-    def test_runtime_handles_agent_message_event_list_content(self, mock_model_manager, mocker):
+    def test_runtime_handles_agent_message_event_list_content(self, mock_model_manager, mocker: MockerFixture):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
 
@@ -332,7 +333,7 @@ class TestAppGeneratorTTSPublisher:
 
         assert publisher.msg_text == "Hello "
 
-    def test_runtime_handles_agent_message_event_empty_content(self, mock_model_manager, mocker):
+    def test_runtime_handles_agent_message_event_empty_content(self, mock_model_manager, mocker: MockerFixture):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
 
@@ -358,7 +359,7 @@ class TestAppGeneratorTTSPublisher:
 
         assert publisher.msg_text == ""
 
-    def test_runtime_resets_msg_text_when_text_tmp_not_str(self, mock_model_manager, mocker):
+    def test_runtime_resets_msg_text_when_text_tmp_not_str(self, mock_model_manager, mocker: MockerFixture):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
 

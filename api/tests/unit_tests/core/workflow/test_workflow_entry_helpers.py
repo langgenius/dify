@@ -603,7 +603,7 @@ class TestWorkflowEntryHelpers:
                 user_inputs={},
             )
 
-    def test_run_free_node_rejects_missing_node_class(self, monkeypatch):
+    def test_run_free_node_rejects_missing_node_class(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             workflow_entry,
             "resolve_workflow_node_class",
@@ -619,7 +619,9 @@ class TestWorkflowEntryHelpers:
                 user_inputs={},
             )
 
-    def test_run_free_node_uses_empty_mapping_when_selector_extraction_is_not_implemented(self, monkeypatch):
+    def test_run_free_node_uses_empty_mapping_when_selector_extraction_is_not_implemented(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         class FakeNodeClass:
             @staticmethod
             def extract_variable_selector_to_variable_mapping(**_kwargs):
@@ -707,7 +709,7 @@ class TestWorkflowEntryHelpers:
             tenant_id="tenant-id",
         )
 
-    def test_run_free_node_wraps_execution_failures(self, monkeypatch):
+    def test_run_free_node_wraps_execution_failures(self, monkeypatch: pytest.MonkeyPatch):
         class FakeNodeClass:
             @staticmethod
             def extract_variable_selector_to_variable_mapping(**_kwargs):

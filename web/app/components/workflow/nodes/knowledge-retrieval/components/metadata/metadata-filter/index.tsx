@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
@@ -46,13 +46,9 @@ const MetadataFilter = ({
             <div className="mr-0.5 system-sm-semibold-uppercase text-text-secondary">
               {t('nodes.knowledgeRetrieval.metadata.title', { ns: 'workflow' })}
             </div>
-            <Tooltip
-              popupContent={(
-                <div className="w-[200px]">
-                  {t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
-                </div>
-              )}
-            />
+            <Infotip aria-label={t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })} popupClassName="w-[200px]">
+              {t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
+            </Infotip>
             {collapseIcon}
           </div>
           <div className="flex items-center">
