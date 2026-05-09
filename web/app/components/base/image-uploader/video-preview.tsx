@@ -23,14 +23,13 @@ const VideoPreview: FC<VideoPreviewProps> = ({
       <DialogContent
         className="inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
         backdropClassName="bg-transparent!"
-        popupProps={{
-          'aria-label': title,
-          'data-testid': 'video-preview',
-          'onClick': e => e.stopPropagation(),
-          'tabIndex': -1,
-        }}
       >
-        <div>
+        <div
+          aria-label={title}
+          data-testid="video-preview"
+          tabIndex={-1}
+          onClick={e => e.stopPropagation()}
+        >
           <video controls title={title} autoPlay={false} preload="metadata" data-testid="video-element">
             <source
               type="video/mp4"

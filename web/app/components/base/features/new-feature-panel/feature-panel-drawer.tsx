@@ -31,7 +31,6 @@ export function FeaturePanelDrawer({
     <Drawer
       open={show}
       swipeDirection="right"
-      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open)
           close()

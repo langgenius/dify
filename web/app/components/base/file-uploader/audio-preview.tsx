@@ -23,13 +23,12 @@ const AudioPreview: FC<AudioPreviewProps> = ({
       <DialogContent
         className="inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
         backdropClassName="bg-transparent!"
-        popupProps={{
-          'aria-label': title,
-          'onClick': e => e.stopPropagation(),
-          'tabIndex': -1,
-        }}
       >
-        <div>
+        <div
+          aria-label={title}
+          tabIndex={-1}
+          onClick={e => e.stopPropagation()}
+        >
           <audio controls title={title} autoPlay={false} preload="metadata">
             <source
               type="audio/mpeg"

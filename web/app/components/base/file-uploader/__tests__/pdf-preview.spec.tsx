@@ -129,14 +129,12 @@ describe('PdfPreview', () => {
     expect(mockOnCancel).toHaveBeenCalled()
   })
 
-  it('should render the overlay and stop click propagation', () => {
+  it('should render the overlay and keep backdrop clicks from closing', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
-    const overlay = document.querySelector('[tabindex="-1"]')
+    const overlay = screen.getByRole('dialog')
     expect(overlay).toBeInTheDocument()
-    const event = new MouseEvent('click', { bubbles: true })
-    const stopPropagation = vi.spyOn(event, 'stopPropagation')
-    overlay!.dispatchEvent(event)
-    expect(stopPropagation).toHaveBeenCalled()
+    fireEvent.click(overlay)
+    expect(mockOnCancel).not.toHaveBeenCalled()
   })
 })

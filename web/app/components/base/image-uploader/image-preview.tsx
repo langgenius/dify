@@ -184,29 +184,31 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       <DialogContent
         className="image-preview-container inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
         backdropClassName="bg-transparent!"
-        popupProps={{
-          'aria-label': title,
-          'data-testid': 'image-preview-container',
-          'onClick': e => e.stopPropagation(),
-          'onWheel': handleWheel,
-          'onMouseDown': handleMouseDown,
-          'onMouseMove': handleMouseMove,
-          'onMouseUp': handleMouseUp,
-          'style': { cursor: scale > 1 ? 'move' : 'default' },
-          'tabIndex': -1,
-        }}
       >
-        <img
-          ref={imgRef}
-          alt={title}
-          src={isBase64(url) ? `data:image/png;base64,${url}` : url}
-          className="max-h-full max-w-full"
-          style={{
-            transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
-            transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
-          }}
-          data-testid="image-preview-image"
-        />
+        <div
+          aria-label={title}
+          data-testid="image-preview-container"
+          tabIndex={-1}
+          className="flex h-full w-full items-center justify-center"
+          onClick={e => e.stopPropagation()}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          style={{ cursor: scale > 1 ? 'move' : 'default' }}
+        >
+          <img
+            ref={imgRef}
+            alt={title}
+            src={isBase64(url) ? `data:image/png;base64,${url}` : url}
+            className="max-h-full max-w-full"
+            style={{
+              transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
+              transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
+            }}
+            data-testid="image-preview-image"
+          />
+        </div>
         <Tooltip>
           <TooltipTrigger
             render={(

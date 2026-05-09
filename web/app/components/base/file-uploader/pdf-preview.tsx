@@ -56,13 +56,11 @@ const PdfPreview: FC<PdfPreviewProps> = ({
       <DialogContent
         className={`inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 shadow-none! ${!isMobile ? 'p-8!' : 'p-0!'}`}
         backdropClassName="bg-transparent!"
-        popupProps={{
-          'aria-label': url,
-          'onClick': e => e.stopPropagation(),
-          'tabIndex': -1,
-        }}
       >
         <div
+          aria-label={url}
+          tabIndex={-1}
+          onClick={e => e.stopPropagation()}
           className="h-[95vh] max-h-full w-screen max-w-full overflow-hidden"
           style={{ transform: `scale(${scale})`, transformOrigin: 'center', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
