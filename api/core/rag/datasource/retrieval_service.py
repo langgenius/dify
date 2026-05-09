@@ -22,7 +22,7 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.tools.signature import sign_upload_file
+from core.tools.signature import sign_upload_file_preview_url
 from dify_graph.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.dataset import (
@@ -864,7 +864,7 @@ class RetrievalService:
                     "name": upload_file.name,
                     "extension": "." + upload_file.extension,
                     "mime_type": upload_file.mime_type,
-                    "source_url": sign_upload_file(upload_file.id, upload_file.extension),
+                    "source_url": sign_upload_file_preview_url(upload_file.id, upload_file.extension),
                     "size": upload_file.size,
                 }
                 return {"attachment_info": attachment_info, "segment_id": attachment_binding.segment_id}
@@ -893,7 +893,7 @@ class RetrievalService:
                         "name": upload_file.name,
                         "extension": "." + upload_file.extension,
                         "mime_type": upload_file.mime_type,
-                        "source_url": sign_upload_file(upload_file.id, upload_file.extension),
+                        "source_url": sign_upload_file_preview_url(upload_file.id, upload_file.extension),
                         "size": upload_file.size,
                     }
                     if attachment_binding:

@@ -4410,7 +4410,7 @@ class TestRetrieveCoverage:
                 "core.rag.retrieval.dataset_retrieval.RetrievalService.format_retrieval_documents",
                 return_value=[record],
             ),
-            patch("core.rag.retrieval.dataset_retrieval.sign_upload_file", return_value="https://signed"),
+            patch("core.rag.retrieval.dataset_retrieval.sign_upload_file_preview_url", return_value="https://signed"),
             patch("core.rag.retrieval.dataset_retrieval.db.session.execute") as mock_execute,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = Mock()
