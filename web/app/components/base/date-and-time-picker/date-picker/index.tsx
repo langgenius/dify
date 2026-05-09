@@ -31,7 +31,6 @@ const DatePicker = ({
   needTimePicker = true,
   renderTrigger,
   triggerWrapClassName,
-  popupZIndexClassname,
   noConfirm,
   getIsDateDisabled,
 }: DatePickerProps) => {
@@ -236,7 +235,6 @@ const DatePicker = ({
       <PopoverContent
         placement="bottom-end"
         sideOffset={0}
-        className={popupZIndexClassname}
         popupClassName="border-none bg-transparent shadow-none"
       >
         <div className="mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
