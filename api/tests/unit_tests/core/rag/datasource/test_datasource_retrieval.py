@@ -1038,7 +1038,7 @@ class TestRetrievalServiceInternals:
         assert any(doc.metadata["doc_id"] == "processed-doc" for doc in all_documents)
         processor_instance.invoke.assert_called_once()
 
-    @patch("core.rag.datasource.retrieval_service.sign_upload_file", return_value="signed://file")
+    @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
     def test_get_segment_attachment_info_success(self, mock_sign):
         upload_file = SimpleNamespace(
             id="upload-1",
@@ -1118,7 +1118,7 @@ class TestRetrievalServiceInternals:
 
         assert result == []
 
-    @patch("core.rag.datasource.retrieval_service.sign_upload_file", return_value="signed://file")
+    @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
     def test_get_segment_attachment_infos_success(self, mock_sign):
         upload_file_1 = SimpleNamespace(
             id="upload-1",
