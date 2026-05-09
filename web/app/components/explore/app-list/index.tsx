@@ -17,6 +17,7 @@ import Loading from '@/app/components/base/loading'
 import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import Category from '@/app/components/explore/category'
+import ContinueWork from '@/app/components/explore/continue-work'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { useAppContext } from '@/context/app-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
@@ -191,6 +192,7 @@ const Apps = ({
             <Banner />
           </div>
         )}
+        <ContinueWork className="mt-10" />
 
         <div className="sticky top-0 z-10 bg-background-body">
           <div className={cn(

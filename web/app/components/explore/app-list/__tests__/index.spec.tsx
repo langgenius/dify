@@ -47,6 +47,13 @@ vi.mock('@/hooks/use-import-dsl', () => ({
     isFetching: false,
   }),
 }))
+
+vi.mock('@/hooks/use-format-time-from-now', () => ({
+  useFormatTimeFromNow: () => ({
+    formatTimeFromNow: () => '3 minutes ago',
+  }),
+}))
+
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
@@ -192,6 +199,22 @@ describe('AppList', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
+    })
+
+    it('should render continue work placeholders', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+
+      renderAppList()
+
+      expect(screen.getByRole('heading', { name: 'explore.continueWork.title' })).toBeInTheDocument()
+      expect(screen.getByText('Automated Email Reply')).toBeInTheDocument()
+      expect(screen.getByText('Customer Feedback Summary')).toBeInTheDocument()
+      expect(screen.getAllByText('Evan')).toHaveLength(5)
+      expect(screen.getAllByText('explore.continueWork.editedAt:{"time":"3 minutes ago"}')).toHaveLength(5)
+      expect(screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' })).toHaveAttribute('href', '/apps')
     })
   })
 
