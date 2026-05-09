@@ -1,3 +1,4 @@
+from uuid import UUID
 import logging
 import re
 import uuid
@@ -840,10 +841,10 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    def get(self, app_id: UUID):
         """Get app trace"""
         with session_factory.create_session() as session:
-            app_trace_config = OpsTraceManager.get_app_tracing_config(app_id, session)
+            app_trace_config = OpsTraceManager.get_app_tracing_config(str(app_id), session)
 
         return app_trace_config
 
@@ -857,12 +858,12 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id):
+    def post(self, app_id: UUID):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 
         OpsTraceManager.update_app_tracing_config(
-            app_id=app_id,
+            app_id=str(app_id),
             enabled=args.enabled,
             tracing_provider=args.tracing_provider,
         )

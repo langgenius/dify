@@ -1,3 +1,4 @@
+from uuid import UUID
 from typing import Any
 
 from flask import request
@@ -99,6 +100,5 @@ class RecommendedAppListApi(Resource):
 class RecommendedAppApi(Resource):
     @login_required
     @account_initialization_required
-    def get(self, app_id):
-        app_id = str(app_id)
-        return RecommendedAppService.get_recommend_app_detail(app_id)
+    def get(self, app_id: UUID):
+        return RecommendedAppService.get_recommend_app_detail(str(app_id))

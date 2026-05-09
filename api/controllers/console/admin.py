@@ -1,3 +1,4 @@
+from uuid import UUID
 import csv
 import io
 from collections.abc import Callable
@@ -191,7 +192,7 @@ class InsertExploreAppApi(Resource):
     @console_ns.response(204, "App removed successfully")
     @only_edition_cloud
     @admin_required
-    def delete(self, app_id):
+    def delete(self, app_id: UUID):
         with session_factory.create_session() as session:
             recommended_app = session.execute(
                 select(RecommendedApp).where(RecommendedApp.app_id == str(app_id))

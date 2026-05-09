@@ -1,3 +1,4 @@
+from uuid import UUID
 from typing import Any
 
 from flask import request
@@ -49,11 +50,11 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    def get(self, app_id: UUID):
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
-            trace_config = OpsService.get_tracing_app_config(app_id=app_id, tracing_provider=args.tracing_provider)
+            trace_config = OpsService.get_tracing_app_config(app_id=str(app_id), tracing_provider=args.tracing_provider)
             if not trace_config:
                 return {"has_not_configured": True}
             return trace_config
@@ -71,13 +72,13 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
+    def post(self, app_id: UUID):
         """Create a new trace app configuration"""
         args = TraceConfigPayload.model_validate(console_ns.payload)
 
         try:
             result = OpsService.create_tracing_app_config(
-                app_id=app_id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
+                app_id=str(app_id), tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
             )
             if not result:
                 raise TracingConfigIsExist()
@@ -96,13 +97,13 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, app_id):
+    def patch(self, app_id: UUID):
         """Update an existing trace app configuration"""
         args = TraceConfigPayload.model_validate(console_ns.payload)
 
         try:
             result = OpsService.update_tracing_app_config(
-                app_id=app_id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
+                app_id=str(app_id), tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
             )
             if not result:
                 raise TracingConfigNotExist()
@@ -119,12 +120,12 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, app_id):
+    def delete(self, app_id: UUID):
         """Delete an existing trace app configuration"""
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
-            result = OpsService.delete_tracing_app_config(app_id=app_id, tracing_provider=args.tracing_provider)
+            result = OpsService.delete_tracing_app_config(app_id=str(app_id), tracing_provider=args.tracing_provider)
             if not result:
                 raise TracingConfigNotExist()
             return {"result": "success"}, 204
