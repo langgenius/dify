@@ -1,5 +1,6 @@
-from unittest.mock import MagicMock
 from collections import UserString
+from unittest.mock import MagicMock
+
 import pytest
 from pytest_mock import MockerFixture
 
