@@ -326,6 +326,9 @@ const FormInputItem: FC<Props> = ({
     ? handleToolDynamicTreeOpen
     : undefined
 
+  /** Lazy dynamic fields load on open; disabling the select while loading hides Headless ListboxOptions and breaks the panel. */
+  const lockDynamicSelectWhileLoading = isLoadingOptions && !toolDynamicSelectLazy
+
   const handleTypeChange = (newType: string) => {
     if (newType === VarKindType.variable) {
       onChange({
@@ -512,7 +515,7 @@ const FormInputItem: FC<Props> = ({
       {isDynamicSelect && !isMultipleSelect && (
         <Select
           value={selectedDynamicOption?.value ?? null}
-          disabled={readOnly || isLoadingOptions}
+          disabled={readOnly || lockDynamicSelectWhileLoading}
           onValueChange={value => value && handleValueChange(value)}
           onOpenChange={toolDynamicSelectOnOpenChange}
         >
@@ -534,7 +537,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isDynamicSelect && isMultipleSelect && (
         <MultiSelectField
-          disabled={readOnly || isLoadingOptions}
+          disabled={readOnly || lockDynamicSelectWhileLoading}
           isLoading={isLoadingOptions}
           value={(varInput?.value as string[] | undefined) || []}
           items={dynamicSelectItems}
@@ -598,7 +601,7 @@ const FormInputItem: FC<Props> = ({
           currentTool={currentTool}
           currentProvider={currentProvider}
           isFilterFileVar={isBoolean}
-          {...(isDynamicSelect && providerType === PluginCategoryEnum.tool
+          {...((isDynamicSelect || isDynamicTreeSelect) && providerType === PluginCategoryEnum.tool
             ? {
                 dynamicSelectParameterValues: parameterValuesForDynamicOptions,
                 dynamicSelectLazy: schema.dynamic_select_lazy_load === true,

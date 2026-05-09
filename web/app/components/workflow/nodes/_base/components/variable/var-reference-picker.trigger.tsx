@@ -3,6 +3,7 @@
 import type { FC, ReactElement } from 'react'
 import type { VarType as VarKindType } from '../../../tool/types'
 import type { CredentialFormSchema, CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { Node, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -296,8 +297,12 @@ const VarReferencePickerTrigger: FC<Props> = ({
                 {isConstant
                   ? (
                       <ConstantField
-                        value={value as string}
-                        onChange={onChange as ((value: string | number, varKindType: VarKindType, varInfo?: Var) => void)}
+                        value={
+                          schemaWithDynamicSelect?.type === FormTypeEnum.dynamicTreeSelect
+                            ? (Array.isArray(value) ? value : (typeof value === 'string' ? value : ''))
+                            : (typeof value === 'string' ? value : '')
+                        }
+                        onChange={onChange as ((value: string | number | string[], varKindType: VarKindType, varInfo?: Var) => void)}
                         schema={schemaWithDynamicSelect as CredentialFormSchemaSelect}
                         readonly={readonly}
                         isLoading={isLoading}
