@@ -5,6 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -14,7 +15,7 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  useCSVDownloader,
+  jsonToCSV,
 } from 'react-papaparse'
 import { useLocale } from '@/context/i18n'
 
@@ -55,6 +56,15 @@ const downloadAnnotationJsonl = (list: AnnotationItemBasic[], locale: string) =>
   downloadBlob({ data: file, fileName: `annotations-${locale}.jsonl` })
 }
 
+const downloadAnnotationCsv = (list: AnnotationItemBasic[], locale: string) => {
+  const content = jsonToCSV([
+    locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
+    ...list.map(item => [item.question, item.answer]),
+  ])
+  const file = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' })
+  downloadBlob({ data: file, fileName: `annotations-${locale}.csv` })
+}
+
 const OperationsMenu: FC<OperationsMenuProps> = ({
   list,
   onClose,
@@ -64,77 +74,62 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
 }) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { CSVDownloader, Type } = useCSVDownloader()
   const annotationUnavailable = list.length === 0
 
   return (
-    <div className="w-full py-1">
-      <button
-        type="button"
-        className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50"
+    <>
+      <DropdownMenuItem
+        className="gap-2"
         onClick={() => {
           onClose()
           onBulkImport()
         }}
       >
-        <span aria-hidden className="i-custom-vender-line-files-file-plus-02 h-4 w-4 text-text-tertiary" />
-        <span className="grow text-left system-sm-regular text-text-secondary">{t('table.header.bulkImport', { ns: 'appAnnotation' })}</span>
-      </button>
+        <span aria-hidden className="i-custom-vender-line-files-file-plus-02 size-4 shrink-0 text-text-tertiary" />
+        {t('table.header.bulkImport', { ns: 'appAnnotation' })}
+      </DropdownMenuItem>
       <DropdownMenuSub>
-        <DropdownMenuSubTrigger className="mx-1 h-9 w-[calc(100%-8px)] space-x-2 px-3 py-2">
-          <span aria-hidden className="i-custom-vender-line-files-file-download-02 h-4 w-4 text-text-tertiary" />
-          <span className="grow text-left system-sm-regular text-text-secondary">{t('table.header.bulkExport', { ns: 'appAnnotation' })}</span>
+        <DropdownMenuSubTrigger className="gap-2">
+          <span aria-hidden className="i-custom-vender-line-files-file-download-02 size-4 shrink-0 text-text-tertiary" />
+          {t('table.header.bulkExport', { ns: 'appAnnotation' })}
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent
           placement="left-start"
           sideOffset={4}
-          popupClassName="min-w-[100px] border-components-panel-on-panel-item-bg bg-components-panel-bg py-1"
+          popupClassName="min-w-[100px]"
         >
-          <CSVDownloader
-            type={Type.Link}
-            filename={`annotations-${locale}`}
-            bom={true}
-            data={[
-              locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
-              ...list.map(item => [item.question, item.answer]),
-            ]}
-          >
-            <button
-              type="button"
-              disabled={annotationUnavailable}
-              className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={onClose}
-            >
-              <span className="grow text-left system-sm-regular text-text-secondary">CSV</span>
-            </button>
-          </CSVDownloader>
-          <button
-            type="button"
+          <DropdownMenuItem
             disabled={annotationUnavailable}
-            className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg border-0 px-3 py-2 outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => {
+              onClose()
+              downloadAnnotationCsv(list, locale)
+            }}
+          >
+            CSV
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={annotationUnavailable}
             onClick={() => {
               onClose()
               onExportJsonl()
             }}
           >
-            <span className="grow text-left system-sm-regular text-text-secondary">JSONL</span>
-          </button>
+            JSONL
+          </DropdownMenuItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
-      <button
-        type="button"
+      <DropdownMenuItem
+        variant="destructive"
+        className="gap-2"
         onClick={() => {
           onClose()
           onClearAll()
         }}
-        className="mx-1 flex h-9 w-[calc(100%-8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
       >
-        <span aria-hidden className="i-ri-delete-bin-line h-4 w-4" />
-        <span className="grow text-left system-sm-regular">
-          {t('table.header.clearAll', { ns: 'appAnnotation' })}
-        </span>
-      </button>
-    </div>
+        <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+        {t('table.header.clearAll', { ns: 'appAnnotation' })}
+      </DropdownMenuItem>
+    </>
   )
 }
 
@@ -204,7 +199,7 @@ const HeaderOptions: FC<Props> = ({
         <DropdownMenuContent
           placement="bottom-end"
           sideOffset={4}
-          popupClassName="w-[155px] overflow-visible py-0"
+          popupClassName="w-[155px]"
         >
           <OperationsMenu
             list={list}
