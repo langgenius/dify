@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { AppDetailResponse } from '@/models/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
@@ -94,15 +94,6 @@ vi.mock('../../app-access-control', () => ({
     <div data-testid="access-control-modal">
       <button onClick={() => void onConfirm()}>confirm-access-control</button>
       <button onClick={onClose}>close-access-control</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: ReactNode, popupContent?: ReactNode }) => (
-    <div>
-      {children}
-      {popupContent}
     </div>
   ),
 }))

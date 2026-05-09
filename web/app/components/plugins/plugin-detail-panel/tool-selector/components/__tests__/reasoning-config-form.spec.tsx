@@ -54,10 +54,6 @@ vi.mock('@langgenius/dify-ui/switch', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
 }))
@@ -233,7 +229,7 @@ describe('ReasoningConfigForm', () => {
   it('should open schema modal for object fields and support app selection', () => {
     const onChange = vi.fn()
 
-    const { container } = render(
+    render(
       <ReasoningConfigForm
         value={{
           app: {
@@ -265,7 +261,7 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
-    fireEvent.click(container.querySelector('div.ml-0\\.5.cursor-pointer')!)
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.clickToViewParameterSchema' }))
     expect(screen.getByTestId('schema-modal')).toHaveTextContent('Config')
     fireEvent.click(screen.getByTestId('close-schema'))
 

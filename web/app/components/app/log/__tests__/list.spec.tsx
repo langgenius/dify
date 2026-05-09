@@ -84,10 +84,6 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
-
 vi.mock('@/app/components/base/drawer', () => ({
   default: ({ children, isOpen, onClose }: { children: ReactNode, isOpen: boolean, onClose: () => void }) => (
     isOpen
