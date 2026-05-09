@@ -39,10 +39,6 @@ export default function FullScreenModal({
           'max-h-none',
           wrapperClassName,
         )}
-        popupProps={{
-          'aria-modal': 'true',
-          'onClick': () => onClose(),
-        }}
       >
         <div
           className="h-full w-full"

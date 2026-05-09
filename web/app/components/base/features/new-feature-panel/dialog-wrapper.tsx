@@ -30,9 +30,6 @@ const DialogWrapper = ({
       <DialogContent
         backdropClassName="bg-black/25"
         className="top-0 left-0 h-screen max-h-none w-screen max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-none bg-transparent p-0 shadow-none"
-        popupProps={{
-          onClick: close,
-        }}
       >
         <div className={cn('flex h-full min-h-full w-full flex-col items-end justify-center pb-2', inWorkflow ? 'pt-[112px]' : 'pt-[64px] pr-2')} data-testid="dialog-layout-container">
           <div

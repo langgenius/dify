@@ -81,25 +81,5 @@ describe('Dialog wrapper', () => {
       asHTMLElement(closeButton.element()).click()
       expect(onClick).not.toHaveBeenCalled()
     })
-
-    it('should forward popup props to base primitive', async () => {
-      const screen = await render(
-        <Dialog open>
-          <DialogContent
-            popupProps={{
-              'aria-label': 'custom popup',
-              'data-testid': 'custom-popup',
-            }}
-          >
-            <span>Dialog body</span>
-          </DialogContent>
-        </Dialog>,
-      )
-
-      const popup = screen.getByRole('dialog', { name: 'custom popup' })
-
-      await expect.element(popup).toHaveAttribute('data-testid', 'custom-popup')
-      await expect.element(screen.getByTestId('custom-popup')).toHaveTextContent('Dialog body')
-    })
   })
 })
