@@ -441,9 +441,10 @@ class DifyNodeFactory(NodeFactory):
             },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
+        constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
         return node_class(
             node_id=node_id,
-            data=resolved_node_data,
+            data=constructor_node_data,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
             **node_init_kwargs,
