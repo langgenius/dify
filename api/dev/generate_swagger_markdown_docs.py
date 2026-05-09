@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -116,11 +115,8 @@ def generate_markdown_docs(
             (markdown_dir / STALE_COMBINED_MARKDOWN_FILENAME).unlink(missing_ok=True)
     finally:
         if not keep_swagger_json:
-            if swagger_dir == markdown_dir or markdown_dir.is_relative_to(swagger_dir):
-                for path in spec_paths:
-                    path.unlink(missing_ok=True)
-            else:
-                shutil.rmtree(swagger_dir, ignore_errors=True)
+            for path in spec_paths:
+                path.unlink(missing_ok=True)
 
     return written_paths
 
