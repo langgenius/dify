@@ -181,6 +181,8 @@ export const NodeSourceHandle = memo(({
     }
 
     if (canAutoOpenStartNodeSelector(data.type, false)) {
+      setOpen(true)
+
       if (setShouldAutoOpenStartNodeSelector)
         setShouldAutoOpenStartNodeSelector(false)
       else

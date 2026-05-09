@@ -339,6 +339,29 @@ describe('node-handle', () => {
       expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(false)
     })
 
+    it('should open when the start selector flag changes after mount', () => {
+      const { rerender } = renderSourceHandle({ type: BlockEnum.Start })
+
+      expect(getAddNodeButton()).toHaveClass('opacity-0')
+
+      mockStoreState.shouldAutoOpenStartNodeSelector = true
+
+      rerender(
+        <NodeSourceHandle
+          id="source-node"
+          data={createNodeData({ type: BlockEnum.Start })}
+          handleId="source-handle"
+          nodeSelectorClassName="custom-selector"
+          handleClassName="custom-source-handle"
+        />,
+      )
+
+      expect(getAddNodeButton()).toHaveClass('opacity-100')
+      expect(getAddNodeButton()).toHaveClass('pointer-events-none')
+      expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(false)
+      expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(false)
+    })
+
     it('should skip source auto-open in chat mode and only reset the start selector flag', () => {
       mockHooksState.isChatMode = true
       mockStoreState.shouldAutoOpenStartNodeSelector = true
