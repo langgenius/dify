@@ -461,14 +461,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/create-app-modal/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/create-from-dsl-modal/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
