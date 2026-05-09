@@ -57,20 +57,6 @@ export const WEB_RESTRICTED_IMPORT_PATTERNS = [
 export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
   {
     group: [
-      '**/base/modal',
-      '**/base/modal/index',
-    ],
-    message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/dialog',
-      '**/base/dialog/index',
-    ],
-    message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
-  },
-  {
-    group: [
       '**/base/drawer',
       '**/base/drawer/index',
     ],
