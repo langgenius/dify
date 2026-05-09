@@ -11,17 +11,6 @@ vi.mock('../../../base/app-icon', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/drawer', () => ({
-  DrawerDescription: ({ children, className }: {
-    children: React.ReactNode
-    className?: string
-  }) => <div className={className}>{children}</div>,
-  DrawerTitle: ({ children, className }: {
-    children: React.ReactNode
-    className?: string
-  }) => <div className={className}>{children}</div>,
-}))
-
 vi.mock('../app-info-detail-drawer', () => ({
   AppInfoDetailDrawer: ({ open, onClose, children }: {
     open: boolean

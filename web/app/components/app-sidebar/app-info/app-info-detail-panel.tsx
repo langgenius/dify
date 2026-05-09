@@ -3,10 +3,6 @@ import type { AppInfoModalType } from './use-app-info-actions'
 import type { App, AppSSO } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  DrawerDescription,
-  DrawerTitle,
-} from '@langgenius/dify-ui/drawer'
-import {
   RiDeleteBinLine,
   RiEditLine,
   RiExchange2Line,
@@ -112,16 +108,16 @@ const AppInfoDetailPanel = ({
             imageUrl={appDetail.icon_url}
           />
           <div className="flex flex-1 flex-col items-start justify-center overflow-hidden">
-            <DrawerTitle className="w-full truncate system-md-semibold text-text-secondary">{appDetail.name}</DrawerTitle>
+            <h2 className="w-full truncate system-md-semibold text-text-secondary">{appDetail.name}</h2>
             <div className="system-2xs-medium-uppercase text-text-tertiary">
               {getAppModeLabel(appDetail.mode, t)}
             </div>
           </div>
         </div>
         {appDetail.description && (
-          <DrawerDescription className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto system-xs-regular wrap-break-word whitespace-normal text-text-tertiary">
+          <p className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto system-xs-regular wrap-break-word whitespace-normal text-text-tertiary">
             {appDetail.description}
-          </DrawerDescription>
+          </p>
         )}
         <AppOperations
           gap={4}
