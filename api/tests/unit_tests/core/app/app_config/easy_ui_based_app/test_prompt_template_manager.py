@@ -15,8 +15,8 @@ from core.app.app_config.easy_ui_based_app.prompt_template.manager import (
 
 class DummyEnumValue(UserString):
     def __init__(self, value):
+        super().__init__(value)
         self.value = value
-        return self
 
 
 class DummyPromptType:
