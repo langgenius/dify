@@ -80,6 +80,7 @@ type ItemProps = {
   isInCodeGeneratorInstructionEditor?: boolean
   className?: string
   preferSchemaType?: boolean
+  searchText?: string
   isSelected?: boolean
   onActivate?: () => void
 }
@@ -98,6 +99,7 @@ const Item: FC<ItemProps> = ({
   isInCodeGeneratorInstructionEditor,
   className,
   preferSchemaType,
+  searchText = '',
   isSelected,
   onActivate,
 }) => {
@@ -269,6 +271,7 @@ const Item: FC<ItemProps> = ({
             root={{ nodeId, nodeName: title, attrName: itemData.variable, attrAlias: itemData.schemaType }}
             payload={structuredOutput!}
             onHovering={setIsChildrenHovering}
+            searchText={searchText}
             onSelect={(valueSelector) => {
               onChange(valueSelector, itemData)
             }}
@@ -482,6 +485,7 @@ const VarReferenceVars: FC<Props> = ({
                         isFlat={item.isFlat}
                         isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
                         preferSchemaType={preferSchemaType}
+                        searchText={searchValue}
                         isSelected={effectiveSelectedIndex === optionIndex}
                         onActivate={() => setSelectedIndex(optionIndex)}
                       />

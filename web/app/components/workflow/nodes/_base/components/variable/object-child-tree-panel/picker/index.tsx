@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { StructuredOutput } from '../../../../../llm/types'
+import type { Field as FieldType, StructuredOutput } from '../../../../../llm/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHover } from 'ahooks'
@@ -15,6 +15,46 @@ type Props = {
   readonly?: boolean
   onSelect?: (valueSelector: ValueSelector) => void
   onHovering?: (value: boolean) => void
+  searchText?: string
+}
+
+const includesSearchText = (value: string | undefined, searchText: string) => {
+  if (!value)
+    return false
+
+  return value.toLowerCase().includes(searchText)
+}
+
+const getFieldTypeText = (field: FieldType) => {
+  if (typeof field.type === 'string')
+    return field.type
+
+  return undefined
+}
+
+const filterFieldBySearchText = (name: string, field: FieldType, searchText: string): FieldType | undefined => {
+  if (!searchText)
+    return field
+
+  if (includesSearchText(name, searchText) || includesSearchText(getFieldTypeText(field), searchText))
+    return field
+
+  if (!field.properties)
+    return undefined
+
+  const filteredProperties = Object.fromEntries(
+    Object.entries(field.properties)
+      .map(([childName, childField]): [string, FieldType | undefined] => [childName, filterFieldBySearchText(childName, childField, searchText)])
+      .filter((entry): entry is [string, FieldType] => !!entry[1]),
+  )
+
+  if (Object.keys(filteredProperties).length === 0)
+    return undefined
+
+  return {
+    ...field,
+    properties: filteredProperties,
+  }
 }
 
 export const PickerPanelMain: FC<Props> = ({
@@ -24,6 +64,7 @@ export const PickerPanelMain: FC<Props> = ({
   readonly,
   onHovering,
   onSelect,
+  searchText = '',
 }) => {
   const ref = useRef<HTMLDivElement>(null)
   useHover(ref, {
@@ -39,7 +80,14 @@ export const PickerPanelMain: FC<Props> = ({
     },
   })
   const schema = payload.schema
-  const fieldNames = Object.keys(schema.properties)
+  const normalizedSearchText = searchText.trim().toLowerCase()
+  const allFields = Object.entries(schema.properties)
+  const filteredFields = normalizedSearchText
+    ? allFields
+      .map(([name, field]): [string, FieldType | undefined] => [name, filterFieldBySearchText(name, field, normalizedSearchText)])
+      .filter((entry): entry is [string, FieldType] => !!entry[1])
+    : allFields
+  const visibleFields = filteredFields.length > 0 ? filteredFields : allFields
   return (
     <div className={cn(className)} ref={ref}>
       {/* Root info */}
@@ -55,11 +103,11 @@ export const PickerPanelMain: FC<Props> = ({
         </div>
         <div className="ml-2 truncate system-xs-regular text-text-tertiary" title={root.attrAlias || 'object'}>{root.attrAlias || 'object'}</div>
       </div>
-      {fieldNames.map(name => (
+      {visibleFields.map(([name, field]) => (
         <Field
           key={name}
           name={name}
-          payload={schema.properties[name]!}
+          payload={field}
           readonly={readonly}
           valueSelector={[root.nodeId!, root.attrName]}
           onSelect={onSelect}
