@@ -80,7 +80,7 @@ class RecommendedAppListApi(Resource):
     @account_initialization_required
     def get(self):
         # language args
-        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))
         language = args.language
         if language and language in languages:
             language_prefix = language

@@ -1,3 +1,4 @@
+from controllers.common.schema import register_schema_models
 import logging
 from typing import Any, Literal
 
@@ -37,7 +38,7 @@ from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 
 
 class BaseMessagePayload(BaseModel):
@@ -64,14 +65,10 @@ class ChatMessagePayload(BaseMessagePayload):
             return value
         return uuid_value(value)
 
+register_schema_models(console_ns,
 
-console_ns.schema_model(
-    CompletionMessagePayload.__name__,
-    CompletionMessagePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    ChatMessagePayload.__name__, ChatMessagePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+CompletionMessagePayload,ChatMessagePayload)
+
 
 
 # define completion message api for user

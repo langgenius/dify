@@ -1,3 +1,4 @@
+from controllers.common.schema import register_schema_models
 from urllib.parse import quote
 
 from flask import Response, request
@@ -13,7 +14,7 @@ from extensions.ext_database import db
 from services.account_service import TenantService
 from services.file_service import FileService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 
 
 class FileSignatureQuery(BaseModel):
@@ -25,13 +26,13 @@ class FileSignatureQuery(BaseModel):
 class FilePreviewQuery(FileSignatureQuery):
     as_attachment: bool = Field(default=False, description="Whether to download as attachment")
 
+register_schema_models(
+files_ns,
+    FileSignatureQuery,
+    FilePreviewQuery
+)
 
-files_ns.schema_model(
-    FileSignatureQuery.__name__, FileSignatureQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-files_ns.schema_model(
-    FilePreviewQuery.__name__, FilePreviewQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+
 
 
 @files_ns.route("/<uuid:file_id>/image-preview")
@@ -58,7 +59,7 @@ class ImagePreviewApi(Resource):
     def get(self, file_id):
         file_id = str(file_id)
 
-        args = FileSignatureQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = FileSignatureQuery.model_validate(request.args.to_dict(flat=True))
         timestamp = args.timestamp
         nonce = args.nonce
         sign = args.sign
@@ -100,7 +101,7 @@ class FilePreviewApi(Resource):
     def get(self, file_id):
         file_id = str(file_id)
 
-        args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             generator, upload_file = FileService(db.engine).get_file_generator_by_file_id(

@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 
 _file_access_controller = DatabaseFileAccessController()
 LISTENING_RETRY_IN = 2000
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
 MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS = 1000
 WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE = 50
@@ -912,7 +912,7 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        args = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))
 
         filters = None
         if args.q:
@@ -1005,7 +1005,7 @@ class PublishedAllWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))
         page = args.page
         limit = args.limit
         user_id = args.user_id

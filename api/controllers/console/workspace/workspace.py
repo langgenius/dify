@@ -1,3 +1,4 @@
+from controllers.common.schema import register_schema_models
 import logging
 from datetime import datetime
 
@@ -39,7 +40,6 @@ from services.file_service import FileService
 from services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class WorkspaceListQuery(BaseModel):
@@ -90,16 +90,9 @@ class TenantInfoResponse(ResponseModel):
             return int(value.timestamp())
         return value
 
-
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(WorkspaceListQuery)
-reg(SwitchWorkspacePayload)
-reg(WorkspaceCustomConfigPayload)
-reg(WorkspaceInfoPayload)
-reg(TenantInfoResponse)
+register_schema_models(
+console_ns,
+WorkspaceListQuery,SwitchWorkspacePayload,WorkspaceCustomConfigPayload,WorkspaceInfoPayload,TenantInfoResponse)
 
 provider_fields = {
     "provider_name": fields.String,

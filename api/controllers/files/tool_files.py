@@ -1,3 +1,4 @@
+from controllers.common.schema import register_schema_models
 from urllib.parse import quote
 
 from flask import Response, request
@@ -11,7 +12,7 @@ from controllers.files import files_ns
 from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 
 
 class ToolFileQuery(BaseModel):
@@ -20,10 +21,7 @@ class ToolFileQuery(BaseModel):
     sign: str = Field(..., description="HMAC signature")
     as_attachment: bool = Field(default=False, description="Download as attachment")
 
-
-files_ns.schema_model(
-    ToolFileQuery.__name__, ToolFileQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_schema_models(files_ns, ToolFileQuery)
 
 
 @files_ns.route("/tools/<uuid:file_id>.<string:extension>")

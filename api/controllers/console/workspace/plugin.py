@@ -211,7 +211,7 @@ class PluginListApi(Resource):
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = ParserList.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserList.model_validate(request.args.to_dict(flat=True))
         try:
             plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
         except PluginDaemonClientSideError as e:
@@ -261,7 +261,7 @@ class PluginIconApi(Resource):
     @console_ns.expect(console_ns.models[ParserIcon.__name__])
     @setup_required
     def get(self):
-        args = ParserIcon.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserIcon.model_validate(request.args.to_dict(flat=True))
 
         try:
             icon_bytes, mimetype = PluginService.get_asset(args.tenant_id, args.filename)
@@ -279,7 +279,7 @@ class PluginAssetApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        args = ParserAsset.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserAsset.model_validate(request.args.to_dict(flat=True))
 
         _, tenant_id = current_account_with_tenant()
         try:
@@ -421,7 +421,7 @@ class PluginFetchMarketplacePkgApi(Resource):
     @plugin_permission_required(install_required=True)
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             return jsonable_encoder(
@@ -446,7 +446,7 @@ class PluginFetchManifestApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             return jsonable_encoder(
@@ -466,7 +466,7 @@ class PluginFetchInstallTasksApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserTasks.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserTasks.model_validate(request.args.to_dict(flat=True))
 
         try:
             return jsonable_encoder({"tasks": PluginService.fetch_install_tasks(tenant_id, args.page, args.page_size)})
@@ -660,7 +660,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         current_user, tenant_id = current_account_with_tenant()
         user_id = current_user.id
 
-        args = ParserDynamicOptions.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserDynamicOptions.model_validate(request.args.to_dict(flat=True))
 
         try:
             options = PluginParameterService.get_dynamic_select_options(
@@ -822,7 +822,7 @@ class PluginReadmeApi(Resource):
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = ParserReadme.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ParserReadme.model_validate(request.args.to_dict(flat=True))
         return jsonable_encoder(
             {"readme": PluginService.fetch_plugin_readme(tenant_id, args.plugin_unique_identifier, args.language)}
         )

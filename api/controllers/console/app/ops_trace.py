@@ -1,3 +1,4 @@
+from controllers.common.schema import register_schema_models
 from typing import Any
 
 from flask import request
@@ -11,7 +12,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from libs.login import login_required
 from services.ops_service import OpsService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 
 
 class TraceProviderQuery(BaseModel):
@@ -22,14 +23,11 @@ class TraceConfigPayload(BaseModel):
     tracing_provider: str = Field(..., description="Tracing provider name")
     tracing_config: dict[str, Any] = Field(..., description="Tracing configuration data")
 
+register_schema_models(console_ns, 
+TraceProviderQuery,
+TraceConfigPayload
+)
 
-console_ns.schema_model(
-    TraceProviderQuery.__name__,
-    TraceProviderQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    TraceConfigPayload.__name__, TraceConfigPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace-config")
@@ -50,7 +48,7 @@ class TraceAppConfigApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
-        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             trace_config = OpsService.get_tracing_app_config(app_id=app_id, tracing_provider=args.tracing_provider)
@@ -121,7 +119,7 @@ class TraceAppConfigApi(Resource):
     @account_initialization_required
     def delete(self, app_id):
         """Delete an existing trace app configuration"""
-        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             result = OpsService.delete_tracing_app_config(app_id=app_id, tracing_provider=args.tracing_provider)

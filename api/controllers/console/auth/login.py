@@ -1,3 +1,4 @@
+from controllers.common.schema import register_schema_models
 import logging
 
 import flask_login
@@ -50,7 +51,7 @@ from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 logger = logging.getLogger(__name__)
 
 
@@ -70,14 +71,7 @@ class EmailCodeLoginPayload(BaseModel):
     token: str = Field(...)
     language: str | None = Field(default=None)
 
-
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(LoginPayload)
-reg(EmailPayload)
-reg(EmailCodeLoginPayload)
+register_schema_models(console_ns, LoginPayload,EmailPayload, EmailCodeLoginPayload)
 
 
 @console_ns.route("/login")

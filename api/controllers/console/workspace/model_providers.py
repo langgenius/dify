@@ -1,3 +1,4 @@
+from controllers.common.schema import register_schema_models
 import io
 from typing import Any, Literal
 
@@ -14,9 +15,6 @@ from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
 from services.model_provider_service import ModelProviderService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
 
 class ParserModelList(BaseModel):
     model_type: ModelType | None = None
@@ -74,19 +72,7 @@ class ParserCredentialValidate(BaseModel):
 class ParserPreferredProviderType(BaseModel):
     preferred_provider_type: Literal["system", "custom"]
 
-
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(ParserModelList)
-reg(ParserCredentialId)
-reg(ParserCredentialCreate)
-reg(ParserCredentialUpdate)
-reg(ParserCredentialDelete)
-reg(ParserCredentialSwitch)
-reg(ParserCredentialValidate)
-reg(ParserPreferredProviderType)
+register_schema_models(console_ns,ParserModelList,ParserCredentialId,ParserCredentialCreate,ParserCredentialUpdate,ParserCredentialDelete,ParserCredentialSwitch,ParserCredentialValidate,ParserPreferredProviderType)
 
 
 @console_ns.route("/workspaces/current/model-providers")

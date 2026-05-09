@@ -701,7 +701,7 @@ class AppExportApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         """Export app"""
-        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
         payload = AppExportResponse(
             data=AppDslService.export_dsl(

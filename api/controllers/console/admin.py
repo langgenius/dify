@@ -21,7 +21,7 @@ from libs.token import extract_access_token
 from models.model import App, ExporleBanner, InstalledApp, RecommendedApp, TrialApp
 from services.billing_service import BillingService, LangContentDict
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 
 
 class InsertExploreAppPayload(BaseModel):
@@ -58,18 +58,11 @@ class InsertExploreBannerPayload(BaseModel):
 
     model_config = {"populate_by_name": True}
 
+register_schema_models(
+    console_ns, 
 
-console_ns.schema_model(
-    InsertExploreAppPayload.__name__,
-    InsertExploreAppPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    InsertExploreBannerPayload.__name__,
-    InsertExploreBannerPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-
+    InsertExploreAppPayload,
+    InsertExploreBannerPayload)
 def admin_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
