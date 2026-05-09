@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock
-
+from collections import UserString
 import pytest
 from pytest_mock import MockerFixture
 
@@ -12,11 +12,10 @@ from core.app.app_config.easy_ui_based_app.prompt_template.manager import (
 # -----------------------------
 
 
-class DummyEnumValue(str):
-    def __new__(cls, value):
-        obj = str.__new__(cls, value)
-        obj.value = value
-        return obj
+class DummyEnumValue(UserString):
+    def __init__(self, value):
+        self.value = value
+        return self
 
 
 class DummyPromptType:
