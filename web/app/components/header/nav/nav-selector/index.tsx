@@ -130,7 +130,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         className={cn(
-          'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 w-full items-center justify-center rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold text-components-main-nav-nav-button-text-active outline-hidden',
+          'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 items-center justify-center rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold text-components-main-nav-nav-button-text-active outline-hidden',
           'focus-visible:bg-components-main-nav-nav-button-bg-active focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-popup-open:bg-components-main-nav-nav-button-bg-active',
         )}
       >
