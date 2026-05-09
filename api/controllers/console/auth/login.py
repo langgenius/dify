@@ -1,4 +1,3 @@
-from controllers.common.schema import register_schema_models
 import logging
 
 import flask_login
@@ -10,6 +9,7 @@ from werkzeug.exceptions import Unauthorized
 import services
 from configs import dify_config
 from constants.languages import get_valid_language
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -51,7 +51,6 @@ from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -71,7 +70,8 @@ class EmailCodeLoginPayload(BaseModel):
     token: str = Field(...)
     language: str | None = Field(default=None)
 
-register_schema_models(console_ns, LoginPayload,EmailPayload, EmailCodeLoginPayload)
+
+register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeLoginPayload)
 
 
 @console_ns.route("/login")

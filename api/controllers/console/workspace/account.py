@@ -53,8 +53,6 @@ from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
 
-
-
 class AccountInitPayload(BaseModel):
     interface_language: str
     timezone: str
@@ -161,11 +159,26 @@ class CheckEmailUniquePayload(BaseModel):
     email: EmailStr
 
 
-
-register_schema_models(console_ns, AccountResponse,
-
-AccountInitPayload,AccountNamePayload,AccountAvatarPayload,AccountAvatarQuery,AccountInterfaceLanguagePayload,AccountInterfaceThemePayload,AccountTimezonePayload,AccountPasswordPayload,AccountDeletePayload,AccountDeletionFeedbackPayload,EducationActivatePayload,EducationAutocompleteQuery,ChangeEmailSendPayload,ChangeEmailValidityPayload,ChangeEmailResetPayload,CheckEmailUniquePayload)
-
+register_schema_models(
+    console_ns,
+    AccountResponse,
+    AccountInitPayload,
+    AccountNamePayload,
+    AccountAvatarPayload,
+    AccountAvatarQuery,
+    AccountInterfaceLanguagePayload,
+    AccountInterfaceThemePayload,
+    AccountTimezonePayload,
+    AccountPasswordPayload,
+    AccountDeletePayload,
+    AccountDeletionFeedbackPayload,
+    EducationActivatePayload,
+    EducationAutocompleteQuery,
+    ChangeEmailSendPayload,
+    ChangeEmailValidityPayload,
+    ChangeEmailResetPayload,
+    CheckEmailUniquePayload,
+)
 
 
 def _serialize_account(account) -> dict[str, Any]:

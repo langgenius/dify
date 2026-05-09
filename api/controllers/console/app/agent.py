@@ -1,8 +1,8 @@
-from controllers.common.schema import register_schema_models
 from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -10,8 +10,6 @@ from libs.helper import uuid_value
 from libs.login import login_required
 from models.model import AppMode
 from services.agent_service import AgentService
-
-
 
 
 class AgentLogQuery(BaseModel):
@@ -23,8 +21,8 @@ class AgentLogQuery(BaseModel):
     def validate_uuid(cls, value: str) -> str:
         return uuid_value(value)
 
-register_schema_models(console_ns,AgentLogQuery )
 
+register_schema_models(console_ns, AgentLogQuery)
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent/logs")

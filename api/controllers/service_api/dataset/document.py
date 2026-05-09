@@ -77,9 +77,6 @@ class DocumentTextCreatePayload(BaseModel):
         return value
 
 
-
-
-
 class DocumentTextUpdate(BaseModel):
     name: str | None = None
     text: str | None = None

@@ -34,8 +34,6 @@ from services.annotation_service import (
 )
 
 
-
-
 class AnnotationReplyPayload(BaseModel):
     score_threshold: float = Field(..., description="Score threshold for annotation matching")
     embedding_provider_name: str = Field(..., description="Embedding provider name")
@@ -87,7 +85,6 @@ class AnnotationFilePayload(BaseModel):
         return uuid_value(value)
 
 
-
 register_schema_models(
     console_ns,
     Annotation,
@@ -95,8 +92,14 @@ register_schema_models(
     AnnotationExportList,
     AnnotationHitHistory,
     AnnotationHitHistoryList,
-AnnotationReplyPayload,AnnotationSettingUpdatePayload,AnnotationListQuery,CreateAnnotationPayload,UpdateAnnotationPayload,AnnotationReplyStatusQuery,AnnotationFilePayload)
-
+    AnnotationReplyPayload,
+    AnnotationSettingUpdatePayload,
+    AnnotationListQuery,
+    CreateAnnotationPayload,
+    UpdateAnnotationPayload,
+    AnnotationReplyStatusQuery,
+    AnnotationFilePayload,
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>")

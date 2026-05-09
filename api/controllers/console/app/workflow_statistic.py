@@ -1,9 +1,9 @@
-from controllers.common.schema import register_schema_models
 from flask import abort, jsonify, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -13,8 +13,6 @@ from libs.login import current_account_with_tenant, login_required
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
-
-
 
 
 class WorkflowStatisticQuery(BaseModel):
@@ -30,6 +28,7 @@ class WorkflowStatisticQuery(BaseModel):
 
 
 register_schema_models(console_ns, WorkflowStatisticQuery)
+
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-conversations")
 class WorkflowDailyRunsStatistic(Resource):

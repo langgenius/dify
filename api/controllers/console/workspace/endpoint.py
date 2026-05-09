@@ -21,8 +21,6 @@ from libs.login import current_account_with_tenant, login_required
 from services.plugin.endpoint_service import EndpointService
 
 
-
-
 class EndpointCreatePayload(BaseModel):
     plugin_unique_identifier: str
     settings: dict[str, Any]

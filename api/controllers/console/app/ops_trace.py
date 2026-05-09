@@ -1,4 +1,3 @@
-from controllers.common.schema import register_schema_models
 from typing import Any
 
 from flask import request
@@ -6,13 +5,12 @@ from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
 from services.ops_service import OpsService
-
-
 
 
 class TraceProviderQuery(BaseModel):
@@ -23,11 +21,8 @@ class TraceConfigPayload(BaseModel):
     tracing_provider: str = Field(..., description="Tracing provider name")
     tracing_config: dict[str, Any] = Field(..., description="Tracing configuration data")
 
-register_schema_models(console_ns, 
-TraceProviderQuery,
-TraceConfigPayload
-)
 
+register_schema_models(console_ns, TraceProviderQuery, TraceConfigPayload)
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace-config")

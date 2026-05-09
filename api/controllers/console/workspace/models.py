@@ -19,7 +19,6 @@ from services.model_provider_service import ModelProviderService
 logger = logging.getLogger(__name__)
 
 
-
 class ParserGetDefault(BaseModel):
     model_type: ModelType
 
@@ -105,6 +104,7 @@ class ParserDeleteCredential(ParserCredentialBase):
 
 class ParserParameter(BaseModel):
     model: str
+
 
 class ParserSwitch(BaseModel):
     model: str
@@ -393,10 +393,6 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}, 204
 
 
-
-
-
-
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
 class ModelProviderModelCredentialSwitchApi(Resource):
     @console_ns.expect(console_ns.models[ParserSwitch.__name__])
@@ -466,8 +462,8 @@ class ParserValidate(BaseModel):
     model_type: ModelType
     credentials: dict[str, Any]
 
-register_schema_models(console_ns,ParserSwitch , ParserValidate)
 
+register_schema_models(console_ns, ParserSwitch, ParserValidate)
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")

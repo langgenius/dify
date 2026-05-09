@@ -1,10 +1,10 @@
-from controllers.common.schema import register_schema_models
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from configs import dify_config
 from constants.languages import languages
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -23,8 +23,6 @@ from services.errors.account import AccountNotFoundError, AccountRegisterError
 
 from ..error import AccountInFreezeError, EmailSendIpLimitError
 from ..wraps import email_password_login_enabled, email_register_enabled, setup_required
-
-
 
 
 class EmailRegisterSendPayload(BaseModel):
@@ -49,8 +47,8 @@ class EmailRegisterResetPayload(BaseModel):
         return valid_password(value)
 
 
-register_schema_models(console_ns, 
-EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
+register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
+
 
 @console_ns.route("/email-register/send-email")
 class EmailRegisterSendEmailApi(Resource):

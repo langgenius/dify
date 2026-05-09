@@ -1,4 +1,3 @@
-from controllers.common.schema import register_schema_models
 from urllib.parse import quote
 
 from flask import Response, request
@@ -8,11 +7,10 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import UnsupportedFileTypeError
 from controllers.common.file_response import enforce_download_for_html
+from controllers.common.schema import register_schema_models
 from controllers.files import files_ns
 from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
-
-
 
 
 class ToolFileQuery(BaseModel):
@@ -20,6 +18,7 @@ class ToolFileQuery(BaseModel):
     nonce: str = Field(..., description="Random nonce")
     sign: str = Field(..., description="HMAC signature")
     as_attachment: bool = Field(default=False, description="Download as attachment")
+
 
 register_schema_models(files_ns, ToolFileQuery)
 

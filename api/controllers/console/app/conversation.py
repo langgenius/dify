@@ -39,6 +39,7 @@ from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 
+
 class BaseConversationQuery(BaseModel):
     keyword: str | None = Field(default=None, description="Search keyword")
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
@@ -66,6 +67,7 @@ class ChatConversationQuery(BaseConversationQuery):
         default="-updated_at", description="Sort field and direction"
     )
 
+
 register_schema_models(
     console_ns,
     CompletionConversationQuery,
@@ -77,7 +79,7 @@ register_schema_models(
     ConversationDetailResponse,
     ResultResponse,
     CompletionConversationQuery,
-    ChatConversationQuery
+    ChatConversationQuery,
 )
 
 

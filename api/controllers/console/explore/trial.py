@@ -1,4 +1,3 @@
-from controllers.common.schema import register_schema_models
 import logging
 from typing import Any, Literal, cast
 
@@ -11,7 +10,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 import services
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
-from controllers.common.schema import get_or_create_model
+from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -149,9 +148,8 @@ class CompletionRequest(BaseModel):
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = "explore_app"
 
-register_schema_models(
-console_ns,WorkflowRunRequest,ChatRequest,TextToSpeechRequest,CompletionRequest
-)
+
+register_schema_models(console_ns, WorkflowRunRequest, ChatRequest, TextToSpeechRequest, CompletionRequest)
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):

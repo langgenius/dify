@@ -25,7 +25,6 @@ from services.workflow_comment_service import WorkflowCommentService
 logger = logging.getLogger(__name__)
 
 
-
 class WorkflowCommentCreatePayload(BaseModel):
     content: str = Field(..., description="Comment content")
     position_x: float = Field(..., description="Comment X position")
@@ -52,10 +51,14 @@ class WorkflowCommentMentionUsersPayload(BaseModel):
     users: list[AccountWithRole]
 
 
-register_schema_models(console_ns, AccountWithRole, WorkflowCommentMentionUsersPayload,
+register_schema_models(
+    console_ns,
+    AccountWithRole,
+    WorkflowCommentMentionUsersPayload,
     WorkflowCommentCreatePayload,
     WorkflowCommentUpdatePayload,
-    WorkflowCommentReplyPayload,)
+    WorkflowCommentReplyPayload,
+)
 
 workflow_comment_basic_model = console_ns.model("WorkflowCommentBasic", workflow_comment_basic_fields)
 workflow_comment_detail_model = console_ns.model("WorkflowCommentDetail", workflow_comment_detail_fields)

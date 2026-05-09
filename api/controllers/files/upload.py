@@ -21,8 +21,6 @@ from ..files import files_ns
 from ..inner_api.plugin.wraps import get_user
 
 
-
-
 class PluginUploadQuery(BaseModel):
     timestamp: str = Field(..., description="Unix timestamp for signature verification")
     nonce: str = Field(..., description="Random nonce for signature verification")

@@ -1,4 +1,3 @@
-from controllers.common.schema import register_schema_models
 from decimal import Decimal
 
 import sqlalchemy as sa
@@ -6,6 +5,7 @@ from flask import abort, jsonify, request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -15,8 +15,6 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import convert_datetime_to_date
 from libs.login import current_account_with_tenant, login_required
 from models import AppMode
-
-
 
 
 class StatisticTimeRangeQuery(BaseModel):
@@ -30,9 +28,8 @@ class StatisticTimeRangeQuery(BaseModel):
             return None
         return value
 
-register_schema_models(
-    console_ns, StatisticTimeRangeQuery
-)
+
+register_schema_models(console_ns, StatisticTimeRangeQuery)
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-messages")

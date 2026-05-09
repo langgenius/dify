@@ -29,8 +29,6 @@ from services.entities.auth_entities import (
 from services.feature_service import FeatureService
 
 
-
-
 class ForgotPasswordEmailResponse(BaseModel):
     result: str = Field(description="Operation result")
     data: str | None = Field(default=None, description="Reset token")

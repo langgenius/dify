@@ -34,8 +34,6 @@ from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
 
 
-
-
 class MemberInvitePayload(BaseModel):
     emails: list[str] = Field(default_factory=list)
     role: TenantAccountRole
@@ -60,8 +58,15 @@ class OwnerTransferPayload(BaseModel):
 
 
 register_enum_models(console_ns, TenantAccountRole)
-register_schema_models(console_ns, AccountWithRole, AccountWithRoleList
-,MemberInvitePayload,MemberRoleUpdatePayload,OwnerTransferEmailPayload,OwnerTransferCheckPayload,OwnerTransferPayload
+register_schema_models(
+    console_ns,
+    AccountWithRole,
+    AccountWithRoleList,
+    MemberInvitePayload,
+    MemberRoleUpdatePayload,
+    OwnerTransferEmailPayload,
+    OwnerTransferCheckPayload,
+    OwnerTransferPayload,
 )
 
 

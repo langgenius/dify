@@ -1,4 +1,3 @@
-from controllers.common.schema import register_schema_models
 import logging
 from datetime import datetime
 
@@ -17,6 +16,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
@@ -90,9 +90,15 @@ class TenantInfoResponse(ResponseModel):
             return int(value.timestamp())
         return value
 
+
 register_schema_models(
-console_ns,
-WorkspaceListQuery,SwitchWorkspacePayload,WorkspaceCustomConfigPayload,WorkspaceInfoPayload,TenantInfoResponse)
+    console_ns,
+    WorkspaceListQuery,
+    SwitchWorkspacePayload,
+    WorkspaceCustomConfigPayload,
+    WorkspaceInfoPayload,
+    TenantInfoResponse,
+)
 
 provider_fields = {
     "provider_name": fields.String,

@@ -1,7 +1,7 @@
-from controllers.common.schema import register_schema_models
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.schema import register_schema_models
 from libs.login import current_account_with_tenant, login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
@@ -10,16 +10,14 @@ from ..auth.error import ApiKeyAuthFailedError
 from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 
 
-
-
 class ApiKeyAuthBindingPayload(BaseModel):
     category: str = Field(...)
     provider: str = Field(...)
     credentials: dict = Field(...)
 
-register_schema_models(
-console_ns,ApiKeyAuthBindingPayload
-)
+
+register_schema_models(console_ns, ApiKeyAuthBindingPayload)
+
 
 @console_ns.route("/api-key-auth/data-source")
 class ApiKeyAuthDataSource(Resource):

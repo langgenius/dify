@@ -1,10 +1,10 @@
-from controllers.common.schema import register_schema_models
 from flask_restx import (  # type: ignore
     Resource,  # type: ignore
 )
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -14,15 +14,13 @@ from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
-
-
 class Parser(BaseModel):
     inputs: dict
     datasource_type: str
     credential_id: str | None = None
 
 
-register_schema_models(console_ns,Parser )
+register_schema_models(console_ns, Parser)
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")

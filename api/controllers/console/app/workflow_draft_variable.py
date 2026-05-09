@@ -1,4 +1,3 @@
-from controllers.common.schema import register_schema_models
 import logging
 from collections.abc import Callable
 from functools import wraps
@@ -9,6 +8,7 @@ from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
@@ -36,7 +36,6 @@ logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
 
 
-
 class WorkflowDraftVariableListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=100_000, description="Page number")
     limit: int = Field(default=20, ge=1, le=100, description="Items per page")
@@ -57,13 +56,14 @@ class EnvironmentVariableUpdatePayload(BaseModel):
     environment_variables: list[dict[str, Any]] = Field(..., description="Environment variables for the draft workflow")
 
 
-
 register_schema_models(
-console_ns, WorkflowDraftVariableListQuery,
-WorkflowDraftVariableUpdatePayload,
-ConversationVariableUpdatePayload,
-EnvironmentVariableUpdatePayload
+    console_ns,
+    WorkflowDraftVariableListQuery,
+    WorkflowDraftVariableUpdatePayload,
+    ConversationVariableUpdatePayload,
+    EnvironmentVariableUpdatePayload,
 )
+
 
 def _convert_values_to_json_serializable_object(value: Segment):
     match value:

@@ -1,4 +1,3 @@
-from controllers.common.schema import register_schema_models
 from urllib.parse import quote
 
 from flask import Response, request
@@ -9,12 +8,11 @@ from werkzeug.exceptions import NotFound
 import services
 from controllers.common.errors import UnsupportedFileTypeError
 from controllers.common.file_response import enforce_download_for_html
+from controllers.common.schema import register_schema_models
 from controllers.files import files_ns
 from extensions.ext_database import db
 from services.account_service import TenantService
 from services.file_service import FileService
-
-
 
 
 class FileSignatureQuery(BaseModel):
@@ -26,13 +24,8 @@ class FileSignatureQuery(BaseModel):
 class FilePreviewQuery(FileSignatureQuery):
     as_attachment: bool = Field(default=False, description="Whether to download as attachment")
 
-register_schema_models(
-files_ns,
-    FileSignatureQuery,
-    FilePreviewQuery
-)
 
-
+register_schema_models(files_ns, FileSignatureQuery, FilePreviewQuery)
 
 
 @files_ns.route("/<uuid:file_id>/image-preview")

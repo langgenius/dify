@@ -1,4 +1,3 @@
-from controllers.common.schema import register_schema_models
 import io
 from typing import Any, Literal
 
@@ -6,6 +5,7 @@ from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -15,6 +15,7 @@ from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
 from services.model_provider_service import ModelProviderService
+
 
 class ParserModelList(BaseModel):
     model_type: ModelType | None = None
@@ -72,7 +73,18 @@ class ParserCredentialValidate(BaseModel):
 class ParserPreferredProviderType(BaseModel):
     preferred_provider_type: Literal["system", "custom"]
 
-register_schema_models(console_ns,ParserModelList,ParserCredentialId,ParserCredentialCreate,ParserCredentialUpdate,ParserCredentialDelete,ParserCredentialSwitch,ParserCredentialValidate,ParserPreferredProviderType)
+
+register_schema_models(
+    console_ns,
+    ParserModelList,
+    ParserCredentialId,
+    ParserCredentialCreate,
+    ParserCredentialUpdate,
+    ParserCredentialDelete,
+    ParserCredentialSwitch,
+    ParserCredentialValidate,
+    ParserPreferredProviderType,
+)
 
 
 @console_ns.route("/workspaces/current/model-providers")

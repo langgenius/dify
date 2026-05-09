@@ -1,4 +1,3 @@
-from controllers.common.schema import register_schema_models
 import logging
 from typing import Any, Literal
 
@@ -8,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -40,7 +40,6 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 
-
 class BaseMessagePayload(BaseModel):
     inputs: dict[str, Any]
     model_config_data: dict[str, Any] = Field(..., alias="model_config")
@@ -65,10 +64,8 @@ class ChatMessagePayload(BaseMessagePayload):
             return value
         return uuid_value(value)
 
-register_schema_models(console_ns,
 
-CompletionMessagePayload,ChatMessagePayload)
-
+register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
 
 
 # define completion message api for user

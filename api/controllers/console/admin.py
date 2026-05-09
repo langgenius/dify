@@ -22,8 +22,6 @@ from models.model import App, ExporleBanner, InstalledApp, RecommendedApp, Trial
 from services.billing_service import BillingService, LangContentDict
 
 
-
-
 class InsertExploreAppPayload(BaseModel):
     app_id: str = Field(...)
     desc: str | None = None
@@ -58,11 +56,10 @@ class InsertExploreBannerPayload(BaseModel):
 
     model_config = {"populate_by_name": True}
 
-register_schema_models(
-    console_ns, 
 
-    InsertExploreAppPayload,
-    InsertExploreBannerPayload)
+register_schema_models(console_ns, InsertExploreAppPayload, InsertExploreBannerPayload)
+
+
 def admin_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
