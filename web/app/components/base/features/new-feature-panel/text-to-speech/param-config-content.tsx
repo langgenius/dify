@@ -1,11 +1,15 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react'
-import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
-import * as React from 'react'
-import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { replace } from 'string-ts'
 import AudioBtn from '@/app/components/base/audio-btn'
@@ -35,6 +39,9 @@ const VoiceParamConfig = ({
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const text2speech = useFeatures(state => state.features.text2speech)
   const featuresStore = useFeaturesStore()
+  const formatLanguageName = (item: SelectOption) => {
+    return t(`voice.language.${replace(String(item.value), '-', '')}`, item.name, { ns: 'common' as const })
+  }
 
   let languageItem = languages.find(item => item.value === text2speech?.language)
   if (languages && !languageItem)
@@ -70,21 +77,14 @@ const VoiceParamConfig = ({
     <>
       <div className="mb-4 flex items-center justify-between">
         <div className="system-xl-semibold text-text-primary">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
-        <div
-          className="cursor-pointer p-1"
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
+          className="rounded-md p-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
           aria-label={t('appDebug:voice.voiceSettings.close')}
           onClick={onClose}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onClose()
-            }
-          }}
         >
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-        </div>
+          <span aria-hidden className="i-ri-close-line h-4 w-4 text-text-tertiary" />
+        </button>
       </div>
       <div className="mb-3">
         <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
@@ -100,129 +100,63 @@ const VoiceParamConfig = ({
             ))}
           </Infotip>
         </div>
-        <Listbox
-          value={languageItem}
-          onChange={(value: SelectOption) => {
+        <Select
+          value={languageItem ? String(languageItem.value) : null}
+          onValueChange={(nextValue) => {
+            if (!nextValue)
+              return
             handleChange({
-              language: String(value.value),
+              language: nextValue,
             })
           }}
         >
-          <div className="relative h-8">
-            <ListboxButton
-              className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pr-10 pl-3 group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden sm:text-sm sm:leading-6"
-            >
-              <span className={cn('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
-                {languageItem?.name
-                  ? t(`voice.language.${replace(languageItem?.value ?? '', '-', '')}`, languageItem?.name, { ns: 'common' as const })
-                  : localLanguagePlaceholder}
-              </span>
-              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                <span className="i-heroicons-chevron-down-20-solid h-4 w-4 text-text-tertiary" aria-hidden="true" />
-              </span>
-            </ListboxButton>
-            <Transition
-              as={Fragment}
-              leave="transition ease-in duration-100"
-              leaveFrom="opacity-100"
-              leaveTo="opacity-0"
-            >
-
-              <ListboxOptions
-                className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-hidden sm:text-sm"
-              >
-                {languages.map(item => (
-                  <ListboxOption
-                    key={item.value}
-                    className="relative cursor-pointer rounded-lg py-2 pr-9 pl-3 text-text-secondary select-none hover:bg-state-base-hover data-active:bg-state-base-active"
-                    value={item}
-                    disabled={false}
-                  >
-                    {({ /* active, */ selected }) => (
-                      <>
-                        <span
-                          className={cn('block', selected && 'font-normal')}
-                        >
-                          {t(`voice.language.${replace((item.value), '-', '')}`, item.name, { ns: 'common' as const })}
-                        </span>
-                        {(selected || item.value === text2speech?.language) && (
-                          <span
-                            className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
-                          >
-                            <span className="i-heroicons-check-20-solid h-4 w-4" aria-hidden="true" />
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </ListboxOption>
-                ))}
-              </ListboxOptions>
-            </Transition>
-          </div>
-        </Listbox>
+          <SelectTrigger aria-label={t('voice.voiceSettings.language', { ns: 'appDebug' })} className="w-full">
+            {languageItem ? formatLanguageName(languageItem) : localLanguagePlaceholder}
+          </SelectTrigger>
+          <SelectContent listClassName="max-h-60">
+            {languages.map(item => (
+              <SelectItem key={item.value} value={String(item.value)}>
+                <SelectItemText>
+                  {formatLanguageName(item)}
+                </SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="mb-3">
         <div className="mb-1 py-1 system-sm-semibold text-text-secondary">
           {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
         </div>
         <div className="flex items-center gap-1">
-          <Listbox
-            value={voiceItem}
+          <Select
+            value={voiceItem ? String(voiceItem.value) : null}
             disabled={!languageItem}
-            onChange={(value: SelectOption) => {
+            onValueChange={(nextValue) => {
+              if (!nextValue)
+                return
               handleChange({
-                voice: String(value.value),
+                voice: nextValue,
               })
             }}
           >
-            <div className="relative h-8 grow">
-              <ListboxButton
-                className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pr-10 pl-3 group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden sm:text-sm sm:leading-6"
-              >
-                <span
-                  className={cn('block truncate text-left text-text-secondary', !voiceItem?.name && 'text-text-tertiary')}
-                >
-                  {voiceItem?.name ?? localVoicePlaceholder}
-                </span>
-                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                  <span className="i-heroicons-chevron-down-20-solid h-4 w-4 text-text-tertiary" aria-hidden="true" />
-                </span>
-              </ListboxButton>
-              <Transition
-                as={Fragment}
-                leave="transition ease-in duration-100"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-
-                <ListboxOptions
-                  className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-hidden sm:text-sm"
-                >
-                  {voiceItems?.map((item: SelectOption) => (
-                    <ListboxOption
-                      key={item.value}
-                      className="relative cursor-pointer rounded-lg py-2 pr-9 pl-3 text-text-secondary select-none hover:bg-state-base-hover data-active:bg-state-base-active"
-                      value={item}
-                      disabled={false}
-                    >
-                      {({ /* active, */ selected }) => (
-                        <>
-                          <span className={cn('block', selected && 'font-normal')}>{item.name}</span>
-                          {(selected || item.value === text2speech?.voice) && (
-                            <span
-                              className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
-                            >
-                              <span className="i-heroicons-check-20-solid h-4 w-4" aria-hidden="true" />
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </ListboxOption>
-                  ))}
-                </ListboxOptions>
-              </Transition>
+            <div className="grow">
+              <SelectTrigger aria-label={t('voice.voiceSettings.voice', { ns: 'appDebug' })} className="w-full">
+                {voiceItem?.name ?? localVoicePlaceholder}
+              </SelectTrigger>
+              <SelectContent listClassName="max-h-60">
+                {voiceItems?.map((item: SelectOption) => (
+                  <SelectItem key={item.value} value={String(item.value)}>
+                    <SelectItemText>
+                      {item.name}
+                    </SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </div>
-          </Listbox>
+          </Select>
           {languageItem?.example && (
             <div className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1" data-testid="audition-button">
               <AudioBtn
@@ -253,4 +187,4 @@ const VoiceParamConfig = ({
   )
 }
 
-export default React.memo(VoiceParamConfig)
+export default VoiceParamConfig
