@@ -69,7 +69,7 @@ const SelectMetadata: FC<Props> = ({
       <div className="mt-1 flex justify-between border-t border-divider-subtle p-1">
         <button
           type="button"
-          className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-none bg-transparent px-3 text-text-secondary hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-none bg-transparent px-3 text-left text-text-secondary hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onNew}
         >
           <RiAddLine className="size-3.5" aria-hidden="true" />
@@ -79,7 +79,7 @@ const SelectMetadata: FC<Props> = ({
           <div className="mr-[3px] h-3 w-px bg-divider-regular"></div>
           <button
             type="button"
-            className="flex h-full cursor-pointer items-center rounded-md border-none bg-transparent px-1.5 text-text-secondary hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="flex h-full cursor-pointer items-center rounded-md border-none bg-transparent px-1.5 text-left text-text-secondary hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={onManage}
           >
             <div className="mr-1 system-sm-medium">{t(`${i18nPrefix}.manageAction`, { ns: 'dataset' })}</div>

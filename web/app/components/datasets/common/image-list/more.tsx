@@ -28,7 +28,7 @@ const More = ({ count, onClick }: MoreProps) => {
   return (
     <button
       type="button"
-      className="relative block size-8 cursor-pointer border-none bg-transparent p-[0.5px]"
+      className="relative block size-8 cursor-pointer border-none bg-transparent p-[0.5px] text-center"
       onClick={handleClick}
     >
       <div className="relative z-10 size-full rounded-md border-[1.5px] border-components-panel-bg bg-divider-regular">
