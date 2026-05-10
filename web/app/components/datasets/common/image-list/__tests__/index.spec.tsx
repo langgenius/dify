@@ -135,7 +135,7 @@ describe('ImageList', () => {
       const images = createMockImages(15)
       render(<ImageList images={images} size="md" limit={9} />)
 
-      const moreButton = screen.getByText(/\+6/)
+      const moreButton = screen.getByRole('button', { name: '+6' })
       fireEvent.click(moreButton)
 
       // More button should disappear
