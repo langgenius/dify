@@ -6,6 +6,7 @@ using TestContainers to ensure realistic database interactions and proper isolat
 The task is responsible for removing document segments from the search index when they are disabled.
 """
 
+from uuid import uuid4
 from unittest.mock import MagicMock, patch
 
 from faker import Faker
@@ -82,7 +83,7 @@ class TestDisableSegmentsFromIndexTask:
 
         return account
 
-    def _create_test_dataset(self, db_session_with_containers: Session, account, fake: Faker | None = None):
+    def _create_test_dataset(self, db_session_with_containers: Session, account: Account, fake: Faker | None = None):
         """
         Helper method to create a test dataset with realistic data.
 
@@ -117,7 +118,7 @@ class TestDisableSegmentsFromIndexTask:
         return dataset
 
     def _create_test_document(
-        self, db_session_with_containers: Session, dataset, account: Account, fake: Faker | None = None
+        self, db_session_with_containers: Session, dataset: Dataset, account: Account, fake: Faker | None = None
     ):
         """
         Helper method to create a test document with realistic data.
@@ -164,7 +165,7 @@ class TestDisableSegmentsFromIndexTask:
         return document
 
     def _create_test_segments(
-        self, db_session_with_containers: Session, document, dataset, account, count=3, fake=None
+        self, db_session_with_containers: Session, document, dataset: Dataset, account: Account, count=3, fake=None
     ):
         """
         Helper method to create test document segments with realistic data.
@@ -217,7 +218,7 @@ class TestDisableSegmentsFromIndexTask:
 
         return segments
 
-    def _create_dataset_process_rule(self, db_session_with_containers: Session, dataset, fake: Faker | None = None):
+    def _create_dataset_process_rule(self, db_session_with_containers: Session, dataset: Dataset, fake: Faker | None = None):
         """
         Helper method to create a dataset process rule.
 
@@ -231,7 +232,6 @@ class TestDisableSegmentsFromIndexTask:
         """
         fake = fake or Faker()
         process_rule = DatasetProcessRule(
-            id=fake.uuid4(),
             dataset_id=dataset.id,
             mode=ProcessRuleMode.AUTOMATIC,
             rules=(
@@ -242,6 +242,7 @@ class TestDisableSegmentsFromIndexTask:
                 '{"separator": "\\n\\n", "max_tokens": 1000, "chunk_overlap": 50}}'
                 "}"
             ),
+            created_by=str(uuid4())
         )
 
         db_session_with_containers.add(process_rule)

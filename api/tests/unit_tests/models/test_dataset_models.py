@@ -850,6 +850,7 @@ class TestDatasetProcessRule:
             dataset_id=dataset_id,
             mode=ProcessRuleMode.AUTOMATIC,
             created_by=created_by,
+            rules=None
         )
 
         # Assert
