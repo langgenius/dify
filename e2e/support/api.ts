@@ -23,6 +23,11 @@ export type AppSeed = {
   name: string
 }
 
+export type DatasetSeed = {
+  id: string
+  name: string
+}
+
 export async function createTestApp(name: string, mode = 'workflow'): Promise<AppSeed> {
   const ctx = await createApiContext()
   try {
@@ -155,6 +160,32 @@ export async function enableAppSiteAndGetURL(appId: string): Promise<string> {
     const body = (await res.json()) as AppDetailWithSite
     const { app_base_url, access_token } = body.site
     return `${app_base_url}/workflow/${access_token}`
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function createTestDataset(name: string): Promise<DatasetSeed> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.post('/console/api/datasets', {
+      data: {
+        name,
+      },
+    })
+    const body = (await response.json()) as DatasetSeed
+    return body
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function deleteTestDataset(id: string): Promise<void> {
+  const ctx = await createApiContext()
+  try {
+    await ctx.delete(`/console/api/datasets/${id}`)
   }
   finally {
     await ctx.dispose()
