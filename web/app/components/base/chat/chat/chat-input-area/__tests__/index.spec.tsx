@@ -448,14 +448,14 @@ describe('ChatInputArea', () => {
   describe('Voice Input', () => {
     it('should render the voice input button when enabled', () => {
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
-      expect(screen.getByTestId('voice-input-button')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeTruthy()
     })
 
     it('should handle stop recording in VoiceInput', async () => {
       const user = userEvent.setup({ delay: null })
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByTestId('voice-input-button'))
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
       // Wait for VoiceInput to show speaking
       await screen.findByText(/voiceInput.speaking/i)
       const stopBtn = screen.getByTestId('voice-input-stop')
@@ -473,7 +473,7 @@ describe('ChatInputArea', () => {
       const user = userEvent.setup({ delay: null })
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByTestId('voice-input-button'))
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
       await screen.findByText(/voiceInput.speaking/i)
       const stopBtn = screen.getByTestId('voice-input-stop')
       await user.click(stopBtn)
@@ -493,7 +493,7 @@ describe('ChatInputArea', () => {
 
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByTestId('voice-input-button'))
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
 
       // Permission denied should trigger error toast
       await waitFor(() => {
@@ -513,7 +513,7 @@ describe('ChatInputArea', () => {
 
       render(<ChatInputArea speechToTextConfig={{ enabled: true }} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByTestId('voice-input-button'))
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
       await screen.findByText(/voiceInput.speaking/i)
       const stopBtn = screen.getByTestId('voice-input-stop')
       await user.click(stopBtn)

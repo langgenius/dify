@@ -52,11 +52,11 @@ const Operation: FC<OperationProps> = ({
             speechToTextConfig?.enabled && (
               <ActionButton
                 size="l"
+                aria-label={t('voiceInput.start', { ns: 'common' })}
                 disabled={readonly}
                 onClick={onShowVoiceInput}
-                data-testid="voice-input-button"
               >
-                <RiMicLine className="h-5 w-5" />
+                <RiMicLine className="h-5 w-5" aria-hidden="true" />
               </ActionButton>
             )
           }

@@ -682,5 +682,6 @@
   "voiceInput.converting": "Converting to text...",
   "voiceInput.notAllow": "microphone not authorized",
   "voiceInput.speaking": "Speak now...",
+  "voiceInput.start": "Voice input",
   "you": "You"
 }
