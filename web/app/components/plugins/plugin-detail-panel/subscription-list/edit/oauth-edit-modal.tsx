@@ -185,14 +185,12 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
             <div />
             <div className="flex items-center">
               <Button
-                data-testid="modal-cancel-button"
                 onClick={onClose}
                 disabled={isUpdating}
               >
                 {t('operation.cancel', { ns: 'common' })}
               </Button>
               <Button
-                data-testid="modal-confirm-button"
                 className="ml-2"
                 variant="primary"
                 onClick={handleConfirm}

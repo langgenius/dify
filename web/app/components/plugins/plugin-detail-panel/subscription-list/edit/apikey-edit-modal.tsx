@@ -362,7 +362,6 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
               {currentStep === EditStep.EditConfiguration && (
                 <>
                   <Button
-                    data-testid="modal-extra-button"
                     variant="secondary"
                     onClick={handleBack}
                     disabled={isDisabled}
@@ -373,14 +372,12 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
                 </>
               )}
               <Button
-                data-testid="modal-cancel-button"
                 onClick={onClose}
                 disabled={isDisabled}
               >
                 {t('operation.cancel', { ns: 'common' })}
               </Button>
               <Button
-                data-testid="modal-confirm-button"
                 className="ml-2"
                 variant="primary"
                 onClick={handleConfirm}
