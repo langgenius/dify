@@ -14,6 +14,7 @@ from graphon.model_runtime.entities import LLMMode
 from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.enums import CreatorUserRole, DatasetQuerySource
+from services.external_knowledge_service import ExternalRetrievalParameters
 
 logger = logging.getLogger(__name__)
 
@@ -141,11 +142,10 @@ class HitTestingService:
             }
 
         start = time.perf_counter()
-
         all_documents = RetrievalService.external_retrieve(
             dataset_id=dataset.id,
             query=cls.escape_query_for_search(query),
-            external_retrieval_model=external_retrieval_model,
+            external_retrieval_model=cast(ExternalRetrievalParameters | None, external_retrieval_model),
             metadata_filtering_conditions=metadata_filtering_conditions,
         )
 
