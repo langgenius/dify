@@ -135,9 +135,14 @@ const MCPServerModal = ({
       }}
     >
       <DialogContent className="w-[calc(100vw-2rem)] max-w-[520px]! overflow-hidden! border-none p-0! text-left align-middle transition-all duration-100 ease-in">
-        <div className="absolute top-5 right-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
-          <RiCloseLine className="h-5 w-5 text-text-tertiary" />
-        </div>
+        <button
+          type="button"
+          aria-label={t('operation.close', { ns: 'common' })}
+          className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={onHide}
+        >
+          <RiCloseLine className="h-5 w-5 text-text-tertiary" aria-hidden="true" />
+        </button>
         <div className="relative p-6 pb-3 title-2xl-semi-bold text-xl text-text-primary">
           {!data ? t('mcp.server.modal.addTitle', { ns: 'tools' }) : t('mcp.server.modal.editTitle', { ns: 'tools' })}
         </div>

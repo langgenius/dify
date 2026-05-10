@@ -129,9 +129,14 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
 
   return (
     <>
-      <div className="absolute top-5 right-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
-        <RiCloseLine className="h-5 w-5 text-text-tertiary" />
-      </div>
+      <button
+        type="button"
+        aria-label={t('operation.close', { ns: 'common' })}
+        className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        onClick={onHide}
+      >
+        <RiCloseLine className="h-5 w-5 text-text-tertiary" aria-hidden="true" />
+      </button>
       <div className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
         {!isCreate ? t('mcp.modal.editTitle', { ns: 'tools' }) : t('mcp.modal.title', { ns: 'tools' })}
       </div>
