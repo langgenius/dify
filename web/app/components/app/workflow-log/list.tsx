@@ -130,12 +130,17 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
           <tr>
             <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
             <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">
-              <div className="flex cursor-pointer items-center hover:text-text-secondary" onClick={handleSort}>
+              <button
+                type="button"
+                className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={handleSort}
+              >
                 {t('table.header.startTime', { ns: 'appLog' })}
                 <ArrowDownIcon
                   className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 transition-all', 'text-text-tertiary', sortOrder === 'asc' ? 'rotate-180' : '')}
+                  aria-hidden="true"
                 />
-              </div>
+              </button>
             </td>
             <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.status', { ns: 'appLog' })}</td>
             <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.runtime', { ns: 'appLog' })}</td>

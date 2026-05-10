@@ -146,11 +146,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 <div className="mb-2 flex items-center">
                   <button
                     type="button"
-                    className="flex cursor-pointer items-center border-0 bg-transparent p-0"
+                    className="flex cursor-pointer items-center border-0 bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
                     <span className="system-2xs-medium-uppercase text-text-tertiary">{t('newApp.forBeginners', { ns: 'app' })}</span>
-                    <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} />
+                    <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} aria-hidden="true" />
                   </button>
                 </div>
                 {isAppTypeExpanded && (
@@ -249,12 +249,16 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
             </div>
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
             <div className="flex items-center justify-between pt-5 pb-10">
-              <div className="flex cursor-pointer items-center gap-1 system-xs-regular text-text-tertiary" onClick={onCreateFromTemplate}>
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-xs-regular text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={onCreateFromTemplate}
+              >
                 <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
                 <div className="p-px">
-                  <RiArrowRightLine className="h-3.5 w-3.5" />
+                  <RiArrowRightLine className="h-3.5 w-3.5" aria-hidden="true" />
                 </div>
-              </div>
+              </button>
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
