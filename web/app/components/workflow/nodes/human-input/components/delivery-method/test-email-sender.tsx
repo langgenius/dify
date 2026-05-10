@@ -315,7 +315,13 @@ const EmailSenderModal = ({
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.tip`}
                 ns="workflow"
                 components={{
-                  strong: <span onClick={jumpToEmailConfigModal} className="cursor-pointer system-xs-regular text-text-accent"></span>,
+                  strong: (
+                    <button
+                      type="button"
+                      onClick={jumpToEmailConfigModal}
+                      className="inline cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent"
+                    />
+                  ),
                 }}
               />
             </div>
@@ -328,10 +334,15 @@ const EmailSenderModal = ({
               <Divider className="mt-4! mb-2! h-px! w-12! bg-divider-regular" />
             </div>
             <div className="py-2">
-              <div className="group flex h-6 cursor-pointer items-center" onClick={() => setCollapsed(!collapsed)}>
+              <button
+                type="button"
+                aria-expanded={!collapsed}
+                className="group flex h-6 cursor-pointer items-center border-none bg-transparent p-0 text-left"
+                onClick={() => setCollapsed(!collapsed)}
+              >
                 <div className="mr-1 system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
-                <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} />
-              </div>
+                <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} aria-hidden />
+              </button>
               <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`, { ns: 'workflow' })}</div>
               {!collapsed && (
                 <div className="mt-3 space-y-4">

@@ -306,7 +306,7 @@ describe('human-input/panel', () => {
     const config = createConfigResult()
     mockUseConfig.mockReturnValue(config)
 
-    const { container } = renderPanel()
+    renderPanel()
 
     expect(screen.getByRole('button', { name: 'delivery-method:editable' })).toBeInTheDocument()
     expect(screen.getByText('form-content:collapsed')).toBeInTheDocument()
@@ -328,9 +328,8 @@ describe('human-input/panel', () => {
     await user.click(screen.getByRole('button', { name: 'toggle-output-vars' }))
     await user.click(screen.getByRole('button', { name: 'close-preview' }))
 
-    const iconContainers = container.querySelectorAll('div.flex.size-6.cursor-pointer')
-    await user.click(iconContainers[0] as HTMLElement)
-    await user.click(iconContainers[1] as HTMLElement)
+    await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
+    await user.click(screen.getByRole('button', { name: 'share.chat.expand' }))
 
     expect(config.handleDeliveryMethodChange).toHaveBeenCalledWith([{
       id: 'dm-email',

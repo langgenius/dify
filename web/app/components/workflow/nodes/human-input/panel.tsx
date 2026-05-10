@@ -128,18 +128,25 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
               </Button>
               <div className="mx-2 h-3 w-px bg-divider-regular"></div>
               <div className="flex items-center space-x-1">
-                <div
-                  className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
+                <button
+                  type="button"
+                  aria-label={t('operation.copy', { ns: 'common' })}
+                  className="flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-components-button-ghost-bg-hover"
                   onClick={() => {
                     copy(inputs.form_content)
                     toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                   }}
                 >
-                  <RiClipboardLine className="h-4 w-4 text-text-secondary" />
-                </div>
-                <div className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')} onClick={toggleExpandFormContent}>
-                  {isExpandFormContent ? <RiCollapseDiagonalLine className="h-4 w-4" /> : <RiExpandDiagonalLine className="h-4 w-4" />}
-                </div>
+                  <RiClipboardLine className="h-4 w-4 text-text-secondary" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t(isExpandFormContent ? 'chat.collapse' : 'chat.expand', { ns: 'share' })}
+                  className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')}
+                  onClick={toggleExpandFormContent}
+                >
+                  {isExpandFormContent ? <RiCollapseDiagonalLine className="h-4 w-4" aria-hidden /> : <RiExpandDiagonalLine className="h-4 w-4" aria-hidden />}
+                </button>
               </div>
             </div>
           )}
