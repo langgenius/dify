@@ -146,7 +146,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    const closeButton = screen.getByTestId('close-modal')
+    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     await userEvent.click(closeButton)
 
     expect(onCancel).toHaveBeenCalled()
@@ -162,7 +162,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    const closeButton = screen.getByTestId('close-modal')
+    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
     await userEvent.keyboard('{Enter}')
 
@@ -179,9 +179,9 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    const closeButton = screen.getByTestId('close-modal')
+    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
-    fireEvent.keyDown(closeButton, { key: ' ' })
+    await userEvent.keyboard(' ')
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
@@ -196,7 +196,7 @@ describe('OpeningSettingModal', () => {
       />,
     )
 
-    const closeButton = screen.getByTestId('close-modal')
+    const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
     fireEvent.keyDown(closeButton, { key: 'Escape' })
 
