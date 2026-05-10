@@ -1,6 +1,5 @@
 """Paragraph index processor."""
 
-from models.enums import ProcessRuleMode
 import json
 import logging
 import uuid
@@ -30,6 +29,7 @@ from libs import helper
 from models import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import ProcessRuleMode
 from services.account_service import AccountService
 from services.summary_index_service import SummaryIndexService
 

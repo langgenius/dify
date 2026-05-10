@@ -10,16 +10,13 @@ This test suite covers:
 - get_related_apps - apps using the dataset
 """
 
-from models import TenantStatus
-from models import AccountStatus
-from models.enums import TagType
-from models import CreatorUserRole
 import json
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from models import AccountStatus, CreatorUserRole, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -29,7 +26,7 @@ from models.dataset import (
     DatasetProcessRule,
     DatasetQuery,
 )
-from models.enums import DatasetQuerySource, DataSourceType, ProcessRuleMode
+from models.enums import DatasetQuerySource, DataSourceType, ProcessRuleMode, TagType
 from models.model import Tag, TagBinding
 from services.dataset_service import DatasetService, DocumentService
 

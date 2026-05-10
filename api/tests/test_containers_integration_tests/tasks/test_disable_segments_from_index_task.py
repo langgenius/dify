@@ -231,18 +231,17 @@ class TestDisableSegmentsFromIndexTask:
         """
         fake = fake or Faker()
         process_rule = DatasetProcessRule(
-
-        id = fake.uuid4()
-      ,dataset_id = dataset.id
-      ,mode = ProcessRuleMode.AUTOMATIC
-      ,rules = (
-            "{"
-            '"mode": "automatic", '
-            '"rules": {'
-            '"pre_processing_rules": [], "segmentation": '
-            '{"separator": "\\n\\n", "max_tokens": 1000, "chunk_overlap": 50}}'
-            "}"
-        )
+            id=fake.uuid4(),
+            dataset_id=dataset.id,
+            mode=ProcessRuleMode.AUTOMATIC,
+            rules=(
+                "{"
+                '"mode": "automatic", '
+                '"rules": {'
+                '"pre_processing_rules": [], "segmentation": '
+                '{"separator": "\\n\\n", "max_tokens": 1000, "chunk_overlap": 50}}'
+                "}"
+            ),
         )
 
         db_session_with_containers.add(process_rule)

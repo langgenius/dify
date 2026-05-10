@@ -1,4 +1,3 @@
-from typing import ClassVar
 import base64
 import enum
 import hashlib
@@ -12,7 +11,7 @@ import time
 from collections.abc import Sequence
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, TypedDict, cast
+from typing import Any, ClassVar, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -451,10 +450,14 @@ class DatasetProcessRule(TypeBase):
 
     id: Mapped[str] = mapped_column(StringUUID, nullable=False, default_factory=lambda: str(uuid4()), init=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    mode: Mapped[ProcessRuleMode] = mapped_column(EnumText(ProcessRuleMode, length=255), nullable=False, server_default=sa.text("'automatic'"))
+    mode: Mapped[ProcessRuleMode] = mapped_column(
+        EnumText(ProcessRuleMode, length=255), nullable=False, server_default=sa.text("'automatic'")
+    )
     rules: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     MODES = ["automatic", "custom", "hierarchical"]
     PRE_PROCESSING_RULES = ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
