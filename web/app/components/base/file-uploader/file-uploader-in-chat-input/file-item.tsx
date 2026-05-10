@@ -121,7 +121,7 @@ const FileItem = ({
               <button
                 type="button"
                 aria-label={t('operation.retry', { ns: 'common' })}
-                className="h-4 w-4 cursor-pointer text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                className="h-4 w-4 cursor-pointer border-none bg-transparent p-0 text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={() => onReUpload?.(id)}
               >
                 <span className="i-custom-vender-other-replay-line block h-4 w-4" aria-hidden="true" />

@@ -80,7 +80,7 @@ const FileImageItem = ({
               <button
                 type="button"
                 aria-label={t('operation.retry', { ns: 'common' })}
-                className="h-5 w-5"
+                className="h-5 w-5 border-none bg-transparent p-0"
                 onClick={(e) => {
                   e.stopPropagation()
                   onReUpload?.(id)
@@ -97,7 +97,7 @@ const FileImageItem = ({
               <button
                 type="button"
                 aria-label={t('operation.download', { ns: 'common' })}
-                className="absolute right-0.5 bottom-0.5 flex h-6 w-6 items-center justify-center rounded-lg bg-components-actionbar-bg shadow-md"
+                className="absolute right-0.5 bottom-0.5 flex h-6 w-6 items-center justify-center rounded-lg border-none bg-components-actionbar-bg p-0 shadow-md"
                 onClick={(e) => {
                   e.stopPropagation()
                   downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })

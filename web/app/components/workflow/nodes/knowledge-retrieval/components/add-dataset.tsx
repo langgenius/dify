@@ -31,7 +31,7 @@ const AddDataset: FC<Props> = ({
       <button
         type="button"
         aria-label={`${t('operation.add', { ns: 'common' })} ${t('nodes.knowledgeRetrieval.knowledge', { ns: 'workflow' })}`}
-        className="cursor-pointer rounded-md p-1 outline-hidden select-none hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="cursor-pointer rounded-md border-none bg-transparent p-1 outline-hidden select-none hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         onClick={showModal}
       >
         <span aria-hidden="true" className="i-ri-add-line h-4 w-4 text-text-tertiary" />

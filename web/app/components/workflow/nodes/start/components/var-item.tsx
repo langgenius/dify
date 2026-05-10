@@ -89,7 +89,7 @@ const VarItem: FC<Props> = ({
                     <button
                       type="button"
                       aria-label={t('operation.edit', { ns: 'common' })}
-                      className="mr-1 cursor-pointer rounded-md p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                      className="mr-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                       onClick={showEditVarModal}
                     >
                       <Edit03 className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
@@ -97,7 +97,7 @@ const VarItem: FC<Props> = ({
                     <button
                       type="button"
                       aria-label={t('operation.remove', { ns: 'common' })}
-                      className="group cursor-pointer rounded-md p-1 hover:bg-state-destructive-hover focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
+                      className="group cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-destructive-hover focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
                       onClick={onRemove}
                     >
                       <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" aria-hidden="true" />

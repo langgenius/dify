@@ -103,7 +103,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             <button
               type="button"
               aria-label={`${t('operation.edit', { ns: 'common' })} ${tag.name}`}
-              className="group/edit shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="group/edit shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={() => setIsEditing(true)}
             >
               <span aria-hidden="true" className="i-ri-edit-line h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary" />
@@ -111,7 +111,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             <button
               type="button"
               aria-label={`${t('operation.remove', { ns: 'common' })} ${tag.name}`}
-              className="group/remove shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="group/remove shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={() => {
                 if (tag.binding_count)
                   setShowRemoveModal(true)

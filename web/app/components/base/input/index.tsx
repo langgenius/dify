@@ -112,7 +112,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         <button
           type="button"
           aria-label={t('operation.clear', { ns: 'common' })}
-          className={cn('group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer p-px')}
+          className={cn('group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-px')}
           onClick={onClear}
         >
           <span className="i-ri-close-circle-fill h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" aria-hidden="true" />

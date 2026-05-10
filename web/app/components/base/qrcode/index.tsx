@@ -76,7 +76,7 @@ const ShareQRCode = ({ content }: Props) => {
               <div className="text-text-tertiary">·</div>
               <button
                 type="button"
-                className="cursor-pointer text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                className="cursor-pointer border-none bg-transparent p-0 text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                 onClick={downloadQR}
               >
                 {downloadText}

@@ -110,7 +110,7 @@ const Item: FC<ItemProps> = ({
           <button
             type="button"
             aria-label={t('operation.edit', { ns: 'common' })}
-            className="cursor-pointer rounded-md p-0.5 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="cursor-pointer rounded-md border-none bg-transparent p-0.5 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={handleRename}
           >
             <RiEditLine className="size-4" aria-hidden="true" />
@@ -119,7 +119,7 @@ const Item: FC<ItemProps> = ({
             type="button"
             ref={deleteBtnRef}
             aria-label={t('operation.remove', { ns: 'common' })}
-            className="cursor-pointer rounded-md p-0.5 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
+            className="cursor-pointer rounded-md border-none bg-transparent p-0.5 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
             onClick={showDeleteConfirm}
           >
             <RiDeleteBinLine className="size-4" aria-hidden="true" />
