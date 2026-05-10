@@ -25,7 +25,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
 }) => {
   const { t } = useTranslation()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_CONTEXT_BLOCK_COMMAND)
-  const [triggerRef, open, setOpen] = useTrigger()
+  const [triggerRef, open, setOpen] = useTrigger<HTMLButtonElement>()
   const { eventEmitter } = useEventEmitterContextContext()
   const [localDatasets, setLocalDatasets] = useState<Dataset[]>(datasets)
 

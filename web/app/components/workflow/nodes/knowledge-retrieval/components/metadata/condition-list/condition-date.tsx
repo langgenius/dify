@@ -32,6 +32,9 @@ const ConditionDate = ({
     handleClickTrigger,
   }: TriggerProps) => {
     const hasValue = Boolean(value)
+    const triggerText = value
+      ? dayjs(value * 1000).tz(timezone).format('MMMM DD YYYY HH:mm A')
+      : t('nodes.knowledgeRetrieval.metadata.panel.datePlaceholder', { ns: 'workflow' })
 
     return (
       <div className="group flex items-center">
@@ -43,11 +46,7 @@ const ConditionDate = ({
           )}
           onClick={handleClickTrigger}
         >
-          {
-            hasValue
-              ? dayjs(value * 1000).tz(timezone).format('MMMM DD YYYY HH:mm A')
-              : t('nodes.knowledgeRetrieval.metadata.panel.datePlaceholder', { ns: 'workflow' })
-          }
+          {triggerText}
         </button>
         {hasValue
           ? (
