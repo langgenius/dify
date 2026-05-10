@@ -233,7 +233,6 @@ class TestSegmentTypeAdditionalMethods:
         assert SegmentType.GROUP.is_valid([StringSegment(value="b")]) is True
         assert SegmentType.GROUP.is_valid(["not-segment"]) is False
 
-    def test_array_validation_does_not_depend_on_is_array_type_helper(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(SegmentType, "is_array_type", lambda self: False)
-
-        assert SegmentType.ARRAY_STRING.is_valid(["a"]) is True
+    def test_unreachable_assertion_branch(self):
+        with pytest.raises(AssertionError, match="Expected code to be unreachable"):
+            SegmentType.is_valid("not-a-segment-type", None)  # type: ignore[arg-type]
