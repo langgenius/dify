@@ -174,7 +174,7 @@ describe('FileItem (chat-input)', () => {
     fireEvent.click(screen.getByText(/audio\.mp3/i))
     expect(document.querySelector('audio')).toBeInTheDocument()
 
-    const deleteButton = screen.getByTestId('close-btn')
+    const deleteButton = screen.getByRole('button', { name: 'common.operation.close' })
     fireEvent.click(deleteButton)
 
     expect(document.querySelector('audio')).not.toBeInTheDocument()
