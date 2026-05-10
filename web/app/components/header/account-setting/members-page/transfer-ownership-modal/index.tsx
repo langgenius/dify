@@ -125,7 +125,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
             </div>
             <div className="pt-3"></div>
             <div className="space-y-2">
-              <Button data-testid="transfer-modal-send-code" className="w-full!" variant="primary" onClick={sendCodeToOriginEmail}>
+              <Button className="w-full!" variant="primary" onClick={sendCodeToOriginEmail}>
                 {t('members.transferModal.sendVerifyCode', { ns: 'common' })}
               </Button>
               <Button data-testid="transfer-modal-cancel" className="w-full!" onClick={onClose}>
