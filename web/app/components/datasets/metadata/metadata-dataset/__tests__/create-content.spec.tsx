@@ -50,7 +50,7 @@ describe('CreateContent', () => {
     it('should render close button', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })
-      expect(screen.getByTestId('modal-close-btn')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 
@@ -162,7 +162,7 @@ describe('CreateContent', () => {
       const handleClose = vi.fn()
       renderCreateContent({ onSave: handleSave, onClose: handleClose })
 
-      fireEvent.click(screen.getByTestId('modal-close-btn'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(handleClose).toHaveBeenCalled()
     })

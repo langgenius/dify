@@ -81,13 +81,14 @@ const PublishAsKnowledgePipelineModal = ({
 
           <div className="relative flex items-center p-6 pr-14 pb-3 title-2xl-semi-bold text-text-primary">
             {t('common.publishAs', { ns: 'pipeline' })}
-            <div
-              data-testid="publish-modal-close-btn"
-              className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center"
+            <button
+              type="button"
+              aria-label={t('operation.close', { ns: 'common' })}
+              className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-0"
               onClick={onCancel}
             >
-              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-            </div>
+              <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            </button>
           </div>
           <div className="px-6 py-3">
             <div className="mb-5 flex">

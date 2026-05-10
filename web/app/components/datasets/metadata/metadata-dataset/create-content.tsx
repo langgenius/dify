@@ -50,10 +50,10 @@ const CreateContent: FC<Props> = ({
       {hasBack && (
         <button
           type="button"
-          className="relative left-[-4px] mb-1 flex cursor-pointer items-center space-x-1 py-1 text-text-accent"
+          className="relative left-[-4px] mb-1 flex cursor-pointer items-center space-x-1 border-none bg-transparent px-0 py-1 text-left text-text-accent"
           onClick={onBack}
         >
-          <span className="i-ri-arrow-left-line size-4" />
+          <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
           <span className="system-xs-semibold-uppercase">{t(`${i18nPrefix}.back`, { ns: 'dataset' })}</span>
         </button>
       )}
@@ -65,10 +65,10 @@ const CreateContent: FC<Props> = ({
           <button
             type="button"
             aria-label={t('operation.close', { ns: 'common' })}
-            className="cursor-pointer p-1.5 text-text-tertiary"
+            className="cursor-pointer border-none bg-transparent p-1.5 text-text-tertiary"
             onClick={onClose}
           >
-            <span className="i-ri-close-line size-4" data-testid="modal-close-btn" />
+            <span className="i-ri-close-line size-4" aria-hidden="true" />
           </button>
         )}
       </div>
