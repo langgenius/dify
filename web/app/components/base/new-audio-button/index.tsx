@@ -70,11 +70,11 @@ const AudioBtn = ({
   }
 
   const tooltipContent = {
-    initial: t('play', { ns: 'appApi' }),
-    ended: t('play', { ns: 'appApi' }),
-    paused: t('pause', { ns: 'appApi' }),
-    playing: t('playing', { ns: 'appApi' }),
-    loading: t('loading', { ns: 'appApi' }),
+    initial: t('play', { ns: 'appApi', defaultValue: 'Play' }),
+    ended: t('play', { ns: 'appApi', defaultValue: 'Play' }),
+    paused: t('pause', { ns: 'appApi', defaultValue: 'Pause' }),
+    playing: t('playing', { ns: 'appApi', defaultValue: 'Playing' }),
+    loading: t('loading', { ns: 'appApi', defaultValue: 'Loading' }),
   }[audioState]
 
   return (
@@ -88,10 +88,11 @@ const AudioBtn = ({
                   ? ActionButtonState.Active
                   : ActionButtonState.Default
               }
+              aria-label={tooltipContent}
               onClick={handleToggle}
               disabled={audioState === 'loading'}
             >
-              <RiVolumeUpLine className="h-4 w-4" />
+              <RiVolumeUpLine className="h-4 w-4" aria-hidden="true" />
             </ActionButton>
           </span>
         )}
