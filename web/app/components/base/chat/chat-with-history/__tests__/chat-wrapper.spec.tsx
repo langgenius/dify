@@ -1333,7 +1333,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
 
-    fireEvent.click(await screen.findByTestId('edit-btn'))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
     const editedTextarea = await screen.findByDisplayValue('Original question')
     fireEvent.change(editedTextarea, { target: { value: 'Edited question text' } })
     fireEvent.click(screen.getByTestId('save-edit-btn'))

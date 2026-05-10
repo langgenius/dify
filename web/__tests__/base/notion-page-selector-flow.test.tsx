@@ -111,7 +111,7 @@ describe('Base Notion Page Selector Flow', () => {
     await user.type(screen.getByTestId('notion-search-input'), 'missing-page')
     expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
 
-    await user.click(screen.getByTestId('notion-search-input-clear'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
     expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
 
     await user.click(screen.getByTestId('notion-page-preview-root-1'))
