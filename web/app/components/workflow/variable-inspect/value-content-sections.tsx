@@ -11,7 +11,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { PreviewMode } from '../../base/features/types'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
-import DisplayContent from './display-content'
+import { DisplayContent } from './display-content'
 import LargeDataAlert from './large-data-alert'
 import { PreviewType } from './types'
 

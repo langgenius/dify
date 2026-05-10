@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { MetadataItemWithValue } from '../types'
+import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
@@ -29,7 +29,7 @@ type Props = {
   onChange?: (item: MetadataItemWithValue) => void
   onDelete?: (item: MetadataItemWithValue) => void
   onSelect?: (item: MetadataItemWithValue) => void
-  onAdd?: (item: MetadataItemWithValue) => void
+  onAdd?: (item: BuiltInMetadataItem) => void
 }
 
 const InfoGroup: FC<Props> = ({

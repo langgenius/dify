@@ -1,14 +1,14 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { RiAlertFill, RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
+import { RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
+import { Infotip } from '../../base/infotip'
 import Loading from '../../base/loading'
-import Tooltip from '../../base/tooltip'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
 
 export default function SpecificGroupsOrMembers() {
@@ -137,9 +137,14 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
 
 export function WebAppSSONotEnabledTip() {
   const { t } = useTranslation()
+  const tip = t('accessControlDialog.webAppSSONotEnabledTip', { ns: 'app' })
+
   return (
-    <Tooltip asChild={false} popupContent={t('accessControlDialog.webAppSSONotEnabledTip', { ns: 'app' })}>
-      <RiAlertFill className="h-4 w-4 shrink-0 text-text-warning-secondary" />
-    </Tooltip>
+    <Infotip
+      aria-label={tip}
+      iconClassName="h-4 w-4 shrink-0 text-text-warning-secondary hover:text-text-warning-secondary"
+    >
+      {tip}
+    </Infotip>
   )
 }

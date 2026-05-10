@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import type { Dependency } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import { InstallStep } from '../../types'
 import useHideLogic from '../hooks/use-hide-logic'
 import ReadyToInstall from './ready-to-install'
@@ -50,26 +50,31 @@ const InstallBundle: FC<Props> = ({
   }, [step, t])
 
   return (
-    <Modal
-      isShow={true}
-      onClose={foldAnimInto}
-      className={cn(modalClassName, 'shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0')}
-      closable
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          foldAnimInto()
+      }}
     >
-      <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-        <div className="self-stretch title-2xl-semi-bold text-text-primary">
-          {getTitle()}
+      <DialogContent className={cn('relative w-full max-w-[480px] overflow-hidden! text-left align-middle', cn(modalClassName, 'shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0'))}>
+        <DialogCloseButton data-testid="modal-close-button" />
+
+        <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
+          <div className="self-stretch title-2xl-semi-bold text-text-primary">
+            {getTitle()}
+          </div>
         </div>
-      </div>
-      <ReadyToInstall
-        step={step}
-        onStepChange={setStep}
-        onStartToInstall={handleStartToInstall}
-        setIsInstalling={setIsInstalling}
-        allPlugins={fromDSLPayload}
-        onClose={onClose}
-      />
-    </Modal>
+        <ReadyToInstall
+          step={step}
+          onStepChange={setStep}
+          onStartToInstall={handleStartToInstall}
+          setIsInstalling={setIsInstalling}
+          allPlugins={fromDSLPayload}
+          onClose={onClose}
+        />
+      </DialogContent>
+    </Dialog>
   )
 }
 

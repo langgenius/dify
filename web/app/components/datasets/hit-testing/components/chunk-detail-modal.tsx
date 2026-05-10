@@ -2,12 +2,12 @@
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
 import { Markdown } from '@/app/components/base/markdown'
-import Modal from '@/app/components/base/modal'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 import ImageList from '../../common/image-list'
 import Dot from '../../documents/detail/completed/common/dot'
@@ -52,93 +52,106 @@ const ChunkDetailModal = ({
   const showKeywords = !isParentChildRetrieval && keywords && keywords.length > 0
 
   return (
-    <Modal
-      title={t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
-      isShow
-      closable
-      onClose={onHide}
-      className={cn(isParentChildRetrieval ? 'min-w-[1200px]!' : 'min-w-[800px]!')}
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          onHide()
+      }}
     >
-      <div className="mt-4 flex">
-        <div className={cn('flex-1', isParentChildRetrieval && 'pr-6')}>
-          {/* Meta info */}
-          <div className="flex items-center justify-between">
-            <div className="flex grow items-center space-x-2">
-              <SegmentIndexTag
-                labelPrefix={labelPrefix}
-                positionId={position}
-                className={cn('w-fit group-hover:opacity-100')}
-              />
-              <Dot />
-              <div className="flex grow items-center space-x-1">
-                <FileIcon type={extension} size="sm" />
-                <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">{document.name}</span>
+      <DialogContent className={cn('max-h-none overflow-hidden! border-none p-6 text-left align-middle', isParentChildRetrieval ? 'w-[1200px] max-w-none! min-w-[1200px]!' : 'w-[800px] max-w-none! min-w-[800px]!')}>
+        <DialogCloseButton
+          data-testid="modal-close-button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onHide()
+          }}
+        />
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
+        </DialogTitle>
+
+        <div className="mt-4 flex">
+          <div className={cn('flex-1', isParentChildRetrieval && 'pr-6')}>
+            {/* Meta info */}
+            <div className="flex items-center justify-between">
+              <div className="flex grow items-center space-x-2">
+                <SegmentIndexTag
+                  labelPrefix={labelPrefix}
+                  positionId={position}
+                  className={cn('w-fit group-hover:opacity-100')}
+                />
+                <Dot />
+                <div className="flex grow items-center space-x-1">
+                  <FileIcon type={extension} size="sm" />
+                  <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">{document.name}</span>
+                </div>
               </div>
+              <Score value={score} />
             </div>
-            <Score value={score} />
-          </div>
-          {/* Content */}
-          <div className="relative">
-            {!answer && (
-              <Markdown
-                className={cn('mt-2! text-text-secondary!', heighClassName)}
-                content={sign_content || content}
-                customDisallowedElements={['input']}
-              />
-            )}
-            {answer && (
-              <div className="break-all">
-                <div className="flex gap-x-1">
-                  <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">Q</div>
-                  <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
-                    {content}
+            {/* Content */}
+            <div className="relative">
+              {!answer && (
+                <Markdown
+                  className={cn('mt-2! text-text-secondary!', heighClassName)}
+                  content={sign_content || content}
+                  customDisallowedElements={['input']}
+                />
+              )}
+              {answer && (
+                <div className="break-all">
+                  <div className="flex gap-x-1">
+                    <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">Q</div>
+                    <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
+                      {content}
+                    </div>
+                  </div>
+                  <div className="flex gap-x-1">
+                    <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">A</div>
+                    <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
+                      {answer}
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-x-1">
-                  <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">A</div>
-                  <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
-                    {answer}
+              )}
+              {/* Mask */}
+              <Mask className="absolute inset-x-0 bottom-0" />
+            </div>
+            {(showImages || showKeywords || !!summary) && (
+              <div className="flex flex-col gap-y-3 pt-3">
+                {showImages && (
+                  <ImageList images={images} size="md" className="py-1" />
+                )}
+                {!!summary && (
+                  <SummaryText value={summary} disabled />
+                )}
+                {showKeywords && (
+                  <div className="flex flex-col gap-y-1">
+                    <div className="text-xs font-medium text-text-tertiary uppercase">{t(`${i18nPrefix}keyword`, { ns: 'datasetHitTesting' })}</div>
+                    <div className="flex flex-wrap gap-x-2">
+                      {keywords.map(keyword => (
+                        <Tag key={keyword} text={keyword} />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
-            {/* Mask */}
-            <Mask className="absolute inset-x-0 bottom-0" />
           </div>
-          {(showImages || showKeywords || !!summary) && (
-            <div className="flex flex-col gap-y-3 pt-3">
-              {showImages && (
-                <ImageList images={images} size="md" className="py-1" />
-              )}
-              {!!summary && (
-                <SummaryText value={summary} disabled />
-              )}
-              {showKeywords && (
-                <div className="flex flex-col gap-y-1">
-                  <div className="text-xs font-medium text-text-tertiary uppercase">{t(`${i18nPrefix}keyword`, { ns: 'datasetHitTesting' })}</div>
-                  <div className="flex flex-wrap gap-x-2">
-                    {keywords.map(keyword => (
-                      <Tag key={keyword} text={keyword} />
-                    ))}
-                  </div>
-                </div>
-              )}
+
+          {isParentChildRetrieval && (
+            <div className="flex-1 pb-6 pl-6">
+              <div className="system-xs-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}hitChunks`, { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
+              <div className={cn('mt-1 space-y-2', heighClassName)}>
+                {child_chunks.map(item => (
+                  <ChildChunksItem key={item.id} payload={item} isShowAll />
+                ))}
+              </div>
             </div>
           )}
         </div>
-
-        {isParentChildRetrieval && (
-          <div className="flex-1 pb-6 pl-6">
-            <div className="system-xs-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}hitChunks`, { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
-            <div className={cn('mt-1 space-y-2', heighClassName)}>
-              {child_chunks.map(item => (
-                <ChildChunksItem key={item.id} payload={item} isShowAll />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   )
 }
 

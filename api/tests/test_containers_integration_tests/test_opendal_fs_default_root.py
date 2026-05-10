@@ -1,12 +1,14 @@
 from pathlib import Path
 
+import pytest
+
 from extensions.storage.opendal_storage import OpenDALStorage
 
 
 class TestOpenDALFsDefaultRoot:
     """Test that OpenDALStorage with scheme='fs' works correctly when no root is provided."""
 
-    def test_fs_without_root_uses_default(self, tmp_path, monkeypatch):
+    def test_fs_without_root_uses_default(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         """When no root is specified, the default 'storage' should be used and passed to the Operator."""
         # Change to tmp_path so the default "storage" dir is created there
         monkeypatch.chdir(tmp_path)
@@ -25,7 +27,7 @@ class TestOpenDALFsDefaultRoot:
         # Cleanup
         storage.delete("test_default_root.txt")
 
-    def test_fs_with_explicit_root(self, tmp_path):
+    def test_fs_with_explicit_root(self, tmp_path: Path):
         """When root is explicitly provided, it should be used."""
         custom_root = str(tmp_path / "custom_storage")
         storage = OpenDALStorage(scheme="fs", root=custom_root)
@@ -38,7 +40,7 @@ class TestOpenDALFsDefaultRoot:
         # Cleanup
         storage.delete("test_explicit_root.txt")
 
-    def test_fs_with_env_var_root(self, tmp_path, monkeypatch):
+    def test_fs_with_env_var_root(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         """When OPENDAL_FS_ROOT env var is set, it should be picked up via _get_opendal_kwargs."""
         env_root = str(tmp_path / "env_storage")
         monkeypatch.setenv("OPENDAL_FS_ROOT", env_root)

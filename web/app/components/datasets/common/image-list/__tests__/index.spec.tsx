@@ -42,7 +42,7 @@ type ImageInfo = {
   size: number
 }
 
-// Mock ImagePreviewer since it uses createPortal
+// Mock ImagePreviewer since it renders through a Dialog portal
 vi.mock('../../image-previewer', () => ({
   default: ({ images, initialIndex, onClose }: ImagePreviewerProps) => (
     <div data-testid="image-previewer">

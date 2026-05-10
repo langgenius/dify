@@ -2,6 +2,7 @@ import datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
@@ -58,7 +59,7 @@ class TestDatasetList:
         user.is_dataset_editor = True
         return user
 
-    def test_get_success_basic(self, app):
+    def test_get_success_basic(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)
 
@@ -93,7 +94,7 @@ class TestDatasetList:
         assert resp["total"] == 1
         assert resp["data"][0]["embedding_available"] is True
 
-    def test_get_with_ids_filter(self, app):
+    def test_get_with_ids_filter(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)
 
@@ -128,7 +129,7 @@ class TestDatasetList:
         assert status == 200
         assert resp["total"] == 2
 
-    def test_get_with_tag_ids(self, app):
+    def test_get_with_tag_ids(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)
 
@@ -161,7 +162,7 @@ class TestDatasetList:
 
         assert status == 200
 
-    def test_embedding_available_false(self, app):
+    def test_embedding_available_false(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)
 
@@ -203,7 +204,7 @@ class TestDatasetList:
 
         assert resp["data"][0]["embedding_available"] is False
 
-    def test_partial_members_permission(self, app):
+    def test_partial_members_permission(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.get)
 
@@ -242,7 +243,7 @@ class TestDatasetList:
 
 
 class TestDatasetListApiPost:
-    def test_post_success(self, app):
+    def test_post_success(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.post)
 
@@ -290,7 +291,7 @@ class TestDatasetListApiPost:
 
         assert status == 201
 
-    def test_post_forbidden(self, app):
+    def test_post_forbidden(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.post)
 
@@ -310,7 +311,7 @@ class TestDatasetListApiPost:
             with pytest.raises(Forbidden):
                 method(api)
 
-    def test_post_duplicate_name(self, app):
+    def test_post_duplicate_name(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.post)
 
@@ -335,7 +336,7 @@ class TestDatasetListApiPost:
             with pytest.raises(DatasetNameDuplicateError):
                 method(api)
 
-    def test_post_invalid_payload_missing_name(self, app):
+    def test_post_invalid_payload_missing_name(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.post)
 
@@ -343,7 +344,7 @@ class TestDatasetListApiPost:
             with pytest.raises(ValueError):
                 method(api)
 
-    def test_post_invalid_indexing_technique(self, app):
+    def test_post_invalid_indexing_technique(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.post)
 
@@ -356,7 +357,7 @@ class TestDatasetListApiPost:
             with pytest.raises(ValueError, match="Invalid indexing technique"):
                 method(api)
 
-    def test_post_invalid_provider(self, app):
+    def test_post_invalid_provider(self, app: Flask):
         api = DatasetListApi()
         method = unwrap(api.post)
 
@@ -371,7 +372,7 @@ class TestDatasetListApiPost:
 
 
 class TestDatasetApiGet:
-    def test_get_success_basic(self, app):
+    def test_get_success_basic(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.get)
 
@@ -427,7 +428,7 @@ class TestDatasetApiGet:
         assert status == 200
         assert data["embedding_available"] is True
 
-    def test_get_dataset_not_found(self, app):
+    def test_get_dataset_not_found(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.get)
 
@@ -448,7 +449,7 @@ class TestDatasetApiGet:
             with pytest.raises(NotFound, match="Dataset not found"):
                 method(api, dataset_id)
 
-    def test_get_permission_denied(self, app):
+    def test_get_permission_denied(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.get)
 
@@ -475,7 +476,7 @@ class TestDatasetApiGet:
             with pytest.raises(Forbidden, match="no access"):
                 method(api, dataset_id)
 
-    def test_get_high_quality_embedding_unavailable(self, app):
+    def test_get_high_quality_embedding_unavailable(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.get)
 
@@ -530,7 +531,7 @@ class TestDatasetApiGet:
 
         assert data["embedding_available"] is False
 
-    def test_get_partial_members_permission(self, app):
+    def test_get_partial_members_permission(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.get)
 
@@ -590,7 +591,7 @@ class TestDatasetApiGet:
 
 
 class TestDatasetApiPatch:
-    def test_patch_success_basic(self, app):
+    def test_patch_success_basic(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.patch)
 
@@ -659,7 +660,7 @@ class TestDatasetApiPatch:
         assert status == 200
         assert result["partial_member_list"] == []
 
-    def test_patch_dataset_not_found(self, app):
+    def test_patch_dataset_not_found(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.patch)
 
@@ -674,7 +675,7 @@ class TestDatasetApiPatch:
             with pytest.raises(NotFound, match="Dataset not found"):
                 method(api, "missing")
 
-    def test_patch_permission_denied(self, app):
+    def test_patch_permission_denied(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.patch)
 
@@ -704,7 +705,7 @@ class TestDatasetApiPatch:
             with pytest.raises(Forbidden):
                 method(api, dataset_id)
 
-    def test_patch_partial_members_update(self, app):
+    def test_patch_partial_members_update(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.patch)
 
@@ -773,7 +774,7 @@ class TestDatasetApiPatch:
 
         assert result["partial_member_list"] == payload["partial_member_list"]
 
-    def test_patch_clear_partial_members(self, app):
+    def test_patch_clear_partial_members(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.patch)
 
@@ -843,7 +844,7 @@ class TestDatasetApiPatch:
 
 
 class TestDatasetApiDelete:
-    def test_delete_success(self, app):
+    def test_delete_success(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.delete)
 
@@ -874,7 +875,7 @@ class TestDatasetApiDelete:
         assert status == 204
         assert result == {"result": "success"}
 
-    def test_delete_forbidden_no_permission(self, app):
+    def test_delete_forbidden_no_permission(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.delete)
 
@@ -893,7 +894,7 @@ class TestDatasetApiDelete:
             with pytest.raises(Forbidden):
                 method(api, dataset_id)
 
-    def test_delete_dataset_not_found(self, app):
+    def test_delete_dataset_not_found(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.delete)
 
@@ -917,7 +918,7 @@ class TestDatasetApiDelete:
             with pytest.raises(NotFound, match="Dataset not found"):
                 method(api, dataset_id)
 
-    def test_delete_dataset_in_use(self, app):
+    def test_delete_dataset_in_use(self, app: Flask):
         api = DatasetApi()
         method = unwrap(api.delete)
 
@@ -943,7 +944,7 @@ class TestDatasetApiDelete:
 
 
 class TestDatasetUseCheckApi:
-    def test_get_use_check_true(self, app):
+    def test_get_use_check_true(self, app: Flask):
         api = DatasetUseCheckApi()
         method = unwrap(api.get)
 
@@ -962,7 +963,7 @@ class TestDatasetUseCheckApi:
         assert status == 200
         assert result == {"is_using": True}
 
-    def test_get_use_check_false(self, app):
+    def test_get_use_check_false(self, app: Flask):
         api = DatasetUseCheckApi()
         method = unwrap(api.get)
 
@@ -983,7 +984,7 @@ class TestDatasetUseCheckApi:
 
 
 class TestDatasetQueryApi:
-    def test_get_queries_success(self, app):
+    def test_get_queries_success(self, app: Flask):
         api = DatasetQueryApi()
         method = unwrap(api.get)
 
@@ -1027,7 +1028,7 @@ class TestDatasetQueryApi:
         assert response["has_more"] is False
         assert len(response["data"]) == 2
 
-    def test_get_queries_dataset_not_found(self, app):
+    def test_get_queries_dataset_not_found(self, app: Flask):
         api = DatasetQueryApi()
         method = unwrap(api.get)
 
@@ -1049,7 +1050,7 @@ class TestDatasetQueryApi:
             with pytest.raises(NotFound, match="Dataset not found"):
                 method(api, dataset_id)
 
-    def test_get_queries_permission_denied(self, app):
+    def test_get_queries_permission_denied(self, app: Flask):
         api = DatasetQueryApi()
         method = unwrap(api.get)
 
@@ -1078,7 +1079,7 @@ class TestDatasetQueryApi:
             with pytest.raises(Forbidden):
                 method(api, dataset_id)
 
-    def test_get_queries_pagination_has_more(self, app):
+    def test_get_queries_pagination_has_more(self, app: Flask):
         api = DatasetQueryApi()
         method = unwrap(api.get)
 
@@ -1152,7 +1153,7 @@ class TestDatasetIndexingEstimateApi:
             "dataset_id": None,
         }
 
-    def test_post_success_upload_file(self, app):
+    def test_post_success_upload_file(self, app: Flask):
         api = DatasetIndexingEstimateApi()
         method = unwrap(api.post)
 
@@ -1193,7 +1194,7 @@ class TestDatasetIndexingEstimateApi:
         assert status == 200
         assert response == {"tokens": 100}
 
-    def test_post_file_not_found(self, app):
+    def test_post_file_not_found(self, app: Flask):
         api = DatasetIndexingEstimateApi()
         method = unwrap(api.post)
 
@@ -1223,7 +1224,7 @@ class TestDatasetIndexingEstimateApi:
             with pytest.raises(NotFound):
                 method(api)
 
-    def test_post_llm_bad_request_error(self, app):
+    def test_post_llm_bad_request_error(self, app: Flask):
         api = DatasetIndexingEstimateApi()
         method = unwrap(api.post)
         mock_file = self._upload_file()
@@ -1258,7 +1259,7 @@ class TestDatasetIndexingEstimateApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(api)
 
-    def test_post_provider_token_not_init(self, app):
+    def test_post_provider_token_not_init(self, app: Flask):
         api = DatasetIndexingEstimateApi()
         method = unwrap(api.post)
         mock_file = self._upload_file()
@@ -1293,7 +1294,7 @@ class TestDatasetIndexingEstimateApi:
             with pytest.raises(ProviderNotInitializeError):
                 method(api)
 
-    def test_post_generic_exception(self, app):
+    def test_post_generic_exception(self, app: Flask):
         api = DatasetIndexingEstimateApi()
         method = unwrap(api.post)
         mock_file = self._upload_file()
@@ -1330,7 +1331,7 @@ class TestDatasetIndexingEstimateApi:
 
 
 class TestDatasetRelatedAppListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = DatasetRelatedAppListApi()
         method = unwrap(api.get)
 
@@ -1368,7 +1369,7 @@ class TestDatasetRelatedAppListApi:
         assert response["total"] == 2
         assert response["data"] == [app1, app2]
 
-    def test_get_dataset_not_found(self, app):
+    def test_get_dataset_not_found(self, app: Flask):
         api = DatasetRelatedAppListApi()
         method = unwrap(api.get)
 
@@ -1386,7 +1387,7 @@ class TestDatasetRelatedAppListApi:
             with pytest.raises(NotFound):
                 method(api, "dataset-1")
 
-    def test_get_permission_denied(self, app):
+    def test_get_permission_denied(self, app: Flask):
         api = DatasetRelatedAppListApi()
         method = unwrap(api.get)
 
@@ -1410,7 +1411,7 @@ class TestDatasetRelatedAppListApi:
             with pytest.raises(Forbidden):
                 method(api, "dataset-1")
 
-    def test_get_filters_none_apps(self, app):
+    def test_get_filters_none_apps(self, app: Flask):
         api = DatasetRelatedAppListApi()
         method = unwrap(api.get)
 
@@ -1449,7 +1450,7 @@ class TestDatasetRelatedAppListApi:
 
 
 class TestDatasetIndexingStatusApi:
-    def test_get_success_with_documents(self, app):
+    def test_get_success_with_documents(self, app: Flask):
         api = DatasetIndexingStatusApi()
         method = unwrap(api.get)
 
@@ -1490,7 +1491,7 @@ class TestDatasetIndexingStatusApi:
         assert item["completed_segments"] == 3
         assert item["total_segments"] == 3
 
-    def test_get_success_no_documents(self, app):
+    def test_get_success_no_documents(self, app: Flask):
         api = DatasetIndexingStatusApi()
         method = unwrap(api.get)
 
@@ -1510,7 +1511,7 @@ class TestDatasetIndexingStatusApi:
         assert status == 200
         assert response == {"data": []}
 
-    def test_segment_counts_different_values(self, app):
+    def test_segment_counts_different_values(self, app: Flask):
         api = DatasetIndexingStatusApi()
         method = unwrap(api.get)
 
@@ -1550,7 +1551,7 @@ class TestDatasetIndexingStatusApi:
 
 
 class TestDatasetApiKeyApi:
-    def test_get_api_keys_success(self, app):
+    def test_get_api_keys_success(self, app: Flask):
         api = DatasetApiKeyApi()
         method = unwrap(api.get)
 
@@ -1587,7 +1588,7 @@ class TestDatasetApiKeyApi:
         assert response["data"][1]["id"] == "key-2"
         assert response["data"][1]["token"] == "ds-def"
 
-    def test_post_create_api_key_success(self, app):
+    def test_post_create_api_key_success(self, app: Flask):
         api = DatasetApiKeyApi()
         method = unwrap(api.post)
 
@@ -1632,7 +1633,7 @@ class TestDatasetApiKeyApi:
         assert response["type"] == "dataset"
         assert response["created_at"] is not None
 
-    def test_post_exceed_max_keys(self, app):
+    def test_post_exceed_max_keys(self, app: Flask):
         api = DatasetApiKeyApi()
         method = unwrap(api.post)
 
@@ -1658,7 +1659,7 @@ class TestDatasetApiKeyApi:
 
 
 class TestDatasetApiDeleteApi:
-    def test_delete_success(self, app):
+    def test_delete_success(self, app: Flask):
         api = DatasetApiDeleteApi()
         method = unwrap(api.delete)
 
@@ -1688,7 +1689,7 @@ class TestDatasetApiDeleteApi:
         assert status == 204
         assert response["result"] == "success"
 
-    def test_delete_key_not_found(self, app):
+    def test_delete_key_not_found(self, app: Flask):
         api = DatasetApiDeleteApi()
         method = unwrap(api.delete)
 
@@ -1708,7 +1709,7 @@ class TestDatasetApiDeleteApi:
 
 
 class TestDatasetEnableApiApi:
-    def test_enable_api(self, app):
+    def test_enable_api(self, app: Flask):
         api = DatasetEnableApiApi()
         method = unwrap(api.post)
 
@@ -1724,7 +1725,7 @@ class TestDatasetEnableApiApi:
         assert status == 200
         assert response["result"] == "success"
 
-    def test_disable_api(self, app):
+    def test_disable_api(self, app: Flask):
         api = DatasetEnableApiApi()
         method = unwrap(api.post)
 
@@ -1742,7 +1743,7 @@ class TestDatasetEnableApiApi:
 
 
 class TestDatasetApiBaseUrlApi:
-    def test_get_api_base_url_from_config(self, app):
+    def test_get_api_base_url_from_config(self, app: Flask):
         api = DatasetApiBaseUrlApi()
         method = unwrap(api.get)
 
@@ -1757,7 +1758,7 @@ class TestDatasetApiBaseUrlApi:
 
         assert response["api_base_url"] == "https://example.com/v1"
 
-    def test_get_api_base_url_from_request(self, app):
+    def test_get_api_base_url_from_request(self, app: Flask):
         api = DatasetApiBaseUrlApi()
         method = unwrap(api.get)
 
@@ -1772,7 +1773,7 @@ class TestDatasetApiBaseUrlApi:
 
         assert response["api_base_url"] == "http://localhost:5000/v1"
 
-    def test_get_api_base_url_no_double_v1(self, app):
+    def test_get_api_base_url_no_double_v1(self, app: Flask):
         api = DatasetApiBaseUrlApi()
         method = unwrap(api.get)
 
@@ -1789,7 +1790,7 @@ class TestDatasetApiBaseUrlApi:
 
 
 class TestDatasetRetrievalSettingApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = DatasetRetrievalSettingApi()
         method = unwrap(api.get)
 
@@ -1810,7 +1811,7 @@ class TestDatasetRetrievalSettingApi:
 
 
 class TestDatasetRetrievalSettingMockApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = DatasetRetrievalSettingMockApi()
         method = unwrap(api.get)
 
@@ -1827,7 +1828,7 @@ class TestDatasetRetrievalSettingMockApi:
 
 
 class TestDatasetErrorDocs:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = DatasetErrorDocs()
         method = unwrap(api.get)
 
@@ -1850,7 +1851,7 @@ class TestDatasetErrorDocs:
         assert status == 200
         assert response["total"] == 1
 
-    def test_get_dataset_not_found(self, app):
+    def test_get_dataset_not_found(self, app: Flask):
         api = DatasetErrorDocs()
         method = unwrap(api.get)
 
@@ -1866,7 +1867,7 @@ class TestDatasetErrorDocs:
 
 
 class TestDatasetPermissionUserListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = DatasetPermissionUserListApi()
         method = unwrap(api.get)
 
@@ -1897,7 +1898,7 @@ class TestDatasetPermissionUserListApi:
         assert status == 200
         assert response["data"] == users
 
-    def test_get_permission_denied(self, app):
+    def test_get_permission_denied(self, app: Flask):
         api = DatasetPermissionUserListApi()
         method = unwrap(api.get)
 
@@ -1923,7 +1924,7 @@ class TestDatasetPermissionUserListApi:
 
 
 class TestDatasetAutoDisableLogApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = DatasetAutoDisableLogApi()
         method = unwrap(api.get)
 
@@ -1946,7 +1947,7 @@ class TestDatasetAutoDisableLogApi:
         assert status == 200
         assert response == logs
 
-    def test_get_dataset_not_found(self, app):
+    def test_get_dataset_not_found(self, app: Flask):
         api = DatasetAutoDisableLogApi()
         method = unwrap(api.get)
 

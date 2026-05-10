@@ -24,7 +24,7 @@ from core.rag.index_processor.constant.built_in_field import BuiltInField, Metad
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.tools.signature import sign_upload_file
+from core.tools.signature import sign_upload_file_preview_url
 from extensions.ext_storage import storage
 from libs.uuid_utils import uuidv7
 
@@ -1020,7 +1020,7 @@ class DocumentSegment(Base):
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            reference_url = dify_config.CONSOLE_API_URL or ""
+            reference_url = dify_config.FILES_URL or dify_config.CONSOLE_API_URL or ""
             base_url = f"{reference_url}/files/{upload_file_id}/image-preview"
             source_url = f"{base_url}?{params}"
             attachment_list.append(
@@ -1162,7 +1162,7 @@ class DatasetQuery(TypeBase):
                                 "size": file_info.size,
                                 "extension": file_info.extension,
                                 "mime_type": file_info.mime_type,
-                                "source_url": sign_upload_file(file_info.id, file_info.extension),
+                                "source_url": sign_upload_file_preview_url(file_info.id, file_info.extension),
                             }
                     else:
                         query["file_info"] = None

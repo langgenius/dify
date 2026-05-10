@@ -113,7 +113,7 @@ export const useImportPipelineDSL = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-import'],
     mutationFn: (request: ImportPipelineDSLRequest) => {
-      return post<ImportPipelineDSLResponse>('/rag/pipelines/imports', { body: request })
+      return post<ImportPipelineDSLResponse>('/rag/pipelines/imports', { body: request }, { silent: true })
     },
     ...mutationOptions,
   })
@@ -125,7 +125,7 @@ export const useImportPipelineDSLConfirm = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-import-confirm'],
     mutationFn: (importId: string) => {
-      return post<ImportPipelineDSLConfirmResponse>(`/rag/pipelines/imports/${importId}/confirm`)
+      return post<ImportPipelineDSLConfirmResponse>(`/rag/pipelines/imports/${importId}/confirm`, {}, { silent: true })
     },
     ...mutationOptions,
   })

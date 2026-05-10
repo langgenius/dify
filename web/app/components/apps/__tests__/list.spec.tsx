@@ -1,7 +1,6 @@
 import { act, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
@@ -27,6 +26,11 @@ vi.mock('@/service/client', () => ({
     apps: {
       list: {
         infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
+      },
+    },
+    tags: {
+      list: {
+        queryOptions: (options: unknown) => options,
       },
     },
     systemFeatures: {
@@ -139,10 +143,6 @@ vi.mock('@/service/use-apps', () => ({
   }),
 }))
 
-vi.mock('@/service/tag', () => ({
-  fetchTagList: vi.fn().mockResolvedValue([{ id: 'tag-1', name: 'Test Tag', type: 'app' }]),
-}))
-
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
@@ -236,10 +236,6 @@ type AppListInfiniteOptions = {
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useTagStore.setState({
-      tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app', binding_count: 0 }],
-      showTagManagementModal: false,
-    })
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockDragging = false

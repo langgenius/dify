@@ -25,8 +25,7 @@ const renderStopEmbeddingModal = (props: Partial<StopEmbeddingModalProps> = {}) 
 
 // StopEmbeddingModal Component Tests
 describe('StopEmbeddingModal', () => {
-  // Suppress Headless UI warnings in tests
-  // These warnings are from the library's internal behavior, not our code
+  // Suppress expected modal warnings in tests.
   let consoleWarnSpy: MockInstance
   let consoleErrorSpy: MockInstance
 

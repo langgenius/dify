@@ -4,17 +4,15 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine, RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
-import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import TabSlider from '@/app/components/base/tab-slider'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
@@ -281,18 +279,16 @@ const MCPModal: FC<DuplicateAppModalProps> = ({
   const formKey = data?.id ?? 'create'
 
   return (
-    <Modal
-      isShow={show}
-      onClose={noop}
-      className={cn('relative max-w-[520px]!', 'p-6')}
-    >
-      <MCPModalContent
-        key={formKey}
-        data={data}
-        onConfirm={onConfirm}
-        onHide={onHide}
-      />
-    </Modal>
+    <Dialog open={show}>
+      <DialogContent className="w-full max-w-[520px]! overflow-hidden! border-none p-6 text-left align-middle">
+        <MCPModalContent
+          key={formKey}
+          data={data}
+          onConfirm={onConfirm}
+          onHide={onHide}
+        />
+      </DialogContent>
+    </Dialog>
   )
 }
 

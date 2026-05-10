@@ -43,7 +43,7 @@ describe('AudioPreview', () => {
       render(<AudioPreview {...defaultProps} />)
       const overlay = screen.getByTestId('audio-preview-overlay')
       expect(overlay).toBeInTheDocument()
-      expect(overlay.parentElement).toBe(document.body)
+      expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
     })
   })
 

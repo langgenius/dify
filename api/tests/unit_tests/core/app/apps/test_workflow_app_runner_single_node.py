@@ -16,7 +16,7 @@ from models.workflow import Workflow
 
 
 def _make_graph_state():
-    variable_pool = VariablePool(
+    variable_pool = VariablePool.from_bootstrap(
         system_variables=default_system_variables(),
         user_inputs={},
         environment_variables=[],

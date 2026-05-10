@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
-import Modal from '@/app/components/base/modal'
 import ResultItemFooter from './result-item-footer'
 import ResultItemMeta from './result-item-meta'
 
@@ -38,20 +38,27 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
       <ResultItemFooter docType={FileAppearanceTypeEnum.custom} docTitle={title} showDetailModal={showDetailModal} />
 
       {isShowDetailModal && (
-        <Modal
-          title={t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
-          className="min-w-[800px]!"
-          closable
-          onClose={hideDetailModal}
-          isShow={isShowDetailModal}
+        <Dialog
+          open={isShowDetailModal}
+          onOpenChange={(open) => {
+            if (!open)
+              hideDetailModal()
+          }}
         >
-          <div className="mt-4 flex-1">
-            <ResultItemMeta labelPrefix="Chunk" positionId={positionId} wordCount={content.length} score={score} />
-            <div className={cn('mt-2 body-md-regular break-all text-text-secondary', 'h-[min(539px,80vh)] overflow-y-auto')}>
-              {content}
+          <DialogContent className="w-full min-w-[800px]! overflow-hidden! border-none text-left align-middle">
+            <DialogCloseButton data-testid="modal-close-button" />
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
+              {t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
+            </DialogTitle>
+
+            <div className="mt-4 flex-1">
+              <ResultItemMeta labelPrefix="Chunk" positionId={positionId} wordCount={content.length} score={score} />
+              <div className={cn('mt-2 body-md-regular break-all text-text-secondary', 'h-[min(539px,80vh)] overflow-y-auto')}>
+                {content}
+              </div>
             </div>
-          </div>
-        </Modal>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

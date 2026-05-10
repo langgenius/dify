@@ -100,7 +100,7 @@ class ConversationVariablesApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
     def get(self, app_model):
-        args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))
 
         stmt = (
             select(ConversationVariable)

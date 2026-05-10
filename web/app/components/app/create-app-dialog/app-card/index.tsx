@@ -35,7 +35,7 @@ const AppCard = ({
       template_id: app.app_id,
       template_name: appBasicInfo.name,
       template_mode: appBasicInfo.mode,
-      template_category: app.category,
+      template_categories: app.categories,
       page: 'studio',
     })
     setShowTryAppPanel?.(true, { appId: app.app_id, app })

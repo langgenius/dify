@@ -39,7 +39,9 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const getSigninUrl = useCallback(() => {
     const params = new URLSearchParams(searchParams)
     params.delete('message')
-    params.set('redirect_url', pathname)
+    const query = params.toString()
+    const fullPath = query ? `${pathname}?${query}` : pathname
+    params.set('redirect_url', fullPath)
     return `/webapp-signin?${params.toString()}`
   }, [searchParams, pathname])
 

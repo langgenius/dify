@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ImagePreview from '../image-preview'
 
@@ -89,7 +89,7 @@ describe('ImagePreview', () => {
 
       const overlay = getOverlay()
       expect(overlay).toBeInTheDocument()
-      expect(overlay?.parentElement).toBe(document.body)
+      expect(overlay.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
       expect(screen.getByRole('img', { name: 'Preview Image' })).toHaveAttribute('src', 'https://example.com/image.png')
     })
 
@@ -108,7 +108,6 @@ describe('ImagePreview', () => {
 
   describe('Hotkeys', () => {
     it('should trigger esc/left/right handlers from keyboard', async () => {
-      const user = userEvent.setup()
       const onCancel = vi.fn()
       const onPrev = vi.fn()
       const onNext = vi.fn()
@@ -122,7 +121,9 @@ describe('ImagePreview', () => {
         />,
       )
 
-      await user.keyboard('{Escape}{ArrowLeft}{ArrowRight}')
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+      fireEvent.keyDown(document, { key: 'ArrowLeft', code: 'ArrowLeft' })
+      fireEvent.keyDown(document, { key: 'ArrowRight', code: 'ArrowRight' })
 
       expect(onCancel).toHaveBeenCalledTimes(1)
       expect(onPrev).toHaveBeenCalledTimes(1)
@@ -130,7 +131,6 @@ describe('ImagePreview', () => {
     })
 
     it('should zoom in and out from keyboard up/down hotkeys', async () => {
-      const user = userEvent.setup()
       render(
         <ImagePreview
           url="https://example.com/image.png"
@@ -140,12 +140,12 @@ describe('ImagePreview', () => {
       )
       const image = screen.getByRole('img', { name: 'Preview Image' })
 
-      await user.keyboard('{ArrowUp}')
+      fireEvent.keyDown(document, { key: 'ArrowUp', code: 'ArrowUp' })
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1.2) translate(0px, 0px)' })
       })
 
-      await user.keyboard('{ArrowDown}')
+      fireEvent.keyDown(document, { key: 'ArrowDown', code: 'ArrowDown' })
       await waitFor(() => {
         expect(image).toHaveStyle({ transform: 'scale(1) translate(0px, 0px)' })
       })

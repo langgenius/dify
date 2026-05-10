@@ -1,7 +1,6 @@
 'use client'
 
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import type { WorkflowOnlineUser } from '@/models/app'
@@ -36,11 +35,11 @@ import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
-import TagSelector from '@/app/components/base/tag-management/selector'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
 import dynamic from '@/next/dynamic'
@@ -77,6 +76,7 @@ type AppCardProps = {
   app: App
   onlineUsers?: WorkflowOnlineUser[]
   onRefresh?: () => void
+  onOpenTagManagement?: () => void
 }
 
 type AppCardOperationsMenuProps = {
@@ -207,7 +207,7 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
   )
 }
 
-const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
+const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) => {
   const { t } = useTranslation()
   const deleteAppNameInputId = useId()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -396,19 +396,6 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
   const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
-  const appTagsKey = useMemo(() => app.tags.map(tag => tag.id).join(','), [app.tags])
-  const [tagState, setTagState] = useState<{ key: string, tags: Tag[] }>(() => ({
-    key: appTagsKey,
-    tags: app.tags,
-  }))
-  const tags = tagState.key === appTagsKey ? tagState.tags : app.tags
-  const handleTagsUpdate = useCallback((nextTags: Tag[]) => {
-    setTagState({
-      key: appTagsKey,
-      tags: nextTags,
-    })
-  }, [appTagsKey])
-
   const EditTimeText = useMemo(() => {
     const timeText = formatTime({
       date: (app.updated_at || app.created_at) * 1000,
@@ -438,7 +425,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg"
+        className="group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-sm transition-shadow duration-200 ease-in-out hover:shadow-lg"
       >
         <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pt-[14px] pb-3">
           <div className="relative shrink-0">
@@ -523,15 +510,12 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
                   e.preventDefault()
                 }}
               >
-                <div className="mr-[41px] w-full grow">
-                  <TagSelector
-                    position="bl"
-                    type="app"
-                    targetID={app.id}
-                    value={tags.map(tag => tag.id)}
-                    selectedTags={tags}
-                    onCacheUpdate={handleTagsUpdate}
-                    onChange={onRefresh}
+                <div className="mr-[41px] min-w-0 grow overflow-hidden">
+                  <AppCardTags
+                    appId={app.id}
+                    tags={app.tags}
+                    onOpenTagManagement={onOpenTagManagement}
+                    onTagsChange={onRefresh}
                   />
                 </div>
               </div>
@@ -540,7 +524,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
                   'absolute top-1/2 right-[6px] flex -translate-y-1/2 items-center transition-opacity',
                   isOperationsMenuOpen
                     ? 'pointer-events-auto opacity-100'
-                    : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100',
+                    : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
                 )}
               >
                 <div className="mx-1 h-[14px] w-px shrink-0 bg-divider-regular" />
@@ -549,7 +533,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
                     aria-label={t('operation.more', { ns: 'common' })}
                     className={cn(
                       isOperationsMenuOpen ? 'bg-state-base-hover shadow-none' : 'bg-transparent',
-                      'flex h-8 w-8 items-center justify-center rounded-md border-none p-2 hover:bg-state-base-hover',
+                      'flex h-8 w-8 items-center justify-center rounded-md border-none p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
                     )}
                     onClick={(e) => {
                       e.stopPropagation()

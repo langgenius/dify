@@ -39,7 +39,7 @@ describe('@langgenius/dify-ui/toast', () => {
     await expect.element(screen.getByText('Saved')).toBeInTheDocument()
     await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
     await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveAttribute('aria-live', 'polite')
-    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveClass('z-1003')
+    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveClass('z-60')
     expect(screen.getByRole('region', { name: 'Notifications' }).element().firstElementChild).toHaveClass('top-4')
     expect(screen.getByRole('dialog').element()).not.toHaveClass('outline-hidden')
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()

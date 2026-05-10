@@ -16,15 +16,16 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
 import { IS_CE_EDITION } from '@/config'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
@@ -205,11 +206,12 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
         <>
           {archived
             ? (
-                <Tooltip popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })} popupClassName="!font-semibold">
-                  <div>
-                    <Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />
-                  </div>
-                </Tooltip>
+                <Popover>
+                  <PopoverTrigger nativeButton={false} openOnHover render={<div><Switch checked={false} onCheckedChange={noop} disabled={true} size="md" /></div>} />
+                  <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
+                    {t('list.action.enableWarning', { ns: 'datasetDocuments' })}
+                  </PopoverContent>
+                </Popover>
               )
             : <Switch checked={enabled} onCheckedChange={v => handleSwitch(v ? 'enable' : 'disable')} size="md" />}
           <Divider className="!mr-2 !ml-4 !h-3" type="vertical" />
@@ -217,16 +219,24 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
       )}
       {embeddingAvailable && (
         <>
-          <Tooltip popupContent={t('list.action.settings', { ns: 'datasetDocuments' })} popupClassName="text-text-secondary system-xs-medium" needsDelay={false}>
-            <button
-              type="button"
-              className={cn('mr-2 cursor-pointer rounded-lg', !isListScene
-                ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
-                : 'p-0.5 hover:bg-state-base-hover')}
-              onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}
-            >
-              <span aria-hidden className="i-ri-equalizer-2-line h-4 w-4 text-components-button-secondary-text" />
-            </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <button
+                  type="button"
+                  aria-label={t('list.action.settings', { ns: 'datasetDocuments' })}
+                  className={cn('mr-2 cursor-pointer rounded-lg', !isListScene
+                    ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
+                    : 'p-0.5 hover:bg-state-base-hover')}
+                  onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}
+                >
+                  <span aria-hidden className="i-ri-equalizer-2-line h-4 w-4 text-components-button-secondary-text" />
+                </button>
+              )}
+            />
+            <TooltipContent className="system-xs-medium text-text-secondary">
+              {t('list.action.settings', { ns: 'datasetDocuments' })}
+            </TooltipContent>
           </Tooltip>
           <DropdownMenu open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
             <DropdownMenuTrigger

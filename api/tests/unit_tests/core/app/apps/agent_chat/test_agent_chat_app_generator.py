@@ -2,6 +2,7 @@ import contextlib
 
 import pytest
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -16,7 +17,7 @@ class DummyAccount:
 
 
 @pytest.fixture
-def generator(mocker):
+def generator(mocker: MockerFixture):
     gen = AgentChatAppGenerator()
     mocker.patch(
         "core.app.apps.agent_chat.app_generator.current_app",
@@ -27,19 +28,19 @@ def generator(mocker):
 
 
 class TestAgentChatAppGeneratorGenerate:
-    def test_generate_rejects_blocking_mode(self, generator, mocker):
+    def test_generate_rejects_blocking_mode(self, generator, mocker: MockerFixture):
         app_model = mocker.MagicMock()
         user = DummyAccount("user")
         with pytest.raises(ValueError):
             generator.generate(app_model=app_model, user=user, args={}, invoke_from=mocker.MagicMock(), streaming=False)
 
-    def test_generate_requires_query(self, generator, mocker):
+    def test_generate_requires_query(self, generator, mocker: MockerFixture):
         app_model = mocker.MagicMock()
         user = DummyAccount("user")
         with pytest.raises(ValueError):
             generator.generate(app_model=app_model, user=user, args={"inputs": {}}, invoke_from=mocker.MagicMock())
 
-    def test_generate_rejects_non_string_query(self, generator, mocker):
+    def test_generate_rejects_non_string_query(self, generator, mocker: MockerFixture):
         app_model = mocker.MagicMock()
         user = DummyAccount("user")
         with pytest.raises(ValueError):
@@ -50,7 +51,7 @@ class TestAgentChatAppGeneratorGenerate:
                 invoke_from=mocker.MagicMock(),
             )
 
-    def test_generate_override_requires_debugger(self, generator, mocker):
+    def test_generate_override_requires_debugger(self, generator, mocker: MockerFixture):
         app_model = mocker.MagicMock()
         user = DummyAccount("user")
 
@@ -62,7 +63,7 @@ class TestAgentChatAppGeneratorGenerate:
                 invoke_from=InvokeFrom.WEB_APP,
             )
 
-    def test_generate_success_with_debugger_override(self, generator, mocker):
+    def test_generate_success_with_debugger_override(self, generator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent-chat")
         app_model_config = mocker.MagicMock(id="cfg1")
         app_model_config.to_dict.return_value = {"model": {"provider": "p"}}
@@ -142,7 +143,7 @@ class TestAgentChatAppGeneratorGenerate:
         assert result == {"result": "ok"}
         thread_obj.start.assert_called_once()
 
-    def test_generate_without_file_config(self, generator, mocker):
+    def test_generate_without_file_config(self, generator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent-chat")
         app_model_config = mocker.MagicMock(id="cfg1")
         app_model_config.to_dict.return_value = {"model": {"provider": "p"}}
@@ -213,14 +214,14 @@ class TestAgentChatAppGeneratorGenerate:
 
 class TestAgentChatAppGeneratorWorker:
     @pytest.fixture(autouse=True)
-    def patch_context(self, mocker):
+    def patch_context(self, mocker: MockerFixture):
         @contextlib.contextmanager
         def ctx_manager(*args, **kwargs):
             yield
 
         mocker.patch("core.app.apps.agent_chat.app_generator.preserve_flask_contexts", ctx_manager)
 
-    def test_generate_worker_handles_generate_task_stopped(self, generator, mocker):
+    def test_generate_worker_handles_generate_task_stopped(self, generator, mocker: MockerFixture):
         queue_manager = mocker.MagicMock()
         generator._get_conversation = mocker.MagicMock(return_value=mocker.MagicMock())
         generator._get_message = mocker.MagicMock(return_value=mocker.MagicMock())
@@ -250,7 +251,7 @@ class TestAgentChatAppGeneratorWorker:
             Exception("bad"),
         ],
     )
-    def test_generate_worker_publishes_errors(self, generator, mocker, error):
+    def test_generate_worker_publishes_errors(self, generator, mocker: MockerFixture, error):
         queue_manager = mocker.MagicMock()
         generator._get_conversation = mocker.MagicMock(return_value=mocker.MagicMock())
         generator._get_message = mocker.MagicMock(return_value=mocker.MagicMock())
@@ -271,7 +272,7 @@ class TestAgentChatAppGeneratorWorker:
 
         assert queue_manager.publish_error.called
 
-    def test_generate_worker_logs_value_error_when_debug(self, generator, mocker):
+    def test_generate_worker_logs_value_error_when_debug(self, generator, mocker: MockerFixture):
         queue_manager = mocker.MagicMock()
         generator._get_conversation = mocker.MagicMock(return_value=mocker.MagicMock())
         generator._get_message = mocker.MagicMock(return_value=mocker.MagicMock())

@@ -420,7 +420,7 @@ function getDescriptionTextarea() {
 }
 
 // Helper to find the AppIcon span in PublishAsKnowledgePipelineModal
-// HeadlessUI Dialog renders via portal to document.body, so we search the full document
+// The modal renders via portal to document.body, so we search the full document.
 function getAppIcon() {
   const emoji = document.querySelector('em-emoji')
   return emoji?.closest('span') as HTMLElement
@@ -687,7 +687,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
       // Real AppIcon renders an em-emoji custom element inside a span
-      // HeadlessUI Dialog renders via portal, so search the full document
+      // The modal renders via portal, so search the full document.
       expect(document.querySelector('em-emoji')).toBeInTheDocument()
     })
 
@@ -845,7 +845,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
       const { rerender } = render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
       rerender(<PublishAsKnowledgePipelineModal {...defaultProps} />)
-      // HeadlessUI Dialog renders via portal, so search the full document
+      // The modal renders via portal, so search the full document.
       expect(document.querySelector('em-emoji')).toBeInTheDocument()
     })
   })

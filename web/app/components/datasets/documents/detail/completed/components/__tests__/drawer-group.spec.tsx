@@ -2,16 +2,16 @@ import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChunkingMode } from '@/models/datasets'
-import DrawerGroup from '../drawer-group'
+import { DrawerGroup } from '../drawer-group'
 
 vi.mock('../../common/full-screen-drawer', () => ({
-  default: ({ isOpen, children }: { isOpen: boolean, children: React.ReactNode }) => (
-    isOpen ? <div data-testid="full-screen-drawer">{children}</div> : null
+  DocumentDetailDrawer: ({ open, children, modal = false }: { open: boolean, children: React.ReactNode, modal?: boolean }) => (
+    open ? <div data-testid="document-detail-drawer" data-modal={modal}>{children}</div> : null
   ),
 }))
 
 vi.mock('../../segment-detail', () => ({
-  default: () => <div data-testid="segment-detail" />,
+  SegmentDetail: () => <div data-testid="segment-detail" />,
 }))
 
 vi.mock('../../child-segment-detail', () => ({
@@ -31,8 +31,6 @@ describe('DrawerGroup', () => {
     currSegment: { segInfo: undefined, showModal: false, isEditMode: false },
     onCloseSegmentDetail: vi.fn(),
     onUpdateSegment: vi.fn(),
-    isRegenerationModalOpen: false,
-    setIsRegenerationModalOpen: vi.fn(),
     showNewSegmentModal: false,
     onCloseNewSegmentModal: vi.fn(),
     onSaveNewSegment: vi.fn(),
@@ -55,7 +53,7 @@ describe('DrawerGroup', () => {
 
   it('should render nothing when all modals are closed', () => {
     const { container } = render(<DrawerGroup {...defaultProps} />)
-    expect(container.querySelector('[data-testid="full-screen-drawer"]')).toBeNull()
+    expect(container.querySelector('[data-testid="document-detail-drawer"]')).toBeNull()
   })
 
   it('should render segment detail when segment modal is open', () => {
@@ -66,6 +64,7 @@ describe('DrawerGroup', () => {
       />,
     )
     expect(screen.getByTestId('segment-detail')).toBeInTheDocument()
+    expect(screen.getByTestId('document-detail-drawer')).toHaveAttribute('data-modal', 'false')
   })
 
   it('should render new segment modal when showNewSegmentModal is true', () => {
@@ -73,6 +72,7 @@ describe('DrawerGroup', () => {
       <DrawerGroup {...defaultProps} showNewSegmentModal={true} />,
     )
     expect(screen.getByTestId('new-segment')).toBeInTheDocument()
+    expect(screen.getByTestId('document-detail-drawer')).toHaveAttribute('data-modal', 'true')
   })
 
   it('should render child segment detail when child chunk modal is open', () => {
@@ -83,6 +83,7 @@ describe('DrawerGroup', () => {
       />,
     )
     expect(screen.getByTestId('child-segment-detail')).toBeInTheDocument()
+    expect(screen.getByTestId('document-detail-drawer')).toHaveAttribute('data-modal', 'false')
   })
 
   it('should render new child segment modal when showNewChildSegmentModal is true', () => {
@@ -90,6 +91,7 @@ describe('DrawerGroup', () => {
       <DrawerGroup {...defaultProps} showNewChildSegmentModal={true} />,
     )
     expect(screen.getByTestId('new-child-segment')).toBeInTheDocument()
+    expect(screen.getByTestId('document-detail-drawer')).toHaveAttribute('data-modal', 'true')
   })
 
   it('should render multiple drawers simultaneously', () => {

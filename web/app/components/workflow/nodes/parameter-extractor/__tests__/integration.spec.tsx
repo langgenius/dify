@@ -110,24 +110,23 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-param
   ),
 }))
 
-vi.mock('@/app/components/base/modal', () => ({
+vi.mock('@langgenius/dify-ui/dialog', () => ({
   __esModule: true,
-  default: ({
+  Dialog: ({
     children,
-    isShow,
-    title,
+    open,
   }: {
     children: ReactNode
-    isShow?: boolean
-    title?: ReactNode
-  }) => isShow
+    open?: boolean
+  }) => open !== false
     ? (
         <div data-testid="base-modal">
-          <div>{title}</div>
           {children}
         </div>
       )
     : null,
+  DialogContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({

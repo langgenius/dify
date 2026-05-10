@@ -332,11 +332,15 @@ export default function AccountPage() {
           />
         )
       }
-      <EmailChangeModal
-        show={showUpdateEmail}
-        onClose={() => setShowUpdateEmail(false)}
-        email={userProfile.email}
-      />
+      {/* Use conditional JSX instead of a mounted controlled Dialog so closing destroys the email-change form session. */}
+      {showUpdateEmail
+        ? (
+            <EmailChangeModal
+              onClose={() => setShowUpdateEmail(false)}
+              email={userProfile.email}
+            />
+          )
+        : null}
     </>
   )
 }

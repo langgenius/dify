@@ -1,9 +1,9 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { RiExternalLinkLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -41,63 +41,70 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
   }
 
   return (
-    <Modal
-      isShow
-      onClose={onClose}
-      title={expired ? t(`${i18nPrefix}.expired.title`, { ns: 'education' }) : t(`${i18nPrefix}.isAboutToExpire.title`, { ns: 'education', date: formatTime(expireAt, t(`${i18nPrefix}.dateFormat`, { ns: 'education' }) as string), interpolation: { escapeValue: false } })}
-      closable
-      className="max-w-[600px]"
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          onClose()
+      }}
     >
-      <div className="mt-5 space-y-5 body-md-regular text-text-secondary">
-        <div>
-          {expired
-            ? (
-                <>
-                  <div>{t(`${i18nPrefix}.expired.summary.line1`, { ns: 'education' })}</div>
-                  <div>{t(`${i18nPrefix}.expired.summary.line2`, { ns: 'education' })}</div>
-                </>
-              )
-            : t(`${i18nPrefix}.isAboutToExpire.summary`, { ns: 'education' })}
+      <DialogContent className="w-full max-w-[600px] overflow-hidden! border-none text-left align-middle">
+        <DialogCloseButton data-testid="modal-close-button" />
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {expired ? t(`${i18nPrefix}.expired.title`, { ns: 'education' }) : t(`${i18nPrefix}.isAboutToExpire.title`, { ns: 'education', date: formatTime(expireAt, t(`${i18nPrefix}.dateFormat`, { ns: 'education' }) as string), interpolation: { escapeValue: false } })}
+        </DialogTitle>
+
+        <div className="mt-5 space-y-5 body-md-regular text-text-secondary">
+          <div>
+            {expired
+              ? (
+                  <>
+                    <div>{t(`${i18nPrefix}.expired.summary.line1`, { ns: 'education' })}</div>
+                    <div>{t(`${i18nPrefix}.expired.summary.line2`, { ns: 'education' })}</div>
+                  </>
+                )
+              : t(`${i18nPrefix}.isAboutToExpire.summary`, { ns: 'education' })}
+          </div>
+          <div>
+            <strong className="block title-md-semi-bold">{t(`${i18nPrefix}.stillInEducation.title`, { ns: 'education' })}</strong>
+            {t(`${i18nPrefix}.stillInEducation.${expired ? 'expired' : 'isAboutToExpire'}`, { ns: 'education' })}
+          </div>
+          <div>
+            <strong className="block title-md-semi-bold">{t(`${i18nPrefix}.alreadyGraduated.title`, { ns: 'education' })}</strong>
+            {t(`${i18nPrefix}.alreadyGraduated.${expired ? 'expired' : 'isAboutToExpire'}`, { ns: 'education' })}
+          </div>
         </div>
-        <div>
-          <strong className="block title-md-semi-bold">{t(`${i18nPrefix}.stillInEducation.title`, { ns: 'education' })}</strong>
-          {t(`${i18nPrefix}.stillInEducation.${expired ? 'expired' : 'isAboutToExpire'}`, { ns: 'education' })}
+        <div className="mt-7 flex items-center justify-between space-x-2">
+          <Link className="flex items-center space-x-1 system-xs-regular text-text-accent" href={eduDocLink} target="_blank" rel="noopener noreferrer">
+            <div>{t('learn', { ns: 'education' })}</div>
+            <RiExternalLinkLine className="size-3" />
+          </Link>
+          <div className="flex space-x-2">
+            {expired
+              ? (
+                  <Button
+                    onClick={() => {
+                      onClose()
+                      setShowPricingModal()
+                    }}
+                    className="flex items-center space-x-1"
+                  >
+                    <SparklesSoftAccent className="size-4" />
+                    <div className="text-components-button-secondary-accent-text">{t(`${i18nPrefix}.action.upgrade`, { ns: 'education' })}</div>
+                  </Button>
+                )
+              : (
+                  <Button onClick={onClose}>
+                    {t(`${i18nPrefix}.action.dismiss`, { ns: 'education' })}
+                  </Button>
+                )}
+            <Button variant="primary" onClick={handleConfirm}>
+              {t(`${i18nPrefix}.action.reVerify`, { ns: 'education' })}
+            </Button>
+          </div>
         </div>
-        <div>
-          <strong className="block title-md-semi-bold">{t(`${i18nPrefix}.alreadyGraduated.title`, { ns: 'education' })}</strong>
-          {t(`${i18nPrefix}.alreadyGraduated.${expired ? 'expired' : 'isAboutToExpire'}`, { ns: 'education' })}
-        </div>
-      </div>
-      <div className="mt-7 flex items-center justify-between space-x-2">
-        <Link className="flex items-center space-x-1 system-xs-regular text-text-accent" href={eduDocLink} target="_blank" rel="noopener noreferrer">
-          <div>{t('learn', { ns: 'education' })}</div>
-          <RiExternalLinkLine className="size-3" />
-        </Link>
-        <div className="flex space-x-2">
-          {expired
-            ? (
-                <Button
-                  onClick={() => {
-                    onClose()
-                    setShowPricingModal()
-                  }}
-                  className="flex items-center space-x-1"
-                >
-                  <SparklesSoftAccent className="size-4" />
-                  <div className="text-components-button-secondary-accent-text">{t(`${i18nPrefix}.action.upgrade`, { ns: 'education' })}</div>
-                </Button>
-              )
-            : (
-                <Button onClick={onClose}>
-                  {t(`${i18nPrefix}.action.dismiss`, { ns: 'education' })}
-                </Button>
-              )}
-          <Button variant="primary" onClick={handleConfirm}>
-            {t(`${i18nPrefix}.action.reVerify`, { ns: 'education' })}
-          </Button>
-        </div>
-      </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   )
 }
 
