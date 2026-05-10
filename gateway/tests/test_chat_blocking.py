@@ -138,6 +138,53 @@ async def test_blocking_forwards_history_and_conversation_id(
 
 
 @pytest.mark.asyncio
+async def test_extra_body_llm_model_overrides_app_selection(
+    app: FastAPI, fake_dify: FakeDifyClient
+) -> None:
+    """Regression for review-3 P2: clients passing extra_body={'llm_model':...} via
+    the OpenAI SDK get the override field at the JSON top level. The router
+    must use that value (not body.model) for App selection, and echo it in
+    the response.
+    """
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as cli:
+        r = await cli.post(
+            "/v1/chat/completions",
+            headers={"Authorization": "Bearer bsa_test_a"},
+            json={
+                "model": "placeholder-ignored",
+                "llm_model": "m2",  # the registry has m1 and m2
+                "messages": [{"role": "user", "content": "hi"}],
+            },
+        )
+    assert r.status_code == 200
+    body = r.json()
+    # Response model echoes the *override*, not the placeholder.
+    assert body["model"] == "m2"
+
+
+@pytest.mark.asyncio
+async def test_extra_body_llm_model_unknown_returns_404(
+    app: FastAPI,
+) -> None:
+    """When extra_body.llm_model points to a model the customer is not
+    enabled for, return 404 (not 200 from the placeholder ``model`` field)."""
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as cli:
+        r = await cli.post(
+            "/v1/chat/completions",
+            headers={"Authorization": "Bearer bsa_test_a"},
+            json={
+                "model": "m1",  # valid, would have succeeded
+                "llm_model": "m_does_not_exist",
+                "messages": [{"role": "user", "content": "hi"}],
+            },
+        )
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "model_not_found"
+
+
+@pytest.mark.asyncio
 async def test_request_id_echoed_in_response_header(app: FastAPI) -> None:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as cli:

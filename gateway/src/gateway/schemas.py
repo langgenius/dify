@@ -53,8 +53,18 @@ class ChatCompletionRequest(BaseModel):
     user: str | None = Field(default=None, description="Stable end-user identifier")
 
     # Gateway extensions (kept under ``extra_body`` for client SDK compatibility).
-    # Officially passed via ``extra_body={"conversation_id": "..."}``.
+    # The OpenAI Python SDK flattens ``extra_body={"foo":...}`` into top-level
+    # JSON fields, so these appear at the request root despite being passed via
+    # ``extra_body`` from the caller's perspective.
     conversation_id: str | None = Field(default=None)
+    llm_model: str | None = Field(
+        default=None,
+        description=(
+            "Override the model used for app selection. When provided, the "
+            "gateway resolves the Dify App via ``(customer, llm_model)``; "
+            "otherwise it falls back to the standard ``model`` field."
+        ),
+    )
 
 
 # ---------- Response (non-streaming) ----------

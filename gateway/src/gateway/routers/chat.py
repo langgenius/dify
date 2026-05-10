@@ -131,8 +131,14 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
     app_manager: AppManager = request.app.state.app_manager
     dify_factory = request.app.state.dify_client_factory
 
+    # Resolve which model to use for App selection. Per spec R3, clients may
+    # override the OpenAI ``model`` via ``extra_body={"llm_model": "..."}``,
+    # which the OpenAI SDK flattens to the top-level ``llm_model`` field.
+    # Fall back to ``body.model`` when not provided.
+    selected_model = body.llm_model or body.model
+
     # Validate model + obtain App key (lazy-build).
-    app_key = await app_manager.get_app_key(customer, body.model)
+    app_key = await app_manager.get_app_key(customer, selected_model)
     dify_client: DifyClient = dify_factory(customer)
 
     query = _last_user_message(body.messages)
@@ -166,7 +172,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
         async def event_source():  # type: ignore[no-untyped-def]
             try:
                 async for chunk in dify_to_openai_chunks(
-                    dify_lines, request_id=request_id, model_id=body.model
+                    dify_lines, request_id=request_id, model_id=selected_model
                 ):
                     yield chunk
             finally:
@@ -204,7 +210,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
 
     response = ChatCompletionResponse(
         id=f"chatcmpl-{request_id}",
-        model=body.model,
+        model=selected_model,
         choices=[
             ChatChoice(
                 index=0,
@@ -225,7 +231,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
 
     logger.info(
         "chat.blocking.completed",
-        model=body.model,
+        model=selected_model,
         prompt_tokens=usage.prompt_tokens,
         completion_tokens=usage.completion_tokens,
         references=len(references),
