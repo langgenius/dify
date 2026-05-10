@@ -351,52 +351,46 @@ export const AppCardOperations = ({
 
       if (key === 'launch' && launchConfigAction) {
         return (
-          <MaybeTooltip
-            key={key}
-            content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
-            tooltipClassName="mt-[-8px]"
-            show={disabled}
-          >
+          <div key={key} className="mr-1 inline-flex">
+            <MaybeTooltip
+              content={t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''}
+              tooltipClassName="mt-[-8px]"
+              show={disabled}
+            >
+              <Button
+                className="min-w-[88px] rounded-r-none border-0 px-0 py-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg"
+                size="small"
+                variant="secondary"
+                onClick={onClick}
+                disabled={disabled}
+              >
+                <div className="flex h-full min-w-[88px] items-center justify-center rounded-l-md px-2 hover:bg-components-button-secondary-bg-hover">
+                  <div className="flex items-center justify-center gap-px">
+                    <Icon className="h-3.5 w-3.5" />
+                    <div className="px-[3px] system-xs-medium">{label}</div>
+                  </div>
+                </div>
+              </Button>
+            </MaybeTooltip>
+            <div
+              aria-hidden="true"
+              className="h-6 w-px shrink-0 bg-divider-regular opacity-100"
+            />
             <Button
-              className="mr-1 border-0 px-0 py-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg"
+              aria-label={launchConfigAction.label}
+              className="w-8 rounded-l-none border-0 px-0 py-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg-hover"
               size="small"
               variant="secondary"
-              onClick={onClick}
-              disabled={disabled}
+              onClick={launchConfigAction.onClick}
+              disabled={disabled || launchConfigAction.disabled}
             >
-              <div className="flex h-full min-w-[88px] items-center justify-center rounded-l-md px-2 hover:bg-components-button-secondary-bg-hover">
+              <div className="flex h-full w-8 shrink-0 items-center justify-center rounded-r-md">
                 <div className="flex items-center justify-center gap-px">
-                  <Icon className="h-3.5 w-3.5" />
-                  <div className="px-[3px] system-xs-medium">{label}</div>
+                  <RiSettings2Line className="h-3.5 w-3.5" aria-hidden="true" />
                 </div>
               </div>
-              <div
-                aria-hidden="true"
-                className="h-4 w-px shrink-0 bg-divider-regular opacity-100"
-              />
-              <div
-                className="flex h-full w-8 shrink-0 items-center justify-center rounded-r-md hover:bg-components-button-secondary-bg-hover"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  launchConfigAction.onClick()
-                }}
-                aria-label={launchConfigAction.label}
-                role="button"
-                tabIndex={disabled ? -1 : 0}
-                onKeyDown={(event) => {
-                  if (disabled)
-                    return
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    launchConfigAction.onClick()
-                  }
-                }}
-              >
-                <RiSettings2Line className="h-3.5 w-3.5" />
-              </div>
             </Button>
-          </MaybeTooltip>
+          </div>
         )
       }
 
