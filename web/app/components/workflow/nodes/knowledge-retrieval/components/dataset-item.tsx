@@ -94,7 +94,6 @@ const DatasetItem: FC<Props> = ({
             editable && (
               <ActionButton
                 aria-label={t('operation.edit', { ns: 'common' })}
-                data-testid="dataset-item-edit-button"
                 onClick={(e) => {
                   e.stopPropagation()
                   showSettingsModal()
@@ -106,7 +105,6 @@ const DatasetItem: FC<Props> = ({
           }
           <ActionButton
             aria-label={t('operation.remove', { ns: 'common' })}
-            data-testid="dataset-item-remove-button"
             onClick={handleRemove}
             state={isDeleteHovered ? ActionButtonState.Destructive : ActionButtonState.Default}
             onMouseEnter={() => setIsDeleteHovered(true)}
