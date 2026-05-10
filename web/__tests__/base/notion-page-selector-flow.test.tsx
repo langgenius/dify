@@ -134,7 +134,7 @@ describe('Base Notion Page Selector Flow', () => {
 
     expect(onSelectCredential).toHaveBeenCalledWith('c1')
 
-    await user.click(screen.getByTestId('notion-credential-selector-btn'))
+    await user.click(screen.getByRole('combobox', { name: /Workspace 1/ }))
     await user.click(screen.getByTestId('notion-credential-item-c2'))
 
     expect(mockInvalidPreImportNotionPages).toHaveBeenCalledWith({ datasetId: 'dataset-1', credentialId: 'c2' })

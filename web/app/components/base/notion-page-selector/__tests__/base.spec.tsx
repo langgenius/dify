@@ -170,7 +170,7 @@ describe('NotionPageSelector Base', () => {
       />,
     )
 
-    const selectorBtn = screen.getByTestId('notion-credential-selector-btn')
+    const selectorBtn = screen.getByRole('combobox', { name: /Workspace 1/ })
     await user.click(selectorBtn)
     const item2 = screen.getByTestId('notion-credential-item-c2')
     await user.click(item2)
