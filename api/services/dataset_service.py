@@ -1984,7 +1984,7 @@ class DocumentService:
                         if process_rule.rules:
                             dataset_process_rule = DatasetProcessRule(
                                 dataset_id=dataset.id,
-                                mode=process_rule.mode,
+                                mode=ProcessRuleMode(process_rule.mode),
                                 rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
                                 created_by=account.id,
                             )
@@ -2572,7 +2572,7 @@ class DocumentService:
             if process_rule.mode in {ProcessRuleMode.CUSTOM, ProcessRuleMode.HIERARCHICAL}:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
-                    mode=process_rule.mode,
+                    mode=ProcessRuleMode(process_rule.mode),
                     rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
                     created_by=account.id,
                 )
