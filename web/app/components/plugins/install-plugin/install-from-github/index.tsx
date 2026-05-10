@@ -170,7 +170,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       <DialogContent className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, `shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px]
         border-components-panel-border bg-components-panel-bg p-0`))}
       >
-        <DialogCloseButton data-testid="modal-close-button" />
+        <DialogCloseButton />
 
         <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
           <div className="flex grow flex-col items-start gap-1">

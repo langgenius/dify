@@ -416,7 +416,7 @@ describe('Edit Modal Components', () => {
       it('should call onClose when close button is clicked', () => {
         const onClose = vi.fn()
         render(<ManualEditModal {...createProps({ onClose })} />)
-        fireEvent.click(screen.getByTestId('modal-close-button'))
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }))
         expect(onClose).toHaveBeenCalledTimes(1)
       })
 
