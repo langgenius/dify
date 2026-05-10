@@ -20,8 +20,6 @@ from ..console.wraps import setup_required
 from ..files import files_ns
 from ..inner_api.plugin.wraps import get_user
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
 
 class PluginUploadQuery(BaseModel):
     timestamp: str = Field(..., description="Unix timestamp for signature verification")
@@ -31,9 +29,8 @@ class PluginUploadQuery(BaseModel):
     user_id: str | None = Field(default=None, description="User identifier")
 
 
-files_ns.schema_model(
-    PluginUploadQuery.__name__, PluginUploadQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_schema_models(files_ns, PluginUploadQuery)
+
 
 register_schema_models(files_ns, FileResponse)
 
@@ -69,7 +66,7 @@ class PluginUploadFileApi(Resource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))
 
         file = request.files.get("file")
         if file is None:

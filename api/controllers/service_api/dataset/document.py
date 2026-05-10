@@ -77,9 +77,6 @@ class DocumentTextCreatePayload(BaseModel):
         return value
 
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
 class DocumentTextUpdate(BaseModel):
     name: str | None = None
     text: str | None = None

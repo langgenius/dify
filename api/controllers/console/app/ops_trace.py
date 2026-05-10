@@ -6,13 +6,12 @@ from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
 from services.ops_service import OpsService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class TraceProviderQuery(BaseModel):
@@ -24,13 +23,7 @@ class TraceConfigPayload(BaseModel):
     tracing_config: dict[str, Any] = Field(..., description="Tracing configuration data")
 
 
-console_ns.schema_model(
-    TraceProviderQuery.__name__,
-    TraceProviderQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    TraceConfigPayload.__name__, TraceConfigPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_schema_models(console_ns, TraceProviderQuery, TraceConfigPayload)
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace-config")
@@ -51,7 +44,7 @@ class TraceAppConfigApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):
-        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             trace_config = OpsService.get_tracing_app_config(app_id=str(app_id), tracing_provider=args.tracing_provider)
@@ -122,7 +115,7 @@ class TraceAppConfigApi(Resource):
     @account_initialization_required
     def delete(self, app_id: UUID):
         """Delete an existing trace app configuration"""
-        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             result = OpsService.delete_tracing_app_config(app_id=str(app_id), tracing_provider=args.tracing_provider)
