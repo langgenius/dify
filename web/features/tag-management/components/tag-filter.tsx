@@ -100,7 +100,7 @@ export const TagFilter = ({
           <button
             type="button"
             aria-label={t('operation.clear', { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 p-px"
+            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
             onClick={(event) => {
               event.stopPropagation()
               onChange([])

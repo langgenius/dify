@@ -75,7 +75,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
                   <div className="flex gap-2">
                     <Tooltip>
                       <TooltipTrigger
-                        className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover"
+                        className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                         onClick={handleSyncFunctionSignature}
                         aria-label={t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })}
                       >

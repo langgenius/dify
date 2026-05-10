@@ -123,7 +123,7 @@ export function SegmentAdd({
     >
       <button
         type="button"
-        className={`inline-flex items-center rounded-l-lg border-r border-r-divider-subtle px-2.5 py-2
+        className={`inline-flex items-center rounded-l-lg border-0 border-r border-r-divider-subtle bg-transparent px-2.5 py-2 text-left
           hover:bg-state-base-hover disabled:cursor-not-allowed disabled:hover:bg-transparent`}
         onClick={handleAddClick}
         disabled={embedding}
@@ -138,7 +138,7 @@ export function SegmentAdd({
           aria-label={t('list.action.batchAdd', { ns: 'datasetDocuments' })}
           disabled={embedding}
           className={cn(
-            `rounded-l-none rounded-r-lg border-0 p-2 backdrop-blur-[5px]
+            `rounded-l-none rounded-r-lg border-0 bg-transparent p-2 backdrop-blur-[5px]
             hover:bg-state-base-hover disabled:cursor-not-allowed disabled:bg-transparent disabled:hover:bg-transparent`,
             isBatchMenuOpen && 'bg-state-base-hover',
           )}
