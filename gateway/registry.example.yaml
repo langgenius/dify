@@ -1,0 +1,50 @@
+# CUSTOMER_REGISTRY for AI SDK Gateway
+#
+# Each entry maps an SDK key to a Dify deployment + the set of models the
+# customer is permitted to invoke. Models are lazy-built into Dify Apps on
+# first use and cached.
+
+customers:
+  - sdk_key: "bsa_dev_example_abc123"
+    customer_id: "customer-a"
+    dify:
+      base_url: "http://dify-customer-a:5001"
+      console_email: "admin@customer-a.example"
+      console_password: "REPLACE_WITH_REAL_PASSWORD"
+      # Existing Dataset API key created out-of-band (used by lazy app builder
+      # to attach knowledge bases when building Apps).
+      dataset_api_key: "dataset-customer-a-replace-me"
+    models:
+      - id: "qwen3.6-35b"
+        # Dify provider/model used inside the auto-built App's model_config.
+        # Matches the names registered in Dify's model provider plugin.
+        provider: "langgenius/openai_api_compatible/openai_api_compatible"
+        name: "qwen3.6-35b"
+        completion_params:
+          temperature: 0.3
+          max_tokens: 2048
+      - id: "qwen3.6-35b-creative"
+        provider: "langgenius/openai_api_compatible/openai_api_compatible"
+        name: "qwen3.6-35b"
+        completion_params:
+          temperature: 0.9
+          max_tokens: 4096
+    # Optional: knowledge bases (Dataset IDs) to attach to every auto-built App.
+    knowledge_bases: []
+
+  - sdk_key: "bsa_dev_example_def456"
+    customer_id: "customer-b"
+    dify:
+      base_url: "http://dify-customer-b:5001"
+      console_email: "admin@customer-b.example"
+      console_password: "REPLACE_WITH_REAL_PASSWORD"
+      dataset_api_key: "dataset-customer-b-replace-me"
+    models:
+      - id: "qwen3.6-35b"
+        provider: "langgenius/openai_api_compatible/openai_api_compatible"
+        name: "qwen3.6-35b"
+        completion_params:
+          temperature: 0.5
+          max_tokens: 2048
+    knowledge_bases:
+      - "kb-uuid-customer-b-alarms"
