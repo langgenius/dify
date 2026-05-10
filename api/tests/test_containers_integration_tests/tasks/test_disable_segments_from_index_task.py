@@ -6,8 +6,8 @@ using TestContainers to ensure realistic database interactions and proper isolat
 The task is responsible for removing document segments from the search index when they are disabled.
 """
 
-from uuid import uuid4
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 from faker import Faker
 from sqlalchemy import select
@@ -218,7 +218,9 @@ class TestDisableSegmentsFromIndexTask:
 
         return segments
 
-    def _create_dataset_process_rule(self, db_session_with_containers: Session, dataset: Dataset, fake: Faker | None = None):
+    def _create_dataset_process_rule(
+        self, db_session_with_containers: Session, dataset: Dataset, fake: Faker | None = None
+    ):
         """
         Helper method to create a dataset process rule.
 
@@ -242,7 +244,7 @@ class TestDisableSegmentsFromIndexTask:
                 '{"separator": "\\n\\n", "max_tokens": 1000, "chunk_overlap": 50}}'
                 "}"
             ),
-            created_by=str(uuid4())
+            created_by=str(uuid4()),
         )
 
         db_session_with_containers.add(process_rule)
