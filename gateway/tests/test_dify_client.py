@@ -112,6 +112,37 @@ async def test_console_login_supports_host_prefixed_cookies(client: DifyClient) 
 
     assert session.access_token == "hosted-a"
     assert session.csrf_token == "hosted-c"
+    # Cookie names must round-trip so Dify's _real_cookie_name extractors find them.
+    assert session.access_token_cookie_name == "__Host-access_token"
+    assert session.csrf_token_cookie_name == "__Host-csrf_token"
+
+
+@pytest.mark.asyncio
+async def test_console_calls_echo_host_prefixed_cookie_names(client: DifyClient) -> None:
+    """Regression: subsequent console calls must use the same cookie names as login.
+
+    Without this, HTTPS Dify deployments (which set ``__Host-csrf_token``)
+    would see ``X-CSRF-Token`` header valued correctly but the
+    ``csrf_token`` cookie name unrecognised, failing CSRF check (401).
+    """
+    session = ConsoleSession(
+        access_token="acc-secure",
+        csrf_token="csrf-secure",
+        access_token_cookie_name="__Host-access_token",
+        csrf_token_cookie_name="__Host-csrf_token",
+    )
+    with respx.mock(base_url="http://dify.test") as m:
+        route = m.post("/console/api/apps/imports").mock(
+            return_value=httpx.Response(200, json={"app_id": "a-1"})
+        )
+        await client.console_import_app(session, "yaml: ...")
+
+    cookie_hdr = route.calls.last.request.headers.get("cookie", "")
+    # Both cookies must use the host-prefixed name on the wire.
+    assert "__Host-access_token=acc-secure" in cookie_hdr
+    assert "__Host-csrf_token=csrf-secure" in cookie_hdr
+    # Header name itself is fixed; only cookie names vary.
+    assert route.calls.last.request.headers["x-csrf-token"] == "csrf-secure"
 
 
 @pytest.mark.asyncio

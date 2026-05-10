@@ -52,13 +52,23 @@ _ERR_BODY_TRUNCATE = 500
 class ConsoleSession:
     """Session state needed to call Dify Console API endpoints.
 
-    The two values originate from cookies set by ``/console/api/login``.
-    ``csrf_token`` must additionally be echoed in the ``X-CSRF-Token``
-    header on every state-changing request.
+    The values originate from cookies set by ``/console/api/login``. We also
+    preserve the *cookie names* the server used (bare or ``__Host-``-prefixed)
+    so subsequent requests can echo them verbatim. Dify's
+    ``check_csrf_token`` resolves the cookie name through ``_real_cookie_name``,
+    which switches to ``__Host-csrf_token`` on HTTPS deploys without a custom
+    cookie domain; sending the wrong name causes the cookie/header mismatch
+    check to fail with 401.
+
+    ``csrf_token`` must additionally be echoed in the ``X-CSRF-Token`` header
+    on every state-changing request (header name is *always* the same; only
+    the cookie name varies).
     """
 
     access_token: str
     csrf_token: str
+    access_token_cookie_name: str = "access_token"
+    csrf_token_cookie_name: str = "csrf_token"
 
 
 class DifyClient:
@@ -209,9 +219,10 @@ class DifyClient:
 
         # Dify uses two cookie naming variants: bare ("access_token") for
         # http/non-secure deployments, and ``__Host-`` prefixed for secure
-        # deployments without a custom cookie domain. Accept either.
-        access_token = _read_cookie(resp, "access_token")
-        csrf_token = _read_cookie(resp, "csrf_token")
+        # deployments without a custom cookie domain. Read whichever was sent
+        # AND remember the name so we can echo it on subsequent requests.
+        access_token, access_name = _read_cookie_with_name(resp, "access_token")
+        csrf_token, csrf_name = _read_cookie_with_name(resp, "csrf_token")
 
         if not access_token or not csrf_token:
             raise DifyUpstreamError(
@@ -219,7 +230,12 @@ class DifyClient:
                 "(access_token / csrf_token); response cookies: "
                 f"{sorted(resp.cookies.keys())}"
             )
-        return ConsoleSession(access_token=access_token, csrf_token=csrf_token)
+        return ConsoleSession(
+            access_token=access_token,
+            csrf_token=csrf_token,
+            access_token_cookie_name=access_name,
+            csrf_token_cookie_name=csrf_name,
+        )
 
     async def console_import_app(self, session: ConsoleSession, yaml_content: str) -> str:
         """Create an App from a DSL YAML string. Returns the new ``app_id``."""
@@ -293,25 +309,32 @@ def _console_headers(session: ConsoleSession) -> dict[str, str]:
 
 
 def _console_cookies(session: ConsoleSession) -> dict[str, str]:
-    """Cookie jar for console API requests; mirrors browser behavior."""
+    """Cookie jar for console API requests; mirrors browser behavior.
+
+    Uses the cookie names the server originally sent (bare or ``__Host-``
+    prefixed) so that Dify's ``_real_cookie_name``-aware extractors find them.
+    """
     return {
-        "access_token": session.access_token,
-        "csrf_token": session.csrf_token,
+        session.access_token_cookie_name: session.access_token,
+        session.csrf_token_cookie_name: session.csrf_token,
     }
 
 
-def _read_cookie(resp: httpx.Response, name: str) -> str | None:
-    """Read a cookie set on the response, tolerating ``__Host-`` prefix variants.
+def _read_cookie_with_name(
+    resp: httpx.Response, base_name: str
+) -> tuple[str | None, str]:
+    """Return ``(value, actual_name_used)`` for ``base_name`` from response cookies.
 
-    Dify's ``_real_cookie_name`` switches to ``__Host-<name>`` when the
-    deployment is HTTPS without a configured cookie domain. We accept either.
+    Falls back to the bare ``base_name`` for the returned name when the cookie
+    is missing — this gives sensible defaults but the caller must check the
+    value separately.
     """
-    if name in resp.cookies:
-        return resp.cookies[name]
-    host_prefixed = f"__Host-{name}"
+    if base_name in resp.cookies:
+        return resp.cookies[base_name], base_name
+    host_prefixed = f"__Host-{base_name}"
     if host_prefixed in resp.cookies:
-        return resp.cookies[host_prefixed]
-    return None
+        return resp.cookies[host_prefixed], host_prefixed
+    return None, base_name
 
 
 def _raise_for_dify_status(resp: httpx.Response) -> None:
