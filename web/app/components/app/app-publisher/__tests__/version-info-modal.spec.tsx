@@ -87,6 +87,22 @@ describe('VersionInfoModal', () => {
     expect(handleClose).toHaveBeenCalledTimes(1)
   })
 
+  it('should close when the dialog requests close', () => {
+    const handleClose = vi.fn()
+
+    render(
+      <VersionInfoModal
+        isOpen
+        onClose={handleClose}
+        onPublish={vi.fn()}
+      />,
+    )
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    expect(handleClose).toHaveBeenCalledTimes(1)
+  })
+
   it('should validate release note length and clear previous errors before publishing', () => {
     const handlePublish = vi.fn()
     const handleClose = vi.fn()

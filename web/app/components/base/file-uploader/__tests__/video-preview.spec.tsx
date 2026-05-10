@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import VideoPreview from '../video-preview'
 
 describe('VideoPreview', () => {
@@ -39,15 +39,14 @@ describe('VideoPreview', () => {
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('should stop propagation when backdrop is clicked', () => {
-    const { baseElement } = render(<VideoPreview url="https://example.com/video.mp4" title="Test Video" onCancel={vi.fn()} />)
+  it('should not close when backdrop is clicked', () => {
+    const onCancel = vi.fn()
+    render(<VideoPreview url="https://example.com/video.mp4" title="Test Video" onCancel={onCancel} />)
 
-    const backdrop = baseElement.querySelector('[tabindex="-1"]')
-    const event = new MouseEvent('click', { bubbles: true })
-    const stopPropagation = vi.spyOn(event, 'stopPropagation')
-    backdrop!.dispatchEvent(event)
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(dialog)
 
-    expect(stopPropagation).toHaveBeenCalled()
+    expect(onCancel).not.toHaveBeenCalled()
   })
 
   it('should call onCancel when Escape key is pressed', () => {
@@ -64,6 +63,6 @@ describe('VideoPreview', () => {
     render(<VideoPreview url="https://example.com/video.mp4" title="Test Video" onCancel={vi.fn()} />)
 
     const video = document.querySelector('video')
-    expect(video?.closest('[tabindex="-1"]')?.parentElement).toBe(document.body)
+    expect(video?.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
   })
 })

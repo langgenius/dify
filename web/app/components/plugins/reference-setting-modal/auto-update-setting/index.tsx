@@ -143,7 +143,6 @@ const AutoUpdateSetting: FC<Props> = ({
                   timezone={timezone}
                   onChange={v => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(dayjsToTimeOfDay(v), timezone!))}
                   onClear={() => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(0, timezone!))}
-                  popupClassName="z-99"
                   title={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })}
                   minuteFilter={minuteFilter}
                   renderTrigger={renderTimePickerTrigger}

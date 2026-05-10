@@ -7,6 +7,7 @@
 - Core workflow
 - Query usage decision rule
 - Mutation usage decision rule
+- Thin hook decision rule
 - Anti-patterns
 - Contract rules
 - Type export
@@ -55,9 +56,13 @@ const invoiceQuery = useQuery(consoleQuery.billing.invoices.queryOptions({
 
 1. Default to direct `*.queryOptions(...)` usage at the call site.
 2. If 3 or more call sites share the same extra options, extract a small query helper, not a `use-*` passthrough hook.
-3. Create `web/service/use-{domain}.ts` only for orchestration.
+3. Create or keep feature hooks only for orchestration.
    - Combine multiple queries or mutations.
    - Share domain-level derived state or invalidation helpers.
+   - Prefer `web/features/{domain}/hooks/*` for feature-owned workflows.
+4. Treat `web/service/use-{domain}.ts` as legacy.
+   - Do not create new thin service wrappers for oRPC contracts.
+   - When touching existing wrappers, inline direct `consoleQuery` or `marketplaceQuery` consumption when the wrapper is only a passthrough.
 
 ```typescript
 const invoicesBaseQueryOptions = () =>
@@ -74,11 +79,37 @@ const invoiceQuery = useQuery({
 1. Default to mutation helpers from `consoleQuery` or `marketplaceQuery`, for example `useMutation(consoleQuery.billing.bindPartnerStack.mutationOptions(...))`.
 2. If the mutation flow is heavily custom, use oRPC clients as `mutationFn`, for example `consoleClient.xxx` or `marketplaceClient.xxx`, instead of handwritten non-oRPC mutation logic.
 
+```typescript
+const createTagMutation = useMutation(consoleQuery.tags.create.mutationOptions())
+```
+
+## Thin Hook Decision Rule
+
+Remove thin hooks when they only rename a single oRPC query or mutation helper.
+Keep hooks when they orchestrate business behavior across multiple operations, own local workflow state, or normalize a feature-specific API.
+Prefer feature vertical hooks for kept orchestration. Do not move new contract-first wrappers into `web/service/use-*`.
+
+Use:
+
+```typescript
+const deleteTagMutation = useMutation(consoleQuery.tags.delete.mutationOptions())
+```
+
+Keep:
+
+```typescript
+const applyTagBindingsMutation = useApplyTagBindingsMutation()
+```
+
+`useApplyTagBindingsMutation` is acceptable because it coordinates bind and unbind requests, computes deltas, and exposes a feature-level workflow rather than a single endpoint passthrough.
+
 ## Anti-Patterns
 
 - Do not wrap `useQuery` with `options?: Partial<UseQueryOptions>`.
 - Do not split local `queryKey` and `queryFn` when oRPC `queryOptions` already exists and fits the use case.
 - Do not create thin `use-*` passthrough hooks for a single endpoint.
+- Do not create business-layer helpers whose only purpose is to call `consoleQuery.xxx.mutationOptions()` or `queryOptions()`.
+- Do not introduce new `web/service/use-*` files for oRPC contract passthroughs.
 - These patterns can degrade inference, especially around `throwOnError` and `select`, and add unnecessary indirection.
 
 ## Contract Rules

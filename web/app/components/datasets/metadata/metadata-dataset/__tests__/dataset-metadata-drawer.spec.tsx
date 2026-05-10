@@ -135,6 +135,19 @@ describe('DatasetMetadataDrawer', () => {
   })
 
   describe('User Interactions', () => {
+    it('should call onClose when drawer close button is clicked', async () => {
+      const onClose = vi.fn()
+      render(<DatasetMetadataDrawer {...defaultProps} onClose={onClose} />)
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId('close-icon'))
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
     it('should call onIsBuiltInEnabledChange when switch is toggled', async () => {
       const onIsBuiltInEnabledChange = vi.fn()
       render(
@@ -280,8 +293,8 @@ describe('DatasetMetadataDrawer', () => {
         expect(inputs.length).toBeGreaterThan(0)
       })
 
-      const inputs = document.querySelectorAll('input')
-      fireEvent.change(inputs[0]!, { target: { value: 'renamed_field' } })
+      const input = screen.getByPlaceholderText('dataset.metadata.datasetMetadata.namePlaceholder')
+      fireEvent.change(input, { target: { value: 'renamed_field' } })
 
       // Find and click save button
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
@@ -322,8 +335,8 @@ describe('DatasetMetadataDrawer', () => {
       })
 
       // Change name first
-      const inputs = document.querySelectorAll('input')
-      fireEvent.change(inputs[0]!, { target: { value: 'changed_name' } })
+      const input = screen.getByPlaceholderText('dataset.metadata.datasetMetadata.namePlaceholder')
+      fireEvent.change(input, { target: { value: 'changed_name' } })
 
       // Find and click cancel button
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
@@ -335,7 +348,7 @@ describe('DatasetMetadataDrawer', () => {
       })
     })
 
-    it('should close rename modal when modal close button is clicked', async () => {
+    it('should close rename modal when dialog requests close', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
 
       await waitFor(() => {
@@ -357,23 +370,12 @@ describe('DatasetMetadataDrawer', () => {
         expect(inputs.length).toBeGreaterThan(0)
       })
 
-      // Find and click the modal close button (X button)
-      // The Modal component has a close button in the header
-      const dialogs = screen.getAllByRole('dialog')
-      const renameModal = dialogs.find(d => d.querySelector('input'))
-      if (renameModal) {
-        // Find close button by looking for a button with close-related class or X icon
-        const closeButtons = renameModal.querySelectorAll('button')
-        for (const btn of Array.from(closeButtons)) {
-          // Skip cancel/save buttons
-          if (!btn.textContent?.toLowerCase().includes('cancel')
-            && !btn.textContent?.toLowerCase().includes('save')
-            && btn.querySelector('svg')) {
-            fireEvent.click(btn)
-            break
-          }
-        }
-      }
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'dataset.metadata.datasetMetadata.rename' })).not.toBeInTheDocument()
+        expect(screen.getAllByRole('dialog')).toHaveLength(1)
+      })
     })
   })
 

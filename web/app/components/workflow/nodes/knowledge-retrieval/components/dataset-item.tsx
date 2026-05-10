@@ -1,6 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -13,7 +22,6 @@ import SettingsModal from '@/app/components/app/configuration/dataset-config/set
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import Drawer from '@/app/components/base/drawer'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -131,12 +139,29 @@ const DatasetItem: FC<Props> = ({
       }
 
       {isShowSettingsModal && (
-        <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassName="mt-16 mx-2 sm:mr-2 mb-3 p-0! max-w-[640px]! rounded-xl">
-          <SettingsModal
-            currentDataset={payload}
-            onCancel={hideSettingsModal}
-            onSave={handleSave}
-          />
+        <Drawer
+          open={isShowSettingsModal}
+          modal
+          swipeDirection="right"
+          onOpenChange={(open) => {
+            if (!open)
+              hideSettingsModal()
+          }}
+        >
+          <DrawerPortal>
+            <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+            <DrawerViewport>
+              <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+                <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                  <SettingsModal
+                    currentDataset={payload}
+                    onCancel={hideSettingsModal}
+                    onSave={handleSave}
+                  />
+                </DrawerContent>
+              </DrawerPopup>
+            </DrawerViewport>
+          </DrawerPortal>
         </Drawer>
       )}
     </div>

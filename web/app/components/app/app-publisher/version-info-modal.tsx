@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import Input from '../../base/input'
 import Textarea from '../../base/textarea'
 
@@ -66,46 +66,55 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
   }, [])
 
   return (
-    <Modal className="p-0" isShow={isOpen} onClose={onClose}>
-      <div className="relative w-full p-6 pr-14 pb-4">
-        <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
-          {versionInfo?.marked_name ? t('versionHistory.editVersionInfo', { ns: 'workflow' }) : t('versionHistory.nameThisVersion', { ns: 'workflow' })}
-        </div>
-        <div className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onClose}>
-          <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
-        </div>
-      </div>
-      <div className="flex flex-col gap-y-4 px-6 py-3">
-        <div className="flex flex-col gap-y-1">
-          <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
-            {t('versionHistory.editField.title', { ns: 'workflow' })}
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open)
+          onClose()
+      }}
+    >
+      <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none p-0 text-left align-middle">
+
+        <div className="relative w-full p-6 pr-14 pb-4">
+          <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
+            {versionInfo?.marked_name ? t('versionHistory.editVersionInfo', { ns: 'workflow' }) : t('versionHistory.nameThisVersion', { ns: 'workflow' })}
           </div>
-          <Input
-            value={title}
-            placeholder={`${t('versionHistory.nameThisVersion', { ns: 'workflow' })}${t('panel.optional', { ns: 'workflow' })}`}
-            onChange={handleTitleChange}
-            destructive={titleError}
-          />
-        </div>
-        <div className="flex flex-col gap-y-1">
-          <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
-            {t('versionHistory.editField.releaseNotes', { ns: 'workflow' })}
+          <div className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onClose}>
+            <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
           </div>
-          <Textarea
-            value={releaseNotes}
-            placeholder={`${t('versionHistory.releaseNotesPlaceholder', { ns: 'workflow' })}${t('panel.optional', { ns: 'workflow' })}`}
-            onChange={handleDescriptionChange}
-            destructive={releaseNotesError}
-          />
         </div>
-      </div>
-      <div className="flex justify-end p-6 pt-5">
-        <div className="flex items-center gap-x-3">
-          <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-          <Button variant="primary" onClick={handlePublish}>{t('common.publish', { ns: 'workflow' })}</Button>
+        <div className="flex flex-col gap-y-4 px-6 py-3">
+          <div className="flex flex-col gap-y-1">
+            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
+              {t('versionHistory.editField.title', { ns: 'workflow' })}
+            </div>
+            <Input
+              value={title}
+              placeholder={`${t('versionHistory.nameThisVersion', { ns: 'workflow' })}${t('panel.optional', { ns: 'workflow' })}`}
+              onChange={handleTitleChange}
+              destructive={titleError}
+            />
+          </div>
+          <div className="flex flex-col gap-y-1">
+            <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
+              {t('versionHistory.editField.releaseNotes', { ns: 'workflow' })}
+            </div>
+            <Textarea
+              value={releaseNotes}
+              placeholder={`${t('versionHistory.releaseNotesPlaceholder', { ns: 'workflow' })}${t('panel.optional', { ns: 'workflow' })}`}
+              onChange={handleDescriptionChange}
+              destructive={releaseNotesError}
+            />
+          </div>
         </div>
-      </div>
-    </Modal>
+        <div className="flex justify-end p-6 pt-5">
+          <div className="flex items-center gap-x-3">
+            <Button nativeButton={false} onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+            <Button nativeButton={false} variant="primary" onClick={handlePublish}>{t('common.publish', { ns: 'workflow' })}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

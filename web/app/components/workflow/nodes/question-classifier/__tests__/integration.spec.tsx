@@ -344,8 +344,8 @@ describe('question-classifier path', () => {
       )
 
       expect(screen.getByText(`${longName.slice(0, 50)}...`)).toBeInTheDocument()
-      await user.hover(screen.getByText(`${longName.slice(0, 50)}...`))
-      expect(screen.getByText(longName)).toBeInTheDocument()
+      await user.hover(screen.getByRole('button', { name: longName }))
+      expect(await screen.findByText(longName)).toBeInTheDocument()
 
       rerender(
         <Node

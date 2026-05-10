@@ -1,5 +1,5 @@
 import type { HitTesting } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChunkDetailModal from '../chunk-detail-modal'
 
@@ -9,16 +9,6 @@ vi.mock('@/app/components/base/file-uploader/file-type-icon', () => ({
 
 vi.mock('@/app/components/base/markdown', () => ({
   Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
-}))
-
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, title, onClose }: { children: React.ReactNode, title: string, onClose: () => void }) => (
-    <div data-testid="modal">
-      <div data-testid="modal-title">{title}</div>
-      <button data-testid="modal-close" onClick={onClose}>close</button>
-      {children}
-    </div>
-  ),
 }))
 
 vi.mock('../../../common/image-list', () => ({
@@ -85,7 +75,7 @@ describe('ChunkDetailModal', () => {
 
   it('should render modal with title', () => {
     render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
-    expect(screen.getByTestId('modal-title')).toHaveTextContent('chunkDetail')
+    expect(screen.getByRole('dialog')).toHaveTextContent('chunkDetail')
   })
 
   it('should render segment index tag and score', () => {
@@ -133,5 +123,19 @@ describe('ChunkDetailModal', () => {
   it('should render mask overlay', () => {
     render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
     expect(screen.getByTestId('mask')).toBeInTheDocument()
+  })
+
+  it('should call onHide when close button is clicked', () => {
+    render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
+    fireEvent.click(screen.getByTestId('modal-close-button'))
+    expect(onHide).toHaveBeenCalled()
+  })
+
+  it('should call onHide when the dialog requests close', () => {
+    render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    expect(onHide).toHaveBeenCalledTimes(1)
   })
 })

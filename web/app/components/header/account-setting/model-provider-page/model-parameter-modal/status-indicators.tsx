@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiErrorWarningFill } from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 import Link from '@/next/link'
 import { useInstalledPluginList } from '@/service/use-plugins'
@@ -12,6 +13,28 @@ type StatusIndicatorsProps = {
   pluginInfo: any
   t: any
 }
+
+type StatusPopoverProps = {
+  ariaLabel: string
+  content: ReactNode
+  children: ReactNode
+}
+
+const StatusPopover = ({ ariaLabel, content, children }: StatusPopoverProps) => (
+  <Popover>
+    <PopoverTrigger
+      openOnHover
+      aria-label={ariaLabel}
+      className="inline-flex border-0 bg-transparent p-0"
+      onClick={e => e.stopPropagation()}
+    >
+      {children}
+    </PopoverTrigger>
+    <PopoverContent placement="top" popupClassName="rounded-md px-3 py-2 system-xs-regular text-text-tertiary">
+      {content}
+    </PopoverContent>
+  </Popover>
+)
 
 const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disabled, pluginInfo, t }: StatusIndicatorsProps) => {
   const { data: pluginList } = useInstalledPluginList()
@@ -48,27 +71,26 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
         <>
           {inModelList
             ? (
-                <Tooltip
-                  popupContent={t('nodes.agent.modelSelectorTooltips.deprecated', { ns: 'workflow' })}
-                  asChild={false}
-                  needsDelay={false}
+                <StatusPopover
+                  ariaLabel={t('nodes.agent.modelSelectorTooltips.deprecated', { ns: 'workflow' })}
+                  content={t('nodes.agent.modelSelectorTooltips.deprecated', { ns: 'workflow' })}
                 >
                   <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
-                </Tooltip>
+                </StatusPopover>
               )
             : !pluginInfo
                 ? (
-                    <Tooltip
-                      popupContent={renderTooltipContent(
+                    <StatusPopover
+                      ariaLabel={t('nodes.agent.modelNotSupport.title', { ns: 'workflow' })}
+                      content={renderTooltipContent(
                         t('nodes.agent.modelNotSupport.title', { ns: 'workflow' }),
                         t('nodes.agent.modelNotSupport.desc', { ns: 'workflow' }),
                         t('nodes.agent.linkToPlugin', { ns: 'workflow' }),
                         '/plugins',
                       )}
-                      asChild={false}
                     >
                       <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
-                    </Tooltip>
+                    </StatusPopover>
                   )
                 : (
                     <SwitchPluginVersion
@@ -82,17 +104,17 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
         </>
       )}
       {!modelProvider && !pluginInfo && (
-        <Tooltip
-          popupContent={renderTooltipContent(
+        <StatusPopover
+          ariaLabel={t('nodes.agent.modelNotInMarketplace.title', { ns: 'workflow' })}
+          content={renderTooltipContent(
             t('nodes.agent.modelNotInMarketplace.title', { ns: 'workflow' }),
             t('nodes.agent.modelNotInMarketplace.desc', { ns: 'workflow' }),
             t('nodes.agent.linkToPlugin', { ns: 'workflow' }),
             '/plugins',
           )}
-          asChild={false}
         >
           <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
-        </Tooltip>
+        </StatusPopover>
       )}
     </>
   )

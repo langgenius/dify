@@ -82,7 +82,9 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [handleSave])
 
   return (
-    <div className="w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]">
+    <div className="w-[372px]
+     rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]"
+    >
       <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
       <div className="mt-3">
         <div className="system-xs-medium text-text-secondary">

@@ -1,7 +1,5 @@
 import type { FC } from 'react'
-import * as React from 'react'
-import { createPortal } from 'react-dom'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 
 type VideoPreviewProps = {
   url: string
@@ -13,31 +11,40 @@ const VideoPreview: FC<VideoPreviewProps> = ({
   title,
   onCancel,
 }) => {
-  useHotkeys('esc', onCancel)
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-1000 flex items-center justify-center bg-black/80 p-8"
-      onClick={e => e.stopPropagation()}
-      tabIndex={-1}
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          onCancel()
+      }}
+      disablePointerDismissal
     >
-      <div>
-        <video controls title={title} autoPlay={false} preload="metadata">
-          <source
-            type="video/mp4"
-            src={url}
-            className="max-h-full max-w-full"
-          />
-        </video>
-      </div>
-      <div
-        className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/[0.08] backdrop-blur-[2px]"
-        onClick={onCancel}
+      <DialogContent
+        className="inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
+        backdropClassName="bg-transparent!"
       >
-        <span className="i-ri-close-line h-4 w-4 text-gray-500" data-testid="video-preview-close-btn" />
-      </div>
-    </div>,
-    document.body,
+        <div
+          aria-label={title}
+          tabIndex={-1}
+          onClick={e => e.stopPropagation()}
+        >
+          <video controls title={title} autoPlay={false} preload="metadata">
+            <source
+              type="video/mp4"
+              src={url}
+              className="max-h-full max-w-full"
+            />
+          </video>
+        </div>
+        <div
+          className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/[0.08] backdrop-blur-[2px]"
+          onClick={onCancel}
+        >
+          <span className="i-ri-close-line h-4 w-4 text-gray-500" data-testid="video-preview-close-btn" />
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

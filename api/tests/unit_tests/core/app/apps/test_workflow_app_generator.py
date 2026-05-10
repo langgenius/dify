@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from pytest_mock import MockerFixture
+
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
 
 
@@ -22,7 +24,7 @@ def test_should_prepare_user_inputs_keeps_validation_when_flag_false():
     assert WorkflowAppGenerator()._should_prepare_user_inputs(args)
 
 
-def test_resume_delegates_to_generate(mocker):
+def test_resume_delegates_to_generate(mocker: MockerFixture):
     generator = WorkflowAppGenerator()
     mock_generate = mocker.patch.object(generator, "_generate", return_value="ok")
 
@@ -52,7 +54,7 @@ def test_resume_delegates_to_generate(mocker):
     assert kwargs["invoke_from"] == "debugger"
 
 
-def test_generate_appends_pause_layer_and_forwards_state(mocker):
+def test_generate_appends_pause_layer_and_forwards_state(mocker: MockerFixture):
     generator = WorkflowAppGenerator()
 
     mock_queue_manager = MagicMock()
@@ -124,7 +126,7 @@ def test_generate_appends_pause_layer_and_forwards_state(mocker):
     assert worker_kwargs["kwargs"]["graph_runtime_state"] is graph_runtime_state
 
 
-def test_resume_path_runs_worker_with_runtime_state(mocker):
+def test_resume_path_runs_worker_with_runtime_state(mocker: MockerFixture):
     generator = WorkflowAppGenerator()
     runtime_state = MagicMock(name="runtime-state")
 

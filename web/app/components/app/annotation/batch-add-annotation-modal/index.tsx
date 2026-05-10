@@ -1,13 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
@@ -88,37 +87,40 @@ const BatchModal: FC<IBatchModalProps> = ({
   }
 
   return (
-    <Modal isShow={isShow} onClose={noop} className="max-w-[520px]! rounded-xl! px-8 py-6">
-      <div className="relative pb-1 system-xl-medium text-text-primary">{t('batchModal.title', { ns: 'appAnnotation' })}</div>
-      <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onCancel}>
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-      </div>
-      <CSVUploader
-        file={currentCSV}
-        updateFile={handleFile}
-      />
-      <CSVDownloader />
+    <Dialog open={isShow}>
+      <DialogContent className="w-full max-w-[520px]! overflow-hidden! rounded-xl! border-none px-8 py-6 text-left align-middle">
 
-      {isAnnotationFull && (
-        <div className="mt-4">
-          <AnnotationFull />
+        <div className="relative pb-1 system-xl-medium text-text-primary">{t('batchModal.title', { ns: 'appAnnotation' })}</div>
+        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onCancel}>
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
-      )}
+        <CSVUploader
+          file={currentCSV}
+          updateFile={handleFile}
+        />
+        <CSVDownloader />
 
-      <div className="mt-[28px] flex justify-end pt-6">
-        <Button className="mr-2 system-sm-medium text-text-tertiary" onClick={onCancel}>
-          {t('batchModal.cancel', { ns: 'appAnnotation' })}
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSend}
-          disabled={isAnnotationFull || !currentCSV}
-          loading={importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING}
-        >
-          {t('batchModal.run', { ns: 'appAnnotation' })}
-        </Button>
-      </div>
-    </Modal>
+        {isAnnotationFull && (
+          <div className="mt-4">
+            <AnnotationFull />
+          </div>
+        )}
+
+        <div className="mt-[28px] flex justify-end pt-6">
+          <Button className="mr-2 system-sm-medium text-text-tertiary" onClick={onCancel}>
+            {t('batchModal.cancel', { ns: 'appAnnotation' })}
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSend}
+            disabled={isAnnotationFull || !currentCSV}
+            loading={importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING}
+          >
+            {t('batchModal.run', { ns: 'appAnnotation' })}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 export default React.memo(BatchModal)

@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "画像",
   "variableConfig.file.supportFileTypes": "サポートされたファイルタイプ",
   "variableConfig.file.video.name": "映像",
+  "variableConfig.hidden": "非表示・事前入力",
+  "variableConfig.hiddenDescription": "エンドユーザーには非表示にし、値はご自身で入力します。必須 とは併用できません。<docLink>詳細はこちら</docLink>",
   "variableConfig.hide": "非表示",
   "variableConfig.inputPlaceholder": "入力してください",
   "variableConfig.json": "JSONコード",

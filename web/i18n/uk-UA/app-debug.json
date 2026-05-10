@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Образ",
   "variableConfig.file.supportFileTypes": "Підтримка типів файлів",
   "variableConfig.file.video.name": "Відео",
+  "variableConfig.hidden": "Приховано та попередньо заповнено",
+  "variableConfig.hiddenDescription": "Приховайте це поле від кінцевих користувачів і введіть значення самостійно. Взаємно виключає Обов'язкове. <docLink>Дізнатися більше</docLink>",
   "variableConfig.hide": "Приховати",
   "variableConfig.inputPlaceholder": "Будь ласка, введіть",
   "variableConfig.json": "JSON Код",

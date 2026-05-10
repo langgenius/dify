@@ -374,11 +374,6 @@ class DifyNodeFactory(NodeFactory):
         # Re-validate using the resolved node class so workflow-local node schemas
         # stay explicit and constructors receive the concrete typed payload.
         resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
-        config_for_node_init: BaseNodeData | dict[str, Any]
-        if isinstance(resolved_node_data, BaseNodeData):
-            config_for_node_init = resolved_node_data.model_dump(mode="python", by_alias=True)
-        else:
-            config_for_node_init = resolved_node_data
         node_type = node_data.type
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
             BuiltinNodeTypes.CODE: lambda: {
@@ -446,9 +441,10 @@ class DifyNodeFactory(NodeFactory):
             },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
+        constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
         return node_class(
             node_id=node_id,
-            config=config_for_node_init,
+            data=constructor_node_data,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
             **node_init_kwargs,

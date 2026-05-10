@@ -15,10 +15,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
+import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDeleteTagMutation, useUpdateTagMutation } from '../hooks/use-tag-mutations'
+import { consoleQuery } from '@/service/client'
 
 type TagItemEditorProps = {
   tag: Tag
@@ -26,8 +27,8 @@ type TagItemEditorProps = {
 }
 export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
   const { t } = useTranslation()
-  const updateTagMutation = useUpdateTagMutation(tag.type)
-  const deleteTagMutation = useDeleteTagMutation(tag.type)
+  const updateTagMutation = useMutation(consoleQuery.tags.update.mutationOptions())
+  const deleteTagMutation = useMutation(consoleQuery.tags.delete.mutationOptions())
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(tag.name)
   const editTag = (tagId: string, name: string) => {

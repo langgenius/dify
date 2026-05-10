@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
 import {
-  RiAddLine,
-  RiArrowDownSLine,
-} from '@remixicon/react'
-import { useClickAway } from 'ahooks'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,7 +33,7 @@ const GetSchema: FC<Props> = ({
     }
     setIsParsing(true)
     try {
-      const { schema } = await importSchemaFromURL(importUrl) as any
+      const { schema } = await importSchemaFromURL(importUrl)
       setImportUrl('')
       onChange(schema)
     }
@@ -42,79 +43,79 @@ const GetSchema: FC<Props> = ({
     }
   }
 
-  const importURLRef = React.useRef(null)
-  useClickAway(() => {
-    setShowImportFromUrl(false)
-  }, importURLRef)
-
   const [showExamples, setShowExamples] = useState(false)
-  const showExamplesRef = React.useRef(null)
-  useClickAway(() => {
-    setShowExamples(false)
-  }, showExamplesRef)
 
   return (
-    <div className="relative flex w-[224px] justify-end space-x-1">
-      <div ref={importURLRef}>
-        <Button
-          size="small"
-          className="space-x-1"
-          onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
+    <div className="flex w-[224px] justify-end gap-1">
+      <DropdownMenu open={showImportFromUrl} onOpenChange={setShowImportFromUrl}>
+        <DropdownMenuTrigger
+          render={(
+            <Button
+              size="small"
+              className="gap-1"
+            />
+          )}
         >
-          <RiAddLine className="h-3 w-3" />
-          <div className="system-xs-medium text-text-secondary">{t('createTool.importFromUrl', { ns: 'tools' })}</div>
-        </Button>
-        {showImportFromUrl && (
-          <div className="absolute top-[26px] left-[-35px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
-            <div className="relative">
-              <Input
-                type="text"
-                className="w-[244px]"
-                placeholder={t('createTool.importFromUrlPlaceHolder', { ns: 'tools' })!}
-                value={importUrl}
-                onChange={e => setImportUrl(e.target.value)}
-              />
-              <Button
-                className="absolute top-1 right-1"
-                size="small"
-                variant="primary"
-                disabled={!importUrl}
-                onClick={handleImportFromUrl}
-                loading={isParsing}
-              >
-                {isParsing ? '' : t('operation.ok', { ns: 'common' })}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="relative -mt-0.5" ref={showExamplesRef}>
-        <Button
-          size="small"
-          className="space-x-1"
-          onClick={() => { setShowExamples(!showExamples) }}
+          <span className="i-ri-add-line size-3" aria-hidden />
+          <span className="system-xs-medium text-text-secondary">{t('createTool.importFromUrl', { ns: 'tools' })}</span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-start"
+          sideOffset={2}
+          popupClassName="w-[300px] p-2"
         >
-          <div className="system-xs-medium text-text-secondary">{t('createTool.examples', { ns: 'tools' })}</div>
-          <RiArrowDownSLine className="h-3 w-3" />
-        </Button>
-        {showExamples && (
-          <div className="absolute top-7 right-0 rounded-lg bg-components-panel-bg p-1 shadow-sm">
-            {examples.map(item => (
-              <div
-                key={item.key}
-                onClick={() => {
-                  onChange(item.content)
-                  setShowExamples(false)
-                }}
-                className="cursor-pointer rounded-lg px-3 py-1.5 system-sm-regular leading-5 whitespace-nowrap text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover"
-              >
-                {t(`createTool.exampleOptions.${item.key}`, { ns: 'tools' })}
-              </div>
-            ))}
+          <div className="relative">
+            <Input
+              type="text"
+              className="w-full"
+              placeholder={t('createTool.importFromUrlPlaceHolder', { ns: 'tools' })!}
+              value={importUrl}
+              onChange={e => setImportUrl(e.target.value)}
+            />
+            <Button
+              className="absolute top-1 right-1"
+              size="small"
+              variant="primary"
+              disabled={!importUrl}
+              onClick={handleImportFromUrl}
+              loading={isParsing}
+            >
+              {isParsing ? '' : t('operation.ok', { ns: 'common' })}
+            </Button>
           </div>
-        )}
-
-      </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu open={showExamples} onOpenChange={setShowExamples}>
+        <DropdownMenuTrigger
+          render={(
+            <Button
+              size="small"
+              className="gap-1"
+            />
+          )}
+        >
+          <span className="system-xs-medium text-text-secondary">{t('createTool.examples', { ns: 'tools' })}</span>
+          <span className="i-ri-arrow-down-s-line size-3" aria-hidden />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-end"
+          sideOffset={2}
+          popupClassName="min-w-max"
+        >
+          {examples.map(item => (
+            <DropdownMenuItem
+              key={item.key}
+              onClick={() => {
+                onChange(item.content)
+                setShowExamples(false)
+              }}
+              className="system-sm-regular whitespace-nowrap text-text-secondary"
+            >
+              {t(`createTool.exampleOptions.${item.key}`, { ns: 'tools' })}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }

@@ -39,15 +39,14 @@ describe('AudioPreview', () => {
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('should stop propagation when backdrop is clicked', () => {
-    const { baseElement } = render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
+  it('should not close when backdrop is clicked', () => {
+    const onCancel = vi.fn()
+    render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={onCancel} />)
 
-    const backdrop = baseElement.querySelector('[tabindex="-1"]')
-    const event = new MouseEvent('click', { bubbles: true })
-    const stopPropagation = vi.spyOn(event, 'stopPropagation')
-    backdrop!.dispatchEvent(event)
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(dialog)
 
-    expect(stopPropagation).toHaveBeenCalled()
+    expect(onCancel).not.toHaveBeenCalled()
   })
 
   it('should call onCancel when Escape key is pressed', () => {
@@ -64,6 +63,6 @@ describe('AudioPreview', () => {
     render(<AudioPreview url="https://example.com/audio.mp3" title="Test Audio" onCancel={vi.fn()} />)
 
     const audio = document.querySelector('audio')
-    expect(audio?.closest('[tabindex="-1"]')?.parentElement).toBe(document.body)
+    expect(audio?.closest('[data-base-ui-portal]')?.parentElement).toBe(document.body)
   })
 })

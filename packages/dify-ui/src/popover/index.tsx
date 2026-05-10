@@ -51,7 +51,7 @@ export function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-1002 outline-hidden', className)}
+        className={cn('z-50 outline-hidden', className)}
         {...positionerProps}
       >
         <BasePopover.Popup
