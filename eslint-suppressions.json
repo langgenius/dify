@@ -1334,11 +1334,6 @@
       "count": 9
     }
   },
-  "web/app/components/base/markdown-blocks/form.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 3
-    }
-  },
   "web/app/components/base/markdown-blocks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 10
@@ -4431,11 +4426,6 @@
     }
   },
   "web/app/signin/layout.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/signin/one-more-step.tsx": {
     "ts/no-explicit-any": {
       "count": 1
     }
