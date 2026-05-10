@@ -186,6 +186,15 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     }
   }
 
+  const handleCreateTypeChange = (value: string | null) => {
+    const option = visibleOptions.find(item => item.value === value)
+    if (!option)
+      return
+
+    setIsMenuOpen(false)
+    void onChooseCreateType(option.value)
+  }
+
   const onClickCreate = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (subscriptionCount >= MAX_COUNT) {
       e.stopPropagation()
@@ -209,12 +218,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         value={methodType === DEFAULT_METHOD ? null : methodType}
         open={shouldAllowSelect ? isMenuOpen : false}
         onOpenChange={setIsMenuOpen}
-        onValueChange={(value) => {
-          if (!value)
-            return
-          setIsMenuOpen(false)
-          void onChooseCreateType(value as SupportedCreationMethods)
-        }}
+        onValueChange={handleCreateTypeChange}
       >
         <SelectTrigger
           render={<div />}
