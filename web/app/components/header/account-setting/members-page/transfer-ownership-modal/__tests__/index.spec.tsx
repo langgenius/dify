@@ -144,7 +144,7 @@ describe('TransferOwnershipModal', () => {
     })
     expect(screen.queryByText(/members\.transferModal\.resendCount/i)).not.toBeInTheDocument()
 
-    const resendBtn = screen.getByTestId('transfer-modal-resend')
+    const resendBtn = screen.getByRole('button', { name: /members\.transferModal\.resend/i })
     await act(async () => {
       fireEvent.click(resendBtn)
     })

@@ -159,9 +159,13 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               <span>{t('members.transferModal.resendTip', { ns: 'common' })}</span>
               {time > 0 && (<span>{t('members.transferModal.resendCount', { ns: 'common', count: time })}</span>)}
               {!time && (
-                <span data-testid="transfer-modal-resend" onClick={sendCodeToOriginEmail} className="cursor-pointer system-xs-medium text-text-accent-secondary">
+                <button
+                  type="button"
+                  onClick={sendCodeToOriginEmail}
+                  className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary"
+                >
                   {t('members.transferModal.resend', { ns: 'common' })}
-                </span>
+                </button>
               )}
             </div>
           </>
