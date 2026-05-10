@@ -249,7 +249,7 @@ describe('FileItem (chat-input)', () => {
     fireEvent.click(screen.getByText(/video\.mp4/i))
     expect(document.querySelector('video')).toBeInTheDocument()
 
-    const closeBtn = screen.getByTestId('video-preview-close-btn')
+    const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
     fireEvent.click(closeBtn)
 
     expect(document.querySelector('video')).not.toBeInTheDocument()
