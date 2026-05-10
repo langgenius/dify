@@ -91,9 +91,14 @@ const BatchModal: FC<IBatchModalProps> = ({
       <DialogContent className="w-full max-w-[520px]! overflow-hidden! rounded-xl! border-none px-8 py-6 text-left align-middle">
 
         <div className="relative pb-1 system-xl-medium text-text-primary">{t('batchModal.title', { ns: 'appAnnotation' })}</div>
-        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onCancel}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-        </div>
+        <button
+          type="button"
+          className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          aria-label={t('operation.close', { ns: 'common' })}
+          onClick={onCancel}
+        >
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+        </button>
         <CSVUploader
           file={currentCSV}
           updateFile={handleFile}
