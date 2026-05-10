@@ -108,7 +108,7 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessRulesDict(TypedDict):
-    mode: str
+    mode: ProcessRuleMode
     rules: dict[str, Any]
 
 
@@ -204,7 +204,7 @@ class DatasetService:
             mode = dataset_process_rule.mode
             rules = dataset_process_rule.rules_dict or {}
         else:
-            mode = str(DocumentService.DEFAULT_RULES["mode"])
+            mode = ProcessRuleMode(DocumentService.DEFAULT_RULES["mode"])
             rules = dict(DocumentService.DEFAULT_RULES.get("rules") or {})
         return {"mode": mode, "rules": rules}
 
@@ -1995,7 +1995,7 @@ class DocumentService:
                     elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
                         dataset_process_rule = DatasetProcessRule(
                             dataset_id=dataset.id,
-                            mode=process_rule.mode,
+                            mode=ProcessRuleMode.AUTOMATIC,
                             rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                             created_by=account.id,
                         )
@@ -2579,7 +2579,7 @@ class DocumentService:
             elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
-                    mode=process_rule.mode,
+                    mode=ProcessRuleMode.AUTOMATIC,
                     rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                     created_by=account.id,
                 )
