@@ -310,13 +310,14 @@ const VarReferencePickerTrigger: FC<Props> = ({
                     )
                   : resolvedVariablePicker}
                 {(hasValue && !readonly && !isInTable && !isJustShowValue) && (
-                  <div
-                    className="group invisible absolute top-[50%] right-1 h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 group-hover/wrap:visible hover:bg-state-base-hover"
+                  <button
+                    type="button"
+                    aria-label={t('operation.clear', { ns: 'common' })}
+                    className="group invisible absolute top-[50%] right-1 h-5 translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 group-hover/wrap:visible hover:bg-state-base-hover"
                     onClick={handleClearVar}
-                    data-testid="var-reference-picker-clear"
                   >
-                    <RiCloseLine className="h-3.5 w-3.5 text-text-tertiary group-hover:text-text-secondary" />
-                  </div>
+                    <RiCloseLine className="h-3.5 w-3.5 text-text-tertiary group-hover:text-text-secondary" aria-hidden="true" />
+                  </button>
                 )}
                 {!hasValue && valueTypePlaceHolder && (
                   <Badge

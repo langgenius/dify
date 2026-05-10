@@ -96,7 +96,7 @@ describe('VarReferencePickerTrigger', () => {
     fireEvent.click(screen.getByText('Source Node'), { ctrlKey: true })
     expect(handleVariableJump).toHaveBeenCalledWith('node-a')
 
-    fireEvent.click(screen.getByTestId('var-reference-picker-clear'))
+    fireEvent.click(screen.getByRole('button', { name: /Clear|operation.clear/ }))
     expect(handleClearVar).toHaveBeenCalledTimes(1)
   })
 

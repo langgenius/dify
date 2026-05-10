@@ -113,7 +113,6 @@ const WorkflowToolDrawerFrame = ({ title, closeLabel, onHide, children }: Workfl
                     {title}
                   </DrawerTitle>
                   <DrawerCloseButton
-                    data-testid="drawer-close"
                     className="h-6 w-6 rounded-md"
                     aria-label={closeLabel}
                   />
