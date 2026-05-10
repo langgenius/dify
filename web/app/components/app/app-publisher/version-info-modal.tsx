@@ -79,9 +79,14 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
           <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
             {versionInfo?.marked_name ? t('versionHistory.editVersionInfo', { ns: 'workflow' }) : t('versionHistory.nameThisVersion', { ns: 'workflow' })}
           </div>
-          <div className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onClose}>
-            <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
-          </div>
+          <button
+            type="button"
+            className="absolute top-5 right-5 flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={onClose}
+          >
+            <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" aria-hidden="true" />
+          </button>
         </div>
         <div className="flex flex-col gap-y-4 px-6 py-3">
           <div className="flex flex-col gap-y-1">
