@@ -1,4 +1,6 @@
 __pycache__/
+# (gateway/ scope) — review raw artifacts kept out of repo; see ai-review/.gitignore
+
 *.py[cod]
 *$py.class
 *.egg-info/

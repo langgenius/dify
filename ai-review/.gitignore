@@ -1,0 +1,4 @@
+# Raw codex review dumps (model reasoning + full diff). Keep out of git
+# because they are hundreds of KB and add noise to history. The curated
+# findings excerpt lives in review-N.md alongside.
+reviews/**/review-*.raw.md
