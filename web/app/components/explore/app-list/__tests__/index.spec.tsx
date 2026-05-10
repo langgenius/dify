@@ -279,7 +279,7 @@ describe('AppList', () => {
       })
       expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('input-clear'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
       await act(async () => {
         await vi.advanceTimersByTimeAsync(500)
       })
