@@ -188,9 +188,8 @@ describe('InputWithCopy component', () => {
     const mockOnChange = vi.fn()
     render(<InputWithCopy value="test value" onChange={mockOnChange} />)
 
-    const wrapper = screen.getByTestId('copy-button-wrapper')
-    expect(wrapper).toBeInTheDocument()
-    fireEvent.mouseLeave(wrapper)
+    const copyButton = screen.getByRole('button')
+    fireEvent.mouseLeave(copyButton)
 
     expect(mockReset).toHaveBeenCalled()
   })

@@ -61,8 +61,6 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
       {showCopyButton && (
         <div
           className="absolute top-1/2 right-2 -translate-y-1/2"
-          onMouseLeave={reset}
-          data-testid="copy-button-wrapper"
         >
           <Tooltip>
             <TooltipTrigger
@@ -71,6 +69,7 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
                   size="xs"
                   aria-label={safeTooltipText}
                   onClick={handleCopy}
+                  onMouseLeave={reset}
                   className="hover:bg-components-button-ghost-bg-hover"
                 >
                   {copied
