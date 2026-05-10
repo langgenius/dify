@@ -148,11 +148,11 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
 
-    const searchInput = screen.getByTestId('notion-search-input')
+    const searchInput = screen.getByPlaceholderText('common.dataSource.notion.selector.searchPages')
     await user.type(searchInput, 'no-such-page')
     expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
 
-    await user.click(screen.getByTestId('notion-search-input-clear'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
     expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
   })
 
