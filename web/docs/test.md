@@ -16,16 +16,16 @@ When I ask you to write/refactor/fix tests, follow these rules by default.
 
 ```bash
 # Run all tests
-vp run test
+pnpm test
 
 # Watch mode
-vp run test --watch
+pnpm test --watch
 
 # Generate coverage report
-vp run test --coverage
+pnpm test --coverage
 
 # Run specific file
-vp run test path/to/file.spec.tsx
+pnpm test path/to/file.spec.tsx
 ```
 
 ## Project Test Setup

@@ -43,16 +43,16 @@ Apply this skill when the user:
 
 ```bash
 # Run all tests
-vp run test
+pnpm test
 
 # Watch mode
-vp run test --watch
+pnpm test --watch
 
 # Run specific file
-vp run test path/to/file.spec.tsx
+pnpm test path/to/file.spec.tsx
 
 # Generate coverage report
-vp run test --coverage
+pnpm test --coverage
 
 # Analyze component complexity
 pnpm analyze-component <path>
@@ -159,7 +159,7 @@ describe('ComponentName', () => {
 For each file:
   ┌────────────────────────────────────────┐
   │ 1. Write test                          │
-  │ 2. Run: vp run test <file>.spec.tsx    │
+  │ 2. Run: pnpm test <file>.spec.tsx      │
   │ 3. PASS? → Mark complete, next file    │
   │    FAIL? → Fix first, then continue    │
   └────────────────────────────────────────┘
