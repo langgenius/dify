@@ -185,7 +185,7 @@ describe('ImageList', () => {
       expect(screen.queryByTestId('image-preview-container')).toBeInTheDocument()
 
       // Close preview
-      const closeButton = screen.getByTestId('image-preview-close-button')
+      const closeButton = screen.getByRole('button', { name: 'common.operation.cancel' })
       await user.click(closeButton)
       expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
     })

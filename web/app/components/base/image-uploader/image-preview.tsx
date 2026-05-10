@@ -227,8 +227,8 @@ const ImagePreview: FC<ImagePreviewProps> = ({
                 onClick={imageCopy}
               >
                 {isCopied
-                  ? <span className="i-ri-file-copy-line h-4 w-4 text-green-500" data-testid="image-preview-copied-icon" />
-                  : <span className="i-ri-file-copy-line h-4 w-4 text-gray-500" data-testid="image-preview-copy-button" />}
+                  ? <span className="i-ri-file-copy-line h-4 w-4 text-green-500" aria-hidden="true" data-testid="image-preview-copied-icon" />
+                  : <span className="i-ri-file-copy-line h-4 w-4 text-gray-500" aria-hidden="true" />}
               </button>
             )}
           />
@@ -313,7 +313,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
                 className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
                 onClick={onCancel}
               >
-                <span className="i-ri-close-line h-4 w-4 text-gray-500" data-testid="image-preview-close-button" />
+                <span className="i-ri-close-line h-4 w-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />

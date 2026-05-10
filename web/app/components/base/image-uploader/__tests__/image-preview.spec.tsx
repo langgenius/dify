@@ -28,8 +28,8 @@ vi.mock('@/utils/download', () => ({
 }))
 
 const getOverlay = () => screen.getByTestId('image-preview-container') as HTMLDivElement
-const getCloseButton = () => screen.getByTestId('image-preview-close-button') as HTMLDivElement
-const getCopyButton = () => screen.getByTestId('image-preview-copy-button') as HTMLDivElement
+const getCloseButton = () => screen.getByRole('button', { name: 'common.operation.cancel' }) as HTMLButtonElement
+const getCopyButton = () => screen.getByRole('button', { name: 'common.operation.copyImage' }) as HTMLButtonElement
 const getZoomOutButton = () => screen.getByTestId('image-preview-zoom-out-button') as HTMLDivElement
 const getZoomInButton = () => screen.getByTestId('image-preview-zoom-in-button') as HTMLDivElement
 const getDownloadButton = () => screen.getByTestId('image-preview-download-button') as HTMLDivElement
