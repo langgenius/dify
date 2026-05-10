@@ -1,5 +1,6 @@
 """Paragraph index processor."""
 
+from models.enums import ProcessRuleMode
 import json
 import logging
 import uuid
@@ -325,7 +326,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             # update document parent mode
             dataset_process_rule = DatasetProcessRule(
                 dataset_id=dataset.id,
-                mode="hierarchical",
+                mode=ProcessRuleMode.HIERARCHICAL,
                 rules=json.dumps(
                     {
                         "parent_mode": parent_childs.parent_mode,
