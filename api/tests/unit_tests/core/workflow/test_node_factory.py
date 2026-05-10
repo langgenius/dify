@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch, sentinel
+from unittest.mock import MagicMock, call, patch, sentinel
 
 import pytest
 
@@ -160,6 +160,56 @@ class TestFetchMemory:
             conversation=conversation,
             model_instance=sentinel.model_instance,
         )
+
+    def test_builds_conversation_scoped_memory_for_each_memory_enabled_node(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        conversation = sentinel.conversation
+        first_memory = sentinel.first_memory
+        second_memory = sentinel.second_memory
+
+        class FakeSelect:
+            def where(self, *_args):
+                return self
+
+        class FakeSession:
+            def __init__(self, *_args, **_kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def scalar(self, _stmt):
+                return conversation
+
+        token_buffer_memory = MagicMock(side_effect=[first_memory, second_memory])
+        monkeypatch.setattr(node_factory, "db", SimpleNamespace(engine=sentinel.engine))
+        monkeypatch.setattr(node_factory, "select", MagicMock(return_value=FakeSelect()))
+        monkeypatch.setattr(node_factory, "Session", FakeSession)
+        monkeypatch.setattr(node_factory, "TokenBufferMemory", token_buffer_memory)
+
+        first_result = node_factory.fetch_memory(
+            conversation_id="conversation-id",
+            app_id="app-id",
+            node_data_memory=sentinel.first_node_memory_config,
+            model_instance=sentinel.first_model_instance,
+        )
+        second_result = node_factory.fetch_memory(
+            conversation_id="conversation-id",
+            app_id="app-id",
+            node_data_memory=sentinel.second_node_memory_config,
+            model_instance=sentinel.second_model_instance,
+        )
+
+        assert first_result is first_memory
+        assert second_result is second_memory
+        assert token_buffer_memory.call_args_list == [
+            call(conversation=conversation, model_instance=sentinel.first_model_instance),
+            call(conversation=conversation, model_instance=sentinel.second_model_instance),
+        ]
 
 
 class TestDifyGraphInitContext:
