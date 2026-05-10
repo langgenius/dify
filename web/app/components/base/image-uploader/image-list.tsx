@@ -43,10 +43,11 @@ const ImageList: FC<ImageListProps> = ({
   }
 
   return (
-    <div className="flex flex-wrap" data-testid="image-list">
+    <div className="flex flex-wrap" role="list" aria-label={t('imageUploader.imageList', { ns: 'common' })}>
       {list.map(item => (
         <div
           key={item._id}
+          role="listitem"
           className="group relative mr-1 rounded-lg border-[0.5px] border-black/5"
         >
           {item.type === TransferMethod.local_file && item.progress !== 100 && (
@@ -56,7 +57,12 @@ const ImageList: FC<ImageListProps> = ({
                 style={{ left: item.progress > -1 ? `${item.progress}%` : 0 }}
               >
                 {item.progress === -1 && (
-                  <span className="i-custom-vender-line-arrows-refresh-ccw-01 h-5 w-5 text-white" onClick={() => onReUpload?.(item._id)} data-testid="retry-icon" />
+                  <button
+                    type="button"
+                    aria-label={t('operation.retry', { ns: 'common' })}
+                    className="i-custom-vender-line-arrows-refresh-ccw-01 h-5 w-5 text-white focus-visible:ring-1 focus-visible:ring-white focus-visible:outline-hidden"
+                    onClick={() => onReUpload?.(item._id)}
+                  />
                 )}
               </div>
               {item.progress > -1 && (
@@ -122,9 +128,9 @@ const ImageList: FC<ImageListProps> = ({
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}
               onClick={() => onRemove?.(item._id)}
-              data-testid="remove-button"
+              aria-label={t('operation.remove', { ns: 'common' })}
             >
-              <span className="i-ri-close-line h-3 w-3 text-text-tertiary" />
+              <span className="i-ri-close-line h-3 w-3 text-text-tertiary" aria-hidden="true" />
             </button>
           )}
         </div>
