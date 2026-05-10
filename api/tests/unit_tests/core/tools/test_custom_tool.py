@@ -91,6 +91,33 @@ def test_assembling_request_auth_header_assembly():
     assert tool.assembling_request(parameters={}) == {}
 
 
+def test_assembling_request_auth_header_prefix_no_accumulation():
+    """Regression test for #35974: calling assembling_request multiple times
+    must not accumulate Bearer/Basic prefixes on the stored credential."""
+    tool = _build_tool()
+    tool.runtime.credentials = {
+        "auth_type": "api_key_header",
+        "api_key_header_prefix": "bearer",
+        "api_key_value": "my-token",
+    }
+
+    # Call 3 times — header must always be "Bearer my-token", never accumulate
+    for _ in range(3):
+        headers = tool.assembling_request(parameters={})
+        assert headers["Authorization"] == "Bearer my-token"
+
+    # Verify the stored credential was NOT mutated
+    assert tool.runtime.credentials["api_key_value"] == "my-token"
+
+    # Same for "basic" prefix
+    tool.runtime.credentials["api_key_header_prefix"] = "basic"
+    tool.runtime.credentials["api_key_value"] = "abc"
+    for _ in range(3):
+        headers = tool.assembling_request(parameters={})
+        assert headers["Authorization"] == "Basic abc"
+    assert tool.runtime.credentials["api_key_value"] == "abc"
+
+
 def test_assembling_request_runtime_auth_errors():
     tool = _build_tool()
 
