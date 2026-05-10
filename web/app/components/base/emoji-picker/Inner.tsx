@@ -188,7 +188,7 @@ const EmojiPickerInner: FC<IEmojiPickerInnerProps> = ({
                   cn(
                     'cursor-pointer',
                     'border-none bg-transparent p-0',
-                    'ring-offset-1 hover:ring-1',
+                    'ring-components-input-border-hover ring-offset-1 hover:ring-1',
                     'inline-flex h-10 w-10 items-center justify-center rounded-lg',
                     color === selectedBackground ? 'ring-1 ring-components-input-border-hover' : '',
                   )
