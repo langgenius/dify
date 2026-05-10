@@ -212,16 +212,16 @@ describe('SpecificGroupsOrMembers', () => {
       expect(screen.getByText(baseMember.name)).toBeInTheDocument()
     })
 
-    const groupItem = screen.getByText(baseGroup.name).closest('div')
-    const groupRemove = groupItem?.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement
+    const groupRemove = screen.getAllByRole('button', { name: /operation\.remove$/ })[0]!
+
     fireEvent.click(groupRemove)
 
     await waitFor(() => {
       expect(screen.queryByText(baseGroup.name)).not.toBeInTheDocument()
     })
 
-    const memberItem = screen.getByText(baseMember.name).closest('div')
-    const memberRemove = memberItem?.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement
+    const memberRemove = screen.getAllByRole('button', { name: /operation\.remove$/ })[0]!
+
     fireEvent.click(memberRemove)
 
     await waitFor(() => {
