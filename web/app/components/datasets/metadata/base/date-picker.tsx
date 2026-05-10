@@ -53,6 +53,13 @@ const WrappedDatePicker = ({
           >
             {triggerText}
           </span>
+          <RiCalendarLine
+            aria-hidden="true"
+            className={cn(
+              'block h-4 w-4 shrink-0',
+              hasValue ? 'text-text-quaternary group-hover:hidden' : 'text-text-tertiary',
+            )}
+          />
         </button>
         {hasValue
           ? (
@@ -71,13 +78,6 @@ const WrappedDatePicker = ({
               </button>
             )
           : null}
-        <RiCalendarLine
-          aria-hidden="true"
-          className={cn(
-            'block h-4 w-4 shrink-0',
-            hasValue ? 'text-text-quaternary group-hover:hidden' : 'text-text-tertiary',
-          )}
-        />
       </div>
     )
   }, [className, value, formatTimestamp, t, handleDateChange])

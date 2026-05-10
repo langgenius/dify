@@ -46,7 +46,15 @@ const ConditionDate = ({
           )}
           onClick={handleClickTrigger}
         >
-          {triggerText}
+          <span className="grow">{triggerText}</span>
+          <RiCalendarLine
+            className={cn(
+              'block h-4 w-4 shrink-0',
+              hasValue ? 'text-text-quaternary' : 'text-text-tertiary',
+              hasValue && 'group-hover:hidden',
+            )}
+            aria-hidden="true"
+          />
         </button>
         {hasValue
           ? (
@@ -63,14 +71,6 @@ const ConditionDate = ({
               </button>
             )
           : null}
-        <RiCalendarLine
-          className={cn(
-            'block h-4 w-4 shrink-0',
-            hasValue ? 'text-text-quaternary' : 'text-text-tertiary',
-            hasValue && 'group-hover:hidden',
-          )}
-          aria-hidden="true"
-        />
       </div>
     )
   }, [value, handleDateChange, timezone, t])
