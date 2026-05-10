@@ -234,7 +234,7 @@ describe('Question component', () => {
     await user.clear(textbox)
     await user.type(textbox, 'Edited question')
 
-    const cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    const cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     await waitFor(() => {
@@ -471,7 +471,7 @@ describe('Question component', () => {
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox)
 
-    const cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    const cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     // Test unmount clearing timer
@@ -495,7 +495,7 @@ describe('Question component', () => {
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox) // starts timer
 
-    const saveBtn = screen.getByTestId('save-edit-btn')
+    const saveBtn = screen.getByRole('button', { name: 'common.operation.save' })
     await user.click(saveBtn) // handleResend clears timer
 
     expect(onRegenerate).toHaveBeenCalled()
@@ -848,7 +848,7 @@ describe('Question component', () => {
     fireEvent.compositionEnd(textbox)
 
     // Cancel and re-edit
-    let cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    let cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     // Second edit cycle
@@ -859,7 +859,7 @@ describe('Question component', () => {
     fireEvent.compositionStart(textbox)
     fireEvent.compositionEnd(textbox)
 
-    cancelBtn = await screen.findByTestId('cancel-edit-btn')
+    cancelBtn = await screen.findByRole('button', { name: 'common.operation.cancel' })
     await user.click(cancelBtn)
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
@@ -919,7 +919,7 @@ describe('Question component', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
-    await user.click(screen.getByTestId('save-edit-btn'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     // Should not throw
   })
 
