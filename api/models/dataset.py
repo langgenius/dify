@@ -1,3 +1,4 @@
+from typing import ClassVar
 import base64
 import enum
 import hashlib
@@ -457,7 +458,7 @@ class DatasetProcessRule(TypeBase):
 
     MODES = ["automatic", "custom", "hierarchical"]
     PRE_PROCESSING_RULES = ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
-    AUTOMATIC_RULES: AutomaticRulesConfig = {
+    AUTOMATIC_RULES: ClassVar[AutomaticRulesConfig] = {
         "pre_processing_rules": [
             {"id": "remove_extra_spaces", "enabled": True},
             {"id": "remove_urls_emails", "enabled": False},
