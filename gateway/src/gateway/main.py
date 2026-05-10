@@ -8,12 +8,13 @@ from typing import Any
 
 import structlog
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from gateway.config import Settings
 from gateway.dify.app_manager import AppManager
 from gateway.dify.client import DifyClient
-from gateway.errors import GatewayError
+from gateway.errors import GatewayError, InvalidRequestError
 from gateway.middleware.auth import AuthMiddleware
 from gateway.middleware.logging import LoggingMiddleware, configure_logging
 from gateway.registry import CustomerEntry, CustomerRegistry
@@ -115,6 +116,29 @@ def create_app(
     @app.exception_handler(GatewayError)
     async def _gateway_error_handler(_: Request, exc: GatewayError) -> JSONResponse:
         return JSONResponse(status_code=exc.status_code, content=exc.to_openai_envelope())
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_error_handler(
+        _: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        """Reshape FastAPI/Pydantic 422 into the OpenAI error envelope (R7).
+
+        FastAPI's default ``{"detail": [...]}`` violates the gateway's
+        OpenAI-compatibility contract. Surface a single, actionable message
+        derived from the first validation error; the full ``errors`` list is
+        included under ``error.errors`` for clients that want detail.
+        """
+        errors = exc.errors()
+        first = errors[0] if errors else {}
+        loc = ".".join(str(part) for part in first.get("loc", ())) or None
+        message = first.get("msg", "request validation failed")
+
+        wrapper = InvalidRequestError(message, param=loc)
+        envelope = wrapper.to_openai_envelope()
+        # Attach the full validation report for clients that want it; OpenAI's
+        # envelope schema does not forbid extra fields.
+        envelope["error"]["errors"] = errors
+        return JSONResponse(status_code=wrapper.status_code, content=envelope)
 
     return app
 

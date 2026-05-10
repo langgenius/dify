@@ -138,6 +138,50 @@ async def test_blocking_forwards_history_and_conversation_id(
 
 
 @pytest.mark.asyncio
+async def test_pydantic_validation_error_returns_openai_envelope(app: FastAPI) -> None:
+    """Regression for review-3 P2: a FastAPI/Pydantic validation failure
+    must be reshaped into the OpenAI error envelope, not the default
+    ``{"detail":[...]}`` 422.
+    """
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as cli:
+        # ``messages`` is required and must be a list with min_length=1.
+        r = await cli.post(
+            "/v1/chat/completions",
+            headers={"Authorization": "Bearer bsa_test_a"},
+            json={"model": "m1"},  # missing 'messages'
+        )
+
+    assert r.status_code == 400  # OpenAI uses 400 for validation, not 422.
+    body = r.json()
+    assert "error" in body
+    assert body["error"]["type"] == "invalid_request_error"
+    assert body["error"]["code"] == "invalid_request"
+    # The detailed Pydantic report is preserved under error.errors for clients
+    # that want to surface field-specific information.
+    assert isinstance(body["error"]["errors"], list)
+    assert len(body["error"]["errors"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_validation_error_out_of_range_temperature(app: FastAPI) -> None:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as cli:
+        r = await cli.post(
+            "/v1/chat/completions",
+            headers={"Authorization": "Bearer bsa_test_a"},
+            json={
+                "model": "m1",
+                "messages": [{"role": "user", "content": "hi"}],
+                "temperature": 5.0,  # ChatCompletionRequest enforces le=2.0
+            },
+        )
+    assert r.status_code == 400
+    body = r.json()
+    assert body["error"]["type"] == "invalid_request_error"
+
+
+@pytest.mark.asyncio
 async def test_extra_body_llm_model_overrides_app_selection(
     app: FastAPI, fake_dify: FakeDifyClient
 ) -> None:
