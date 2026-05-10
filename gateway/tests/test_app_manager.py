@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from gateway.dify.app_manager import AppManager
-from gateway.dify.client import DifyClient
+from gateway.dify.client import ConsoleSession, DifyClient
 from gateway.errors import DifyUpstreamError, UnknownModelError
 from gateway.registry import CustomerEntry, CustomerRegistry, DifyConnection, ModelEntry
 
@@ -32,42 +32,48 @@ def _make_customer(customer_id: str = "c-a", model_ids: tuple[str, ...] = ("m1",
 
 
 class FakeDifyClient:
-    """Hand-rolled async fake for DifyClient.
+    """Hand-rolled async fake for DifyClient (uses ConsoleSession).
 
     Tracks all calls; ``script_*`` attrs control return values / failures.
     """
 
     def __init__(self) -> None:
         self.login_calls: list[tuple[str, str]] = []
-        self.import_calls: list[tuple[str, str]] = []  # (jwt, dsl)
-        self.api_key_calls: list[tuple[str, str]] = []  # (jwt, app_id)
-        self.delete_calls: list[tuple[str, str]] = []  # (jwt, app_id)
+        self.import_calls: list[tuple[ConsoleSession, str]] = []
+        self.api_key_calls: list[tuple[ConsoleSession, str]] = []
+        self.delete_calls: list[tuple[ConsoleSession, str]] = []
 
-        self.login_token = "jwt-1"
+        self.session_seq = iter(
+            [
+                ConsoleSession(access_token="acc-1", csrf_token="csrf-1"),
+                ConsoleSession(access_token="acc-2", csrf_token="csrf-2"),
+                ConsoleSession(access_token="acc-3", csrf_token="csrf-3"),
+            ]
+        )
         self.app_id_seq = iter(["app-1", "app-2", "app-3", "app-4"])
         self.app_key_seq = iter(["app-key-1", "app-key-2", "app-key-3", "app-key-4"])
 
-        # Scripted failures (one-shot). Set to e.g. "import" to make the next
+        # Scripted failures (one-shot). Set to True to make the next
         # ``console_import_app`` raise an auth-shaped error.
         self.fail_next_import_with_auth: bool = False
 
-    async def console_login(self, email: str, password: str) -> str:
+    async def console_login(self, email: str, password: str) -> ConsoleSession:
         self.login_calls.append((email, password))
-        return self.login_token
+        return next(self.session_seq)
 
-    async def console_import_app(self, jwt: str, yaml_content: str) -> str:
-        self.import_calls.append((jwt, yaml_content))
+    async def console_import_app(self, session: ConsoleSession, yaml_content: str) -> str:
+        self.import_calls.append((session, yaml_content))
         if self.fail_next_import_with_auth:
             self.fail_next_import_with_auth = False
             raise DifyUpstreamError("Dify returned HTTP 401: token expired")
         return next(self.app_id_seq)
 
-    async def console_create_app_api_key(self, jwt: str, app_id: str) -> str:
-        self.api_key_calls.append((jwt, app_id))
+    async def console_create_app_api_key(self, session: ConsoleSession, app_id: str) -> str:
+        self.api_key_calls.append((session, app_id))
         return next(self.app_key_seq)
 
-    async def console_delete_app(self, jwt: str, app_id: str) -> None:
-        self.delete_calls.append((jwt, app_id))
+    async def console_delete_app(self, session: ConsoleSession, app_id: str) -> None:
+        self.delete_calls.append((session, app_id))
 
 
 @pytest.fixture
@@ -154,20 +160,22 @@ async def test_different_models_build_separate_apps(
 
 
 @pytest.mark.asyncio
-async def test_jwt_refresh_on_auth_failure(
+async def test_session_refresh_on_auth_failure(
     manager: AppManager, customer: CustomerEntry, fake_client: FakeDifyClient
 ) -> None:
     """An auth-shaped error during build triggers re-login + retry."""
     fake_client.fail_next_import_with_auth = True
-    fake_client.login_token = "jwt-fresh"
 
     key = await manager.get_app_key(customer, "m1")
     assert key == "app-key-1"
-    # Two import attempts: one failed (consumed app_id_seq is unaffected because
-    # fake raises before consuming), one succeeded.
+    # Two import attempts: one failed (raised before consuming app_id_seq),
+    # one succeeded.
     assert len(fake_client.import_calls) == 2
     # Two logins: initial + refresh.
     assert len(fake_client.login_calls) == 2
+    # First import used the initial session, second used the refreshed one.
+    assert fake_client.import_calls[0][0].access_token == "acc-1"
+    assert fake_client.import_calls[1][0].access_token == "acc-2"
 
 
 @pytest.mark.asyncio
@@ -197,7 +205,10 @@ async def test_gc_evicts_idle_entries(
     await manager._gc_sweep()  # noqa: SLF001 (test-only)
 
     assert len(manager.cached_apps()) == 0
-    assert fake_client.delete_calls == [("jwt-1", "app-1")]
+    assert len(fake_client.delete_calls) == 1
+    deleted_session, deleted_app_id = fake_client.delete_calls[0]
+    assert deleted_app_id == "app-1"
+    assert deleted_session.access_token == "acc-1"
 
 
 @pytest.mark.asyncio

@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI
 
 from gateway.config import Settings
-from gateway.dify.client import DifyClient
+from gateway.dify.client import ConsoleSession, DifyClient
 from gateway.main import create_app
 from gateway.registry import CustomerEntry, CustomerRegistry, DifyConnection, ModelEntry
 
@@ -59,7 +59,7 @@ class FakeDifyClient:
             'data: {"event":"message","answer":"hi"}',
             'data: {"event":"message_end","metadata":{},"conversation_id":"conv-s"}',
         ]
-        self.console_token = "jwt-1"
+        self.console_session = ConsoleSession(access_token="acc-1", csrf_token="csrf-1")
         self.import_app_ids = ["app-id-1", "app-id-2", "app-id-3"]
         self.api_key_tokens = ["app-key-1", "app-key-2", "app-key-3"]
 
@@ -81,20 +81,20 @@ class FakeDifyClient:
         for line in self.streaming_lines:
             yield line
 
-    async def console_login(self, email: str, password: str) -> str:
+    async def console_login(self, email: str, password: str) -> ConsoleSession:
         self.calls["login"].append((email, password))
-        return self.console_token
+        return self.console_session
 
-    async def console_import_app(self, jwt: str, yaml_content: str) -> str:
-        self.calls["import"].append((jwt, yaml_content))
+    async def console_import_app(self, session: ConsoleSession, yaml_content: str) -> str:
+        self.calls["import"].append((session, yaml_content))
         return self.import_app_ids.pop(0)
 
-    async def console_create_app_api_key(self, jwt: str, app_id: str) -> str:
-        self.calls["api_key"].append((jwt, app_id))
+    async def console_create_app_api_key(self, session: ConsoleSession, app_id: str) -> str:
+        self.calls["api_key"].append((session, app_id))
         return self.api_key_tokens.pop(0)
 
-    async def console_delete_app(self, jwt: str, app_id: str) -> None:
-        self.calls["delete"].append((jwt, app_id))
+    async def console_delete_app(self, session: ConsoleSession, app_id: str) -> None:
+        self.calls["delete"].append((session, app_id))
 
     async def aclose(self) -> None:
         return None

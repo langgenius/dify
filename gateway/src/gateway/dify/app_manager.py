@@ -36,7 +36,7 @@ from typing import Awaitable, Callable
 
 import structlog
 
-from gateway.dify.client import DifyClient
+from gateway.dify.client import ConsoleSession, DifyClient
 from gateway.dify.dsl import build_chat_app_dsl
 from gateway.errors import DifyUpstreamError, UnknownModelError
 from gateway.registry import CustomerEntry, CustomerRegistry, ModelEntry
@@ -62,8 +62,8 @@ class CachedApp:
 
 
 @dataclass
-class _CachedJwt:
-    token: str
+class _CachedSession:
+    session: ConsoleSession
     obtained_at: float = field(default_factory=time.time)
 
 
@@ -94,11 +94,11 @@ class AppManager:
         self._clock = clock
 
         self._apps: dict[tuple[str, str], CachedApp] = {}
-        self._jwts: dict[str, _CachedJwt] = {}
+        self._sessions: dict[str, _CachedSession] = {}
 
         # Per-key locks; defaultdict keeps the wiring trivial.
         self._app_locks: dict[tuple[str, str], asyncio.Lock] = defaultdict(asyncio.Lock)
-        self._jwt_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self._session_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
         self._gc_task: asyncio.Task[None] | None = None
         self._stopped = False
@@ -174,15 +174,15 @@ class AppManager:
         )
 
         # Login (or refresh) → import → key
-        async def import_app(jwt: str) -> str:
-            return await client.console_import_app(jwt, dsl)
+        async def import_app(session: ConsoleSession) -> str:
+            return await client.console_import_app(session, dsl)
 
-        app_id = await self._with_jwt(customer, client, import_app)
+        app_id = await self._with_session(customer, client, import_app)
 
-        async def make_key(jwt: str) -> str:
-            return await client.console_create_app_api_key(jwt, app_id)
+        async def make_key(session: ConsoleSession) -> str:
+            return await client.console_create_app_api_key(session, app_id)
 
-        app_key = await self._with_jwt(customer, client, make_key)
+        app_key = await self._with_session(customer, client, make_key)
 
         logger.info(
             "app_manager.built",
@@ -197,42 +197,42 @@ class AppManager:
             app_key=app_key,
         )
 
-    async def _with_jwt(
+    async def _with_session(
         self,
         customer: CustomerEntry,
         client: DifyClient,
-        op: Callable[[str], Awaitable[str]],
+        op: Callable[[ConsoleSession], Awaitable[str]],
     ) -> str:
-        """Run ``op(jwt)``; on auth-shaped failure, refresh JWT and retry once."""
-        jwt = await self._get_jwt(customer, client)
+        """Run ``op(session)``; on auth-shaped failure, re-login and retry once."""
+        session = await self._get_session(customer, client)
         try:
-            return await op(jwt)
+            return await op(session)
         except DifyUpstreamError as e:
             msg = str(e).lower()
             if not any(hint in msg for hint in _AUTH_FAILURE_HINTS):
                 raise
-            # JWT likely expired; refresh and retry.
-            jwt = await self._refresh_jwt(customer, client)
-            return await op(jwt)
+            # Cookies likely expired; refresh and retry.
+            session = await self._refresh_session(customer, client)
+            return await op(session)
 
-    async def _get_jwt(self, customer: CustomerEntry, client: DifyClient) -> str:
-        cached = self._jwts.get(customer.customer_id)
+    async def _get_session(self, customer: CustomerEntry, client: DifyClient) -> ConsoleSession:
+        cached = self._sessions.get(customer.customer_id)
         if cached is not None:
-            return cached.token
-        return await self._refresh_jwt(customer, client)
+            return cached.session
+        return await self._refresh_session(customer, client)
 
-    async def _refresh_jwt(self, customer: CustomerEntry, client: DifyClient) -> str:
-        async with self._jwt_locks[customer.customer_id]:
+    async def _refresh_session(self, customer: CustomerEntry, client: DifyClient) -> ConsoleSession:
+        async with self._session_locks[customer.customer_id]:
             # Another concurrent caller may have refreshed already.
-            cached = self._jwts.get(customer.customer_id)
+            cached = self._sessions.get(customer.customer_id)
             if cached is not None and self._clock() - cached.obtained_at < 60:
-                return cached.token
-            token = await client.console_login(
+                return cached.session
+            session = await client.console_login(
                 customer.dify.console_email,
                 customer.dify.console_password,
             )
-            self._jwts[customer.customer_id] = _CachedJwt(token=token)
-            return token
+            self._sessions[customer.customer_id] = _CachedSession(session=session)
+            return session
 
     # ------------------------------------------------------------------ #
     # GC                                                                 #
@@ -274,11 +274,11 @@ class AppManager:
                 try:
                     client = self._client_factory(customer)
 
-                    async def delete(jwt: str) -> str:
-                        await client.console_delete_app(jwt, cached.app_id)
+                    async def delete(session: ConsoleSession) -> str:
+                        await client.console_delete_app(session, cached.app_id)
                         return ""
 
-                    await self._with_jwt(customer, client, delete)
+                    await self._with_session(customer, client, delete)
                     deleted = True
                 except Exception:  # noqa: BLE001
                     # GC must never crash the loop. Log and proceed to evict

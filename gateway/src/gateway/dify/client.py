@@ -6,19 +6,34 @@ Thin wrapper around ``httpx.AsyncClient``; one instance per Dify deployment
 Service API (per-App, ``app-*`` token):
     * POST ``/v1/chat-messages`` (blocking + streaming)
 
-Console API (per-workspace JWT):
-    * POST ``/console/api/login``
-    * POST ``/console/api/apps/imports`` (DSL-based App creation)
+Console API authentication (cookie + CSRF, not a bearer JWT):
+    Dify's ``POST /console/api/login`` returns ``{"result":"success"}`` and
+    sets three cookies: ``access_token``, ``refresh_token``, ``csrf_token``.
+    Subsequent console requests must:
+
+        * Send the ``access_token`` cookie (or the same value as a Bearer
+          ``Authorization`` header — Dify's ``extract_access_token`` accepts
+          either).
+        * Send the ``csrf_token`` cookie **and** mirror it in the
+          ``X-CSRF-Token`` header. Mismatched values trigger 401.
+
+    See ``api/libs/token.py`` and ``api/controllers/console/auth/login.py``
+    in the Dify source.
+
+Console API endpoints used:
+    * POST ``/console/api/login`` (returns cookies, body is just ``{result:"success"}``)
+    * POST ``/console/api/apps/imports``
     * POST ``/console/api/apps/{app_id}/api-keys``
     * DELETE ``/console/api/apps/{app_id}``
 
-The Console API endpoints are not officially public; behavior is empirically
-stable in v1.x but pinning a Dify version is recommended.
+These endpoints are not officially public; behavior is empirically stable in
+v1.x but pinning a Dify version is recommended.
 """
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -31,6 +46,19 @@ logger = structlog.get_logger(__name__)
 # Stripe of body that gets logged on upstream errors. We avoid logging full
 # bodies because they may contain user prompts or secrets.
 _ERR_BODY_TRUNCATE = 500
+
+
+@dataclass(frozen=True)
+class ConsoleSession:
+    """Session state needed to call Dify Console API endpoints.
+
+    The two values originate from cookies set by ``/console/api/login``.
+    ``csrf_token`` must additionally be echoed in the ``X-CSRF-Token``
+    header on every state-changing request.
+    """
+
+    access_token: str
+    csrf_token: str
 
 
 class DifyClient:
@@ -160,11 +188,15 @@ class DifyClient:
     # Console API (App management)                                       #
     # ------------------------------------------------------------------ #
 
-    async def console_login(self, email: str, password: str) -> str:
-        """Exchange admin credentials for a JWT.
+    async def console_login(self, email: str, password: str) -> ConsoleSession:
+        """Authenticate against the console and return cookie-derived tokens.
 
-        The JWT is short-lived (Dify default ~30 min). App manager should
-        refresh on 401 from subsequent calls.
+        Dify's ``/console/api/login`` returns ``{"result":"success"}`` and
+        sets ``access_token`` + ``csrf_token`` cookies. We extract both from
+        the response cookie jar (httpx parses ``Set-Cookie`` automatically).
+
+        Raises:
+            DifyUpstreamError: login failed or cookies missing.
         """
         try:
             resp = await self._http.post(
@@ -174,18 +206,28 @@ class DifyClient:
         except httpx.RequestError as e:
             raise DifyUpstreamError(f"Dify console login failed: {e}") from e
         _raise_for_dify_status(resp)
-        data = resp.json()
-        try:
-            return str(data["data"]["access_token"])
-        except (KeyError, TypeError) as e:
-            raise DifyUpstreamError("Dify console login returned unexpected payload") from e
 
-    async def console_import_app(self, jwt: str, yaml_content: str) -> str:
+        # Dify uses two cookie naming variants: bare ("access_token") for
+        # http/non-secure deployments, and ``__Host-`` prefixed for secure
+        # deployments without a custom cookie domain. Accept either.
+        access_token = _read_cookie(resp, "access_token")
+        csrf_token = _read_cookie(resp, "csrf_token")
+
+        if not access_token or not csrf_token:
+            raise DifyUpstreamError(
+                "Dify console login did not set expected cookies "
+                "(access_token / csrf_token); response cookies: "
+                f"{sorted(resp.cookies.keys())}"
+            )
+        return ConsoleSession(access_token=access_token, csrf_token=csrf_token)
+
+    async def console_import_app(self, session: ConsoleSession, yaml_content: str) -> str:
         """Create an App from a DSL YAML string. Returns the new ``app_id``."""
         try:
             resp = await self._http.post(
                 "/console/api/apps/imports",
-                headers=_bearer(jwt),
+                headers=_console_headers(session),
+                cookies=_console_cookies(session),
                 json={"mode": "yaml-content", "yaml_content": yaml_content},
             )
         except httpx.RequestError as e:
@@ -199,12 +241,13 @@ class DifyClient:
             raise DifyUpstreamError("Dify app import response missing app_id")
         return str(app_id)
 
-    async def console_create_app_api_key(self, jwt: str, app_id: str) -> str:
+    async def console_create_app_api_key(self, session: ConsoleSession, app_id: str) -> str:
         """Generate a new ``app-*`` token bound to ``app_id``."""
         try:
             resp = await self._http.post(
                 f"/console/api/apps/{app_id}/api-keys",
-                headers=_bearer(jwt),
+                headers=_console_headers(session),
+                cookies=_console_cookies(session),
             )
         except httpx.RequestError as e:
             raise DifyUpstreamError(f"Dify app api-key creation failed: {e}") from e
@@ -215,12 +258,13 @@ class DifyClient:
             raise DifyUpstreamError("Dify api-key response missing token")
         return str(token)
 
-    async def console_delete_app(self, jwt: str, app_id: str) -> None:
+    async def console_delete_app(self, session: ConsoleSession, app_id: str) -> None:
         """Delete an App (used by the GC sweep)."""
         try:
             resp = await self._http.delete(
                 f"/console/api/apps/{app_id}",
-                headers=_bearer(jwt),
+                headers=_console_headers(session),
+                cookies=_console_cookies(session),
             )
         except httpx.RequestError as e:
             raise DifyUpstreamError(f"Dify app delete failed: {e}") from e
@@ -232,6 +276,42 @@ class DifyClient:
 
 def _bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+
+def _console_headers(session: ConsoleSession) -> dict[str, str]:
+    """Headers for an authenticated console API request.
+
+    Dify's ``extract_access_token`` accepts either cookie or ``Authorization``
+    bearer; sending both is harmless. ``X-CSRF-Token`` must equal the value
+    of the ``csrf_token`` cookie (verified by ``check_csrf_token``).
+    """
+    return {
+        "Authorization": f"Bearer {session.access_token}",
+        "Content-Type": "application/json",
+        "X-CSRF-Token": session.csrf_token,
+    }
+
+
+def _console_cookies(session: ConsoleSession) -> dict[str, str]:
+    """Cookie jar for console API requests; mirrors browser behavior."""
+    return {
+        "access_token": session.access_token,
+        "csrf_token": session.csrf_token,
+    }
+
+
+def _read_cookie(resp: httpx.Response, name: str) -> str | None:
+    """Read a cookie set on the response, tolerating ``__Host-`` prefix variants.
+
+    Dify's ``_real_cookie_name`` switches to ``__Host-<name>`` when the
+    deployment is HTTPS without a configured cookie domain. We accept either.
+    """
+    if name in resp.cookies:
+        return resp.cookies[name]
+    host_prefixed = f"__Host-{name}"
+    if host_prefixed in resp.cookies:
+        return resp.cookies[host_prefixed]
+    return None
 
 
 def _raise_for_dify_status(resp: httpx.Response) -> None:
