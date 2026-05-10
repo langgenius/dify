@@ -16,16 +16,16 @@ When I ask you to write/refactor/fix tests, follow these rules by default.
 
 ```bash
 # Run all tests
-pnpm test
+vp run test
 
 # Watch mode
-pnpm test:watch
+vp run test --watch
 
 # Generate coverage report
-pnpm test:coverage
+vp run test --coverage
 
 # Run specific file
-pnpm test path/to/file.spec.tsx
+vp run test path/to/file.spec.tsx
 ```
 
 ## Project Test Setup
@@ -45,6 +45,8 @@ pnpm test path/to/file.spec.tsx
 
 - **Single behavior per test**: Each test verifies one user-observable behavior.
 - **Black-box first**: Assert external behavior and observable outputs, avoid internal implementation details. Prefer role-based queries (`getByRole`) and pattern matching (`/text/i`) over hardcoded string assertions.
+- **Accessibility selectors first**: Prefer `getByRole` with accessible `name`, then `getByLabelText`, `getByPlaceholderText`, `getByText`, and scoped `within(...)` queries. Avoid `getByTestId` unless the target has no user-observable semantics, such as a mocked non-visual integration boundary, virtualized/canvas output, or a third-party widget shim.
+- **Fix markup before selectors**: If a test cannot find a control by role, name, label, landmark, or dialog scope, treat that as a component accessibility problem first. Add semantic HTML, an accessible name, or an associated label instead of adding `data-testid`.
 - **Semantic naming**: Use `should <behavior> when <condition>` and group related cases with `describe(<subject or scenario>)`.
 - **AAA / Given–When–Then**: Separate Arrange, Act, and Assert clearly with code blocks or comments.
 - **Minimal but sufficient assertions**: Keep only the expectations that express the essence of the behavior.
@@ -82,6 +84,16 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 - ✅ Descriptive test names: `"should [behavior] when [condition]"`
 - ✅ TypeScript: No `any` types
 - ✅ **Cleanup**: `vi.clearAllMocks()` should be in `beforeEach()`, not `afterEach()`. This ensures mock call history is reset before each test, preventing test pollution when using assertions like `toHaveBeenCalledWith()` or `toHaveBeenCalledTimes()`.
+
+### Test ID Policy
+
+`data-testid` is a last resort because users and assistive technology cannot perceive it. It can hide broken semantics, such as a clickable `div` that should have been a button or an input without a label.
+
+- Prefer `screen.getByRole('button', { name: /save/i })`, `screen.getByRole('textbox', { name: /email/i })`, and scoped queries like `within(screen.getByRole('dialog', { name: /settings/i }))`.
+- Prefer `userEvent` for interactions that should match real user behavior.
+- Remove production `data-testid` attributes when they exist only to support tests and a semantic selector is available.
+- Keep `data-testid` only for justified boundaries that cannot expose stable semantics in the test environment: mocked non-visual children, browser/editor shims such as Monaco, canvas/chart output, or third-party widgets. In those cases, keep assertions focused on the boundary contract rather than internal DOM shape.
+- Do not assert decorative icons by test id. If the icon conveys meaning, give the control an accessible name and assert the control. If the icon is decorative, keep it `aria-hidden`.
 
 **⚠️ Mock components must accurately reflect actual component behavior**, especially conditional rendering based on props or state.
 

@@ -43,16 +43,16 @@ Apply this skill when the user:
 
 ```bash
 # Run all tests
-pnpm test
+vp run test
 
 # Watch mode
-pnpm test:watch
+vp run test --watch
 
 # Run specific file
-pnpm test path/to/file.spec.tsx
+vp run test path/to/file.spec.tsx
 
 # Generate coverage report
-pnpm test:coverage
+vp run test --coverage
 
 # Analyze component complexity
 pnpm analyze-component <path>
@@ -159,7 +159,7 @@ describe('ComponentName', () => {
 For each file:
   ┌────────────────────────────────────────┐
   │ 1. Write test                          │
-  │ 2. Run: pnpm test <file>.spec.tsx      │
+  │ 2. Run: vp run test <file>.spec.tsx    │
   │ 3. PASS? → Mark complete, next file    │
   │    FAIL? → Fix first, then continue    │
   └────────────────────────────────────────┘
@@ -228,7 +228,10 @@ Every test should clearly separate:
 ### 2. Black-Box Testing
 
 - Test observable behavior, not implementation details
-- Use semantic queries (getByRole, getByLabelText)
+- Use semantic queries (`getByRole` with accessible `name`, `getByLabelText`, `getByPlaceholderText`, `getByText`, and scoped `within(...)`)
+- Treat `getByTestId` as a last resort. If a control cannot be found by role/name, label, landmark, or dialog scope, fix the component accessibility first instead of adding or relying on `data-testid`.
+- Remove production `data-testid` attributes when semantic selectors can cover the behavior. Keep them only for non-visual mocked boundaries, editor/browser shims such as Monaco, canvas/chart output, or third-party widgets with no accessible DOM in the test environment.
+- Do not assert decorative icons by test id. Assert the named control that contains them, or mark decorative icons `aria-hidden`.
 - Avoid testing internal state directly
 - **Prefer pattern matching over hardcoded strings** in assertions:
 
