@@ -80,7 +80,13 @@ export function SegmentAdd({
               <span className="pr-0.5 system-sm-medium">{t('list.batchModal.completed', { ns: 'datasetDocuments' })}</span>
             </div>
             <div className="m-1 inline-flex items-center">
-              <span className="cursor-pointer rounded-md px-1.5 py-1 system-xs-medium text-components-button-ghost-text hover:bg-components-button-ghost-bg-hover" onClick={clearImportStatus}>{t('list.batchModal.ok', { ns: 'datasetDocuments' })}</span>
+              <button
+                type="button"
+                className="cursor-pointer rounded-md border-none bg-transparent px-1.5 py-1 text-left system-xs-medium text-components-button-ghost-text hover:bg-components-button-ghost-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={clearImportStatus}
+              >
+                {t('list.batchModal.ok', { ns: 'datasetDocuments' })}
+              </button>
             </div>
             <div className="absolute top-0 left-0 -z-10 h-full w-full bg-dataset-chunk-process-success-bg opacity-40" />
           </div>
@@ -92,7 +98,13 @@ export function SegmentAdd({
               <span className="pr-0.5 system-sm-medium">{t('list.batchModal.error', { ns: 'datasetDocuments' })}</span>
             </div>
             <div className="m-1 inline-flex items-center">
-              <span className="cursor-pointer rounded-md px-1.5 py-1 system-xs-medium text-components-button-ghost-text hover:bg-components-button-ghost-bg-hover" onClick={clearImportStatus}>{t('list.batchModal.ok', { ns: 'datasetDocuments' })}</span>
+              <button
+                type="button"
+                className="cursor-pointer rounded-md border-none bg-transparent px-1.5 py-1 text-left system-xs-medium text-components-button-ghost-text hover:bg-components-button-ghost-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={clearImportStatus}
+              >
+                {t('list.batchModal.ok', { ns: 'datasetDocuments' })}
+              </button>
             </div>
             <div className="absolute top-0 left-0 -z-10 h-full w-full bg-dataset-chunk-process-error-bg opacity-40" />
           </div>
