@@ -108,7 +108,7 @@ const Group = ({
         <button
           type="button"
           aria-expanded={visibleVarList.length > 0 ? !isCollapsed : undefined}
-          className="flex min-w-0 grow cursor-pointer items-center gap-0.5 border-none bg-transparent p-0 text-left"
+          className="flex min-w-0 grow cursor-pointer items-center gap-0.5 rounded-sm border-none bg-transparent p-0 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
           <div className="h-3 w-3 shrink-0">
@@ -173,7 +173,7 @@ const Group = ({
               type="button"
               key={varItem.id}
               className={cn(
-                'relative flex w-full cursor-pointer items-center gap-1 rounded-md border-none px-3 py-1 text-left hover:bg-state-base-hover',
+                'relative flex w-full cursor-pointer items-center gap-1 rounded-md border-none px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
                 varItem.id === currentVar?.var?.id
                   ? 'bg-state-base-hover-alt hover:bg-state-base-hover-alt'
                   : 'bg-transparent',
