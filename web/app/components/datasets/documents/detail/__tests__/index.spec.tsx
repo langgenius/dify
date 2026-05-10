@@ -311,19 +311,19 @@ describe('DocumentDetail', () => {
   describe('Navigation', () => {
     it('should navigate back when back button clicked', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('document-detail-back-button'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
 
     it('should expose aria label for back button', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('document-detail-back-button')).toHaveAttribute('aria-label')
+      expect(screen.getByRole('button', { name: 'common.operation.back' })).toHaveAttribute('aria-label')
     })
 
     it('should preserve query params when navigating back', () => {
       mocks.state.searchParams = 'page=2&status=active'
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('document-detail-back-button'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents?page=2&status=active')
     })
   })

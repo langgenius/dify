@@ -42,7 +42,7 @@ const UrlInput: FC<Props> = ({
         onClick={handleOnRun}
         className="ml-2"
         loading={isRunning}
-        data-testid="url-input-run-button"
+        aria-label={t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' })}
       >
         {!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : ''}
       </Button>
