@@ -281,7 +281,7 @@ describe('TransferOwnershipModal', () => {
   it('should close when close button is clicked', async () => {
     const user = userEvent.setup()
     renderModal()
-    await user.click(screen.getByTestId('transfer-modal-close'))
+    await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
     expect(mockOnClose).toHaveBeenCalled()
   })
 

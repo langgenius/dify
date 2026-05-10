@@ -36,9 +36,14 @@ export default function AccountAbout({
       <DialogContent className="w-[calc(100vw-2rem)]! max-w-[480px]! overflow-hidden! border-none px-6! py-4! text-left align-middle">
 
         <div className="relative">
-          <div className="absolute top-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center" onClick={onCancel}>
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-          </div>
+          <button
+            type="button"
+            className="absolute top-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={onCancel}
+          >
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          </button>
           <div className="flex flex-col items-center gap-4 py-8">
             {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
               ? (

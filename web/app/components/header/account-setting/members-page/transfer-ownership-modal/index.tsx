@@ -105,9 +105,14 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
   return (
     <Dialog open={show}>
       <DialogContent className="w-[420px]">
-        <div data-testid="transfer-modal-close" className="absolute top-5 right-5 cursor-pointer p-1.5" onClick={onClose}>
-          <div className="i-ri-close-line h-5 w-5 text-text-tertiary" />
-        </div>
+        <button
+          type="button"
+          className="absolute top-5 right-5 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          aria-label={t('operation.close', { ns: 'common' })}
+          onClick={onClose}
+        >
+          <span className="i-ri-close-line h-5 w-5 text-text-tertiary" aria-hidden="true" />
+        </button>
         {step === STEP.start && (
           <>
             <div className="pb-3 title-2xl-semi-bold text-text-primary">{t('members.transferModal.title', { ns: 'common' })}</div>
