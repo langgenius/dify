@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import EmojiPickerInner from '@/app/components/base/emoji-picker/Inner'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import LabelSelector from '@/app/components/tools/labels/selector'
@@ -71,20 +72,16 @@ type WorkflowToolDrawerFrameProps = {
   children: React.ReactNode
 }
 
-const InfoTooltip = ({ children }: { children: React.ReactNode }) => {
+const InfoTooltip = ({ children }: { children: string }) => {
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={(
-          <span className="i-ri-question-line h-3.5 w-3.5 shrink-0 cursor-help text-text-quaternary hover:text-text-tertiary" />
-        )}
-      />
-      <TooltipContent>
-        <div className="w-[180px]">
-          {children}
-        </div>
-      </TooltipContent>
-    </Tooltip>
+    <Infotip
+      aria-label={children}
+      className="ml-1 h-3.5 w-3.5"
+      iconClassName="h-3.5 w-3.5"
+      popupClassName="w-[180px]"
+    >
+      {children}
+    </Infotip>
   )
 }
 

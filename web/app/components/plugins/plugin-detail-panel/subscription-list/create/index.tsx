@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionButton, ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
+import { Infotip } from '@/app/components/base/infotip'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { useInitiateTriggerOAuth, useTriggerOAuthConfig, useTriggerProviderInfo } from '@/service/use-triggers'
 import { SupportedCreationMethods } from '../../../types'
@@ -124,18 +125,13 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         value: SupportedCreationMethods.MANUAL,
         label: t('subscription.addType.options.manual.description', { ns: 'pluginTrigger' }),
         extra: (
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <span className="flex h-3.5 w-3.5 shrink-0 p-px">
-                  <span aria-hidden className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" />
-                </span>
-              )}
-            />
-            <TooltipContent>
-              {t('subscription.addType.options.manual.tip', { ns: 'pluginTrigger' })}
-            </TooltipContent>
-          </Tooltip>
+          <Infotip
+            aria-label={t('subscription.addType.options.manual.tip', { ns: 'pluginTrigger' })}
+            className="h-3.5 w-3.5"
+            iconClassName="h-full w-full"
+          >
+            {t('subscription.addType.options.manual.tip', { ns: 'pluginTrigger' })}
+          </Infotip>
         ),
         show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
       },

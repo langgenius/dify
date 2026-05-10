@@ -4,7 +4,6 @@ import type { PromptVariable } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -14,6 +13,7 @@ import { ReactSortable } from 'react-sortablejs'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getInputKeys } from '@/app/components/base/block-input'
 import Divider from '@/app/components/base/divider'
+import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { checkKeys, getNewVar } from '@/utils/var'
 
@@ -117,24 +117,15 @@ const OpeningSettingModal = ({
             <div className="text-sm font-medium text-text-primary">
               {t('openingStatement.openingQuestion', { ns: 'appDebug' })}
             </div>
-            <Tooltip>
-              <TooltipTrigger
-                delay={0}
-                render={(
-                  <button
-                    type="button"
-                    className="flex items-center rounded-sm p-px text-text-quaternary hover:text-text-tertiary"
-                    data-testid="opening-questions-tooltip"
-                    aria-label={t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
-                  >
-                    <span className="i-ri-question-line h-3.5 w-3.5" />
-                  </button>
-                )}
-              />
-              <TooltipContent className="max-w-[220px] system-sm-regular text-text-secondary">
-                {t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
-              </TooltipContent>
-            </Tooltip>
+            <Infotip
+              aria-label={t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
+              data-testid="opening-questions-tooltip"
+              className="h-3.5 w-3.5"
+              popupClassName="max-w-[220px] system-sm-regular text-text-secondary"
+              delay={0}
+            >
+              {t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
+            </Infotip>
           </div>
           <div className="text-xs leading-[18px] font-medium text-text-tertiary">
             {tempSuggestedQuestions.length}
