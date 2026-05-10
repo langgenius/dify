@@ -595,6 +595,49 @@ class TestUtilityFunctions:
 
         assert extract_structured_output(app, {"answer": "hi"}, "hi") is None
 
+    def test_extract_answer_prefers_agent_message_over_thought(self):
+        """Test that agent_message and message events take priority over agent_thought fallback"""
+        app = Mock(spec=App)
+
+        mock_generator = Mock(spec=RateLimitGenerator)
+        mock_generator.generator = [
+            'data: {"event": "agent_thought", "thought": "internal thinking"}',
+            'data: {"event": "agent_message", "answer": "Hello "}',
+            'data: {"event": "agent_message", "answer": "world"}',
+        ]
+
+        result = extract_answer_from_response(app, mock_generator)
+
+        assert result == "Hello world"
+
+    def test_extract_answer_uses_message_event(self):
+        """Test that message events are collected into the answer"""
+        app = Mock(spec=App)
+
+        mock_generator = Mock(spec=RateLimitGenerator)
+        mock_generator.generator = [
+            'data: {"event": "message", "answer": "part1 "}',
+            'data: {"event": "message", "answer": "part2"}',
+        ]
+
+        result = extract_answer_from_response(app, mock_generator)
+
+        assert result == "part1 part2"
+
+    def test_extract_answer_falls_back_to_last_thought_when_no_answer(self):
+        """Test fallback to last agent_thought when no answer events are present"""
+        app = Mock(spec=App)
+
+        mock_generator = Mock(spec=RateLimitGenerator)
+        mock_generator.generator = [
+            'data: {"event": "agent_thought", "thought": "first thought"}',
+            'data: {"event": "agent_thought", "thought": "final thought"}',
+        ]
+
+        result = extract_answer_from_response(app, mock_generator)
+
+        assert result == "final thought"
+
     def test_process_mapping_response_invalid_mode(self):
         """Test processing mapping response with invalid app mode"""
         app = Mock(spec=App)
