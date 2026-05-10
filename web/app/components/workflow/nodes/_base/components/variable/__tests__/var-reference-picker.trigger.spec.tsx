@@ -131,7 +131,7 @@ describe('VarReferencePickerTrigger', () => {
       varName: 'answer',
     })
 
-    expect(screen.getByTestId('add-button'))!.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.add' }))!.toBeInTheDocument()
   })
 
   it('should stay inert in readonly mode and show value type placeholder badge', () => {
