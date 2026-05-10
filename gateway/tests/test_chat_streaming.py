@@ -117,3 +117,55 @@ async def test_streaming_passes_conversation_id_to_dify(
 
     sent = fake_dify.calls["streaming"][0]
     assert sent["conversation_id"] == "conv-passed-in"
+
+
+@pytest.mark.asyncio
+async def test_streaming_dify_5xx_returns_502_json_not_broken_sse(
+    app: FastAPI, fake_dify: FakeDifyClient
+) -> None:
+    """Regression for review-2 P2: a Dify 5xx during stream open must yield a
+    structured 502 JSON envelope, not a 200 SSE that closes mid-way."""
+    from gateway.errors import DifyUpstreamError
+
+    fake_dify.streaming_pre_flight_error = DifyUpstreamError("Dify returned HTTP 503")
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as cli:
+        r = await cli.post(
+            "/v1/chat/completions",
+            headers={"Authorization": "Bearer bsa_test_a"},
+            json={
+                "model": "m1",
+                "messages": [{"role": "user", "content": "Hi"}],
+                "stream": True,
+            },
+        )
+    # A clean JSON error envelope, not a half-streamed 200.
+    assert r.status_code == 502
+    assert r.headers["content-type"].startswith("application/json")
+    body = r.json()
+    assert body["error"]["code"] == "dify_upstream_error"
+
+
+@pytest.mark.asyncio
+async def test_streaming_dify_timeout_returns_504_json(
+    app: FastAPI, fake_dify: FakeDifyClient
+) -> None:
+    """Companion to the 5xx regression: timeout during stream open → 504 JSON."""
+    from gateway.errors import DifyTimeoutError
+
+    fake_dify.streaming_pre_flight_error = DifyTimeoutError("upstream timed out")
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as cli:
+        r = await cli.post(
+            "/v1/chat/completions",
+            headers={"Authorization": "Bearer bsa_test_a"},
+            json={
+                "model": "m1",
+                "messages": [{"role": "user", "content": "Hi"}],
+                "stream": True,
+            },
+        )
+    assert r.status_code == 504
+    assert r.json()["error"]["code"] == "dify_timeout"

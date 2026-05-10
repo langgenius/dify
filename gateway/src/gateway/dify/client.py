@@ -33,6 +33,7 @@ v1.x but pinning a Dify version is recommended.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Mapping
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -151,7 +152,8 @@ class DifyClient:
         _raise_for_dify_status(resp)
         return resp.json()
 
-    async def chat_messages_streaming(
+    @asynccontextmanager
+    async def open_chat_stream(
         self,
         *,
         app_key: str,
@@ -159,15 +161,26 @@ class DifyClient:
         user: str,
         inputs: Mapping[str, Any] | None = None,
         conversation_id: str | None = None,
-    ) -> AsyncIterator[str]:
-        """Call ``POST /v1/chat-messages`` in streaming mode.
+    ) -> AsyncIterator[AsyncIterator[str]]:
+        """Open a streaming ``chat-messages`` request and yield a line iterator.
 
-        Yields raw SSE *lines* (including ``data: {...}`` and blank separators).
-        Caller is responsible for SSE framing/parsing—see
-        :mod:`gateway.streaming.converter`.
+        Implemented as an async context manager so the caller can perform
+        pre-flight error handling **before** any response bytes are sent
+        downstream. The HTTP request is fully sent and response headers are
+        received when entering the context; non-2xx responses raise
+        :class:`DifyUpstreamError` here, *not* mid-iteration. Once the
+        context yields, iteration produces SSE lines until exhaustion or
+        timeout.
 
-        The connection is held open for ``stream_timeout_s``; exceeding that
-        raises :class:`DifyTimeoutError`.
+        Example::
+
+            async with client.open_chat_stream(...) as lines:
+                async for line in lines:
+                    ...
+
+        Raises (during context entry):
+            DifyTimeoutError: connect/read timeout before headers received.
+            DifyUpstreamError: non-2xx HTTP response.
         """
         body: dict[str, Any] = {
             "inputs": dict(inputs or {}),
@@ -178,21 +191,46 @@ class DifyClient:
         if conversation_id:
             body["conversation_id"] = conversation_id
 
+        cm = self._http.stream(
+            "POST",
+            "/v1/chat-messages",
+            headers=_bearer(app_key),
+            json=body,
+            timeout=httpx.Timeout(self._stream_timeout_s, read=self._stream_timeout_s),
+        )
         try:
-            async with self._http.stream(
-                "POST",
-                "/v1/chat-messages",
-                headers=_bearer(app_key),
-                json=body,
-                timeout=httpx.Timeout(self._stream_timeout_s, read=self._stream_timeout_s),
-            ) as resp:
-                _raise_for_dify_status(resp)
-                async for line in resp.aiter_lines():
-                    yield line
+            resp = await cm.__aenter__()
         except httpx.TimeoutException as e:
             raise DifyTimeoutError("Dify streaming chat-messages timed out") from e
         except httpx.RequestError as e:
             raise DifyUpstreamError(f"Dify streaming request failed: {e}") from e
+
+        # Status check happens *here*, before any caller has started writing
+        # bytes downstream. _raise_for_dify_status accesses resp.text, which
+        # for streaming responses requires resp.aread() first.
+        if not resp.is_success:
+            try:
+                await resp.aread()
+            except Exception:  # noqa: BLE001
+                pass  # body unreadable; fall through to status-only error
+            try:
+                _raise_for_dify_status(resp)
+            finally:
+                await cm.__aexit__(None, None, None)
+
+        async def iter_lines() -> AsyncIterator[str]:
+            try:
+                async for line in resp.aiter_lines():
+                    yield line
+            except httpx.TimeoutException as e:
+                raise DifyTimeoutError("Dify streaming chat-messages timed out") from e
+            except httpx.RequestError as e:
+                raise DifyUpstreamError(f"Dify streaming read failed: {e}") from e
+
+        try:
+            yield iter_lines()
+        finally:
+            await cm.__aexit__(None, None, None)
 
     # ------------------------------------------------------------------ #
     # Console API (App management)                                       #

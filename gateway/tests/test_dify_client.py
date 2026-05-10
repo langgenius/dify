@@ -217,16 +217,34 @@ async def test_console_delete_app_raises_on_other_failures(client: DifyClient) -
 
 
 @pytest.mark.asyncio
-async def test_chat_messages_streaming_yields_lines(client: DifyClient) -> None:
+async def test_open_chat_stream_yields_lines(client: DifyClient) -> None:
     body = b'data: {"event":"message","answer":"a"}\n\ndata: {"event":"message_end"}\n\n'
     with respx.mock(base_url="http://dify.test") as m:
         m.post("/v1/chat-messages").mock(
             return_value=httpx.Response(200, headers={"content-type": "text/event-stream"}, content=body)
         )
-        lines = [line async for line in client.chat_messages_streaming(
-            app_key="app-x", query="q", user="u"
-        )]
-    # At minimum, the two data lines should be present in the iterator.
-    joined = "\n".join(lines)
+        async with client.open_chat_stream(app_key="app-x", query="q", user="u") as lines:
+            collected = [line async for line in lines]
+
+    joined = "\n".join(collected)
     assert "message" in joined
     assert "message_end" in joined
+
+
+@pytest.mark.asyncio
+async def test_open_chat_stream_raises_before_yielding_on_5xx(client: DifyClient) -> None:
+    """Regression: pre-flight error must surface at context entry, not iteration."""
+    with respx.mock(base_url="http://dify.test") as m:
+        m.post("/v1/chat-messages").mock(return_value=httpx.Response(503, text="dify down"))
+        with pytest.raises(DifyUpstreamError, match="503"):
+            async with client.open_chat_stream(app_key="app-x", query="q", user="u"):
+                pass  # we never get here
+
+
+@pytest.mark.asyncio
+async def test_open_chat_stream_raises_on_connect_timeout(client: DifyClient) -> None:
+    with respx.mock(base_url="http://dify.test") as m:
+        m.post("/v1/chat-messages").mock(side_effect=httpx.ConnectTimeout("connect timeout"))
+        with pytest.raises(DifyTimeoutError):
+            async with client.open_chat_stream(app_key="app-x", query="q", user="u"):
+                pass

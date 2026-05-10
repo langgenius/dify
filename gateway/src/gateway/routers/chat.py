@@ -144,19 +144,38 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
     user = _user_id(body, customer, request_id)
 
     # ---- streaming branch ----
+    #
+    # Pre-flight pattern: open the upstream stream **before** returning a
+    # ``StreamingResponse``. If Dify replies non-2xx or times out at this
+    # stage, the GatewayError propagates to the global exception handler and
+    # becomes a clean 502/504 JSON envelope. Without this, errors raised
+    # inside ``StreamingResponse`` after headers are flushed would yield a
+    # broken SSE stream and hide the real status from clients.
     if body.stream:
+        stream_cm = dify_client.open_chat_stream(
+            app_key=app_key,
+            query=query,
+            user=user,
+            inputs=inputs,
+            conversation_id=body.conversation_id,
+        )
+        # Enter the context here; raises DifyUpstreamError / DifyTimeoutError
+        # synchronously which is exactly what we want before sending headers.
+        dify_lines = await stream_cm.__aenter__()
+
         async def event_source():  # type: ignore[no-untyped-def]
-            dify_stream = dify_client.chat_messages_streaming(
-                app_key=app_key,
-                query=query,
-                user=user,
-                inputs=inputs,
-                conversation_id=body.conversation_id,
-            )
-            async for chunk in dify_to_openai_chunks(
-                dify_stream, request_id=request_id, model_id=body.model
-            ):
-                yield chunk
+            try:
+                async for chunk in dify_to_openai_chunks(
+                    dify_lines, request_id=request_id, model_id=body.model
+                ):
+                    yield chunk
+            finally:
+                # Best-effort close; errors inside cleanup are swallowed because
+                # the response has already started streaming.
+                try:
+                    await stream_cm.__aexit__(None, None, None)
+                except Exception:  # noqa: BLE001
+                    logger.exception("chat.stream_close_failed")
 
         return StreamingResponse(
             event_source(),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import pytest
@@ -10,6 +11,7 @@ from fastapi import FastAPI
 
 from gateway.config import Settings
 from gateway.dify.client import ConsoleSession, DifyClient
+from gateway.errors import DifyUpstreamError
 from gateway.main import create_app
 from gateway.registry import CustomerEntry, CustomerRegistry, DifyConnection, ModelEntry
 
@@ -59,6 +61,9 @@ class FakeDifyClient:
             'data: {"event":"message","answer":"hi"}',
             'data: {"event":"message_end","metadata":{},"conversation_id":"conv-s"}',
         ]
+        # Set to an exception instance to simulate a pre-flight failure
+        # (e.g. Dify returns 5xx before any chunk is sent).
+        self.streaming_pre_flight_error: BaseException | None = None
         self.console_session = ConsoleSession(access_token="acc-1", csrf_token="csrf-1")
         self.import_app_ids = ["app-id-1", "app-id-2", "app-id-3"]
         self.api_key_tokens = ["app-key-1", "app-key-2", "app-key-3"]
@@ -76,10 +81,18 @@ class FakeDifyClient:
         self.calls["blocking"].append(kwargs)
         return self.blocking_response
 
-    async def chat_messages_streaming(self, **kwargs: Any) -> AsyncIterator[str]:
+    @asynccontextmanager
+    async def open_chat_stream(self, **kwargs: Any) -> AsyncIterator[AsyncIterator[str]]:
         self.calls["streaming"].append(kwargs)
-        for line in self.streaming_lines:
-            yield line
+        if self.streaming_pre_flight_error is not None:
+            # Simulate Dify failure during stream open (before any byte yielded).
+            raise self.streaming_pre_flight_error
+
+        async def gen() -> AsyncIterator[str]:
+            for line in self.streaming_lines:
+                yield line
+
+        yield gen()
 
     async def console_login(self, email: str, password: str) -> ConsoleSession:
         self.calls["login"].append((email, password))
