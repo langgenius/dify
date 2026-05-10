@@ -1,7 +1,7 @@
 import type { Memory, ValueSelector, Var } from '../../types'
 import type { QuestionClassifierNodeType, Topic } from './types'
 import { produce } from 'immer'
-import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useRef } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -26,13 +26,17 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
   const startNodeId = startNode?.id
-  const { inputs, setInputs } = useNodeCrud<QuestionClassifierNodeType>(id, payload)
+  const { inputs, setInputs: doSetInputs } = useNodeCrud<QuestionClassifierNodeType>(id, payload)
   const inputRef = useRef(inputs)
+  const setInputs = useCallback((newInputs: QuestionClassifierNodeType) => {
+    doSetInputs(newInputs)
+    inputRef.current = newInputs
+  }, [doSetInputs])
   useEffect(() => {
     inputRef.current = inputs
   }, [inputs])
 
-  const [modelChanged, setModelChanged] = useState(false)
+  const isHandlingModelChangeRef = useRef(false)
   const {
     currentProvider,
     currentModel,
@@ -42,6 +46,13 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const modelMode = inputs.model?.mode
   const isChatModel = modelMode === AppModeEnum.CHAT
 
+  const handleVisionChange = useCallback((newPayload: QuestionClassifierNodeType['vision']) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.vision = newPayload
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
   const {
     isVisionModel,
     handleVisionResolutionEnabledChange,
@@ -49,12 +60,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     handleModelChanged: handleVisionConfigAfterModelChanged,
   } = useConfigVision(model, {
     payload: inputs.vision,
-    onChange: (newPayload) => {
-      const newInputs = produce(inputs, (draft) => {
-        draft.vision = newPayload
-      })
-      setInputs(newInputs)
-    },
+    onChange: handleVisionChange,
   })
 
   const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
@@ -63,8 +69,8 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
       draft.model.name = model.modelId
       draft.model.mode = model.mode!
     })
+    isHandlingModelChangeRef.current = true
     setInputs(newInputs)
-    setModelChanged(true)
   }, [setInputs])
 
   useEffect(() => {
@@ -88,13 +94,13 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
 
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
-    if (!modelChanged)
+    if (!isHandlingModelChangeRef.current)
       return
+    isHandlingModelChangeRef.current = false
     startTransition(() => {
-      setModelChanged(false)
       handleVisionConfigAfterModelChanged()
     })
-  }, [handleVisionConfigAfterModelChanged, isVisionModel, modelChanged])
+  }, [handleVisionConfigAfterModelChanged, isVisionModel])
 
   const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
