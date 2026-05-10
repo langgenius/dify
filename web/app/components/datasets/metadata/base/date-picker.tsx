@@ -35,6 +35,7 @@ const WrappedDatePicker = ({
   const renderTrigger = useCallback(({
     handleClickTrigger,
   }: TriggerProps) => {
+    const hasValue = Boolean(value)
     const triggerText = value ? formatTimestamp(value, t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : t('metadata.chooseTime', { ns: 'dataset' })
 
     return (
@@ -47,32 +48,34 @@ const WrappedDatePicker = ({
           <span
             className={cn(
               'grow',
-              value ? 'text-text-secondary' : 'text-text-tertiary',
+              hasValue ? 'text-text-secondary' : 'text-text-tertiary',
             )}
           >
             {triggerText}
           </span>
         </button>
-        {value && (
-          <button
-            type="button"
-            aria-label={t('operation.clear', { ns: 'common' })}
-            className={cn(
-              'hidden h-4 w-4 cursor-pointer rounded-full border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-            )}
-            onClick={(event) => {
-              event.stopPropagation()
-              handleDateChange()
-            }}
-          >
-            <RiCloseCircleFill className="h-4 w-4" aria-hidden="true" />
-          </button>
-        )}
+        {hasValue
+          ? (
+              <button
+                type="button"
+                aria-label={t('operation.clear', { ns: 'common' })}
+                className={cn(
+                  'hidden h-4 w-4 cursor-pointer rounded-full border-none bg-transparent p-0 text-text-quaternary group-hover:block hover:text-components-input-text-filled focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                )}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  handleDateChange()
+                }}
+              >
+                <RiCloseCircleFill className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )
+          : null}
         <RiCalendarLine
           aria-hidden="true"
           className={cn(
             'block h-4 w-4 shrink-0',
-            value ? 'text-text-quaternary group-hover:hidden' : 'text-text-tertiary',
+            hasValue ? 'text-text-quaternary group-hover:hidden' : 'text-text-tertiary',
           )}
         />
       </div>
