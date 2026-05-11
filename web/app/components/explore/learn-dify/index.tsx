@@ -4,7 +4,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Link from '@/next/link'
 import { learnDifyItems } from './data'
 import LearnDifyItem from './item'
 import { useLearnDifyHiddenState } from './storage'
@@ -80,9 +79,6 @@ const LearnDify = ({
             <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
               {t('learnDify.description', { ns: 'explore' })}
             </p>
-            <Link href="/explore/apps" className="shrink-0 system-sm-medium text-text-accent">
-              {t('learnDify.moreTemplates', { ns: 'explore' })}
-            </Link>
           </div>
         </div>
       </div>

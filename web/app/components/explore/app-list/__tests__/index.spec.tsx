@@ -230,7 +230,7 @@ describe('AppList', () => {
       expect(screen.getByRole('heading', { name: 'explore.learnDify.title' })).toBeInTheDocument()
       expect(screen.getByText('Your first Workflow - say hello to AI')).toBeInTheDocument()
       expect(screen.getByText('Build a working Agent with Workflow')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'explore.learnDify.moreTemplates' })).toHaveAttribute('href', '/explore/apps')
+      expect(screen.queryByRole('link', { name: 'explore.learnDify.moreTemplates' })).not.toBeInTheDocument()
       expect(screen.queryByText('Run this first')).not.toBeInTheDocument()
       expect(screen.queryByText('Then try this')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow')).not.toBeInTheDocument()
