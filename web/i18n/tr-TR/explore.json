@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "Uygulama simgesi ve ismi",
   "appCustomize.title": "{{name}} uygulamasından uygulama oluştur",
   "apps.allCategories": "Tümü",
+  "apps.description": "Topluluk ve Dify ekibinden kullanıma hazır şablonlar.",
   "apps.resetFilter": "Filtreyi temizle",
   "apps.resultNum": "{{num}} sonuç",
   "apps.title": "Şablonlar",

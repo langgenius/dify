@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "Ikon & nama aplikasi",
   "appCustomize.title": "Buat aplikasi dari {{name}}",
   "apps.allCategories": "Semua",
+  "apps.description": "Templat siap pakai dari komunitas dan tim Dify.",
   "apps.resetFilter": "Hapus filter",
   "apps.resultNum": "{{num}} hasil",
   "apps.title": "Templat",

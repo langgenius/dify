@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "آیکون و نام برنامه",
   "appCustomize.title": "ایجاد برنامه از {{name}}",
   "apps.allCategories": "همه",
+  "apps.description": "الگوهای آماده استفاده از جامعه و تیم Dify.",
   "apps.resetFilter": "پاک کردن فیلتر",
   "apps.resultNum": "{{num}} نتیجه",
   "apps.title": "الگوها",

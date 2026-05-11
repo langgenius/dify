@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "Biểu tượng và tên ứng dụng",
   "appCustomize.title": "Tạo ứng dụng từ {{name}}",
   "apps.allCategories": "Tất cả",
+  "apps.description": "Các mẫu sẵn sàng sử dụng từ cộng đồng và đội ngũ Dify.",
   "apps.resetFilter": "Xóa bộ lọc",
   "apps.resultNum": "{{num}} kết quả",
   "apps.title": "Mẫu",

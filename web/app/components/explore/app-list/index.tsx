@@ -3,7 +3,6 @@
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
@@ -197,36 +196,35 @@ const Apps = ({
         <LearnDify className="mt-4" />
 
         <div className="sticky top-0 z-10 bg-background-body">
-          <div className={cn(
-            'flex items-center justify-between px-12 pt-6',
-          )}
-          >
-            <div className="flex items-center">
-              <div className="grow truncate system-xl-semibold text-text-primary">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
-              {hasFilterCondition && (
-                <>
-                  <div className="mx-3 h-4 w-px bg-divider-regular"></div>
-                  <Button size="medium" onClick={handleResetFilter}>{t('apps.resetFilter', { ns: 'explore' })}</Button>
-                </>
-              )}
+          <div className="px-12 pt-4">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <div className="flex min-w-0 items-center">
+                <div className="grow truncate system-xl-medium text-text-primary">{!hasFilterCondition ? t('apps.title', { ns: 'explore' }) : t('apps.resultNum', { num: searchFilteredList.length, ns: 'explore' })}</div>
+              </div>
+              <p className="truncate system-xs-regular text-text-tertiary">
+                {t('apps.description', { ns: 'explore' })}
+              </p>
             </div>
-            <Input
-              showLeftIcon
-              showClearIcon
-              wrapperClassName="w-[200px] self-start"
-              value={keywords}
-              onChange={e => handleKeywordsChange(e.target.value)}
-              onClear={() => handleKeywordsChange('')}
-            />
           </div>
 
-          <div className="px-12 pt-2 pb-4">
+          <div className="flex items-end justify-between gap-4 px-12 pt-3 pb-3">
             <Category
+              className="min-w-0"
               list={categories}
               value={currCategory}
               onChange={setCurrCategory}
               allCategoriesEn={allCategoriesEn}
             />
+            <div className="flex shrink-0 items-center gap-3">
+              <Input
+                showLeftIcon
+                showClearIcon
+                wrapperClassName="w-[200px] shrink-0"
+                value={keywords}
+                onChange={e => handleKeywordsChange(e.target.value)}
+                onClear={handleResetFilter}
+              />
+            </div>
           </div>
         </div>
 

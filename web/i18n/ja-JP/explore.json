@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "アプリアイコンと名前",
   "appCustomize.title": "{{name}}からアプリを作成",
   "apps.allCategories": "全て",
+  "apps.description": "コミュニティと Dify チームによる、すぐに使えるテンプレート。",
   "apps.resetFilter": "クリア",
   "apps.resultNum": "{{num}}件の結果",
   "apps.title": "テンプレート",

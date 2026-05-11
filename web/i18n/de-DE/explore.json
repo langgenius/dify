@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "App-Symbol & Name",
   "appCustomize.title": "App aus {{name}} erstellen",
   "apps.allCategories": "Alle",
+  "apps.description": "Sofort nutzbare Vorlagen aus der Community und vom Dify-Team.",
   "apps.resetFilter": "Filter löschen",
   "apps.resultNum": "{{num}} Ergebnisse",
   "apps.title": "Vorlagen",

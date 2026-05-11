@@ -4,7 +4,6 @@ import type { AppCategory } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ThumbsUp } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import exploreI18n from '@/i18n/en-US/explore.json'
 
 type ICategoryProps = {
@@ -29,8 +28,8 @@ const Category: FC<ICategoryProps> = ({
   const isAllCategories = !list.includes(value as AppCategory) || value === allCategoriesEn
 
   const itemClassName = (isSelected: boolean) => cn(
-    'flex h-7 cursor-pointer items-center rounded-lg border border-transparent px-3 system-sm-medium text-text-tertiary hover:bg-components-main-nav-nav-button-bg-active',
-    isSelected && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text-active shadow-xs',
+    'flex h-7 cursor-pointer items-center justify-center gap-0.5 rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium text-text-secondary hover:bg-state-base-hover-alt',
+    isSelected && 'border-components-main-nav-nav-button-border bg-background-default text-text-accent-light-mode-only shadow-xs hover:bg-background-default',
   )
 
   const renderCategoryName = (name: AppCategory) => {
@@ -39,23 +38,36 @@ const Category: FC<ICategoryProps> = ({
   }
 
   return (
-    <div className={cn(className, 'flex flex-wrap gap-1 text-[13px]')}>
-      <div
-        className={itemClassName(isAllCategories)}
-        onClick={() => onChange(allCategoriesEn)}
-      >
-        <ThumbsUp className="mr-1 h-3.5 w-3.5" />
-        {t('apps.allCategories', { ns: 'explore' })}
-      </div>
-      {list.filter(name => name !== allCategoriesEn).map(name => (
-        <div
-          key={name}
-          className={itemClassName(name === value)}
-          onClick={() => onChange(name)}
-        >
-          {renderCategoryName(name)}
-        </div>
-      ))}
+    <div className={cn(className, 'inline-flex max-w-full flex-wrap items-center gap-px rounded-[10px] bg-components-input-bg-normal p-0.5 text-[13px]')}>
+      {[
+        { name: allCategoriesEn, label: t('apps.allCategories', { ns: 'explore' }), isAll: true },
+        ...list.filter(name => name !== allCategoriesEn).map(name => ({
+          name,
+          label: renderCategoryName(name),
+          isAll: false,
+        })),
+      ].map((item, index, items) => {
+        const isSelected = item.isAll ? isAllCategories : item.name === value
+        const nextItem = items[index + 1]
+        const isNextSelected = nextItem
+          ? nextItem.isAll ? isAllCategories : nextItem.name === value
+          : false
+
+        return (
+          <div key={item.isAll ? 'all' : item.name} className="relative flex items-center">
+            <div
+              className={itemClassName(isSelected)}
+              onClick={() => onChange(item.name)}
+            >
+              {item.isAll && <span className="i-custom-vender-line-alertsAndFeedback-thumbs-up h-4 w-4" />}
+              {item.label}
+            </div>
+            {!isSelected && !isNextSelected && index < items.length - 1 && (
+              <div className="absolute top-1/2 right-[-1px] h-3.5 w-px -translate-y-1/2 bg-divider-regular" />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

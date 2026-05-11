@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "أيقونة التطبيق واسمه",
   "appCustomize.title": "إنشاء تطبيق من {{name}}",
   "apps.allCategories": "موصى به",
+  "apps.description": "قوالب جاهزة للاستخدام من المجتمع وفريق Dify.",
   "apps.resetFilter": "مسح الفلتر",
   "apps.resultNum": "{{num}} نتائج",
   "apps.title": "قوالب",

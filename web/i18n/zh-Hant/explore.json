@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "應用程式圖示和名稱",
   "appCustomize.title": "從 {{name}} 建立應用程式",
   "apps.allCategories": "全部",
+  "apps.description": "來自社群和 Dify 團隊的即用範本。",
   "apps.resetFilter": "清除篩選",
   "apps.resultNum": "{{num}} 個結果",
   "apps.title": "範本",

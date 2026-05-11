@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "Icône de l'application & nom",
   "appCustomize.title": "Créer une application à partir de {{name}}",
   "apps.allCategories": "Tous",
+  "apps.description": "Des modèles prêts à l'emploi créés par la communauté et l'équipe Dify.",
   "apps.resetFilter": "Effacer le filtre",
   "apps.resultNum": "{{num}} résultats",
   "apps.title": "Modèles",

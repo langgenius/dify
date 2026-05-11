@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "ไอคอนและชื่อแอป",
   "appCustomize.title": "สร้างแอปจาก {{name}}",
   "apps.allCategories": "ทั้งหมด",
+  "apps.description": "เทมเพลตพร้อมใช้งานจากชุมชนและทีม Dify",
   "apps.resetFilter": "ล้างตัวกรอง",
   "apps.resultNum": "{{num}} ผลลัพธ์",
   "apps.title": "เทมเพลต",

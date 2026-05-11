@@ -201,6 +201,7 @@ describe('AppList', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
+      expect(screen.getByText('explore.apps.description')).toBeInTheDocument()
     })
 
     it('should render continue work placeholders', () => {

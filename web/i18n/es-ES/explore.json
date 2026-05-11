@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "Icono y nombre de la aplicación",
   "appCustomize.title": "Crear aplicación a partir de {{name}}",
   "apps.allCategories": "Todos",
+  "apps.description": "Plantillas listas para usar de la comunidad y el equipo de Dify.",
   "apps.resetFilter": "Limpiar filtro",
   "apps.resultNum": "{{num}} resultados",
   "apps.title": "Plantillas",

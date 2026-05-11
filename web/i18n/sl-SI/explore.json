@@ -5,6 +5,7 @@
   "appCustomize.subTitle": "Ikona aplikacije & ime",
   "appCustomize.title": "Ustvari aplikacijo iz {{name}}",
   "apps.allCategories": "Vse",
+  "apps.description": "Predloge, pripravljene za uporabo, iz skupnosti in ekipe Dify.",
   "apps.resetFilter": "Počisti filter",
   "apps.resultNum": "{{num}} rezultatov",
   "apps.title": "Predloge",

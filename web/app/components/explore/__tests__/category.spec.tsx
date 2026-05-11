@@ -58,7 +58,7 @@ describe('Category', () => {
       renderComponent({ value: 'Unknown' })
 
       const allCategoriesItem = screen.getByText('explore.apps.allCategories')
-      expect(allCategoriesItem.className).toContain('bg-components-main-nav-nav-button-bg-active')
+      expect(allCategoriesItem.className).toContain('bg-background-default')
     })
 
     it('should render raw category name when i18n key does not exist', () => {
