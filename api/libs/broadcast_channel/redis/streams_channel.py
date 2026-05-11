@@ -76,7 +76,6 @@ class _StreamsSubscription(Subscription):
         # reading and writing the _listener / `_closed` attribute.
         self._lock = threading.Lock()
         self._closed: bool = False
-        # self._closed = threading.Event()
         self._listener: threading.Thread | None = None
 
     def _listen(self) -> None:

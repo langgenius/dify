@@ -303,6 +303,7 @@ const Answer: FC<AnswerProps> = ({
               {
                 typeof item.siblingCount === 'number'
                 && item.siblingCount > 1
+                && !responding
                 && (
                   <ContentSwitch
                     count={item.siblingCount}
@@ -408,7 +409,9 @@ const Answer: FC<AnswerProps> = ({
               }
               {
                 typeof item.siblingCount === 'number'
-                && item.siblingCount > 1 && (
+                && item.siblingCount > 1
+                && !responding
+                && (
                   <ContentSwitch
                     count={item.siblingCount}
                     currentIndex={item.siblingIndex}

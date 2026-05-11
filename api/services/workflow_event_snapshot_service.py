@@ -69,6 +69,19 @@ def build_workflow_event_stream(
     ping_interval: float = 10.0,
     close_on_pause: bool = True,
 ) -> Generator[Mapping[str, Any] | str, None, None]:
+    """Yield a stream of workflow events composed of a DB-derived snapshot followed by live tail.
+
+    The stream is assembled in two phases that are kept **structurally disjoint** so no
+    per-event deduplication is required:
+
+    1. Snapshot phase: events rebuilt from persistent state via ``_build_snapshot_events``
+       (``workflow_started``, optional ``message_replace``, ``node_started``/``node_finished``
+       for each persisted execution, and an optional terminal ``workflow_paused``). This
+       represents the history that already happened from the client's point of view.
+    2. Tail phase: events delivered by the broadcast subscription **from the moment of
+       subscription onward only**. Anything that was published before the subscription was
+       established is ignored here, since message id is not tracked in current implementation.
+    """
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)

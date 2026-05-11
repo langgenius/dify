@@ -24,7 +24,7 @@ class MessageGenerator:
         cls,
         app_mode: AppMode,
         workflow_run_id: str,
-        idle_timeout=300,
+        idle_timeout: float = 300,
         ping_interval: float = 10.0,
         on_subscribe: Callable[[], None] | None = None,
         terminal_events: Iterable[str | StreamEvent] | None = None,

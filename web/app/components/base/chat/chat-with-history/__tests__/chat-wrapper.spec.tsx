@@ -125,6 +125,7 @@ const defaultChatHookReturn: Partial<ChatHookReturn> = {
   handleSend: vi.fn(),
   handleStop: vi.fn(),
   handleSwitchSibling: vi.fn(),
+  handleReconnect: vi.fn(),
   isResponding: false,
   suggestedQuestions: [],
 }
@@ -603,6 +604,95 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
     expect(handleSwitchSibling).not.toHaveBeenCalled()
+  })
+
+  it('should reconnect to a recent running workflow on mount', () => {
+    const handleReconnect = vi.fn()
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      chatList: [],
+      handleReconnect,
+    } as unknown as ChatHookReturn)
+
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      appPrevChatTree: [{
+        id: 'running-answer',
+        isAnswer: true,
+        content: 'partial content',
+        workflow_run_id: 'run-active',
+        created_at: Math.floor(Date.now() / 1000) - 30,
+        children: [],
+      } as unknown as ChatItemInTree],
+    })
+
+    render(<ChatWrapper />)
+    expect(handleReconnect).toHaveBeenCalledWith(
+      'running-answer',
+      'run-active',
+      expect.objectContaining({ isPublicAPI: true }),
+    )
+  })
+
+  it('should not reconnect to an old workflow beyond the retention window', () => {
+    const handleReconnect = vi.fn()
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      chatList: [],
+      handleReconnect,
+    } as unknown as ChatHookReturn)
+
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      appPrevChatTree: [{
+        id: 'old-answer',
+        isAnswer: true,
+        content: 'old content',
+        workflow_run_id: 'run-old',
+        created_at: Math.floor(Date.now() / 1000) - 700,
+        children: [],
+      } as unknown as ChatItemInTree],
+    })
+
+    render(<ChatWrapper />)
+    expect(handleReconnect).not.toHaveBeenCalled()
+  })
+
+  it('should prefer paused workflow over running workflow for reconnection', () => {
+    const handleSwitchSibling = vi.fn()
+    const handleReconnect = vi.fn()
+    vi.mocked(useChat).mockReturnValue({
+      ...defaultChatHookReturn,
+      chatList: [],
+      handleSwitchSibling,
+      handleReconnect,
+    } as unknown as ChatHookReturn)
+
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      appPrevChatTree: [
+        {
+          id: 'running-answer',
+          isAnswer: true,
+          content: '',
+          workflow_run_id: 'run-active',
+          created_at: Math.floor(Date.now() / 1000) - 10,
+          children: [],
+        } as unknown as ChatItemInTree,
+        {
+          id: 'paused-answer',
+          isAnswer: true,
+          content: '',
+          workflow_run_id: 'run-paused',
+          humanInputFormDataList: [{ node_id: 'n-1' }],
+          children: [],
+        } as unknown as ChatItemInTree,
+      ],
+    })
+
+    render(<ChatWrapper />)
+    expect(handleSwitchSibling).toHaveBeenCalledWith('paused-answer', expect.any(Object))
+    expect(handleReconnect).not.toHaveBeenCalled()
   })
 
   it('should call stopChatMessageResponding when handleStop is triggered', () => {

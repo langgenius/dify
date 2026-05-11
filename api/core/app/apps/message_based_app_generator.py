@@ -311,7 +311,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         cls,
         app_mode: AppMode,
         workflow_run_id: str,
-        idle_timeout=300,
+        idle_timeout: float = 300,
         on_subscribe: Callable[[], None] | None = None,
     ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)

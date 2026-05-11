@@ -84,6 +84,9 @@ class WorkflowEventsApi(WebApiResource):
 
             def _generate_stream_events():
                 if include_state_snapshot:
+                    # TODO(wylswz): events between shapshot and live tail may be lost.
+                    # TODO(wylswz): previous message chunks are not replayed. In order to support replay, we need
+                    # to figure out a way to deduplicate events between snapshot and stream.
                     return generator.convert_to_event_stream(
                         build_workflow_event_stream(
                             app_mode=app_mode,

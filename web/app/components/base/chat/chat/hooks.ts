@@ -209,6 +209,19 @@ export const useChat = (
     cb?.()
   }, [handleStop])
 
+  const abortInflightRequests = useCallback(() => {
+    conversationMessagesAbortControllerRef.current?.abort()
+    suggestedQuestionsAbortControllerRef.current?.abort()
+    workflowEventsAbortControllerRef.current?.abort()
+  }, [])
+
+  // Abort all in-flight fetch/SSE requests when the consumer unmounts
+  useEffect(() => {
+    return () => {
+      abortInflightRequests()
+    }
+  }, [abortInflightRequests])
+
   const createAudioPlayerManager = useCallback(() => {
     let ttsUrl = ''
     let ttsIsPublic = false
@@ -244,7 +257,8 @@ export const useChat = (
     }: SendCallback,
   ) => {
     const getOrCreatePlayer = createAudioPlayerManager()
-    // Re-subscribe to workflow events for the specific message
+    // Re-subscribe to workflow events for the specific message.
+    // so all retained events are replayed on reconnection (e.g. page refresh).
     const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
 
     const otherOptions: IOtherOptions = {
@@ -583,6 +597,320 @@ export const useChat = (
     )
   }, [updateChatTreeNode, handleResponding, createAudioPlayerManager, config?.suggested_questions_after_answer])
 
+  const handleReconnect = useCallback((
+    messageId: string,
+    workflowRunId: string,
+    {
+      onGetSuggestedQuestions,
+      onConversationComplete,
+      isPublicAPI,
+    }: SendCallback,
+  ) => {
+    const getOrCreatePlayer = createAudioPlayerManager()
+    const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
+
+    const otherOptions: IOtherOptions = {
+      isPublicAPI,
+      getAbortController: (abortController) => {
+        workflowEventsAbortControllerRef.current = abortController
+      },
+      onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId: msgId, taskId }: IOnDataMoreInfo) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          const isAgentMode = responseItem.agent_thoughts && responseItem.agent_thoughts.length > 0
+          if (!isAgentMode) {
+            responseItem.content = responseItem.content + message
+          }
+          else {
+            const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+            if (lastThought)
+              lastThought.thought = lastThought.thought + message
+          }
+          if (msgId)
+            responseItem.id = msgId
+        })
+
+        if (isFirstMessage && newConversationId)
+          conversationIdRef.current = newConversationId
+
+        if (taskId)
+          taskIdRef.current = taskId
+      },
+      async onCompleted(hasError?: boolean) {
+        handleResponding(false)
+
+        if (hasError)
+          return
+
+        if (onConversationComplete)
+          onConversationComplete(conversationIdRef.current)
+
+        if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
+          try {
+            const { data }: any = await onGetSuggestedQuestions(
+              messageId,
+              newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+            )
+            setSuggestedQuestions(data)
+          }
+          catch {
+            setSuggestedQuestions([])
+          }
+        }
+      },
+      onFile(file) {
+        const fileType = (file as { type?: string }).type || 'image'
+        const baseFile = ('transferMethod' in file) ? (file as Partial<FileEntity>) : null
+        const convertedFile: FileEntity = {
+          id: baseFile?.id || (file as { id: string }).id,
+          type: baseFile?.type || (fileType === 'image' ? 'image/png' : fileType === 'video' ? 'video/mp4' : fileType === 'audio' ? 'audio/mpeg' : 'application/octet-stream'),
+          transferMethod: (baseFile?.transferMethod as FileEntity['transferMethod']) || (fileType === 'image' ? 'remote_url' : 'local_file'),
+          uploadedId: baseFile?.uploadedId || (file as { id: string }).id,
+          supportFileType: baseFile?.supportFileType || (fileType === 'image' ? 'image' : fileType === 'video' ? 'video' : fileType === 'audio' ? 'audio' : 'document'),
+          progress: baseFile?.progress ?? 100,
+          name: baseFile?.name || `generated_${fileType}.${fileType === 'image' ? 'png' : fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'bin'}`,
+          url: baseFile?.url || (file as { url?: string }).url,
+          size: baseFile?.size ?? 0,
+        }
+        updateChatTreeNode(messageId, (responseItem) => {
+          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+          if (lastThought) {
+            responseItem.agent_thoughts!.at(-1)!.message_files = [...(lastThought as any).message_files, convertedFile]
+          }
+          else {
+            const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
+            responseItem.message_files = [...currentFiles, convertedFile]
+          }
+        })
+      },
+      onThought(thought) {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (thought.message_id)
+            responseItem.id = thought.message_id
+          if (thought.conversation_id)
+            responseItem.conversationId = thought.conversation_id
+          if (!responseItem.agent_thoughts)
+            responseItem.agent_thoughts = []
+          if (responseItem.agent_thoughts.length === 0) {
+            responseItem.agent_thoughts.push(thought)
+          }
+          else {
+            const lastThought = responseItem.agent_thoughts.at(-1)
+            if (lastThought?.id === thought.id) {
+              thought.thought = lastThought.thought
+              thought.message_files = lastThought.message_files
+              responseItem.agent_thoughts[responseItem.agent_thoughts.length - 1] = thought
+            }
+            else {
+              responseItem.agent_thoughts.push(thought)
+            }
+          }
+        })
+      },
+      onMessageEnd: (messageEnd) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (messageEnd.metadata?.annotation_reply) {
+            responseItem.annotation = ({
+              id: messageEnd.metadata.annotation_reply.id,
+              authorName: messageEnd.metadata.annotation_reply.account.name,
+            })
+            return
+          }
+          responseItem.citation = messageEnd.metadata?.retriever_resources || []
+          const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
+          responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
+        })
+      },
+      onMessageReplace: (messageReplace) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          responseItem.content = messageReplace.answer
+        })
+      },
+      onError() {
+        handleResponding(false)
+      },
+      onWorkflowStarted: ({ workflow_run_id, task_id }) => {
+        handleResponding(true)
+        hasStopRespondedRef.current = false
+        updateChatTreeNode(messageId, (responseItem) => {
+          taskIdRef.current = task_id
+          responseItem.content = ''
+          responseItem.workflow_run_id = workflow_run_id
+          responseItem.workflowProcess = {
+            status: WorkflowRunningStatus.Running,
+            tracing: [],
+          }
+        })
+      },
+      onWorkflowFinished: ({ data: workflowFinishedData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (responseItem.workflowProcess)
+            responseItem.workflowProcess.status = workflowFinishedData.status as WorkflowRunningStatus
+        })
+      },
+      onIterationStart: ({ data: iterationStartedData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (!responseItem.workflowProcess)
+            return
+          if (!responseItem.workflowProcess.tracing)
+            responseItem.workflowProcess.tracing = []
+          responseItem.workflowProcess.tracing.push({
+            ...iterationStartedData,
+            status: WorkflowRunningStatus.Running,
+          })
+        })
+      },
+      onIterationFinish: ({ data: iterationFinishedData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (!responseItem.workflowProcess?.tracing)
+            return
+          const tracing = responseItem.workflowProcess.tracing
+          const iterationIndex = tracing.findIndex(item => item.node_id === iterationFinishedData.node_id
+            && (item.execution_metadata?.parallel_id === iterationFinishedData.execution_metadata?.parallel_id || item.parallel_id === iterationFinishedData.execution_metadata?.parallel_id))!
+          if (iterationIndex > -1) {
+            tracing[iterationIndex] = {
+              ...tracing[iterationIndex],
+              ...iterationFinishedData,
+              status: WorkflowRunningStatus.Succeeded,
+            }
+          }
+        })
+      },
+      onNodeStarted: ({ data: nodeStartedData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (!responseItem.workflowProcess)
+            return
+          if (!responseItem.workflowProcess.tracing)
+            responseItem.workflowProcess.tracing = []
+          const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
+          if (currentIndex > -1) {
+            responseItem.workflowProcess.tracing[currentIndex] = {
+              ...nodeStartedData,
+              status: NodeRunningStatus.Running,
+            }
+          }
+          else {
+            if (nodeStartedData.iteration_id)
+              return
+            responseItem.workflowProcess.tracing.push({
+              ...nodeStartedData,
+              status: WorkflowRunningStatus.Running,
+            })
+          }
+        })
+      },
+      onNodeFinished: ({ data: nodeFinishedData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (!responseItem.workflowProcess?.tracing)
+            return
+          if (nodeFinishedData.iteration_id)
+            return
+          const currentIndex = responseItem.workflowProcess.tracing.findIndex((item) => {
+            if (!item.execution_metadata?.parallel_id)
+              return item.id === nodeFinishedData.id
+            return item.id === nodeFinishedData.id && (item.execution_metadata?.parallel_id === nodeFinishedData.execution_metadata?.parallel_id)
+          })
+          if (currentIndex > -1)
+            responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
+        })
+      },
+      onTTSChunk: (msgId: string, audio: string) => {
+        if (!audio || audio === '')
+          return
+        const audioPlayer = getOrCreatePlayer()
+        if (audioPlayer) {
+          audioPlayer.playAudioWithAudio(audio, true)
+          AudioPlayerManager.getInstance().resetMsgId(msgId)
+        }
+      },
+      onTTSEnd: (_msgId: string, audio: string) => {
+        const audioPlayer = getOrCreatePlayer()
+        if (audioPlayer)
+          audioPlayer.playAudioWithAudio(audio, false)
+      },
+      onLoopStart: ({ data: loopStartedData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (!responseItem.workflowProcess)
+            return
+          if (!responseItem.workflowProcess.tracing)
+            responseItem.workflowProcess.tracing = []
+          responseItem.workflowProcess.tracing.push({
+            ...loopStartedData,
+            status: WorkflowRunningStatus.Running,
+          })
+        })
+      },
+      onLoopFinish: ({ data: loopFinishedData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (!responseItem.workflowProcess?.tracing)
+            return
+          const tracing = responseItem.workflowProcess.tracing
+          const loopIndex = tracing.findIndex(item => item.node_id === loopFinishedData.node_id
+            && (item.execution_metadata?.parallel_id === loopFinishedData.execution_metadata?.parallel_id || item.parallel_id === loopFinishedData.execution_metadata?.parallel_id))!
+          if (loopIndex > -1) {
+            tracing[loopIndex] = {
+              ...tracing[loopIndex],
+              ...loopFinishedData,
+              status: WorkflowRunningStatus.Succeeded,
+            }
+          }
+        })
+      },
+      onHumanInputRequired: ({ data: humanInputRequiredData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (!responseItem.humanInputFormDataList) {
+            responseItem.humanInputFormDataList = [humanInputRequiredData]
+          }
+          else {
+            const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputRequiredData.node_id)
+            if (currentFormIndex > -1)
+              responseItem.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
+            else
+              responseItem.humanInputFormDataList.push(humanInputRequiredData)
+          }
+          if (responseItem.workflowProcess?.tracing) {
+            const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === humanInputRequiredData.node_id)
+            if (currentTracingIndex > -1)
+              responseItem.workflowProcess.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+          }
+        })
+      },
+      onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (responseItem.humanInputFormDataList?.length) {
+            const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
+            if (currentFormIndex > -1)
+              responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+          }
+          if (!responseItem.humanInputFilledFormDataList)
+            responseItem.humanInputFilledFormDataList = [humanInputFilledFormData]
+          else
+            responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+        })
+      },
+      onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
+        updateChatTreeNode(messageId, (responseItem) => {
+          if (responseItem.humanInputFormDataList?.length) {
+            const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
+            responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+          }
+        })
+      },
+      onWorkflowPaused: ({ data: workflowPausedData }) => {
+        const resumeUrl = `/workflow/${workflowPausedData.workflow_run_id}/events`
+        pausedStateRef.current = true
+        sseGet(resumeUrl, {}, otherOptions)
+        updateChatTreeNode(messageId, (responseItem) => {
+          responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
+        })
+      },
+    }
+
+    if (workflowEventsAbortControllerRef.current)
+      workflowEventsAbortControllerRef.current.abort()
+
+    sseGet(url, {}, otherOptions)
+  }, [updateChatTreeNode, handleResponding, createAudioPlayerManager, config?.suggested_questions_after_answer])
+
   const updateCurrentQAOnTree = useCallback(({
     parentId,
     responseItem,
@@ -917,6 +1245,8 @@ export const useChat = (
         })
       },
       onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id, message_id }) => {
+        handleResponding(true)
+        hasStopRespondedRef.current = false
         // If there are no streaming messages, we still need to set the conversation_id to avoid create a new conversation when regeneration in chat-flow.
         if (conversation_id) {
           conversationIdRef.current = conversation_id
@@ -1275,6 +1605,7 @@ export const useChat = (
     setIsResponding,
     handleSend,
     handleResume,
+    handleReconnect,
     handleSwitchSibling,
     suggestedQuestions,
     handleRestart,
