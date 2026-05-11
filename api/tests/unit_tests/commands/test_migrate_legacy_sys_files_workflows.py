@@ -55,6 +55,18 @@ def test_migrate_legacy_sys_files_workflows_rejects_non_positive_batch_size():
         )
 
 
+def test_migrate_legacy_sys_files_workflows_rejects_non_positive_limit():
+    with pytest.raises(click.UsageError, match="limit"):
+        migrate_legacy_sys_files_workflows.callback(
+            batch_size=100,
+            limit=0,
+            start_after_id=None,
+            tenant_id=None,
+            app_id=None,
+            dry_run=False,
+        )
+
+
 def test_build_legacy_sys_files_workflow_query_uses_keyset_pagination():
     stmt = workflow_migration_commands._build_legacy_sys_files_workflow_query(
         start_after_id="workflow-1",
@@ -96,3 +108,31 @@ def test_migrate_legacy_sys_files_workflow_batch_dry_run_rolls_back():
     assert stats.last_id == "workflow-2"
     session.rollback.assert_called_once()
     session.commit.assert_not_called()
+
+
+def test_migrate_legacy_sys_files_workflow_batch_commits_and_counts_failures(caplog):
+    migrated_workflow = MagicMock()
+    migrated_workflow.id = "workflow-1"
+    migrated_workflow.migrate_legacy_sys_files_graph_in_place.return_value = True
+    failing_workflow = MagicMock()
+    failing_workflow.id = "workflow-2"
+    failing_workflow.migrate_legacy_sys_files_graph_in_place.side_effect = RuntimeError("boom")
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = [migrated_workflow, failing_workflow]
+
+    stats = workflow_migration_commands._migrate_legacy_sys_files_workflow_batch(
+        session=session,
+        start_after_id=None,
+        batch_size=200,
+        tenant_id=None,
+        app_id=None,
+        dry_run=False,
+    )
+
+    assert stats.scanned == 2
+    assert stats.migrated == 1
+    assert stats.failed == 1
+    assert stats.last_id == "workflow-2"
+    assert "Failed to migrate legacy" in caplog.text
+    session.commit.assert_called_once()
+    session.rollback.assert_not_called()

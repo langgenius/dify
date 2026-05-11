@@ -23,7 +23,7 @@ def normalize_legacy_system_file_args_for_service_api(
     if not _has_legacy_file_arg(args_with_hidden_system):
         return args, None
 
-    workflow = AppGenerateService._get_workflow(app_model, InvokeFrom.SERVICE_API, workflow_id)
+    workflow = AppGenerateService.get_workflow(app_model, InvokeFrom.SERVICE_API, workflow_id)
     return normalize_legacy_sys_files_args(graph=workflow.graph_dict, args=args_with_hidden_system)
 
 

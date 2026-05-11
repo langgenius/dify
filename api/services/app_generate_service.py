@@ -399,7 +399,7 @@ class AppGenerateService:
         )
 
     @classmethod
-    def _get_workflow(cls, app_model: App, invoke_from: InvokeFrom, workflow_id: str | None = None) -> Workflow:
+    def get_workflow(cls, app_model: App, invoke_from: InvokeFrom, workflow_id: str | None = None) -> Workflow:
         """
         Get workflow
         :param app_model: app model
@@ -434,6 +434,10 @@ class AppGenerateService:
                 raise ValueError("Workflow not published")
 
         return workflow
+
+    @classmethod
+    def _get_workflow(cls, app_model: App, invoke_from: InvokeFrom, workflow_id: str | None = None) -> Workflow:
+        return cls.get_workflow(app_model, invoke_from, workflow_id)
 
     @classmethod
     def get_response_generator(

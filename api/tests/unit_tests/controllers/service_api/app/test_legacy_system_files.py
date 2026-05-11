@@ -22,7 +22,7 @@ def _legacy_file_graph() -> dict:
 def test_hidden_service_api_file_payload_maps_to_generated_start_input(mocker):
     workflow = MagicMock()
     workflow.graph_dict = _legacy_file_graph()
-    get_workflow = mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+    get_workflow = mocker.patch.object(AppGenerateService, "get_workflow", return_value=workflow)
     app_model = MagicMock()
     files = [{"transfer_method": "remote_url", "url": "https://example.com/a.png"}]
 

@@ -1,3 +1,5 @@
+import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import { useTranslation } from 'react-i18next'
 import {
@@ -24,37 +26,41 @@ export const useWorkflowTemplate = () => {
   })
 
   if (isChatMode) {
+    const llmData: LLMNodeType = {
+      ...(llmDefault.defaultValue as LLMNodeType),
+      desc: '',
+      memory: {
+        window: { enabled: false, size: 10 },
+        query_prompt_template: '{{#sys.query#}}',
+      },
+      selected: true,
+      type: llmDefault.metaData.type,
+      title: t(`blocks.${llmDefault.metaData.type}`, { ns: 'workflow' }),
+    }
     const { newNode: llmNode } = generateNewNode({
       id: 'llm',
-      data: {
-        ...llmDefault.defaultValue,
-        memory: {
-          window: { enabled: false, size: 10 },
-          query_prompt_template: '{{#sys.query#}}',
-        },
-        selected: true,
-        type: llmDefault.metaData.type,
-        title: t(`blocks.${llmDefault.metaData.type}`, { ns: 'workflow' }),
-      },
+      data: llmData,
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET,
         y: START_INITIAL_POSITION.y,
       },
-    } as Parameters<typeof generateNewNode>[0])
+    })
 
+    const answerData: AnswerNodeType = {
+      ...(answerDefault.defaultValue as AnswerNodeType),
+      answer: `{{#${llmNode.id}.text#}}`,
+      desc: '',
+      type: answerDefault.metaData.type,
+      title: t(`blocks.${answerDefault.metaData.type}`, { ns: 'workflow' }),
+    }
     const { newNode: answerNode } = generateNewNode({
       id: 'answer',
-      data: {
-        ...answerDefault.defaultValue,
-        answer: `{{#${llmNode.id}.text#}}`,
-        type: answerDefault.metaData.type,
-        title: t(`blocks.${answerDefault.metaData.type}`, { ns: 'workflow' }),
-      },
+      data: answerData,
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET * 2,
         y: START_INITIAL_POSITION.y,
       },
-    } as Parameters<typeof generateNewNode>[0])
+    })
 
     const startToLlmEdge = {
       id: `${startNode.id}-${llmNode.id}`,
