@@ -1629,3 +1629,84 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                     account_context,
                     dataset_process_rule=SimpleNamespace(id="rule-1"),
                 )
+
+    # -------------------------------------------------------------------------
+    # Regression tests for issue #35858:
+    # API upload with doc_form=hierarchical_model + process_rule mode=automatic
+    # must not produce 0 segments.
+    # -------------------------------------------------------------------------
+
+    def test_save_document_with_dataset_id_hierarchical_automatic_reuses_latest_process_rule(self, account_context):
+        """Regression: automatic process rule on a hierarchical dataset must fall back to
+        the dataset's existing process rule, not create a rule with AUTOMATIC_RULES (which
+        lacks the required `parent_mode` field and causes 0 segments)."""
+        existing_process_rule = SimpleNamespace(id="rule-hierarchical")
+        dataset = _make_dataset(latest_process_rule=existing_process_rule)
+        created_document = _make_document(document_id="doc-created", name="file.txt")
+        knowledge_config = KnowledgeConfig(
+            indexing_technique="economy",
+            data_source=DataSource(
+                info_list=InfoList(
+                    data_source_type="upload_file",
+                    file_info_list=FileInfo(file_ids=["file-1"]),
+                )
+            ),
+            process_rule=ProcessRule(mode="automatic"),
+            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
+            doc_language="English",
+        )
+
+        with (
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            patch("services.dataset_service.redis_client") as mock_redis,
+            patch("services.dataset_service.db") as mock_db,
+            patch("services.dataset_service.DatasetProcessRule") as process_rule_cls,
+            patch.object(DocumentService, "get_documents_position", return_value=1),
+            patch.object(DocumentService, "build_document", return_value=created_document),
+            patch("services.dataset_service.DocumentIndexingTaskProxy"),
+            patch("services.dataset_service.time.strftime", return_value="20260101010101"),
+            patch("services.dataset_service.secrets.randbelow", return_value=23),
+        ):
+            mock_redis.lock.return_value = _make_lock_context()
+            process_rule_cls.AUTOMATIC_RULES = DatasetProcessRule.AUTOMATIC_RULES
+            mock_db.session.scalars.return_value.all.side_effect = [
+                [SimpleNamespace(id="file-1", name="file.txt")],
+                [],
+            ]
+
+            documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account_context)
+
+        assert documents == [created_document]
+        # The DatasetProcessRule constructor must NOT have been called with AUTOMATIC_RULES,
+        # because doing so would omit parent_mode and produce 0 segments.
+        for call in process_rule_cls.call_args_list:
+            called_rules = (call.kwargs or {}).get("rules") or (call.args[2] if len(call.args) > 2 else None)
+            if called_rules is not None:
+                import json as _json
+
+                parsed = _json.loads(called_rules) if isinstance(called_rules, str) else called_rules
+                assert "parent_mode" in parsed or parsed != DatasetProcessRule.AUTOMATIC_RULES, (
+                    "AUTOMATIC_RULES (without parent_mode) must not be used for hierarchical datasets"
+                )
+
+    def test_save_document_with_dataset_id_hierarchical_automatic_raises_when_no_existing_rule(self, account_context):
+        """Regression: if no existing process rule exists for a hierarchical dataset and
+        the API request uses mode=automatic, raise a clear ValueError rather than silently
+        producing 0 segments with a broken AUTOMATIC_RULES rule."""
+        dataset = _make_dataset(latest_process_rule=None)
+        knowledge_config = KnowledgeConfig(
+            indexing_technique="economy",
+            data_source=DataSource(
+                info_list=InfoList(
+                    data_source_type="upload_file",
+                    file_info_list=FileInfo(file_ids=["file-1"]),
+                )
+            ),
+            process_rule=ProcessRule(mode="automatic"),
+            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
+            doc_language="English",
+        )
+
+        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
+            with pytest.raises(ValueError, match="hierarchical"):
+                DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account_context)

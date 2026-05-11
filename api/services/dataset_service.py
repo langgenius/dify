@@ -1993,12 +1993,30 @@ class DocumentService:
                             if not dataset_process_rule:
                                 raise ValueError("No process rule found.")
                     elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
-                        dataset_process_rule = DatasetProcessRule(
-                            dataset_id=dataset.id,
-                            mode=process_rule.mode,
-                            rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
-                            created_by=account.id,
-                        )
+                        # For hierarchical (parent-child) datasets, AUTOMATIC_RULES does not
+                        # contain the required `parent_mode` field.  Blindly creating a new
+                        # DatasetProcessRule from AUTOMATIC_RULES would leave the document with
+                        # 0 segments because ParentChildIndexProcessor.transform() falls
+                        # through all branch checks when parent_mode is None.
+                        # Instead, reuse the dataset's existing process rule (which carries the
+                        # correct hierarchical configuration), falling back to AUTOMATIC_RULES
+                        # only for non-hierarchical doc forms.  See issue #35858.
+                        if knowledge_config.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+                            dataset_process_rule = dataset.latest_process_rule
+                            if not dataset_process_rule:
+                                raise ValueError(
+                                    "process_rule with mode='automatic' cannot be used for a "
+                                    "hierarchical (parent-child) dataset that has no existing "
+                                    "process rule. Provide a process_rule with "
+                                    "mode='hierarchical' and explicit rules instead."
+                                )
+                        else:
+                            dataset_process_rule = DatasetProcessRule(
+                                dataset_id=dataset.id,
+                                mode=process_rule.mode,
+                                rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
+                                created_by=account.id,
+                            )
                     else:
                         logger.warning(
                             "Invalid process rule mode: %s, can not find dataset process rule",
