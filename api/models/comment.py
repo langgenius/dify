@@ -164,9 +164,15 @@ class WorkflowCommentReply(TypeBase):
     )
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
     # Relationships
     comment: Mapped[WorkflowComment] = relationship(lambda: WorkflowComment, back_populates="replies", init=False)
@@ -214,7 +220,7 @@ class WorkflowCommentMention(TypeBase):
 
     # Relationships
     comment: Mapped[WorkflowComment] = relationship(lambda: WorkflowComment, back_populates="mentions", init=False)
-    reply: Mapped[Optional[WorkflowCommentReply]] = relationship(lambda: WorkflowCommentReply)
+    reply: Mapped[WorkflowCommentReply | None] = relationship(lambda: WorkflowCommentReply)
 
     @property
     def mentioned_user_account(self):
