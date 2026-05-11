@@ -134,21 +134,13 @@ class _EstimatePreProcessingRule(BaseModel):
 
 class _EstimateSegmentation(BaseModel):
     separator: str
-    max_tokens: int
+    max_tokens: int = Field(gt=0)
 
     @field_validator("separator")
     @classmethod
     def _validate_separator(cls, v: str) -> str:
         if not v:
             raise ValueError("Process rule segmentation separator is required")
-        return v
-
-    @field_validator("max_tokens")
-    @classmethod
-    def _validate_max_tokens(cls, v: int) -> int:
-        # Use <= 0 to also reject negative values, not just 0
-        if v <= 0:
-            raise ValueError("Process rule segmentation max_tokens is required")
         return v
 
 
@@ -212,26 +204,6 @@ _EstimateProcessRule = Annotated[
 class _EstimateArgs(BaseModel):
     info_list: dict[str, Any]
     process_rule: _EstimateProcessRule
-
-    @model_validator(mode="before")
-    @classmethod
-    def _check_required_fields(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-        if "info_list" not in data or not data["info_list"]:
-            raise ValueError("Data source info is required")
-        if not isinstance(data["info_list"], dict):
-            raise ValueError("Data info is invalid")
-        if "process_rule" not in data or not data["process_rule"]:
-            raise ValueError("Process rule is required")
-        if not isinstance(data["process_rule"], dict):
-            raise ValueError("Process rule is invalid")
-        process_rule = data["process_rule"]
-        if "mode" not in process_rule or not process_rule["mode"]:
-            raise ValueError("Process rule mode is required")
-        if process_rule["mode"] not in DatasetProcessRule.MODES:
-            raise ValueError("Process rule mode is invalid")
-        return data
 
 
 class DatasetService:

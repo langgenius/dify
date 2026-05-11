@@ -1297,7 +1297,7 @@ class TestDocumentServiceEstimateValidation:
     """Unit tests for estimate_args_validate branches."""
 
     def test_estimate_args_validate_rejects_missing_info_list(self):
-        with pytest.raises(ValueError, match="Data source info is required"):
+        with pytest.raises(ValueError, match="Field required"):
             DocumentService.estimate_args_validate({})
 
     def test_estimate_args_validate_sets_empty_rules_for_automatic_mode(self):
