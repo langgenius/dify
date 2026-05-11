@@ -1,7 +1,7 @@
 from gevent import events as gevent_events
 
-from _dify_gevent_boostrap.gevent_compat import apply_gevent_third_party_patches
-from _dify_gevent_boostrap.gevent_compat import require_gevent_monkey_patched
+from _dify_gevent_bootstrap.gevent_compat import apply_gevent_third_party_patches
+from _dify_gevent_bootstrap.gevent_compat import require_gevent_monkey_patched
 
 # WARNING: This module is loaded very early in the Gunicorn worker lifecycle,
 # before gevent's monkey-patching is applied. Importing modules at the top level here can

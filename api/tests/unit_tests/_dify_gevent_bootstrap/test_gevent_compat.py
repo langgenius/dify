@@ -1,4 +1,4 @@
-from _dify_gevent_boostrap import gevent_compat
+from _dify_gevent_bootstrap import gevent_compat
 
 
 def test_apply_gevent_third_party_patches_applies_compatibility_patches_once(mocker):

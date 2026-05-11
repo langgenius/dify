@@ -27,7 +27,7 @@
             },
             "gevent": true,
             "jinja": true,
-            "justMyCode": false,
+            "justMyCode": true,
             "subProcess": true,
             "cwd": "${workspaceFolder}/api",
             "python": "${workspaceFolder}/api/.venv/bin/python"
@@ -54,7 +54,7 @@
                 "INFO"
             ],
             "gevent": true,
-            "justMyCode": false,
+            "justMyCode": true,
             "cwd": "${workspaceFolder}/api",
             "python": "${workspaceFolder}/api/.venv/bin/python"
         },
@@ -76,7 +76,7 @@
                 "celery.beat:PersistentScheduler"
             ],
             "gevent": true,
-            "justMyCode": false,
+            "justMyCode": true,
             "cwd": "${workspaceFolder}/api",
             "python": "${workspaceFolder}/api/.venv/bin/python"
         },
