@@ -516,7 +516,7 @@ class TestGenerate:
         monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
         mocker.patch(
             "services.app_generate_service.MessageBasedAppGenerator.retrieve_events",
-            return_value=iter(["data: {\"event\": \"done\"}\n\n"]),
+            return_value=iter(['data: {"event": "done"}\n\n']),
         )
         mocker.patch(
             "services.app_generate_service.WorkflowAppGenerator.convert_to_event_stream",
@@ -532,7 +532,7 @@ class TestGenerate:
             streaming=True,
         )
 
-        assert next(iter(result)) == "data: {\"event\": \"done\"}\n\n"
+        assert next(iter(result)) == 'data: {"event": "done"}\n\n'
         forwarded_args = params_spy.call_args.kwargs["args"]
         assert forwarded_args["files"] == files
         assert forwarded_args["inputs"]["sys_files"] == files

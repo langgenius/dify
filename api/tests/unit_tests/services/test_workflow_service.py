@@ -348,9 +348,7 @@ class TestWorkflowService:
 
         assert result == mock_workflow
 
-    def test_get_draft_workflow_persists_legacy_sys_files_migration(
-        self, workflow_service, mock_db_session, mocker
-    ):
+    def test_get_draft_workflow_persists_legacy_sys_files_migration(self, workflow_service, mock_db_session, mocker):
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         workflow = Workflow(
             tenant_id=app.tenant_id,
