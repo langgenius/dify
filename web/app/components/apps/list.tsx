@@ -5,7 +5,6 @@ import type { AppListQuery } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
@@ -18,13 +17,13 @@ import { CheckModal } from '@/hooks/use-pay'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { AppModeEnum, AppModes } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
 import Footer from './footer'
-import { useAppsQueryState } from './hooks/use-apps-query-state'
+import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 import NewAppCard from './new-app-card'
@@ -36,18 +35,6 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
   ssr: false,
 })
 
-const APP_LIST_CATEGORY_VALUES = ['all', ...AppModes] as const
-type AppListCategory = typeof APP_LIST_CATEGORY_VALUES[number]
-const appListCategorySet = new Set<string>(APP_LIST_CATEGORY_VALUES)
-
-const isAppListCategory = (value: string): value is AppListCategory => {
-  return appListCategorySet.has(value)
-}
-
-const parseAsAppListCategory = parseAsStringLiteral(APP_LIST_CATEGORY_VALUES)
-  .withDefault('all')
-  .withOptions({ history: 'push' })
-
 type Props = {
   controlRefreshList?: number
 }
@@ -57,14 +44,11 @@ const List: FC<Props> = ({
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
-  const [activeTab, setActiveTab] = useQueryState(
-    'category',
-    parseAsAppListCategory,
-  )
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
-    query: { tagIDs, keywords, isCreatedByMe },
+    query: { category, tagIDs, keywords, isCreatedByMe },
+    setCategory,
     setKeywords,
     setTagIDs,
     setIsCreatedByMe,
@@ -93,8 +77,8 @@ const List: FC<Props> = ({
     name: debouncedKeywords,
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
     ...(isCreatedByMe ? { is_created_by_me: isCreatedByMe } : {}),
-    ...(activeTab !== 'all' ? { mode: activeTab } : {}),
-  }), [activeTab, debouncedKeywords, isCreatedByMe, tagIDs])
+    ...(category !== 'all' ? { mode: category } : {}),
+  }), [category, debouncedKeywords, isCreatedByMe, tagIDs])
 
   const {
     data,
@@ -211,10 +195,10 @@ const List: FC<Props> = ({
 
         <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
           <TabSliderNew
-            value={activeTab}
+            value={category}
             onChange={(nextValue) => {
               if (isAppListCategory(nextValue))
-                setActiveTab(nextValue)
+                setCategory(nextValue)
             }}
             options={options}
           />
@@ -246,7 +230,7 @@ const List: FC<Props> = ({
               ref={newAppCardRef}
               isLoading={isLoadingCurrentWorkspace}
               onSuccess={refetch}
-              selectedAppType={activeTab}
+              selectedAppType={category}
               className={cn(!hasAnyApp && 'z-10')}
             />
           )}

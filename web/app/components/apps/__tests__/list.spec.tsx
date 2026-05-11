@@ -51,14 +51,18 @@ vi.mock('@/context/app-context', () => ({
 const mockSetKeywords = vi.fn()
 const mockSetTagIDs = vi.fn()
 const mockSetIsCreatedByMe = vi.fn()
+const mockSetCategory = vi.fn()
 const mockQueryState = {
+  category: 'all',
   tagIDs: [] as string[],
   keywords: '',
   isCreatedByMe: false,
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
+  isAppListCategory: (value: string) => value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
   useAppsQueryState: () => ({
     query: mockQueryState,
+    setCategory: mockSetCategory,
     setKeywords: mockSetKeywords,
     setTagIDs: mockSetTagIDs,
     setIsCreatedByMe: mockSetIsCreatedByMe,
@@ -248,6 +252,7 @@ describe('List', () => {
     mockServiceState.hasNextPage = false
     mockServiceState.isLoading = false
     mockServiceState.isFetchingNextPage = false
+    mockQueryState.category = 'all'
     mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
     mockQueryState.isCreatedByMe = false
@@ -321,25 +326,21 @@ describe('List', () => {
   })
 
   describe('Tab Navigation', () => {
-    it('should update URL when workflow tab is clicked', async () => {
-      const { onUrlUpdate } = renderList()
+    it('should update category when workflow tab is clicked', () => {
+      renderList()
 
       fireEvent.click(screen.getByText('app.types.workflow'))
 
-      await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      expect(lastCall.searchParams.get('category')).toBe(AppModeEnum.WORKFLOW)
+      expect(mockSetCategory).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
     })
 
-    it('should update URL when all tab is clicked', async () => {
-      const { onUrlUpdate } = renderList('?category=workflow')
+    it('should update category when all tab is clicked', () => {
+      mockQueryState.category = AppModeEnum.WORKFLOW
+      renderList()
 
       fireEvent.click(screen.getByText('app.types.all'))
 
-      await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      // nuqs removes the default value ('all') from URL params
-      expect(lastCall.searchParams.has('category')).toBe(false)
+      expect(mockSetCategory).toHaveBeenCalledWith('all')
     })
   })
 
@@ -377,8 +378,9 @@ describe('List', () => {
       mockQueryState.tagIDs = ['tag-1']
       mockQueryState.keywords = 'sales'
       mockQueryState.isCreatedByMe = true
+      mockQueryState.category = AppModeEnum.WORKFLOW
 
-      renderList('?category=workflow')
+      renderList()
 
       const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
 
@@ -510,8 +512,8 @@ describe('List', () => {
       expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
     })
 
-    it('should update URL for each app type tab click', async () => {
-      const { onUrlUpdate } = renderList()
+    it('should update category for each app type tab click', () => {
+      renderList()
 
       const appTypeTexts = [
         { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
@@ -522,11 +524,9 @@ describe('List', () => {
       ]
 
       for (const { mode, text } of appTypeTexts) {
-        onUrlUpdate.mockClear()
+        mockSetCategory.mockClear()
         fireEvent.click(screen.getByText(text))
-        await vi.waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-        const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-        expect(lastCall.searchParams.get('category')).toBe(mode)
+        expect(mockSetCategory).toHaveBeenCalledWith(mode)
       }
     })
   })

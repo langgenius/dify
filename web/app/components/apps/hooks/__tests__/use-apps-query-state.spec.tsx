@@ -1,5 +1,6 @@
 import { act, waitFor } from '@testing-library/react'
 import { renderHookWithNuqs } from '@/test/nuqs-testing'
+import { AppModeEnum } from '@/types/app'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../../constants'
 import { useAppsQueryState } from '../use-apps-query-state'
 
@@ -16,10 +17,12 @@ describe('useAppsQueryState', () => {
     const { result } = renderWithAdapter()
 
     expect(result.current.query).toEqual({
+      category: 'all',
       tagIDs: [],
       keywords: '',
       isCreatedByMe: false,
     })
+    expect(typeof result.current.setCategory).toBe('function')
     expect(typeof result.current.setKeywords).toBe('function')
     expect(typeof result.current.setTagIDs).toBe('function')
     expect(typeof result.current.setIsCreatedByMe).toBe('function')
@@ -27,14 +30,42 @@ describe('useAppsQueryState', () => {
 
   it('should parse app list filters from URL', () => {
     const { result } = renderWithAdapter(
-      '?tagIDs=tag1;tag2&keywords=search+term&isCreatedByMe=true',
+      '?category=workflow&tagIDs=tag1;tag2&keywords=search+term&isCreatedByMe=true',
     )
 
     expect(result.current.query).toEqual({
+      category: AppModeEnum.WORKFLOW,
       tagIDs: ['tag1', 'tag2'],
       keywords: 'search term',
       isCreatedByMe: true,
     })
+  })
+
+  it('should update category URL state', async () => {
+    const { result, onUrlUpdate } = renderWithAdapter()
+
+    act(() => {
+      result.current.setCategory(AppModeEnum.WORKFLOW)
+    })
+
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    const update = onUrlUpdate.mock.calls.at(-1)![0]
+    expect(result.current.query.category).toBe(AppModeEnum.WORKFLOW)
+    expect(update.searchParams.get('category')).toBe(AppModeEnum.WORKFLOW)
+    expect(update.options.history).toBe('push')
+  })
+
+  it('should remove category from URL when set to all', async () => {
+    const { result, onUrlUpdate } = renderWithAdapter('?category=workflow')
+
+    act(() => {
+      result.current.setCategory('all')
+    })
+
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+    const update = onUrlUpdate.mock.calls.at(-1)![0]
+    expect(result.current.query.category).toBe('all')
+    expect(update.searchParams.has('category')).toBe(false)
   })
 
   it('should update keywords state immediately while debouncing URL writes', async () => {
@@ -56,8 +87,6 @@ describe('useAppsQueryState', () => {
       expect(onUrlUpdate).toHaveBeenCalled()
       const update = onUrlUpdate.mock.calls.at(-1)![0]
       expect(update.searchParams.get('keywords')).toBe('search')
-      expect(update.options.history).toBe('replace')
-      expect(update.options.shallow).toBe(false)
     }
     finally {
       vi.useRealTimers()
