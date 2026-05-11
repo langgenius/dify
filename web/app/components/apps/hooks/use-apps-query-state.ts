@@ -1,4 +1,3 @@
-import type { inferParserType } from 'nuqs'
 import { debounce, parseAsArrayOf, parseAsBoolean, parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
@@ -11,8 +10,6 @@ const appListQueryParsers = {
   }),
   isCreatedByMe: parseAsBoolean.withDefault(false),
 }
-
-export type AppsQuery = inferParserType<typeof appListQueryParsers>
 
 export function useAppsQueryState() {
   const [query, setQuery] = useQueryStates(appListQueryParsers)
