@@ -379,33 +379,35 @@ def test_to_domain_model_loads_offloaded_files(monkeypatch: pytest.MonkeyPatch) 
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    db_model = WorkflowNodeExecutionModel()
-    db_model.id = "id"
-    db_model.node_execution_id = "node-exec"
-    db_model.workflow_id = "wf"
-    db_model.workflow_run_id = "run"
-    db_model.index = 1
-    db_model.predecessor_node_id = None
-    db_model.node_id = "node"
-    db_model.node_type = BuiltinNodeTypes.LLM
-    db_model.title = "t"
-    db_model.inputs = json.dumps({"trunc": "i"})
-    db_model.process_data = json.dumps({"trunc": "p"})
-    db_model.outputs = json.dumps({"trunc": "o"})
-    db_model.status = WorkflowNodeExecutionStatus.SUCCEEDED
-    db_model.error = None
-    db_model.elapsed_time = 0.1
-    db_model.execution_metadata = json.dumps({"total_tokens": 3})
-    db_model.created_at = datetime.now(UTC)
-    db_model.finished_at = None
-
     off_in = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
     off_out = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
     off_proc = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.PROCESS_DATA)
     off_in.file = SimpleNamespace(key="k-in")
     off_out.file = SimpleNamespace(key="k-out")
     off_proc.file = SimpleNamespace(key="k-proc")
-    db_model.offload_data = [off_out, off_in, off_proc]
+    db_model = WorkflowNodeExecutionModel(
+
+,id = "id"
+,node_execution_id = "node-exec"
+,workflow_id = "wf"
+,workflow_run_id = "run"
+,index = 1
+,predecessor_node_id = None
+,node_id = "node"
+,node_type = BuiltinNodeTypes.LLM
+,title = "t"
+,inputs = json.dumps({"trunc": "i"})
+,process_data = json.dumps({"trunc": "p"})
+,outputs = json.dumps({"trunc": "o"})
+,status = WorkflowNodeExecutionStatus.SUCCEEDED
+,error = None
+,elapsed_time = 0.1
+,execution_metadata = json.dumps({"total_tokens": 3})
+,created_at = datetime.now(UTC)
+,finished_at = None
+,offload_data = [off_out, off_in, off_proc]
+    )
+
 
     def fake_load(key: str) -> bytes:
         return json.dumps({"full": key}).encode()
@@ -433,26 +435,28 @@ def test_to_domain_model_returns_early_when_no_offload_data(monkeypatch: pytest.
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    db_model = WorkflowNodeExecutionModel()
+    db_model = WorkflowNodeExecutionModel(
+
+   node_execution_id = "node-exec"
+   ,workflow_id = "wf"
+   ,workflow_run_id = "run"
+   ,index = 1
+   ,predecessor_node_id = None
+   ,node_id = "node"
+   ,node_type = BuiltinNodeTypes.LLM
+   ,title = "t"
+   ,inputs = json.dumps({"i": 1})
+   ,process_data = json.dumps({"p": 2})
+   ,outputs = json.dumps({"o": 3})
+   ,status = WorkflowNodeExecutionStatus.SUCCEEDED
+   ,error = None
+   ,elapsed_time = 0.1
+   ,execution_metadata = "{}"
+   ,created_at = datetime.now(UTC)
+   ,finished_at = None
+   ,offload_data = []
+    )
     db_model.id = "id"
-    db_model.node_execution_id = "node-exec"
-    db_model.workflow_id = "wf"
-    db_model.workflow_run_id = "run"
-    db_model.index = 1
-    db_model.predecessor_node_id = None
-    db_model.node_id = "node"
-    db_model.node_type = BuiltinNodeTypes.LLM
-    db_model.title = "t"
-    db_model.inputs = json.dumps({"i": 1})
-    db_model.process_data = json.dumps({"p": 2})
-    db_model.outputs = json.dumps({"o": 3})
-    db_model.status = WorkflowNodeExecutionStatus.SUCCEEDED
-    db_model.error = None
-    db_model.elapsed_time = 0.1
-    db_model.execution_metadata = "{}"
-    db_model.created_at = datetime.now(UTC)
-    db_model.finished_at = None
-    db_model.offload_data = []
 
     domain = repo._to_domain_model(db_model)
     assert domain.inputs == {"i": 1}

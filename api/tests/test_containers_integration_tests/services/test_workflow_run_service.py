@@ -1,3 +1,5 @@
+from graphon.enums import WorkflowNodeExecutionStatus
+from models import WorkflowNodeExecutionTriggeredFrom
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -446,7 +448,7 @@ class TestWorkflowRunService:
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow_run.workflow_id,
-                triggered_from="workflow-run",
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
                 workflow_run_id=workflow_run.id,
                 index=i,
                 node_id=f"node_{i}",
@@ -454,7 +456,7 @@ class TestWorkflowRunService:
                 title=f"Node {i}",
                 inputs=json.dumps({"input": f"test_input_{i}"}),
                 process_data=json.dumps({"process": f"test_process_{i}"}),
-                status="succeeded",
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 elapsed_time=0.5,
                 execution_metadata=json.dumps({"tokens": 50}),
                 created_by_role=CreatorUserRole.ACCOUNT,
@@ -468,7 +470,7 @@ class TestWorkflowRunService:
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow_run.workflow_id,
-            triggered_from="workflow-run",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=workflow_run.id,
             index=99,
             node_id="node_paused",
@@ -476,7 +478,7 @@ class TestWorkflowRunService:
             title="Paused Node",
             inputs=json.dumps({"input": "paused"}),
             process_data=json.dumps({"process": "paused"}),
-            status="paused",
+            status=WorkflowNodeExecutionStatus.PAUSED,
             elapsed_time=0.5,
             execution_metadata=json.dumps({"tokens": 0}),
             created_by_role=CreatorUserRole.ACCOUNT,
@@ -498,8 +500,8 @@ class TestWorkflowRunService:
         # Verify node execution properties
         statuses = [node_execution.status for node_execution in result]
         assert "paused" in statuses
-        assert statuses.count("succeeded") == 3
-        assert statuses.count("paused") == 1
+        assert statuses.count(WorkflowNodeExecutionStatus.SUCCEEDED) == 3
+        assert statuses.count(WorkflowNodeExecutionStatus.PAUSED) == 1
 
         for node_execution in result:
             assert node_execution.tenant_id == app.tenant_id
@@ -700,7 +702,7 @@ class TestWorkflowRunService:
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow_run.workflow_id,
-            triggered_from="workflow-run",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=workflow_run.id,
             index=0,
             node_id="node_0",
@@ -708,7 +710,7 @@ class TestWorkflowRunService:
             title="Node 0",
             inputs=json.dumps({"input": "test_input"}),
             process_data=json.dumps({"process": "test_process"}),
-            status="succeeded",
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
             elapsed_time=0.5,
             execution_metadata=json.dumps({"tokens": 50}),
             created_by_role=CreatorUserRole.END_USER,
