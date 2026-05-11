@@ -130,7 +130,7 @@ def _create_node_execution_from_domain(
         finished_at=execution.finished_at,
         execution_metadata=execution_metadata,
     )
-    node_execution.id=execution.id
+    node_execution.id = execution.id
 
     return node_execution
 
