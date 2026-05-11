@@ -9,11 +9,50 @@ type GraphPayload = {
 }
 
 type DslPayload = {
+  app?: {
+    name?: string
+    description?: string
+    icon?: string
+    icon_background?: string
+    mode?: string
+  }
+  version?: string
+  kind?: string
   workflow?: {
     graph?: GraphPayload
   }
   graph?: GraphPayload
 } | null
+
+export type DslInfo = {
+  dsl_app_name?: string
+  dsl_app_description?: string
+  dsl_app_icon?: string
+  dsl_app_icon_background?: string
+  dsl_app_mode?: string
+  dsl_version?: string
+  dsl_kind?: string
+}
+
+export const parseDslInfo = (dslContent: string): DslInfo => {
+  if (!dslContent)
+    return {}
+  try {
+    const data = yamlLoad(dslContent) as DslPayload
+    return {
+      dsl_app_name: data?.app?.name,
+      dsl_app_description: data?.app?.description,
+      dsl_app_icon: data?.app?.icon,
+      dsl_app_icon_background: data?.app?.icon_background,
+      dsl_app_mode: data?.app?.mode,
+      dsl_version: data?.version,
+      dsl_kind: data?.kind,
+    }
+  }
+  catch {
+    return {}
+  }
+}
 
 export type ParsedGraph = {
   nodes: Node[]

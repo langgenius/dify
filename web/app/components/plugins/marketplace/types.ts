@@ -168,6 +168,13 @@ export type TemplateDetail = Template & {
   creator_email: string
   dsl_file_key: string
   review_comment: string
+  dsl_app_name?: string
+  dsl_app_description?: string
+  dsl_app_icon?: string
+  dsl_app_icon_background?: string
+  dsl_app_mode?: string
+  dsl_version?: string
+  dsl_kind?: string
 }
 
 export type TemplatesListResponse = {
