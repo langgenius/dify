@@ -7,19 +7,23 @@ publishes a terminal success or failure event.
 """
 
 from collections.abc import AsyncIterable
-from typing import cast
 
-from pydantic import JsonValue, TypeAdapter
 from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor
-from dify_agent.runtime.event_sink import RunEventSink, emit_run_event
+from dify_agent.runtime.event_sink import (
+    RunEventSink,
+    emit_agent_output,
+    emit_pydantic_ai_event,
+    emit_run_failed,
+    emit_run_started,
+    emit_run_succeeded,
+    emit_session_snapshot,
+)
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 from dify_agent.server.schemas import CreateRunRequest
-
-_AGENT_STREAM_EVENT_ADAPTER = TypeAdapter(AgentStreamEvent)
 
 
 class AgentRunValidationError(ValueError):
@@ -42,24 +46,19 @@ class AgentRunRunner:
     async def run(self) -> None:
         """Execute the run and emit the documented event sequence."""
         await self.sink.update_status(self.run_id, "running")
-        _ = await emit_run_event(self.sink, run_id=self.run_id, type="run_started", data={})
+        _ = await emit_run_started(self.sink, run_id=self.run_id)
 
         try:
             output, session_snapshot = await self._run_agent()
         except Exception as exc:
             message = str(exc) or type(exc).__name__
-            _ = await emit_run_event(self.sink, run_id=self.run_id, type="run_failed", data={"error": message})
+            _ = await emit_run_failed(self.sink, run_id=self.run_id, error=message)
             await self.sink.update_status(self.run_id, "failed", message)
             raise
 
-        _ = await emit_run_event(self.sink, run_id=self.run_id, type="agent_output", data={"output": output})
-        _ = await emit_run_event(
-            self.sink,
-            run_id=self.run_id,
-            type="session_snapshot",
-            data=cast(JsonValue, session_snapshot.model_dump(mode="json")),
-        )
-        _ = await emit_run_event(self.sink, run_id=self.run_id, type="run_succeeded", data={})
+        _ = await emit_agent_output(self.sink, run_id=self.run_id, output=output)
+        _ = await emit_session_snapshot(self.sink, run_id=self.run_id, data=session_snapshot)
+        _ = await emit_run_succeeded(self.sink, run_id=self.run_id)
         await self.sink.update_status(self.run_id, "succeeded")
 
     async def _run_agent(self) -> tuple[str, CompositorSessionSnapshot]:
@@ -78,12 +77,7 @@ class AgentRunRunner:
 
             async def handle_events(_ctx: object, events: AsyncIterable[AgentStreamEvent]) -> None:
                 async for event in events:
-                    _ = await emit_run_event(
-                        self.sink,
-                        run_id=self.run_id,
-                        type="pydantic_ai_event",
-                        data=cast(JsonValue, _AGENT_STREAM_EVENT_ADAPTER.dump_python(event, mode="json")),
-                    )
+                    _ = await emit_pydantic_ai_event(self.sink, run_id=self.run_id, data=event)
 
             agent = create_agent(
                 self.request.agent_profile,

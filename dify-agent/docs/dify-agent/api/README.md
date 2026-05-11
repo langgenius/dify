@@ -168,10 +168,13 @@ A failed run emits:
 2. zero or more `pydantic_ai_event`
 3. `run_failed`
 
-`pydantic_ai_event.data` is serialized with Pydantic AI's `AgentStreamEvent`
-adapter. `session_snapshot.data` contains the serialized
-`CompositorSessionSnapshot` that can be sent as `session_snapshot` in a later
-create-run request with the same compositor layer names and order.
+Each event keeps the same envelope shape and has typed `data`: `run_started` and
+`run_succeeded` use `{}`, `pydantic_ai_event` uses Pydantic AI's
+`AgentStreamEvent` union, `agent_output` uses `{ "output": string }`,
+`session_snapshot` uses `CompositorSessionSnapshot`, and `run_failed` uses
+`{ "error": string, "reason": string | null }`. The session snapshot can be sent
+as `session_snapshot` in a later create-run request with the same compositor layer
+names and order.
 
 ## Consumer examples
 

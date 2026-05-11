@@ -103,7 +103,10 @@ progress:
 
 Successful runs emit `run_started`, zero or more `pydantic_ai_event`,
 `agent_output`, `session_snapshot`, and `run_succeeded`. Failed runs end with
-`run_failed`.
+`run_failed`. Event envelopes retain `id`, `run_id`, `type`, `data`, and
+`created_at`; `data` is typed per event type, including Pydantic AI's
+`AgentStreamEvent` payload for `pydantic_ai_event` and `CompositorSessionSnapshot`
+for `session_snapshot`.
 
 ## Examples
 

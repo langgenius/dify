@@ -13,7 +13,7 @@ from collections.abc import Callable
 from typing import Protocol
 
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor
-from dify_agent.runtime.event_sink import RunEventSink, emit_run_event
+from dify_agent.runtime.event_sink import RunEventSink, emit_run_failed
 from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 from dify_agent.server.schemas import CreateRunRequest, RunRecord
@@ -131,12 +131,7 @@ class RunScheduler:
         """Best-effort failure event/status for shutdown-cancelled runs."""
         message = "run cancelled during server shutdown"
         try:
-            _ = await emit_run_event(
-                self.store,
-                run_id=run_id,
-                type="run_failed",
-                data={"error": message, "reason": "shutdown"},
-            )
+            _ = await emit_run_failed(self.store, run_id=run_id, error=message, reason="shutdown")
             await self.store.update_status(run_id, "failed", message)
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})

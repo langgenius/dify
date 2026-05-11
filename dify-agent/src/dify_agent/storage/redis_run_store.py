@@ -9,12 +9,12 @@ polling and SSE. Execution is scheduled in-process by
 from collections.abc import AsyncIterator
 from typing import cast
 
-from pydantic import JsonValue
 from redis.asyncio import Redis
 
 from dify_agent.runtime.event_sink import RunEventSink
 from dify_agent.server.schemas import (
     CreateRunRequest,
+    RUN_EVENT_ADAPTER,
     RunEvent,
     RunEventsResponse,
     RunRecord,
@@ -63,9 +63,10 @@ class RedisRunStore(RunEventSink):
 
     async def append_event(self, event: RunEvent) -> str:
         """Append an event JSON payload to the run's Redis stream."""
+        payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
         event_id = await self.redis.xadd(
             run_events_key(self.prefix, event.run_id),
-            {"payload": event.model_dump_json(exclude={"id"})},
+            {"payload": payload},
         )
         return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
 
@@ -107,12 +108,8 @@ class RedisRunStore(RunEventSink):
         if isinstance(payload, bytes):
             payload = payload.decode()
         event_id = raw_id.decode() if isinstance(raw_id, bytes) else str(raw_id)
-        return RunEvent.model_validate_json(cast(str, payload)).model_copy(update={"id": event_id, "run_id": run_id})
-
-
-def json_field(value: object) -> JsonValue:
-    """Narrow helper for dynamic Redis payloads."""
-    return cast(JsonValue, value)
+        event = RUN_EVENT_ADAPTER.validate_json(cast(str, payload))
+        return event.model_copy(update={"id": event_id, "run_id": run_id})
 
 
 __all__ = ["RedisRunStore", "RunNotFoundError"]

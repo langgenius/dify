@@ -1,9 +1,9 @@
-from dify_agent.server.schemas import RunEvent
+from dify_agent.server.schemas import RunStartedEvent
 from dify_agent.server.sse import format_sse_event
 
 
 def test_format_sse_event_uses_id_event_and_json_data() -> None:
-    event = RunEvent(id="7-0", run_id="run-1", type="run_started", data={})
+    event = RunStartedEvent(id="7-0", run_id="run-1")
 
     frame = format_sse_event(event)
 
