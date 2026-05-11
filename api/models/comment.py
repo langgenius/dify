@@ -1,5 +1,6 @@
 """Workflow comment models."""
 
+from typing import Optional
 from __future__ import annotations
 
 from datetime import datetime
@@ -220,7 +221,7 @@ class WorkflowCommentMention(TypeBase):
 
     # Relationships
     comment: Mapped[WorkflowComment] = relationship(lambda: WorkflowComment, back_populates="mentions", init=False)
-    reply: Mapped[WorkflowCommentReply | None] = relationship(lambda: WorkflowCommentReply)
+    reply: Mapped[Optional[WorkflowCommentReply]] = relationship(lambda: WorkflowCommentReply, init=False)
 
     @property
     def mentioned_user_account(self):
