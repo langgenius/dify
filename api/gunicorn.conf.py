@@ -1,6 +1,7 @@
 from gevent import events as gevent_events
 
-from libs.gevent_compat import apply_gevent_third_party_patches
+from bootstrap.gevent_compat import apply_gevent_third_party_patches
+from bootstrap.gevent_compat import require_gevent_monkey_patched
 
 # WARNING: This module is loaded very early in the Gunicorn worker lifecycle,
 # before gevent's monkey-patching is applied. Importing modules at the top level here can
@@ -36,6 +37,7 @@ def post_patch(event):
     # the subscriber for gevent.events.GeventDidPatchBuiltinModulesEvent.
     if not isinstance(event, gevent_events.GeventDidPatchBuiltinModulesEvent):
         return
+    require_gevent_monkey_patched("Gunicorn gevent worker")
     apply_gevent_third_party_patches()
 
 
