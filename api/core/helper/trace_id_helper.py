@@ -10,7 +10,7 @@ class ParentTraceContext(BaseModel):
     """Typed parent trace context propagated from an outer workflow tool node."""
 
     parent_workflow_run_id: StrictStr
-    parent_node_execution_id: StrictStr
+    parent_node_execution_id: StrictStr | None = None
 
     model_config = ConfigDict(extra="forbid")
 
@@ -86,9 +86,14 @@ def extract_parent_trace_context_from_args(args: Mapping[str, Any]) -> dict[str,
         return {}
 
     try:
-        return {"parent_trace_context": ParentTraceContext.model_validate(parent_trace_context)}
+        context = ParentTraceContext.model_validate(parent_trace_context)
     except ValidationError:
         return {}
+
+    if context.parent_node_execution_id is None:
+        return {}
+
+    return {"parent_trace_context": context}
 
 
 def get_trace_id_from_otel_context() -> str | None:

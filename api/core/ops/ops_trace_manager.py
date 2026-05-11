@@ -55,10 +55,10 @@ logger = logging.getLogger(__name__)
 
 def _dump_parent_trace_context(parent_trace_context: Any) -> dict[str, str] | None:
     if isinstance(parent_trace_context, ParentTraceContext):
-        return parent_trace_context.model_dump()
+        return parent_trace_context.model_dump(exclude_none=True)
     if isinstance(parent_trace_context, dict):
         try:
-            return ParentTraceContext.model_validate(parent_trace_context).model_dump()
+            return ParentTraceContext.model_validate(parent_trace_context).model_dump(exclude_none=True)
         except ValueError:
             return None
     return None

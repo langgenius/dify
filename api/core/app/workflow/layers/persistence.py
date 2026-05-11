@@ -410,7 +410,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             external_trace_id = extras.get("external_trace_id")
             parent_trace_context = extras.get("parent_trace_context")
             if isinstance(parent_trace_context, ParentTraceContext):
-                parent_trace_context = parent_trace_context.model_dump()
+                parent_trace_context = parent_trace_context.model_dump(exclude_none=True)
 
         trace_task = TraceTask(
             TraceTaskName.WORKFLOW_TRACE,
