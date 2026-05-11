@@ -421,3 +421,35 @@ def test_disallowed_extensions(mock_upload_file):
 
     with pytest.raises(ValueError, match="File validation failed"):
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=restricted_config)
+
+
+def test_custom_type_with_explicit_extension_accepts_mismatched_detected_type(mock_upload_file):
+    """Regression test for #35669.
+
+    When a workflow input is configured as "Other File Types" (FileType.CUSTOM)
+    with an explicit extension list, API callers may send a file with a detected
+    type that doesn't match CUSTOM (e.g. 'document' for .txt files).  The
+    validation must accept such files as long as their extension is in the
+    allowed list, because the user explicitly opted in by listing that extension.
+    """
+    # Mock a .txt file — standardize_file_type returns FileType.DOCUMENT for it
+    mock_upload_file.return_value.extension = "txt"
+    mock_upload_file.return_value.name = "data.txt"
+    mock_upload_file.return_value.mime_type = "text/plain"
+
+    # Config matches "Other File Types" with .json and .txt allowed
+    config = FileUploadConfig(
+        allowed_file_types=[FileType.CUSTOM],
+        allowed_file_extensions=[".txt", ".json"],
+    )
+
+    # The API caller sends type="document" (detected/auto-detected value)
+    mapping = {
+        "transfer_method": "local_file",
+        "upload_file_id": TEST_UPLOAD_FILE_ID,
+        "type": "document",
+    }
+
+    # Should succeed: extension .txt is explicitly listed
+    file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=config)
+    assert file.extension == ".txt"
