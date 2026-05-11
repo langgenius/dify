@@ -28,13 +28,14 @@ const ResultItemFooter: FC<Props> = ({
           {docTitle}
         </span>
       </div>
-      <div
-        className="flex cursor-pointer items-center space-x-1 text-text-tertiary"
+      <button
+        type="button"
+        className="flex cursor-pointer items-center space-x-1 border-none bg-transparent p-0 text-left text-text-tertiary"
         onClick={showDetailModal}
       >
         <div className="text-xs uppercase">{t(`${i18nPrefix}open`, { ns: 'datasetHitTesting' })}</div>
-        <RiArrowRightUpLine className="size-3.5" />
-      </div>
+        <RiArrowRightUpLine className="size-3.5" aria-hidden />
+      </button>
     </div>
   )
 }

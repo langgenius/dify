@@ -44,12 +44,7 @@ describe('ConfigSelect Component', () => {
 
   it('handles option deletion', () => {
     render(<ConfigSelect {...defaultProps} />)
-    const optionContainer = screen.getByDisplayValue('Option 1').closest('div')
-    const deleteButton = optionContainer?.querySelector('div[role="button"]')
-
-    if (!deleteButton)
-      return
-    fireEvent.click(deleteButton)
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[0]!)
     expect(defaultProps.onChange).toHaveBeenCalledWith(['Option 2'])
   })
 
@@ -86,7 +81,7 @@ describe('ConfigSelect Component', () => {
   it('applies delete hover styles', () => {
     render(<ConfigSelect {...defaultProps} />)
     const optionContainer = screen.getByDisplayValue('Option 1').closest('div')
-    const deleteButton = optionContainer?.querySelector('div[role="button"]')
+    const deleteButton = screen.getAllByRole('button', { name: 'common.operation.delete' })[0]
 
     if (!deleteButton)
       return

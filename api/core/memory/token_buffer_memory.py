@@ -86,12 +86,10 @@ class TokenBufferMemory:
 
         detail = ImagePromptMessageContent.DETAIL.HIGH
         if file_extra_config and app_record:
-            # Build files directly without filtering by belongs_to
             file_objs = [
                 file_factory.build_from_message_file(
                     message_file=message_file,
                     tenant_id=app_record.tenant_id,
-                    config=file_extra_config,
                     access_controller=_file_access_controller,
                 )
                 for message_file in message_files

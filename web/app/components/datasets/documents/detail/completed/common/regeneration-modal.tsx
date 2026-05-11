@@ -1,12 +1,16 @@
 import type { FC } from 'react'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
-import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type IDefaultContentProps = {
@@ -23,8 +27,8 @@ const DefaultContent: FC<IDefaultContentProps> = React.memo(({
   return (
     <>
       <div className="pb-4">
-        <span className="title-2xl-semi-bold text-text-primary">{t('segment.regenerationConfirmTitle', { ns: 'datasetDocuments' })}</span>
-        <p className="system-md-regular text-text-secondary">{t('segment.regenerationConfirmMessage', { ns: 'datasetDocuments' })}</p>
+        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">{t('segment.regenerationConfirmTitle', { ns: 'datasetDocuments' })}</AlertDialogTitle>
+        <AlertDialogDescription className="system-md-regular text-text-secondary">{t('segment.regenerationConfirmMessage', { ns: 'datasetDocuments' })}</AlertDialogDescription>
       </div>
       <div className="flex justify-end gap-x-2 pt-6">
         <Button onClick={onCancel}>
@@ -123,11 +127,13 @@ const RegenerationModal: FC<IRegenerationModalProps> = ({
   })
 
   return (
-    <Modal isShow={isShow} onClose={noop} className="max-w-[480px]! rounded-2xl!" wrapperClassName="z-10000!">
-      {!loading && !updateSucceeded && <DefaultContent onCancel={onCancel} onConfirm={onConfirm} />}
-      {loading && !updateSucceeded && <RegeneratingContent />}
-      {!loading && updateSucceeded && <RegenerationCompletedContent onClose={onClose} />}
-    </Modal>
+    <AlertDialog open={isShow}>
+      <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-[480px]! overflow-hidden! rounded-2xl! border-none p-6 text-left align-middle shadow-xl">
+        {!loading && !updateSucceeded && <DefaultContent onCancel={onCancel} onConfirm={onConfirm} />}
+        {loading && !updateSucceeded && <RegeneratingContent />}
+        {!loading && updateSucceeded && <RegenerationCompletedContent onClose={onClose} />}
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 

@@ -4,7 +4,6 @@ import type { PromptVariable } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -14,6 +13,7 @@ import { ReactSortable } from 'react-sortablejs'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getInputKeys } from '@/app/components/base/block-input'
 import Divider from '@/app/components/base/divider'
+import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { checkKeys, getNewVar } from '@/utils/var'
 
@@ -117,24 +117,14 @@ const OpeningSettingModal = ({
             <div className="text-sm font-medium text-text-primary">
               {t('openingStatement.openingQuestion', { ns: 'appDebug' })}
             </div>
-            <Tooltip>
-              <TooltipTrigger
-                delay={0}
-                render={(
-                  <button
-                    type="button"
-                    className="flex items-center rounded-sm p-px text-text-quaternary hover:text-text-tertiary"
-                    data-testid="opening-questions-tooltip"
-                    aria-label={t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
-                  >
-                    <span className="i-ri-question-line h-3.5 w-3.5" />
-                  </button>
-                )}
-              />
-              <TooltipContent className="max-w-[220px] system-sm-regular text-text-secondary">
-                {t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
-              </TooltipContent>
-            </Tooltip>
+            <Infotip
+              aria-label={t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
+              className="h-3.5 w-3.5"
+              popupClassName="max-w-[220px] system-sm-regular text-text-secondary"
+              delay={0}
+            >
+              {t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
+            </Infotip>
           </div>
           <div className="text-xs leading-[18px] font-medium text-text-tertiary">
             {tempSuggestedQuestions.length}
@@ -227,21 +217,14 @@ const OpeningSettingModal = ({
       <DialogContent className="mt-14 w-[640px] max-w-none rounded-2xl bg-components-panel-bg-blur p-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="title-2xl-semi-bold text-text-primary">{t('feature.conversationOpener.title', { ns: 'appDebug' })}</div>
-          <div
-            className="cursor-pointer p-1"
+          <button
+            type="button"
+            aria-label={t('operation.close', { ns: 'common' })}
+            className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={onCancel}
-            data-testid="close-modal"
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onCancel()
-              }
-            }}
           >
-            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-          </div>
+            <span className="i-ri-close-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          </button>
         </div>
         <div className="mb-8 space-y-4">
           <div

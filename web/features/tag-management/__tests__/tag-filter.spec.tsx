@@ -45,16 +45,15 @@ describe('TagFilter', () => {
       expect(screen.getByText(i18n.placeholder)).toBeInTheDocument()
     })
 
-    it('should render the tag icon', () => {
+    it('should expose the trigger as a named combobox', () => {
       render(<TagFilter {...defaultProps} />)
-      expect(screen.getByTestId('tag-filter-trigger-icon')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: i18n.placeholder })).toBeInTheDocument()
     })
 
-    it('should render the arrow down icon when no tags are selected', () => {
+    it('should keep the placeholder in the trigger when no tags are selected', () => {
       render(<TagFilter {...defaultProps} />)
       expect(screen.getByText(i18n.placeholder)).toBeInTheDocument()
-      expect(screen.getByTestId('tag-filter-trigger-icon')).toBeInTheDocument()
-      expect(screen.getByTestId('tag-filter-arrow-down-icon')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: i18n.placeholder })).toBeInTheDocument()
     })
 
     it('should display the first selected tag name when tags are selected', () => {
@@ -101,6 +100,19 @@ describe('TagFilter', () => {
       await user.click(screen.getByText('Frontend'))
 
       expect(onChange).toHaveBeenCalledWith(['tag-1'])
+    })
+
+    it('should select the highlighted tag with keyboard navigation', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      render(<TagFilter {...defaultProps} onChange={onChange} />)
+
+      await user.click(screen.getByText(i18n.placeholder))
+      await user.type(screen.getByRole('combobox', { name: i18n.selectorPlaceholder }), 'Back')
+      await user.keyboard('{ArrowDown}')
+      await user.keyboard('{Enter}')
+
+      expect(onChange).toHaveBeenCalledWith(['tag-2'])
     })
 
     it('should call onChange to deselect when an already-selected tag is clicked', async () => {
@@ -170,9 +182,9 @@ describe('TagFilter', () => {
       const onChange = vi.fn()
       render(<TagFilter {...defaultProps} value={['tag-1', 'tag-2']} onChange={onChange} />)
 
-      const clearButton = screen.getByTestId('tag-filter-clear-button')
+      const clearButton = screen.getByRole('button', { name: i18n.operationClear })
       expect(clearButton).toBeInTheDocument()
-      await user.click(clearButton!)
+      await user.click(clearButton)
 
       expect(onChange).toHaveBeenCalledWith([])
     })
@@ -268,7 +280,7 @@ describe('TagFilter', () => {
       const onChange = vi.fn()
       render(<TagFilter {...defaultProps} value={['tag-1']} onChange={onChange} />)
 
-      const clearButton = screen.getByTestId('tag-filter-clear-button')
+      const clearButton = screen.getByRole('button', { name: i18n.operationClear })
       expect(clearButton).toBeInTheDocument()
 
       await user.click(clearButton)

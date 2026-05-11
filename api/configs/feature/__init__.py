@@ -1298,7 +1298,7 @@ class PositionConfig(BaseSettings):
 class CollaborationConfig(BaseSettings):
     ENABLE_COLLABORATION_MODE: bool = Field(
         description="Whether to enable collaboration mode features across the workspace",
-        default=False,
+        default=True,
     )
 
 

@@ -644,7 +644,7 @@ class TestFeatureService:
             assert result.max_plugin_package_size == 15728640
 
             # Verify default license status
-            assert result.license.status.value == "none"
+            assert result.license.status == "none"
             assert result.license.expired_at == ""
             assert result.license.workspaces.enabled is False
 

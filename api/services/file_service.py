@@ -107,14 +107,13 @@ class FileService:
             hash=hashlib.sha3_256(content).hexdigest(),
             source_url=source_url,
         )
-        # The `UploadFile` ID is generated within its constructor, so flushing to retrieve the ID is unnecessary.
-        # We can directly generate the `source_url` here before committing.
-        if not upload_file.source_url:
-            upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
         with self._session_maker(expire_on_commit=False) as session:
             session.add(upload_file)
             session.commit()
+
+        if not upload_file.source_url:
+            upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
         return upload_file
 

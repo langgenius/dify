@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import controllers.console.explore.trial as module
@@ -88,7 +89,7 @@ def valid_parameters():
 
 
 class TestTrialAppWorkflowRunApi:
-    def test_not_workflow_app(self, app):
+    def test_not_workflow_app(self, app: Flask):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -224,7 +225,7 @@ class TestTrialAppWorkflowRunApi:
 
 
 class TestTrialChatApi:
-    def test_not_chat_app(self, app):
+    def test_not_chat_app(self, app: Flask):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -408,7 +409,7 @@ class TestTrialChatApi:
 
 
 class TestTrialCompletionApi:
-    def test_not_completion_app(self, app):
+    def test_not_completion_app(self, app: Flask):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -560,7 +561,7 @@ class TestTrialCompletionApi:
 
 
 class TestTrialMessageSuggestedQuestionApi:
-    def test_not_chat_app(self, app):
+    def test_not_chat_app(self, app: Flask):
         api = module.TrialMessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
@@ -952,7 +953,7 @@ class TestTrialAppWorkflowTaskStopApi:
 
 
 class TestTrialSitApi:
-    def test_no_site(self, app):
+    def test_no_site(self, app: Flask):
         api = module.TrialSitApi()
         method = unwrap(api.get)
         app_model = MagicMock()
@@ -963,7 +964,7 @@ class TestTrialSitApi:
             with pytest.raises(Forbidden):
                 method(api, app_model)
 
-    def test_archived_tenant(self, app):
+    def test_archived_tenant(self, app: Flask):
         api = module.TrialSitApi()
         method = unwrap(api.get)
 
@@ -978,7 +979,7 @@ class TestTrialSitApi:
             with pytest.raises(Forbidden):
                 method(api, app_model)
 
-    def test_success(self, app):
+    def test_success(self, app: Flask):
         api = module.TrialSitApi()
         method = unwrap(api.get)
 

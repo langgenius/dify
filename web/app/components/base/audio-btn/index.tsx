@@ -88,8 +88,9 @@ const AudioBtn = ({
             <span className="inline-flex">
               <button
                 type="button"
+                aria-label={tooltipContent}
                 disabled={audioState === 'loading'}
-                className={`box-border flex h-6 w-6 cursor-pointer items-center justify-center ${isAudition ? 'p-0.5' : 'rounded-md bg-white p-0'}`}
+                className={`box-border flex h-6 w-6 cursor-pointer items-center justify-center border-none bg-transparent ${isAudition ? 'p-0.5' : 'rounded-md bg-white p-0'}`}
                 onClick={handleToggle}
               >
                 {audioState === 'loading'

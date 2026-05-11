@@ -13,7 +13,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
@@ -137,10 +137,12 @@ const InputFieldPanel = () => {
           <span className="system-sm-semibold-uppercase text-text-secondary">
             {t('inputFieldPanel.uniqueInputs.title', { ns: 'datasetPipeline' })}
           </span>
-          <Tooltip
-            popupContent={t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
+          <Infotip
+            aria-label={t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
             popupClassName="max-w-[240px]"
-          />
+          >
+            {t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
+          </Infotip>
         </div>
         <div className="flex flex-col gap-y-1 py-1">
           {

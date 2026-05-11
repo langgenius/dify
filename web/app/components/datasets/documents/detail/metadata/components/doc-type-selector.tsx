@@ -122,9 +122,13 @@ export const DocumentTypeDisplay: FC<DocumentTypeDisplayProps> = ({
           {showChangeLink && (
             <div className="ml-1 inline-flex items-center gap-1">
               ·
-              <div onClick={onChangeClick} className="cursor-pointer hover:text-text-accent">
+              <button
+                type="button"
+                className="inline cursor-pointer border-none bg-transparent p-0 text-left hover:text-text-accent"
+                onClick={onChangeClick}
+              >
                 {t('operation.change', { ns: 'common' })}
-              </div>
+              </button>
             </div>
           )}
         </>

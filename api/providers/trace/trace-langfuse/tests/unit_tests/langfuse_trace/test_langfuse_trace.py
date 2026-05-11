@@ -40,7 +40,7 @@ def langfuse_config():
 
 
 @pytest.fixture
-def trace_instance(langfuse_config, monkeypatch):
+def trace_instance(langfuse_config, monkeypatch: pytest.MonkeyPatch):
     # Mock Langfuse client to avoid network calls
     mock_client = MagicMock()
     monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", lambda **kwargs: mock_client)
@@ -49,7 +49,7 @@ def trace_instance(langfuse_config, monkeypatch):
     return instance
 
 
-def test_init(langfuse_config, monkeypatch):
+def test_init(langfuse_config, monkeypatch: pytest.MonkeyPatch):
     mock_langfuse = MagicMock()
     monkeypatch.setattr("dify_trace_langfuse.langfuse_trace.Langfuse", mock_langfuse)
     monkeypatch.setenv("FILES_URL", "http://test.url")
@@ -64,7 +64,7 @@ def test_init(langfuse_config, monkeypatch):
     assert instance.file_base_url == "http://test.url"
 
 
-def test_trace_dispatch(trace_instance, monkeypatch):
+def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
     methods = [
         "workflow_trace",
         "message_trace",
@@ -114,7 +114,7 @@ def test_trace_dispatch(trace_instance, monkeypatch):
     mocks["generate_name_trace"].assert_called_once_with(info)
 
 
-def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
+def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     # Setup trace info
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
@@ -218,7 +218,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     assert other_span.level == LevelEnum.ERROR
 
 
-def test_workflow_trace_no_message_id(trace_instance, monkeypatch):
+def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
         tenant_id="tenant-1",
@@ -259,7 +259,7 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch):
     assert trace_data.name == TraceTaskName.WORKFLOW_TRACE
 
 
-def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
+def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
         tenant_id="tenant-1",
@@ -287,7 +287,7 @@ def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
         trace_instance.workflow_trace(trace_info)
 
 
-def test_message_trace_basic(trace_instance, monkeypatch):
+def test_message_trace_basic(trace_instance, monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.id = "msg-1"
     message_data.from_account_id = "acc-1"
@@ -331,7 +331,7 @@ def test_message_trace_basic(trace_instance, monkeypatch):
     assert gen_data.usage.total == 30
 
 
-def test_message_trace_with_end_user(trace_instance, monkeypatch):
+def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.id = "msg-1"
     message_data.from_account_id = "acc-1"
@@ -636,7 +636,7 @@ def test_langfuse_trace_entity_with_list_dict_input():
     assert data.input[0]["content"] == "hello"
 
 
-def test_workflow_trace_handles_usage_extraction_error(trace_instance, monkeypatch, caplog):
+def test_workflow_trace_handles_usage_extraction_error(trace_instance, monkeypatch: pytest.MonkeyPatch, caplog):
     # Setup trace info to trigger LLM node usage extraction
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",

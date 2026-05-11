@@ -35,7 +35,7 @@ def langsmith_config():
 
 
 @pytest.fixture
-def trace_instance(langsmith_config, monkeypatch):
+def trace_instance(langsmith_config, monkeypatch: pytest.MonkeyPatch):
     # Mock LangSmith client
     mock_client = MagicMock()
     monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.Client", lambda **kwargs: mock_client)
@@ -44,7 +44,7 @@ def trace_instance(langsmith_config, monkeypatch):
     return instance
 
 
-def test_init(langsmith_config, monkeypatch):
+def test_init(langsmith_config, monkeypatch: pytest.MonkeyPatch):
     mock_client_class = MagicMock()
     monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.Client", mock_client_class)
     monkeypatch.setenv("FILES_URL", "http://test.url")
@@ -57,7 +57,7 @@ def test_init(langsmith_config, monkeypatch):
     assert instance.file_base_url == "http://test.url"
 
 
-def test_trace_dispatch(trace_instance, monkeypatch):
+def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
     methods = [
         "workflow_trace",
         "message_trace",
@@ -107,7 +107,7 @@ def test_trace_dispatch(trace_instance, monkeypatch):
     mocks["generate_name_trace"].assert_called_once_with(info)
 
 
-def test_workflow_trace(trace_instance, monkeypatch):
+def test_workflow_trace(trace_instance, monkeypatch: pytest.MonkeyPatch):
     # Setup trace info
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
@@ -208,13 +208,17 @@ def test_workflow_trace(trace_instance, monkeypatch):
 
     assert call_args[0].id == "msg-1"
     assert call_args[0].name == TraceTaskName.MESSAGE_TRACE
+    # trace_id must equal root run's id (message_id), not the external trace_id "trace-1"
+    assert call_args[0].trace_id == "msg-1"
 
     assert call_args[1].id == "run-1"
     assert call_args[1].name == TraceTaskName.WORKFLOW_TRACE
     assert call_args[1].parent_run_id == "msg-1"
+    assert call_args[1].trace_id == "msg-1"
 
     assert call_args[2].id == "node-llm"
     assert call_args[2].run_type == LangSmithRunType.llm
+    assert call_args[2].trace_id == "msg-1"
 
     assert call_args[3].id == "node-other"
     assert call_args[3].run_type == LangSmithRunType.tool
@@ -223,7 +227,7 @@ def test_workflow_trace(trace_instance, monkeypatch):
     assert call_args[4].run_type == LangSmithRunType.retriever
 
 
-def test_workflow_trace_no_start_time(trace_instance, monkeypatch):
+def test_workflow_trace_no_start_time(trace_instance, monkeypatch: pytest.MonkeyPatch):
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
     workflow_data.finished_at = _dt() + timedelta(seconds=1)
@@ -266,7 +270,7 @@ def test_workflow_trace_no_start_time(trace_instance, monkeypatch):
     assert trace_instance.add_run.called
 
 
-def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
+def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     trace_info = MagicMock(spec=WorkflowTraceInfo)
     trace_info.trace_id = "trace-1"
     trace_info.message_id = None
@@ -290,7 +294,7 @@ def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
         trace_instance.workflow_trace(trace_info)
 
 
-def test_message_trace(trace_instance, monkeypatch):
+def test_message_trace(trace_instance, monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.id = "msg-1"
     message_data.from_account_id = "acc-1"
@@ -516,7 +520,7 @@ def test_update_run_error(trace_instance):
         trace_instance.update_run(update_data)
 
 
-def test_workflow_trace_usage_extraction_error(trace_instance, monkeypatch, caplog):
+def test_workflow_trace_usage_extraction_error(trace_instance, monkeypatch: pytest.MonkeyPatch, caplog):
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
     workflow_data.finished_at = _dt() + timedelta(seconds=1)
@@ -604,3 +608,83 @@ def test_get_project_url_error(trace_instance):
     trace_instance.langsmith_client.get_run_url.side_effect = Exception("error")
     with pytest.raises(ValueError, match="LangSmith get run url failed: error"):
         trace_instance.get_project_url()
+
+
+def _make_workflow_trace_info(
+    *, message_id: str | None, workflow_run_id: str, trace_id: str | None
+) -> WorkflowTraceInfo:
+    workflow_data = MagicMock()
+    workflow_data.created_at = _dt()
+    workflow_data.finished_at = _dt() + timedelta(seconds=1)
+    return WorkflowTraceInfo(
+        tenant_id="tenant-1",
+        workflow_id="wf-1",
+        workflow_run_id=workflow_run_id,
+        workflow_run_inputs={},
+        workflow_run_outputs={},
+        workflow_run_status="succeeded",
+        workflow_run_version="1.0",
+        workflow_run_elapsed_time=1.0,
+        total_tokens=0,
+        file_list=[],
+        query="q",
+        message_id=message_id,
+        conversation_id="conv-1" if message_id else None,
+        start_time=_dt(),
+        end_time=_dt() + timedelta(seconds=1),
+        trace_id=trace_id,
+        metadata={"app_id": "app-1"},
+        workflow_app_log_id=None,
+        error=None,
+        workflow_data=workflow_data,
+    )
+
+
+def _patch_workflow_trace_deps(monkeypatch, trace_instance):
+    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.sessionmaker", lambda bind: lambda: MagicMock())
+    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.db", MagicMock(engine="engine"))
+    repo = MagicMock()
+    repo.get_by_workflow_execution.return_value = []
+    factory = MagicMock()
+    factory.create_workflow_node_execution_repository.return_value = repo
+    monkeypatch.setattr("dify_trace_langsmith.langsmith_trace.DifyCoreRepositoryFactory", factory)
+    monkeypatch.setattr(trace_instance, "get_service_account_with_tenant", lambda app_id: MagicMock())
+    trace_instance.add_run = MagicMock()
+
+
+def test_workflow_trace_id_uses_message_id_not_external(trace_instance, monkeypatch):
+    """Chatflow with external trace_id: LangSmith trace_id must be message_id, not external."""
+    trace_info = _make_workflow_trace_info(
+        message_id="msg-abc",
+        workflow_run_id="run-xyz",
+        trace_id="external-999",
+    )
+    _patch_workflow_trace_deps(monkeypatch, trace_instance)
+
+    trace_instance.workflow_trace(trace_info)
+
+    calls = [c[0][0] for c in trace_instance.add_run.call_args_list]
+    # message run (root) and workflow run (child) must both use message_id as trace_id
+    assert calls[0].id == "msg-abc"
+    assert calls[0].trace_id == "msg-abc"
+    assert calls[1].id == "run-xyz"
+    assert calls[1].trace_id == "msg-abc"
+    # external_trace_id preserved in metadata
+    assert trace_info.metadata.get("external_trace_id") == "external-999"
+
+
+def test_workflow_trace_id_pure_workflow_uses_run_id(trace_instance, monkeypatch):
+    """Pure workflow (no message_id) with external trace_id: trace_id must be workflow_run_id."""
+    trace_info = _make_workflow_trace_info(
+        message_id=None,
+        workflow_run_id="run-xyz",
+        trace_id="external-999",
+    )
+    _patch_workflow_trace_deps(monkeypatch, trace_instance)
+
+    trace_instance.workflow_trace(trace_info)
+
+    calls = [c[0][0] for c in trace_instance.add_run.call_args_list]
+    # workflow run is the root; trace_id must equal its run_id
+    assert calls[0].id == "run-xyz"
+    assert calls[0].trace_id == "run-xyz"

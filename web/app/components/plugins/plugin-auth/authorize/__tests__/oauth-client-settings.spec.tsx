@@ -41,10 +41,6 @@ vi.mock('../../../readme-panel/entrance', () => ({
   ReadmeEntrance: () => <div data-testid="readme-entrance" />,
 }))
 
-vi.mock('../../../readme-panel/store', () => ({
-  ReadmeShowType: { modal: 'modal' },
-}))
-
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => {
   const MockAuthForm = ({ ref, ...props }: { ref?: React.Ref<unknown> } & Record<string, unknown>) => {
     mockAuthFormProps = props
@@ -209,7 +205,7 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-close'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/i }))
     expect(mockOnClose).toHaveBeenCalled()
   })
 
@@ -217,7 +213,7 @@ describe('OAuthClientSettings', () => {
     const mockOnClose = vi.fn()
     render(<ControlledSettingsHarness OAuthClientSettings={OAuthClientSettings} onClose={mockOnClose} />)
 
-    fireEvent.click(screen.getByTestId('modal-close'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel/i }))
 
     await waitFor(() => {
       expect(screen.getByTestId('modal-open-state')).toHaveTextContent('false')

@@ -54,24 +54,32 @@ const MethodSelector: FC<MethodSelectorProps> = ({
         >
           <div className="relative w-[320px]">
             <div className="p-1">
-              <div className="cursor-pointer rounded-lg py-2.5 pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover" onClick={() => handleSelect('llm')}>
+              <button
+                type="button"
+                className="block w-full cursor-pointer rounded-lg border-none bg-transparent py-2.5 pr-2 pl-3 text-left hover:bg-components-panel-on-panel-item-bg-hover"
+                onClick={() => handleSelect('llm')}
+              >
                 <div className="flex items-center gap-1">
                   <div className="h-4 w-4 shrink-0">
-                    {value === 'llm' && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
+                    {value === 'llm' && <Check className="h-4 w-4 shrink-0 text-text-accent" aria-hidden />}
                   </div>
                   <div className="text-[13px] leading-[18px] font-medium text-text-secondary">{t('createTool.toolInput.methodParameter', { ns: 'tools' })}</div>
                 </div>
                 <div className="pl-5 text-[13px] leading-[18px] text-text-tertiary">{t('createTool.toolInput.methodParameterTip', { ns: 'tools' })}</div>
-              </div>
-              <div className="cursor-pointer rounded-lg py-2.5 pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover" onClick={() => handleSelect('form')}>
+              </button>
+              <button
+                type="button"
+                className="block w-full cursor-pointer rounded-lg border-none bg-transparent py-2.5 pr-2 pl-3 text-left hover:bg-components-panel-on-panel-item-bg-hover"
+                onClick={() => handleSelect('form')}
+              >
                 <div className="flex items-center gap-1">
                   <div className="h-4 w-4 shrink-0">
-                    {value === 'form' && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
+                    {value === 'form' && <Check className="h-4 w-4 shrink-0 text-text-accent" aria-hidden />}
                   </div>
                   <div className="text-[13px] leading-[18px] font-medium text-text-secondary">{t('createTool.toolInput.methodSetting', { ns: 'tools' })}</div>
                 </div>
                 <div className="pl-5 text-[13px] leading-[18px] text-text-tertiary">{t('createTool.toolInput.methodSettingTip', { ns: 'tools' })}</div>
-              </div>
+              </button>
             </div>
           </div>
         </PopoverContent>

@@ -3,6 +3,7 @@ import re
 import uuid
 from datetime import datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -25,6 +26,7 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
+from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -700,7 +702,7 @@ class AppExportApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         """Export app"""
-        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
         payload = AppExportResponse(
             data=AppDslService.export_dsl(
@@ -839,9 +841,10 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    def get(self, app_id: UUID):
         """Get app trace"""
-        app_trace_config = OpsTraceManager.get_app_tracing_config(app_id=app_id)
+        with session_factory.create_session() as session:
+            app_trace_config = OpsTraceManager.get_app_tracing_config(str(app_id), session)
 
         return app_trace_config
 
@@ -855,12 +858,12 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id):
+    def post(self, app_id: UUID):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 
         OpsTraceManager.update_app_tracing_config(
-            app_id=app_id,
+            app_id=str(app_id),
             enabled=args.enabled,
             tracing_provider=args.tracing_provider,
         )
