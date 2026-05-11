@@ -1137,6 +1137,18 @@ class MultiModalTransferConfig(BaseSettings):
     )
 
 
+class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
+        description="Maximum retry attempts for transient ops trace provider dispatch failures.",
+        default=60,
+    )
+
+    OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
+        description="Delay in seconds between transient ops trace provider dispatch retry attempts.",
+        default=5,
+    )
+
+
 class CeleryBeatConfig(BaseSettings):
     CELERY_BEAT_SCHEDULER_TIME: int = Field(
         description="Interval in days for Celery Beat scheduler execution, default to 1 day",
@@ -1417,6 +1429,7 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
+    OpsTraceConfig,
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,

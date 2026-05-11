@@ -146,6 +146,45 @@ def test_process_trace_tasks_marks_enterprise_trace_dispatched_before_retryable_
     mock_incr.assert_not_called()
 
 
+def test_process_trace_tasks_does_not_mark_failed_enterprise_trace_as_dispatched_before_retry():
+    file_info = {"app_id": "app-id", "file_id": "file-id"}
+    trace_instance = MagicMock()
+    pending_error = _retryable_dispatch_error()
+    trace_instance.trace.side_effect = pending_error
+    retry_error = Retry()
+    enterprise_tracer = MagicMock()
+    enterprise_tracer.trace.side_effect = RuntimeError("enterprise trace failed")
+    enterprise_trace_cls = MagicMock(return_value=enterprise_tracer)
+
+    with (
+        patch.dict(
+            sys.modules,
+            _install_trace_manager(
+                trace_instance,
+                enterprise_enabled=True,
+                enterprise_trace_cls=enterprise_trace_cls,
+            ),
+        ),
+        patch("tasks.ops_trace_task.current_app", FakeCurrentApp()),
+        patch("tasks.ops_trace_task.storage.load", return_value=_make_payload()),
+        patch("tasks.ops_trace_task.storage.save") as mock_save,
+        patch("tasks.ops_trace_task.storage.delete") as mock_delete,
+        patch("tasks.ops_trace_task.redis_client.incr") as mock_incr,
+        patch.object(process_trace_tasks, "retry", side_effect=retry_error) as mock_retry,
+        pytest.raises(Retry),
+    ):
+        _run_task(file_info)
+
+    enterprise_tracer.trace.assert_called_once_with({})
+    mock_save.assert_not_called()
+    mock_retry.assert_called_once_with(
+        exc=pending_error,
+        countdown=process_trace_tasks.default_retry_delay,
+    )
+    mock_delete.assert_not_called()
+    mock_incr.assert_not_called()
+
+
 def test_process_trace_tasks_skips_enterprise_trace_when_retry_payload_was_already_dispatched():
     file_info = {"app_id": "app-id", "file_id": "file-id"}
     trace_instance = MagicMock()
@@ -174,6 +213,10 @@ def test_process_trace_tasks_skips_enterprise_trace_when_retry_payload_was_alrea
     mock_save.assert_not_called()
     mock_delete.assert_called_once_with("ops_trace/app-id/file-id.json")
     mock_incr.assert_not_called()
+
+
+def test_process_trace_tasks_default_retry_window_covers_parent_span_context_ttl():
+    assert process_trace_tasks.max_retries * process_trace_tasks.default_retry_delay >= 300
 
 
 def test_process_trace_tasks_deletes_payload_on_success():

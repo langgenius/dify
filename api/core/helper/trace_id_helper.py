@@ -81,13 +81,13 @@ def extract_parent_trace_context_from_args(args: Mapping[str, Any]) -> dict[str,
     """
     parent_trace_context = args.get("parent_trace_context")
     if isinstance(parent_trace_context, ParentTraceContext):
-        return {"parent_trace_context": parent_trace_context}
-    if not isinstance(parent_trace_context, Mapping):
-        return {}
-
-    try:
-        context = ParentTraceContext.model_validate(parent_trace_context)
-    except ValidationError:
+        context = parent_trace_context
+    elif isinstance(parent_trace_context, Mapping):
+        try:
+            context = ParentTraceContext.model_validate(parent_trace_context)
+        except ValidationError:
+            return {}
+    else:
         return {}
 
     if context.parent_node_execution_id is None:

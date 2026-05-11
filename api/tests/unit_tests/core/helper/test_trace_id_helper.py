@@ -166,3 +166,16 @@ class TestTraceIdHelper:
                 parent_node_execution_id="node-execution-1",
             )
         }
+
+    def test_extract_parent_trace_context_rejects_incomplete_typed_context(self):
+        """Typed parent trace context follows the same completeness rule as raw mappings."""
+        result = extract_parent_trace_context_from_args(
+            {
+                "parent_trace_context": ParentTraceContext(
+                    parent_workflow_run_id="workflow-run-1",
+                    parent_node_execution_id=None,
+                )
+            }
+        )
+
+        assert result == {}

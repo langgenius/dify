@@ -22,6 +22,7 @@ from celery import shared_task
 from celery.exceptions import Retry
 from flask import current_app
 
+from configs import dify_config
 from core.ops.entities.config_entity import OPS_FILE_PATH, OPS_TRACE_FAILED_KEY
 from core.ops.entities.trace_entity import trace_info_info_map
 from core.ops.exceptions import RetryableTraceDispatchError
@@ -33,8 +34,8 @@ from models.workflow import WorkflowRun
 
 logger = logging.getLogger(__name__)
 
-_RETRYABLE_TRACE_DISPATCH_LIMIT = 3
-_RETRYABLE_TRACE_DISPATCH_DELAY_SECONDS = 5
+_RETRYABLE_TRACE_DISPATCH_LIMIT = dify_config.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES
+_RETRYABLE_TRACE_DISPATCH_DELAY_SECONDS = dify_config.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS
 
 
 @shared_task(
@@ -82,7 +83,7 @@ def process_trace_tasks(self, file_info):
                 EnterpriseOtelTrace().trace(trace_info)
             except Exception:
                 logger.exception("Enterprise trace failed for app_id: %s", app_id)
-            finally:
+            else:
                 file_data["_enterprise_trace_dispatched"] = True
                 enterprise_trace_dispatched = True
 
