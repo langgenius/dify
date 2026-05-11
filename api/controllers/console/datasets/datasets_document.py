@@ -369,13 +369,14 @@ class DatasetDocumentListApi(Resource):
         else:
             sort_logic = asc
 
-        if sort == "hit_count":
-            sub_query = (
-                sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
-                .where(DocumentSegment.dataset_id == str(dataset_id))
-                .group_by(DocumentSegment.document_id)
-                .subquery()
-            )
+        match sort:
+            case "hit_count":
+                sub_query = (
+                    sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
+                    .where(DocumentSegment.dataset_id == str(dataset_id))
+                    .group_by(DocumentSegment.document_id)
+                    .subquery()
+                )
 
                 query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id).order_by(
                     sort_logic(sa.func.coalesce(sub_query.c.total_hit_count, 0)),
