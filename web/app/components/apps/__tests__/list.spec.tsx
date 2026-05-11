@@ -48,16 +48,20 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-const mockSetQuery = vi.fn()
+const mockSetKeywords = vi.fn()
+const mockSetTagIDs = vi.fn()
+const mockSetIsCreatedByMe = vi.fn()
 const mockQueryState = {
   tagIDs: [] as string[],
   keywords: '',
   isCreatedByMe: false,
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
-  default: () => ({
+  useAppsQueryState: () => ({
     query: mockQueryState,
-    setQuery: mockSetQuery,
+    setKeywords: mockSetKeywords,
+    setTagIDs: mockSetTagIDs,
+    setIsCreatedByMe: mockSetIsCreatedByMe,
   }),
 }))
 
@@ -351,7 +355,7 @@ describe('List', () => {
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'test search' } })
 
-      expect(mockSetQuery).toHaveBeenCalled()
+      expect(mockSetKeywords).toHaveBeenCalledWith('test search')
     })
 
     it('should handle search clear button click', () => {
@@ -364,7 +368,7 @@ describe('List', () => {
       if (clearButton)
         fireEvent.click(clearButton)
 
-      expect(mockSetQuery).toHaveBeenCalled()
+      expect(mockSetKeywords).toHaveBeenCalledWith('')
     })
   })
 
@@ -412,7 +416,7 @@ describe('List', () => {
       const checkbox = screen.getByTestId('checkbox-undefined')
       fireEvent.click(checkbox)
 
-      expect(mockSetQuery).toHaveBeenCalled()
+      expect(mockSetIsCreatedByMe).toHaveBeenCalledWith(true)
     })
   })
 

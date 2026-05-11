@@ -1,57 +1,38 @@
-import { parseAsArrayOf, parseAsBoolean, parseAsString, useQueryStates } from 'nuqs'
+import type { inferParserType } from 'nuqs'
+import { debounce, parseAsArrayOf, parseAsBoolean, parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useMemo } from 'react'
+import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
 
-type AppsQuery = {
-  tagIDs?: string[]
-  keywords?: string
-  isCreatedByMe?: boolean
+const appListQueryParsers = {
+  tagIDs: parseAsArrayOf(parseAsString, ';').withDefault([]),
+  keywords: parseAsString.withDefault('').withOptions({
+    shallow: false,
+    limitUrlUpdates: debounce(APP_LIST_SEARCH_DEBOUNCE_MS),
+  }),
+  isCreatedByMe: parseAsBoolean.withDefault(false),
 }
 
-const normalizeKeywords = (value: string | null) => value || undefined
+export type AppsQuery = inferParserType<typeof appListQueryParsers>
 
-function useAppsQueryState() {
-  const [urlQuery, setUrlQuery] = useQueryStates(
-    {
-      tagIDs: parseAsArrayOf(parseAsString, ';'),
-      keywords: parseAsString,
-      isCreatedByMe: parseAsBoolean,
-    },
-    {
-      history: 'push',
-    },
-  )
+export function useAppsQueryState() {
+  const [query, setQuery] = useQueryStates(appListQueryParsers)
 
-  const query = useMemo<AppsQuery>(() => ({
-    tagIDs: urlQuery.tagIDs ?? undefined,
-    keywords: normalizeKeywords(urlQuery.keywords),
-    isCreatedByMe: urlQuery.isCreatedByMe ?? false,
-  }), [urlQuery.isCreatedByMe, urlQuery.keywords, urlQuery.tagIDs])
+  const setKeywords = useCallback((keywords: string) => {
+    setQuery({ keywords })
+  }, [setQuery])
 
-  const setQuery = useCallback((next: AppsQuery | ((prev: AppsQuery) => AppsQuery)) => {
-    const buildPatch = (patch: AppsQuery) => {
-      const result: Partial<typeof urlQuery> = {}
-      if ('tagIDs' in patch)
-        result.tagIDs = patch.tagIDs && patch.tagIDs.length > 0 ? patch.tagIDs : null
-      if ('keywords' in patch)
-        result.keywords = patch.keywords ? patch.keywords : null
-      if ('isCreatedByMe' in patch)
-        result.isCreatedByMe = patch.isCreatedByMe ? true : null
-      return result
-    }
+  const setTagIDs = useCallback((tagIDs: string[]) => {
+    setQuery({ tagIDs }, { history: 'push' })
+  }, [setQuery])
 
-    if (typeof next === 'function') {
-      setUrlQuery(prev => buildPatch(next({
-        tagIDs: prev.tagIDs ?? undefined,
-        keywords: normalizeKeywords(prev.keywords),
-        isCreatedByMe: prev.isCreatedByMe ?? false,
-      })))
-      return
-    }
+  const setIsCreatedByMe = useCallback((isCreatedByMe: boolean) => {
+    setQuery({ isCreatedByMe }, { history: 'push' })
+  }, [setQuery])
 
-    setUrlQuery(buildPatch(next))
-  }, [setUrlQuery])
-
-  return useMemo(() => ({ query, setQuery }), [query, setQuery])
+  return useMemo(() => ({
+    query,
+    setKeywords,
+    setTagIDs,
+    setIsCreatedByMe,
+  }), [query, setKeywords, setTagIDs, setIsCreatedByMe])
 }
-
-export default useAppsQueryState
