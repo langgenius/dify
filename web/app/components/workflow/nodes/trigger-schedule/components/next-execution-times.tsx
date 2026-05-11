@@ -1,6 +1,6 @@
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import type { ScheduleTriggerNodeType } from '../types'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { getFormattedExecutionTimes } from '../utils/execution-time-calculator'
 
 type NextExecutionTimesProps = {
@@ -21,15 +21,15 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
   return (
     <div className="space-y-2">
       <label className="block text-xs font-medium text-gray-500">
-        {t('workflow.nodes.triggerSchedule.nextExecutionTimes')}
+        {t('nodes.triggerSchedule.nextExecutionTimes', { ns: 'workflow' })}
       </label>
       <div className="flex min-h-[80px] flex-col rounded-xl bg-components-input-bg-normal py-2">
         {executionTimes.map((time, index) => (
           <div key={index} className="flex items-baseline text-xs">
-            <span className="w-6 select-none text-right font-mono font-normal leading-[150%] tracking-wider text-text-quaternary">
+            <span className="w-6 text-right font-mono leading-[150%] font-normal tracking-wider text-text-quaternary select-none">
               {String(index + 1).padStart(2, '0')}
             </span>
-            <span className="pl-2 pr-3 font-mono font-normal leading-[150%] tracking-wider text-text-secondary">
+            <span className="pr-3 pl-2 font-mono leading-[150%] font-normal tracking-wider text-text-secondary">
               {time}
             </span>
           </div>

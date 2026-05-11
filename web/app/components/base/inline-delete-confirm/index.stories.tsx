@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { fn } from 'storybook/test'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
+import { fn } from 'storybook/test'
 import InlineDeleteConfirm from '.'
 
 const meta = {

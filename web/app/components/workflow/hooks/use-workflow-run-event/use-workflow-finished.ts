@@ -1,8 +1,8 @@
-import { useCallback } from 'react'
-import { produce } from 'immer'
 import type { WorkflowFinishedResponse } from '@/types/workflow'
-import { useWorkflowStore } from '@/app/components/workflow/store'
+import { produce } from 'immer'
+import { useCallback } from 'react'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 export const useWorkflowFinished = () => {
   const workflowStore = useWorkflowStore()
@@ -14,7 +14,7 @@ export const useWorkflowFinished = () => {
       setWorkflowRunningData,
     } = workflowStore.getState()
 
-    const isStringOutput = data.outputs && Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+    const isStringOutput = data.outputs && Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]!] === 'string'
 
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.result = {
@@ -24,7 +24,7 @@ export const useWorkflowFinished = () => {
       } as any
       if (isStringOutput) {
         draft.resultTabActive = true
-        draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+        draft.resultText = data.outputs[Object.keys(data.outputs)[0]!]
       }
     }))
   }, [workflowStore])

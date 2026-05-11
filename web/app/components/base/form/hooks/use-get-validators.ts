@@ -1,10 +1,10 @@
+import type { ReactNode } from 'react'
+import type { FormSchema } from '../types'
 import {
   isValidElement,
   useCallback,
 } from 'react'
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { FormSchema } from '../types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 export const useGetValidators = () => {
@@ -33,15 +33,15 @@ export const useGetValidators = () => {
       mergedValidators = {
         onMount: ({ value }: any) => {
           if (!value)
-            return t('common.errorMsg.fieldRequired', { field: memorizedLabel || name })
+            return t('errorMsg.fieldRequired', { ns: 'common', field: memorizedLabel || name })
         },
         onChange: ({ value }: any) => {
           if (!value)
-            return t('common.errorMsg.fieldRequired', { field: memorizedLabel || name })
+            return t('errorMsg.fieldRequired', { ns: 'common', field: memorizedLabel || name })
         },
         onBlur: ({ value }: any) => {
           if (!value)
-            return t('common.errorMsg.fieldRequired', { field: memorizedLabel })
+            return t('errorMsg.fieldRequired', { ns: 'common', field: memorizedLabel })
         },
       }
     }

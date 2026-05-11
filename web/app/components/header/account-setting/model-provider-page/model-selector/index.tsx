@@ -1,22 +1,15 @@
-import type { FC } from 'react'
-import { useState } from 'react'
-import type {
-  DefaultModel,
-  Model,
-  ModelItem,
-} from '../declarations'
-import type { ModelFeatureEnum } from '../declarations'
+import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
+import type { DefaultModel, Model, ModelFeatureEnum, ModelItem } from '../declarations'
+import type { ModelSelectorValue } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ModelStatusEnum } from '../declarations'
 import { useCurrentProviderAndModel } from '../hooks'
-import ModelTrigger from './model-trigger'
-import EmptyTrigger from './empty-trigger'
-import DeprecatedModelTrigger from './deprecated-model-trigger'
+import ModelSelectorTrigger from './model-selector-trigger'
 import Popup from './popup'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import classNames from '@/utils/classnames'
+import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
 
 type ModelSelectorProps = {
   defaultModel?: DefaultModel
@@ -24,23 +17,27 @@ type ModelSelectorProps = {
   triggerClassName?: string
   popupClassName?: string
   onSelect?: (model: DefaultModel) => void
+  onHide?: () => void
   readonly?: boolean
   scopeFeatures?: ModelFeatureEnum[]
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
 }
-const ModelSelector: FC<ModelSelectorProps> = ({
+function ModelSelector({
   defaultModel,
   modelList,
   triggerClassName,
   popupClassName,
   onSelect,
+  onHide,
   readonly,
   scopeFeatures = [],
   deprecatedClassName,
-  showDeprecatedWarnIcon = false,
-}) => {
+  showDeprecatedWarnIcon = true,
+}: ModelSelectorProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [inputValue, setInputValue] = useState('')
   const {
     currentProvider,
     currentModel,
@@ -48,75 +45,103 @@ const ModelSelector: FC<ModelSelectorProps> = ({
     modelList,
     defaultModel,
   )
+  const currentValue = useMemo<ModelSelectorValue | null>(() => {
+    if (!currentProvider || !currentModel)
+      return null
 
-  const handleSelect = (provider: string, model: ModelItem) => {
-    setOpen(false)
+    return {
+      provider: currentProvider.provider,
+      model: currentModel.model,
+    }
+  }, [currentModel, currentProvider])
 
-    if (onSelect)
-      onSelect({ provider, model: model.model })
-  }
-
-  const handleToggle = () => {
+  const handleOpenChange = useCallback((newOpen: boolean) => {
     if (readonly)
       return
 
-    setOpen(v => !v)
-  }
+    setOpen(newOpen)
+    if (!newOpen)
+      setInputValue('')
+  }, [readonly])
+
+  const handleSelect = useCallback((provider: string, model: ModelItem) => {
+    setOpen(false)
+    setInputValue('')
+
+    if (onSelect)
+      onSelect({ provider, model: model.model })
+  }, [onSelect])
+
+  const handleValueChange = useCallback((value: ModelSelectorValue | null) => {
+    if (!value)
+      return
+
+    const provider = modelList.find(model => model.provider === value.provider)
+    const model = provider?.models.find(model => model.model === value.model)
+
+    if (!provider || !model)
+      return
+    if (model.status !== ModelStatusEnum.active)
+      return
+
+    handleSelect(provider.provider, model)
+  }, [handleSelect, modelList])
+
+  const handleInputValueChange = useCallback((inputValue: string, details: ComboboxRootChangeEventDetails) => {
+    if (details.reason !== 'item-press')
+      setInputValue(inputValue)
+  }, [])
+
+  const handleHide = useCallback(() => {
+    setOpen(false)
+    setInputValue('')
+    onHide?.()
+  }, [onHide])
 
   return (
-    <PortalToFollowElem
+    <Combobox<ModelSelectorValue>
+      filter={null}
+      inputValue={inputValue}
+      isItemEqualToValue={isSameModelSelectorValue}
+      itemToStringLabel={getModelSelectorValueLabel}
       open={open}
-      onOpenChange={setOpen}
-      placement='bottom-start'
-      offset={4}
+      value={currentValue}
+      onInputValueChange={handleInputValueChange}
+      onOpenChange={handleOpenChange}
+      onValueChange={handleValueChange}
     >
-      <div className={classNames('relative')}>
-        <PortalToFollowElemTrigger
-          onClick={handleToggle}
-          className='block'
-        >
-          {
-            currentModel && currentProvider && (
-              <ModelTrigger
-                open={open}
-                provider={currentProvider}
-                model={currentModel}
-                className={triggerClassName}
-                readonly={readonly}
-              />
-            )
-          }
-          {
-            !currentModel && defaultModel && (
-              <DeprecatedModelTrigger
-                modelName={defaultModel?.model || ''}
-                providerName={defaultModel?.provider || ''}
-                className={triggerClassName}
-                showWarnIcon={showDeprecatedWarnIcon}
-                contentClassName={deprecatedClassName}
-              />
-            )
-          }
-          {
-            !defaultModel && (
-              <EmptyTrigger
-                open={open}
-                className={triggerClassName}
-              />
-            )
-          }
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className={`z-[1002] ${popupClassName}`}>
-          <Popup
-            defaultModel={defaultModel}
-            modelList={modelList}
-            onSelect={handleSelect}
-            scopeFeatures={scopeFeatures}
-            onHide={() => setOpen(false)}
-          />
-        </PortalToFollowElemContent>
-      </div>
-    </PortalToFollowElem>
+      <ComboboxTrigger
+        aria-label={t('detailPanel.configureModel', { ns: 'plugin' })}
+        icon={false}
+        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
+        disabled={readonly}
+      >
+        <ModelSelectorTrigger
+          currentProvider={currentProvider}
+          currentModel={currentModel}
+          defaultModel={defaultModel}
+          open={open}
+          readonly={readonly}
+          className={triggerClassName}
+          deprecatedClassName={deprecatedClassName}
+          showDeprecatedWarnIcon={showDeprecatedWarnIcon}
+        />
+      </ComboboxTrigger>
+      <ComboboxContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName={cn('min-w-[320px] overflow-hidden rounded-xl', popupClassName)}
+      >
+        <Popup
+          defaultModel={defaultModel}
+          inputValue={inputValue}
+          modelList={modelList}
+          scopeFeatures={scopeFeatures}
+          onInputValueChange={setInputValue}
+          onHide={handleHide}
+        />
+      </ComboboxContent>
+    </Combobox>
   )
 }
 

@@ -6,6 +6,8 @@ in Dify. It follows Domain-Driven Design principles with proper type hints and
 eliminates the need for repetitive language switching logic.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from typing import Any, Protocol
@@ -35,6 +37,7 @@ class EmailType(StrEnum):
     ENTERPRISE_CUSTOM = auto()
     QUEUE_MONITOR_ALERT = auto()
     DOCUMENT_CLEAN_NOTIFY = auto()
+    WORKFLOW_COMMENT_MENTION = auto()
     EMAIL_REGISTER = auto()
     EMAIL_REGISTER_WHEN_ACCOUNT_EXIST = auto()
     RESET_PASSWORD_WHEN_ACCOUNT_NOT_EXIST_NO_REGISTER = auto()
@@ -53,7 +56,7 @@ class EmailLanguage(StrEnum):
     ZH_HANS = "zh-Hans"
 
     @classmethod
-    def from_language_code(cls, language_code: str) -> "EmailLanguage":
+    def from_language_code(cls, language_code: str) -> EmailLanguage:
         """Convert a language code to EmailLanguage with fallback to English."""
         if language_code == "zh-Hans":
             return cls.ZH_HANS
@@ -449,6 +452,18 @@ def create_default_email_config() -> EmailI18nConfig:
                 subject="Dify 知识库自动禁用通知",
                 template_path="clean_document_job_mail_template_zh-CN.html",
                 branded_template_path="clean_document_job_mail_template_zh-CN.html",
+            ),
+        },
+        EmailType.WORKFLOW_COMMENT_MENTION: {
+            EmailLanguage.EN_US: EmailTemplate(
+                subject="You were mentioned in a workflow comment",
+                template_path="workflow_comment_mention_template_en-US.html",
+                branded_template_path="without-brand/workflow_comment_mention_template_en-US.html",
+            ),
+            EmailLanguage.ZH_HANS: EmailTemplate(
+                subject="你在工作流评论中被提及",
+                template_path="workflow_comment_mention_template_zh-CN.html",
+                branded_template_path="without-brand/workflow_comment_mention_template_zh-CN.html",
             ),
         },
         EmailType.TRIGGER_EVENTS_LIMIT_SANDBOX: {

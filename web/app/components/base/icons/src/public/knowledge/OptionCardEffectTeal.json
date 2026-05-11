@@ -1,89 +1,89 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "212",
-			"height": "92",
-			"viewBox": "0 0 212 92",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"opacity": "0.8",
-					"filter": "url(#filter0_f_9981_52393)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "circle",
-						"attributes": {
-							"cx": "24",
-							"cy": "24",
-							"r": "28",
-							"fill": "#0E9384"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "filter",
-						"attributes": {
-							"id": "filter0_f_9981_52393",
-							"x": "-164",
-							"y": "-164",
-							"width": "376",
-							"height": "376",
-							"filterUnits": "userSpaceOnUse",
-							"color-interpolation-filters": "sRGB"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "feFlood",
-								"attributes": {
-									"flood-opacity": "0",
-									"result": "BackgroundImageFix"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feBlend",
-								"attributes": {
-									"mode": "normal",
-									"in": "SourceGraphic",
-									"in2": "BackgroundImageFix",
-									"result": "shape"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "feGaussianBlur",
-								"attributes": {
-									"stdDeviation": "80",
-									"result": "effect1_foregroundBlur_9981_52393"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "OptionCardEffectTeal"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "212",
+      "height": "92",
+      "viewBox": "0 0 212 92",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "opacity": "0.8",
+          "filter": "url(#filter0_f_9981_52393)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "circle",
+            "attributes": {
+              "cx": "24",
+              "cy": "24",
+              "r": "28",
+              "fill": "#0E9384"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "filter",
+            "attributes": {
+              "id": "filter0_f_9981_52393",
+              "x": "-164",
+              "y": "-164",
+              "width": "376",
+              "height": "376",
+              "filterUnits": "userSpaceOnUse",
+              "color-interpolation-filters": "sRGB"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "feFlood",
+                "attributes": {
+                  "flood-opacity": "0",
+                  "result": "BackgroundImageFix"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feBlend",
+                "attributes": {
+                  "mode": "normal",
+                  "in": "SourceGraphic",
+                  "in2": "BackgroundImageFix",
+                  "result": "shape"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "feGaussianBlur",
+                "attributes": {
+                  "stdDeviation": "80",
+                  "result": "effect1_foregroundBlur_9981_52393"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "OptionCardEffectTeal"
 }

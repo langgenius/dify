@@ -2,30 +2,39 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
-    validate_dataset_token,
 )
-from core.model_runtime.entities.model_entities import ModelType
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from fields.dataset_fields import dataset_detail_fields
-from fields.tag_fields import build_dataset_tag_fields
+from fields.tag_fields import DataSetTag
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.login import current_user
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
+from models.enums import TagType
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
-from services.tag_service import TagService
+from services.tag_service import (
+    SaveTagPayload,
+    TagBindingCreatePayload,
+    TagBindingDeletePayload,
+    TagService,
+    UpdateTagPayload,
+)
+
+register_enum_models(service_api_ns, DatasetPermissionEnum)
 
 
 class DatasetCreatePayload(BaseModel):
@@ -39,6 +48,7 @@ class DatasetCreatePayload(BaseModel):
     retrieval_model: RetrievalModel | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
+    summary_index_setting: dict | None = None
 
 
 class DatasetUpdatePayload(BaseModel):
@@ -49,7 +59,7 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     retrieval_model: RetrievalModel | None = None
-    partial_member_list: list[str] | None = None
+    partial_member_list: list[dict[str, str]] | None = None
     external_retrieval_model: dict[str, Any] | None = None
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
@@ -84,8 +94,34 @@ class TagBindingPayload(BaseModel):
 
 
 class TagUnbindingPayload(BaseModel):
-    tag_id: str
+    """Accept the legacy single-tag Service API payload while exposing a normalized tag_ids list internally."""
+
+    tag_ids: list[str] = Field(default_factory=list)
+    tag_id: str | None = None
     target_id: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_tag_id(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        if not data.get("tag_ids") and data.get("tag_id"):
+            return {**data, "tag_ids": [data["tag_id"]]}
+        return data
+
+    @model_validator(mode="after")
+    def validate_tag_ids(self) -> "TagUnbindingPayload":
+        if not self.tag_ids:
+            raise ValueError("Tag IDs is required.")
+        return self
+
+
+class DatasetListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+    keyword: str | None = Field(default=None, description="Search keyword")
+    include_all: bool = Field(default=False, description="Include all datasets")
+    tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
 
 
 register_schema_models(
@@ -97,6 +133,8 @@ register_schema_models(
     TagDeletePayload,
     TagBindingPayload,
     TagUnbindingPayload,
+    DatasetListQuery,
+    DataSetTag,
 )
 
 
@@ -114,21 +152,17 @@ class DatasetListApi(DatasetApiResource):
     )
     def get(self, tenant_id):
         """Resource for getting datasets."""
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
+        query = DatasetListQuery.model_validate(request.args.to_dict())
         # provider = request.args.get("provider", default="vendor")
-        search = request.args.get("keyword", default=None, type=str)
-        tag_ids = request.args.getlist("tag_ids")
-        include_all = request.args.get("include_all", default="false").lower() == "true"
 
         datasets, total = DatasetService.get_datasets(
-            page, limit, tenant_id, current_user, search, tag_ids, include_all
+            query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
         )
         # check embedding setting
-        provider_manager = ProviderManager()
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
+        provider_manager = create_plugin_provider_manager(tenant_id=cid)
         configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -139,16 +173,27 @@ class DatasetListApi(DatasetApiResource):
 
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
-            if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
-                item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
-                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
+            if (
+                item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY  # pyrefly: ignore[bad-index]
+                and item["embedding_model_provider"]  # pyrefly: ignore[bad-index]
+            ):
+                item["embedding_model_provider"] = str(  # pyrefly: ignore[unsupported-operation]
+                    ModelProviderID(item["embedding_model_provider"])  # pyrefly: ignore[bad-index]
+                )
+                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"  # pyrefly: ignore[bad-index]
                 if item_model in model_names:
-                    item["embedding_available"] = True
+                    item["embedding_available"] = True  # type: ignore
                 else:
-                    item["embedding_available"] = False
+                    item["embedding_available"] = False  # type: ignore
             else:
-                item["embedding_available"] = True
-        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+                item["embedding_available"] = True  # type: ignore
+        response = {
+            "data": data,
+            "has_more": len(datasets) == query.limit,
+            "limit": query.limit,
+            "total": total,
+            "page": query.page,
+        }
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__])
@@ -199,6 +244,7 @@ class DatasetListApi(DatasetApiResource):
                 embedding_model_provider=payload.embedding_model_provider,
                 embedding_model_name=payload.embedding_model,
                 retrieval_model=payload.retrieval_model,
+                summary_index_setting=payload.summary_index_setting,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -232,10 +278,10 @@ class DatasetApi(DatasetApiResource):
             raise Forbidden(str(e))
         data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         # check embedding setting
-        provider_manager = ProviderManager()
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
+        provider_manager = create_plugin_provider_manager(tenant_id=cid)
         configurations = provider_manager.get_configurations(tenant_id=cid)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -244,7 +290,7 @@ class DatasetApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        if data.get("indexing_technique") == "high_quality":
+        if data.get("indexing_technique") == IndexTechniqueType.HIGH_QUALITY:
             item_model = f"{data.get('embedding_model')}:{data.get('embedding_model_provider')}"
             if item_model in model_names:
                 data["embedding_available"] = True
@@ -294,7 +340,7 @@ class DatasetApi(DatasetApiResource):
         # check embedding model setting
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
-        if payload.indexing_technique == "high_quality" or embedding_model_provider:
+        if payload.indexing_technique == IndexTechniqueType.HIGH_QUALITY or embedding_model_provider:
             if embedding_model_provider and embedding_model:
                 DatasetService.check_embedding_model_setting(
                     dataset.tenant_id, embedding_model_provider, embedding_model
@@ -375,7 +421,7 @@ class DatasetApi(DatasetApiResource):
         try:
             if DatasetService.delete_dataset(dataset_id_str, current_user):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
-                return 204
+                return "", 204
             else:
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:
@@ -460,16 +506,14 @@ class DatasetTagsApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @validate_dataset_token
-    @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
-    def get(self, _, dataset_id):
+    def get(self, _):
         """Get all knowledge type tags."""
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
         tags = TagService.get_tags("knowledge", cid)
-
-        return tags, 200
+        tag_models = TypeAdapter(list[DataSetTag]).validate_python(tags, from_attributes=True)
+        return [tag.model_dump(mode="json") for tag in tag_models], 200
 
     @service_api_ns.expect(service_api_ns.models[TagCreatePayload.__name__])
     @service_api_ns.doc("create_dataset_tag")
@@ -481,18 +525,18 @@ class DatasetTagsApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
-    @validate_dataset_token
-    def post(self, _, dataset_id):
+    def post(self, _):
         """Add a knowledge type tag."""
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         payload = TagCreatePayload.model_validate(service_api_ns.payload or {})
-        tag = TagService.save_tags({"name": payload.name, "type": "knowledge"})
+        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=TagType.KNOWLEDGE))
 
-        response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
+        response = DataSetTag.model_validate(
+            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
+        ).model_dump(mode="json")
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[TagUpdatePayload.__name__])
@@ -505,22 +549,20 @@ class DatasetTagsApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @service_api_ns.marshal_with(build_dataset_tag_fields(service_api_ns))
-    @validate_dataset_token
-    def patch(self, _, dataset_id):
+    def patch(self, _):
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
-        params = {"name": payload.name, "type": "knowledge"}
         tag_id = payload.tag_id
-        tag = TagService.update_tags(params, tag_id)
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name, type=TagType.KNOWLEDGE), tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
-        response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
-
+        response = DataSetTag.model_validate(
+            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
+        ).model_dump(mode="json")
         return response, 200
 
     @service_api_ns.expect(service_api_ns.models[TagDeletePayload.__name__])
@@ -533,14 +575,13 @@ class DatasetTagsApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @validate_dataset_token
     @edit_permission_required
-    def delete(self, _, dataset_id):
+    def delete(self, _):
         """Delete a knowledge type tag."""
         payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag(payload.tag_id)
 
-        return 204
+        return "", 204
 
 
 @service_api_ns.route("/datasets/tags/binding")
@@ -555,42 +596,44 @@ class DatasetTagBindingApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    @validate_dataset_token
-    def post(self, _, dataset_id):
+    def post(self, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         payload = TagBindingPayload.model_validate(service_api_ns.payload or {})
-        TagService.save_tag_binding({"tag_ids": payload.tag_ids, "target_id": payload.target_id, "type": "knowledge"})
+        TagService.save_tag_binding(
+            TagBindingCreatePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE)
+        )
 
-        return 204
+        return "", 204
 
 
 @service_api_ns.route("/datasets/tags/unbinding")
 class DatasetTagUnbindingApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[TagUnbindingPayload.__name__])
-    @service_api_ns.doc("unbind_dataset_tag")
-    @service_api_ns.doc(description="Unbind a tag from a dataset")
+    @service_api_ns.doc("unbind_dataset_tags")
+    @service_api_ns.doc(description="Unbind tags from a dataset")
     @service_api_ns.doc(
         responses={
-            204: "Tag unbound successfully",
+            204: "Tags unbound successfully",
             401: "Unauthorized - invalid API token",
             403: "Forbidden - insufficient permissions",
         }
     )
-    @validate_dataset_token
-    def post(self, _, dataset_id):
+    def post(self, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         payload = TagUnbindingPayload.model_validate(service_api_ns.payload or {})
-        TagService.delete_tag_binding({"tag_id": payload.tag_id, "target_id": payload.target_id, "type": "knowledge"})
+        TagService.delete_tag_binding(
+            TagBindingDeletePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE)
+        )
 
-        return 204
+        return "", 204
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/tags")
@@ -604,7 +647,6 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @validate_dataset_token
     def get(self, _, *args, **kwargs):
         """Get all knowledge type tags."""
         dataset_id = kwargs.get("dataset_id")

@@ -3,7 +3,8 @@
  * Extracted from the main markdown renderer for modularity.
  * Uses the AudioGallery component to display audio players.
  */
-import React, { memo } from 'react'
+import * as React from 'react'
+import { memo } from 'react'
 import AudioGallery from '@/app/components/base/audio-gallery'
 
 const AudioBlock: any = memo(({ node }: any) => {

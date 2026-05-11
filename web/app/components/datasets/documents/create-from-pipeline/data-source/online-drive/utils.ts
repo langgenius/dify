@@ -1,19 +1,21 @@
-import { type OnlineDriveFile, OnlineDriveFileType } from '@/models/pipeline'
+import type { OnlineDriveFile } from '@/models/pipeline'
 import type { OnlineDriveData } from '@/types/pipeline'
+import { OnlineDriveFileType } from '@/models/pipeline'
 
 export const isFile = (type: 'file' | 'folder'): boolean => {
   return type === 'file'
 }
 
 export const isBucketListInitiation = (data: OnlineDriveData[], prefix: string[], bucket: string): boolean => {
-  if (bucket || prefix.length > 0) return false
+  if (bucket || prefix.length > 0)
+    return false
   const hasBucket = data.every(item => !!item.bucket)
-  return hasBucket && (data.length > 1 || (data.length === 1 && !!data[0].bucket && data[0].files.length === 0))
+  return hasBucket && (data.length > 1 || (data.length === 1 && !!data[0]!.bucket && data[0]!.files.length === 0))
 }
 
 export const convertOnlineDriveData = (data: OnlineDriveData[], prefix: string[], bucket: string): {
-  fileList: OnlineDriveFile[],
-  isTruncated: boolean,
+  fileList: OnlineDriveFile[]
+  isTruncated: boolean
   nextPageParameters: Record<string, any>
   hasBucket: boolean
 } => {
@@ -36,7 +38,7 @@ export const convertOnlineDriveData = (data: OnlineDriveData[], prefix: string[]
     hasBucket = true
   }
   else {
-    data[0].files.forEach((file) => {
+    data[0]!.files.forEach((file) => {
       const { id, name, size, type } = file
       const isFileType = isFile(type)
       fileList.push({
@@ -46,9 +48,9 @@ export const convertOnlineDriveData = (data: OnlineDriveData[], prefix: string[]
         type: isFileType ? OnlineDriveFileType.file : OnlineDriveFileType.folder,
       })
     })
-    isTruncated = data[0].is_truncated ?? false
-    nextPageParameters = data[0].next_page_parameters ?? {}
-    hasBucket = !!data[0].bucket
+    isTruncated = data[0]!.is_truncated ?? false
+    nextPageParameters = data[0]!.next_page_parameters ?? {}
+    hasBucket = !!data[0]!.bucket
   }
   return { fileList, isTruncated, nextPageParameters, hasBucket }
 }

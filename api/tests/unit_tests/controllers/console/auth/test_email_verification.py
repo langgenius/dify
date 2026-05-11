@@ -8,6 +8,7 @@ This module tests the email code login mechanism including:
 - Workspace creation for new users
 """
 
+import base64
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,6 +24,11 @@ from controllers.console.error import (
     WorkspacesLimitExceeded,
 )
 from services.errors.account import AccountRegisterError
+
+
+def encode_code(code: str) -> str:
+    """Helper to encode verification code as Base64 for testing."""
+    return base64.b64encode(code.encode("utf-8")).decode()
 
 
 class TestEmailCodeLoginSendEmailApi:
@@ -59,7 +65,6 @@ class TestEmailCodeLoginSendEmailApi:
         - IP rate limiting is checked
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_ip_limit.return_value = False
         mock_get_user.return_value = mock_account
         mock_send_email.return_value = "email_token_123"
@@ -92,7 +97,6 @@ class TestEmailCodeLoginSendEmailApi:
         - Registration is allowed by system features
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_ip_limit.return_value = False
         mock_get_user.return_value = None
         mock_get_features.return_value.is_allow_register = True
@@ -124,7 +128,6 @@ class TestEmailCodeLoginSendEmailApi:
         - Registration is blocked by system features
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_ip_limit.return_value = False
         mock_get_user.return_value = None
         mock_get_features.return_value.is_allow_register = False
@@ -137,7 +140,7 @@ class TestEmailCodeLoginSendEmailApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
-    def test_send_email_code_ip_rate_limited(self, mock_is_ip_limit, mock_db, app):
+    def test_send_email_code_ip_rate_limited(self, mock_is_ip_limit, mock_db, app: Flask):
         """
         Test email code sending blocked by IP rate limit.
 
@@ -146,7 +149,6 @@ class TestEmailCodeLoginSendEmailApi:
         - Prevents spam and abuse
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_ip_limit.return_value = True
 
         # Act & Assert
@@ -158,7 +160,7 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
-    def test_send_email_code_frozen_account(self, mock_get_user, mock_is_ip_limit, mock_db, app):
+    def test_send_email_code_frozen_account(self, mock_get_user, mock_is_ip_limit, mock_db, app: Flask):
         """
         Test email code sending to frozen account.
 
@@ -166,7 +168,6 @@ class TestEmailCodeLoginSendEmailApi:
         - AccountInFreezeError is raised for frozen accounts
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_ip_limit.return_value = False
         mock_get_user.side_effect = AccountRegisterError("Account frozen")
 
@@ -194,7 +195,7 @@ class TestEmailCodeLoginSendEmailApi:
         mock_get_user,
         mock_is_ip_limit,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         language_input,
         expected_language,
@@ -207,7 +208,6 @@ class TestEmailCodeLoginSendEmailApi:
         - Defaults to en-US when not specified
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_is_ip_limit.return_value = False
         mock_get_user.return_value = mock_account
         mock_send_email.return_value = "token"
@@ -267,7 +267,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -280,7 +280,6 @@ class TestEmailCodeLoginApi:
         - User is logged in with token pair
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = [MagicMock()]
@@ -290,7 +289,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "123456", "token": "valid_token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": "valid_token"},
         ):
             api = EmailCodeLoginApi()
             response = api.post()
@@ -316,7 +315,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
         mock_token_pair,
     ):
@@ -329,7 +328,6 @@ class TestEmailCodeLoginApi:
         - User is logged in after account creation
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_data.return_value = {"email": "newuser@example.com", "code": "123456"}
         mock_get_user.return_value = None
         mock_create_account.return_value = mock_account
@@ -339,7 +337,12 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "newuser@example.com", "code": "123456", "token": "valid_token", "language": "en-US"},
+            json={
+                "email": "newuser@example.com",
+                "code": encode_code("123456"),
+                "token": "valid_token",
+                "language": "en-US",
+            },
         ):
             api = EmailCodeLoginApi()
             response = api.post()
@@ -350,7 +353,7 @@ class TestEmailCodeLoginApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    def test_email_code_login_invalid_token(self, mock_get_data, mock_db, app):
+    def test_email_code_login_invalid_token(self, mock_get_data, mock_db, app: Flask):
         """
         Test email code login with invalid token.
 
@@ -358,14 +361,13 @@ class TestEmailCodeLoginApi:
         - InvalidTokenError is raised for invalid/expired tokens
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_data.return_value = None
 
         # Act & Assert
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "123456", "token": "invalid_token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": "invalid_token"},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(InvalidTokenError):
@@ -373,7 +375,7 @@ class TestEmailCodeLoginApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    def test_email_code_login_email_mismatch(self, mock_get_data, mock_db, app):
+    def test_email_code_login_email_mismatch(self, mock_get_data, mock_db, app: Flask):
         """
         Test email code login with mismatched email.
 
@@ -381,14 +383,13 @@ class TestEmailCodeLoginApi:
         - InvalidEmailError is raised when email doesn't match token
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_data.return_value = {"email": "original@example.com", "code": "123456"}
 
         # Act & Assert
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "different@example.com", "code": "123456", "token": "token"},
+            json={"email": "different@example.com", "code": encode_code("123456"), "token": "token"},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(InvalidEmailError):
@@ -396,7 +397,7 @@ class TestEmailCodeLoginApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    def test_email_code_login_wrong_code(self, mock_get_data, mock_db, app):
+    def test_email_code_login_wrong_code(self, mock_get_data, mock_db, app: Flask):
         """
         Test email code login with incorrect code.
 
@@ -404,14 +405,13 @@ class TestEmailCodeLoginApi:
         - EmailCodeError is raised for wrong verification code
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
 
         # Act & Assert
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "wrong_code", "token": "token"},
+            json={"email": "test@example.com", "code": encode_code("wrong_code"), "token": "token"},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(EmailCodeError):
@@ -431,7 +431,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
     ):
         """
@@ -442,7 +442,6 @@ class TestEmailCodeLoginApi:
         - User is added as owner of new workspace
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = []
@@ -475,7 +474,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
     ):
         """
@@ -485,7 +484,6 @@ class TestEmailCodeLoginApi:
         - WorkspacesLimitExceeded is raised when limit reached
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = []
@@ -497,7 +495,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "123456", "token": "token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": "token"},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(WorkspacesLimitExceeded):
@@ -517,7 +515,7 @@ class TestEmailCodeLoginApi:
         mock_revoke_token,
         mock_get_data,
         mock_db,
-        app,
+        app: Flask,
         mock_account,
     ):
         """
@@ -527,7 +525,6 @@ class TestEmailCodeLoginApi:
         - NotAllowedCreateWorkspace is raised when creation disabled
         """
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()
         mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = []
@@ -539,7 +536,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "123456", "token": "token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": "token"},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(NotAllowedCreateWorkspace):

@@ -1,29 +1,29 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "17",
-			"height": "16",
-			"viewBox": "0 0 17 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M13.3625 8H2.6958M2.6958 8L6.6958 12M2.6958 8L6.6958 4",
-					"stroke": "currentColor",
-					"stroke-width": "2",
-					"stroke-linecap": "round",
-					"stroke-linejoin": "round"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "ArrowNarrowLeft"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "17",
+      "height": "16",
+      "viewBox": "0 0 17 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M13.3625 8H2.6958M2.6958 8L6.6958 12M2.6958 8L6.6958 4",
+          "stroke": "currentColor",
+          "stroke-width": "2",
+          "stroke-linecap": "round",
+          "stroke-linejoin": "round"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "ArrowNarrowLeft"
 }

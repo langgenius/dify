@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useProviderContext } from '@/context/provider-context'
 
 const ProviderContextMock: FC = () => {

@@ -1,8 +1,6 @@
-const fs = require('node:fs')
+import { readFileSync, writeFileSync } from 'node:fs'
 // https://www.npmjs.com/package/uglify-js
-const UglifyJS = require('uglify-js')
-
-const { readFileSync, writeFileSync } = fs
+import UglifyJS from 'uglify-js'
 
 writeFileSync('public/embed.min.js', UglifyJS.minify({
   'embed.js': readFileSync('public/embed.js', 'utf8'),

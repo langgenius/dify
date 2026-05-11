@@ -1,25 +1,21 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dayjs } from 'dayjs'
-import { Period } from '../types'
 import type { TimePickerProps } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import TimezoneLabel from '@/app/components/base/timezone-label'
+import { Period } from '../types'
 import dayjs, {
   getDateWithTimezone,
   getHourIn12Hour,
   isDayjsObject,
   toDayjs,
 } from '../utils/dayjs'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import Footer from './footer'
-import Options from './options'
 import Header from './header'
-import { useTranslation } from 'react-i18next'
-import { RiCloseCircleFill, RiTimeLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
-import TimezoneLabel from '@/app/components/base/timezone-label'
+import Options from './options'
 
 const to24Hour = (hour12: string, period: Period) => {
   const normalized = Number.parseInt(hour12, 10) % 12
@@ -43,30 +39,20 @@ const TimePicker = ({
 }: TimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const isInitial = useRef(true)
+  const isInitialRef = useRef(true)
 
   // Initialize selectedTime
   const [selectedTime, setSelectedTime] = useState(() => {
     return toDayjs(value, { timezone })
   })
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node))
-        setIsOpen(false)
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   // Track previous values to avoid unnecessary updates
   const prevValueRef = useRef(value)
   const prevTimezoneRef = useRef(timezone)
 
   useEffect(() => {
-    if (isInitial.current) {
-      isInitial.current = false
+    if (isInitialRef.current) {
+      isInitialRef.current = false
       // Save initial values on first render
       prevValueRef.current = value
       prevTimezoneRef.current = timezone
@@ -82,12 +68,15 @@ const TimePicker = ({
     prevTimezoneRef.current = timezone
 
     // Skip if neither timezone changed nor value changed
-    if (!timezoneChanged && !valueChanged) return
+    if (!timezoneChanged && !valueChanged)
+      return
 
     if (value !== undefined && value !== null) {
       const dayjsValue = toDayjs(value, { timezone })
-      if (!dayjsValue) return
+      if (!dayjsValue)
+        return
 
+      // eslint-disable-next-line react/set-state-in-effect -- value/timezone changes intentionally resync the internal selected time.
       setSelectedTime(dayjsValue)
 
       if (timezoneChanged && !valueChanged)
@@ -95,6 +84,7 @@ const TimePicker = ({
       return
     }
 
+    // eslint-disable-next-line react/set-state-in-effect -- value/timezone changes intentionally resync the internal selected time.
     setSelectedTime((prev) => {
       if (!isDayjsObject(prev))
         return undefined
@@ -102,23 +92,30 @@ const TimePicker = ({
     })
   }, [timezone, value, onChange])
 
-  const handleClickTrigger = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (isOpen) {
-      setIsOpen(false)
+  const syncSelectedTimeFromValue = useCallback(() => {
+    if (!value)
       return
-    }
-    setIsOpen(true)
 
-    if (value) {
-      const dayjsValue = toDayjs(value, { timezone })
-      const needsUpdate = dayjsValue && (
-        !selectedTime
-        || !isDayjsObject(selectedTime)
-        || !dayjsValue.isSame(selectedTime, 'minute')
-      )
-      if (needsUpdate) setSelectedTime(dayjsValue)
-    }
+    const dayjsValue = toDayjs(value, { timezone })
+    const needsUpdate = dayjsValue && (
+      !selectedTime
+      || !isDayjsObject(selectedTime)
+      || !dayjsValue.isSame(selectedTime, 'minute')
+    )
+    if (needsUpdate)
+      setSelectedTime(dayjsValue)
+  }, [selectedTime, timezone, value])
+
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setIsOpen(nextOpen)
+    if (nextOpen)
+      syncSelectedTimeFromValue()
+  }, [syncSelectedTimeFromValue])
+
+  const handleClickTrigger = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    handleOpenChange(!isOpen)
   }
 
   const handleClear = (e: React.MouseEvent) => {
@@ -128,7 +125,7 @@ const TimePicker = ({
       onClear()
   }
 
-  const handleTimeSelect = (hour: string, minute: string, period: Period) => {
+  const handleTimeSelect = useCallback((hour: string, minute: string, period: Period) => {
     const periodAdjustedHour = to24Hour(hour, period)
     const nextMinute = Number.parseInt(minute, 10)
     setSelectedTime((prev) => {
@@ -141,7 +138,7 @@ const TimePicker = ({
         .set('second', 0)
         .set('millisecond', 0)
     })
-  }
+  }, [timezone])
 
   const getSafeTimeObject = useCallback(() => {
     if (isDayjsObject(selectedTime))
@@ -152,17 +149,17 @@ const TimePicker = ({
   const handleSelectHour = useCallback((hour: string) => {
     const time = getSafeTimeObject()
     handleTimeSelect(hour, time.minute().toString().padStart(2, '0'), time.format('A') as Period)
-  }, [getSafeTimeObject])
+  }, [getSafeTimeObject, handleTimeSelect])
 
   const handleSelectMinute = useCallback((minute: string) => {
     const time = getSafeTimeObject()
     handleTimeSelect(getHourIn12Hour(time).toString().padStart(2, '0'), minute, time.format('A') as Period)
-  }, [getSafeTimeObject])
+  }, [getSafeTimeObject, handleTimeSelect])
 
   const handleSelectPeriod = useCallback((period: Period) => {
     const time = getSafeTimeObject()
     handleTimeSelect(getHourIn12Hour(time).toString().padStart(2, '0'), time.minute().toString().padStart(2, '0'), period)
-  }, [getSafeTimeObject])
+  }, [getSafeTimeObject, handleTimeSelect])
 
   const handleSelectCurrentTime = useCallback(() => {
     const newDate = getDateWithTimezone({ timezone })
@@ -180,7 +177,8 @@ const TimePicker = ({
   const timeFormat = 'hh:mm A'
 
   const formatTimeValue = useCallback((timeValue: string | Dayjs | undefined): string => {
-    if (!timeValue) return ''
+    if (!timeValue)
+      return ''
 
     const dayjsValue = toDayjs(timeValue, { timezone })
     return dayjsValue?.format(timeFormat) || ''
@@ -190,59 +188,63 @@ const TimePicker = ({
 
   const placeholderDate = isOpen && isDayjsObject(selectedTime)
     ? selectedTime.format(timeFormat)
-    : (placeholder || t('time.defaultPlaceholder'))
+    : (placeholder || t('defaultPlaceholder', { ns: 'time' }))
 
   const inputElem = (
     <input
-      className='system-xs-regular flex-1 cursor-pointer select-none appearance-none truncate bg-transparent p-1
-            text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder'
+      className="flex-1 cursor-pointer appearance-none truncate bg-transparent p-1 system-xs-regular text-components-input-text-filled
+            outline-hidden select-none placeholder:text-components-input-text-placeholder"
       readOnly
       value={isOpen ? '' : displayValue}
       placeholder={placeholderDate}
     />
   )
   return (
-    <PortalToFollowElem
+    <Popover
       open={isOpen}
-      onOpenChange={setIsOpen}
-      placement={placement}
+      onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger className={triggerFullWidth ? '!block w-full' : undefined}>
-        {renderTrigger ? (renderTrigger({
-          inputElem,
-          onClick: handleClickTrigger,
-          isOpen,
-        })) : (
-          <div
-            className={cn(
-              'group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
-              triggerFullWidth ? 'w-full min-w-0' : 'w-[252px]',
+      <PopoverTrigger
+        nativeButton={false}
+        className={triggerFullWidth ? 'flex! w-full' : undefined}
+        render={renderTrigger
+          ? renderTrigger({
+              inputElem,
+              onClick: handleClickTrigger,
+              isOpen,
+            })
+          : (
+              <div
+                className={cn(
+                  'group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
+                  triggerFullWidth ? 'w-full min-w-0' : 'w-[252px]',
+                )}
+                onClick={handleClickTrigger}
+                data-testid="time-picker-trigger"
+              >
+                {inputElem}
+                {showTimezone && timezone && (
+                  <TimezoneLabel timezone={timezone} inline className="shrink-0 text-xs select-none" />
+                )}
+                <span className={cn('i-ri-time-line h-4 w-4 shrink-0 text-text-quaternary', isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:hidden')} />
+                <button
+                  type="button"
+                  className={cn('hidden h-4 w-4 shrink-0 border-none bg-transparent p-0 text-text-quaternary hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:inline-block')}
+                  aria-label={t('operation.clear', { ns: 'common' })}
+                  onClick={handleClear}
+                >
+                  <span className="i-ri-close-circle-fill h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
             )}
-            onClick={handleClickTrigger}
-          >
-            {inputElem}
-            {showTimezone && timezone && (
-              <TimezoneLabel timezone={timezone} inline className='shrink-0 select-none text-xs' />
-            )}
-            <RiTimeLine className={cn(
-              'h-4 w-4 shrink-0 text-text-quaternary',
-              isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-              (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:hidden',
-            )} />
-            <RiCloseCircleFill
-              className={cn(
-                'hidden h-4 w-4 shrink-0 text-text-quaternary',
-                (displayValue || (isOpen && selectedTime)) && !notClearable && 'hover:text-text-secondary group-hover:inline-block',
-              )}
-              role='button'
-              aria-label={t('common.operation.clear')}
-              onClick={handleClear}
-            />
-          </div>
-        )}
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className={cn('z-50', popupClassName)}>
-        <div className='mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5'>
+      />
+      <PopoverContent
+        placement={placement}
+        sideOffset={0}
+        className={popupClassName}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
+        <div className="mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}
           <Header title={title} />
 
@@ -262,8 +264,8 @@ const TimePicker = ({
           />
 
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

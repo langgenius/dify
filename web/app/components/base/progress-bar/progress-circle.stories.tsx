@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import ProgressCircle from './progress-circle'
 
@@ -13,10 +13,11 @@ const ProgressCircleDemo = ({
 
   return (
     <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-text-tertiary">
+      <div className="flex items-center justify-between text-xs tracking-[0.18em] text-text-tertiary uppercase">
         <span>Upload progress</span>
         <span className="rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-[11px] text-text-secondary">
-          {percentage}%
+          {percentage}
+          %
         </span>
       </div>
       <div className="flex items-center gap-4">

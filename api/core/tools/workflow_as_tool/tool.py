@@ -1,14 +1,15 @@
+from __future__ import annotations
+
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, cast
 
-from flask import has_request_context
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
+from core.app.file_access import DatabaseFileAccessController
+from core.db.session_factory import session_factory
+from core.helper.trace_id_helper import ParentTraceContext, extract_parent_trace_context_from_args
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
@@ -18,20 +19,25 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError
-from extensions.ext_database import db
+from core.workflow.file_reference import resolve_file_record_id
 from factories.file_factory import build_from_mapping
-from libs.login import current_user
+from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
+from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from models import Account, Tenant
 from models.model import App, EndUser
+from models.utils.file_input_compat import build_file_from_stored_mapping
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
+_file_access_controller = DatabaseFileAccessController()
 
 
 class WorkflowTool(Tool):
     """
     Workflow tool.
     """
+
+    _parent_trace_context: ParentTraceContext | None
 
     def __init__(
         self,
@@ -51,6 +57,7 @@ class WorkflowTool(Tool):
         self.workflow_call_depth = workflow_call_depth
         self.label = label
         self._latest_usage = LLMUsage.empty_usage()
+        self._parent_trace_context = None
 
         super().__init__(entity=entity, runtime=runtime)
 
@@ -91,14 +98,24 @@ class WorkflowTool(Tool):
 
         self._latest_usage = LLMUsage.empty_usage()
 
+        generator_args: dict[str, Any] = {"inputs": tool_parameters, "files": files}
+        if self._parent_trace_context:
+            generator_args.update(
+                extract_parent_trace_context_from_args({"parent_trace_context": self._parent_trace_context})
+            )
+
         result = generator.generate(
             app_model=app,
             workflow=workflow,
             user=user,
-            args={"inputs": tool_parameters, "files": files},
+            args=generator_args,
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
+            # NOTE(QuantumGhost): We explicitly set `pause_state_config` to `None`
+            # because workflow pausing mechanisms (such as HumanInput) are not
+            # supported within WorkflowTool execution context.
+            pause_state_config=None,
         )
         assert isinstance(result, dict)
         data = result.get("data", {})
@@ -181,13 +198,13 @@ class WorkflowTool(Tool):
                             return found
         return None
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "WorkflowTool":
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> WorkflowTool:
         """
         fork a new tool with metadata
 
         :return: the new tool
         """
-        return self.__class__(
+        forked = self.__class__(
             entity=self.entity.model_copy(),
             runtime=runtime,
             workflow_app_id=self.workflow_app_id,
@@ -197,6 +214,24 @@ class WorkflowTool(Tool):
             version=self.version,
             label=self.label,
         )
+        forked._parent_trace_context = self._parent_trace_context.model_copy() if self._parent_trace_context else None
+        return forked
+
+    def set_parent_trace_context(
+        self,
+        *,
+        parent_workflow_run_id: str,
+        parent_node_execution_id: str,
+    ) -> None:
+        """Attach outer workflow trace context without exposing it as tool input."""
+        self._parent_trace_context = ParentTraceContext(
+            parent_workflow_run_id=parent_workflow_run_id,
+            parent_node_execution_id=parent_node_execution_id,
+        )
+
+    def clear_parent_trace_context(self) -> None:
+        """Remove parent trace context before invoking this tool outside a nested workflow."""
+        self._parent_trace_context = None
 
     def _resolve_user(self, user_id: str) -> Account | EndUser | None:
         """
@@ -208,50 +243,38 @@ class WorkflowTool(Tool):
         Returns:
             Account | EndUser | None: The resolved user object, or None if resolution fails.
         """
-        if has_request_context():
-            return self._resolve_user_from_request()
-        else:
-            return self._resolve_user_from_database(user_id=user_id)
-
-    def _resolve_user_from_request(self) -> Account | EndUser | None:
-        """
-        Resolve user from Flask request context.
-        """
-        try:
-            # Note: `current_user` is a LocalProxy. Never compare it with None directly.
-            return getattr(current_user, "_get_current_object", lambda: current_user)()
-        except Exception as e:
-            logger.warning("Failed to resolve user from request context: %s", e)
-            return None
+        return self._resolve_user_from_database(user_id=user_id)
 
     def _resolve_user_from_database(self, user_id: str) -> Account | EndUser | None:
         """
         Resolve user from database (worker/Celery context).
         """
+        with session_factory.create_session() as session:
+            tenant_stmt = select(Tenant).where(Tenant.id == self.runtime.tenant_id)
+            tenant = session.scalar(tenant_stmt)
+            if not tenant:
+                return None
 
-        tenant_stmt = select(Tenant).where(Tenant.id == self.runtime.tenant_id)
-        tenant = db.session.scalar(tenant_stmt)
-        if not tenant:
+            user_stmt = select(Account).where(Account.id == user_id)
+            user = session.scalar(user_stmt)
+            if user:
+                user.current_tenant = tenant
+                session.expunge(user)
+                return user
+
+            end_user_stmt = select(EndUser).where(EndUser.id == user_id, EndUser.tenant_id == tenant.id)
+            end_user = session.scalar(end_user_stmt)
+            if end_user:
+                session.expunge(end_user)
+                return end_user
+
             return None
-
-        user_stmt = select(Account).where(Account.id == user_id)
-        user = db.session.scalar(user_stmt)
-        if user:
-            user.current_tenant = tenant
-            return user
-
-        end_user_stmt = select(EndUser).where(EndUser.id == user_id, EndUser.tenant_id == tenant.id)
-        end_user = db.session.scalar(end_user_stmt)
-        if end_user:
-            return end_user
-
-        return None
 
     def _get_workflow(self, app_id: str, version: str) -> Workflow:
         """
         get the workflow by app id and version
         """
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+        with session_factory.create_session() as session, session.begin():
             if not version:
                 stmt = (
                     select(Workflow)
@@ -263,24 +286,26 @@ class WorkflowTool(Tool):
                 stmt = select(Workflow).where(Workflow.app_id == app_id, Workflow.version == version)
                 workflow = session.scalar(stmt)
 
-        if not workflow:
-            raise ValueError("workflow not found or not published")
+            if not workflow:
+                raise ValueError("workflow not found or not published")
 
-        return workflow
+            session.expunge(workflow)
+            return workflow
 
     def _get_app(self, app_id: str) -> App:
         """
         get the app by app id
         """
         stmt = select(App).where(App.id == app_id)
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+        with session_factory.create_session() as session, session.begin():
             app = session.scalar(stmt)
-        if not app:
-            raise ValueError("app not found")
+            if not app:
+                raise ValueError("app not found")
 
-        return app
+            session.expunge(app)
+            return app
 
-    def _transform_args(self, tool_parameters: dict) -> tuple[dict, list[dict]]:
+    def _transform_args(self, tool_parameters: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, str | None]]]:
         """
         transform the tool parameters
 
@@ -295,18 +320,28 @@ class WorkflowTool(Tool):
                 file = tool_parameters.get(parameter.name)
                 if file:
                     try:
-                        file_var_list = [File.model_validate(f) for f in file]
+                        file_var_list = [
+                            build_file_from_stored_mapping(
+                                file_mapping=cast(Mapping[str, Any], f),
+                                tenant_id=str(self.runtime.tenant_id),
+                            )
+                            for f in file
+                            if isinstance(f, Mapping)
+                        ]
                         for file in file_var_list:
                             file_dict: dict[str, str | None] = {
                                 "transfer_method": file.transfer_method.value,
                                 "type": file.type.value,
                             }
-                            if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                                file_dict["tool_file_id"] = file.related_id
-                            elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-                                file_dict["upload_file_id"] = file.related_id
-                            elif file.transfer_method == FileTransferMethod.REMOTE_URL:
-                                file_dict["url"] = file.generate_url()
+                            match file.transfer_method:
+                                case FileTransferMethod.TOOL_FILE:
+                                    file_dict["tool_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.LOCAL_FILE:
+                                    file_dict["upload_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.DATASOURCE_FILE:
+                                    file_dict["datasource_file_id"] = resolve_file_record_id(file.reference)
+                                case FileTransferMethod.REMOTE_URL:
+                                    file_dict["url"] = file.generate_url()
 
                             files.append(file_dict)
                     except Exception:
@@ -316,7 +351,7 @@ class WorkflowTool(Tool):
 
         return parameters_result, files
 
-    def _extract_files(self, outputs: dict) -> tuple[dict, list[File]]:
+    def _extract_files(self, outputs: dict[str, Any]) -> tuple[dict[str, Any], list[File]]:
         """
         extract files from the result
 
@@ -332,6 +367,7 @@ class WorkflowTool(Tool):
                         file = build_from_mapping(
                             mapping=item,
                             tenant_id=str(self.runtime.tenant_id),
+                            access_controller=_file_access_controller,
                         )
                         files.append(file)
             elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
@@ -339,6 +375,7 @@ class WorkflowTool(Tool):
                 file = build_from_mapping(
                     mapping=value,
                     tenant_id=str(self.runtime.tenant_id),
+                    access_controller=_file_access_controller,
                 )
                 files.append(file)
 
@@ -346,10 +383,17 @@ class WorkflowTool(Tool):
 
         return result, files
 
-    def _update_file_mapping(self, file_dict: dict):
-        transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
-        if transfer_method == FileTransferMethod.TOOL_FILE:
-            file_dict["tool_file_id"] = file_dict.get("related_id")
-        elif transfer_method == FileTransferMethod.LOCAL_FILE:
-            file_dict["upload_file_id"] = file_dict.get("related_id")
+    def _update_file_mapping(self, file_dict: dict[str, Any]) -> dict[str, Any]:
+        file_id = resolve_file_record_id(file_dict.get("reference") or file_dict.get("related_id"))
+        transfer_method_value = file_dict.get("transfer_method")
+        if not isinstance(transfer_method_value, str):
+            raise ValueError("Workflow file mapping is missing a valid transfer_method")
+        transfer_method = FileTransferMethod.value_of(transfer_method_value)
+        match transfer_method:
+            case FileTransferMethod.TOOL_FILE:
+                file_dict["tool_file_id"] = file_id
+            case FileTransferMethod.LOCAL_FILE:
+                file_dict["upload_file_id"] = file_id
+            case FileTransferMethod.REMOTE_URL | FileTransferMethod.DATASOURCE_FILE:
+                pass
         return file_dict

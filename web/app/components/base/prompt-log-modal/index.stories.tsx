@@ -1,8 +1,8 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { useEffect } from 'react'
-import PromptLogModal from '.'
-import { useStore } from '@/app/components/app/store'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { useEffect } from 'react'
+import { useStore } from '@/app/components/app/store'
+import PromptLogModal from '.'
 
 type PromptLogModalProps = React.ComponentProps<typeof PromptLogModal>
 

@@ -1,8 +1,8 @@
+import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
 import { processNodesWithoutDataSource } from '../utils'
 
 export const usePipelineRefreshDraft = () => {
@@ -16,6 +16,7 @@ export const usePipelineRefreshDraft = () => {
       setIsSyncingWorkflowDraft,
       setEnvironmentVariables,
       setEnvSecrets,
+      setRagPipelineVariables,
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
     fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`).then((response) => {
@@ -34,6 +35,7 @@ export const usePipelineRefreshDraft = () => {
         return acc
       }, {} as Record<string, string>))
       setEnvironmentVariables(response.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
+      setRagPipelineVariables?.(response.rag_pipeline_variables || [])
     }).finally(() => setIsSyncingWorkflowDraft(false))
   }, [handleUpdateWorkflowCanvas, workflowStore])
 

@@ -1,23 +1,23 @@
 import type { FC } from 'react'
+import type { KnowledgeRetrievalNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
+import { intersectionBy } from 'es-toolkit/compat'
 import {
   memo,
   useMemo,
 } from 'react'
-import { intersectionBy } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import useConfig from './use-config'
-import RetrievalConfig from './components/retrieval-config'
 import AddKnowledge from './components/add-dataset'
 import DatasetList from './components/dataset-list'
 import MetadataFilter from './components/metadata/metadata-filter'
-import type { KnowledgeRetrievalNodeType } from './types'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import RetrievalConfig from './components/retrieval-config'
+import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
+const i18nPrefix = 'nodes.knowledgeRetrieval'
 
 const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   id,
@@ -64,9 +64,9 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   }, [selectedDatasets])
 
   return (
-    <div className='pt-2'>
-      <div className='space-y-4 px-4 pb-2'>
-        <Field title={t(`${i18nPrefix}.queryText`)}>
+    <div className="pt-2">
+      <div className="space-y-4 px-4 pb-2">
+        <Field title={t(`${i18nPrefix}.queryText`, { ns: 'workflow' })}>
           <VarReferencePicker
             nodeId={id}
             readonly={readOnly}
@@ -78,7 +78,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         </Field>
 
         {showImageQueryVarSelector && (
-          <Field title={t(`${i18nPrefix}.queryAttachment`)}>
+          <Field title={t(`${i18nPrefix}.queryAttachment`, { ns: 'workflow' })}>
             <VarReferencePicker
               nodeId={id}
               readonly={readOnly}
@@ -91,10 +91,10 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         )}
 
         <Field
-          title={t(`${i18nPrefix}.knowledge`)}
+          title={t(`${i18nPrefix}.knowledge`, { ns: 'workflow' })}
           required
-          operations={
-            <div className='flex items-center space-x-1'>
+          operations={(
+            <div className="flex items-center space-x-1">
               <RetrievalConfig
                 payload={{
                   retrieval_mode: inputs.retrieval_mode,
@@ -104,14 +104,14 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 onRetrievalModeChange={handleRetrievalModeChange}
                 onMultipleRetrievalConfigChange={handleMultipleRetrievalConfigChange}
                 singleRetrievalModelConfig={inputs.single_retrieval_config?.model}
-                onSingleRetrievalModelChange={handleModelChanged as any}
+                onSingleRetrievalModelChange={handleModelChanged}
                 onSingleRetrievalModelParamsChange={handleCompletionParamsChange}
                 readonly={readOnly || !selectedDatasets.length}
                 rerankModalOpen={rerankModelOpen}
                 onRerankModelOpenChange={setRerankModelOpen}
                 selectedDatasets={selectedDatasets}
               />
-              {!readOnly && (<div className='h-3 w-px bg-divider-regular'></div>)}
+              {!readOnly && (<div className="h-3 w-px bg-divider-regular"></div>)}
               {!readOnly && (
                 <AddKnowledge
                   selectedIds={inputs.dataset_ids}
@@ -119,7 +119,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 />
               )}
             </div>
-          }
+          )}
         >
           <DatasetList
             list={selectedDatasets}
@@ -128,7 +128,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           />
         </Field>
       </div>
-      <div className='mb-2 py-2'>
+      <div className="mb-2 py-2">
         <MetadataFilter
           metadataList={metadataList}
           selectedDatasetsLoaded={selectedDatasetsLoaded}
@@ -153,40 +153,40 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         <OutputVars>
           <>
             <VarItem
-              name='result'
-              type='Array[Object]'
-              description={t(`${i18nPrefix}.outputVars.output`)}
+              name="result"
+              type="Array[Object]"
+              description={t(`${i18nPrefix}.outputVars.output`, { ns: 'workflow' })}
               subItems={[
                 {
                   name: 'content',
                   type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.content`),
+                  description: t(`${i18nPrefix}.outputVars.content`, { ns: 'workflow' }),
                 },
                 // url, title, link like bing search reference result: link, link page title, link page icon
                 {
                   name: 'title',
                   type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.title`),
+                  description: t(`${i18nPrefix}.outputVars.title`, { ns: 'workflow' }),
                 },
                 {
                   name: 'url',
                   type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.url`),
+                  description: t(`${i18nPrefix}.outputVars.url`, { ns: 'workflow' }),
                 },
                 {
                   name: 'icon',
                   type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.icon`),
+                  description: t(`${i18nPrefix}.outputVars.icon`, { ns: 'workflow' }),
                 },
                 {
                   name: 'metadata',
                   type: 'object',
-                  description: t(`${i18nPrefix}.outputVars.metadata`),
+                  description: t(`${i18nPrefix}.outputVars.metadata`, { ns: 'workflow' }),
                 },
                 {
                   name: 'files',
                   type: 'Array[File]',
-                  description: t(`${i18nPrefix}.outputVars.files`),
+                  description: t(`${i18nPrefix}.outputVars.files`, { ns: 'workflow' }),
                 },
               ]}
             />

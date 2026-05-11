@@ -1,10 +1,12 @@
 import logging
 
 from flask import request
-from flask_restx import fields, marshal_with, reqparse
+from flask_restx import fields, marshal_with
+from pydantic import field_validator
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -19,8 +21,9 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
-from models.model import App
+from graphon.model_runtime.errors.invoke import InvokeError
+from libs.helper import uuid_value
+from models.model import App, EndUser
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -28,6 +31,20 @@ from services.errors.audio import (
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
+
+from ..common.schema import register_schema_models
+
+
+class TextToAudioPayload(TextToAudioPayloadBase):
+    @field_validator("message_id")
+    @classmethod
+    def validate_message_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+register_schema_models(web_ns, TextToAudioPayload)
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +69,12 @@ class AudioApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user):
+    def post(self, app_model: App, end_user: EndUser):
         """Convert audio to text"""
         file = request.files["file"]
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user)
+            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.external_user_id)
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -88,6 +105,7 @@ class AudioApi(WebApiResource):
 
 @web_ns.route("/text-to-audio")
 class TextApi(WebApiResource):
+    @web_ns.expect(web_ns.models[TextToAudioPayload.__name__])
     @web_ns.doc("Text to Audio")
     @web_ns.doc(description="Convert text to audio using text-to-speech service.")
     @web_ns.doc(
@@ -99,21 +117,14 @@ class TextApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user):
+    def post(self, app_model: App, end_user: EndUser):
         """Convert text to audio"""
         try:
-            parser = (
-                reqparse.RequestParser()
-                .add_argument("message_id", type=str, required=False, location="json")
-                .add_argument("voice", type=str, location="json")
-                .add_argument("text", type=str, location="json")
-                .add_argument("streaming", type=bool, location="json")
-            )
-            args = parser.parse_args()
+            payload = TextToAudioPayload.model_validate(web_ns.payload or {})
 
-            message_id = args.get("message_id", None)
-            text = args.get("text", None)
-            voice = args.get("voice", None)
+            message_id = payload.message_id
+            text = payload.text
+            voice = payload.voice
             response = AudioService.transcript_tts(
                 app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
             )

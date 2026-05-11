@@ -1,15 +1,22 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ApiBasedExtension } from '@/models/common'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
-import Button from '@/app/components/base/button'
-import type { ApiBasedExtension } from '@/models/common'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useModalContext } from '@/context/modal-context'
 import { deleteApiBasedExtension } from '@/service/common'
-import Confirm from '@/app/components/base/confirm'
 
 type ItemProps = {
   data: ApiBasedExtension
@@ -37,36 +44,41 @@ const Item: FC<ItemProps> = ({
   }
 
   return (
-    <div className='group mb-2 flex items-center rounded-xl border-[0.5px] border-transparent bg-components-input-bg-normal px-4 py-2 hover:border-components-input-border-active hover:shadow-xs'>
-      <div className='grow'>
-        <div className='mb-0.5 text-[13px] font-medium text-text-secondary'>{data.name}</div>
-        <div className='text-xs text-text-tertiary'>{data.api_endpoint}</div>
+    <div className="group mb-2 flex items-center rounded-xl border-[0.5px] border-transparent bg-components-input-bg-normal px-4 py-2 hover:border-components-input-border-active hover:shadow-xs">
+      <div className="grow">
+        <div className="mb-0.5 text-[13px] font-medium text-text-secondary">{data.name}</div>
+        <div className="text-xs text-text-tertiary">{data.api_endpoint}</div>
       </div>
-      <div className='hidden items-center group-hover:flex'>
+      <div className="hidden items-center group-hover:flex">
         <Button
-          className='mr-1'
+          className="mr-1"
           onClick={handleOpenApiBasedExtensionModal}
         >
-          <RiEditLine className='mr-1 h-4 w-4' />
-          {t('common.operation.edit')}
+          <RiEditLine className="mr-1 h-4 w-4" />
+          {t('operation.edit', { ns: 'common' })}
         </Button>
         <Button
           onClick={() => setShowDeleteConfirm(true)}
         >
-          <RiDeleteBinLine className='mr-1 h-4 w-4' />
-          {t('common.operation.delete')}
+          <RiDeleteBinLine className="mr-1 h-4 w-4" />
+          {t('operation.delete', { ns: 'common' })}
         </Button>
       </div>
-      {
-        showDeleteConfirm
-          && <Confirm
-            isShow={showDeleteConfirm}
-            onCancel={() => setShowDeleteConfirm(false)}
-            title={`${t('common.operation.delete')} “${data.name}”?`}
-            onConfirm={handleDeleteApiBasedExtension}
-            confirmText={t('common.operation.delete') || ''}
-          />
-      }
+      <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && setShowDeleteConfirm(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {`${t('operation.delete', { ns: 'common' })} \u201C${data.name}\u201D?`}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleDeleteApiBasedExtension}>
+              {t('operation.delete', { ns: 'common' }) || ''}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

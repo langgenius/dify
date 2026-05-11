@@ -1,15 +1,52 @@
+from types import SimpleNamespace
+
 import pytest
 
-from core.file.enums import FileType
-from core.file.models import File, FileTransferMethod
-from core.variables.variables import StringVariable
-from core.workflow.constants import (
+from configs import dify_config
+from core.helper.code_executor.code_executor import CodeLanguage
+from core.workflow.system_variables import build_system_variables, default_system_variables
+from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
-from core.workflow.runtime import VariablePool
-from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.nodes.code.code_node import CodeNode
+from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.runtime import VariablePool
+from graphon.variables.variables import StringVariable
+
+
+@pytest.fixture(autouse=True)
+def _mock_ssrf_head(monkeypatch: pytest.MonkeyPatch):
+    """Avoid any real network requests during tests.
+
+    factories.file_factory.remote.get_remote_file_info() uses ssrf_proxy.head
+    to inspect
+    remote files. We stub it to return a minimal response object with
+    headers so filename/mime/size can be derived deterministically.
+    """
+
+    def fake_head(url, *args, **kwargs):
+        # choose a content-type by file suffix for determinism
+        if url.endswith(".pdf"):
+            ctype = "application/pdf"
+        elif url.endswith(".jpg") or url.endswith(".jpeg"):
+            ctype = "image/jpeg"
+        elif url.endswith(".png"):
+            ctype = "image/png"
+        else:
+            ctype = "application/octet-stream"
+        filename = url.split("/")[-1] or "file.bin"
+        headers = {
+            "Content-Type": ctype,
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": "12345",
+        }
+        return SimpleNamespace(status_code=200, headers=headers)
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.head", fake_head)
 
 
 class TestWorkflowEntry:
@@ -18,8 +55,8 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_to_variable_pool_with_system_variables(self):
         """Test mapping system variables from user inputs to variable pool."""
         # Initialize variable pool with system variables
-        variable_pool = VariablePool(
-            system_variables=SystemVariable(
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(
                 user_id="test_user_id",
                 app_id="test_app_id",
                 workflow_id="test_workflow_id",
@@ -64,12 +101,64 @@ class TestWorkflowEntry:
         assert output_var is not None
         assert output_var.value == "system_user"
 
+    def test_single_step_run_injects_code_limits(self):
+        """Ensure single-step CodeNode execution configures limits."""
+        # Arrange
+        node_id = "code_node"
+        node_data = {
+            "type": "code",
+            "title": "Code",
+            "desc": None,
+            "variables": [],
+            "code_language": CodeLanguage.PYTHON3,
+            "code": "def main():\n    return {}",
+            "outputs": {},
+        }
+        node_config = {"id": node_id, "data": node_data}
+
+        class StubWorkflow:
+            def __init__(self):
+                self.tenant_id = "tenant"
+                self.app_id = "app"
+                self.id = "workflow"
+                self.graph_dict = {"nodes": [node_config], "edges": []}
+
+            def get_node_config_by_id(self, target_id: str):
+                assert target_id == node_id
+                return NodeConfigDictAdapter.validate_python(node_config)
+
+        workflow = StubWorkflow()
+        variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables(), user_inputs={})
+        expected_limits = CodeNodeLimits(
+            max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
+            max_number=dify_config.CODE_MAX_NUMBER,
+            min_number=dify_config.CODE_MIN_NUMBER,
+            max_precision=dify_config.CODE_MAX_PRECISION,
+            max_depth=dify_config.CODE_MAX_DEPTH,
+            max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
+            max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
+            max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
+        )
+
+        # Act
+        node, _ = WorkflowEntry.single_step_run(
+            workflow=workflow,
+            node_id=node_id,
+            user_id="user",
+            user_inputs={},
+            variable_pool=variable_pool,
+        )
+
+        # Assert
+        assert isinstance(node, CodeNode)
+        assert node._limits == expected_limits
+
     def test_mapping_user_inputs_to_variable_pool_with_env_variables(self):
         """Test mapping environment variables from user inputs to variable pool."""
         # Initialize variable pool with environment variables
         env_var = StringVariable(name="API_KEY", value="existing_key")
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=default_system_variables(),
             environment_variables=[env_var],
             user_inputs={},
         )
@@ -109,8 +198,8 @@ class TestWorkflowEntry:
         """Test mapping conversation variables from user inputs to variable pool."""
         # Initialize variable pool with conversation variables
         conv_var = StringVariable(name="last_message", value="Hello")
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=default_system_variables(),
             conversation_variables=[conv_var],
             user_inputs={},
         )
@@ -150,8 +239,8 @@ class TestWorkflowEntry:
     def test_mapping_user_inputs_to_variable_pool_with_regular_variables(self):
         """Test mapping regular node variables from user inputs to variable pool."""
         # Initialize empty variable pool
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -192,8 +281,8 @@ class TestWorkflowEntry:
 
     def test_mapping_user_inputs_with_file_handling(self):
         """Test mapping file inputs from user inputs to variable pool."""
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -251,8 +340,8 @@ class TestWorkflowEntry:
 
     def test_mapping_user_inputs_missing_variable_error(self):
         """Test that mapping raises error when required variable is missing."""
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -277,8 +366,8 @@ class TestWorkflowEntry:
 
     def test_mapping_user_inputs_with_alternative_key_format(self):
         """Test mapping with alternative key format (without node prefix)."""
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -307,8 +396,8 @@ class TestWorkflowEntry:
 
     def test_mapping_user_inputs_with_complex_selectors(self):
         """Test mapping with complex node variable keys."""
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -343,8 +432,8 @@ class TestWorkflowEntry:
 
     def test_mapping_user_inputs_invalid_node_variable(self):
         """Test that mapping handles invalid node variable format."""
-        variable_pool = VariablePool(
-            system_variables=SystemVariable.empty(),
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=default_system_variables(),
             user_inputs={},
         )
 
@@ -374,8 +463,8 @@ class TestWorkflowEntry:
         env_var = StringVariable(name="API_KEY", value="existing_key")
         conv_var = StringVariable(name="session_id", value="session123")
 
-        variable_pool = VariablePool(
-            system_variables=SystemVariable(
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(
                 user_id="test_user",
                 app_id="test_app",
                 query="initial query",

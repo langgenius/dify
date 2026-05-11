@@ -1,18 +1,18 @@
+import type { DefaultValueForm } from './types'
+import type {
+  CommonNodeType,
+} from '@/app/components/workflow/types'
 import {
   useCallback,
   useMemo,
   useState,
 } from 'react'
-import { ErrorHandleTypeEnum } from './types'
-import type { DefaultValueForm } from './types'
-import { getDefaultValue } from './utils'
-import type {
-  CommonNodeType,
-} from '@/app/components/workflow/types'
 import {
   useEdgesInteractions,
   useNodeDataUpdate,
 } from '@/app/components/workflow/hooks'
+import { ErrorHandleTypeEnum } from './types'
+import { getDefaultValue } from './utils'
 
 export const useDefaultValue = (
   id: string,
@@ -30,8 +30,15 @@ export const useDefaultValue = (
     const index = default_value.findIndex(form => form.key === key)
 
     if (index > -1) {
-      const newDefaultValue = [...default_value]
-      newDefaultValue[index].value = value
+      const newDefaultValue = default_value.map((form) => {
+        if (form.key !== key)
+          return form
+        // clone the entry so we do not mutate the original reference (which would block CRDT diffs)
+        return {
+          ...form,
+          value,
+        }
+      })
       handleNodeDataUpdateWithSyncDraft({
         id,
         data: {

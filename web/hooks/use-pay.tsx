@@ -1,18 +1,24 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import {
-  fetchDataSourceNotionBinding,
-} from '@/service/common'
-import type { IConfirm } from '@/app/components/base/confirm'
-import Confirm from '@/app/components/base/confirm'
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useRouter, useSearchParams } from '@/next/navigation'
+import { useNotionBinding } from '@/service/use-common'
 
-export type ConfirmType = Pick<IConfirm, 'type' | 'title' | 'content'>
+type ConfirmType = {
+  type: 'info' | 'warning'
+  title: string
+}
 
-export const useAnthropicCheckPay = () => {
+const useAnthropicCheckPay = () => {
   const { t } = useTranslation()
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const searchParams = useSearchParams()
@@ -23,7 +29,7 @@ export const useAnthropicCheckPay = () => {
     if (providerName === 'anthropic' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
       setConfirm({
         type: paymentResult === 'succeeded' ? 'info' : 'warning',
-        title: paymentResult === 'succeeded' ? t('common.actionMsg.paySucceeded') : t('common.actionMsg.payCancelled'),
+        title: paymentResult === 'succeeded' ? t('actionMsg.paySucceeded', { ns: 'common' }) : t('actionMsg.payCancelled', { ns: 'common' }),
       })
     }
   }, [providerName, paymentResult, t])
@@ -31,7 +37,7 @@ export const useAnthropicCheckPay = () => {
   return confirm
 }
 
-export const useBillingPay = () => {
+const useBillingPay = () => {
   const { t } = useTranslation()
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const searchParams = useSearchParams()
@@ -42,7 +48,7 @@ export const useBillingPay = () => {
     if (paymentType === 'billing' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
       setConfirm({
         type: paymentResult === 'succeeded' ? 'info' : 'warning',
-        title: paymentResult === 'succeeded' ? t('common.actionMsg.paySucceeded') : t('common.actionMsg.payCancelled'),
+        title: paymentResult === 'succeeded' ? t('actionMsg.paySucceeded', { ns: 'common' }) : t('actionMsg.payCancelled', { ns: 'common' }),
       })
     }
   }, [paymentType, paymentResult, t])
@@ -50,7 +56,7 @@ export const useBillingPay = () => {
   return confirm
 }
 
-export const useCheckNotion = () => {
+const useCheckNotion = () => {
   const router = useRouter()
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const [canBinding, setCanBinding] = useState(false)
@@ -58,12 +64,7 @@ export const useCheckNotion = () => {
   const type = searchParams.get('type')
   const notionCode = searchParams.get('code')
   const notionError = searchParams.get('error')
-  const { data } = useSWR(
-    (canBinding && notionCode)
-      ? `/oauth/data-source/binding/notion?code=${notionCode}`
-      : null,
-    fetchDataSourceNotionBinding,
-  )
+  const { data } = useNotionBinding(notionCode, canBinding)
 
   useEffect(() => {
     if (data)
@@ -101,19 +102,35 @@ export const CheckModal = () => {
 
   const confirmInfo = anthropicConfirmInfo || notionConfirmInfo || billingConfirmInfo
 
-  if (!confirmInfo || !showPayStatusModal)
+  if (!confirmInfo)
     return null
 
+  const description = (confirmInfo as { desc?: string }).desc || ''
+
   return (
-    <Confirm
-      isShow
-      onCancel={handleCancelShowPayStatusModal}
-      onConfirm={handleCancelShowPayStatusModal}
-      showCancel={false}
-      type={confirmInfo.type === 'info' ? 'info' : 'warning' }
-      title={confirmInfo.title}
-      content={(confirmInfo as unknown as { desc: string }).desc || ''}
-      confirmText={(confirmInfo.type === 'info' && t('common.operation.ok')) || ''}
-    />
+    <AlertDialog open={showPayStatusModal} onOpenChange={open => !open && handleCancelShowPayStatusModal()}>
+      <AlertDialogContent>
+        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+          <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            {confirmInfo.title}
+          </AlertDialogTitle>
+          {description && (
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {description}
+            </AlertDialogDescription>
+          )}
+        </div>
+        <AlertDialogActions>
+          <AlertDialogConfirmButton
+            tone={confirmInfo.type !== 'info' ? 'destructive' : 'default'}
+            onClick={handleCancelShowPayStatusModal}
+          >
+            {confirmInfo.type === 'info'
+              ? t('operation.ok', { ns: 'common' })
+              : t('operation.confirm', { ns: 'common' })}
+          </AlertDialogConfirmButton>
+        </AlertDialogActions>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

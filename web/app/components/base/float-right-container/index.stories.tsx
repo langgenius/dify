@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { fn } from 'storybook/test'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
+import { fn } from 'storybook/test'
 import FloatRightContainer from '.'
 
 const meta = {
@@ -49,7 +49,6 @@ const ContainerDemo = () => {
         isOpen={open}
         onClose={() => setOpen(false)}
         title="Responsive panel"
-        description="Switch the toggle to see drawer vs inline behaviour."
         mask
       >
         <div className="rounded-xl border border-divider-subtle bg-components-panel-bg p-4 text-xs text-text-secondary">

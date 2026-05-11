@@ -1,5 +1,3 @@
-import type { Plugin } from '../types'
-
 export type SearchParamsFromCollection = {
   query?: string
   sort_by?: string
@@ -17,22 +15,12 @@ export type MarketplaceCollection = {
   search_params?: SearchParamsFromCollection
 }
 
-export type MarketplaceCollectionsResponse = {
-  collections: MarketplaceCollection[]
-  total: number
-}
-
-export type MarketplaceCollectionPluginsResponse = {
-  plugins: Plugin[]
-  total: number
-}
-
 export type PluginsSearchParams = {
   query: string
   page?: number
-  pageSize?: number
-  sortBy?: string
-  sortOrder?: string
+  page_size?: number
+  sort_by?: string
+  sort_order?: string
   category?: string
   tags?: string[]
   exclude?: string[]
@@ -49,11 +37,4 @@ export type CollectionsAndPluginsSearchParams = {
   condition?: string
   exclude?: string[]
   type?: 'plugin' | 'bundle'
-}
-
-export type SearchParams = {
-  language?: string
-  q?: string
-  tags?: string
-  category?: string
 }

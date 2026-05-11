@@ -1,19 +1,19 @@
 'use client'
 import type { FC } from 'react'
+import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Event } from '@/app/components/tools/types'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiBracesLine,
 } from '@remixicon/react'
-import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useBoolean } from 'ahooks'
+import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
+import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
-import { useBoolean } from 'ahooks'
-import SchemaModal from '@/app/components/plugins/plugin-detail-panel/tool-selector/schema-modal'
-import type { Event } from '@/app/components/tools/types'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 
 type Props = {
   readOnly: boolean
@@ -49,39 +49,39 @@ const TriggerFormItem: FC<Props> = ({
     setFalse: hideSchema,
   }] = useBoolean(false)
   return (
-    <div className='space-y-0.5 py-1'>
+    <div className="space-y-0.5 py-1">
       <div>
-        <div className='flex h-6 items-center'>
-          <div className='system-sm-medium text-text-secondary'>{label[language] || label.en_US}</div>
+        <div className="flex h-6 items-center">
+          <div className="system-sm-medium text-text-secondary">{label[language] || label.en_US}</div>
           {required && (
-            <div className='system-xs-regular ml-1 text-text-destructive-secondary'>*</div>
+            <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
           )}
           {!showDescription && tooltip && (
-            <Tooltip
-              popupContent={<div className='w-[200px]'>
-                {tooltip[language] || tooltip.en_US}
-              </div>}
-              triggerClassName='ml-1 w-4 h-4'
-              asChild={false}
-            />
+            <Infotip
+              aria-label={tooltip[language] || tooltip.en_US}
+              className="ml-1 h-4 w-4"
+              popupClassName="w-[200px]"
+            >
+              {tooltip[language] || tooltip.en_US}
+            </Infotip>
           )}
           {showSchemaButton && (
             <>
-              <div className='system-xs-regular ml-1 mr-0.5 text-text-quaternary'>·</div>
+              <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
               <Button
-                variant='ghost'
-                size='small'
+                variant="ghost"
+                size="small"
                 onClick={showSchema}
-                className='system-xs-regular px-1 text-text-tertiary'
+                className="px-1 system-xs-regular text-text-tertiary"
               >
-                <RiBracesLine className='mr-1 size-3.5' />
+                <RiBracesLine className="mr-1 size-3.5" />
                 <span>JSON Schema</span>
               </Button>
             </>
           )}
         </div>
         {showDescription && tooltip && (
-          <div className='body-xs-regular pb-0.5 text-text-tertiary'>{tooltip[language] || tooltip.en_US}</div>
+          <div className="pb-0.5 body-xs-regular text-text-tertiary">{tooltip[language] || tooltip.en_US}</div>
         )}
       </div>
       <FormInputItem
@@ -93,7 +93,7 @@ const TriggerFormItem: FC<Props> = ({
         inPanel={inPanel}
         currentTool={currentEvent}
         currentProvider={currentProvider}
-        providerType='trigger'
+        providerType="trigger"
         extraParams={extraParams}
         disableVariableInsertion={disableVariableInsertion}
       />

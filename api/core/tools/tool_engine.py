@@ -1,5 +1,6 @@
 import contextlib
 import json
+import logging
 from collections.abc import Generator, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
@@ -11,8 +12,6 @@ from yarl import URL
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file import FileType
-from core.file.models import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
@@ -33,8 +32,11 @@ from core.tools.errors import (
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from models.enums import CreatorUserRole
+from graphon.file import FileTransferMethod, FileType
+from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageFile
+
+logger = logging.getLogger(__name__)
 
 
 class ToolEngine:
@@ -45,7 +47,7 @@ class ToolEngine:
     @staticmethod
     def agent_invoke(
         tool: Tool,
-        tool_parameters: Union[str, dict],
+        tool_parameters: Union[str, dict[str, Any]],
         user_id: str,
         tenant_id: str,
         message: Message,
@@ -83,7 +85,8 @@ class ToolEngine:
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(
-                invocation_meta_dict: dict, messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]
+                invocation_meta_dict: dict[str, ToolInvokeMeta],
+                messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None],
             ):
                 for message in messages:
                     if isinstance(message, ToolInvokeMeta):
@@ -123,25 +126,31 @@ class ToolEngine:
             # transform tool invoke message to get LLM friendly message
             return plain_text, message_files, meta
         except ToolProviderCredentialValidationError as e:
+            logger.error(e, exc_info=True)
             error_response = "Please check your tool provider credentials"
             agent_tool_callback.on_tool_error(e)
         except (ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError) as e:
             error_response = f"there is not a tool named {tool.entity.identity.name}"
+            logger.error(e, exc_info=True)
             agent_tool_callback.on_tool_error(e)
         except ToolParameterValidationError as e:
             error_response = f"tool parameters validation error: {e}, please check your tool parameters"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
         except ToolInvokeError as e:
             error_response = f"tool invoke error: {e}"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
         except ToolEngineInvokeError as e:
             meta = e.meta
             error_response = f"tool invoke error: {meta.error}"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
             return error_response, [], meta
         except Exception as e:
             error_response = f"unknown error: {e}"
             agent_tool_callback.on_tool_error(e)
+            logger.error(e, exc_info=True)
 
         return error_response, [], ToolInvokeMeta.error_instance(error_response)
 
@@ -192,7 +201,7 @@ class ToolEngine:
     @staticmethod
     def _invoke(
         tool: Tool,
-        tool_parameters: dict,
+        tool_parameters: dict[str, Any],
         user_id: str,
         conversation_id: str | None = None,
         app_id: str | None = None,
@@ -254,6 +263,8 @@ class ToolEngine:
                         ensure_ascii=False,
                     )
                 )
+            elif response.type == ToolInvokeMessage.MessageType.VARIABLE:
+                continue
             else:
                 parts.append(str(response.message))
 
@@ -343,7 +354,7 @@ class ToolEngine:
                 message_id=agent_message.id,
                 type=file_type,
                 transfer_method=FileTransferMethod.TOOL_FILE,
-                belongs_to="assistant",
+                belongs_to=MessageFileBelongsTo.ASSISTANT,
                 url=message.url,
                 upload_file_id=tool_file_id,
                 created_by_role=(

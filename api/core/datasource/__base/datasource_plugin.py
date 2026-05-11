@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 from configs import dify_config
@@ -30,7 +32,7 @@ class DatasourcePlugin(ABC):
         """
         return DatasourceProviderType.LOCAL_FILE
 
-    def fork_datasource_runtime(self, runtime: DatasourceRuntime) -> "DatasourcePlugin":
+    def fork_datasource_runtime(self, runtime: DatasourceRuntime) -> DatasourcePlugin:
         return self.__class__(
             entity=self.entity.model_copy(),
             runtime=runtime,

@@ -8,32 +8,32 @@ const merge = <T extends Record<string, any>>(
   return Object.assign({}, ...args)
 }
 
-export type _Events = Record<EventType, unknown>
+type _Events = Record<EventType, unknown>
 
-export type UseSubscribeOption = {
+type UseSubscribeOption = {
   /**
-     * Whether the subscription is enabled.
-     * @default true
-     */
-  enabled: boolean;
+   * Whether the subscription is enabled.
+   * @default true
+   */
+  enabled: boolean
 }
 
-export type ExtendedOn<Events extends _Events> = {
+type ExtendedOn<Events extends _Events> = {
   <Key extends keyof Events>(
     type: Key,
     handler: Handler<Events[Key]>,
     options?: UseSubscribeOption,
-  ): void;
+  ): void
   (
     type: '*',
     handler: WildcardHandler<Events>,
     option?: UseSubscribeOption,
-  ): void;
+  ): void
 }
 
-export type UseMittReturn<Events extends _Events> = {
-  useSubscribe: ExtendedOn<Events>;
-  emit: Emitter<Events>['emit'];
+type UseMittReturn<Events extends _Events> = {
+  useSubscribe: ExtendedOn<Events>
+  emit: Emitter<Events>['emit']
 }
 
 const defaultSubscribeOption: UseSubscribeOption = {

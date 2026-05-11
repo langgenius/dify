@@ -1,7 +1,7 @@
 import type { ChunkingMode, ParentMode } from '@/models/datasets'
 import { createContext, useContextSelector } from 'use-context-selector'
 
-type DocumentContextValue = {
+export type DocumentContextValue = {
   datasetId?: string
   documentId?: string
   docForm?: ChunkingMode

@@ -62,3 +62,37 @@ class ToolAttributes:
 
     TOOL_CALL_RESULT = "gen_ai.tool.call.result"
     """Tool invocation result."""
+
+
+class LLMAttributes:
+    """LLM operation attribute keys."""
+
+    REQUEST_MODEL = "gen_ai.request.model"
+    """Model identifier."""
+
+    PROVIDER_NAME = "gen_ai.provider.name"
+    """Provider name."""
+
+    USAGE_INPUT_TOKENS = "gen_ai.usage.input_tokens"
+    """Number of input tokens."""
+
+    USAGE_OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
+    """Number of output tokens."""
+
+    USAGE_TOTAL_TOKENS = "gen_ai.usage.total_tokens"
+    """Total number of tokens."""
+
+    PROMPT = "gen_ai.prompt"
+    """Prompt text."""
+
+    COMPLETION = "gen_ai.completion"
+    """Completion text."""
+
+    RESPONSE_FINISH_REASON = "gen_ai.response.finish_reason"
+    """Finish reason for the response."""
+
+    INPUT_MESSAGE = "gen_ai.input.messages"
+    """Input messages in structured format."""
+
+    OUTPUT_MESSAGE = "gen_ai.output.messages"
+    """Output messages in structured format."""

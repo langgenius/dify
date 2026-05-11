@@ -1,0 +1,11 @@
+name: Setup Web Environment
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Vite+
+      uses: voidzero-dev/setup-vp@4f5aa3e38c781f1b01e78fb9255527cee8a6efa6 # v1.8.0
+      with:
+        node-version-file: .nvmrc
+        cache: true
+        run-install: true

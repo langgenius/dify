@@ -1,9 +1,9 @@
+import type { WorkflowStartedResponse } from '@/types/workflow'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { produce } from 'immer'
-import type { WorkflowStartedResponse } from '@/types/workflow'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
 export const useWorkflowStarted = () => {
   const store = useStoreApi()
@@ -22,6 +22,15 @@ export const useWorkflowStarted = () => {
       edges,
       setEdges,
     } = store.getState()
+    if (workflowRunningData?.result?.status === WorkflowRunningStatus.Paused) {
+      setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+        draft.result = {
+          ...draft.result,
+          status: WorkflowRunningStatus.Running,
+        }
+      }))
+      return
+    }
     setIterParallelLogMap(new Map())
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.task_id = task_id
@@ -30,6 +39,7 @@ export const useWorkflowStarted = () => {
         ...data,
         status: WorkflowRunningStatus.Running,
       }
+      draft.resultText = ''
     }))
     const nodes = getNodes()
     const newNodes = produce(nodes, (draft) => {

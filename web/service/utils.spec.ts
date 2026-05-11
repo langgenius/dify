@@ -1,3 +1,4 @@
+import { FlowType } from '@/types/common'
 /**
  * Test suite for service utility functions
  *
@@ -12,7 +13,6 @@
  * with a fallback to 'apps' for undefined or unknown flow types.
  */
 import { flowPrefixMap, getFlowPrefix } from './utils'
-import { FlowType } from '@/types/common'
 
 describe('Service Utils', () => {
   describe('flowPrefixMap', () => {

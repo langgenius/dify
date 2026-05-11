@@ -10,12 +10,15 @@ export const useOAuthCallback = () => {
     const errorDescription = urlParams.get('error_description')
 
     if (window.opener) {
+      // Use window.opener.origin instead of '*' for security
+      const targetOrigin = window.opener?.origin || '*'
+
       if (subscriptionId) {
         window.opener.postMessage({
           type: 'oauth_callback',
           success: true,
           subscriptionId,
-        }, '*')
+        }, targetOrigin)
       }
       else if (error) {
         window.opener.postMessage({
@@ -23,12 +26,12 @@ export const useOAuthCallback = () => {
           success: false,
           error,
           errorDescription,
-        }, '*')
+        }, targetOrigin)
       }
       else {
         window.opener.postMessage({
           type: 'oauth_callback',
-        }, '*')
+        }, targetOrigin)
       }
       window.close()
     }

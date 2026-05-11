@@ -1,20 +1,16 @@
 import type { ClipboardEvent } from 'react'
+import type { FileEntity } from './types'
+import type { FileUpload } from '@/app/components/base/features/types'
+import type { FileUploadConfigResponse } from '@/models/common'
+import { toast } from '@langgenius/dify-ui/toast'
+import { noop } from 'es-toolkit/function'
+import { produce } from 'immer'
 import {
   useCallback,
   useState,
 } from 'react'
-import { useParams } from 'next/navigation'
-import { produce } from 'immer'
-import { v4 as uuid4 } from 'uuid'
 import { useTranslation } from 'react-i18next'
-import type { FileEntity } from './types'
-import { useFileStore } from './store'
-import {
-  fileUpload,
-  getFileUploadErrorMessage,
-  getSupportFileType,
-  isAllowedFileExtension,
-} from './utils'
+import { v4 as uuid4 } from 'uuid'
 import {
   AUDIO_SIZE_LIMIT,
   FILE_SIZE_LIMIT,
@@ -22,14 +18,18 @@ import {
   MAX_FILE_UPLOAD_LIMIT,
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
-import { useToastContext } from '@/app/components/base/toast'
-import { TransferMethod } from '@/types/app'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import type { FileUpload } from '@/app/components/base/features/types'
-import { formatFileSize } from '@/utils/format'
+import { useParams } from '@/next/navigation'
 import { uploadRemoteFileInfo } from '@/service/common'
-import type { FileUploadConfigResponse } from '@/models/common'
-import { noop } from 'lodash-es'
+import { TransferMethod } from '@/types/app'
+import { formatFileSize } from '@/utils/format'
+import { useFileStore } from './store'
+import {
+  fileUpload,
+  getFileUploadErrorMessage,
+  getSupportFileType,
+  isAllowedFileExtension,
+} from './utils'
 
 export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) => {
   const imgSizeLimit = Number(fileUploadConfig?.image_file_size_limit) * 1024 * 1024 || IMG_SIZE_LIMIT
@@ -47,9 +47,8 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
   }
 }
 
-export const useFile = (fileConfig: FileUpload) => {
+export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const fileStore = useFileStore()
   const params = useParams()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(fileConfig.fileUploadConfig)
@@ -58,13 +57,11 @@ export const useFile = (fileConfig: FileUpload) => {
     switch (fileType) {
       case SupportUploadFileTypes.image: {
         if (fileSize > imgSizeLimit) {
-          notify({
-            type: 'error',
-            message: t('common.fileUploader.uploadFromComputerLimit', {
-              type: SupportUploadFileTypes.image,
-              size: formatFileSize(imgSizeLimit),
-            }),
-          })
+          toast.error(t('fileUploader.uploadFromComputerLimit', {
+            ns: 'common',
+            type: SupportUploadFileTypes.image,
+            size: formatFileSize(imgSizeLimit),
+          }))
           return false
         }
         return true
@@ -72,39 +69,33 @@ export const useFile = (fileConfig: FileUpload) => {
       case SupportUploadFileTypes.custom:
       case SupportUploadFileTypes.document: {
         if (fileSize > docSizeLimit) {
-          notify({
-            type: 'error',
-            message: t('common.fileUploader.uploadFromComputerLimit', {
-              type: SupportUploadFileTypes.document,
-              size: formatFileSize(docSizeLimit),
-            }),
-          })
+          toast.error(t('fileUploader.uploadFromComputerLimit', {
+            ns: 'common',
+            type: SupportUploadFileTypes.document,
+            size: formatFileSize(docSizeLimit),
+          }))
           return false
         }
         return true
       }
       case SupportUploadFileTypes.audio: {
         if (fileSize > audioSizeLimit) {
-          notify({
-            type: 'error',
-            message: t('common.fileUploader.uploadFromComputerLimit', {
-              type: SupportUploadFileTypes.audio,
-              size: formatFileSize(audioSizeLimit),
-            }),
-          })
+          toast.error(t('fileUploader.uploadFromComputerLimit', {
+            ns: 'common',
+            type: SupportUploadFileTypes.audio,
+            size: formatFileSize(audioSizeLimit),
+          }))
           return false
         }
         return true
       }
       case SupportUploadFileTypes.video: {
         if (fileSize > videoSizeLimit) {
-          notify({
-            type: 'error',
-            message: t('common.fileUploader.uploadFromComputerLimit', {
-              type: SupportUploadFileTypes.video,
-              size: formatFileSize(videoSizeLimit),
-            }),
-          })
+          toast.error(t('fileUploader.uploadFromComputerLimit', {
+            ns: 'common',
+            type: SupportUploadFileTypes.video,
+            size: formatFileSize(videoSizeLimit),
+          }))
           return false
         }
         return true
@@ -113,7 +104,7 @@ export const useFile = (fileConfig: FileUpload) => {
         return true
       }
     }
-  }, [audioSizeLimit, docSizeLimit, imgSizeLimit, notify, t, videoSizeLimit])
+  }, [audioSizeLimit, docSizeLimit, imgSizeLimit, t, videoSizeLimit])
 
   const handleAddFile = useCallback((newFile: FileEntity) => {
     const {
@@ -160,13 +151,13 @@ export const useFile = (fileConfig: FileUpload) => {
     const index = files.findIndex(file => file.id === fileId)
 
     if (index > -1) {
-      const uploadingFile = files[index]
+      const uploadingFile = files[index]!
       const newFiles = produce(files, (draft) => {
-        draft[index].progress = 0
+        draft[index]!.progress = 0
       })
       setFiles(newFiles)
       fileUpload({
-        file: uploadingFile.originalFile!,
+        file: uploadingFile!.originalFile!,
         onProgressCallback: (progress) => {
           handleUpdateFile({ ...uploadingFile, progress })
         },
@@ -174,13 +165,13 @@ export const useFile = (fileConfig: FileUpload) => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: (error?: any) => {
-          const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
-          notify({ type: 'error', message: errorMessage })
+          const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
+          toast.error(errorMessage)
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
       }, !!params.token)
     }
-  }, [fileStore, notify, t, handleUpdateFile, params])
+  }, [fileStore, t, handleUpdateFile, params])
 
   const startProgressTimer = useCallback((fileId: string) => {
     const timer = setInterval(() => {
@@ -221,7 +212,7 @@ export const useFile = (fileConfig: FileUpload) => {
         url: res.url,
       }
       if (!isAllowedFileExtension(res.name, res.mime_type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-        notify({ type: 'error', message: `${t('common.fileUploader.fileExtensionNotSupport')} ${newFile.type}` })
+        toast.error(`${t('fileUploader.fileExtensionNotSupport', { ns: 'common' })} ${newFile.type}`)
         handleRemoveFile(uploadingFile.id)
       }
       if (!checkSizeLimit(newFile.supportFileType, newFile.size))
@@ -229,10 +220,10 @@ export const useFile = (fileConfig: FileUpload) => {
       else
         handleUpdateFile(newFile)
     }).catch(() => {
-      notify({ type: 'error', message: t('common.fileUploader.pasteFileLinkInvalid') })
+      toast.error(t('fileUploader.pasteFileLinkInvalid', { ns: 'common' }))
       handleRemoveFile(uploadingFile.id)
     })
-  }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, params.token])
+  }, [checkSizeLimit, handleAddFile, handleUpdateFile, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, params.token])
 
   const handleLoadFileFromLinkSuccess = useCallback(noop, [])
 
@@ -246,8 +237,13 @@ export const useFile = (fileConfig: FileUpload) => {
   }, [fileStore])
 
   const handleLocalFileUpload = useCallback((file: File) => {
+    // Check file upload enabled
+    if (!noNeedToCheckEnable && !fileConfig.enabled) {
+      toast.error(t('fileUploader.uploadDisabled', { ns: 'common' }))
+      return
+    }
     if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-      notify({ type: 'error', message: `${t('common.fileUploader.fileExtensionNotSupport')} ${file.type}` })
+      toast.error(`${t('fileUploader.fileExtensionNotSupport', { ns: 'common' })} ${file.type}`)
       return
     }
     const allowedFileTypes = fileConfig.allowed_file_types
@@ -282,8 +278,8 @@ export const useFile = (fileConfig: FileUpload) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
           onErrorCallback: (error?: any) => {
-            const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
-            notify({ type: 'error', message: errorMessage })
+            const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
+            toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
         }, !!params.token)
@@ -293,35 +289,21 @@ export const useFile = (fileConfig: FileUpload) => {
     reader.addEventListener(
       'error',
       () => {
-        notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerReadError') })
+        toast.error(t('fileUploader.uploadFromComputerReadError', { ns: 'common' }))
       },
       false,
     )
     reader.readAsDataURL(file)
-  }, [checkSizeLimit, notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions])
+  }, [noNeedToCheckEnable, checkSizeLimit, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions, fileConfig?.enabled])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]
     const text = e.clipboardData?.getData('text/plain')
     if (file && !text) {
       e.preventDefault()
-
-      const allowedFileTypes = fileConfig.allowed_file_types || []
-      const fileType = getSupportFileType(file.name, file.type, allowedFileTypes?.includes(SupportUploadFileTypes.custom))
-      const isFileTypeAllowed = allowedFileTypes.includes(fileType)
-
-      // Check if file type is in allowed list
-      if (!isFileTypeAllowed || !fileConfig.enabled) {
-        notify({
-          type: 'error',
-          message: t('common.fileUploader.fileExtensionNotSupport'),
-        })
-        return
-      }
-
       handleLocalFileUpload(file)
     }
-  }, [handleLocalFileUpload, fileConfig, notify, t])
+  }, [handleLocalFileUpload])
 
   const [isDragActive, setIsDragActive] = useState(false)
   const handleDragFileEnter = useCallback((e: React.DragEvent<HTMLElement>) => {

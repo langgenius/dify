@@ -27,7 +27,6 @@ def upgrade():
     conn = op.get_bind()
     
     if _is_pg(conn):
-        # PostgreSQL: Keep original syntax
         op.create_table('tool_providers',
         sa.Column('id', postgresql.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
         sa.Column('tenant_id', postgresql.UUID(), nullable=False),
@@ -40,7 +39,6 @@ def upgrade():
         sa.UniqueConstraint('tenant_id', 'tool_name', name='unique_tool_provider_tool_name')
         )
     else:
-        # MySQL: Use compatible syntax
         op.create_table('tool_providers',
         sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
@@ -52,12 +50,9 @@ def upgrade():
         sa.PrimaryKeyConstraint('id', name='tool_provider_pkey'),
         sa.UniqueConstraint('tenant_id', 'tool_name', name='unique_tool_provider_tool_name')
         )
-    if _is_pg(conn):
-        with op.batch_alter_table('app_model_configs', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('sensitive_word_avoidance', sa.Text(), nullable=True))
-    else:
-        with op.batch_alter_table('app_model_configs', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('sensitive_word_avoidance', models.types.LongText(), nullable=True))
+
+    with op.batch_alter_table('app_model_configs', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('sensitive_word_avoidance', models.types.LongText(), nullable=True))
 
     # ### end Alembic commands ###
 

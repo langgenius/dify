@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Log Tindakan",
+  "circularInvocationTip": "Ada pemanggilan melingkar alat/simpul dalam alur kerja saat ini.",
+  "detail": "DETAIL",
+  "input": "MASUKAN",
+  "meta.executor": "Pelaksana",
+  "meta.startTime": "Waktu Mulai",
+  "meta.status": "Keadaan",
+  "meta.steps": "Jalankan Langkah-langkah",
+  "meta.time": "Waktu yang telah berlalu",
+  "meta.title": "METADATA",
+  "meta.tokens": "Total Token",
+  "meta.version": "Versi",
+  "result": "HASIL",
+  "resultEmpty.link": "Panel Detail",
+  "resultEmpty.tipLeft": "silakan pergi ke",
+  "resultEmpty.tipRight": "lihat itu.",
+  "resultEmpty.title": "Eksekusi ini hanya mengeluarkan format JSON,",
+  "resultPanel.status": "KEADAAN",
+  "resultPanel.time": "WAKTU BERLALU",
+  "resultPanel.tokens": "TOTAL TOKEN",
+  "tracing": "MENELUSURI"
+}

@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import FileIcon from '.'
 
 const meta = {
@@ -35,7 +35,10 @@ export const Default: Story = {
   render: args => (
     <div className="flex items-center gap-4 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
       <FileIcon {...args} />
-      <span className="text-sm text-text-secondary">Extension: {args.type}</span>
+      <span className="text-sm text-text-secondary">
+        Extension:
+        {args.type}
+      </span>
     </div>
   ),
   parameters: {
@@ -58,7 +61,7 @@ export const Gallery: Story = {
         {examples.map(type => (
           <div key={type} className="flex flex-col items-center gap-1">
             <FileIcon type={type} className="h-9 w-9" />
-            <span className="text-xs uppercase text-text-tertiary">{type}</span>
+            <span className="text-xs text-text-tertiary uppercase">{type}</span>
           </div>
         ))}
       </div>

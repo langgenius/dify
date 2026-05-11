@@ -1,17 +1,18 @@
+from typing import Any
+
 from flask import request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from constants.languages import supported_language
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.helper import EmailStr, extract_remote_ip, timezone
+from libs.helper import EmailStr, timezone
 from models import AccountStatus
-from services.account_service import AccountService, RegisterService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+from services.account_service import RegisterService
 
 
 class ActivateCheckQuery(BaseModel):
@@ -39,8 +40,16 @@ class ActivatePayload(BaseModel):
         return timezone(value)
 
 
-for model in (ActivateCheckQuery, ActivatePayload):
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+class ActivationCheckResponse(BaseModel):
+    is_valid: bool = Field(description="Whether token is valid")
+    data: dict[str, Any] | None = Field(default=None, description="Activation data if valid")
+
+
+class ActivationResponse(BaseModel):
+    result: str = Field(description="Operation result")
+
+
+register_schema_models(console_ns, ActivateCheckQuery, ActivatePayload, ActivationCheckResponse, ActivationResponse)
 
 
 @console_ns.route("/activate/check")
@@ -51,25 +60,25 @@ class ActivateCheckApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.model(
-            "ActivationCheckResponse",
-            {
-                "is_valid": fields.Boolean(description="Whether token is valid"),
-                "data": fields.Raw(description="Activation data if valid"),
-            },
-        ),
+        console_ns.models[ActivationCheckResponse.__name__],
     )
     def get(self):
-        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))
 
         workspaceId = args.workspace_id
-        reg_email = args.email
         token = args.token
 
-        invitation = RegisterService.get_invitation_if_token_valid(workspaceId, reg_email, token)
+        invitation = RegisterService.get_invitation_with_case_fallback(workspaceId, args.email, token)
         if invitation:
             data = invitation.get("data", {})
             tenant = invitation.get("tenant", None)
+
+            # Check workspace permission
+            if tenant:
+                from libs.workspace_permission import check_workspace_member_invite_permission
+
+                check_workspace_member_invite_permission(tenant.id)
+
             workspace_name = tenant.name if tenant else None
             workspace_id = tenant.id if tenant else None
             invitee_email = data.get("email") if data else None
@@ -89,23 +98,18 @@ class ActivateApi(Resource):
     @console_ns.response(
         200,
         "Account activated successfully",
-        console_ns.model(
-            "ActivationResponse",
-            {
-                "result": fields.String(description="Operation result"),
-                "data": fields.Raw(description="Login token data"),
-            },
-        ),
+        console_ns.models[ActivationResponse.__name__],
     )
     @console_ns.response(400, "Already activated or invalid token")
     def post(self):
         args = ActivatePayload.model_validate(console_ns.payload)
 
-        invitation = RegisterService.get_invitation_if_token_valid(args.workspace_id, args.email, args.token)
+        normalized_request_email = args.email.lower() if args.email else None
+        invitation = RegisterService.get_invitation_with_case_fallback(args.workspace_id, args.email, args.token)
         if invitation is None:
             raise AlreadyActivateError()
 
-        RegisterService.revoke_token(args.workspace_id, args.email, args.token)
+        RegisterService.revoke_token(args.workspace_id, normalized_request_email, args.token)
 
         account = invitation["account"]
         account.name = args.name
@@ -117,6 +121,4 @@ class ActivateApi(Resource):
         account.initialized_at = naive_utc_now()
         db.session.commit()
 
-        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
-
-        return {"result": "success", "data": token_pair.model_dump()}
+        return {"result": "success"}

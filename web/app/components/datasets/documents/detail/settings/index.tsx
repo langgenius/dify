@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import * as React from 'react'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import DocumentSettings from './document-settings'
 import PipelineSettings from './pipeline-settings'

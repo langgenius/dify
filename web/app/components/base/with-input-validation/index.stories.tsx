@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { z } from 'zod'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import * as z from 'zod'
 import withValidation from '.'
 
 // Sample components to wrap with validation
@@ -15,9 +15,20 @@ const UserCard = ({ name, email, age, role }: UserCardProps) => {
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <h3 className="mb-2 text-lg font-semibold">{name}</h3>
       <div className="space-y-1 text-sm text-gray-600">
-        <div>Email: {email}</div>
-        <div>Age: {age}</div>
-        {role && <div>Role: {role}</div>}
+        <div>
+          Email:
+          {email}
+        </div>
+        <div>
+          Age:
+          {age}
+        </div>
+        {role && (
+          <div>
+            Role:
+            {role}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -35,8 +46,14 @@ const ProductCard = ({ name, price, category, inStock }: ProductCardProps) => {
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <h3 className="mb-2 text-lg font-semibold">{name}</h3>
       <div className="space-y-1 text-sm">
-        <div className="text-xl font-bold text-green-600">${price}</div>
-        <div className="text-gray-600">Category: {category}</div>
+        <div className="text-xl font-bold text-green-600">
+          $
+          {price}
+        </div>
+        <div className="text-gray-600">
+          Category:
+          {category}
+        </div>
         <div className={inStock ? 'text-green-600' : 'text-red-600'}>
           {inStock ? '✓ In Stock' : '✗ Out of Stock'}
         </div>
@@ -48,7 +65,7 @@ const ProductCard = ({ name, price, category, inStock }: ProductCardProps) => {
 // Create validated versions
 const userSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email'),
+  email: z.email('Invalid email'),
   age: z.number().min(0).max(150),
 })
 
@@ -299,11 +316,15 @@ export const APIResponseValidation: Story = {
           {mockAPIResponses.map((product, index) => (
             <div key={index}>
               <ValidatedProductCard {...product} />
-              {!product.name || product.price <= 0 ? (
-                <div className="mt-2 text-xs text-red-600">
-                  ⚠️ Validation failed for product {index + 1}
-                </div>
-              ) : null}
+              {!product.name || product.price <= 0
+                ? (
+                    <div className="mt-2 text-xs text-red-600">
+                      ⚠️ Validation failed for product
+                      {' '}
+                      {index + 1}
+                    </div>
+                  )
+                : null}
             </div>
           ))}
         </div>
@@ -332,7 +353,10 @@ export const ConfigurationValidation: Story = {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Timeout:</span>
-            <span>{timeout}ms</span>
+            <span>
+              {timeout}
+              ms
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Retries:</span>
@@ -347,7 +371,7 @@ export const ConfigurationValidation: Story = {
     )
 
     const configSchema = z.object({
-      apiUrl: z.string().url('Must be valid URL'),
+      apiUrl: z.url('Must be valid URL'),
       timeout: z.number().min(0).max(30000),
       retries: z.number().min(0).max(5),
       debug: z.boolean(),
@@ -406,7 +430,7 @@ export const UsageDocumentation: Story = {
         <div>
           <h4 className="mb-2 text-sm font-semibold text-gray-900">Usage Example</h4>
           <pre className="overflow-x-auto rounded-lg bg-gray-900 p-4 text-xs text-gray-100">
-            {`import { z } from 'zod'
+            {`import * as z from 'zod'
 import withValidation from './withValidation'
 
 // Define your component

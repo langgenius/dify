@@ -1,61 +1,29 @@
-import { get, post } from './base'
+import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import type {
   ApiKeysListResponse,
   AppDailyConversationsResponse,
   AppDailyEndUsersResponse,
   AppDailyMessagesResponse,
-  AppListResponse,
   AppStatisticsResponse,
   AppTokenCostsResponse,
   AppVoicesListResponse,
   WorkflowDailyConversationsResponse,
 } from '@/models/app'
-import type { App, AppModeEnum } from '@/types/app'
-import { useInvalid } from './use-base'
+import type { App } from '@/types/app'
 import {
-  useInfiniteQuery,
+  useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { consoleClient, consoleQuery } from '@/service/client'
+import { get, post } from './base'
 
 const NAME_SPACE = 'apps'
-
-type AppListParams = {
-  page?: number
-  limit?: number
-  name?: string
-  mode?: AppModeEnum | 'all'
-  tag_ids?: string[]
-  is_created_by_me?: boolean
-}
 
 type DateRangeParams = {
   start?: string
   end?: string
 }
-
-const normalizeAppListParams = (params: AppListParams) => {
-  const {
-    page = 1,
-    limit = 30,
-    name = '',
-    mode,
-    tag_ids,
-    is_created_by_me,
-  } = params
-
-  return {
-    page,
-    limit,
-    name,
-    ...(mode && mode !== 'all' ? { mode } : {}),
-    ...(tag_ids?.length ? { tag_ids } : {}),
-    ...(is_created_by_me ? { is_created_by_me } : {}),
-  }
-}
-
-const appListKey = (params: AppListParams) => [NAME_SPACE, 'list', params]
 
 const useAppFullListKey = [NAME_SPACE, 'full-list']
 
@@ -80,44 +48,36 @@ export const useAppDetail = (appID: string) => {
   })
 }
 
-export const useAppList = (params: AppListParams, options?: { enabled?: boolean }) => {
-  const normalizedParams = normalizeAppListParams(params)
-  return useQuery<AppListResponse>({
-    queryKey: appListKey(normalizedParams),
-    queryFn: () => get<AppListResponse>('/apps', { params: normalizedParams }),
-    ...options,
-  })
-}
-
-export const useAppFullList = () => {
-  return useQuery<AppListResponse>({
-    queryKey: useAppFullListKey,
-    queryFn: () => get<AppListResponse>('/apps', { params: { page: 1, limit: 100, name: '' } }),
-  })
-}
-
-export const useInvalidateAppFullList = () => {
-  return useInvalid(useAppFullListKey)
-}
-
-export const useInfiniteAppList = (params: AppListParams, options?: { enabled?: boolean }) => {
-  const normalizedParams = normalizeAppListParams(params)
-  return useInfiniteQuery<AppListResponse>({
-    queryKey: appListKey(normalizedParams),
-    queryFn: ({ pageParam = normalizedParams.page }) => get<AppListResponse>('/apps', { params: { ...normalizedParams, page: pageParam } }),
-    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
-    initialPageParam: normalizedParams.page,
-    ...options,
-  })
-}
-
 export const useInvalidateAppList = () => {
   const queryClient = useQueryClient()
   return () => {
     queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'list'],
+      queryKey: consoleQuery.apps.list.key(),
     })
   }
+}
+
+export const useDeleteAppMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationKey: consoleQuery.apps.deleteApp.mutationKey(),
+    mutationFn: (appId: string) => {
+      return consoleClient.apps.deleteApp({
+        params: { appId },
+      })
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.list.key(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: useAppFullListKey,
+        }),
+      ])
+    },
+  })
 }
 
 const useAppStatisticsQuery = <T>(metric: string, appId: string, params?: DateRangeParams) => {

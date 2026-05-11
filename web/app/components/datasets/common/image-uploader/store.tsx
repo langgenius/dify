@@ -1,3 +1,6 @@
+import type {
+  FileEntity,
+} from './types'
 import {
   createContext,
   useContext,
@@ -7,9 +10,6 @@ import {
   create,
   useStore,
 } from 'zustand'
-import type {
-  FileEntity,
-} from './types'
 
 type Shape = {
   files: FileEntity[]
@@ -30,7 +30,7 @@ export const createFileStore = (
 }
 
 type FileStore = ReturnType<typeof createFileStore>
-export const FileContext = createContext<FileStore | null>(null)
+const FileContext = createContext<FileStore | null>(null)
 
 export function useFileStoreWithSelector<T>(selector: (state: Shape) => T): T {
   const store = useContext(FileContext)

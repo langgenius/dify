@@ -9,8 +9,6 @@ from alembic import op
 import models as models
 
 
-def _is_pg(conn):
-    return conn.dialect.name == "postgresql"
 import sqlalchemy as sa
 
 
@@ -23,12 +21,7 @@ depends_on = None
 
 def upgrade():
     # Add encrypted_headers column to tool_mcp_providers table
-    conn = op.get_bind()
-    
-    if _is_pg(conn):
-        op.add_column('tool_mcp_providers', sa.Column('encrypted_headers', sa.Text(), nullable=True))
-    else:
-        op.add_column('tool_mcp_providers', sa.Column('encrypted_headers', models.types.LongText(), nullable=True))
+    op.add_column('tool_mcp_providers', sa.Column('encrypted_headers', models.types.LongText(), nullable=True))
     
 
 def downgrade():

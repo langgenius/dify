@@ -37,7 +37,9 @@ from . import (
     apikey,
     extension,
     feature,
+    human_input_form,
     init_validate,
+    notification,
     ping,
     setup,
     spec,
@@ -63,6 +65,7 @@ from .app import (
     statistic,
     workflow,
     workflow_app_log,
+    workflow_comment,
     workflow_draft_variable,
     workflow_run,
     workflow_statistic,
@@ -107,11 +110,14 @@ from .datasets.rag_pipeline import (
 
 # Import explore controllers
 from .explore import (
+    banner,
     installed_app,
     parameter,
     recommended_app,
     saved_message,
+    trial,
 )
+from .socketio import workflow as socketio_workflow  # pyright: ignore[reportUnusedImport]
 
 # Import tag controllers
 from .tag import tags
@@ -145,6 +151,7 @@ __all__ = [
     "apikey",
     "app",
     "audio",
+    "banner",
     "billing",
     "bp",
     "completion",
@@ -168,6 +175,7 @@ __all__ = [
     "forgot_password",
     "generator",
     "hit_testing",
+    "human_input_form",
     "init_validate",
     "installed_app",
     "load_balancing_config",
@@ -179,6 +187,7 @@ __all__ = [
     "model_config",
     "model_providers",
     "models",
+    "notification",
     "oauth",
     "oauth_server",
     "ops_trace",
@@ -194,15 +203,18 @@ __all__ = [
     "saved_message",
     "setup",
     "site",
+    "socketio_workflow",
     "spec",
     "statistic",
     "tags",
     "tool_providers",
+    "trial",
     "trigger_providers",
     "version",
     "website",
     "workflow",
     "workflow_app_log",
+    "workflow_comment",
     "workflow_draft_variable",
     "workflow_run",
     "workflow_statistic",

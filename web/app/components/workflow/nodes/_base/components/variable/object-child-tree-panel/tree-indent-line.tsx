@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 
 type Props = {
-  depth?: number,
-  className?: string,
+  depth?: number
+  className?: string
 }
 
 const TreeIndentLine: FC<Props> = ({
@@ -16,7 +16,7 @@ const TreeIndentLine: FC<Props> = ({
   return (
     <div className={cn('flex', className)}>
       {depthArray.map(d => (
-        <div key={d} className={cn('ml-2.5 mr-2.5 w-px bg-divider-regular')}></div>
+        <div key={d} className={cn('mr-2.5 ml-2.5 w-px bg-divider-regular')}></div>
       ))}
     </div>
   )

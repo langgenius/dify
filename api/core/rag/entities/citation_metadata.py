@@ -22,3 +22,4 @@ class RetrievalSourceMetadata(BaseModel):
     doc_metadata: dict[str, Any] | None = None
     title: str | None = None
     files: list[dict[str, Any]] | None = None
+    summary: str | None = None

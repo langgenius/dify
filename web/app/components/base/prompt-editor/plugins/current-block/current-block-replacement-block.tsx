@@ -1,19 +1,19 @@
+import type { CurrentBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
+import { $applyNodeReplacement } from 'lexical'
 import {
   memo,
   useCallback,
   useEffect,
 } from 'react'
-import { $applyNodeReplacement } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { decoratorTransform } from '../../utils'
 import { CURRENT_PLACEHOLDER_TEXT } from '../../constants'
-import type { CurrentBlockType } from '../../types'
+import { decoratorTransform } from '../../utils'
+import { CustomTextNode } from '../custom-text/node'
 import {
   $createCurrentBlockNode,
   CurrentBlockNode,
 } from './node'
-import { CustomTextNode } from '../custom-text/node'
 
 const REGEX = new RegExp(CURRENT_PLACEHOLDER_TEXT)
 

@@ -1,6 +1,7 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import classNames from '@/utils/classnames'
 import Checkbox from '@/app/components/base/checkbox'
 
 type AddAnotherProps = {
@@ -17,14 +18,14 @@ const AddAnother: FC<AddAnotherProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className={classNames('flex items-center gap-x-1 pl-1', className)}>
+    <div className={cn('flex items-center gap-x-1 pl-1', className)}>
       <Checkbox
-        key='add-another-checkbox'
-        className='shrink-0'
+        key="add-another-checkbox"
+        className="shrink-0"
         checked={isChecked}
         onCheck={onCheck}
       />
-      <span className='system-xs-medium text-text-tertiary'>{t('datasetDocuments.segment.addAnother')}</span>
+      <span className="system-xs-medium text-text-tertiary">{t('segment.addAnother', { ns: 'datasetDocuments' })}</span>
     </div>
   )
 }

@@ -1,11 +1,12 @@
-import mime from 'mime'
-import { FileAppearanceTypeEnum } from './types'
+import type { TFunction } from 'i18next'
 import type { FileEntity } from './types'
-import { upload } from '@/service/base'
+import type { FileResponse } from '@/types/workflow'
+import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import type { FileResponse } from '@/types/workflow'
+import { upload } from '@/service/base'
 import { TransferMethod } from '@/types/app'
+import { FileAppearanceTypeEnum } from './types'
 
 /**
  * Get appropriate error message for file upload errors
@@ -14,14 +15,14 @@ import { TransferMethod } from '@/types/app'
  * @param t - Translation function
  * @returns Localized error message
  */
-export const getFileUploadErrorMessage = (error: any, defaultMessage: string, t: (key: string) => string): string => {
+export const getFileUploadErrorMessage = (error: any, defaultMessage: string, t: TFunction): string => {
   const errorCode = error?.response?.code
 
   if (errorCode === 'forbidden')
     return error?.response?.message
 
   if (errorCode === 'file_extension_blocked')
-    return t('common.fileUploader.fileExtensionBlocked')
+    return t('fileUploader.fileExtensionBlocked', { ns: 'common' })
 
   return defaultMessage
 }
@@ -94,7 +95,7 @@ export const getFileExtension = (fileName: string, fileMimetype: string, isRemot
     const fileNamePairLength = fileNamePair.length
 
     if (fileNamePairLength > 1) {
-      extensionInFileName = fileNamePair[fileNamePairLength - 1].toLowerCase()
+      extensionInFileName = fileNamePair[fileNamePairLength - 1]!.toLowerCase()
       if (extensions.has(extensionInFileName))
         extension = extensionInFileName
     }
@@ -121,13 +122,13 @@ export const getFileAppearanceType = (fileName: string, fileMimetype: string) =>
   if (extension === 'gif')
     return FileAppearanceTypeEnum.gif
 
-  if (FILE_EXTS.image.includes(extension.toUpperCase()))
+  if (FILE_EXTS.image!.includes(extension.toUpperCase()))
     return FileAppearanceTypeEnum.image
 
-  if (FILE_EXTS.video.includes(extension.toUpperCase()))
+  if (FILE_EXTS.video!.includes(extension.toUpperCase()))
     return FileAppearanceTypeEnum.video
 
-  if (FILE_EXTS.audio.includes(extension.toUpperCase()))
+  if (FILE_EXTS.audio!.includes(extension.toUpperCase()))
     return FileAppearanceTypeEnum.audio
 
   if (extension === 'html')
@@ -148,7 +149,7 @@ export const getFileAppearanceType = (fileName: string, fileMimetype: string) =>
   if (extension === 'pptx' || extension === 'ppt')
     return FileAppearanceTypeEnum.ppt
 
-  if (FILE_EXTS.document.includes(extension.toUpperCase()))
+  if (FILE_EXTS.document!.includes(extension.toUpperCase()))
     return FileAppearanceTypeEnum.document
 
   return FileAppearanceTypeEnum.custom
@@ -160,7 +161,7 @@ export const getSupportFileType = (fileName: string, fileMimetype: string, isCus
 
   const extension = getFileExtension(fileName, fileMimetype)
   for (const key in FILE_EXTS) {
-    if ((FILE_EXTS[key]).includes(extension.toUpperCase()))
+    if ((FILE_EXTS[key])!.includes(extension.toUpperCase()))
       return key
   }
 
@@ -187,8 +188,9 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
       if (detectedTypeFromFileName
         && detectedTypeFromMime
         && detectedTypeFromFileName === detectedTypeFromMime
-        && detectedTypeFromFileName !== fileItem.type)
+        && detectedTypeFromFileName !== fileItem.type) {
         supportFileType = detectedTypeFromFileName
+      }
     }
 
     return {
@@ -246,16 +248,4 @@ export const fileIsUploaded = (file: FileEntity) => {
 
   if (file.transferMethod === TransferMethod.remote_url && file.progress === 100)
     return true
-}
-
-export const downloadFile = (url: string, filename: string) => {
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  anchor.style.display = 'none'
-  anchor.target = '_blank'
-  anchor.title = filename
-  document.body.appendChild(anchor)
-  anchor.click()
-  document.body.removeChild(anchor)
 }

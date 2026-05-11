@@ -1,22 +1,30 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { type MetaData, PluginSource } from '../types'
-import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import { useTranslation } from 'react-i18next'
-import PluginInfo from '../plugin-page/plugin-info'
-import ActionButton from '../../base/action-button'
-import Tooltip from '../../base/tooltip'
-import Confirm from '../../base/confirm'
-import { uninstallPlugin } from '@/service/plugins'
-import { useGitHubReleases } from '../install-plugin/hooks'
-import Toast from '@/app/components/base/toast'
-import { useModalContext } from '@/context/modal-context'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import type { MetaData } from '../types'
 import type { PluginCategoryEnum } from '@/app/components/plugins/types'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useModalContext } from '@/context/modal-context'
+import { uninstallPlugin } from '@/service/plugins'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import ActionButton from '../../base/action-button'
+import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
+import PluginInfo from '../plugin-page/plugin-info'
+import { PluginSource } from '../types'
 
-const i18nPrefix = 'plugin.action'
+const i18nPrefix = 'action'
 
 type Props = {
   author: string
@@ -52,7 +60,6 @@ const Action: FC<Props> = ({
     setTrue: showDeleting,
     setFalse: hideDeleting,
   }] = useBoolean(false)
-  const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
@@ -60,9 +67,10 @@ const Action: FC<Props> = ({
     const owner = meta!.repo.split('/')[0] || author
     const repo = meta!.repo.split('/')[1] || pluginName
     const fetchedReleases = await fetchReleases(owner, repo)
-    if (fetchedReleases.length === 0) return
+    if (fetchedReleases.length === 0)
+      return
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
-    Toast.notify(toastProps)
+    toast(toastProps.message, { type: toastProps.type })
     if (needUpdate) {
       setShowUpdatePluginModal({
         onSaveCallback: () => {
@@ -92,7 +100,7 @@ const Action: FC<Props> = ({
 
   const handleDelete = useCallback(async () => {
     showDeleting()
-    try{
+    try {
       const res = await uninstallPlugin(installationId)
       if (res.success) {
         hideDeleteConfirm()
@@ -105,39 +113,59 @@ const Action: FC<Props> = ({
     finally {
       hideDeleting()
     }
-  }, [installationId, onDelete])
+  }, [hideDeleteConfirm, hideDeleting, installationId, onDelete, showDeleting])
   return (
-    <div className='flex space-x-1'>
+    <div className="flex space-x-1">
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
       {isShowFetchNewVersion
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.checkForUpdates`)}>
-            <ActionButton onClick={handleFetchNewVersion}>
-              <RiLoopLeftLine className='h-4 w-4 text-text-tertiary' />
-            </ActionButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton onClick={handleFetchNewVersion}>
+                  <span className="i-ri-loop-left-line h-4 w-4 text-text-tertiary" />
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>
+              {t(`${i18nPrefix}.checkForUpdates`, { ns: 'plugin' })}
+            </TooltipContent>
           </Tooltip>
-        )
-      }
+        )}
       {
         isShowInfo
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.pluginInfo`)}>
-            <ActionButton onClick={showPluginInfo}>
-              <RiInformation2Line className='h-4 w-4 text-text-tertiary' />
-            </ActionButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton onClick={showPluginInfo}>
+                  <span className="i-ri-information-2-line h-4 w-4 text-text-tertiary" />
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>
+              {t(`${i18nPrefix}.pluginInfo`, { ns: 'plugin' })}
+            </TooltipContent>
           </Tooltip>
         )
       }
       {
         isShowDelete
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.delete`)}>
-            <ActionButton
-              className='text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
-              onClick={showDeleteConfirm}
-            >
-              <RiDeleteBinLine className='h-4 w-4' />
-            </ActionButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton
+                  className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
+                  onClick={showDeleteConfirm}
+                >
+                  <span className="i-ri-delete-bin-line h-4 w-4" />
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>
+              {t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
+            </TooltipContent>
           </Tooltip>
         )
       }
@@ -150,21 +178,27 @@ const Action: FC<Props> = ({
           onHide={hidePluginInfo}
         />
       )}
-      <Confirm
-        isShow={isShowDeleteConfirm}
-        title={t(`${i18nPrefix}.delete`)}
-        content={
-          <div>
-            {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{pluginName}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
-            {/* // todo: add usedInApps */}
-            {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}
+      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
+            </AlertDialogTitle>
+            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t(`${i18nPrefix}.deleteContentLeft`, { ns: 'plugin' })}
+              <span className="system-md-semibold">{pluginName}</span>
+              {t(`${i18nPrefix}.deleteContentRight`, { ns: 'plugin' })}
+              <br />
+            </div>
           </div>
-        }
-        onCancel={hideDeleteConfirm}
-        onConfirm={handleDelete}
-        isLoading={deleting}
-        isDisabled={deleting}
-      />
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

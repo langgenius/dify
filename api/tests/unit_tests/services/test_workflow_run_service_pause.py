@@ -16,7 +16,7 @@ import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.enums import WorkflowExecutionStatus
+from graphon.enums import WorkflowExecutionStatus
 from models.workflow import WorkflowPause
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_api_workflow_run_repository import _PrivateWorkflowPauseEntity
@@ -35,7 +35,6 @@ class TestDataFactory:
         app_id: str = "app-789",
         workflow_id: str = "workflow-101",
         status: str | WorkflowExecutionStatus = "paused",
-        pause_id: str | None = None,
         **kwargs,
     ) -> MagicMock:
         """Create a mock WorkflowRun object."""
@@ -45,7 +44,6 @@ class TestDataFactory:
         mock_run.app_id = app_id
         mock_run.workflow_id = workflow_id
         mock_run.status = status
-        mock_run.pause_id = pause_id
 
         for key, value in kwargs.items():
             setattr(mock_run, key, value)
@@ -126,7 +124,7 @@ class TestWorkflowRunService:
         """Create WorkflowRunService instance with mocked dependencies."""
         session_factory, _ = mock_session_factory
 
-        with patch("services.workflow_run_service.DifyAPIRepositoryFactory") as mock_factory:
+        with patch("services.workflow_run_service.DifyAPIRepositoryFactory", autospec=True) as mock_factory:
             mock_factory.create_api_workflow_run_repository.return_value = mock_workflow_run_repository
             service = WorkflowRunService(session_factory)
             return service
@@ -137,7 +135,7 @@ class TestWorkflowRunService:
         mock_engine = create_autospec(Engine)
         session_factory, _ = mock_session_factory
 
-        with patch("services.workflow_run_service.DifyAPIRepositoryFactory") as mock_factory:
+        with patch("services.workflow_run_service.DifyAPIRepositoryFactory", autospec=True) as mock_factory:
             mock_factory.create_api_workflow_run_repository.return_value = mock_workflow_run_repository
             service = WorkflowRunService(mock_engine)
             return service
@@ -148,7 +146,7 @@ class TestWorkflowRunService:
         """Test WorkflowRunService initialization with session_factory."""
         session_factory, _ = mock_session_factory
 
-        with patch("services.workflow_run_service.DifyAPIRepositoryFactory") as mock_factory:
+        with patch("services.workflow_run_service.DifyAPIRepositoryFactory", autospec=True) as mock_factory:
             mock_factory.create_api_workflow_run_repository.return_value = mock_workflow_run_repository
             service = WorkflowRunService(session_factory)
 
@@ -160,9 +158,11 @@ class TestWorkflowRunService:
         mock_engine = create_autospec(Engine)
         session_factory, _ = mock_session_factory
 
-        with patch("services.workflow_run_service.DifyAPIRepositoryFactory") as mock_factory:
+        with patch("services.workflow_run_service.DifyAPIRepositoryFactory", autospec=True) as mock_factory:
             mock_factory.create_api_workflow_run_repository.return_value = mock_workflow_run_repository
-            with patch("services.workflow_run_service.sessionmaker", return_value=session_factory) as mock_sessionmaker:
+            with patch(
+                "services.workflow_run_service.sessionmaker", return_value=session_factory, autospec=True
+            ) as mock_sessionmaker:
                 service = WorkflowRunService(mock_engine)
 
                 mock_sessionmaker.assert_called_once_with(bind=mock_engine, expire_on_commit=False)

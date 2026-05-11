@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import Field
 from sqlalchemy import select
 
@@ -32,7 +34,7 @@ class ApiToolProviderController(ToolProviderController):
         self.tools = []
 
     @classmethod
-    def from_db(cls, db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> "ApiToolProviderController":
+    def from_db(cls, db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> ApiToolProviderController:
         credentials_schema = [
             ProviderConfig(
                 name="auth_type",

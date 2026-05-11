@@ -1,11 +1,12 @@
+import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { AppModeEnum } from '@/types/app'
 
-const i18nPrefix = 'workflow'
+const i18nPrefix = ''
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.QuestionUnderstand,
@@ -28,10 +29,12 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
       {
         id: '1',
         name: '',
+        label: 'CLASS 1',
       },
       {
         id: '2',
         name: '',
+        label: 'CLASS 2',
       },
     ],
     _targetBranches: [
@@ -48,22 +51,22 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
       enabled: false,
     },
   },
-  checkValid(payload: QuestionClassifierNodeType, t: any) {
+  checkValid(payload: QuestionClassifierNodeType, t: TFunction<'workflow'>) {
     let errorMessages = ''
     if (!errorMessages && (!payload.query_variable_selector || payload.query_variable_selector.length === 0))
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.inputVars`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.inputVars`, { ns: 'workflow' }) })
 
     if (!errorMessages && !payload.model.provider)
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.model`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.model`, { ns: 'workflow' }) })
 
     if (!errorMessages && (!payload.classes || payload.classes.length === 0))
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.class`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.class`, { ns: 'workflow' }) })
 
     if (!errorMessages && (payload.classes.some(item => !item.name)))
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.topicName`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.questionClassifiers.topicName`, { ns: 'workflow' }) })
 
     if (!errorMessages && payload.vision?.enabled && !payload.vision.configs?.variable_selector?.length)
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.visionVariable`) })
+      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}errorMsg.fields.visionVariable`, { ns: 'workflow' }) })
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

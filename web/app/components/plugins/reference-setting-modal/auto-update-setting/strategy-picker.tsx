@@ -1,17 +1,17 @@
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuRadioItemIndicator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiArrowDownSLine,
-  RiCheckLine,
-} from '@remixicon/react'
 import { AUTO_UPDATE_STRATEGY } from './types'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-const i18nPrefix = 'plugin.autoUpdate.strategy'
+
+const i18nPrefix = 'autoUpdate.strategy'
 
 type Props = {
   value: AUTO_UPDATE_STRATEGY
@@ -26,72 +26,62 @@ const StrategyPicker = ({
   const options = [
     {
       value: AUTO_UPDATE_STRATEGY.disabled,
-      label: t(`${i18nPrefix}.disabled.name`),
-      description: t(`${i18nPrefix}.disabled.description`),
+      label: t(`${i18nPrefix}.disabled.name`, { ns: 'plugin' }),
+      description: t(`${i18nPrefix}.disabled.description`, { ns: 'plugin' }),
     },
     {
       value: AUTO_UPDATE_STRATEGY.fixOnly,
-      label: t(`${i18nPrefix}.fixOnly.name`),
-      description: t(`${i18nPrefix}.fixOnly.description`),
+      label: t(`${i18nPrefix}.fixOnly.name`, { ns: 'plugin' }),
+      description: t(`${i18nPrefix}.fixOnly.description`, { ns: 'plugin' }),
     },
     {
       value: AUTO_UPDATE_STRATEGY.latest,
-      label: t(`${i18nPrefix}.latest.name`),
-      description: t(`${i18nPrefix}.latest.description`),
+      label: t(`${i18nPrefix}.latest.name`, { ns: 'plugin' }),
+      description: t(`${i18nPrefix}.latest.description`, { ns: 'plugin' }),
     },
   ]
   const selectedOption = options.find(option => option.value === value)
+  const handleValueChange = (nextValue: string) => {
+    onChange(nextValue as AUTO_UPDATE_STRATEGY)
+    setOpen(false)
+  }
 
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
-      placement='top-end'
-      offset={4}
     >
-      <PortalToFollowElemTrigger onClick={(e) => {
-        e.stopPropagation()
-        e.nativeEvent.stopImmediatePropagation()
-        setOpen(v => !v)
-      }}>
-        <Button
-          size='small'
+      <DropdownMenuTrigger render={<Button size="small" />}>
+        {selectedOption?.label}
+        <span aria-hidden className="i-ri-arrow-down-s-line h-3.5 w-3.5" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="top-end"
+        sideOffset={4}
+        popupClassName="w-[280px] p-1"
+      >
+        <DropdownMenuRadioGroup
+          value={value}
+          onValueChange={handleValueChange}
         >
-          {selectedOption?.label}
-          <RiArrowDownSLine className='h-3.5 w-3.5' />
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[99]'>
-        <div className='w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
-          {
-            options.map(option => (
-              <div
-                key={option.value}
-                className='flex cursor-pointer rounded-lg p-2 pr-3 hover:bg-state-base-hover'
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.nativeEvent.stopImmediatePropagation()
-                  onChange(option.value)
-                  setOpen(false)
-                }}
-              >
-                <div className='mr-1 w-4 shrink-0'>
-                  {
-                    value === option.value && (
-                      <RiCheckLine className='h-4 w-4 text-text-accent' />
-                    )
-                  }
-                </div>
-                <div className='grow'>
-                  <div className='system-sm-semibold mb-0.5 text-text-secondary'>{option.label}</div>
-                  <div className='system-xs-regular text-text-tertiary'>{option.description}</div>
-                </div>
+          {options.map(option => (
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              className="mx-0 h-auto items-start gap-1 p-2 pr-3"
+            >
+              <div className="mr-1 flex w-4 shrink-0 justify-center pt-0.5">
+                <DropdownMenuRadioItemIndicator className="ml-0" />
               </div>
-            ))
-          }
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+              <div className="grow">
+                <div className="mb-0.5 system-sm-semibold text-text-secondary">{option.label}</div>
+                <div className="system-xs-regular text-text-tertiary">{option.description}</div>
+              </div>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

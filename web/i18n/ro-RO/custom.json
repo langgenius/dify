@@ -1,0 +1,22 @@
+{
+  "app.changeLogoTip": "Format SVG sau PNG cu o dimensiune minimă de 80x80px",
+  "app.title": "Personalizați marca antetului aplicației",
+  "apply": "Aplică",
+  "change": "Schimbă",
+  "custom": "Personalizare",
+  "customize.contactUs": " contactați-ne ",
+  "customize.prefix": "Pentru a personaliza sigla mărcii în cadrul aplicației, vă rugăm",
+  "customize.suffix": "să actualizați la ediția Enterprise.",
+  "restore": "Restabilește valorile implicite",
+  "upgradeTip.des": "Îmbunătățește-ți planul pentru a-ți personaliza marca",
+  "upgradeTip.prefix": "Actualizați-vă planul pentru a",
+  "upgradeTip.suffix": "să vă personalizați marca.",
+  "upgradeTip.title": "Upgradează-ți planul",
+  "upload": "Încărcare",
+  "uploadedFail": "Încărcarea imaginii a eșuat, vă rugăm să o reîncărcați.",
+  "uploading": "Se încarcă",
+  "webapp.changeLogo": "Schimbați imaginea mărcii \"Powered by\"",
+  "webapp.changeLogoTip": "Format SVG sau PNG cu o dimensiune minimă de 40x40px",
+  "webapp.removeBrand": "Eliminați \"Powered by Dify\"",
+  "webapp.title": "Personalizați marca web app"
+}

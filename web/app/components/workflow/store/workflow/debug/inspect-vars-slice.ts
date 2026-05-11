@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
-import { produce } from 'immer'
-import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import type { ValueSelector } from '../../../types'
+import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import { produce } from 'immer'
 
 type InspectVarsState = {
   currentFocusNodeId: string | null
@@ -49,8 +49,8 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
         const nodes = produce(prevNodes, (draft) => {
           const index = prevNodes.findIndex(node => node.nodeId === nodeId)
           if (index !== -1) {
-            draft[index].vars = payload
-            draft[index].isValueFetched = true
+            draft[index]!.vars = payload
+            draft[index]!.isValueFetched = true
           }
         })
 
@@ -79,8 +79,7 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
             return
           targetVar.value = value
           targetVar.edited = true
-        },
-        )
+        })
         return {
           nodesWithInspectVars: nodes,
         }
@@ -97,8 +96,7 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
             return
           targetVar.value = value
           targetVar.edited = false
-        },
-        )
+        })
         return {
           nodesWithInspectVars: nodes,
         }
@@ -113,10 +111,9 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
           const targetVar = targetNode.vars.find(varItem => varItem.id === varId)
           if (!targetVar)
             return
-          targetVar.name = selector[1]
+          targetVar.name = selector[1]!
           targetVar.selector = selector
-        },
-        )
+        })
         return {
           nodesWithInspectVars: nodes,
         }
@@ -131,8 +128,7 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
           const needChangeVarIndex = targetNode.vars.findIndex(varItem => varItem.id === varId)
           if (needChangeVarIndex !== -1)
             targetNode.vars.splice(needChangeVarIndex, 1)
-        },
-        )
+        })
         return {
           nodesWithInspectVars: nodes,
         }

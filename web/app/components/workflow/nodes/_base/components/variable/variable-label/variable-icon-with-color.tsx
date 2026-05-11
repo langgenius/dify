@@ -1,8 +1,8 @@
+import type { VariableIconProps } from './base/variable-icon'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import VariableIcon from './base/variable-icon'
-import type { VariableIconProps } from './base/variable-icon'
 import { useVarColor } from './hooks'
-import cn from '@/utils/classnames'
 
 type VariableIconWithColorProps = {
   isExceptionVariable?: boolean

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
-from core.entities.provider_entities import QuotaUnit, SystemConfiguration
+from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, SystemConfiguration
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -134,22 +134,37 @@ def handle(sender: Message, **kwargs):
             system_configuration=system_configuration,
             model_name=model_config.model,
         )
-
         if used_quota is not None:
-            quota_update = _ProviderUpdateOperation(
-                filters=_ProviderUpdateFilters(
-                    tenant_id=tenant_id,
-                    provider_name=ModelProviderID(model_config.provider).provider_name,
-                    provider_type=ProviderType.SYSTEM,
-                    quota_type=provider_configuration.system_configuration.current_quota_type.value,
-                ),
-                values=_ProviderUpdateValues(quota_used=Provider.quota_used + used_quota, last_used=current_time),
-                additional_filters=_ProviderUpdateAdditionalFilters(
-                    quota_limit_check=True  # Provider.quota_limit > Provider.quota_used
-                ),
-                description="quota_deduction_update",
-            )
-            updates_to_perform.append(quota_update)
+            match provider_configuration.system_configuration.current_quota_type:
+                case ProviderQuotaType.TRIAL:
+                    _deduct_credit_pool_quota_capped(
+                        tenant_id=tenant_id,
+                        credits_required=used_quota,
+                        pool_type="trial",
+                    )
+                case ProviderQuotaType.PAID:
+                    _deduct_credit_pool_quota_capped(
+                        tenant_id=tenant_id,
+                        credits_required=used_quota,
+                        pool_type="paid",
+                    )
+                case ProviderQuotaType.FREE:
+                    quota_update = _ProviderUpdateOperation(
+                        filters=_ProviderUpdateFilters(
+                            tenant_id=tenant_id,
+                            provider_name=ModelProviderID(model_config.provider).provider_name,
+                            provider_type=ProviderType.SYSTEM.value,
+                            quota_type=provider_configuration.system_configuration.current_quota_type,
+                        ),
+                        values=_ProviderUpdateValues(
+                            quota_used=Provider.quota_used + used_quota, last_used=current_time
+                        ),
+                        additional_filters=_ProviderUpdateAdditionalFilters(
+                            quota_limit_check=True  # Provider.quota_limit > Provider.quota_used
+                        ),
+                        description="quota_deduction_update",
+                    )
+                    updates_to_perform.append(quota_update)
 
     # Execute all updates
     start_time = time_module.perf_counter()
@@ -179,6 +194,26 @@ def handle(sender: Message, **kwargs):
             provider_name,
         )
         raise
+
+
+def _deduct_credit_pool_quota_capped(*, tenant_id: str, credits_required: int, pool_type: str) -> None:
+    """Apply post-generation credit accounting without failing message persistence on quota exhaustion."""
+    from services.credit_pool_service import CreditPoolService
+
+    deducted_credits = CreditPoolService.deduct_credits_capped(
+        tenant_id=tenant_id,
+        credits_required=credits_required,
+        pool_type=pool_type,
+    )
+    if deducted_credits < credits_required:
+        logger.warning(
+            "Credit pool exhausted during message-created accounting, "
+            "tenant_id=%s, pool_type=%s, credits_required=%s, credits_deducted=%s",
+            tenant_id,
+            pool_type,
+            credits_required,
+            deducted_credits,
+        )
 
 
 def _calculate_quota_usage(

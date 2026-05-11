@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import Spinner from '.'
 
@@ -11,14 +11,16 @@ const SpinnerPlayground = ({
 
   return (
     <div className="flex w-full max-w-xs flex-col items-center gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Spinner</p>
+      <p className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Spinner</p>
       <Spinner loading={isLoading} className="text-primary-500" />
       <button
         type="button"
         className="rounded-md border border-divider-subtle bg-background-default px-3 py-1 text-xs font-medium text-text-secondary hover:bg-state-base-hover"
         onClick={() => setIsLoading(prev => !prev)}
       >
-        {isLoading ? 'Stop' : 'Start'} loading
+        {isLoading ? 'Stop' : 'Start'}
+        {' '}
+        loading
       </button>
     </div>
   )

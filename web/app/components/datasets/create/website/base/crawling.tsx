@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RowStruct } from '@/app/components/base/icons/src/public/other'
 
@@ -19,15 +19,20 @@ const Crawling: FC<Props> = ({
 
   return (
     <div className={className}>
-      <div className='flex h-[34px] items-center border-y-[0.5px] border-divider-regular px-4
-        text-xs text-text-tertiary shadow-xs shadow-shadow-shadow-3'>
-        {t('datasetCreation.stepOne.website.totalPageScraped')} {crawledNum}/{totalNum}
+      <div className="flex h-[34px] items-center border-y-[0.5px] border-divider-regular px-4
+        text-xs text-text-tertiary shadow-xs shadow-shadow-shadow-3"
+      >
+        {t('stepOne.website.totalPageScraped', { ns: 'datasetCreation' })}
+        {' '}
+        {crawledNum}
+        /
+        {totalNum}
       </div>
 
-      <div className='p-2'>
+      <div className="p-2">
         {['', '', '', ''].map((item, index) => (
-          <div className='py-[5px]' key={index}>
-            <RowStruct className='text-text-quaternary' />
+          <div className="py-[5px]" key={index}>
+            <RowStruct className="text-text-quaternary" />
           </div>
         ))}
       </div>

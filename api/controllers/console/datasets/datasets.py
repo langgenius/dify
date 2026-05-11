@@ -3,17 +3,14 @@ from typing import Any, cast
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import (
-    api_key_item_model,
-    api_key_list_model,
-)
+from controllers.console.apikey import ApiKeyItem, ApiKeyList
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
@@ -25,15 +22,16 @@ from controllers.console.wraps import (
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
-from core.model_runtime.entities.model_entities import ModelType
-from core.provider_manager import ProviderManager
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.app_fields import app_detail_kernel_fields, related_app_list
 from fields.dataset_fields import (
+    content_fields,
     dataset_detail_fields,
     dataset_fields,
     dataset_query_detail_fields,
@@ -41,6 +39,7 @@ from fields.dataset_fields import (
     doc_metadata_fields,
     external_knowledge_info_fields,
     external_retrieval_model_fields,
+    file_info_fields,
     icon_info_fields,
     keyword_setting_fields,
     reranking_model_fields,
@@ -49,47 +48,43 @@ from fields.dataset_fields import (
     weighted_score_fields,
 )
 from fields.document_fields import document_status_fields
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.login import current_account_with_tenant, login_required
+from libs.url_utils import normalize_api_base_url
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
-from models.dataset import DatasetPermissionEnum
+from models.dataset import DatasetPermission, DatasetPermissionEnum
+from models.enums import ApiTokenType, SegmentStatus
 from models.provider_ids import ModelProviderID
+from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
-
-def _get_or_create_model(model_name: str, field_def):
-    existing = console_ns.models.get(model_name)
-    if existing is None:
-        existing = console_ns.model(model_name, field_def)
-    return existing
-
-
 # Register models for flask_restx to avoid dict type issues in Swagger
-dataset_base_model = _get_or_create_model("DatasetBase", dataset_fields)
+dataset_base_model = get_or_create_model("DatasetBase", dataset_fields)
 
-tag_model = _get_or_create_model("Tag", tag_fields)
+tag_model = get_or_create_model("Tag", tag_fields)
 
-keyword_setting_model = _get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
-vector_setting_model = _get_or_create_model("DatasetVectorSetting", vector_setting_fields)
+keyword_setting_model = get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
+vector_setting_model = get_or_create_model("DatasetVectorSetting", vector_setting_fields)
 
 weighted_score_fields_copy = weighted_score_fields.copy()
 weighted_score_fields_copy["keyword_setting"] = fields.Nested(keyword_setting_model)
 weighted_score_fields_copy["vector_setting"] = fields.Nested(vector_setting_model)
-weighted_score_model = _get_or_create_model("DatasetWeightedScore", weighted_score_fields_copy)
+weighted_score_model = get_or_create_model("DatasetWeightedScore", weighted_score_fields_copy)
 
-reranking_model = _get_or_create_model("DatasetRerankingModel", reranking_model_fields)
+reranking_model = get_or_create_model("DatasetRerankingModel", reranking_model_fields)
 
 dataset_retrieval_model_fields_copy = dataset_retrieval_model_fields.copy()
 dataset_retrieval_model_fields_copy["reranking_model"] = fields.Nested(reranking_model)
 dataset_retrieval_model_fields_copy["weights"] = fields.Nested(weighted_score_model, allow_null=True)
-dataset_retrieval_model = _get_or_create_model("DatasetRetrievalModel", dataset_retrieval_model_fields_copy)
+dataset_retrieval_model = get_or_create_model("DatasetRetrievalModel", dataset_retrieval_model_fields_copy)
 
-external_knowledge_info_model = _get_or_create_model("ExternalKnowledgeInfo", external_knowledge_info_fields)
+external_knowledge_info_model = get_or_create_model("ExternalKnowledgeInfo", external_knowledge_info_fields)
 
-external_retrieval_model = _get_or_create_model("ExternalRetrievalModel", external_retrieval_model_fields)
+external_retrieval_model = get_or_create_model("ExternalRetrievalModel", external_retrieval_model_fields)
 
-doc_metadata_model = _get_or_create_model("DatasetDocMetadata", doc_metadata_fields)
+doc_metadata_model = get_or_create_model("DatasetDocMetadata", doc_metadata_fields)
 
-icon_info_model = _get_or_create_model("DatasetIconInfo", icon_info_fields)
+icon_info_model = get_or_create_model("DatasetIconInfo", icon_info_fields)
 
 dataset_detail_fields_copy = dataset_detail_fields.copy()
 dataset_detail_fields_copy["retrieval_model_dict"] = fields.Nested(dataset_retrieval_model)
@@ -98,14 +93,22 @@ dataset_detail_fields_copy["external_knowledge_info"] = fields.Nested(external_k
 dataset_detail_fields_copy["external_retrieval_model"] = fields.Nested(external_retrieval_model, allow_null=True)
 dataset_detail_fields_copy["doc_metadata"] = fields.List(fields.Nested(doc_metadata_model))
 dataset_detail_fields_copy["icon_info"] = fields.Nested(icon_info_model)
-dataset_detail_model = _get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
+dataset_detail_model = get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
 
-dataset_query_detail_model = _get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields)
+file_info_model = get_or_create_model("DatasetFileInfo", file_info_fields)
 
-app_detail_kernel_model = _get_or_create_model("AppDetailKernel", app_detail_kernel_fields)
+content_fields_copy = content_fields.copy()
+content_fields_copy["file_info"] = fields.Nested(file_info_model, allow_null=True)
+content_model = get_or_create_model("DatasetContent", content_fields_copy)
+
+dataset_query_detail_fields_copy = dataset_query_detail_fields.copy()
+dataset_query_detail_fields_copy["queries"] = fields.Nested(content_model)
+dataset_query_detail_model = get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields_copy)
+
+app_detail_kernel_model = get_or_create_model("AppDetailKernel", app_detail_kernel_fields)
 related_app_list_copy = related_app_list.copy()
 related_app_list_copy["data"] = fields.List(fields.Nested(app_detail_kernel_model))
-related_app_list_model = _get_or_create_model("RelatedAppList", related_app_list_copy)
+related_app_list_model = get_or_create_model("RelatedAppList", related_app_list_copy)
 
 
 def _validate_indexing_technique(value: str | None) -> str | None:
@@ -113,6 +116,14 @@ def _validate_indexing_technique(value: str | None) -> str | None:
         return value
     if value not in Dataset.INDEXING_TECHNIQUE_LIST:
         raise ValueError("Invalid indexing technique.")
+    return value
+
+
+def _validate_doc_form(value: str | None) -> str | None:
+    if value is None:
+        return value
+    if value not in Dataset.DOC_FORM_LIST:
+        raise ValueError("Invalid doc_form.")
     return value
 
 
@@ -146,7 +157,8 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     retrieval_model: dict[str, Any] | None = None
-    partial_member_list: list[str] | None = None
+    summary_index_setting: dict[str, Any] | None = None
+    partial_member_list: list[dict[str, str]] | None = None
     external_retrieval_model: dict[str, Any] | None = None
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
@@ -175,8 +187,27 @@ class IndexingEstimatePayload(BaseModel):
             raise ValueError("indexing_technique is required.")
         return result
 
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        result = _validate_doc_form(value)
+        if result is None:
+            return "text_model"
+        return result
 
-register_schema_models(console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload)
+
+class ConsoleDatasetListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+    keyword: str | None = Field(default=None, description="Search keyword")
+    include_all: bool = Field(default=False, description="Include all datasets")
+    ids: list[str] = Field(default_factory=list, description="Filter by dataset IDs")
+    tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+
+
+register_schema_models(
+    console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery
+)
 
 
 def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool = False) -> dict[str, list[str]]:
@@ -223,6 +254,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.COUCHBASE,
         VectorType.OPENGAUSS,
         VectorType.OCEANBASE,
+        VectorType.SEEKDB,
         VectorType.TABLESTORE,
         VectorType.HUAWEI_CLOUD,
         VectorType.TENCENT,
@@ -230,6 +262,8 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.CLICKZETTA,
         VectorType.BAIDU,
         VectorType.ALIBABACLOUD_MYSQL,
+        VectorType.IRIS,
+        VectorType.HOLOGRES,
     }
 
     semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
@@ -273,22 +307,30 @@ class DatasetListApi(Resource):
     @enterprise_license_required
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        ids = request.args.getlist("ids")
+        # Convert query parameters to dict, handling list parameters correctly
+        query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
+        # Handle ids and tag_ids as lists (Flask request.args.getlist returns list even for single value)
+        if "ids" in request.args:
+            query_params["ids"] = request.args.getlist("ids")
+        if "tag_ids" in request.args:
+            query_params["tag_ids"] = request.args.getlist("tag_ids")
+        query = ConsoleDatasetListQuery.model_validate(query_params)
         # provider = request.args.get("provider", default="vendor")
-        search = request.args.get("keyword", default=None, type=str)
-        tag_ids = request.args.getlist("tag_ids")
-        include_all = request.args.get("include_all", default="false").lower() == "true"
-        if ids:
-            datasets, total = DatasetService.get_datasets_by_ids(ids, current_tenant_id)
+        if query.ids:
+            datasets, total = DatasetService.get_datasets_by_ids(query.ids, current_tenant_id)
         else:
             datasets, total = DatasetService.get_datasets(
-                page, limit, current_tenant_id, current_user, search, tag_ids, include_all
+                query.page,
+                query.limit,
+                current_tenant_id,
+                current_user,
+                query.keyword,
+                query.tag_ids,
+                query.include_all,
             )
 
         # check embedding setting
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
         configurations = provider_manager.get_configurations(tenant_id=current_tenant_id)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -298,9 +340,21 @@ class DatasetListApi(Resource):
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
         data = cast(list[dict[str, Any]], marshal(datasets, dataset_detail_fields))
+        dataset_ids = [item["id"] for item in data if item.get("permission") == "partial_members"]
+        partial_members_map: dict[str, list[str]] = {}
+        if dataset_ids:
+            permissions = db.session.execute(
+                select(DatasetPermission.dataset_id, DatasetPermission.account_id).where(
+                    DatasetPermission.dataset_id.in_(dataset_ids)
+                )
+            ).all()
+
+            for dataset_id, account_id in permissions:
+                partial_members_map.setdefault(dataset_id, []).append(account_id)
+
         for item in data:
             # convert embedding_model_provider to plugin standard format
-            if item["indexing_technique"] == "high_quality" and item["embedding_model_provider"]:
+            if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
                 item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
                 if item_model in model_names:
@@ -311,12 +365,17 @@ class DatasetListApi(Resource):
                 item["embedding_available"] = True
 
             if item.get("permission") == "partial_members":
-                part_users_list = DatasetPermissionService.get_dataset_partial_member_list(item["id"])
-                item.update({"partial_member_list": part_users_list})
+                item.update({"partial_member_list": partial_members_map.get(item["id"], [])})
             else:
                 item.update({"partial_member_list": []})
 
-        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+        response = {
+            "data": data,
+            "has_more": len(datasets) == query.limit,
+            "limit": query.limit,
+            "total": total,
+            "page": query.page,
+        }
         return response, 200
 
     @console_ns.doc("create_dataset")
@@ -376,7 +435,7 @@ class DatasetApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
-        if dataset.indexing_technique == "high_quality":
+        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             if dataset.embedding_model_provider:
                 provider_id = ModelProviderID(dataset.embedding_model_provider)
                 data["embedding_model_provider"] = str(provider_id)
@@ -385,7 +444,7 @@ class DatasetApi(Resource):
             data.update({"partial_member_list": part_users_list})
 
         # check embedding setting
-        provider_manager = ProviderManager()
+        provider_manager = create_plugin_provider_manager(tenant_id=current_tenant_id)
         configurations = provider_manager.get_configurations(tenant_id=current_tenant_id)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
@@ -394,7 +453,7 @@ class DatasetApi(Resource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        if data["indexing_technique"] == "high_quality":
+        if data["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY:
             item_model = f"{data['embedding_model']}:{data['embedding_model_provider']}"
             if item_model in model_names:
                 data["embedding_available"] = True
@@ -425,7 +484,7 @@ class DatasetApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         # check embedding model setting
         if (
-            payload.indexing_technique == "high_quality"
+            payload.indexing_technique == IndexTechniqueType.HIGH_QUALITY
             and payload.embedding_model_provider is not None
             and payload.embedding_model is not None
         ):
@@ -547,63 +606,63 @@ class DatasetIndexingEstimateApi(Resource):
         # validate args
         DocumentService.estimate_args_validate(args)
         extract_settings = []
-        if args["info_list"]["data_source_type"] == "upload_file":
-            file_ids = args["info_list"]["file_info_list"]["file_ids"]
-            file_details = db.session.scalars(
-                select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
-            ).all()
+        match args["info_list"]["data_source_type"]:
+            case "upload_file":
+                file_ids = args["info_list"]["file_info_list"]["file_ids"]
+                file_details = db.session.scalars(
+                    select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
+                ).all()
+                if file_details is None:
+                    raise NotFound("File not found.")
 
-            if file_details is None:
-                raise NotFound("File not found.")
-
-            if file_details:
-                for file_detail in file_details:
+                if file_details:
+                    for file_detail in file_details:
+                        extract_setting = ExtractSetting(
+                            datasource_type=DatasourceType.FILE,
+                            upload_file=file_detail,
+                            document_model=args["doc_form"],
+                        )
+                        extract_settings.append(extract_setting)
+            case "notion_import":
+                notion_info_list = args["info_list"]["notion_info_list"]
+                for notion_info in notion_info_list:
+                    workspace_id = notion_info["workspace_id"]
+                    credential_id = notion_info.get("credential_id")
+                    for page in notion_info["pages"]:
+                        extract_setting = ExtractSetting(
+                            datasource_type=DatasourceType.NOTION,
+                            notion_info=NotionInfo.model_validate(
+                                {
+                                    "credential_id": credential_id,
+                                    "notion_workspace_id": workspace_id,
+                                    "notion_obj_id": page["page_id"],
+                                    "notion_page_type": page["type"],
+                                    "tenant_id": current_tenant_id,
+                                }
+                            ),
+                            document_model=args["doc_form"],
+                        )
+                        extract_settings.append(extract_setting)
+            case "website_crawl":
+                website_info_list = args["info_list"]["website_info_list"]
+                for url in website_info_list["urls"]:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.FILE,
-                        upload_file=file_detail,
-                        document_model=args["doc_form"],
-                    )
-                    extract_settings.append(extract_setting)
-        elif args["info_list"]["data_source_type"] == "notion_import":
-            notion_info_list = args["info_list"]["notion_info_list"]
-            for notion_info in notion_info_list:
-                workspace_id = notion_info["workspace_id"]
-                credential_id = notion_info.get("credential_id")
-                for page in notion_info["pages"]:
-                    extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.NOTION,
-                        notion_info=NotionInfo.model_validate(
+                        datasource_type=DatasourceType.WEBSITE,
+                        website_info=WebsiteInfo.model_validate(
                             {
-                                "credential_id": credential_id,
-                                "notion_workspace_id": workspace_id,
-                                "notion_obj_id": page["page_id"],
-                                "notion_page_type": page["type"],
+                                "provider": website_info_list["provider"],
+                                "job_id": website_info_list["job_id"],
+                                "url": url,
                                 "tenant_id": current_tenant_id,
+                                "mode": "crawl",
+                                "only_main_content": website_info_list["only_main_content"],
                             }
                         ),
                         document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
-        elif args["info_list"]["data_source_type"] == "website_crawl":
-            website_info_list = args["info_list"]["website_info_list"]
-            for url in website_info_list["urls"]:
-                extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.WEBSITE,
-                    website_info=WebsiteInfo.model_validate(
-                        {
-                            "provider": website_info_list["provider"],
-                            "job_id": website_info_list["job_id"],
-                            "url": url,
-                            "tenant_id": current_tenant_id,
-                            "mode": "crawl",
-                            "only_main_content": website_info_list["only_main_content"],
-                        }
-                    ),
-                    document_model=args["doc_form"],
-                )
-                extract_settings.append(extract_setting)
-        else:
-            raise ValueError("Data source type not support")
+            case _:
+                raise ValueError("Data source type not support")
         indexing_runner = IndexingRunner()
         try:
             response = indexing_runner.indexing_estimate(
@@ -678,18 +737,23 @@ class DatasetIndexingStatusApi(Resource):
         documents_status = []
         for document in documents:
             completed_segments = (
-                db.session.query(DocumentSegment)
-                .where(
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != "re_segment",
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-                .count()
+                or 0
             )
             total_segments = (
-                db.session.query(DocumentSegment)
-                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
-                .count()
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
+                )
+                or 0
             )
             # Create a dictionary with document attributes and additional fields
             document_dict = {
@@ -715,41 +779,44 @@ class DatasetIndexingStatusApi(Resource):
 class DatasetApiKeyApi(Resource):
     max_keys = 10
     token_prefix = "dataset-"
-    resource_type = "dataset"
+    resource_type = ApiTokenType.DATASET
 
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
-    @console_ns.response(200, "API keys retrieved successfully", api_key_list_model)
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_key_list_model)
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
         keys = db.session.scalars(
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
-        return {"items": keys}
+        return ApiKeyList.model_validate({"data": keys}, from_attributes=True).model_dump(mode="json")
 
+    @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
+    @console_ns.response(400, "Maximum keys exceeded")
     @setup_required
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @marshal_with(api_key_item_model)
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
 
         current_key_count = (
-            db.session.query(ApiToken)
-            .where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
-            .count()
+            db.session.scalar(
+                select(func.count(ApiToken.id)).where(
+                    ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id
+                )
+            )
+            or 0
         )
 
         if current_key_count >= self.max_keys:
             console_ns.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
-                code="max_keys_exceeded",
+                custom="max_keys_exceeded",
             )
 
         key = ApiToken.generate_api_key(self.token_prefix, 24)
@@ -759,12 +826,12 @@ class DatasetApiKeyApi(Resource):
         api_token.type = self.resource_type
         db.session.add(api_token)
         db.session.commit()
-        return api_token, 200
+        return ApiKeyItem.model_validate(api_token, from_attributes=True).model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
 class DatasetApiDeleteApi(Resource):
-    resource_type = "dataset"
+    resource_type = ApiTokenType.DATASET
 
     @console_ns.doc("delete_dataset_api_key")
     @console_ns.doc(description="Delete dataset API key")
@@ -777,20 +844,25 @@ class DatasetApiDeleteApi(Resource):
     def delete(self, api_key_id):
         _, current_tenant_id = current_account_with_tenant()
         api_key_id = str(api_key_id)
-        key = (
-            db.session.query(ApiToken)
+        key = db.session.scalar(
+            select(ApiToken)
             .where(
                 ApiToken.tenant_id == current_tenant_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
             )
-            .first()
+            .limit(1)
         )
 
         if key is None:
             console_ns.abort(404, message="API key not found")
 
-        db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
+        # Invalidate cache before deleting from database
+        # Type assertion: key is guaranteed to be non-None here because abort() raises
+        assert key is not None  # nosec - for type checker only
+        ApiTokenCache.delete(key.token, key.type)
+
+        db.session.delete(key)
         db.session.commit()
 
         return {"result": "success"}, 204
@@ -818,7 +890,8 @@ class DatasetApiBaseUrlApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        return {"api_base_url": (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"}
+        base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
+        return {"api_base_url": normalize_api_base_url(base)}
 
 
 @console_ns.route("/datasets/retrieval-setting")

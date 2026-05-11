@@ -1,9 +1,9 @@
+import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import {
   BlockEnum,
   VarType,
 } from '@/app/components/workflow/types'
-import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 
 const getDefaultValueByType = (type: VarType) => {
   if (type === VarType.string)
@@ -73,8 +73,8 @@ export const getDefaultValue = (data: CommonNodeType) => {
     return Object.keys(outputs).map((key) => {
       return {
         key,
-        type: outputs[key].type,
-        value: getDefaultValueByType(outputs[key].type),
+        type: outputs[key]!.type,
+        value: getDefaultValueByType(outputs[key]!.type),
       }
     })
   }

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y block-no-verify@1.1.1"
+          }
+        ]
+      }
+    ]
+  }
+}

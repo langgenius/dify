@@ -1,7 +1,7 @@
-import { checkTaskStatus as fetchCheckTaskStatus } from '@/service/plugins'
 import type { PluginStatus } from '../../types'
-import { TaskStatus } from '../../types'
+import { checkTaskStatus as fetchCheckTaskStatus } from '@/service/plugins'
 import { sleep } from '@/utils'
+import { TaskStatus } from '../../types'
 
 const INTERVAL = 10 * 1000 // 10 seconds
 

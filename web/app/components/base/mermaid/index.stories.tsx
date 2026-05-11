@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import Flowchart from '.'
 
@@ -20,7 +20,7 @@ const MermaidDemo = ({
 
   return (
     <div className="flex w-full max-w-3xl flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-text-tertiary">
+      <div className="flex items-center justify-between text-xs tracking-[0.18em] text-text-tertiary uppercase">
         <span>Mermaid diagram</span>
         <button
           type="button"

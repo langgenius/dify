@@ -1,7 +1,9 @@
+import builtins
 import io
 from unittest.mock import patch
 
 import pytest
+from flask.views import MethodView
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import (
@@ -13,6 +15,9 @@ from controllers.common.errors import (
 )
 from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
+
+if not hasattr(builtins, "MethodView"):
+    builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 
 class TestFileUploadSecurity:
@@ -128,7 +133,7 @@ class TestFileUploadSecurity:
         # Test passes if no exception is raised
 
     # Test 4: Service error handling
-    @patch("services.file_service.FileService.upload_file")
+    @patch("controllers.console.files.FileService.upload_file")
     def test_should_handle_file_too_large_error(self, mock_upload):
         """Test that service FileTooLargeError is properly converted"""
         mock_upload.side_effect = ServiceFileTooLargeError("File too large")
@@ -140,7 +145,7 @@ class TestFileUploadSecurity:
             with pytest.raises(FileTooLargeError):
                 raise FileTooLargeError(e.description)
 
-    @patch("services.file_service.FileService.upload_file")
+    @patch("controllers.console.files.FileService.upload_file")
     def test_should_handle_unsupported_file_type_error(self, mock_upload):
         """Test that service UnsupportedFileTypeError is properly converted"""
         mock_upload.side_effect = ServiceUnsupportedFileTypeError()

@@ -1,19 +1,22 @@
+import type { BlockEnum, CommonNodeType } from '../types'
+import type { TriggerDefaultValue } from './types'
+import {
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+} from '@langgenius/dify-ui/preview-card'
 import {
   memo,
   useCallback,
   useEffect,
   useMemo,
 } from 'react'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useTranslation } from 'react-i18next'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import BlockIcon from '../block-icon'
-import type { BlockEnum, CommonNodeType } from '../types'
 import { BlockEnum as BlockEnumValues } from '../types'
 // import { useNodeMetaData } from '../hooks'
 import { START_BLOCKS } from './constants'
-import type { TriggerDefaultValue } from './types'
-import Tooltip from '@/app/components/base/tooltip'
-import { useAvailableNodesMetaData } from '../../workflow-app/hooks'
 
 type StartBlocksProps = {
   searchText: string
@@ -33,7 +36,6 @@ const StartBlocks = ({
   const { t } = useTranslation()
   const nodes = useNodes()
   // const nodeMetaData = useNodeMetaData()
-  const availableNodesMetaData = useAvailableNodesMetaData()
 
   const filteredBlocks = useMemo(() => {
     // Check if Start node already exists in workflow
@@ -41,9 +43,9 @@ const StartBlocks = ({
     const normalizedSearch = searchText.toLowerCase()
     const getDisplayName = (blockType: BlockEnum) => {
       if (blockType === BlockEnumValues.TriggerWebhook)
-        return t('workflow.customWebhook')
+        return t('customWebhook', { ns: 'workflow' })
 
-      return t(`workflow.blocks.${blockType}`)
+      return t(`blocks.${blockType}`, { ns: 'workflow' })
     }
 
     return START_BLOCKS.filter((block) => {
@@ -67,66 +69,72 @@ const StartBlocks = ({
     onContentStateChange?.(!isEmpty)
   }, [isEmpty, onContentStateChange])
 
-  const renderBlock = useCallback((block: { type: BlockEnum; title: string; description?: string }) => (
-    <Tooltip
-      key={block.type}
-      position='right'
-      popupClassName='w-[224px] rounded-xl'
-      needsDelay={false}
-      popupContent={(
+  // Preview is supplementary: the block icon, title and description all become
+  // reachable from the inspector + canvas once the row is clicked to insert
+  // the start node, so hover/focus-only activation is a11y-safe. See
+  // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
+  const renderBlock = useCallback((block: typeof START_BLOCKS[number]) => (
+    <PreviewCard key={block.type}>
+      <PreviewCardTrigger
+        delay={150}
+        closeDelay={150}
+        render={(
+          <div
+            className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
+            onClick={() => onSelect(block.type)}
+          >
+            <BlockIcon
+              className="mr-2 shrink-0"
+              type={block.type}
+            />
+            <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
+              <span className="truncate">{t(`blocks.${block.type}`, { ns: 'workflow' })}</span>
+              {block.type === BlockEnumValues.Start && (
+                <span className="ml-2 shrink-0 system-xs-regular text-text-quaternary">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
+              )}
+            </div>
+          </div>
+        )}
+      />
+      <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
         <div>
           <BlockIcon
-            size='md'
-            className='mb-2'
+            size="md"
+            className="mb-2"
             type={block.type}
           />
-          <div className='system-md-medium mb-1 text-text-primary'>
+          <div className="mb-1 system-md-medium text-text-primary">
             {block.type === BlockEnumValues.TriggerWebhook
-              ? t('workflow.customWebhook')
-              : t(`workflow.blocks.${block.type}`)
-            }
+              ? t('customWebhook', { ns: 'workflow' })
+              : t(`blocks.${block.type}`, { ns: 'workflow' })}
           </div>
-          <div className='system-xs-regular text-text-secondary'>
-            {t(`workflow.blocksAbout.${block.type}`)}
+          <div className="system-xs-regular text-text-secondary">
+            {t(`blocksAbout.${block.type}`, { ns: 'workflow' })}
           </div>
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
-            <div className='system-xs-regular mb-1 mt-1 text-text-tertiary'>
-              {t('tools.author')} {t('workflow.difyTeam')}
+            <div className="mt-1 mb-1 system-xs-regular text-text-tertiary">
+              {t('author', { ns: 'tools' })}
+              {' '}
+              {t('difyTeam', { ns: 'workflow' })}
             </div>
           )}
         </div>
-      )}
-    >
-      <div
-        className='flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
-        onClick={() => onSelect(block.type)}
-      >
-        <BlockIcon
-          className='mr-2 shrink-0'
-          type={block.type}
-        />
-        <div className='flex w-0 grow items-center justify-between text-sm text-text-secondary'>
-          <span className='truncate'>{t(`workflow.blocks.${block.type}`)}</span>
-          {block.type === BlockEnumValues.Start && (
-            <span className='system-xs-regular ml-2 shrink-0 text-text-quaternary'>{t('workflow.blocks.originalStartNode')}</span>
-          )}
-        </div>
-      </div>
-    </Tooltip>
-  ), [availableNodesMetaData, onSelect, t])
+      </PreviewCardContent>
+    </PreviewCard>
+  ), [onSelect, t])
 
   if (isEmpty)
     return null
 
   return (
-    <div className='p-1'>
-      <div className='mb-1'>
+    <div className="p-1">
+      <div className="mb-1">
         {filteredBlocks.map((block, index) => (
           <div key={block.type}>
             {renderBlock(block)}
             {block.type === BlockEnumValues.Start && index < filteredBlocks.length - 1 && (
-              <div className='my-1 px-3'>
-                <div className='border-t border-divider-subtle' />
+              <div className="my-1 px-3">
+                <div className="border-t border-divider-subtle" />
               </div>
             )}
           </div>

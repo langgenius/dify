@@ -4,10 +4,13 @@
     "tests/",
     ".venv",
     "migrations/",
-    "core/rag"
+    "core/rag",
+    "providers/vdb/",
+    "providers/trace/*/tests",
   ],
   "typeCheckingMode": "strict",
   "allowedUntypedLibraries": [
+    "fastopenapi",
     "flask_restx",
     "flask_login",
     "opentelemetry.instrumentation.celery",
@@ -34,7 +37,10 @@
     "tos",
     "gmpy2",
     "sendgrid",
-    "sendgrid.helpers.mail"
+    "sendgrid.helpers.mail",
+    "holo_search_sdk.types",
+    "dify_vdb_qdrant",
+    "dify_vdb_tidb_on_qdrant"
   ],
   "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",
@@ -45,9 +51,8 @@
   "reportMissingTypeArgument": "hint",
   "reportUnnecessaryComparison": "hint",
   "reportUnnecessaryIsInstance": "hint",
-  "reportUntypedFunctionDecorator": "hint",
   "reportUnnecessaryTypeIgnoreComment": "hint",
   "reportAttributeAccessIssue": "hint",
-  "pythonVersion": "3.11",
+  "pythonVersion": "3.12",
   "pythonPlatform": "All"
 }

@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 import s from './style.module.css'
-import cn from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -28,14 +28,14 @@ const RadioCard: FC<Props> = ({
       className={cn(s.item, isChosen && s.active)}
       onClick={onChosen}
     >
-      <div className='flex px-3 py-2'>
+      <div className="flex px-3 py-2">
         {icon}
         <div>
-          <div className='flex items-center justify-between'>
-            <div className='text-sm font-medium leading-5 text-gray-900'>{title}</div>
+          <div className="flex items-center justify-between">
+            <div className="text-sm leading-5 font-medium text-gray-900">{title}</div>
             <div className={s.radio}></div>
           </div>
-          <div className='text-xs font-normal leading-[18px] text-gray-500'>{description}</div>
+          <div className="text-xs leading-[18px] font-normal text-gray-500">{description}</div>
         </div>
       </div>
       {extra}

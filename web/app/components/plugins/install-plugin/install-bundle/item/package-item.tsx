@@ -1,12 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import type { Plugin } from '../../../types'
-import type { PackageDependency } from '../../../types'
+import type { PackageDependency, Plugin } from '../../../types'
+import type { VersionProps } from '@/app/components/plugins/types'
+import * as React from 'react'
+import LoadingError from '../../base/loading-error'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
-import LoadingError from '../../base/loading-error'
-import type { VersionProps } from '@/app/components/plugins/types'
 
 type Props = {
   checked: boolean

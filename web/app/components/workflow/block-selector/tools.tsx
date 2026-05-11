@@ -1,14 +1,13 @@
-import { memo, useMemo, useRef } from 'react'
 import type { BlockEnum, ToolWithProvider } from '../types'
-import IndexBar, { groupItems } from './index-bar'
-import type { ToolDefaultValue, ToolValue } from './types'
-import type { ToolTypeEnum } from './types'
-import { ViewType } from './view-type-select'
+import type { ToolDefaultValue, ToolTypeEnum, ToolValue } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { memo, useMemo, useRef } from 'react'
 import Empty from '@/app/components/tools/provider/empty'
 import { useGetLanguage } from '@/context/i18n'
-import ToolListTreeView from './tool/tool-list-tree-view/list'
+import IndexBar, { groupItems } from './index-bar'
 import ToolListFlatView from './tool/tool-list-flat-view/list'
-import classNames from '@/utils/classnames'
+import ToolListTreeView from './tool/tool-list-tree-view/list'
+import { ViewType } from './view-type-select'
 
 type ToolsProps = {
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
@@ -22,7 +21,6 @@ type ToolsProps = {
   className?: string
   indexBarClassName?: string
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
 }
 const Tools = ({
   onSelect,
@@ -36,7 +34,6 @@ const Tools = ({
   className,
   indexBarClassName,
   selectedTools,
-  canChooseMCPTool,
 }: ToolsProps) => {
   // const tools: any = []
   const language = useGetLanguage()
@@ -59,14 +56,14 @@ const Tools = ({
     }
   }
   */
-  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => tool.label[language][0])
+  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => tool.label[language]![0]!)
   const treeViewToolsData = useMemo(() => {
     const result: Record<string, ToolWithProvider[]> = {}
     Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
         if (!result[groupName])
           result[groupName] = []
-        result[groupName].push(...withLetterAndGroupViewToolsData[letter][groupName])
+        result[groupName].push(...(withLetterAndGroupViewToolsData[letter]![groupName] ?? []))
       })
     })
     return result
@@ -75,8 +72,8 @@ const Tools = ({
   const listViewToolData = useMemo(() => {
     const result: ToolWithProvider[] = []
     letters.forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
-        result.push(...withLetterAndGroupViewToolsData[letter][groupName].map((item) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
+        result.push(...withLetterAndGroupViewToolsData[letter]![groupName]!.map((item) => {
           return {
             ...item,
             letter,
@@ -91,38 +88,38 @@ const Tools = ({
   const toolRefs = useRef({})
 
   return (
-    <div className={classNames('max-w-[100%] p-1', className)}>
+    <div className={cn('max-w-full p-1', className)}>
       {!tools.length && !hasSearchText && (
-        <div className='py-10'>
+        <div className="py-10">
           <Empty type={toolType!} isAgent={isAgent} />
         </div>
       )}
       {!!tools.length && (
-        isFlatView ? (
-          <ToolListFlatView
-            toolRefs={toolRefs}
-            letters={letters}
-            payload={listViewToolData}
-            isShowLetterIndex={isShowLetterIndex}
-            hasSearchText={hasSearchText}
-            onSelect={onSelect}
-            canNotSelectMultiple={canNotSelectMultiple}
-            onSelectMultiple={onSelectMultiple}
-            selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
-            indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
-          />
-        ) : (
-          <ToolListTreeView
-            payload={treeViewToolsData}
-            hasSearchText={hasSearchText}
-            onSelect={onSelect}
-            canNotSelectMultiple={canNotSelectMultiple}
-            onSelectMultiple={onSelectMultiple}
-            selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
-          />
-        )
+        isFlatView
+          ? (
+              <ToolListFlatView
+                toolRefs={toolRefs}
+                letters={letters}
+                payload={listViewToolData}
+                isShowLetterIndex={isShowLetterIndex}
+                hasSearchText={hasSearchText}
+                onSelect={onSelect}
+                canNotSelectMultiple={canNotSelectMultiple}
+                onSelectMultiple={onSelectMultiple}
+                selectedTools={selectedTools}
+                indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
+              />
+            )
+          : (
+              <ToolListTreeView
+                payload={treeViewToolsData}
+                hasSearchText={hasSearchText}
+                onSelect={onSelect}
+                canNotSelectMultiple={canNotSelectMultiple}
+                onSelectMultiple={onSelectMultiple}
+                selectedTools={selectedTools}
+              />
+            )
       )}
     </div>
   )

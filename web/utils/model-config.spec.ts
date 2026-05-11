@@ -1,3 +1,5 @@
+import type { PromptVariable } from '@/models/debug'
+import type { UserInputFormItem } from '@/types/app'
 /**
  * Test suite for model configuration transformation utilities
  *
@@ -15,8 +17,6 @@ import {
   promptVariablesToUserInputsForm,
   userInputsFormToPromptVariables,
 } from './model-config'
-import type { UserInputFormItem } from '@/types/app'
-import type { PromptVariable } from '@/models/debug'
 
 describe('Model Config Utilities', () => {
   describe('userInputsFormToPromptVariables', () => {
@@ -322,7 +322,7 @@ describe('Model Config Utilities', () => {
 
       const result = userInputsFormToPromptVariables(userInputs, 'query')
 
-      expect(result[0].is_context_var).toBe(true)
+      expect(result[0]!.is_context_var).toBe(true)
     })
 
     /**
@@ -365,9 +365,9 @@ describe('Model Config Utilities', () => {
       const result = userInputsFormToPromptVariables(userInputs)
 
       expect(result).toHaveLength(3)
-      expect(result[0].type).toBe('string')
-      expect(result[1].type).toBe('number')
-      expect(result[2].type).toBe('select')
+      expect(result[0]!.type).toBe('string')
+      expect(result[1]!.type).toBe('number')
+      expect(result[2]!.type).toBe('select')
     })
   })
 

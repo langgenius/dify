@@ -1,0 +1,19 @@
+{
+  "connect": "Bağlan",
+  "continue": "Devam et",
+  "error.authAppInfoFetchFailed": "Yetkilendirme için uygulama bilgisi alınamadı",
+  "error.authorizeFailed": "Yetkilendirme başarısız",
+  "error.invalidParams": "Geçersiz parametreler",
+  "login": "Giriş",
+  "scopes.avatar": "Avatar",
+  "scopes.email": "E-posta",
+  "scopes.languagePreference": "Dil Tercihi",
+  "scopes.name": "İsim",
+  "scopes.timezone": "Saat Dilimi",
+  "switchAccount": "Hesabı Değiştir",
+  "tips.common": "Gizliliğinize saygı gösteriyoruz ve bu bilgiyi yalnızca geliştirici araçlarımızla deneyiminizi geliştirmek için kullanacağız.",
+  "tips.loggedIn": "Bu uygulama Dify Cloud hesabınızdaki aşağıdaki bilgilere erişmek istiyor.",
+  "tips.needLogin": "Lütfen yetkilendirmek için giriş yapın",
+  "tips.notLoggedIn": "Bu uygulama Dify Cloud hesabınıza erişmek istiyor",
+  "unknownApp": "Bilinmeyen Uygulama"
+}

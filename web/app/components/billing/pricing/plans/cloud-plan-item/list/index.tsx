@@ -1,9 +1,10 @@
-import React from 'react'
-import { type BasicPlan, Plan } from '../../../../type'
-import Item from './item'
+import type { BasicPlan } from '../../../../type'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
 import Divider from '@/app/components/base/divider'
+import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
+import { Plan } from '../../../../type'
+import Item from './item'
 
 type ListProps = {
   plan: BasicPlan
@@ -17,85 +18,85 @@ const List = ({
   const planInfo = ALL_PLANS[plan]
 
   return (
-    <div className='flex flex-col gap-y-2.5 p-6'>
+    <div className="flex flex-col gap-y-2.5 p-6">
       <Item
         label={isFreePlan
-          ? t('billing.plansCommon.messageRequest.title', { count: planInfo.messageRequest })
-          : t('billing.plansCommon.messageRequest.titlePerMonth', { count: planInfo.messageRequest })}
-        tooltip={t('billing.plansCommon.messageRequest.tooltip') as string}
+          ? t('plansCommon.messageRequest.title', { ns: 'billing', count: planInfo.messageRequest })
+          : t('plansCommon.messageRequest.titlePerMonth', { ns: 'billing', count: planInfo.messageRequest })}
+        tooltip={t('plansCommon.messageRequest.tooltip', { ns: 'billing' }) as string}
       />
       <Item
-        label={t('billing.plansCommon.teamWorkspace', { count: planInfo.teamWorkspace })}
+        label={t('plansCommon.teamWorkspace', { ns: 'billing', count: planInfo.teamWorkspace })}
       />
       <Item
-        label={t('billing.plansCommon.teamMember', { count: planInfo.teamMembers })}
+        label={t('plansCommon.teamMember', { ns: 'billing', count: planInfo.teamMembers })}
       />
       <Item
-        label={t('billing.plansCommon.buildApps', { count: planInfo.buildApps })}
+        label={t('plansCommon.buildApps', { ns: 'billing', count: planInfo.buildApps })}
       />
-      <Divider bgStyle='gradient' />
+      <Divider bgStyle="gradient" />
       <Item
-        label={t('billing.plansCommon.documents', { count: planInfo.documents })}
-        tooltip={t('billing.plansCommon.documentsTooltip') as string}
-      />
-      <Item
-        label={t('billing.plansCommon.vectorSpace', { size: planInfo.vectorSpace })}
-        tooltip={t('billing.plansCommon.vectorSpaceTooltip') as string}
+        label={t('plansCommon.documents', { ns: 'billing', count: planInfo.documents })}
+        tooltip={t('plansCommon.documentsTooltip', { ns: 'billing' }) as string}
       />
       <Item
-        label={t('billing.plansCommon.documentsRequestQuota', { count: planInfo.documentsRequestQuota })}
-        tooltip={t('billing.plansCommon.documentsRequestQuotaTooltip')}
+        label={t('plansCommon.vectorSpace', { ns: 'billing', size: planInfo.vectorSpace })}
+        tooltip={t('plansCommon.vectorSpaceTooltip', { ns: 'billing' }) as string}
       />
       <Item
-        label={[t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`), t('billing.plansCommon.documentProcessingPriority')].join('')}
+        label={t('plansCommon.documentsRequestQuota', { ns: 'billing', count: planInfo.documentsRequestQuota })}
+        tooltip={t('plansCommon.documentsRequestQuotaTooltip', { ns: 'billing' })}
       />
-      <Divider bgStyle='gradient' />
+      <Item
+        label={[t(`plansCommon.priority.${planInfo.documentProcessingPriority}`, { ns: 'billing' }), t('plansCommon.documentProcessingPriority', { ns: 'billing' })].join('')}
+      />
+      <Divider bgStyle="gradient" />
       <Item
         label={
           planInfo.triggerEvents === NUM_INFINITE
-            ? t('billing.plansCommon.triggerEvents.unlimited')
+            ? t('plansCommon.triggerEvents.unlimited', { ns: 'billing' })
             : plan === Plan.sandbox
-              ? t('billing.plansCommon.triggerEvents.sandbox', { count: planInfo.triggerEvents })
-              : t('billing.plansCommon.triggerEvents.professional', { count: planInfo.triggerEvents })
+              ? t('plansCommon.triggerEvents.sandbox', { ns: 'billing', count: planInfo.triggerEvents })
+              : t('plansCommon.triggerEvents.professional', { ns: 'billing', count: planInfo.triggerEvents })
         }
-        tooltip={t('billing.plansCommon.triggerEvents.tooltip') as string}
+        tooltip={t('plansCommon.triggerEvents.tooltip', { ns: 'billing' }) as string}
       />
       <Item
         label={
           plan === Plan.sandbox
-            ? t('billing.plansCommon.startNodes.limited', { count: 2 })
-            : t('billing.plansCommon.startNodes.unlimited')
+            ? t('plansCommon.startNodes.limited', { ns: 'billing', count: 2 })
+            : t('plansCommon.startNodes.unlimited', { ns: 'billing' })
         }
       />
       <Item
         label={
           plan === Plan.sandbox
-            ? t('billing.plansCommon.workflowExecution.standard')
+            ? t('plansCommon.workflowExecution.standard', { ns: 'billing' })
             : plan === Plan.professional
-              ? t('billing.plansCommon.workflowExecution.faster')
-              : t('billing.plansCommon.workflowExecution.priority')
+              ? t('plansCommon.workflowExecution.faster', { ns: 'billing' })
+              : t('plansCommon.workflowExecution.priority', { ns: 'billing' })
         }
-        tooltip={t('billing.plansCommon.workflowExecution.tooltip') as string}
+        tooltip={t('plansCommon.workflowExecution.tooltip', { ns: 'billing' }) as string}
       />
-      <Divider bgStyle='gradient' />
+      <Divider bgStyle="gradient" />
       <Item
-        label={t('billing.plansCommon.annotatedResponse.title', { count: planInfo.annotatedResponse })}
-        tooltip={t('billing.plansCommon.annotatedResponse.tooltip') as string}
+        label={t('plansCommon.annotatedResponse.title', { ns: 'billing', count: planInfo.annotatedResponse })}
+        tooltip={t('plansCommon.annotatedResponse.tooltip', { ns: 'billing' }) as string}
       />
       <Item
-        label={t('billing.plansCommon.logsHistory', { days: planInfo.logHistory === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.logHistory} ${t('billing.plansCommon.days')}` })}
+        label={t('plansCommon.logsHistory', { ns: 'billing', days: planInfo.logHistory === NUM_INFINITE ? t('plansCommon.unlimited', { ns: 'billing' }) as string : `${planInfo.logHistory} ${t('plansCommon.days', { ns: 'billing' })}` })}
       />
       <Item
         label={
           planInfo.apiRateLimit === NUM_INFINITE
-            ? t('billing.plansCommon.unlimitedApiRate')
-            : `${t('billing.plansCommon.apiRateLimitUnit', { count: planInfo.apiRateLimit })} ${t('billing.plansCommon.apiRateLimit')}/${t('billing.plansCommon.month')}`
+            ? t('plansCommon.unlimitedApiRate', { ns: 'billing' })
+            : `${t('plansCommon.apiRateLimitUnit', { ns: 'billing', count: planInfo.apiRateLimit })} ${t('plansCommon.apiRateLimit', { ns: 'billing' })}/${t('plansCommon.month', { ns: 'billing' })}`
         }
-        tooltip={planInfo.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
+        tooltip={planInfo.apiRateLimit === NUM_INFINITE ? undefined : t('plansCommon.apiRateLimitTooltip', { ns: 'billing' }) as string}
       />
-      <Divider bgStyle='gradient' />
+      <Divider bgStyle="gradient" />
       <Item
-        label={t('billing.plansCommon.modelProviders')}
+        label={t('plansCommon.modelProviders', { ns: 'billing' })}
       />
     </div>
   )

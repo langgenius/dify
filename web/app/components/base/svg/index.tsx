@@ -1,7 +1,7 @@
-import React from 'react'
-import s from './style.module.css'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 import ActionButton from '../action-button'
-import cn from '@/utils/classnames'
+import s from './style.module.css'
 
 type ISVGBtnProps = {
   isSVG: boolean

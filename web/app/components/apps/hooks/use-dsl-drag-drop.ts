@@ -36,13 +36,13 @@ export const useDSLDragDrop = ({ onDSLFileDropped, containerRef, enabled = true 
     if (!e.dataTransfer)
       return
 
-    const files = [...e.dataTransfer.files]
+    const files = Array.from(e.dataTransfer.files)
     if (files.length === 0)
       return
 
     const file = files[0]
-    if (file.name.toLowerCase().endsWith('.yaml') || file.name.toLowerCase().endsWith('.yml'))
-      onDSLFileDropped(file)
+    if (file!.name.toLowerCase().endsWith('.yaml') || file!.name.toLowerCase().endsWith('.yml'))
+      onDSLFileDropped(file!)
   }
 
   useEffect(() => {

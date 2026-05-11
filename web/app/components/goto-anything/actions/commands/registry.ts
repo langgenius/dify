@@ -1,5 +1,5 @@
-import type { SlashCommandHandler } from './types'
 import type { CommandSearchResult } from '../types'
+import type { SlashCommandHandler } from './types'
 
 /**
  * Slash Command Registry System

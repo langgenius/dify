@@ -1,26 +1,26 @@
+import type {
+  DebugWithSingleOrMultipleModelConfigs,
+  ModelAndParameter,
+} from './types'
+import type {
+  ChatConfig,
+  ChatItem,
+} from '@/app/components/base/chat/types'
+import { cloneDeep } from 'es-toolkit/object'
 import {
   useCallback,
   useRef,
   useState,
 } from 'react'
-import type {
-  DebugWithSingleOrMultipleModelConfigs,
-  ModelAndParameter,
-} from './types'
-import { ORCHESTRATE_CHANGED } from './types'
-import type {
-  ChatConfig,
-  ChatItem,
-} from '@/app/components/base/chat/types'
-import cloneDeep from 'lodash-es/cloneDeep'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { useDebugConfigurationContext } from '@/context/debug-configuration'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   AgentStrategy,
 } from '@/types/app'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
-import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ORCHESTRATE_CHANGED } from './types'
 
 export const useDebugWithSingleOrMultipleModel = (appId: string) => {
   const localeDebugWithSingleOrMultipleModelConfigs = localStorage.getItem('app-debug-with-single-or-multiple-models')

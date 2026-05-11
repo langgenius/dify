@@ -2,6 +2,9 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Any
+
+from configs import dify_config
 
 logger = logging.getLogger(__name__)
 
@@ -18,21 +21,22 @@ class SMTPClient:
         self.use_tls = use_tls
         self.opportunistic_tls = opportunistic_tls
 
-    def send(self, mail: dict):
-        smtp = None
+    def send(self, mail: dict[str, Any]):
+        smtp: smtplib.SMTP | None = None
+        local_host = dify_config.SMTP_LOCAL_HOSTNAME
         try:
-            if self.use_tls:
-                if self.opportunistic_tls:
-                    smtp = smtplib.SMTP(self.server, self.port, timeout=10)
-                    # Send EHLO command with the HELO domain name as the server address
-                    smtp.ehlo(self.server)
-                    smtp.starttls()
-                    # Resend EHLO command to identify the TLS session
-                    smtp.ehlo(self.server)
-                else:
-                    smtp = smtplib.SMTP_SSL(self.server, self.port, timeout=10)
+            if self.use_tls and not self.opportunistic_tls:
+                # SMTP with SSL (implicit TLS)
+                smtp = smtplib.SMTP_SSL(self.server, self.port, timeout=10, local_hostname=local_host)
             else:
-                smtp = smtplib.SMTP(self.server, self.port, timeout=10)
+                # Plain SMTP or SMTP with STARTTLS (explicit TLS)
+                smtp = smtplib.SMTP(self.server, self.port, timeout=10, local_hostname=local_host)
+
+            assert smtp is not None
+            if self.use_tls and self.opportunistic_tls:
+                smtp.ehlo(self.server)
+                smtp.starttls()
+                smtp.ehlo(self.server)
 
             # Only authenticate if both username and password are non-empty
             if self.username and self.password and self.username.strip() and self.password.strip():

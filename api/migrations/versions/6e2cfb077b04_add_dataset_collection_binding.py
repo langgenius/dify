@@ -48,12 +48,9 @@ def upgrade():
     with op.batch_alter_table('dataset_collection_bindings', schema=None) as batch_op:
         batch_op.create_index('provider_model_name_idx', ['provider_name', 'model_name'], unique=False)
 
-    if _is_pg(conn):
-        with op.batch_alter_table('datasets', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('collection_binding_id', postgresql.UUID(), nullable=True))
-    else:
-        with op.batch_alter_table('datasets', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('collection_binding_id', models.types.StringUUID(), nullable=True))
+
+    with op.batch_alter_table('datasets', schema=None) as batch_op:
+        batch_op.add_column(sa.Column('collection_binding_id', models.types.StringUUID(), nullable=True))
 
     # ### end Alembic commands ###
 

@@ -1,16 +1,10 @@
 import type { MutationOptions } from '@tanstack/react-query'
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
-import qs from 'qs'
+import type { ApiKeysListResponse } from '@/models/app'
+import type { CommonResponse } from '@/models/common'
 import type {
   DataSet,
-  DataSetListResponse,
   DatasetListRequest,
+  DataSetListResponse,
   ErrorDocsResponse,
   ExternalAPIListResponse,
   FetchDatasetsParams,
@@ -20,14 +14,20 @@ import type {
   ProcessRuleResponse,
   RelatedAppResponse,
 } from '@/models/datasets'
-import type { ApiKeysListResponse } from '@/models/app'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+import qs from 'qs'
 import { get, post } from '../base'
 import { useInvalid } from '../use-base'
-import type { CommonResponse } from '@/models/common'
 
 const NAME_SPACE = 'dataset'
 
-const DatasetListKey = [NAME_SPACE, 'list']
+const datasetListQueryKey = [NAME_SPACE, 'list']
 
 const normalizeDatasetsParams = (params: Partial<FetchDatasetsParams['params']> = {}) => {
   const {
@@ -62,17 +62,16 @@ export const useInfiniteDatasets = (
   options?: UseInfiniteDatasetsOptions,
 ) => {
   const normalizedParams = normalizeDatasetsParams(params)
-  const buildUrl = (pageParam: number | undefined) => {
-    const queryString = qs.stringify({
-      ...normalizedParams,
-      page: pageParam ?? normalizedParams.page,
-    }, { indices: false })
-    return `/datasets?${queryString}`
-  }
 
   return useInfiniteQuery<DataSetListResponse>({
-    queryKey: [...DatasetListKey, 'infinite', normalizedParams],
-    queryFn: ({ pageParam = normalizedParams.page }) => get<DataSetListResponse>(buildUrl(pageParam as number | undefined)),
+    queryKey: [...datasetListQueryKey, 'infinite', normalizedParams],
+    queryFn: ({ pageParam = normalizedParams.page }) => {
+      const queryString = qs.stringify({
+        ...normalizedParams,
+        page: pageParam as number | undefined,
+      }, { indices: false })
+      return get<DataSetListResponse>(`/datasets?${queryString}`)
+    },
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: normalizedParams.page,
     staleTime: 0,
@@ -84,7 +83,7 @@ export const useInfiniteDatasets = (
 export const useDatasetList = (params: DatasetListRequest) => {
   const { initialPage, tag_ids, limit, include_all, keyword } = params
   return useInfiniteQuery({
-    queryKey: [...DatasetListKey, initialPage, tag_ids, limit, include_all, keyword],
+    queryKey: [...datasetListQueryKey, initialPage, tag_ids, limit, include_all, keyword],
     queryFn: ({ pageParam = 1 }) => {
       const urlParams = qs.stringify({
         tag_ids,
@@ -101,7 +100,7 @@ export const useDatasetList = (params: DatasetListRequest) => {
 }
 
 export const useInvalidDatasetList = () => {
-  return useInvalid([...DatasetListKey])
+  return useInvalid([...datasetListQueryKey])
 }
 
 export const datasetDetailQueryKeyPrefix = [NAME_SPACE, 'detail']
@@ -188,18 +187,9 @@ export const useExternalKnowledgeApiList = (options?: { enabled?: boolean }) => 
   })
 }
 
-export const useInvalidateExternalKnowledgeApiList = () => {
-  const queryClient = useQueryClient()
-  return () => {
-    queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'external-knowledge-api'],
-    })
-  }
-}
-
 export const useDatasetTestingRecords = (
   datasetId?: string,
-  params?: { page: number; limit: number },
+  params?: { page: number, limit: number },
 ) => {
   return useQuery<HitTestingRecordsResponse>({
     queryKey: [NAME_SPACE, 'testing-records', datasetId, params],

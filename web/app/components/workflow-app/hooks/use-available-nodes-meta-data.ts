@@ -1,16 +1,17 @@
+import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDocLink } from '@/context/i18n'
-import StartDefault from '@/app/components/workflow/nodes/start/default'
-import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
-import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-schedule/default'
-import TriggerPluginDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
-import EndDefault from '@/app/components/workflow/nodes/end/default'
-import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
-import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
-import { useIsChatMode } from './use-is-chat-mode'
+import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
+import EndDefault from '@/app/components/workflow/nodes/end/default'
+import StartDefault from '@/app/components/workflow/nodes/start/default'
+import TriggerPluginDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
+import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-schedule/default'
+import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useDocLink } from '@/context/i18n'
+import { useIsChatMode } from './use-is-chat-mode'
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
@@ -32,19 +33,19 @@ export const useAvailableNodesMetaData = () => {
       isChatMode
         ? [AnswerDefault]
         : [
-          EndDefault,
-          TriggerWebhookDefault,
-          TriggerScheduleDefault,
-          TriggerPluginDefault,
-        ]
+            EndDefault,
+            TriggerWebhookDefault,
+            TriggerScheduleDefault,
+            TriggerPluginDefault,
+          ]
     ),
   ], [isChatMode, startNodeMetaData])
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node
-    const title = t(`workflow.blocks.${metaData.type}`)
-    const description = t(`workflow.blocksAbout.${metaData.type}`)
-    const helpLinkPath = `guides/workflow/node/${metaData.helpLinkUri}`
+    const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
+    const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
+    const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
     return {
       ...node,
       metaData: {

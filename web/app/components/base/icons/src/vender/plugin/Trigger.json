@@ -1,73 +1,73 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "16",
-			"height": "16",
-			"viewBox": "0 0 16 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"fill-rule": "evenodd",
-					"clip-rule": "evenodd",
-					"d": "M7.1499 6.35213L7.25146 6.38208L14.2248 9.03898L14.3172 9.08195C14.7224 9.30788 14.778 9.87906 14.424 10.179L14.342 10.2389L11.8172 11.817L10.2391 14.3417C9.96271 14.7839 9.32424 14.751 9.08219 14.317L9.03923 14.2245L6.38232 7.25122C6.18829 6.74188 6.64437 6.24196 7.1499 6.35213ZM9.81201 12.5084L10.7671 10.981L10.8114 10.9185C10.8589 10.8589 10.9163 10.8075 10.9813 10.7668L12.5086 9.81177L8.15251 8.15226L9.81201 12.5084Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M5.2124 10.3977L3.56266 12.0474L2.61995 11.1047L4.26969 9.455L5.2124 10.3977Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M3.66683 7.99992H1.3335V6.66659H3.66683V7.99992Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M5.2124 4.2688L4.26969 5.21151L2.61995 3.56177L3.56266 2.61906L5.2124 4.2688Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M12.0477 3.56177L10.3979 5.21151L9.45524 4.2688L11.105 2.61906L12.0477 3.56177Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			},
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M8.00016 3.66659H6.66683V1.33325H8.00016V3.66659Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "Trigger"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "fill-rule": "evenodd",
+          "clip-rule": "evenodd",
+          "d": "M7.1499 6.35213L7.25146 6.38208L14.2248 9.03898L14.3172 9.08195C14.7224 9.30788 14.778 9.87906 14.424 10.179L14.342 10.2389L11.8172 11.817L10.2391 14.3417C9.96271 14.7839 9.32424 14.751 9.08219 14.317L9.03923 14.2245L6.38232 7.25122C6.18829 6.74188 6.64437 6.24196 7.1499 6.35213ZM9.81201 12.5084L10.7671 10.981L10.8114 10.9185C10.8589 10.8589 10.9163 10.8075 10.9813 10.7668L12.5086 9.81177L8.15251 8.15226L9.81201 12.5084Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M5.2124 10.3977L3.56266 12.0474L2.61995 11.1047L4.26969 9.455L5.2124 10.3977Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M3.66683 7.99992H1.3335V6.66659H3.66683V7.99992Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M5.2124 4.2688L4.26969 5.21151L2.61995 3.56177L3.56266 2.61906L5.2124 4.2688Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M12.0477 3.56177L10.3979 5.21151L9.45524 4.2688L11.105 2.61906L12.0477 3.56177Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      },
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M8.00016 3.66659H6.66683V1.33325H8.00016V3.66659Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "Trigger"
 }

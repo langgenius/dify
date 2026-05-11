@@ -1,37 +1,26 @@
-import React from 'react'
-import Button from '../base/button'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
-import Tooltip from '../base/tooltip'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { getKeyboardKeyNameBySystem } from '../workflow/utils'
+import ShortcutsName from '../workflow/shortcuts-name'
 
-type TooltipContentProps = {
+type ToggleTooltipContentProps = {
   expand: boolean
 }
 
 const TOGGLE_SHORTCUT = ['ctrl', 'B']
 
-const TooltipContent = ({
+const ToggleTooltipContent = ({
   expand,
-}: TooltipContentProps) => {
+}: ToggleTooltipContentProps) => {
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center gap-x-1'>
-      <span className='system-xs-medium px-0.5 text-text-secondary'>{expand ? t('layout.sidebar.collapseSidebar') : t('layout.sidebar.expandSidebar')}</span>
-      <div className='flex items-center gap-x-0.5'>
-        {
-          TOGGLE_SHORTCUT.map(key => (
-            <span
-              key={key}
-              className='system-kbd inline-flex items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary'
-            >
-              {getKeyboardKeyNameBySystem(key)}
-            </span>
-          ))
-        }
-      </div>
+    <div className="flex items-center gap-x-1">
+      <span className="px-0.5 system-xs-medium text-text-secondary">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
+      <ShortcutsName keys={TOGGLE_SHORTCUT} textColor="secondary" />
     </div>
   )
 }
@@ -48,22 +37,21 @@ const ToggleButton = ({
   className,
 }: ToggleButtonProps) => {
   return (
-    <Tooltip
-      popupContent={<TooltipContent expand={expand} />}
-      popupClassName='p-1.5 rounded-lg'
-      position='right'
-    >
-      <Button
-        size='small'
-        onClick={handleToggle}
-        className={cn('rounded-full px-1', className)}
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <Button
+            size="small"
+            onClick={handleToggle}
+            className={cn('rounded-full px-1', className)}
+          />
+        )}
       >
-        {
-          expand
-            ? <RiArrowLeftSLine className='size-4' />
-            : <RiArrowRightSLine className='size-4' />
-        }
-      </Button>
+        {expand ? <RiArrowLeftSLine className="size-4" /> : <RiArrowRightSLine className="size-4" />}
+      </TooltipTrigger>
+      <TooltipContent placement="right" className="rounded-lg p-1.5">
+        <ToggleTooltipContent expand={expand} />
+      </TooltipContent>
     </Tooltip>
   )
 }

@@ -1,22 +1,14 @@
-import type { Fetcher } from 'swr'
-import { get, getMarketplace, post, upload } from './base'
 import type {
   Dependency,
   InstallPackageResponse,
-  Permissions,
-  PluginDeclaration,
   PluginInfoFromMarketPlace,
   PluginManifestInMarket,
-  PluginTasksResponse,
   TaskStatusResponse,
   UninstallPluginResponse,
   updatePackageResponse,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
-import type {
-  MarketplaceCollectionPluginsResponse,
-  MarketplaceCollectionsResponse,
-} from '@/app/components/plugins/marketplace/types'
+import { get, getMarketplace, post, upload } from './base'
 
 export const uploadFile = async (file: File, isBundle: boolean) => {
   const formData = new FormData()
@@ -33,8 +25,7 @@ export const updateFromMarketPlace = async (body: Record<string, string>) => {
   })
 }
 
-export const updateFromGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string,
-  originalPlugin: string, newPlugin: string) => {
+export const updateFromGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string, originalPlugin: string, newPlugin: string) => {
   return post<updatePackageResponse>('/workspaces/current/plugin/upgrade/github', {
     body: {
       repo: repoUrl,
@@ -56,14 +47,6 @@ export const uploadGitHub = async (repoUrl: string, selectedVersion: string, sel
   })
 }
 
-export const fetchIcon = (tenantId: string, fileName: string) => {
-  return get(`workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${fileName}`)
-}
-
-export const fetchManifest = async (uniqueIdentifier: string) => {
-  return get<PluginDeclaration>(`/workspaces/current/plugin/fetch-manifest?plugin_unique_identifier=${uniqueIdentifier}`)
-}
-
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {
   return getMarketplace<{ data: { plugin: PluginManifestInMarket, version: { version: string } } }>(`/plugins/identifier?unique_identifier=${uniqueIdentifier}`)
 }
@@ -83,24 +66,8 @@ export const fetchPluginInfoFromMarketPlace = async ({
   return getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${org}/${name}`)
 }
 
-export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string; }> = ({ url }) => {
-  return get<MarketplaceCollectionsResponse>(url)
-}
-
-export const fetchMarketplaceCollectionPlugins: Fetcher<MarketplaceCollectionPluginsResponse, { url: string }> = ({ url }) => {
-  return get<MarketplaceCollectionPluginsResponse>(url)
-}
-
-export const fetchPluginTasks = async () => {
-  return get<PluginTasksResponse>('/workspaces/current/plugin/tasks?page=1&page_size=255')
-}
-
 export const checkTaskStatus = async (taskId: string) => {
   return get<TaskStatusResponse>(`/workspaces/current/plugin/tasks/${taskId}`)
-}
-
-export const updatePermission = async (permissions: Permissions) => {
-  return post('/workspaces/current/plugin/permission/change', { body: permissions })
 }
 
 export const uninstallPlugin = async (pluginId: string) => {

@@ -1,13 +1,13 @@
 'use client'
-import { useState } from 'react'
-import { useParams, usePathname } from 'next/navigation'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiVolumeUpLine,
 } from '@remixicon/react'
 import { t } from 'i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import { useState } from 'react'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import { useParams, usePathname } from '@/next/navigation'
 
 type AudioBtnProps = {
   id?: string
@@ -70,28 +70,36 @@ const AudioBtn = ({
   }
 
   const tooltipContent = {
-    initial: t('appApi.play'),
-    ended: t('appApi.play'),
-    paused: t('appApi.pause'),
-    playing: t('appApi.playing'),
-    loading: t('appApi.loading'),
+    initial: t('play', { ns: 'appApi' }),
+    ended: t('play', { ns: 'appApi' }),
+    paused: t('pause', { ns: 'appApi' }),
+    playing: t('playing', { ns: 'appApi' }),
+    loading: t('loading', { ns: 'appApi' }),
   }[audioState]
 
   return (
-    <Tooltip
-      popupContent={tooltipContent}
-    >
-      <ActionButton
-        state={
-          audioState === 'loading' || audioState === 'playing'
-            ? ActionButtonState.Active
-            : ActionButtonState.Default
-        }
-        onClick={handleToggle}
-        disabled={audioState === 'loading'}
-      >
-        <RiVolumeUpLine className='h-4 w-4' />
-      </ActionButton>
+    <Tooltip>
+      <TooltipTrigger
+        render={(
+          <span className="inline-flex">
+            <ActionButton
+              state={
+                audioState === 'loading' || audioState === 'playing'
+                  ? ActionButtonState.Active
+                  : ActionButtonState.Default
+              }
+              aria-label={tooltipContent}
+              onClick={handleToggle}
+              disabled={audioState === 'loading'}
+            >
+              <RiVolumeUpLine className="h-4 w-4" aria-hidden="true" />
+            </ActionButton>
+          </span>
+        )}
+      />
+      <TooltipContent>
+        {tooltipContent}
+      </TooltipContent>
     </Tooltip>
   )
 }

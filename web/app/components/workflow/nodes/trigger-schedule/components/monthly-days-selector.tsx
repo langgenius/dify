@@ -1,7 +1,6 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiQuestionLine } from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 
 type MonthlyDaysSelectorProps = {
   selectedDays: (number | 'last')[]
@@ -34,38 +33,53 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
   return (
     <div className="space-y-2">
       <label className="mb-2 block text-xs font-medium text-text-tertiary">
-        {t('workflow.nodes.triggerSchedule.days')}
+        {t('nodes.triggerSchedule.days', { ns: 'workflow' })}
       </label>
 
       <div className="space-y-1.5">
         {rows.map((row, rowIndex) => (
           <div key={rowIndex} className="grid grid-cols-7 gap-1.5">
             {row.map(day => (
-              <button
-                key={day}
-                type="button"
-                onClick={() => handleDayClick(day)}
-                className={`rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
-                  day === 'last' ? 'col-span-2 min-w-0' : ''
-                } ${
-                  isDaySelected(day)
-                    ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                    : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
-                }`}
-              >
-                {day === 'last' ? (
-                  <div className="flex items-center justify-center gap-1">
-                    <span>{t('workflow.nodes.triggerSchedule.lastDay')}</span>
-                    <Tooltip
-                      popupContent={t('workflow.nodes.triggerSchedule.lastDayTooltip')}
+              day === 'last'
+                ? (
+                    <div
+                      key={day}
+                      className={`col-span-2 flex min-w-0 items-center rounded-lg border bg-components-option-card-option-bg text-xs transition-colors ${
+                        isDaySelected(day)
+                          ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
+                          : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
+                      }`}
                     >
-                      <RiQuestionLine className="h-3 w-3 text-text-quaternary" />
-                    </Tooltip>
-                  </div>
-                ) : (
-                  day
-                )}
-              </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDayClick(day)}
+                        className="min-w-0 flex-1 py-1"
+                      >
+                        {t('nodes.triggerSchedule.lastDay', { ns: 'workflow' })}
+                      </button>
+                      <Infotip
+                        aria-label={t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
+                        className="mr-1 h-3 w-3"
+                        iconClassName="h-3 w-3"
+                      >
+                        {t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
+                      </Infotip>
+                    </div>
+                  )
+                : (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => handleDayClick(day)}
+                      className={`rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
+                        isDaySelected(day)
+                          ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
+                          : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  )
             ))}
             {/* Fill empty cells in the last row (Last day takes 2 cols, so need 1 less) */}
             {rowIndex === rows.length - 1 && Array.from({ length: 7 - row.length - 1 }, (_, i) => (
@@ -79,7 +93,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
       {selectedDays?.includes(31) && (
         <div className="mt-1.5 grid grid-cols-7 gap-1.5">
           <div className="col-span-7 text-xs text-gray-500">
-            {t('workflow.nodes.triggerSchedule.lastDayTooltip')}
+            {t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
           </div>
         </div>
       )}

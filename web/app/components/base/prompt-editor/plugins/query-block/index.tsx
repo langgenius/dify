@@ -1,15 +1,15 @@
-import {
-  memo,
-  useEffect,
-} from 'react'
+import type { QueryBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { QueryBlockType } from '../../types'
+import {
+  memo,
+  useEffect,
+} from 'react'
 import {
   $createQueryBlockNode,
   QueryBlockNode,
@@ -17,11 +17,6 @@ import {
 
 export const INSERT_QUERY_BLOCK_COMMAND = createCommand('INSERT_QUERY_BLOCK_COMMAND')
 export const DELETE_QUERY_BLOCK_COMMAND = createCommand('DELETE_QUERY_BLOCK_COMMAND')
-
-export type QueryBlockProps = {
-  onInsert?: () => void
-  onDelete?: () => void
-}
 const QueryBlock = memo(({
   onInsert,
   onDelete,

@@ -1,26 +1,26 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "14",
-			"height": "14",
-			"viewBox": "0 0 14 14",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M9.43341 6.41661L6.30441 3.2876L7.12936 2.46265L11.6666 6.99994L7.12936 11.5372L6.30441 10.7122L9.43341 7.58327H2.33331V6.41661H9.43341Z",
-					"fill": "currentColor"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "IconR"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "14",
+      "height": "14",
+      "viewBox": "0 0 14 14",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M9.43341 6.41661L6.30441 3.2876L7.12936 2.46265L11.6666 6.99994L7.12936 11.5372L6.30441 10.7122L9.43341 7.58327H2.33331V6.41661H9.43341Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "IconR"
 }

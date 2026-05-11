@@ -75,7 +75,7 @@ class AzureBlobStorage(BaseStorage):
         blob = client.get_blob_client(container=self.bucket_name, blob=filename)
         return blob.exists()
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         if not self.bucket_name:
             return
 

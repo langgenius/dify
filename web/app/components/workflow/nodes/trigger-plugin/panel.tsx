@@ -1,14 +1,14 @@
 import type { FC } from 'react'
-import React from 'react'
 import type { PluginTriggerNodeType } from './types'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import useConfig from './use-config'
-import TriggerForm from './components/trigger-form'
+import * as React from 'react'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import { Type } from '../llm/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { Type } from '../llm/types'
+import TriggerForm from './components/trigger-form'
+import useConfig from './use-config'
 
 const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   id,
@@ -35,11 +35,11 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   }))
 
   return (
-    <div className='mt-2'>
+    <div className="mt-2">
       {/* Dynamic Parameters Form - Only show when authenticated */}
       {triggerParameterSchema.length > 0 && subscriptionSelected && (
         <>
-          <div className='px-4 pb-4'>
+          <div className="px-4 pb-4">
             <TriggerForm
               readOnly={readOnly}
               nodeId={id}
@@ -69,20 +69,22 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
           ))}
           {Object.entries(outputSchema.properties || {}).map(([name, schema]: [string, any]) => (
             <div key={name}>
-              {schema.type === 'object' ? (
-                <StructureOutputItem
-                  rootClassName='code-sm-semibold text-text-secondary'
-                  payload={{
-                    schema: {
-                      type: Type.object,
-                      properties: {
-                        [name]: schema,
-                      },
-                      additionalProperties: false,
-                    },
-                  }}
-                />
-              ) : null}
+              {schema.type === 'object'
+                ? (
+                    <StructureOutputItem
+                      rootClassName="code-sm-semibold text-text-secondary"
+                      payload={{
+                        schema: {
+                          type: Type.object,
+                          properties: {
+                            [name]: schema,
+                          },
+                          additionalProperties: false,
+                        },
+                      }}
+                    />
+                  )
+                : null}
             </div>
           ))}
         </>

@@ -1,71 +1,71 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "14",
-			"height": "14",
-			"viewBox": "0 0 14 14",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "icons/http"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "g",
-						"attributes": {
-							"id": "Vector"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"d": "M13.0968 4.66675H10.8387V9.18288H11.7419V7.82804H13.0968C13.3362 7.82772 13.5658 7.73245 13.7351 7.56313C13.9044 7.39382 13.9997 7.16426 14 6.92481V5.56997C13.9997 5.33051 13.9045 5.10093 13.7351 4.9316C13.5658 4.76227 13.3362 4.66702 13.0968 4.66675ZM11.7419 6.92481V5.56997H13.0968L13.0972 6.92481H11.7419Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"d": "M4.06452 5.56997H4.96774V9.18288H5.87097V5.56997H6.77419V4.66675H4.06452V5.56997Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"d": "M9.93548 4.66675H7.22581V5.56997H8.12903V9.18288H9.03226V5.56997H9.93548V4.66675Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"d": "M2.25806 4.66675V6.4732H0.903226V4.66675H0V9.18288H0.903226V7.37643H2.25806V9.18288H3.16129V4.66675H2.25806Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "Http"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "14",
+      "height": "14",
+      "viewBox": "0 0 14 14",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "icons/http"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "g",
+            "attributes": {
+              "id": "Vector"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M13.0968 4.66675H10.8387V9.18288H11.7419V7.82804H13.0968C13.3362 7.82772 13.5658 7.73245 13.7351 7.56313C13.9044 7.39382 13.9997 7.16426 14 6.92481V5.56997C13.9997 5.33051 13.9045 5.10093 13.7351 4.9316C13.5658 4.76227 13.3362 4.66702 13.0968 4.66675ZM11.7419 6.92481V5.56997H13.0968L13.0972 6.92481H11.7419Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M4.06452 5.56997H4.96774V9.18288H5.87097V5.56997H6.77419V4.66675H4.06452V5.56997Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M9.93548 4.66675H7.22581V5.56997H8.12903V9.18288H9.03226V5.56997H9.93548V4.66675Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M2.25806 4.66675V6.4732H0.903226V4.66675H0V9.18288H0.903226V7.37643H2.25806V9.18288H3.16129V4.66675H2.25806Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Http"
 }

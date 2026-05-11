@@ -1,28 +1,30 @@
 'use client'
+import type { Placement } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import type { BuiltInMetadataItem, MetadataItem } from '../types'
 import type { Props as CreateContentProps } from './create-content'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
 import CreateContent from './create-content'
 import SelectMetadata from './select-metadata'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
-import type { MetadataItem } from '../types'
-import type { Placement } from '@floating-ui/react'
-import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
 
 type Props = {
   datasetId: string
   popupPlacement?: Placement
   popupOffset?: { mainAxis: number, crossAxis: number }
   onSelect: (data: MetadataItem) => void
-  onSave: (data: MetadataItem) => void
   trigger: React.ReactNode
   onManage: () => void
 } & CreateContentProps
 
-enum Step {
-  select = 'select',
-  create = 'create',
-}
+const Step = {
+  select: 'select',
+  create: 'create',
+} as const
+
+type Step = typeof Step[keyof typeof Step]
 
 const SelectMetadataModal: FC<Props> = ({
   datasetId,
@@ -36,46 +38,58 @@ const SelectMetadataModal: FC<Props> = ({
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
 
   const [open, setOpen] = useState(false)
-  const [step, setStep] = useState(Step.select)
+  const [step, setStep] = useState<Step>(Step.select)
+  const triggerElement = React.isValidElement(trigger)
+    ? trigger
+    : <button type="button">{trigger}</button>
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen)
+    if (!nextOpen)
+      setStep(Step.select)
+  }, [])
 
-  const handleSave = useCallback(async (data: MetadataItem) => {
+  const handleSave = useCallback(async (data: BuiltInMetadataItem) => {
     await onSave(data)
     setStep(Step.select)
   }, [onSave])
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
-      onOpenChange={setOpen}
-      placement={popupPlacement}
-      offset={popupOffset}
+      onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger
-        onClick={() => setOpen(!open)}
-        className='block'
+      <PopoverTrigger render={triggerElement as React.ReactElement} />
+      <PopoverContent
+        placement={popupPlacement}
+        sideOffset={popupOffset.mainAxis}
+        alignOffset={popupOffset.crossAxis}
+        popupClassName="border-none bg-transparent shadow-none"
       >
-        {trigger}
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        {step === Step.select ? (
-          <SelectMetadata
-            onSelect={(data) => {
-              onSelect(data)
-              setOpen(false)
-            }}
-            list={datasetMetaData?.doc_metadata || []}
-            onNew={() => setStep(Step.create)}
-            onManage={onManage}
-          />
-        ) : (
-          <CreateContent
-            onSave={handleSave}
-            hasBack
-            onBack={() => setStep(Step.select)}
-            onClose={() => setStep(Step.select)}
-          />
-        )}
-      </PortalToFollowElemContent>
-    </PortalToFollowElem >
+        {step === Step.select
+          ? (
+              <SelectMetadata
+                onSelect={(data) => {
+                  onSelect(data)
+                  setOpen(false)
+                }}
+                list={datasetMetaData?.doc_metadata || []}
+                onNew={() => setStep(Step.create)}
+                onManage={() => {
+                  setOpen(false)
+                  setStep(Step.select)
+                  onManage()
+                }}
+              />
+            )
+          : (
+              <CreateContent
+                onSave={handleSave}
+                hasBack
+                onBack={() => setStep(Step.select)}
+                onClose={() => setStep(Step.select)}
+              />
+            )}
+      </PopoverContent>
+    </Popover>
 
   )
 }

@@ -1,27 +1,28 @@
-import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
+import type { Option } from './types'
 import { useTranslation } from 'react-i18next'
-import { EffectColor, type Option } from './types'
+import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
 import { ChunkingMode } from '@/models/datasets'
+import { EffectColor } from './types'
 
 export const useChunkStructureConfig = () => {
   const { t } = useTranslation()
 
   const GeneralOption: Option = {
-    icon: <GeneralChunk className='size-4' />,
+    icon: <GeneralChunk className="size-4" />,
     title: 'General',
-    description: t('datasetCreation.stepTwo.generalTip'),
+    description: t('stepTwo.generalTip', { ns: 'datasetCreation' }),
     effectColor: EffectColor.indigo,
   }
   const ParentChildOption: Option = {
-    icon: <ParentChildChunk className='size-4' />,
+    icon: <ParentChildChunk className="size-4" />,
     title: 'Parent-Child',
-    description: t('datasetCreation.stepTwo.parentChildTip'),
+    description: t('stepTwo.parentChildTip', { ns: 'datasetCreation' }),
     effectColor: EffectColor.blueLight,
   }
   const QuestionAnswerOption: Option = {
-    icon: <QuestionAndAnswer className='size-4' />,
+    icon: <QuestionAndAnswer className="size-4" />,
     title: 'Q&A',
-    description: t('datasetCreation.stepTwo.qaTip'),
+    description: t('stepTwo.qaTip', { ns: 'datasetCreation' }),
     effectColor: EffectColor.green,
 
   }

@@ -1,22 +1,33 @@
-import React, { useCallback, useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import type { AppInfoActions } from './app-info/use-app-info-actions'
+import type { NavIcon } from './nav-link'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useHover, useKeyPress } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import NavLink from './navLink'
-import type { NavIcon } from './navLink'
-import AppInfo from './app-info'
-import DatasetInfo from './dataset-info'
-import AppSidebarDropdown from './app-sidebar-dropdown'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import cn from '@/utils/classnames'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { usePathname } from '@/next/navigation'
 import Divider from '../base/divider'
-import { useHover, useKeyPress } from 'ahooks'
-import ToggleButton from './toggle-button'
 import { getKeyboardKeyCodeBySystem } from '../workflow/utils'
+import AppInfo, { AppInfoView } from './app-info'
+import AppSidebarDropdown from './app-sidebar-dropdown'
+import DatasetInfo from './dataset-info'
 import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
+import NavLink from './nav-link'
+import ToggleButton from './toggle-button'
 
-export type IAppDetailNavProps = {
+const isShortcutFromInputArea = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement))
+    return false
+
+  return target.tagName === 'INPUT'
+    || target.tagName === 'TEXTAREA'
+    || target.isContentEditable
+}
+
+type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset'
   navigation: Array<{
     name: string
@@ -26,12 +37,14 @@ export type IAppDetailNavProps = {
     disabled?: boolean
   }>
   extraInfo?: (modeState: string) => React.ReactNode
+  appInfoActions?: AppInfoActions
 }
 
 const AppDetailNav = ({
   navigation,
   extraInfo,
   iconType = 'app',
+  appInfoActions,
 }: IAppDetailNavProps) => {
   const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
@@ -69,21 +82,27 @@ const AppDetailNav = ({
   }, [appSidebarExpand, setAppSidebarExpand])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.b`, (e) => {
+    if (isShortcutFromInputArea(e.target))
+      return
+
     e.preventDefault()
     handleToggle()
   }, { exactMatch: true, useCapture: true })
 
   if (inWorkflowCanvas && hideHeader) {
     return (
-      <div className='flex w-0 shrink-0'>
-        <AppSidebarDropdown navigation={navigation} />
+      <div className="flex w-0 shrink-0">
+        <AppSidebarDropdown
+          navigation={navigation}
+          appInfoActions={appInfoActions}
+        />
       </div>
     )
   }
 
   if (isPipelineCanvas && hideHeader) {
     return (
-      <div className='flex w-0 shrink-0'>
+      <div className="flex w-0 shrink-0">
         <DatasetSidebarDropdown navigation={navigation} />
       </div>
     )
@@ -104,26 +123,34 @@ const AppDetailNav = ({
         )}
       >
         {iconType === 'app' && (
-          <AppInfo expand={expand} />
+          appInfoActions
+            ? (
+                <AppInfoView
+                  expand={expand}
+                  actions={appInfoActions}
+                  renderDetail={false}
+                />
+              )
+            : <AppInfo expand={expand} />
         )}
         {iconType !== 'app' && (
           <DatasetInfo expand={expand} />
         )}
       </div>
-      <div className='relative px-4 py-2'>
+      <div className="relative px-4 py-2">
         <Divider
-          type='horizontal'
+          type="horizontal"
           bgStyle={expand ? 'gradient' : 'solid'}
           className={cn(
             'my-0 h-px',
             expand
-              ? 'bg-gradient-to-r from-divider-subtle to-background-gradient-mask-transparent'
+              ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
               : 'bg-divider-subtle',
           )}
         />
         {!isMobile && isHoveringSidebar && (
           <ToggleButton
-            className='absolute -right-3 top-[-3.5px] z-20'
+            className="absolute top-[-3.5px] -right-3 z-20"
             expand={expand}
             handleToggle={handleToggle}
           />

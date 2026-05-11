@@ -1,0 +1,22 @@
+{
+  "app.changeLogoTip": "Format SVG ali PNG z minimalno velikostjo 80x80px",
+  "app.title": "Prilagodi blagovno znamko glave aplikacije",
+  "apply": "Uporabi",
+  "change": "Spremeni",
+  "custom": "Prilagoditev",
+  "customize.contactUs": " kontaktirajte nas ",
+  "customize.prefix": "Za prilagoditev logotipa blagovne znamke znotraj aplikacije, prosimo,",
+  "customize.suffix": "za nadgradnjo na Enterprise izdajo.",
+  "restore": "Obnovi privzete nastavitve",
+  "upgradeTip.des": "Nadgradite svoj načrt, da prilagodite svojo blagovno znamko",
+  "upgradeTip.prefix": "Nadgradite svoj načrt za",
+  "upgradeTip.suffix": "prilagoditev vaše blagovne znamke.",
+  "upgradeTip.title": "Nadgradite svoj načrt",
+  "upload": "Naloži",
+  "uploadedFail": "Nalaganje slike ni uspelo, prosimo, poskusite znova.",
+  "uploading": "Nalagam",
+  "webapp.changeLogo": "Spremeni sliko Powered by Brand",
+  "webapp.changeLogoTip": "Format SVG ali PNG z minimalno velikostjo 40x40px",
+  "webapp.removeBrand": "Odstrani Powered by Dify",
+  "webapp.title": "Prilagodi blagovno znamko spletne aplikacije"
+}

@@ -1,18 +1,18 @@
-import { useCallback, useMemo } from 'react'
-import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
-import { useTranslation } from 'react-i18next'
 import type {
   CommonNodeType,
   Node,
   ValueSelector,
   VarType,
 } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
 import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
 import {
   VariableLabelInSelect,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 
 type VariableTagProps = {
   valueSelector: ValueSelector
@@ -34,7 +34,7 @@ const VariableTag = ({
       if (startNode)
         return startNode
     }
-    return getNodeInfoById(availableNodes || nodes, isRagVar ? valueSelector[1] : valueSelector[0])
+    return getNodeInfoById(availableNodes || nodes, isRagVar ? valueSelector[1]! : valueSelector[0]!)
   }, [nodes, valueSelector, availableNodes, isRagVar])
 
   const isEnv = isENV(valueSelector)
@@ -81,7 +81,7 @@ const VariableTag = ({
           handleVariableJump()
         }
       }}
-      errorMsg={!isValid ? t('workflow.errorMsg.invalidVariable') : undefined}
+      errorMsg={!isValid ? t('errorMsg.invalidVariable', { ns: 'workflow' }) : undefined}
       isExceptionVariable={isException}
     />
   )

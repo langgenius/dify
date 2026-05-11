@@ -1,13 +1,13 @@
+import type { IterationStartedResponse } from '@/types/workflow'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { produce } from 'immer'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-import type { IterationStartedResponse } from '@/types/workflow'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { DEFAULT_ITER_TIMES } from '@/app/components/workflow/constants'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 export const useWorkflowNodeIterationStarted = () => {
   const store = useStoreApi()
@@ -17,8 +17,8 @@ export const useWorkflowNodeIterationStarted = () => {
   const handleWorkflowNodeIterationStarted = useCallback((
     params: IterationStartedResponse,
     containerParams: {
-      clientWidth: number,
-      clientHeight: number,
+      clientWidth: number
+      clientHeight: number
     },
   ) => {
     const { data } = params
@@ -48,20 +48,20 @@ export const useWorkflowNodeIterationStarted = () => {
     } = reactflow
     const currentNodeIndex = nodes.findIndex(node => node.id === data.node_id)
     const currentNode = nodes[currentNodeIndex]
-    const position = currentNode.position
+    const position = currentNode!.position
     const zoom = transform[2]
 
-    if (!currentNode.parentId) {
+    if (!currentNode!.parentId) {
       setViewport({
-        x: (containerParams.clientWidth - 400 - currentNode.width! * zoom) / 2 - position.x * zoom,
-        y: (containerParams.clientHeight - currentNode.height! * zoom) / 2 - position.y * zoom,
+        x: (containerParams.clientWidth - 400 - currentNode!.width! * zoom) / 2 - position.x * zoom,
+        y: (containerParams.clientHeight - currentNode!.height! * zoom) / 2 - position.y * zoom,
         zoom: transform[2],
       })
     }
     const newNodes = produce(nodes, (draft) => {
-      draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running
-      draft[currentNodeIndex].data._iterationLength = data.metadata.iterator_length
-      draft[currentNodeIndex].data._waitingRun = false
+      draft[currentNodeIndex]!.data._runningStatus = NodeRunningStatus.Running
+      draft[currentNodeIndex]!.data._iterationLength = data.metadata.iterator_length
+      draft[currentNodeIndex]!.data._waitingRun = false
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {

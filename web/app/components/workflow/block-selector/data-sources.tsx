@@ -1,24 +1,26 @@
+import type {
+  OnSelectBlock,
+  ToolWithProvider,
+} from '../types'
+import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
+import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
 } from 'react'
-import { BlockEnum } from '../types'
-import type {
-  OnSelectBlock,
-  ToolWithProvider,
-} from '../types'
-import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
-import Tools from './tools'
-import { ViewType } from './view-type-select'
-import cn from '@/utils/classnames'
-import PluginList, { type ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
+import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { useGetLanguage } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
-import { useGetLanguage } from '@/context/i18n'
+import { BlockEnum } from '../types'
+import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
+import Tools from './tools'
+import { ViewType } from './view-type-select'
 
 type AllToolsProps = {
   className?: string
@@ -50,7 +52,7 @@ const DataSources = ({
 
     return dataSources.filter((toolWithProvider) => {
       return isMatchingKeywords(toolWithProvider.name, searchText) || toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
+        return tool.label[language]!.toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
       })
     })
   }, [searchText, dataSources, language])
@@ -75,7 +77,10 @@ const DataSources = ({
     onSelect(BlockEnum.DataSource, toolDefaultValue && defaultValue)
   }, [onSelect])
 
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: enable_marketplace } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_marketplace,
+  })
 
   const {
     queryPluginsWithDebounced: fetchPlugins,
@@ -83,7 +88,8 @@ const DataSources = ({
   } = useMarketplacePlugins()
 
   useEffect(() => {
-    if (!enable_marketplace) return
+    if (!enable_marketplace)
+      return
     if (searchText) {
       fetchPlugins({
         query: searchText,
@@ -93,10 +99,10 @@ const DataSources = ({
   }, [searchText, enable_marketplace])
 
   return (
-    <div className={cn('w-[400px] min-w-0 max-w-full', className)}>
+    <div className={cn('w-[400px] max-w-full min-w-0', className)}>
       <div
         ref={wrapElemRef}
-        className='max-h-[464px] overflow-y-auto overflow-x-hidden'
+        className="max-h-[464px] overflow-x-hidden overflow-y-auto"
         onScroll={pluginRef.current?.handleScroll}
       >
         <Tools

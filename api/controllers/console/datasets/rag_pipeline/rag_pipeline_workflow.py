@@ -1,21 +1,26 @@
 import json
 import logging
 from typing import Any, Literal, cast
-from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource, marshal_with  # type: ignore
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy.orm import sessionmaker
+from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     ConversationCompletedError,
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
+)
+from controllers.console.app.workflow import (
+    RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
+    workflow_model,
+    workflow_pagination_model,
 )
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
@@ -27,28 +32,29 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from factories import variable_factory
-from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import (
-    workflow_run_detail_fields,
-    workflow_run_node_execution_fields,
-    workflow_run_node_execution_list_fields,
-    workflow_run_pagination_fields,
+    WorkflowRunDetailResponse,
+    WorkflowRunNodeExecutionListResponse,
+    WorkflowRunNodeExecutionResponse,
+    WorkflowRunPaginationResponse,
 )
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
-from libs.helper import TimestampField
+from libs.helper import TimestampField, UUIDStrOrEmpty
 from libs.login import current_account_with_tenant, current_user, login_required
 from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
-from services.errors.app import WorkflowHashNotEqualError
+from models.workflow import Workflow
+from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
+from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -89,28 +95,12 @@ class PublishedWorkflowRunPayload(DraftWorkflowRunPayload):
     original_document_id: str | None = None
 
 
-class DefaultBlockConfigQuery(BaseModel):
-    q: str | None = None
-
-
-class WorkflowListQuery(BaseModel):
-    page: int = Field(default=1, ge=1, le=99999)
-    limit: int = Field(default=10, ge=1, le=100)
-    user_id: str | None = None
-    named_only: bool = False
-
-
-class WorkflowUpdatePayload(BaseModel):
-    marked_name: str | None = Field(default=None, max_length=20)
-    marked_comment: str | None = Field(default=None, max_length=100)
-
-
 class NodeIdQuery(BaseModel):
     node_id: str
 
 
 class WorkflowRunQuery(BaseModel):
-    last_id: UUID | None = None
+    last_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
 
@@ -119,6 +109,10 @@ class DatasourceVariablesPayload(BaseModel):
     datasource_info: dict[str, Any]
     start_node_id: str
     start_node_title: str
+
+
+class RagPipelineRecommendedPluginQuery(BaseModel):
+    type: str = "all"
 
 
 register_schema_models(
@@ -135,6 +129,14 @@ register_schema_models(
     NodeIdQuery,
     WorkflowRunQuery,
     DatasourceVariablesPayload,
+    RagPipelineRecommendedPluginQuery,
+)
+register_response_schema_models(
+    console_ns,
+    WorkflowRunDetailResponse,
+    WorkflowRunNodeExecutionListResponse,
+    WorkflowRunNodeExecutionResponse,
+    WorkflowRunPaginationResponse,
 )
 
 
@@ -145,7 +147,7 @@ class DraftRagPipelineApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     def get(self, pipeline: Pipeline):
         """
         Get draft rag pipeline's workflow
@@ -176,32 +178,20 @@ class DraftRagPipelineApi(Resource):
 
         if "application/json" in content_type:
             payload_dict = console_ns.payload or {}
+            payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
         elif "text/plain" in content_type:
             try:
-                data = json.loads(request.data.decode("utf-8"))
-                if "graph" not in data or "features" not in data:
-                    raise ValueError("graph or features not found in data")
-
-                if not isinstance(data.get("graph"), dict):
-                    raise ValueError("graph is not a dict")
-
-                payload_dict = {
-                    "graph": data.get("graph"),
-                    "features": data.get("features"),
-                    "hash": data.get("hash"),
-                    "environment_variables": data.get("environment_variables"),
-                    "conversation_variables": data.get("conversation_variables"),
-                    "rag_pipeline_variables": data.get("rag_pipeline_variables"),
-                }
-            except json.JSONDecodeError:
+                payload = DraftWorkflowSyncPayload.model_validate_json(request.data)
+            except (ValueError, ValidationError):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-
-        payload = DraftWorkflowSyncPayload.model_validate(payload_dict)
+        rag_pipeline_service = RagPipelineService()
 
         try:
-            environment_variables_list = payload.environment_variables or []
+            environment_variables_list = Workflow.normalize_environment_variable_mappings(
+                payload.environment_variables or [],
+            )
             environment_variables = [
                 variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]
@@ -209,7 +199,6 @@ class DraftRagPipelineApi(Resource):
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
-            rag_pipeline_service = RagPipelineService()
             workflow = rag_pipeline_service.sync_draft_workflow(
                 pipeline=pipeline,
                 graph=payload.graph,
@@ -355,7 +344,7 @@ class PublishedRagPipelineRunApi(Resource):
                 pipeline=pipeline,
                 user=current_user,
                 args=args,
-                invoke_from=InvokeFrom.DEBUGGER if payload.is_preview else InvokeFrom.PUBLISHED,
+                invoke_from=InvokeFrom.DEBUGGER if payload.is_preview else InvokeFrom.PUBLISHED_PIPELINE,
                 streaming=streaming,
             )
 
@@ -364,89 +353,6 @@ class PublishedRagPipelineRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
 
 
-# class RagPipelinePublishedDatasourceNodeRunStatusApi(Resource):
-#     @setup_required
-#     @login_required
-#     @account_initialization_required
-#     @get_rag_pipeline
-#     def post(self, pipeline: Pipeline, node_id: str):
-#         """
-#         Run rag pipeline datasource
-#         """
-#         # The role of the current user in the ta table must be admin, owner, or editor
-#         if not current_user.has_edit_permission:
-#             raise Forbidden()
-#
-#         if not isinstance(current_user, Account):
-#             raise Forbidden()
-#
-#         parser = (reqparse.RequestParser()
-#             .add_argument("job_id", type=str, required=True, nullable=False, location="json")
-#             .add_argument("datasource_type", type=str, required=True, location="json")
-#         )
-#         args = parser.parse_args()
-#
-#         job_id = args.get("job_id")
-#         if job_id == None:
-#             raise ValueError("missing job_id")
-#         datasource_type = args.get("datasource_type")
-#         if datasource_type == None:
-#             raise ValueError("missing datasource_type")
-#
-#         rag_pipeline_service = RagPipelineService()
-#         result = rag_pipeline_service.run_datasource_workflow_node_status(
-#             pipeline=pipeline,
-#             node_id=node_id,
-#             job_id=job_id,
-#             account=current_user,
-#             datasource_type=datasource_type,
-#             is_published=True
-#         )
-#
-#         return result
-
-
-# class RagPipelineDraftDatasourceNodeRunStatusApi(Resource):
-#     @setup_required
-#     @login_required
-#     @account_initialization_required
-#     @get_rag_pipeline
-#     def post(self, pipeline: Pipeline, node_id: str):
-#         """
-#         Run rag pipeline datasource
-#         """
-#         # The role of the current user in the ta table must be admin, owner, or editor
-#         if not current_user.has_edit_permission:
-#             raise Forbidden()
-#
-#         if not isinstance(current_user, Account):
-#             raise Forbidden()
-#
-#         parser = (reqparse.RequestParser()
-#             .add_argument("job_id", type=str, required=True, nullable=False, location="json")
-#             .add_argument("datasource_type", type=str, required=True, location="json")
-#         )
-#         args = parser.parse_args()
-#
-#         job_id = args.get("job_id")
-#         if job_id == None:
-#             raise ValueError("missing job_id")
-#         datasource_type = args.get("datasource_type")
-#         if datasource_type == None:
-#             raise ValueError("missing datasource_type")
-#
-#         rag_pipeline_service = RagPipelineService()
-#         result = rag_pipeline_service.run_datasource_workflow_node_status(
-#             pipeline=pipeline,
-#             node_id=node_id,
-#             job_id=job_id,
-#             account=current_user,
-#             datasource_type=datasource_type,
-#             is_published=False
-#         )
-#
-#         return result
-#
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run")
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceNodeRunPayload.__name__])
@@ -516,12 +422,16 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run")
 class RagPipelineDraftNodeRunApi(Resource):
     @console_ns.expect(console_ns.models[NodeRunRequiredPayload.__name__])
+    @console_ns.response(
+        200,
+        "Node run started successfully",
+        console_ns.models[WorkflowRunNodeExecutionResponse.__name__],
+    )
     @setup_required
     @login_required
     @edit_permission_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_node_execution_fields)
     def post(self, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow node
@@ -540,7 +450,9 @@ class RagPipelineDraftNodeRunApi(Resource):
         if workflow_node_execution is None:
             raise ValueError("Workflow node execution not found")
 
-        return workflow_node_execution
+        return WorkflowRunNodeExecutionResponse.model_validate(
+            workflow_node_execution, from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/tasks/<string:task_id>/stop")
@@ -569,7 +481,7 @@ class PublishedRagPipelineApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     def get(self, pipeline: Pipeline):
         """
         Get published pipeline
@@ -596,19 +508,15 @@ class PublishedRagPipelineApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
         rag_pipeline_service = RagPipelineService()
-        with Session(db.engine) as session:
-            pipeline = session.merge(pipeline)
-            workflow = rag_pipeline_service.publish_workflow(
-                session=session,
-                pipeline=pipeline,
-                account=current_user,
-            )
-            pipeline.is_published = True
-            pipeline.workflow_id = workflow.id
-            session.add(pipeline)
-            workflow_created_at = TimestampField().format(workflow.created_at)
-
-            session.commit()
+        workflow = rag_pipeline_service.publish_workflow(
+            session=db.session,  # type: ignore[reportArgumentType,arg-type]
+            pipeline=pipeline,
+            account=current_user,
+        )
+        pipeline.is_published = True
+        pipeline.workflow_id = workflow.id
+        db.session.commit()
+        workflow_created_at = TimestampField().format(workflow.created_at)
 
         return {
             "result": "success",
@@ -664,7 +572,7 @@ class PublishedAllRagPipelineApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_pagination_fields)
+    @marshal_with(workflow_pagination_model)
     def get(self, pipeline: Pipeline):
         """
         Get published workflows
@@ -683,7 +591,7 @@ class PublishedAllRagPipelineApi(Resource):
                 raise Forbidden()
 
         rag_pipeline_service = RagPipelineService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflows, has_more = rag_pipeline_service.get_all_published_workflow(
                 session=session,
                 pipeline=pipeline,
@@ -701,6 +609,36 @@ class PublishedAllRagPipelineApi(Resource):
             }
 
 
+@console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>/restore")
+class RagPipelineDraftWorkflowRestoreApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, workflow_id: str):
+        current_user, _ = current_account_with_tenant()
+        rag_pipeline_service = RagPipelineService()
+
+        try:
+            workflow = rag_pipeline_service.restore_published_workflow_to_draft(
+                pipeline=pipeline,
+                workflow_id=workflow_id,
+                account=current_user,
+            )
+        except IsDraftWorkflowError as exc:
+            # Use a stable, predefined message to keep the 400 response consistent
+            raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
+        except WorkflowNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+
+        return {
+            "result": "success",
+            "hash": workflow.unique_hash,
+            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
+        }
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>")
 class RagPipelineByIdApi(Resource):
     @setup_required
@@ -708,7 +646,7 @@ class RagPipelineByIdApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @get_rag_pipeline
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     def patch(self, pipeline: Pipeline, workflow_id: str):
         """
         Update workflow attributes
@@ -725,7 +663,7 @@ class RagPipelineByIdApi(Resource):
         rag_pipeline_service = RagPipelineService()
 
         # Create a session and manage the transaction
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = rag_pipeline_service.update_workflow(
                 session=session,
                 workflow_id=workflow_id,
@@ -737,10 +675,37 @@ class RagPipelineByIdApi(Resource):
             if not workflow:
                 raise NotFound("Workflow not found")
 
-            # Commit the transaction in the controller
-            session.commit()
+            return workflow
 
-        return workflow
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_rag_pipeline
+    def delete(self, pipeline: Pipeline, workflow_id: str):
+        """
+        Delete a published workflow version that is not currently active on the pipeline.
+        """
+        if pipeline.workflow_id == workflow_id:
+            abort(400, description=f"Cannot delete workflow that is currently in use by pipeline '{pipeline.id}'")
+
+        workflow_service = WorkflowService()
+
+        with sessionmaker(db.engine).begin() as session:
+            try:
+                workflow_service.delete_workflow(
+                    session=session,
+                    workflow_id=workflow_id,
+                    tenant_id=pipeline.tenant_id,
+                )
+            except WorkflowInUseError as e:
+                abort(400, description=str(e))
+            except DraftWorkflowDeletionError as e:
+                abort(400, description=str(e))
+            except ValueError as e:
+                raise NotFound(str(e))
+
+        return None, 204
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/parameters")
@@ -826,11 +791,15 @@ class DraftRagPipelineSecondStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs")
 class RagPipelineWorkflowRunListApi(Resource):
+    @console_ns.response(
+        200,
+        "Workflow runs retrieved successfully",
+        console_ns.models[WorkflowRunPaginationResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_pagination_fields)
     def get(self, pipeline: Pipeline):
         """
         Get workflow run list
@@ -849,16 +818,20 @@ class RagPipelineWorkflowRunListApi(Resource):
         rag_pipeline_service = RagPipelineService()
         result = rag_pipeline_service.get_rag_pipeline_paginate_workflow_runs(pipeline=pipeline, args=args)
 
-        return result
+        return WorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>")
 class RagPipelineWorkflowRunDetailApi(Resource):
+    @console_ns.response(
+        200,
+        "Workflow run detail retrieved successfully",
+        console_ns.models[WorkflowRunDetailResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_detail_fields)
     def get(self, pipeline: Pipeline, run_id):
         """
         Get workflow run detail
@@ -867,17 +840,23 @@ class RagPipelineWorkflowRunDetailApi(Resource):
 
         rag_pipeline_service = RagPipelineService()
         workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=run_id)
+        if workflow_run is None:
+            raise NotFound("Workflow run not found")
 
-        return workflow_run
+        return WorkflowRunDetailResponse.model_validate(workflow_run, from_attributes=True).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>/node-executions")
 class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
+    @console_ns.response(
+        200,
+        "Node executions retrieved successfully",
+        console_ns.models[WorkflowRunNodeExecutionListResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_node_execution_list_fields)
     def get(self, pipeline: Pipeline, run_id: str):
         """
         Get workflow run node execution list
@@ -892,7 +871,9 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
             user=user,
         )
 
-        return {"data": node_executions}
+        return WorkflowRunNodeExecutionListResponse.model_validate(
+            {"data": node_executions}, from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/datasource-plugins")
@@ -907,11 +888,15 @@ class DatasourceListApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/last-run")
 class RagPipelineWorkflowLastRunApi(Resource):
+    @console_ns.response(
+        200,
+        "Node last run retrieved successfully",
+        console_ns.models[WorkflowRunNodeExecutionResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    @marshal_with(workflow_run_node_execution_fields)
     def get(self, pipeline: Pipeline, node_id: str):
         rag_pipeline_service = RagPipelineService()
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
@@ -924,7 +909,7 @@ class RagPipelineWorkflowLastRunApi(Resource):
         )
         if node_exec is None:
             raise NotFound("last run not found")
-        return node_exec
+        return WorkflowRunNodeExecutionResponse.model_validate(node_exec, from_attributes=True).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/transform/datasets/<uuid:dataset_id>")
@@ -947,12 +932,16 @@ class RagPipelineTransformApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/variables-inspect")
 class RagPipelineDatasourceVariableApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceVariablesPayload.__name__])
+    @console_ns.response(
+        200,
+        "Datasource variables set successfully",
+        console_ns.models[WorkflowRunNodeExecutionResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
-    @marshal_with(workflow_run_node_execution_fields)
     def post(self, pipeline: Pipeline):
         """
         Set datasource variables
@@ -966,7 +955,9 @@ class RagPipelineDatasourceVariableApi(Resource):
             args=args,
             current_user=current_user,
         )
-        return workflow_node_execution
+        return WorkflowRunNodeExecutionResponse.model_validate(
+            workflow_node_execution, from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/rag/pipelines/recommended-plugins")
@@ -975,6 +966,8 @@ class RagPipelineRecommendedPluginApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        query = RagPipelineRecommendedPluginQuery.model_validate(request.args.to_dict())
+
         rag_pipeline_service = RagPipelineService()
-        recommended_plugins = rag_pipeline_service.get_recommended_plugins()
+        recommended_plugins = rag_pipeline_service.get_recommended_plugins(query.type)
         return recommended_plugins

@@ -3,13 +3,14 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
-from core.workflow.runtime import GraphRuntimeState
-from core.workflow.runtime.variable_pool import VariablePool
-from core.workflow.system_variable import SystemVariable
+from core.workflow.system_variables import build_system_variables
+from core.workflow.variable_pool_initializer import add_variables_to_pool
+from graphon.runtime import GraphRuntimeState, VariablePool
 
 
 def _make_state(workflow_run_id: str | None) -> GraphRuntimeState:
-    variable_pool = VariablePool(system_variables=SystemVariable(workflow_execution_id=workflow_run_id))
+    variable_pool = VariablePool()
+    add_variables_to_pool(variable_pool, build_system_variables(workflow_execution_id=workflow_run_id))
     return GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
 
 

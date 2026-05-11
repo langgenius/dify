@@ -1,13 +1,3 @@
-import {
-  useCallback,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type {
   LoopVariable,
 } from '@/app/components/workflow/nodes/loop/types'
@@ -15,9 +5,16 @@ import type {
   Var,
 } from '@/app/components/workflow/types'
 import {
-  ValueType,
-  VarType,
-} from '@/app/components/workflow/types'
+  useCallback,
+  useMemo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import ArrayBoolList from '@/app/components/workflow/panel/chat-variable-panel/components/array-bool-list'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 
 import {
@@ -27,7 +24,10 @@ import {
   arrayStringPlaceholder,
   objectPlaceholder,
 } from '@/app/components/workflow/panel/chat-variable-panel/utils'
-import ArrayBoolList from '@/app/components/workflow/panel/chat-variable-panel/components/array-bool-list'
+import {
+  ValueType,
+  VarType,
+} from '@/app/components/workflow/types'
 
 type FormItemProps = {
   nodeId: string
@@ -41,6 +41,9 @@ const FormItem = ({
 }: FormItemProps) => {
   const { t } = useTranslation()
   const { value_type, var_type, value } = item
+  const normalizedVarValue = useMemo(() => {
+    return Array.isArray(value) ? value : []
+  }, [value])
 
   const handleInputChange = useCallback((e: any) => {
     onChange(e.target.value)
@@ -79,10 +82,10 @@ const FormItem = ({
             readonly={false}
             nodeId={nodeId}
             isShowNodeName
-            value={value}
+            value={normalizedVarValue}
             onChange={handleChange}
             filterVar={filterVar}
-            placeholder={t('workflow.nodes.assigner.setParameter') as string}
+            placeholder={t('nodes.assigner.setParameter', { ns: 'workflow' }) as string}
           />
         )
       }
@@ -91,7 +94,7 @@ const FormItem = ({
           <Textarea
             value={value}
             onChange={handleInputChange}
-            className='min-h-12 w-full'
+            className="min-h-12 w-full"
           />
         )
       }
@@ -101,7 +104,7 @@ const FormItem = ({
             type="number"
             value={value}
             onChange={handleInputChange}
-            className='w-full'
+            className="w-full"
           />
         )
       }
@@ -117,15 +120,15 @@ const FormItem = ({
         value_type === ValueType.constant
         && (var_type === VarType.object || var_type === VarType.arrayString || var_type === VarType.arrayNumber || var_type === VarType.arrayObject)
         && (
-          <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
+          <div className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3" style={{ height: editorMinHeight }}>
             <CodeEditor
               value={value}
               isExpand
               noWrapper
               language={CodeLanguage.json}
               onChange={handleChange}
-              className='w-full'
-              placeholder={<div className='whitespace-pre'>{placeholder}</div>}
+              className="w-full"
+              placeholder={<div className="whitespace-pre">{placeholder}</div>}
             />
           </div>
         )
@@ -133,7 +136,7 @@ const FormItem = ({
       {
         value_type === ValueType.constant && var_type === VarType.arrayBoolean && (
           <ArrayBoolList
-            className='mt-2'
+            className="mt-2"
             list={value || [false]}
             onChange={handleChange}
           />

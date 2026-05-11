@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react'
+import type { ChunkStructureEnum } from '../../types'
+import type { Option } from './type'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import type { ChunkStructureEnum } from '../../types'
 import OptionCard from '../option-card'
-import type { Option } from './type'
 
 type SelectorProps = {
   options: Option[]
@@ -32,42 +32,51 @@ const Selector = ({
     onChange(optionId)
     setOpen(false)
   }, [onChange])
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (readonly && nextOpen)
+      return
+    setOpen(nextOpen)
+  }, [readonly])
 
   return (
-    <PortalToFollowElem
-      placement='bottom-end'
-      offset={{
-        mainAxis: 0,
-        crossAxis: -8,
-      }}
+    <Popover
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger
-        asChild
-        onClick={() => {
-          if (readonly)
-            return
-          setOpen(!open)
-        }}
+      {
+        trigger
+          ? (
+              <PopoverTrigger
+                nativeButton={false}
+                render={<div />}
+              >
+                {trigger}
+              </PopoverTrigger>
+            )
+          : (
+              <PopoverTrigger
+                render={(
+                  <Button
+                    size="small"
+                    variant="ghost-accent"
+                  />
+                )}
+              >
+                {t('panel.change', { ns: 'workflow' })}
+              </PopoverTrigger>
+            )
+      }
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={0}
+        alignOffset={-8}
+        popupClassName="border-none bg-transparent shadow-none"
       >
-        {
-          trigger || (
-            <Button
-              size='small'
-              variant='ghost-accent'
-            >
-              {t('workflow.panel.change')}
-            </Button>
-          )
-        }
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
-        <div className='w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]'>
-          <div className='system-sm-semibold px-3 pt-3.5 text-text-primary'>
-            {t('workflow.nodes.knowledgeBase.changeChunkStructure')}
+        <div className="w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
+          <div className="px-3 pt-3.5 system-sm-semibold text-text-primary">
+            {t('nodes.knowledgeBase.changeChunkStructure', { ns: 'workflow' })}
           </div>
-          <div className='space-y-1 p-3 pt-2'>
+          <div className="space-y-1 p-3 pt-2">
             {
               options.map(option => (
                 <OptionCard
@@ -80,13 +89,14 @@ const Selector = ({
                   readonly={readonly}
                   onClick={handleSelect}
                   effectColor={option.effectColor}
-                ></OptionCard>
+                >
+                </OptionCard>
               ))
             }
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

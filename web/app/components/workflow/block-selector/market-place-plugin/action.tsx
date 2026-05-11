@@ -1,21 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTheme } from 'next-themes'
-import { useTranslation } from 'react-i18next'
-import { RiMoreFill } from '@remixicon/react'
-import ActionButton from '@/app/components/base/action-button'
-// import Button from '@/app/components/base/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import cn from '@/utils/classnames'
-import { useDownloadPlugin } from '@/service/use-plugins'
-import { downloadFile } from '@/utils/format'
-import { getMarketplaceUrl } from '@/utils/var'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLinkItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useQueryClient } from '@tanstack/react-query'
+import { useTheme } from 'next-themes'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import { useDownloadPlugin } from '@/service/use-plugins'
+import { downloadBlob } from '@/utils/download'
+import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = {
   open: boolean
@@ -35,15 +36,9 @@ const OperationDropdown: FC<Props> = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const queryClient = useQueryClient()
-  const openRef = useRef(open)
-  const setOpen = useCallback((v: boolean) => {
-    onOpenChange(v)
-    openRef.current = v
+  const setOpen = useCallback((value: boolean) => {
+    onOpenChange(value)
   }, [onOpenChange])
-
-  const handleTrigger = useCallback(() => {
-    setOpen(!openRef.current)
-  }, [setOpen])
 
   const [needDownload, setNeedDownload] = useState(false)
   const downloadInfo = useMemo(() => ({
@@ -53,19 +48,21 @@ const OperationDropdown: FC<Props> = ({
   }), [author, name, version])
   const { data: blob, isLoading } = useDownloadPlugin(downloadInfo, needDownload)
   const handleDownload = useCallback(() => {
-    if (isLoading) return
+    if (isLoading)
+      return
+    setOpen(false)
     queryClient.removeQueries({
       queryKey: ['plugins', 'downloadPlugin', downloadInfo],
       exact: true,
     })
     setNeedDownload(true)
-  }, [downloadInfo, isLoading, queryClient])
+  }, [downloadInfo, isLoading, queryClient, setOpen])
 
   useEffect(() => {
     if (!needDownload || !blob)
       return
     const fileName = `${author}-${name}_${version}.zip`
-    downloadFile({ data: blob, fileName })
+    downloadBlob({ data: blob, fileName })
     setNeedDownload(false)
     queryClient.removeQueries({
       queryKey: ['plugins', 'downloadPlugin', downloadInfo],
@@ -73,27 +70,38 @@ const OperationDropdown: FC<Props> = ({
     })
   }, [author, blob, downloadInfo, name, needDownload, queryClient, version])
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
-      offset={{
-        mainAxis: 0,
-        crossAxis: 0,
-      }}
     >
-      <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <ActionButton className={cn(open && 'bg-state-base-hover')}>
-          <RiMoreFill className='h-4 w-4 text-components-button-secondary-accent-text' />
-        </ActionButton>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[9999]'>
-        <div className='min-w-[176px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
-          <div onClick={handleDownload} className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>{t('common.operation.download')}</div>
-          <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target='_blank' className='system-md-regular block cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>{t('common.operation.viewDetails')}</a>
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      <DropdownMenuTrigger
+        render={(
+          <ActionButton
+            className={cn(open && 'bg-state-base-hover', 'focus-visible:ring-2 focus-visible:ring-state-accent-solid')}
+            aria-label={t('operation.more', { ns: 'common' })}
+          >
+            <span aria-hidden className="i-ri-more-fill h-4 w-4 text-components-button-secondary-accent-text" />
+          </ActionButton>
+        )}
+      />
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="min-w-[176px]"
+      >
+        <DropdownMenuItem className="system-md-regular" onClick={handleDownload}>
+          {t('operation.download', { ns: 'common' })}
+        </DropdownMenuItem>
+        <DropdownMenuLinkItem
+          className="system-md-regular"
+          href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t('operation.viewDetails', { ns: 'common' })}
+        </DropdownMenuLinkItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 export default React.memo(OperationDropdown)

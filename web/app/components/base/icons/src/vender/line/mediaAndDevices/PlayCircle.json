@@ -1,86 +1,86 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "16",
-			"height": "16",
-			"viewBox": "0 0 16 16",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "play-circle",
-					"clip-path": "url(#clip0_3607_26538)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "g",
-						"attributes": {
-							"id": "Icon"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"d": "M7.99992 14.6666C11.6818 14.6666 14.6666 11.6819 14.6666 7.99998C14.6666 4.31808 11.6818 1.33331 7.99992 1.33331C4.31802 1.33331 1.33325 4.31808 1.33325 7.99998C1.33325 11.6819 4.31802 14.6666 7.99992 14.6666Z",
-									"stroke": "currentColor",
-									"stroke-width": "1.25",
-									"stroke-linecap": "round",
-									"stroke-linejoin": "round"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"d": "M6.66659 5.33331L10.6666 7.99998L6.66659 10.6666V5.33331Z",
-									"stroke": "currentColor",
-									"stroke-width": "1.25",
-									"stroke-linecap": "round",
-									"stroke-linejoin": "round"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "clipPath",
-						"attributes": {
-							"id": "clip0_3607_26538"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "rect",
-								"attributes": {
-									"width": "16",
-									"height": "16",
-									"fill": "white"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "PlayCircle"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "play-circle",
+          "clip-path": "url(#clip0_3607_26538)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "g",
+            "attributes": {
+              "id": "Icon"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M7.99992 14.6666C11.6818 14.6666 14.6666 11.6819 14.6666 7.99998C14.6666 4.31808 11.6818 1.33331 7.99992 1.33331C4.31802 1.33331 1.33325 4.31808 1.33325 7.99998C1.33325 11.6819 4.31802 14.6666 7.99992 14.6666Z",
+                  "stroke": "currentColor",
+                  "stroke-width": "1.25",
+                  "stroke-linecap": "round",
+                  "stroke-linejoin": "round"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "M6.66659 5.33331L10.6666 7.99998L6.66659 10.6666V5.33331Z",
+                  "stroke": "currentColor",
+                  "stroke-width": "1.25",
+                  "stroke-linecap": "round",
+                  "stroke-linejoin": "round"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_3607_26538"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "16",
+                  "height": "16",
+                  "fill": "white"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "PlayCircle"
 }

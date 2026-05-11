@@ -2,6 +2,7 @@ import logging
 import os
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import opendal
 from dotenv import dotenv_values
@@ -19,7 +20,7 @@ def _get_opendal_kwargs(*, scheme: str, env_file_path: str = ".env", prefix: str
         if key.startswith(config_prefix):
             kwargs[key[len(config_prefix) :].lower()] = value
 
-    file_env_vars: dict = dotenv_values(env_file_path) or {}
+    file_env_vars: dict[str, Any] = dotenv_values(env_file_path) or {}
     for key, value in file_env_vars.items():
         if key.startswith(config_prefix) and key[len(config_prefix) :].lower() not in kwargs and value:
             kwargs[key[len(config_prefix) :].lower()] = value
@@ -32,7 +33,7 @@ class OpenDALStorage(BaseStorage):
         kwargs = kwargs or _get_opendal_kwargs(scheme=scheme)
 
         if scheme == "fs":
-            root = kwargs.get("root", "storage")
+            root = kwargs.setdefault("root", "storage")
             Path(root).mkdir(parents=True, exist_ok=True)
 
         retry_layer = opendal.layers.RetryLayer(max_times=3, factor=2.0, jitter=True)
@@ -87,15 +88,16 @@ class OpenDALStorage(BaseStorage):
         if not self.exists(path):
             raise FileNotFoundError("Path not found")
 
-        all_files = self.op.scan(path=path)
+        # Use the new OpenDAL 0.46.0+ API with recursive listing
+        lister = self.op.list(path, recursive=True)
         if files and directories:
             logger.debug("files and directories on %s scanned", path)
-            return [f.path for f in all_files]
+            return [entry.path for entry in lister]
         if files:
             logger.debug("files on %s scanned", path)
-            return [f.path for f in all_files if not f.path.endswith("/")]
+            return [entry.path for entry in lister if not entry.metadata.is_dir]
         elif directories:
             logger.debug("directories on %s scanned", path)
-            return [f.path for f in all_files if f.path.endswith("/")]
+            return [entry.path for entry in lister if entry.metadata.is_dir]
         else:
             raise ValueError("At least one of files or directories must be True")

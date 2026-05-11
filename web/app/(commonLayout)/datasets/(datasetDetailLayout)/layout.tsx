@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 
 export type IDatasetDetail = {
   children: React.ReactNode

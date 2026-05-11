@@ -1,60 +1,56 @@
-import { type ReadonlyURLSearchParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { debounce, parseAsArrayOf, parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
+import { useCallback, useMemo } from 'react'
+import { AppModes } from '@/types/app'
+import { APP_LIST_SEARCH_DEBOUNCE_MS } from '../constants'
 
-type AppsQuery = {
-  tagIDs?: string[]
-  keywords?: string
-  isCreatedByMe?: boolean
+const APP_LIST_CATEGORY_VALUES = ['all', ...AppModes] as const
+export type AppListCategory = typeof APP_LIST_CATEGORY_VALUES[number]
+
+const appListCategorySet = new Set<string>(APP_LIST_CATEGORY_VALUES)
+
+export const isAppListCategory = (value: string): value is AppListCategory => {
+  return appListCategorySet.has(value)
 }
 
-// Parse the query parameters from the URL search string.
-function parseParams(params: ReadonlyURLSearchParams): AppsQuery {
-  const tagIDs = params.get('tagIDs')?.split(';')
-  const keywords = params.get('keywords') || undefined
-  const isCreatedByMe = params.get('isCreatedByMe') === 'true'
-  return { tagIDs, keywords, isCreatedByMe }
+const appListQueryParsers = {
+  category: parseAsStringLiteral(APP_LIST_CATEGORY_VALUES)
+    .withDefault('all')
+    .withOptions({ history: 'push' }),
+  tagIDs: parseAsArrayOf(parseAsString, ';')
+    .withDefault([])
+    .withOptions({ history: 'push' }),
+  keywords: parseAsString.withDefault('').withOptions({
+    limitUrlUpdates: debounce(APP_LIST_SEARCH_DEBOUNCE_MS),
+  }),
+  isCreatedByMe: parseAsBoolean
+    .withDefault(false)
+    .withOptions({ history: 'push' }),
 }
 
-// Update the URL search string with the given query parameters.
-function updateSearchParams(query: AppsQuery, current: URLSearchParams) {
-  const { tagIDs, keywords, isCreatedByMe } = query || {}
+export function useAppsQueryState() {
+  const [query, setQuery] = useQueryStates(appListQueryParsers)
 
-  if (tagIDs && tagIDs.length > 0)
-    current.set('tagIDs', tagIDs.join(';'))
-  else
-    current.delete('tagIDs')
+  const setCategory = useCallback((category: AppListCategory) => {
+    setQuery({ category })
+  }, [setQuery])
 
-  if (keywords)
-    current.set('keywords', keywords)
-  else
-    current.delete('keywords')
+  const setKeywords = useCallback((keywords: string) => {
+    setQuery({ keywords })
+  }, [setQuery])
 
-  if (isCreatedByMe)
-    current.set('isCreatedByMe', 'true')
-  else
-    current.delete('isCreatedByMe')
+  const setTagIDs = useCallback((tagIDs: string[]) => {
+    setQuery({ tagIDs })
+  }, [setQuery])
+
+  const setIsCreatedByMe = useCallback((isCreatedByMe: boolean) => {
+    setQuery({ isCreatedByMe })
+  }, [setQuery])
+
+  return useMemo(() => ({
+    query,
+    setCategory,
+    setKeywords,
+    setTagIDs,
+    setIsCreatedByMe,
+  }), [query, setCategory, setKeywords, setTagIDs, setIsCreatedByMe])
 }
-
-function useAppsQueryState() {
-  const searchParams = useSearchParams()
-  const [query, setQuery] = useState<AppsQuery>(() => parseParams(searchParams))
-
-  const router = useRouter()
-  const pathname = usePathname()
-  const syncSearchParams = useCallback((params: URLSearchParams) => {
-    const search = params.toString()
-    const query = search ? `?${search}` : ''
-    router.push(`${pathname}${query}`, { scroll: false })
-  }, [router, pathname])
-
-  // Update the URL search string whenever the query changes.
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams)
-    updateSearchParams(query, params)
-    syncSearchParams(params)
-  }, [query, searchParams, syncSearchParams])
-
-  return useMemo(() => ({ query, setQuery }), [query])
-}
-
-export default useAppsQueryState

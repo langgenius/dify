@@ -1,27 +1,27 @@
 import type {
   ReactElement,
 } from 'react'
+import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import type {
+  NodeProps,
+} from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   cloneElement,
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import type {
-  NodeProps,
-} from '@/app/components/workflow/types'
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
 import { hasErrorHandleNode } from '@/app/components/workflow/utils'
-import Tooltip from '@/app/components/base/tooltip'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import ErrorHandleOnNode from '../error-handle-on-node'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
 } from '../node-handle'
-import ErrorHandleOnNode from '../error-handle-on-node'
 
 type NodeChildElement = ReactElement<Partial<NodeProps>>
 
@@ -39,7 +39,7 @@ const BaseCard = ({
   return (
     <div
       className={cn(
-        'flex rounded-2xl border-[2px] border-transparent',
+        'flex rounded-2xl border-2 border-transparent',
       )}
       style={{
         width: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.width : 'auto',
@@ -58,50 +58,54 @@ const BaseCard = ({
         }}
       >
         <div className={cn(
-          'flex items-center rounded-t-2xl px-3 pb-2 pt-3',
-        )}>
+          'flex items-center rounded-t-2xl px-3 pt-3 pb-2',
+        )}
+        >
           <NodeTargetHandle
             id={id}
             data={data}
-            handleClassName='!top-4 !-left-[9px] !translate-y-0'
-            handleId='target'
+            handleClassName="top-4! -left-[9px]! translate-y-0!"
+            handleId="target"
           />
           {
-            data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && (
+            data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && (
               <NodeSourceHandle
                 id={id}
                 data={data}
-                handleClassName='!top-4 !-right-[9px] !translate-y-0'
-                handleId='source'
+                handleClassName="top-4! -right-[9px]! translate-y-0!"
+                handleId="source"
               />
             )
           }
           <BlockIcon
-            className='mr-2 shrink-0'
+            className="mr-2 shrink-0"
             type={data.type}
-            size='md'
+            size="md"
           />
           <div
             title={data.title}
-            className='system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary'
+            className="mr-1 flex grow items-center truncate system-sm-semibold-uppercase text-text-primary"
           >
             <div>
               {data.title}
             </div>
             {
               data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
-                <Tooltip popupContent={
-                  <div className='w-[180px]'>
-                    <div className='font-extrabold'>
-                      {t('workflow.nodes.iteration.parallelModeEnableTitle')}
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    aria-label={t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
+                    className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning bg-transparent px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning"
+                  >
+                    {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
+                  </PopoverTrigger>
+                  <PopoverContent popupClassName="w-[180px] px-3 py-2 system-xs-regular text-text-tertiary">
+                    <div className="font-extrabold">
+                      {t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
                     </div>
-                    {t('workflow.nodes.iteration.parallelModeEnableDesc')}
-                  </div>}
-                >
-                  <div className='system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning '>
-                    {t('workflow.nodes.iteration.parallelModeUpper')}
-                  </div>
-                </Tooltip>
+                    {t('nodes.iteration.parallelModeEnableDesc', { ns: 'workflow' })}
+                  </PopoverContent>
+                </Popover>
               )
             }
           </div>
@@ -113,7 +117,7 @@ const BaseCard = ({
         }
         {
           (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && children && (
-            <div className='h-[calc(100%-42px)] w-full grow pb-1 pl-1 pr-1'>
+            <div className="h-[calc(100%-42px)] w-full grow pr-1 pb-1 pl-1">
               {cloneElement(children, { id, data })}
             </div>
           )
@@ -128,7 +132,7 @@ const BaseCard = ({
         }
         {
           data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
-            <div className='system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary'>
+            <div className="px-3 pt-1 pb-2 system-xs-regular wrap-break-word whitespace-pre-line text-text-tertiary">
               {data.desc}
             </div>
           )

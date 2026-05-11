@@ -1,0 +1,23 @@
+{
+  "actionLogs": "क्रिया लॉग",
+  "circularInvocationTip": "वर्तमान कार्यप्रवाह में उपकरणों/नोड्स का वृत्ताकार आह्वान है।",
+  "detail": "विवरण",
+  "input": "इनपुट",
+  "meta.executor": "एक्ज़ीक्यूटर",
+  "meta.startTime": "शुरुआत की समय",
+  "meta.status": "स्थिति",
+  "meta.steps": "चालाने के चरण",
+  "meta.time": "समय की अवधि",
+  "meta.title": "मेटाडाटा",
+  "meta.tokens": "कुल टोकन्स",
+  "meta.version": "वर्ज़न",
+  "result": "नतीजा",
+  "resultEmpty.link": "विवरण पैनल",
+  "resultEmpty.tipLeft": "लेखक ",
+  "resultEmpty.tipRight": " देखें।",
+  "resultEmpty.title": "इस रन में सिर्फ JSON फार्मेट का नतीजा है,",
+  "resultPanel.status": "स्थिति",
+  "resultPanel.time": "समय की अवधि",
+  "resultPanel.tokens": "कुल टोकन्स",
+  "tracing": "ट्रेसिंग"
+}

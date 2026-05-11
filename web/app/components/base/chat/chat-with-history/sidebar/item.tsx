@@ -1,12 +1,12 @@
 import type { FC } from 'react'
+import type { ConversationItem } from '@/models/share'
+import { cn } from '@langgenius/dify-ui/cn'
+import { useHover } from 'ahooks'
 import {
   memo,
   useRef,
 } from 'react'
-import { useHover } from 'ahooks'
-import type { ConversationItem } from '@/models/share'
 import Operation from '@/app/components/base/chat/chat-with-history/sidebar/operation'
-import cn from '@/utils/classnames'
 
 type ItemProps = {
   isPin?: boolean
@@ -31,14 +31,14 @@ const Item: FC<ItemProps> = ({
       ref={ref}
       key={item.id}
       className={cn(
-        'system-sm-medium group flex cursor-pointer rounded-lg p-1 pl-3 text-components-menu-item-text hover:bg-state-base-hover',
+        'group flex cursor-pointer rounded-lg p-1 pl-3 system-sm-medium text-components-menu-item-text hover:bg-state-base-hover',
         isSelected && 'bg-state-accent-active text-text-accent hover:bg-state-accent-active',
       )}
       onClick={() => onChangeConversation(item.id)}
     >
-      <div className='grow truncate p-1 pl-0' title={item.name}>{item.name}</div>
+      <div className="grow truncate p-1 pl-0" title={item.name}>{item.name}</div>
       {item.id !== '' && (
-        <div className='shrink-0' onClick={e => e.stopPropagation()}>
+        <div className="shrink-0" onClick={e => e.stopPropagation()}>
           <Operation
             isActive={isSelected}
             isPinned={!!isPin}

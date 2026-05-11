@@ -1,18 +1,19 @@
+"""Logging extension for Dify Flask application."""
+
 import logging
 import os
 import sys
-import uuid
 from logging.handlers import RotatingFileHandler
 
-import flask
-
 from configs import dify_config
-from core.helper.trace_id_helper import get_trace_id_from_otel_context
 from dify_app import DifyApp
 
 
 def init_app(app: DifyApp):
+    """Initialize logging with support for text or JSON format."""
     log_handlers: list[logging.Handler] = []
+
+    # File handler
     log_file = dify_config.LOG_FILE
     if log_file:
         log_dir = os.path.dirname(log_file)
@@ -25,27 +26,53 @@ def init_app(app: DifyApp):
             )
         )
 
-    # Always add StreamHandler to log to console
+    # Console handler
     sh = logging.StreamHandler(sys.stdout)
     log_handlers.append(sh)
 
-    # Apply RequestIdFilter to all handlers
-    for handler in log_handlers:
-        handler.addFilter(RequestIdFilter())
+    # Apply filters to all handlers
+    from core.logging.filters import IdentityContextFilter, TraceContextFilter
 
+    for handler in log_handlers:
+        handler.addFilter(TraceContextFilter())
+        handler.addFilter(IdentityContextFilter())
+
+    # Configure formatter based on format type
+    formatter = _create_formatter()
+    for handler in log_handlers:
+        handler.setFormatter(formatter)
+
+    # Configure root logger
     logging.basicConfig(
         level=dify_config.LOG_LEVEL,
-        format=dify_config.LOG_FORMAT,
-        datefmt=dify_config.LOG_DATEFORMAT,
         handlers=log_handlers,
         force=True,
     )
 
-    # Apply RequestIdFormatter to all handlers
-    apply_request_id_formatter()
-
     # Disable propagation for noisy loggers to avoid duplicate logs
     logging.getLogger("sqlalchemy.engine").propagate = False
+
+    # Apply timezone if specified (only for text format)
+    if dify_config.LOG_OUTPUT_FORMAT == "text":
+        _apply_timezone(log_handlers)
+
+
+def _create_formatter() -> logging.Formatter:
+    """Create appropriate formatter based on configuration."""
+    if dify_config.LOG_OUTPUT_FORMAT == "json":
+        from core.logging.structured_formatter import StructuredJSONFormatter
+
+        return StructuredJSONFormatter()
+    else:
+        # Text format - use existing pattern with backward compatible formatter
+        return _TextFormatter(
+            fmt=dify_config.LOG_FORMAT,
+            datefmt=dify_config.LOG_DATEFORMAT,
+        )
+
+
+def _apply_timezone(handlers: list[logging.Handler]):
+    """Apply timezone conversion to text formatters."""
     log_tz = dify_config.LOG_TZ
     if log_tz:
         from datetime import datetime
@@ -57,34 +84,51 @@ def init_app(app: DifyApp):
         def time_converter(seconds):
             return datetime.fromtimestamp(seconds, tz=timezone).timetuple()
 
-        for handler in logging.root.handlers:
+        for handler in handlers:
             if handler.formatter:
-                handler.formatter.converter = time_converter
+                handler.formatter.converter = time_converter  # type: ignore[attr-defined]
 
 
-def get_request_id():
-    if getattr(flask.g, "request_id", None):
-        return flask.g.request_id
+class _TextFormatter(logging.Formatter):
+    """Text formatter that ensures trace_id and req_id are always present."""
 
-    new_uuid = uuid.uuid4().hex[:10]
-    flask.g.request_id = new_uuid
+    def format(self, record: logging.LogRecord) -> str:
+        if not hasattr(record, "req_id"):
+            record.req_id = ""
+        if not hasattr(record, "trace_id"):
+            record.trace_id = ""
+        if not hasattr(record, "span_id"):
+            record.span_id = ""
+        return super().format(record)
 
-    return new_uuid
+
+def get_request_id() -> str:
+    """Get request ID for current request context.
+
+    Deprecated: Use core.logging.context.get_request_id() directly.
+    """
+    from core.logging.context import get_request_id as _get_request_id
+
+    return _get_request_id()
 
 
+# Backward compatibility aliases
 class RequestIdFilter(logging.Filter):
-    # This is a logging filter that makes the request ID available for use in
-    # the logging format. Note that we're checking if we're in a request
-    # context, as we may want to log things before Flask is fully loaded.
-    def filter(self, record):
-        trace_id = get_trace_id_from_otel_context() or ""
-        record.req_id = get_request_id() if flask.has_request_context() else ""
-        record.trace_id = trace_id
+    """Deprecated: Use TraceContextFilter from core.logging.filters instead."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        from core.logging.context import get_request_id as _get_request_id
+        from core.logging.context import get_trace_id as _get_trace_id
+
+        record.req_id = _get_request_id()
+        record.trace_id = _get_trace_id()
         return True
 
 
 class RequestIdFormatter(logging.Formatter):
-    def format(self, record):
+    """Deprecated: Use _TextFormatter instead."""
+
+    def format(self, record: logging.LogRecord) -> str:
         if not hasattr(record, "req_id"):
             record.req_id = ""
         if not hasattr(record, "trace_id"):
@@ -93,6 +137,7 @@ class RequestIdFormatter(logging.Formatter):
 
 
 def apply_request_id_formatter():
+    """Deprecated: Formatter is now applied in init_app."""
     for handler in logging.root.handlers:
         if handler.formatter:
             handler.formatter = RequestIdFormatter(dify_config.LOG_FORMAT, dify_config.LOG_DATEFORMAT)

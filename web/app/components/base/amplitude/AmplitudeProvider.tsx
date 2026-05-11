@@ -1,49 +1,21 @@
 'use client'
 
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
-import * as amplitude from '@amplitude/analytics-browser'
-import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
-import { IS_CLOUD_EDITION } from '@/config'
+import type { AmplitudeInitializationOptions } from './init'
+import * as React from 'react'
+import { useEffect } from 'react'
+import { ensureAmplitudeInitialized } from './init'
 
-export type IAmplitudeProps = {
-  apiKey?: string
-  sessionReplaySampleRate?: number
-}
-
-// Check if Amplitude should be enabled
-export const isAmplitudeEnabled = () => {
-  const apiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
-  return IS_CLOUD_EDITION && !!apiKey
-}
+export type IAmplitudeProps = AmplitudeInitializationOptions
 
 const AmplitudeProvider: FC<IAmplitudeProps> = ({
-  apiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY ?? '',
-  sessionReplaySampleRate = 1,
+  sessionReplaySampleRate = 0.5,
 }) => {
   useEffect(() => {
-    // Only enable in Saas edition with valid API key
-    if (!isAmplitudeEnabled())
-      return
-
-    // Initialize Amplitude
-    amplitude.init(apiKey, {
-      defaultTracking: {
-        sessions: true,
-        pageViews: true,
-        formInteractions: true,
-        fileDownloads: true,
-      },
-      // Enable debug logs in development environment
-      logLevel: amplitude.Types.LogLevel.Warn,
+    ensureAmplitudeInitialized({
+      sessionReplaySampleRate,
     })
-
-    // Add Session Replay plugin
-    const sessionReplay = sessionReplayPlugin({
-      sampleRate: sessionReplaySampleRate,
-    })
-    amplitude.add(sessionReplay)
-  }, [])
+  }, [sessionReplaySampleRate])
 
   // This is a client component that renders nothing
   return null

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import * as React from 'react'
+import { useEffect } from 'react'
 import Input from '@/app/components/base/input'
 
 export type IConfigStringProps = {

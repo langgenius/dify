@@ -1,6 +1,6 @@
+import type { ValueSelector } from '../../types'
 import { useMemo } from 'react'
 import { useIsChatMode, useWorkflow, useWorkflowVariables } from '../../hooks'
-import type { ValueSelector } from '../../types'
 import { VarType } from '../../types'
 
 type Params = {

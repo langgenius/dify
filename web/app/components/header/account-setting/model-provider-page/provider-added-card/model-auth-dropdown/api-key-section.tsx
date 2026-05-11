@@ -1,0 +1,91 @@
+import type { Credential, CustomModel, ModelProvider } from '../../declarations'
+import { Button } from '@langgenius/dify-ui/button'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import CredentialItem from '../../model-auth/authorized/credential-item'
+
+type ApiKeySectionProps = {
+  provider: ModelProvider
+  credentials: Credential[]
+  selectedCredentialId: string | undefined
+  isActivating?: boolean
+  onItemClick: (credential: Credential, model?: CustomModel) => void
+  onEdit: (credential?: Credential) => void
+  onDelete: (credential?: Credential) => void
+  onAdd: () => void
+}
+
+function ApiKeySection({
+  provider,
+  credentials,
+  selectedCredentialId,
+  isActivating,
+  onItemClick,
+  onEdit,
+  onDelete,
+  onAdd,
+}: ApiKeySectionProps) {
+  const { t } = useTranslation()
+  const notAllowCustomCredential = provider.allow_custom_token === false
+
+  if (!credentials.length) {
+    return (
+      <div className="flex flex-col gap-2 p-2">
+        <div className="rounded-[10px] bg-linear-to-r from-state-base-hover to-transparent p-4">
+          <div className="flex flex-col gap-1">
+            <div className="system-sm-medium text-text-secondary">
+              {t('modelProvider.card.noApiKeysTitle', { ns: 'common' })}
+            </div>
+            <div className="system-xs-regular text-text-tertiary">
+              {t('modelProvider.card.noApiKeysDescription', { ns: 'common' })}
+            </div>
+          </div>
+        </div>
+        {!notAllowCustomCredential && (
+          <Button
+            onClick={onAdd}
+            className="w-full"
+          >
+            {t('modelProvider.auth.addApiKey', { ns: 'common' })}
+          </Button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="border-t border-t-divider-subtle">
+      <div className="px-1">
+        <div className="pt-3 pr-2 pb-1 pl-7 system-xs-medium-uppercase text-text-tertiary">
+          {t('modelProvider.auth.apiKeys', { ns: 'common' })}
+        </div>
+        <div className="max-h-[200px] overflow-y-auto">
+          {credentials.map(credential => (
+            <CredentialItem
+              key={credential.credential_id}
+              credential={credential}
+              disabled={isActivating}
+              showSelectedIcon
+              selectedCredentialId={selectedCredentialId}
+              onItemClick={onItemClick}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      </div>
+      {!notAllowCustomCredential && (
+        <div className="p-2">
+          <Button
+            onClick={onAdd}
+            className="w-full"
+          >
+            {t('modelProvider.auth.addApiKey', { ns: 'common' })}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default memo(ApiKeySection)

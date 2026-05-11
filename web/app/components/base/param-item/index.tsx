@@ -1,9 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import { InputNumber } from '../input-number'
-import Tooltip from '@/app/components/base/tooltip'
-import Slider from '@/app/components/base/slider'
-import Switch from '@/app/components/base/switch'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Infotip } from '@/app/components/base/infotip'
 
 type Props = {
   className?: string
@@ -24,52 +31,54 @@ type Props = {
 const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
   return (
     <div className={className}>
-      <div className='flex items-center justify-between'>
-        <div className='flex h-6 items-center'>
+      <div className="flex items-center justify-between">
+        <div className="flex h-6 items-center">
           {hasSwitch && (
             <Switch
-              size='md'
-              className='mr-2'
-              defaultValue={enable}
-              onChange={async (val) => {
+              size="md"
+              className="mr-2"
+              checked={enable}
+              onCheckedChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}
             />
           )}
-          <span className='system-sm-semibold mr-1 text-text-secondary'>{name}</span>
-          {!noTooltip && (
-            <Tooltip
-              triggerClassName='w-4 h-4 shrink-0'
-              popupContent={<div className='w-[200px]'>{tip}</div>}
-            />
+          <span className="mr-1 system-sm-semibold text-text-secondary">{name}</span>
+          {!noTooltip && tip && (
+            <Infotip aria-label={tip} popupClassName="w-[200px]">
+              {tip}
+            </Infotip>
           )}
         </div>
       </div>
-      <div className='mt-1 flex items-center'>
-        <div className='mr-3 flex shrink-0 items-center'>
-          <InputNumber
+      <div className="mt-1 flex items-center">
+        <div className="mr-3 flex shrink-0 items-center">
+          <NumberField
             disabled={!enable}
-            type='number'
             min={min}
             max={max}
             step={step}
-            amount={step}
-            size='regular'
             value={value}
-            onChange={(value) => {
-              onChange(id, value)
-            }}
-            className='w-[72px]'
-          />
+            onValueChange={nextValue => onChange(id, nextValue ?? min)}
+          >
+            <NumberFieldGroup>
+              <NumberFieldInput className="w-[72px]" />
+              <NumberFieldControls>
+                <NumberFieldIncrement />
+                <NumberFieldDecrement />
+              </NumberFieldControls>
+            </NumberFieldGroup>
+          </NumberField>
         </div>
-        <div className='flex grow items-center'>
+        <div className="flex grow items-center">
           <Slider
-            className='w-full'
+            className="w-full"
             disabled={!enable}
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
-            onChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
+            onValueChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
+            aria-label={name}
           />
         </div>
       </div>

@@ -1,9 +1,9 @@
-import type { Meta, StoryObj } from '@storybook/nextjs'
-import { useMemo, useState } from 'react'
-import ImageList from './image-list'
-import ImageLinkInput from './image-link-input'
+import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ImageFile } from '@/types/app'
+import { useMemo, useState } from 'react'
 import { TransferMethod } from '@/types/app'
+import ImageLinkInput from './image-link-input'
+import ImageList from './image-list'
 
 const SAMPLE_BASE64
   = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAACXBIWXMAAAsSAAALEgHS3X78AAABbElEQVR4nO3SsQkAIBDARMT+V20sTg6LXhWEATnnMHDx4sWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjRokWLFu2r/H3n4BG518Gr4AAAAASUVORK5CYII='
@@ -132,7 +132,7 @@ const ImageUploaderPlayground = ({ readonly }: Story['args']) => {
   return (
     <div className="flex w-[360px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-[0.18em] text-text-tertiary">Add images</span>
+        <span className="text-xs font-medium tracking-[0.18em] text-text-tertiary uppercase">Add images</span>
         <div className="flex items-center gap-2">
           <ImageLinkInput onUpload={handleUploadFromLink} disabled={readonly} />
           <button
@@ -156,7 +156,7 @@ const ImageUploaderPlayground = ({ readonly }: Story['args']) => {
       />
 
       <div className="rounded-lg border border-divider-subtle bg-background-default p-2">
-        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-text-tertiary">
+        <span className="mb-1 block text-[11px] font-semibold tracking-widest text-text-tertiary uppercase">
           Files state
         </span>
         <pre className="max-h-40 overflow-auto text-[11px] leading-relaxed text-text-tertiary">

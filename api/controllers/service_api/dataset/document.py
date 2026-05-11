@@ -1,14 +1,24 @@
+"""Service API endpoints for dataset document management.
+
+The canonical Service API paths use hyphenated route segments. Legacy underscore
+aliases remain registered for backward compatibility, but they must stay marked
+deprecated in generated API docs so clients migrate toward the canonical paths.
+"""
+
 import json
+from collections.abc import Mapping
+from contextlib import ExitStack
 from typing import Self
 from uuid import UUID
 
-from flask import request
+from flask import request, send_file
 from flask_restx import marshal
-from pydantic import BaseModel, Field, model_validator
-from sqlalchemy import desc, select
+from pydantic import BaseModel, Field, field_validator, model_validator
+from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.errors import (
     FilenameNotExistsError,
     FileTooLargeError,
@@ -16,6 +26,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_enum_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
@@ -29,13 +40,21 @@ from controllers.service_api.wraps import (
     cloud_edition_billing_resource_check,
 )
 from core.errors.error import ProviderTokenNotInitError
+from core.rag.entities import PreProcessingRule, Rule, Segmentation
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import SegmentStatus
 from services.dataset_service import DatasetService, DocumentService
-from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
+from services.entities.knowledge_entities.knowledge_entities import (
+    KnowledgeConfig,
+    ProcessRule,
+    RetrievalModel,
+)
 from services.file_service import FileService
+from services.summary_index_service import SummaryIndexService
 
 
 class DocumentTextCreatePayload(BaseModel):
@@ -50,8 +69,12 @@ class DocumentTextCreatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
 
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        if value not in Dataset.DOC_FORM_LIST:
+            raise ValueError("Invalid doc_form.")
+        return value
 
 
 class DocumentTextUpdate(BaseModel):
@@ -62,6 +85,13 @@ class DocumentTextUpdate(BaseModel):
     doc_language: str = "English"
     retrieval_model: RetrievalModel | None = None
 
+    @field_validator("doc_form")
+    @classmethod
+    def validate_doc_form(cls, value: str) -> str:
+        if value not in Dataset.DOC_FORM_LIST:
+            raise ValueError("Invalid doc_form.")
+        return value
+
     @model_validator(mode="after")
     def check_text_and_name(self) -> Self:
         if self.text is not None and self.name is None:
@@ -69,16 +99,160 @@ class DocumentTextUpdate(BaseModel):
         return self
 
 
-for m in [ProcessRule, RetrievalModel, DocumentTextCreatePayload, DocumentTextUpdate]:
-    service_api_ns.schema_model(m.__name__, m.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))  # type: ignore
+class DocumentListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+    keyword: str | None = Field(default=None, description="Search keyword")
+    status: str | None = Field(default=None, description="Document status filter")
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/document/create_by_text",
-    "/datasets/<uuid:dataset_id>/document/create-by-text",
+register_enum_models(service_api_ns, RetrievalMethod)
+
+register_schema_models(
+    service_api_ns,
+    ProcessRule,
+    RetrievalModel,
+    DocumentTextCreatePayload,
+    DocumentTextUpdate,
+    DocumentListQuery,
+    DocumentBatchDownloadZipPayload,
+    Rule,
+    PreProcessingRule,
+    Segmentation,
 )
+
+
+def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[str, object], int]:
+    """Create a document from text for both canonical and legacy routes."""
+    payload = DocumentTextCreatePayload.model_validate(service_api_ns.payload or {})
+    args = payload.model_dump(exclude_none=True)
+
+    dataset_id_str = str(dataset_id)
+    tenant_id_str = str(tenant_id)
+    dataset = db.session.scalar(
+        select(Dataset).where(Dataset.tenant_id == tenant_id_str, Dataset.id == dataset_id_str).limit(1)
+    )
+
+    if not dataset:
+        raise ValueError("Dataset does not exist.")
+
+    if not dataset.indexing_technique and not args["indexing_technique"]:
+        raise ValueError("indexing_technique is required.")
+
+    embedding_model_provider = payload.embedding_model_provider
+    embedding_model = payload.embedding_model
+    if embedding_model_provider and embedding_model:
+        DatasetService.check_embedding_model_setting(tenant_id_str, embedding_model_provider, embedding_model)
+
+    retrieval_model = payload.retrieval_model
+    if (
+        retrieval_model
+        and retrieval_model.reranking_model
+        and retrieval_model.reranking_model.reranking_provider_name
+        and retrieval_model.reranking_model.reranking_model_name
+    ):
+        DatasetService.check_reranking_model_setting(
+            tenant_id_str,
+            retrieval_model.reranking_model.reranking_provider_name,
+            retrieval_model.reranking_model.reranking_model_name,
+        )
+
+    if not current_user:
+        raise ValueError("current_user is required")
+
+    upload_file = FileService(db.engine).upload_text(
+        text=payload.text, text_name=payload.name, user_id=current_user.id, tenant_id=tenant_id_str
+    )
+    data_source = {
+        "type": "upload_file",
+        "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
+    }
+    args["data_source"] = data_source
+    knowledge_config = KnowledgeConfig.model_validate(args)
+    DocumentService.document_create_args_validate(knowledge_config)
+
+    if not current_user:
+        raise ValueError("current_user is required")
+
+    try:
+        documents, batch = DocumentService.save_document_with_dataset_id(
+            dataset=dataset,
+            knowledge_config=knowledge_config,
+            account=current_user,
+            dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
+            created_from="api",
+        )
+    except ProviderTokenNotInitError as ex:
+        raise ProviderNotInitializeError(ex.description)
+    document = documents[0]
+
+    documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
+    return documents_and_batch_fields, 200
+
+
+def _update_document_by_text(tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[Mapping[str, object], int]:
+    """Update a document from text for both canonical and legacy routes."""
+    payload = DocumentTextUpdate.model_validate(service_api_ns.payload or {})
+    dataset = db.session.scalar(
+        select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).limit(1)
+    )
+    args = payload.model_dump(exclude_none=True)
+    if not dataset:
+        raise ValueError("Dataset does not exist.")
+
+    retrieval_model = payload.retrieval_model
+    if (
+        retrieval_model
+        and retrieval_model.reranking_model
+        and retrieval_model.reranking_model.reranking_provider_name
+        and retrieval_model.reranking_model.reranking_model_name
+    ):
+        DatasetService.check_reranking_model_setting(
+            tenant_id,
+            retrieval_model.reranking_model.reranking_provider_name,
+            retrieval_model.reranking_model.reranking_model_name,
+        )
+
+    # indexing_technique is already set in dataset since this is an update
+    args["indexing_technique"] = dataset.indexing_technique
+
+    if args.get("text"):
+        text = args.get("text")
+        name = args.get("name")
+        if not current_user:
+            raise ValueError("current_user is required")
+        upload_file = FileService(db.engine).upload_text(
+            text=str(text), text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
+        )
+        data_source = {
+            "type": "upload_file",
+            "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
+        }
+        args["data_source"] = data_source
+
+    args["original_document_id"] = str(document_id)
+    knowledge_config = KnowledgeConfig.model_validate(args)
+    DocumentService.document_create_args_validate(knowledge_config)
+
+    try:
+        documents, batch = DocumentService.save_document_with_dataset_id(
+            dataset=dataset,
+            knowledge_config=knowledge_config,
+            account=current_user,
+            dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
+            created_from="api",
+        )
+    except ProviderTokenNotInitError as ex:
+        raise ProviderNotInitializeError(ex.description)
+    document = documents[0]
+
+    documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
+    return documents_and_batch_fields, 200
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/document/create-by-text")
 class DocumentAddByTextApi(DatasetApiResource):
-    """Resource for documents."""
+    """Resource for the canonical text document creation route."""
 
     @service_api_ns.expect(service_api_ns.models[DocumentTextCreatePayload.__name__])
     @service_api_ns.doc("create_document_by_text")
@@ -94,79 +268,43 @@ class DocumentAddByTextApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id):
+    def post(self, tenant_id: str, dataset_id: UUID):
         """Create document by text."""
-        payload = DocumentTextCreatePayload.model_validate(service_api_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        return _create_document_by_text(tenant_id=tenant_id, dataset_id=dataset_id)
 
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
-        if not dataset:
-            raise ValueError("Dataset does not exist.")
+@service_api_ns.route("/datasets/<uuid:dataset_id>/document/create_by_text")
+class DeprecatedDocumentAddByTextApi(DatasetApiResource):
+    """Deprecated resource alias for text document creation."""
 
-        if not dataset.indexing_technique and not args["indexing_technique"]:
-            raise ValueError("indexing_technique is required.")
-
-        embedding_model_provider = payload.embedding_model_provider
-        embedding_model = payload.embedding_model
-        if embedding_model_provider and embedding_model:
-            DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model)
-
-        retrieval_model = payload.retrieval_model
-        if (
-            retrieval_model
-            and retrieval_model.reranking_model
-            and retrieval_model.reranking_model.reranking_provider_name
-            and retrieval_model.reranking_model.reranking_model_name
-        ):
-            DatasetService.check_reranking_model_setting(
-                tenant_id,
-                retrieval_model.reranking_model.reranking_provider_name,
-                retrieval_model.reranking_model.reranking_model_name,
-            )
-
-        if not current_user:
-            raise ValueError("current_user is required")
-
-        upload_file = FileService(db.engine).upload_text(
-            text=payload.text, text_name=payload.name, user_id=current_user.id, tenant_id=tenant_id
+    @service_api_ns.expect(service_api_ns.models[DocumentTextCreatePayload.__name__])
+    @service_api_ns.doc("create_document_by_text_deprecated")
+    @service_api_ns.doc(deprecated=True)
+    @service_api_ns.doc(
+        description=(
+            "Deprecated legacy alias for creating a new document by providing text content. "
+            "Use /datasets/{dataset_id}/document/create-by-text instead."
         )
-        data_source = {
-            "type": "upload_file",
-            "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
+    )
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Document created successfully",
+            401: "Unauthorized - invalid API token",
+            400: "Bad request - invalid parameters",
         }
-        args["data_source"] = data_source
-        knowledge_config = KnowledgeConfig.model_validate(args)
-        # validate args
-        DocumentService.document_create_args_validate(knowledge_config)
-
-        if not current_user:
-            raise ValueError("current_user is required")
-
-        try:
-            documents, batch = DocumentService.save_document_with_dataset_id(
-                dataset=dataset,
-                knowledge_config=knowledge_config,
-                account=current_user,
-                dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
-                created_from="api",
-            )
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        document = documents[0]
-
-        documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
-        return documents_and_batch_fields, 200
+    )
+    @cloud_edition_billing_resource_check("vector_space", "dataset")
+    @cloud_edition_billing_resource_check("documents", "dataset")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def post(self, tenant_id: str, dataset_id: UUID):
+        """Create document by text through the deprecated underscore alias."""
+        return _create_document_by_text(tenant_id=tenant_id, dataset_id=dataset_id)
 
 
-@service_api_ns.route(
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_text",
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-text",
-)
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-text")
 class DocumentUpdateByTextApi(DatasetApiResource):
-    """Resource for update documents."""
+    """Resource for the canonical text document update route."""
 
     @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__])
     @service_api_ns.doc("update_document_by_text")
@@ -183,60 +321,35 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by text."""
-        payload = DocumentTextUpdate.model_validate(service_api_ns.payload or {})
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).first()
-        args = payload.model_dump(exclude_none=True)
-        if not dataset:
-            raise ValueError("Dataset does not exist.")
+        return _update_document_by_text(tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
 
-        retrieval_model = payload.retrieval_model
-        if (
-            retrieval_model
-            and retrieval_model.reranking_model
-            and retrieval_model.reranking_model.reranking_provider_name
-            and retrieval_model.reranking_model.reranking_model_name
-        ):
-            DatasetService.check_reranking_model_setting(
-                tenant_id,
-                retrieval_model.reranking_model.reranking_provider_name,
-                retrieval_model.reranking_model.reranking_model_name,
-            )
 
-        # indexing_technique is already set in dataset since this is an update
-        args["indexing_technique"] = dataset.indexing_technique
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_text")
+class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
+    """Deprecated resource alias for text document updates."""
 
-        if args.get("text"):
-            text = args.get("text")
-            name = args.get("name")
-            if not current_user:
-                raise ValueError("current_user is required")
-            upload_file = FileService(db.engine).upload_text(
-                text=str(text), text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
-            )
-            data_source = {
-                "type": "upload_file",
-                "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
-            }
-            args["data_source"] = data_source
-        # validate args
-        args["original_document_id"] = str(document_id)
-        knowledge_config = KnowledgeConfig.model_validate(args)
-        DocumentService.document_create_args_validate(knowledge_config)
-
-        try:
-            documents, batch = DocumentService.save_document_with_dataset_id(
-                dataset=dataset,
-                knowledge_config=knowledge_config,
-                account=current_user,
-                dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
-                created_from="api",
-            )
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        document = documents[0]
-
-        documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
-        return documents_and_batch_fields, 200
+    @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__])
+    @service_api_ns.doc("update_document_by_text_deprecated")
+    @service_api_ns.doc(deprecated=True)
+    @service_api_ns.doc(
+        description=(
+            "Deprecated legacy alias for updating an existing document by providing text content. "
+            "Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead."
+        )
+    )
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Document updated successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Document not found",
+        }
+    )
+    @cloud_edition_billing_resource_check("vector_space", "dataset")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
+        """Update document by text through the deprecated underscore alias."""
+        return _update_document_by_text(tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
 
 
 @service_api_ns.route(
@@ -261,24 +374,27 @@ class DocumentAddByFileApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
-        args = {}
-        if "data" in request.form:
-            args = json.loads(request.form["data"])
-        if "doc_form" not in args:
-            args["doc_form"] = "text_model"
-        if "doc_language" not in args:
-            args["doc_language"] = "English"
-
-        # get dataset info
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
 
         if dataset.provider == "external":
             raise ValueError("External datasets are not supported.")
+
+        args = {}
+        if "data" in request.form:
+            args = json.loads(request.form["data"])
+        if "doc_form" not in args:
+            args["doc_form"] = dataset.chunk_structure or "text_model"
+        if "doc_language" not in args:
+            args["doc_language"] = "English"
+
+        # get dataset info
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
 
         indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
         if not indexing_technique:
@@ -316,7 +432,7 @@ class DocumentAddByFileApi(DatasetApiResource):
             raise ValueError("current_user is required")
         upload_file = FileService(db.engine).upload_file(
             filename=file.filename,
-            content=file.read(),
+            content=file.stream.read(),
             mimetype=file.mimetype,
             user=current_user,
             source="datasets",
@@ -349,15 +465,98 @@ class DocumentAddByFileApi(DatasetApiResource):
         return documents_and_batch_fields, 200
 
 
+def _update_document_by_file(tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[Mapping[str, object], int]:
+    """Update a document from an uploaded file for canonical and deprecated routes."""
+    dataset_id_str = str(dataset_id)
+    tenant_id_str = str(tenant_id)
+    dataset = db.session.scalar(
+        select(Dataset).where(Dataset.tenant_id == tenant_id_str, Dataset.id == dataset_id_str).limit(1)
+    )
+
+    if not dataset:
+        raise ValueError("Dataset does not exist.")
+
+    if dataset.provider == "external":
+        raise ValueError("External datasets are not supported.")
+
+    args: dict[str, object] = {}
+    if "data" in request.form:
+        args = json.loads(request.form["data"])
+    if "doc_form" not in args:
+        args["doc_form"] = dataset.chunk_structure or "text_model"
+    if "doc_language" not in args:
+        args["doc_language"] = "English"
+
+    # indexing_technique is already set in dataset since this is an update
+    args["indexing_technique"] = dataset.indexing_technique
+
+    if "file" in request.files:
+        # save file info
+        file = request.files["file"]
+
+        if len(request.files) > 1:
+            raise TooManyFilesError()
+
+        if not file.filename:
+            raise FilenameNotExistsError
+
+        if not current_user:
+            raise ValueError("current_user is required")
+
+        try:
+            upload_file = FileService(db.engine).upload_file(
+                filename=file.filename,
+                content=file.stream.read(),
+                mimetype=file.mimetype,
+                user=current_user,
+                source="datasets",
+            )
+        except services.errors.file.FileTooLargeError as file_too_large_error:
+            raise FileTooLargeError(file_too_large_error.description)
+        except services.errors.file.UnsupportedFileTypeError:
+            raise UnsupportedFileTypeError()
+        data_source = {
+            "type": "upload_file",
+            "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
+        }
+        args["data_source"] = data_source
+
+    # validate args
+    args["original_document_id"] = str(document_id)
+
+    knowledge_config = KnowledgeConfig.model_validate(args)
+    DocumentService.document_create_args_validate(knowledge_config)
+
+    try:
+        documents, _ = DocumentService.save_document_with_dataset_id(
+            dataset=dataset,
+            knowledge_config=knowledge_config,
+            account=dataset.created_by_account,
+            dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
+            created_from="api",
+        )
+    except ProviderTokenNotInitError as ex:
+        raise ProviderNotInitializeError(ex.description)
+    document = documents[0]
+    documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": document.batch}
+    return documents_and_batch_fields, 200
+
+
 @service_api_ns.route(
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_file",
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-file",
 )
-class DocumentUpdateByFileApi(DatasetApiResource):
-    """Resource for update documents."""
+class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
+    """Deprecated resource aliases for file document updates."""
 
-    @service_api_ns.doc("update_document_by_file")
-    @service_api_ns.doc(description="Update an existing document by uploading a file")
+    @service_api_ns.doc("update_document_by_file_deprecated")
+    @service_api_ns.doc(deprecated=True)
+    @service_api_ns.doc(
+        description=(
+            "Deprecated legacy alias for updating an existing document by uploading a file. "
+            "Use PATCH /datasets/{dataset_id}/documents/{document_id} instead."
+        )
+    )
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
     @service_api_ns.doc(
         responses={
@@ -368,79 +567,9 @@ class DocumentUpdateByFileApi(DatasetApiResource):
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id, document_id):
-        """Update document by upload file."""
-        args = {}
-        if "data" in request.form:
-            args = json.loads(request.form["data"])
-        if "doc_form" not in args:
-            args["doc_form"] = "text_model"
-        if "doc_language" not in args:
-            args["doc_language"] = "English"
-
-        # get dataset info
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
-
-        if not dataset:
-            raise ValueError("Dataset does not exist.")
-
-        if dataset.provider == "external":
-            raise ValueError("External datasets are not supported.")
-
-        # indexing_technique is already set in dataset since this is an update
-        args["indexing_technique"] = dataset.indexing_technique
-
-        if "file" in request.files:
-            # save file info
-            file = request.files["file"]
-
-            if len(request.files) > 1:
-                raise TooManyFilesError()
-
-            if not file.filename:
-                raise FilenameNotExistsError
-
-            if not current_user:
-                raise ValueError("current_user is required")
-
-            try:
-                upload_file = FileService(db.engine).upload_file(
-                    filename=file.filename,
-                    content=file.read(),
-                    mimetype=file.mimetype,
-                    user=current_user,
-                    source="datasets",
-                )
-            except services.errors.file.FileTooLargeError as file_too_large_error:
-                raise FileTooLargeError(file_too_large_error.description)
-            except services.errors.file.UnsupportedFileTypeError:
-                raise UnsupportedFileTypeError()
-            data_source = {
-                "type": "upload_file",
-                "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
-            }
-            args["data_source"] = data_source
-        # validate args
-        args["original_document_id"] = str(document_id)
-
-        knowledge_config = KnowledgeConfig.model_validate(args)
-        DocumentService.document_create_args_validate(knowledge_config)
-
-        try:
-            documents, _ = DocumentService.save_document_with_dataset_id(
-                dataset=dataset,
-                knowledge_config=knowledge_config,
-                account=dataset.created_by_account,
-                dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
-                created_from="api",
-            )
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        document = documents[0]
-        documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": document.batch}
-        return documents_and_batch_fields, 200
+    def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
+        """Update document by file through the deprecated file-update aliases."""
+        return _update_document_by_file(tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents")
@@ -458,36 +587,83 @@ class DocumentListApi(DatasetApiResource):
     def get(self, tenant_id, dataset_id):
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        search = request.args.get("keyword", default=None, type=str)
-        status = request.args.get("status", default=None, type=str)
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        query_params = DocumentListQuery.model_validate(request.args.to_dict())
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
+        query = select(Document).where(Document.dataset_id == dataset_id, Document.tenant_id == tenant_id)
 
-        if status:
-            query = DocumentService.apply_display_status_filter(query, status)
+        if query_params.status:
+            query = DocumentService.apply_display_status_filter(query, query_params.status)
 
-        if search:
-            search = f"%{search}%"
+        if query_params.keyword:
+            search = f"%{query_params.keyword}%"
             query = query.where(Document.name.like(search))
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
-        paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_documents = db.paginate(
+            select=query, page=query_params.page, per_page=query_params.limit, max_per_page=100, error_out=False
+        )
         documents = paginated_documents.items
+
+        DocumentService.enrich_documents_with_summary_index_status(
+            documents=documents,
+            dataset=dataset,
+            tenant_id=tenant_id,
+        )
 
         response = {
             "data": marshal(documents, document_fields),
-            "has_more": len(documents) == limit,
-            "limit": limit,
+            "has_more": len(documents) == query_params.limit,
+            "limit": query_params.limit,
             "total": paginated_documents.total,
-            "page": page,
+            "page": query_params.page,
         }
 
+        return response
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
+class DocumentBatchDownloadZipApi(DatasetApiResource):
+    """Download multiple uploaded-file documents as a single ZIP archive."""
+
+    @service_api_ns.expect(service_api_ns.models[DocumentBatchDownloadZipPayload.__name__])
+    @service_api_ns.doc("download_documents_as_zip")
+    @service_api_ns.doc(description="Download selected uploaded documents as a single ZIP archive")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "ZIP archive generated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Document or dataset not found",
+        }
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def post(self, tenant_id, dataset_id):
+        payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})
+
+        upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
+            dataset_id=str(dataset_id),
+            document_ids=[str(document_id) for document_id in payload.document_ids],
+            tenant_id=str(tenant_id),
+            current_user=current_user,
+        )
+
+        with ExitStack() as stack:
+            zip_path = stack.enter_context(FileService.build_upload_files_zip_tempfile(upload_files=upload_files))
+            response = send_file(
+                zip_path,
+                mimetype="application/zip",
+                as_attachment=True,
+                download_name=download_name,
+            )
+            cleanup = stack.pop_all()
+            response.call_on_close(cleanup.close)
         return response
 
 
@@ -508,7 +684,9 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         batch = str(batch)
         tenant_id = str(tenant_id)
         # get dataset
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
         if not dataset:
             raise NotFound("Dataset not found.")
         # get documents
@@ -518,18 +696,23 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         documents_status = []
         for document in documents:
             completed_segments = (
-                db.session.query(DocumentSegment)
-                .where(
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != "re_segment",
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
                 )
-                .count()
+                or 0
             )
             total_segments = (
-                db.session.query(DocumentSegment)
-                .where(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
-                .count()
+                db.session.scalar(
+                    select(func.count(DocumentSegment.id)).where(
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != SegmentStatus.RE_SEGMENT,
+                    )
+                )
+                or 0
             )
             # Create a dictionary with document attributes and additional fields
             document_dict = {
@@ -549,6 +732,35 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             documents_status.append(marshal(document_dict, document_status_fields))
         data = {"data": documents_status}
         return data
+
+
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/download")
+class DocumentDownloadApi(DatasetApiResource):
+    """Return a signed download URL for a document's original uploaded file."""
+
+    @service_api_ns.doc("get_document_download_url")
+    @service_api_ns.doc(description="Get a signed download URL for a document's original uploaded file")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Download URL generated successfully",
+            401: "Unauthorized - invalid API token",
+            403: "Forbidden - insufficient permissions",
+            404: "Document or upload file not found",
+        }
+    )
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def get(self, tenant_id, dataset_id, document_id):
+        dataset = self.get_dataset(str(dataset_id), str(tenant_id))
+        document = DocumentService.get_document(dataset.id, str(document_id))
+
+        if not document:
+            raise NotFound("Document not found.")
+
+        if document.tenant_id != str(tenant_id):
+            raise Forbidden("No permission.")
+
+        return {"url": DocumentService.get_document_download_url(document)}
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
@@ -584,6 +796,16 @@ class DocumentApi(DatasetApiResource):
         if metadata not in self.METADATA_CHOICES:
             raise InvalidMetadataError(f"Invalid metadata value: {metadata}")
 
+        # Calculate summary_index_status if needed
+        summary_index_status = None
+        has_summary_index = dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True
+        if has_summary_index and document.need_summary is True:
+            summary_index_status = SummaryIndexService.get_document_summary_index_status(
+                document_id=document_id,
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+            )
+
         if metadata == "only":
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
@@ -618,6 +840,8 @@ class DocumentApi(DatasetApiResource):
                 "display_status": document.display_status,
                 "doc_form": document.doc_form,
                 "doc_language": document.doc_language,
+                "summary_index_status": summary_index_status,
+                "need_summary": document.need_summary if document.need_summary is not None else False,
             }
         else:
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
@@ -653,9 +877,27 @@ class DocumentApi(DatasetApiResource):
                 "display_status": document.display_status,
                 "doc_form": document.doc_form,
                 "doc_language": document.doc_language,
+                "summary_index_status": summary_index_status,
+                "need_summary": document.need_summary if document.need_summary is not None else False,
             }
 
         return response
+
+    @service_api_ns.doc("update_document_by_file")
+    @service_api_ns.doc(description="Update an existing document by uploading a file")
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Document updated successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Document not found",
+        }
+    )
+    @cloud_edition_billing_resource_check("vector_space", "dataset")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
+    def patch(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
+        """Update document by file on the canonical document resource."""
+        return _update_document_by_file(tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
 
     @service_api_ns.doc("delete_document")
     @service_api_ns.doc(description="Delete a document")
@@ -676,7 +918,9 @@ class DocumentApi(DatasetApiResource):
         tenant_id = str(tenant_id)
 
         # get dataset info
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.scalar(
+            select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
+        )
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
@@ -697,4 +941,4 @@ class DocumentApi(DatasetApiResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return 204
+        return "", 204

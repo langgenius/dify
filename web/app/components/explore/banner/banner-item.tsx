@@ -1,0 +1,210 @@
+/* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
+import type { FC } from 'react'
+import type { Banner } from '@/models/app'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiArrowRightLine } from '@remixicon/react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
+import { useCarousel } from '@/app/components/base/carousel'
+import { IndicatorButton } from './indicator-button'
+
+type BannerItemProps = {
+  banner: Banner
+  autoplayDelay: number
+  sort: number
+  language: string
+  accountId?: string
+  isPaused?: boolean
+}
+
+const RESPONSIVE_BREAKPOINT = 1200
+const MAX_RESPONSIVE_WIDTH = 600
+const INDICATOR_WIDTH = 20
+const INDICATOR_GAP = 8
+const MIN_VIEW_MORE_WIDTH = 480
+
+export const BannerItem: FC<BannerItemProps> = ({
+  banner,
+  autoplayDelay,
+  sort,
+  language,
+  accountId,
+  isPaused = false,
+}) => {
+  const { t } = useTranslation()
+  const { api, selectedIndex } = useCarousel()
+  const { category, title, description, 'img-src': imgSrc } = banner.content
+
+  const [resetKey, setResetKey] = useState(0)
+  const textAreaRef = useRef<HTMLDivElement>(null)
+  const [maxWidth, setMaxWidth] = useState<number | undefined>(undefined)
+
+  const slideInfo = useMemo(() => {
+    const slides = api?.slideNodes() ?? []
+    const totalSlides = slides.length
+    const nextIndex = totalSlides > 0 ? (selectedIndex + 1) % totalSlides : 0
+    return { slides, totalSlides, nextIndex }
+  }, [api, selectedIndex])
+
+  const indicatorsWidth = useMemo(() => {
+    const count = slideInfo.totalSlides
+    if (count === 0)
+      return 0
+    // Calculate: indicator buttons + gaps + extra spacing (3 * 20px for divider and padding)
+    return (count + 2) * INDICATOR_WIDTH + (count - 1) * INDICATOR_GAP
+  }, [slideInfo.totalSlides])
+
+  const viewMoreStyle = useMemo(() => {
+    if (!maxWidth)
+      return undefined
+    return {
+      maxWidth: `${maxWidth}px`,
+      minWidth: indicatorsWidth ? `${Math.min(maxWidth - indicatorsWidth, MIN_VIEW_MORE_WIDTH)}px` : undefined,
+    }
+  }, [maxWidth, indicatorsWidth])
+
+  const responsiveStyle = useMemo(
+    () => (maxWidth !== undefined ? { maxWidth: `${maxWidth}px` } : undefined),
+    [maxWidth],
+  )
+
+  const incrementResetKey = useCallback(() => setResetKey(prev => prev + 1), [])
+
+  useEffect(() => {
+    const updateMaxWidth = () => {
+      if (window.innerWidth < RESPONSIVE_BREAKPOINT && textAreaRef.current) {
+        const textAreaWidth = textAreaRef.current.offsetWidth
+        setMaxWidth(Math.min(textAreaWidth, MAX_RESPONSIVE_WIDTH))
+      }
+      else {
+        setMaxWidth(undefined)
+      }
+    }
+
+    updateMaxWidth()
+
+    const resizeObserver = new ResizeObserver(updateMaxWidth)
+    if (textAreaRef.current)
+      resizeObserver.observe(textAreaRef.current)
+
+    window.addEventListener('resize', updateMaxWidth)
+
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', updateMaxWidth)
+    }
+  }, [])
+
+  useEffect(() => {
+    incrementResetKey()
+  }, [selectedIndex, incrementResetKey])
+
+  const handleBannerClick = useCallback(() => {
+    incrementResetKey()
+
+    trackEvent('explore_banner_click', {
+      banner_id: banner.id,
+      title: banner.content.title,
+      sort,
+      link: banner.link,
+      page: 'explore',
+      language,
+      account_id: accountId,
+      event_time: Date.now(),
+    })
+
+    if (banner.link)
+      window.open(banner.link, '_blank', 'noopener,noreferrer')
+  }, [accountId, banner, incrementResetKey, language, sort])
+
+  const handleIndicatorClick = useCallback((index: number) => {
+    incrementResetKey()
+    api?.scrollTo(index)
+  }, [api, incrementResetKey])
+
+  return (
+    <div
+      className="relative flex w-full min-w-[784px] cursor-pointer overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg pr-[288px] transition-shadow hover:shadow-md"
+      onClick={handleBannerClick}
+    >
+      {/* Left content area */}
+      <div className="min-w-0 flex-1">
+        <div className="flex h-full flex-col gap-3 py-6 pr-0 pl-8">
+          {/* Text section */}
+          <div className="flex min-h-24 flex-wrap items-end gap-1 py-1">
+            {/* Title area */}
+            <div
+              ref={textAreaRef}
+              className="flex max-w-[680px] min-w-[480px] flex-[1_0_0] flex-col pr-4"
+              style={responsiveStyle}
+            >
+              <p className="line-clamp-1 title-4xl-semi-bold text-dify-logo-blue">
+                {category}
+              </p>
+              <p className="line-clamp-2 title-4xl-semi-bold text-dify-logo-black">
+                {title}
+              </p>
+            </div>
+            {/* Description area */}
+            <div
+              className="max-w-[600px] min-w-60 flex-[1_0_0] self-end overflow-hidden py-1 pr-4"
+              style={responsiveStyle}
+            >
+              <p className="line-clamp-4 overflow-hidden body-sm-regular text-text-tertiary">
+                {description}
+              </p>
+            </div>
+          </div>
+
+          {/* Actions section */}
+          <div className="flex items-center gap-1">
+            {/* View more button */}
+            <div
+              className="flex max-w-[680px] min-w-[480px] flex-[1_0_0] items-center gap-[6px] py-1 pr-8"
+              style={viewMoreStyle}
+            >
+              <div className="flex h-4 w-4 items-center justify-center rounded-full bg-text-accent p-[2px]">
+                <RiArrowRightLine className="h-3 w-3 text-text-primary-on-surface" />
+              </div>
+              <span className="system-sm-semibold-uppercase text-text-accent">
+                {t('banner.viewMore', { ns: 'explore' })}
+              </span>
+            </div>
+
+            <div
+              className={cn('flex max-w-[600px] flex-[1_0_0] items-center gap-2 py-1 pr-10', maxWidth ? '' : 'min-w-60')}
+              style={responsiveStyle}
+            >
+              {/* Slide navigation indicators */}
+              <div className="flex items-center gap-2">
+                {slideInfo.slides.map((_: unknown, index: number) => (
+                  <IndicatorButton
+                    key={index}
+                    index={index}
+                    selectedIndex={selectedIndex}
+                    isNextSlide={index === slideInfo.nextIndex}
+                    autoplayDelay={autoplayDelay}
+                    resetKey={resetKey}
+                    isPaused={isPaused}
+                    onClick={() => handleIndicatorClick(index)}
+                  />
+                ))}
+              </div>
+              <div className="hidden h-px flex-1 bg-divider-regular min-[1380px]:block" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right image area */}
+      <div className="absolute top-0 right-0 flex h-full items-center p-2">
+        <img
+          src={imgSrc}
+          alt={title}
+          className="aspect-4/3 h-full max-w-[296px] rounded-xl"
+        />
+      </div>
+    </div>
+  )
+}

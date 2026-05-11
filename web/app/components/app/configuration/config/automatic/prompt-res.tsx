@@ -1,8 +1,9 @@
 'use client'
-import PromptEditor from '@/app/components/base/prompt-editor'
-import type { WorkflowVariableBlockType } from '@/app/components/base/prompt-editor/types'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import type { WorkflowVariableBlockType } from '@/app/components/base/prompt-editor/types'
+import * as React from 'react'
+import { useEffect } from 'react'
+import PromptEditor from '@/app/components/base/prompt-editor'
 
 type Props = {
   value: string
@@ -23,7 +24,7 @@ const PromptRes: FC<Props> = ({
       key={editorKey}
       value={value}
       editable={false}
-      className='h-full bg-transparent pt-0'
+      className="h-full bg-transparent pt-0"
       workflowVariableBlock={workflowVariableBlock}
     />
   )

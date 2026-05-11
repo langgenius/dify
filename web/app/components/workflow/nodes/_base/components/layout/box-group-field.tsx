@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
-import { memo } from 'react'
 import type {
   BoxGroupProps,
   FieldProps,
 } from '.'
+import { memo } from 'react'
 import {
   BoxGroup,
   Field,

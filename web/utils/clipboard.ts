@@ -1,5 +1,5 @@
 export async function writeTextToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard && navigator.clipboard.writeText)
+  if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText)
     return navigator.clipboard.writeText(text)
 
   return fallbackCopyTextToClipboard(text)

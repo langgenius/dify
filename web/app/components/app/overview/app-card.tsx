@@ -1,49 +1,45 @@
 'use client'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
-import {
-  RiArrowRightSLine,
-  RiBookOpenLine,
-  RiBuildingLine,
-  RiEqualizer2Line,
-  RiExternalLinkLine,
-  RiGlobalLine,
-  RiLockLine,
-  RiPaintBrushLine,
-  RiVerifiedBadgeLine,
-  RiWindowLine,
-} from '@remixicon/react'
-import SettingsModal from './settings'
-import EmbeddedModal from './embedded'
-import CustomizeModal from './customize'
-import style from './style.module.css'
+import type { WorkflowLaunchInputValue } from './app-card-utils'
 import type { ConfigParams } from './settings'
-import Tooltip from '@/app/components/base/tooltip'
-import AppBasic from '@/app/components/app-sidebar/basic'
-import { asyncRunSafe } from '@/utils'
-import { basePath } from '@/utils/var'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import Button from '@/app/components/base/button'
-import Switch from '@/app/components/base/switch'
-import Divider from '@/app/components/base/divider'
-import CopyFeedback from '@/app/components/base/copy-feedback'
-import Confirm from '@/app/components/base/confirm'
-import ShareQRCode from '@/app/components/base/qrcode'
-import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
-import { useAppContext } from '@/context/app-context'
 import type { AppSSO } from '@/types/app'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppBasic from '@/app/components/app-sidebar/basic'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import Indicator from '@/app/components/header/indicator'
-import { fetchAppDetailDirect } from '@/service/apps'
-import { AccessMode } from '@/models/access-control'
-import AccessControl from '../app-access-control'
-import { useAppWhiteListSubjects } from '@/service/access-control'
-import { useAppWorkflow } from '@/service/use-workflow'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
+import { AccessMode } from '@/models/access-control'
+import { usePathname, useRouter } from '@/next/navigation'
+import { useAppWhiteListSubjects } from '@/service/access-control'
+import { fetchAppDetailDirect } from '@/service/apps'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
+import { asyncRunSafe } from '@/utils'
+import {
+  AppCardAccessControlSection,
+  AppCardDialogs,
+  AppCardOperations,
+  AppCardUrlSection,
+  createAppCardOperations,
+  WorkflowLaunchDialog,
+} from './app-card-sections'
+import {
+  buildWorkflowLaunchUrl,
+  createWorkflowLaunchInitialValues,
+  getAppCardDisplayState,
+  getAppCardOperationKeys,
+  getAppHiddenLaunchVariables,
+  isAppAccessConfigured,
+  isWorkflowLaunchInputSupported,
+} from './app-card-utils'
 
 export type IAppCardProps = {
   className?: string
@@ -51,8 +47,8 @@ export type IAppCardProps = {
   isInPanel?: boolean
   cardType?: 'api' | 'webapp'
   customBgColor?: string
-  triggerModeDisabled?: boolean // true when Trigger Node mode needs UI locked to avoid conflicting actions
-  triggerModeMessage?: React.ReactNode // contextual copy explaining why the card is disabled in trigger mode
+  triggerModeDisabled?: boolean
+  triggerModeMessage?: React.ReactNode
   onChangeStatus: (val: boolean) => Promise<void>
   onSaveSiteConfig?: (params: ConfigParams) => Promise<void>
   onGenerateCode?: () => Promise<void>
@@ -73,7 +69,8 @@ function AppCard({
   const router = useRouter()
   const pathname = usePathname()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
-  const { data: currentWorkflow } = useAppWorkflow(appInfo.mode === AppModeEnum.WORKFLOW ? appInfo.id : '')
+  const shouldFetchWorkflow = appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
+  const { data: currentWorkflow } = useAppWorkflow(shouldFetchWorkflow ? appInfo.id : '')
   const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
@@ -82,104 +79,76 @@ function AppCard({
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const [genLoading, setGenLoading] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-  const [showAccessControl, setShowAccessControl] = useState<boolean>(false)
+  const [showAccessControl, setShowAccessControl] = useState(false)
+  const [showWorkflowLaunchDialog, setShowWorkflowLaunchDialog] = useState(false)
+  const [workflowLaunchValues, setWorkflowLaunchValues] = useState<Record<string, WorkflowLaunchInputValue>>({})
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const { data: appAccessSubjects } = useAppWhiteListSubjects(appDetail?.id, systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: appAccessSubjects } = useAppWhiteListSubjects(
+    appDetail?.id,
+    systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+  )
 
-  const OPERATIONS_MAP = useMemo(() => {
-    const operationsMap = {
-      webapp: [
-        { opName: t('appOverview.overview.appInfo.launch'), opIcon: RiExternalLinkLine },
-      ] as { opName: string; opIcon: any }[],
-      api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: RiBookOpenLine }],
-      app: [],
-    }
-    if (appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW)
-      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: RiWindowLine })
+  const cardState = getAppCardDisplayState({
+    appInfo,
+    cardType,
+    currentWorkflow,
+    isCurrentWorkspaceEditor,
+    isCurrentWorkspaceManager,
+    triggerModeDisabled,
+  })
 
-    operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.customize.entry'), opIcon: RiPaintBrushLine })
-
-    if (isCurrentWorkspaceEditor)
-      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: RiEqualizer2Line })
-
-    return operationsMap
-  }, [isCurrentWorkspaceEditor, appInfo, t])
-
-  const isApp = cardType === 'webapp'
+  const isApp = cardState.isApp
   const basicName = isApp
-    ? t('appOverview.overview.appInfo.title')
-    : t('appOverview.overview.apiInfo.title')
-  const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
-  const appUnpublished = isWorkflowApp && !currentWorkflow?.graph
-  const hasStartNode = currentWorkflow?.graph?.nodes?.some(node => node.data.type === BlockEnum.Start)
-  const missingStartNode = isWorkflowApp && !hasStartNode
-  const hasInsufficientPermissions = isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
-  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode || triggerModeDisabled
-  const runningStatus = (appUnpublished || missingStartNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
-  const isMinimalState = appUnpublished || missingStartNode
-  const { app_base_url, access_token } = appInfo.site ?? {}
-  const appMode = (appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW) ? AppModeEnum.CHAT : appInfo.mode
-  const appUrl = `${app_base_url}${basePath}/${appMode}/${access_token}`
-  const apiUrl = appInfo?.api_base_url
+    ? t('overview.appInfo.title', { ns: 'appOverview' })
+    : t('overview.apiInfo.title', { ns: 'appOverview' })
 
-  const genClickFuncByName = (opName: string) => {
-    switch (opName) {
-      case t('appOverview.overview.appInfo.launch'):
-        return () => {
-          window.open(appUrl, '_blank')
-        }
-      case t('appOverview.overview.appInfo.customize.entry'):
-        return () => {
-          setShowCustomizeModal(true)
-        }
-      case t('appOverview.overview.appInfo.settings.entry'):
-        return () => {
-          setShowSettingsModal(true)
-        }
-      case t('appOverview.overview.appInfo.embedded.entry'):
-        return () => {
-          setShowEmbedded(true)
-        }
-      default:
-        // jump to page develop
-        return () => {
-          const pathSegments = pathname.split('/')
-          pathSegments.pop()
-          router.push(`${pathSegments.join('/')}/develop`)
-        }
-    }
-  }
+  const isAppAccessSet = useMemo(
+    () => isAppAccessConfigured(appDetail, appAccessSubjects),
+    [appAccessSubjects, appDetail],
+  )
+  const hiddenLaunchVariables = useMemo(
+    () => getAppHiddenLaunchVariables({
+      appInfo,
+      currentWorkflow,
+    }) || [],
+    [appInfo, currentWorkflow],
+  )
+  const supportedWorkflowLaunchVariables = useMemo(
+    () => hiddenLaunchVariables.filter(isWorkflowLaunchInputSupported),
+    [hiddenLaunchVariables],
+  )
+  const unsupportedWorkflowLaunchVariables = useMemo(
+    () => hiddenLaunchVariables.filter(variable => !isWorkflowLaunchInputSupported(variable)),
+    [hiddenLaunchVariables],
+  )
+  const initialWorkflowLaunchValues = useMemo(
+    () => createWorkflowLaunchInitialValues(supportedWorkflowLaunchVariables),
+    [supportedWorkflowLaunchVariables],
+  )
 
   const onGenCode = async () => {
-    if (onGenerateCode) {
-      setGenLoading(true)
-      await asyncRunSafe(onGenerateCode())
-      setGenLoading(false)
-    }
-  }
+    if (!onGenerateCode)
+      return
 
-  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
-  useEffect(() => {
-    if (appDetail && appAccessSubjects) {
-      if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
-        setIsAppAccessSet(false)
-      else
-        setIsAppAccessSet(true)
-    }
-    else {
-      setIsAppAccessSet(true)
-    }
-  }, [appAccessSubjects, appDetail])
+    setGenLoading(true)
+    await asyncRunSafe(onGenerateCode())
+    setGenLoading(false)
+  }
 
   const handleClickAccessControl = useCallback(() => {
     if (!appDetail)
       return
+
     setShowAccessControl(true)
   }, [appDetail])
+
   const handleAccessControlUpdate = useCallback(async () => {
+    if (!appDetail)
+      return
+
     try {
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail!.id })
+      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
       setAppDetail(res)
       setShowAccessControl(false)
     }
@@ -188,27 +157,132 @@ function AppCard({
     }
   }, [appDetail, setAppDetail])
 
+  const operationKeys = useMemo(() => getAppCardOperationKeys({
+    cardType,
+    appMode: cardState.appMode,
+    isCurrentWorkspaceEditor,
+  }), [cardState.appMode, cardType, isCurrentWorkspaceEditor])
+
+  const handleLaunch = useCallback(() => {
+    window.open(cardState.accessibleUrl, '_blank')
+  }, [cardState.accessibleUrl])
+
+  const handleOpenWorkflowLaunchDialog = useCallback(() => {
+    setWorkflowLaunchValues(initialWorkflowLaunchValues)
+    setShowWorkflowLaunchDialog(true)
+  }, [initialWorkflowLaunchValues])
+
+  const handleWorkflowLaunchValueChange = useCallback((variable: string, value: WorkflowLaunchInputValue) => {
+    setWorkflowLaunchValues(prev => ({
+      ...prev,
+      [variable]: value,
+    }))
+  }, [])
+
+  const handleWorkflowLaunchConfirm = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const targetUrl = await buildWorkflowLaunchUrl({
+      accessibleUrl: cardState.accessibleUrl,
+      variables: supportedWorkflowLaunchVariables,
+      values: workflowLaunchValues,
+    })
+
+    window.open(targetUrl, '_blank')
+    setShowWorkflowLaunchDialog(false)
+  }, [cardState.accessibleUrl, supportedWorkflowLaunchVariables, workflowLaunchValues])
+
+  const handleOpenCustomize = useCallback(() => {
+    setShowCustomizeModal(true)
+  }, [])
+
+  const handleOpenSettings = useCallback(() => {
+    setShowSettingsModal(true)
+  }, [])
+
+  const handleOpenEmbedded = useCallback(() => {
+    setShowEmbedded(true)
+  }, [])
+
+  const handleOpenDevelop = useCallback(() => {
+    const pathSegments = pathname.split('/')
+    pathSegments.pop()
+    router.push(`${pathSegments.join('/')}/develop`)
+  }, [pathname, router])
+
+  const operations = useMemo(() => createAppCardOperations({
+    operationKeys,
+    t,
+    runningStatus: cardState.runningStatus,
+    triggerModeDisabled,
+    onLaunch: handleLaunch,
+    onEmbedded: handleOpenEmbedded,
+    onCustomize: handleOpenCustomize,
+    onSettings: handleOpenSettings,
+    onDevelop: handleOpenDevelop,
+  }), [
+    cardState.runningStatus,
+    handleLaunch,
+    handleOpenCustomize,
+    handleOpenDevelop,
+    handleOpenEmbedded,
+    handleOpenSettings,
+    operationKeys,
+    t,
+    triggerModeDisabled,
+  ])
+
+  const missingStartNodeContent = cardState.appUnpublished || cardState.missingStartNode
+    ? (
+        <>
+          <div className="mb-1 text-xs font-normal text-text-secondary">
+            {t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
+          </div>
+          <button
+            type="button"
+            className="cursor-pointer rounded-sm text-xs font-normal text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+            onClick={() => window.open(docLink('/use-dify/nodes/user-input'), '_blank')}
+          >
+            {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
+          </button>
+        </>
+      )
+    : ''
+
+  const statusPopoverContent = cardState.toggleDisabled
+    ? (
+        triggerModeDisabled && triggerModeMessage
+          ? triggerModeMessage
+          : missingStartNodeContent
+      )
+    : ''
+
   return (
     <div
-      className={
-        `${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${isMinimalState ? 'h-12' : ''}`}
+      className={`${isInPanel ? 'border-t border-l-[0.5px]' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${cardState.isMinimalState ? 'h-12' : ''}`}
     >
       <div className={`${customBgColor ?? 'bg-background-default'} relative rounded-xl ${triggerModeDisabled ? 'opacity-60' : ''}`}>
         {triggerModeDisabled && (
           triggerModeMessage
             ? (
-              <Tooltip
-                popupContent={triggerModeMessage}
-                popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
-                position="right"
-              >
-                <div className='absolute inset-0 z-10 cursor-not-allowed rounded-xl' aria-hidden="true"></div>
-              </Tooltip>
-            )
-            : <div className='absolute inset-0 z-10 cursor-not-allowed rounded-xl' aria-hidden="true"></div>
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    aria-label={typeof triggerModeMessage === 'string' ? triggerModeMessage : basicName}
+                    render={<button type="button" className="absolute inset-0 z-10 cursor-not-allowed rounded-xl outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover" />}
+                  />
+                  <PopoverContent
+                    placement="right"
+                    popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
+                  >
+                    {triggerModeMessage}
+                  </PopoverContent>
+                </Popover>
+              )
+            : <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true" />
         )}
-        <div className={`flex w-full flex-col items-start justify-center gap-3 self-stretch p-3 ${isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle'}`}>
-          <div className='flex w-full items-center gap-3 self-stretch'>
+        <div className={`flex w-full flex-col items-start justify-center gap-3 self-stretch p-3 ${cardState.isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle'}`}>
+          <div className="flex w-full items-center gap-3 self-stretch">
             <AppBasic
               iconType={cardType}
               icon={appInfo.icon}
@@ -217,204 +291,113 @@ function AppCard({
               hideType
               type={
                 isApp
-                  ? t('appOverview.overview.appInfo.explanation')
-                  : t('appOverview.overview.apiInfo.explanation')
+                  ? t('overview.appInfo.explanation', { ns: 'appOverview' })
+                  : t('overview.apiInfo.explanation', { ns: 'appOverview' })
               }
             />
-            <div className='flex shrink-0 items-center gap-1'>
-              <Indicator color={runningStatus ? 'green' : 'yellow'} />
-              <div className={`${runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
-                {runningStatus
-                  ? t('appOverview.overview.status.running')
-                  : t('appOverview.overview.status.disable')}
+            <div className="flex shrink-0 items-center gap-1">
+              <Indicator color={cardState.runningStatus ? 'green' : 'yellow'} />
+              <div className={`${cardState.runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
+                {cardState.runningStatus
+                  ? t('overview.status.running', { ns: 'appOverview' })
+                  : t('overview.status.disable', { ns: 'appOverview' })}
               </div>
             </div>
-            <Tooltip
-              popupContent={
-                toggleDisabled ? (
-                  triggerModeDisabled && triggerModeMessage
-                    ? triggerModeMessage
-                    : (appUnpublished || missingStartNode) ? (
-                      <>
-                        <div className="mb-1 text-xs font-normal text-text-secondary">
-                          {t('appOverview.overview.appInfo.enableTooltip.description')}
+            {cardState.toggleDisabled && statusPopoverContent
+              ? (
+                  <Popover>
+                    <PopoverTrigger
+                      openOnHover
+                      nativeButton={false}
+                      aria-label={typeof statusPopoverContent === 'string' ? statusPopoverContent : t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
+                      render={(
+                        <div>
+                          <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
                         </div>
-                        <div
-                          className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
-                          onClick={() => window.open(docLink('/guides/workflow/node/user-input'), '_blank')}
-                        >
-                          {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
-                        </div>
-                      </>
-                    )
-                      : ''
-                ) : ''
-              }
-              position="right"
-              popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
-              offset={24}
-            >
-              <div>
-                <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
-              </div>
-            </Tooltip>
-          </div>
-          {!isMinimalState && (
-            <div className='flex flex-col items-start justify-center self-stretch'>
-              <div className="system-xs-medium pb-1 text-text-tertiary">
-                {isApp
-                  ? t('appOverview.overview.appInfo.accessibleAddress')
-                  : t('appOverview.overview.apiInfo.accessibleAddress')}
-              </div>
-              <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
-                <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-                  <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
-                    {isApp ? appUrl : apiUrl}
-                  </div>
-                </div>
-                <CopyFeedback
-                  content={isApp ? appUrl : apiUrl}
-                  className={'!size-6'}
-                />
-                {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} />}
-                {isApp && <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />}
-                {/* button copy link/ button regenerate */}
-                {showConfirmDelete && (
-                  <Confirm
-                    type='warning'
-                    title={t('appOverview.overview.appInfo.regenerate')}
-                    content={t('appOverview.overview.appInfo.regenerateNotice')}
-                    isShow={showConfirmDelete}
-                    onConfirm={() => {
-                      onGenCode()
-                      setShowConfirmDelete(false)
-                    }}
-                    onCancel={() => setShowConfirmDelete(false)}
-                  />
-                )}
-                {isApp && isCurrentWorkspaceManager && (
-                  <Tooltip
-                    popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
-                  >
-                    <div
-                      className="h-6 w-6 cursor-pointer rounded-md hover:bg-state-base-hover"
-                      onClick={() => setShowConfirmDelete(true)}
+                      )}
+                    />
+                    <PopoverContent
+                      placement="right"
+                      sideOffset={24}
+                      popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
                     >
-                      <div
-                        className={
-                          `h-full w-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`}
-                      ></div>
-                    </div>
-                  </Tooltip>
+                      {statusPopoverContent}
+                    </PopoverContent>
+                  </Popover>
+                )
+              : (
+                  <Switch checked={cardState.runningStatus} onCheckedChange={onChangeStatus} disabled={cardState.toggleDisabled} />
                 )}
-              </div>
-            </div>
+          </div>
+          {!cardState.isMinimalState && (
+            <AppCardUrlSection
+              t={t}
+              isApp={isApp}
+              accessibleUrl={cardState.accessibleUrl}
+              showConfirmDelete={showConfirmDelete}
+              isCurrentWorkspaceManager={isCurrentWorkspaceManager}
+              genLoading={genLoading}
+              onRegenerate={() => {
+                onGenCode()
+                setShowConfirmDelete(false)
+              }}
+              onShowRegenerateConfirm={() => setShowConfirmDelete(true)}
+              onHideRegenerateConfirm={() => setShowConfirmDelete(false)}
+            />
           )}
-          {!isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && <div className='flex flex-col items-start justify-center self-stretch'>
-            <div className="system-xs-medium pb-1 text-text-tertiary">{t('app.publishApp.title')}</div>
-            <div className='flex h-9 w-full cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2'
-              onClick={handleClickAccessControl}>
-              <div className='flex grow items-center gap-x-1.5 pr-1'>
-                {appDetail?.access_mode === AccessMode.ORGANIZATION
-                  && <>
-                    <RiBuildingLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>
-                  </>
-                }
-                {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
-                  && <>
-                    <RiLockLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>
-                  </>
-                }
-                {appDetail?.access_mode === AccessMode.PUBLIC
-                  && <>
-                    <RiGlobalLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>
-                  </>
-                }
-                {appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS
-                  && <>
-                    <RiVerifiedBadgeLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.external')}</p>
-                  </>
-                }</div>
-              {!isAppAccessSet && <p className='system-xs-regular shrink-0 text-text-tertiary'>{t('app.publishApp.notSet')}</p>}
-              <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
-                <RiArrowRightSLine className='h-4 w-4 text-text-quaternary' />
-              </div>
-            </div>
-          </div>}
+          {!cardState.isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && (
+            <AppCardAccessControlSection
+              t={t}
+              appDetail={appDetail}
+              isAppAccessSet={isAppAccessSet}
+              onClick={handleClickAccessControl}
+            />
+          )}
         </div>
-        {!isMinimalState && (
-          <div className={'flex items-center gap-1 self-stretch p-3'}>
+        {!cardState.isMinimalState && (
+          <div className="flex items-center gap-1 self-stretch p-3">
             {!isApp && <SecretKeyButton appId={appInfo.id} />}
-            {OPERATIONS_MAP[cardType].map((op) => {
-              const disabled
-                = triggerModeDisabled
-                  ? true
-                  : op.opName === t('appOverview.overview.appInfo.settings.entry')
-                    ? false
-                    : !runningStatus
-              return (
-                <Button
-                  className="mr-1 min-w-[88px]"
-                  size="small"
-                  variant={'ghost'}
-                  key={op.opName}
-                  onClick={genClickFuncByName(op.opName)}
-                  disabled={disabled}
-                >
-                  <Tooltip
-                    popupContent={
-                      t('appOverview.overview.appInfo.preUseReminder') ?? ''
-                    }
-                    popupClassName={disabled ? 'mt-[-8px]' : '!hidden'}
-                  >
-                    <div className="flex items-center justify-center gap-[1px]">
-                      <op.opIcon className="h-3.5 w-3.5" />
-                      <div className={`${(runningStatus || !disabled) ? 'text-text-tertiary' : 'text-components-button-ghost-text-disabled'} system-xs-medium px-[3px]`}>{op.opName}</div>
-                    </div>
-                  </Tooltip>
-                </Button>
-              )
-            })}
+            <AppCardOperations
+              t={t}
+              operations={operations}
+              launchConfigAction={hiddenLaunchVariables.length > 0
+                ? {
+                    label: t('operation.config', { ns: 'common' }),
+                    disabled: triggerModeDisabled || !cardState.runningStatus,
+                    onClick: handleOpenWorkflowLaunchDialog,
+                  }
+                : undefined}
+            />
           </div>
         )}
       </div>
-      {isApp
-        ? (
-          <>
-            <SettingsModal
-              isChat={appMode === AppModeEnum.CHAT}
-              appInfo={appInfo}
-              isShow={showSettingsModal}
-              onClose={() => setShowSettingsModal(false)}
-              onSave={onSaveSiteConfig}
-            />
-            <EmbeddedModal
-              siteInfo={appInfo.site}
-              isShow={showEmbedded}
-              onClose={() => setShowEmbedded(false)}
-              appBaseUrl={app_base_url}
-              accessToken={access_token}
-            />
-            <CustomizeModal
-              isShow={showCustomizeModal}
-              linkUrl=""
-              onClose={() => setShowCustomizeModal(false)}
-              appId={appInfo.id}
-              api_base_url={appInfo.api_base_url}
-              mode={appInfo.mode}
-            />
-            {
-              showAccessControl && <AccessControl app={appDetail!}
-                onConfirm={handleAccessControlUpdate}
-                onClose={() => { setShowAccessControl(false) }} />
-            }
-          </>
-        )
-        : null}
+      <AppCardDialogs
+        isApp={isApp}
+        appInfo={appInfo}
+        appMode={cardState.appMode}
+        showSettingsModal={showSettingsModal}
+        showEmbedded={showEmbedded}
+        showCustomizeModal={showCustomizeModal}
+        showAccessControl={showAccessControl}
+        appDetail={appDetail}
+        onCloseSettings={() => setShowSettingsModal(false)}
+        onCloseEmbedded={() => setShowEmbedded(false)}
+        onCloseCustomize={() => setShowCustomizeModal(false)}
+        onCloseAccessControl={() => setShowAccessControl(false)}
+        onSaveSiteConfig={onSaveSiteConfig}
+        onConfirmAccessControl={handleAccessControlUpdate}
+        hiddenInputs={hiddenLaunchVariables}
+      />
+      <WorkflowLaunchDialog
+        t={t}
+        open={showWorkflowLaunchDialog}
+        hiddenVariables={supportedWorkflowLaunchVariables}
+        unsupportedVariables={unsupportedWorkflowLaunchVariables}
+        values={workflowLaunchValues}
+        onOpenChange={setShowWorkflowLaunchDialog}
+        onValueChange={handleWorkflowLaunchValueChange}
+        onSubmit={handleWorkflowLaunchConfirm}
+      />
     </div>
   )
 }

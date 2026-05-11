@@ -1,18 +1,25 @@
 'use client'
-import { useCallback, useState } from 'react'
-import { useBoolean } from 'ahooks'
-import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import type { ToolWithProvider } from '../../workflow/types'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiHammerFill } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
+import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import type { ToolWithProvider } from '../../workflow/types'
-import Confirm from '@/app/components/base/confirm'
-import MCPModal from './modal'
-import OperationDropdown from './detail/operation-dropdown'
 import { useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
-import cn from '@/utils/classnames'
+import OperationDropdown from './detail/operation-dropdown'
+import MCPModal from './modal'
 
 type Props = {
   currentProvider?: ToolWithProvider
@@ -82,39 +89,39 @@ const MCPCard = ({
         currentProvider?.id === data.id && 'border-components-option-card-option-selected-border bg-components-card-bg-alt',
       )}
     >
-      <div className='flex grow items-center gap-3 rounded-t-xl p-4'>
-        <div className='shrink-0 overflow-hidden rounded-xl border border-components-panel-border-subtle'>
+      <div className="flex grow items-center gap-3 rounded-t-xl p-4">
+        <div className="shrink-0 overflow-hidden rounded-xl border border-components-panel-border-subtle">
           <Icon src={data.icon} />
         </div>
-        <div className='grow'>
-          <div className='system-md-semibold mb-1 truncate text-text-secondary' title={data.name}>{data.name}</div>
-          <div className='system-xs-regular text-text-tertiary'>{data.server_identifier}</div>
+        <div className="grow">
+          <div className="mb-1 truncate system-md-semibold text-text-secondary" title={data.name}>{data.name}</div>
+          <div className="system-xs-regular text-text-tertiary">{data.server_identifier}</div>
         </div>
       </div>
-      <div className='flex items-center gap-1 rounded-b-xl pb-2.5 pl-4 pr-2.5 pt-1.5'>
-        <div className='flex w-0 grow items-center gap-2'>
-          <div className='flex items-center gap-1'>
-            <RiHammerFill className='h-3 w-3 shrink-0 text-text-quaternary' />
+      <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
+        <div className="flex w-0 grow items-center gap-2">
+          <div className="flex items-center gap-1">
+            <RiHammerFill className="h-3 w-3 shrink-0 text-text-quaternary" />
             {data.tools.length > 0 && (
-              <div className='system-xs-regular shrink-0 text-text-tertiary'>{t('tools.mcp.toolsCount', { count: data.tools.length })}</div>
+              <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}</div>
             )}
             {!data.tools.length && (
-              <div className='system-xs-regular shrink-0 text-text-tertiary'>{t('tools.mcp.noTools')}</div>
+              <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.noTools', { ns: 'tools' })}</div>
             )}
           </div>
           <div className={cn('system-xs-regular text-divider-deep', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')}>/</div>
-          <div className={cn('system-xs-regular truncate text-text-tertiary', (!data.is_team_authorization || !data.tools.length) && ' sm:hidden')} title={`${t('tools.mcp.updateTime')} ${formatTimeFromNow(data.updated_at! * 1000)}`}>{`${t('tools.mcp.updateTime')} ${formatTimeFromNow(data.updated_at! * 1000)}`}</div>
+          <div className={cn('truncate system-xs-regular text-text-tertiary', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')} title={`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}>{`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}</div>
         </div>
-        {data.is_team_authorization && data.tools.length > 0 && <Indicator color='green' className='shrink-0' />}
+        {data.is_team_authorization && data.tools.length > 0 && <Indicator color="green" className="shrink-0" />}
         {(!data.is_team_authorization || !data.tools.length) && (
-          <div className='system-xs-medium flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 text-util-colors-red-red-500'>
-            {t('tools.mcp.noConfigured')}
-            <Indicator color='red' />
+          <div className="flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 system-xs-medium text-util-colors-red-red-500">
+            {t('mcp.noConfigured', { ns: 'tools' })}
+            <Indicator color="red" />
           </div>
         )}
       </div>
       {isCurrentWorkspaceManager && (
-        <div className={cn('absolute right-2.5 top-2.5 hidden group-hover:block', isOperationShow && 'block')} onClick={e => e.stopPropagation()}>
+        <div className={cn('absolute top-2.5 right-2.5 hidden group-hover:block', isOperationShow && 'block')} onClick={e => e.stopPropagation()}>
           <OperationDropdown
             inCard
             onOpenChange={setIsOperationShow}
@@ -131,21 +138,24 @@ const MCPCard = ({
           onHide={hideUpdateModal}
         />
       )}
-      {isShowDeleteConfirm && (
-        <Confirm
-          isShow
-          title={t('tools.mcp.delete')}
-          content={
-            <div>
-              {t('tools.mcp.deleteConfirmTitle', { mcp: data.name })}
+      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('mcp.delete', { ns: 'tools' })}
+            </AlertDialogTitle>
+            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('mcp.deleteConfirmTitle', { ns: 'tools', mcp: data.name })}
             </div>
-          }
-          onCancel={hideDeleteConfirm}
-          onConfirm={handleDelete}
-          isLoading={deleting}
-          isDisabled={deleting}
-        />
-      )}
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

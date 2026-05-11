@@ -1,6 +1,6 @@
 'use client'
-import React from 'react'
 import type { FC } from 'react'
+import * as React from 'react'
 import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -11,7 +11,7 @@ export type IInputTypeIconProps = {
 }
 
 const IconMap = (type: IInputTypeIconProps['type'], className: string) => {
-  const classNames = `w-3.5 h-3.5 ${className}`
+  const classNames = `h-3.5 w-3.5 ${className}`
   const icons = {
     string: (
       <InputVarTypeIcon type={InputVarType.textInput} className={classNames} />

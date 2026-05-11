@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useEffect, useRef, useState } from 'react'
-import { useClickAway } from 'ahooks'
-import { RiCloseLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import Run from '@/app/components/workflow/run'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiCloseLine } from '@remixicon/react'
+import { useClickAway } from 'ahooks'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
+import Run from '@/app/components/workflow/run'
 
 type MessageLogModalProps = {
   currentLogItem?: IChatItem
@@ -46,21 +46,26 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
         width: fixedWidth ? width : 480,
         ...(!fixedWidth
           ? {
-            position: 'fixed',
-            top: 56 + 8,
-            left: 8 + (width - 480),
-            bottom: 16,
-          }
+              position: 'fixed',
+              top: 56 + 8,
+              left: 8 + (width - 480),
+              bottom: 16,
+            }
           : {
-            marginRight: 8,
-          }),
+              marginRight: 8,
+            }),
       }}
       ref={ref}
     >
-      <h1 className='system-xl-semibold shrink-0 px-4 py-1 text-text-primary'>{t('appLog.runDetail.title')}</h1>
-      <span className='absolute right-3 top-4 z-20 cursor-pointer p-1' onClick={onCancel}>
-        <RiCloseLine className='h-4 w-4 text-text-tertiary' />
-      </span>
+      <h1 className="shrink-0 px-4 py-1 system-xl-semibold text-text-primary">{t('runDetail.title', { ns: 'appLog' })}</h1>
+      <button
+        type="button"
+        aria-label={t('operation.close', { ns: 'common' })}
+        className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        onClick={onCancel}
+      >
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+      </button>
       <Run
         hideResult
         activeTab={defaultTab as any}

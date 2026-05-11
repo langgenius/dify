@@ -2,27 +2,30 @@ from typing import Literal
 
 from flask_login import current_user
 from flask_restx import marshal
-from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
+from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.schema import register_schema_model, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
 from fields.dataset_fields import dataset_metadata_fields
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
+    DocumentMetadataOperation,
     MetadataArgs,
+    MetadataDetail,
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
 
-
-class MetadataUpdatePayload(BaseModel):
-    name: str
-
-
 register_schema_model(service_api_ns, MetadataUpdatePayload)
-register_schema_models(service_api_ns, MetadataArgs, MetadataOperationData)
+register_schema_models(
+    service_api_ns,
+    MetadataArgs,
+    MetadataDetail,
+    DocumentMetadataOperation,
+    MetadataOperationData,
+)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata")
@@ -120,7 +123,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
-        return 204
+        return "", 204
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in")
@@ -160,10 +163,11 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        if action == "enable":
-            MetadataService.enable_built_in_field(dataset)
-        elif action == "disable":
-            MetadataService.disable_built_in_field(dataset)
+        match action:
+            case "enable":
+                MetadataService.enable_built_in_field(dataset)
+            case "disable":
+                MetadataService.disable_built_in_field(dataset)
         return {"result": "success"}, 200
 
 

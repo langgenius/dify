@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
-import { useStore } from './store'
 import InstallBundle from '@/app/components/plugins/install-plugin/install-bundle'
+import { useStore } from './store'
 
 const PluginDependency = () => {
   const dependencies = useStore(s => s.dependencies)
