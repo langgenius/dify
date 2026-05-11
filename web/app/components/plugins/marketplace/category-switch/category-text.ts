@@ -59,6 +59,8 @@ export function useTemplateCategoryText() {
         return t('marketplace.templateCategory.knowledge', { ns: 'plugin' })
       case TEMPLATE_CATEGORY_MAP.design:
         return t('marketplace.templateCategory.design', { ns: 'plugin' })
+      case TEMPLATE_CATEGORY_MAP.other:
+        return t('marketplace.templateCategory.other', { ns: 'plugin' })
       case TEMPLATE_CATEGORY_MAP.all:
       default:
         return t('marketplace.templateCategory.all', { ns: 'plugin' })

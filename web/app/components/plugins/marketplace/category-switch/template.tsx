@@ -21,6 +21,7 @@ const categoryValues = [
   TEMPLATE_CATEGORY_MAP.it,
   TEMPLATE_CATEGORY_MAP.knowledge,
   TEMPLATE_CATEGORY_MAP.design,
+  TEMPLATE_CATEGORY_MAP.other,
 ] as const
 
 export const TemplateCategorySwitch = ({
