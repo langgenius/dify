@@ -226,7 +226,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
 
   return (
     <Dialog open>
-      <DialogContent className="mt-14! w-[600px]! max-w-none! overflow-hidden! border-none p-6! text-left align-middle">
+      <DialogContent className="mt-14! w-[600px]! max-w-none! border-none p-6! text-left align-middle">
 
         <div className="flex items-center justify-between">
           <div className="title-2xl-semi-bold text-text-primary">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
