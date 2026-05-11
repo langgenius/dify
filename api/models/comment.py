@@ -1,4 +1,5 @@
 """Workflow comment models."""
+from __future__ import annotations
 
 from models.base import TypeBase
 from datetime import datetime
