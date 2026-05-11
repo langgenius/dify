@@ -23,7 +23,7 @@ on the `LayerControl` created for that layer in a `CompositorSession`.
 Use a Pydantic model for config and pass it through the typed layer family so
 `Layer.__init_subclass__` can infer the schema:
 
-```python
+```python {test="skip" lint="skip"}
 class GreetingConfig(BaseModel):
     prefix: str
 
@@ -53,14 +53,14 @@ runtime state and handles.
 
 Register config-constructible layers manually:
 
-```python
+```python {test="skip" lint="skip"}
 registry = LayerRegistry()
 registry.register_layer(PromptLayer)  # uses PromptLayer.type_id == "plain.prompt"
 ```
 
 Use `CompositorBuilder` to mix serializable config nodes with live instances:
 
-```python
+```python {test="skip" lint="skip"}
 compositor = (
     CompositorBuilder(registry)
     .add_config(
@@ -112,6 +112,6 @@ any lifecycle hook runs.
 
 See also:
 
-- `examples/agenton/basics.py`
-- `examples/agenton/pydantic_ai_bridge.py`
-- `examples/agenton/session_snapshot.py`
+- `examples/agenton/agenton_examples/basics.py`
+- `examples/agenton/agenton_examples/pydantic_ai_bridge.py`
+- `examples/agenton/agenton_examples/session_snapshot.py`

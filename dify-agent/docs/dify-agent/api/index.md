@@ -182,5 +182,5 @@ names and order.
 
 See:
 
-- `dify-agent/examples/run_server_consumer.py` for cursor polling
-- `dify-agent/examples/run_server_sse_consumer.py` for SSE consumption
+- `dify-agent/examples/dify_agent/dify_agent_examples/run_server_consumer.py` for cursor polling
+- `dify-agent/examples/dify_agent/dify_agent_examples/run_server_sse_consumer.py` for SSE consumption

@@ -20,25 +20,54 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "examples/agenton", "examples/dify_agent"]
+include = [
+    "agenton*",
+    "agenton_collections*",
+    "agenton_examples*",
+    "dify_agent*",
+    "dify_agent_examples*",
+]
 
 [tool.pyright]
-include = ["src", "tests"]
+include = ["src", "examples", "tests"]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.12"
 extraPaths = [
     "src",
+    "examples/agenton",
+    "examples/dify_agent",
 ]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+include = [
+    "src/**/*.py",
+    "examples/**/*.py",
+    "tests/**/*.py",
+    "docs/**/*.py",
+]
 
 [dependency-groups]
 dev = [
     "basedpyright>=1.39.3",
+    "coverage[toml]>=7.10.7",
     "pytest>=9.0.3",
+    "pytest-examples>=0.0.18",
+    "pytest-mock>=3.14.0",
     "ruff>=0.15.11",
+]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-glightbox>=0.4.0",
+    "mkdocs-material>=9.7.0",
+    "mkdocstrings-python>=2.0.0",
 ]
 
 [build-system]

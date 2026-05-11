@@ -1,4 +1,4 @@
-"""Run with: uv run --project dify-agent python examples/agenton/pydantic_ai_bridge.py."""
+"""Run with: uv run --project dify-agent python -m agenton_examples.pydantic_ai_bridge."""
 
 from __future__ import annotations
 

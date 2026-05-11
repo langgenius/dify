@@ -6,7 +6,7 @@ Prerequisites:
 - Fill `dify-agent/.env` with a real tenant, plugin, provider, model, and provider credentials.
 
 Example:
-    uv run --project dify-agent python examples/run_pydantic_ai_agent.py
+    uv run --project dify-agent python -m dify_agent_examples.run_pydantic_ai_agent
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from pydantic_ai import Agent
 from dify_agent import DifyLLMAdapterModel, DifyPluginDaemonProvider
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def load_env_file(path: Path) -> None:
@@ -30,7 +30,7 @@ def load_env_file(path: Path) -> None:
     if not path.exists():
         return
 
-    for raw_line in path.read_text().splitlines():
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
@@ -68,10 +68,10 @@ async def main() -> None:
         credentials=load_credentials(),
     )
     agent = Agent(model=model)
-    async with agent.run_stream("Explain the theory of relativity") as run:  
+    async with agent.run_stream("Explain the theory of relativity") as run:
         async for piece in run.stream_output():
             print(piece, end="", flush=True)
-        print(run.usage()) 
+        print(run.usage())
 
 
 if __name__ == "__main__":

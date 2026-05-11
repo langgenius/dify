@@ -10,9 +10,18 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 def _run_example(path: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     _ = env.pop("OPENAI_API_KEY", None)
+    python_path = os.pathsep.join(
+        [
+            str(PROJECT_ROOT / "src"),
+            str(PROJECT_ROOT / "examples" / "agenton"),
+            str(PROJECT_ROOT / "examples" / "dify_agent"),
+            env.get("PYTHONPATH", ""),
+        ]
+    )
+    env["PYTHONPATH"] = python_path
 
     return subprocess.run(
-        [sys.executable, path],
+        [sys.executable, "-m", path],
         cwd=PROJECT_ROOT,
         env=env,
         text=True,
@@ -22,7 +31,7 @@ def _run_example(path: str) -> subprocess.CompletedProcess[str]:
 
 
 def test_agenton_basics_example_smoke() -> None:
-    result = _run_example("examples/agenton/basics.py")
+    result = _run_example("agenton_examples.basics")
 
     assert result.returncode == 0, result.stderr
     assert "Prompts:" in result.stdout
@@ -32,7 +41,7 @@ def test_agenton_basics_example_smoke() -> None:
 
 
 def test_agenton_pydantic_ai_example_smoke() -> None:
-    result = _run_example("examples/agenton/pydantic_ai_bridge.py")
+    result = _run_example("agenton_examples.pydantic_ai_bridge")
 
     assert result.returncode == 0, result.stderr
     assert "SystemPromptPart: Prefer concrete details." in result.stdout
@@ -43,7 +52,7 @@ def test_agenton_pydantic_ai_example_smoke() -> None:
 
 
 def test_agenton_session_snapshot_example_smoke() -> None:
-    result = _run_example("examples/agenton/session_snapshot.py")
+    result = _run_example("agenton_examples.session_snapshot")
 
     assert result.returncode == 0, result.stderr
     assert "Snapshot:" in result.stdout

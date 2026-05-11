@@ -118,9 +118,10 @@ for `session_snapshot`.
 
 The repository includes simple consumers that print observed output/events:
 
-- `dify-agent/examples/run_server_consumer.py` creates a run and polls events.
-- `dify-agent/examples/run_server_sse_consumer.py` consumes raw SSE frames for an
-  existing run id.
+- `dify-agent/examples/dify_agent/dify_agent_examples/run_server_consumer.py`
+  creates a run and polls events.
+- `dify-agent/examples/dify_agent/dify_agent_examples/run_server_sse_consumer.py`
+  consumes raw SSE frames for an existing run id.
 
 Both examples use the credential-free Pydantic AI `TestModel` profile; they still
 require Redis and the API server.
