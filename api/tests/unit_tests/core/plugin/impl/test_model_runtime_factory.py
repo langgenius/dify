@@ -31,6 +31,6 @@ def test_plugin_model_assembly_reuses_single_runtime_across_views():
         assert assembly.model_manager is model_manager
 
     mock_runtime_factory.assert_called_once_with(tenant_id="tenant-1", user_id="user-1")
-    mock_provider_factory_cls.assert_called_once_with(model_runtime=runtime)
+    mock_provider_factory_cls.assert_called_once_with(runtime=runtime)
     mock_provider_manager_cls.assert_called_once_with(model_runtime=runtime)
     mock_model_manager_cls.assert_called_once_with(provider_manager=provider_manager)

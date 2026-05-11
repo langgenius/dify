@@ -3,6 +3,8 @@ import type {
   FormRefObject,
   FormSchema,
 } from '@/app/components/base/form/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import {
   memo,
@@ -16,9 +18,7 @@ import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
-import Modal from '@/app/components/base/modal/modal'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
-import { ReadmeShowType } from '../../readme-panel/store'
 import {
   useAddPluginCredentialHook,
   useGetPluginCredentialSchemaHook,
@@ -28,8 +28,10 @@ import { CredentialTypeEnum } from '../types'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   onClose?: () => void
-  editValues?: Record<string, any>
+  editValues?: Record<string, unknown>
   onRemove?: () => void
   disabled?: boolean
   onUpdate?: () => void
@@ -37,6 +39,8 @@ export type ApiKeyModalProps = {
 }
 const ApiKeyModal = ({
   pluginPayload,
+  open = true,
+  onOpenChange,
   onClose,
   editValues,
   onRemove,
@@ -73,7 +77,7 @@ const ApiKeyModal = ({
     if (schema.default)
       acc[schema.name] = schema.default
     return acc
-  }, {} as Record<string, any>)
+  }, {} as Record<string, unknown>)
   const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
@@ -114,53 +118,104 @@ const ApiKeyModal = ({
       }
       toast.success(t('api.actionSuccess', { ns: 'common' }))
 
+      onOpenChange?.(false)
       onClose?.()
       onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction])
+  }, [addPluginCredential, onClose, onOpenChange, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction])
+
+  const isDisabled = disabled || isLoading || doingAction
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    onOpenChange?.(nextOpen)
+    if (!nextOpen)
+      onClose?.()
+  }, [onClose, onOpenChange])
 
   return (
-    <Modal
-      size="md"
-      title={t('auth.useApiAuth', { ns: 'plugin' })}
-      subTitle={t('auth.useApiAuthDesc', { ns: 'plugin' })}
-      onClose={onClose}
-      onCancel={onClose}
-      footerSlot={
-        (<div></div>)
-      }
-      bottomSlot={<EncryptedBottom />}
-      onConfirm={handleConfirm}
-      showExtraButton={!!editValues}
-      onExtraButtonClick={onRemove}
-      disabled={disabled || isLoading || doingAction}
-      clickOutsideNotClose={true}
-      wrapperClassName="z-1002!"
+    <Dialog
+      open={open}
+      onOpenChange={handleOpenChange}
     >
-      {pluginPayload.detail && (
-        <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
-      )}
-      {
-        isLoading && (
-          <div className="flex h-40 items-center justify-center">
-            <Loading />
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="w-[640px]! max-w-[calc(100vw-2rem)]! p-0!"
+      >
+        <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
+          <div className="relative shrink-0 p-6 pr-14 pb-3">
+            <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
+              {t('auth.useApiAuth', { ns: 'plugin' })}
+            </DialogTitle>
+            <div className="mt-1 system-xs-regular text-text-tertiary">
+              {t('auth.useApiAuthDesc', { ns: 'plugin' })}
+            </div>
+            <DialogCloseButton
+              className="top-5 right-5 h-8 w-8 rounded-lg"
+            />
           </div>
-        )
-      }
-      {
-        !isLoading && !!mergedData.length && (
-          <AuthForm
-            ref={formRef}
-            formSchemas={formSchemas}
-            defaultValues={editValues || defaultValues}
-            disabled={disabled}
-          />
-        )
-      }
-    </Modal>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+            {pluginPayload.detail && (
+              <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
+            )}
+            {
+              isLoading && (
+                <div className="flex h-40 items-center justify-center">
+                  <Loading />
+                </div>
+              )
+            }
+            {
+              !isLoading && !!mergedData.length && (
+                <AuthForm
+                  ref={formRef}
+                  formSchemas={formSchemas}
+                  defaultValues={editValues || defaultValues}
+                  disabled={disabled}
+                />
+              )
+            }
+          </div>
+          <div className="flex shrink-0 justify-between p-6 pt-5">
+            <div />
+            <div className="flex items-center">
+              {editValues && (
+                <>
+                  <Button
+                    data-testid="modal-extra"
+                    variant="primary"
+                    onClick={onRemove}
+                    disabled={isDisabled}
+                  >
+                    {t('operation.remove', { ns: 'common' })}
+                  </Button>
+                  <div className="mx-3 h-4 w-px bg-divider-regular"></div>
+                </>
+              )}
+              <Button
+                onClick={() => handleOpenChange(false)}
+                disabled={isDisabled}
+              >
+                {t('operation.cancel', { ns: 'common' })}
+              </Button>
+              <Button
+                data-testid="modal-confirm"
+                className="ml-2"
+                variant="primary"
+                onClick={handleConfirm}
+                disabled={isDisabled}
+              >
+                {t('operation.save', { ns: 'common' })}
+              </Button>
+            </div>
+          </div>
+          <div className="shrink-0">
+            <EncryptedBottom />
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

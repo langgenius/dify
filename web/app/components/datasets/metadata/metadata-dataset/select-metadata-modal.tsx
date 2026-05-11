@@ -1,7 +1,7 @@
 'use client'
 import type { Placement } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
-import type { MetadataItem } from '../types'
+import type { BuiltInMetadataItem, MetadataItem } from '../types'
 import type { Props as CreateContentProps } from './create-content'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
@@ -15,15 +15,16 @@ type Props = {
   popupPlacement?: Placement
   popupOffset?: { mainAxis: number, crossAxis: number }
   onSelect: (data: MetadataItem) => void
-  onSave: (data: MetadataItem) => void
   trigger: React.ReactNode
   onManage: () => void
 } & CreateContentProps
 
-enum Step {
-  select = 'select',
-  create = 'create',
-}
+const Step = {
+  select: 'select',
+  create: 'create',
+} as const
+
+type Step = typeof Step[keyof typeof Step]
 
 const SelectMetadataModal: FC<Props> = ({
   datasetId,
@@ -37,7 +38,7 @@ const SelectMetadataModal: FC<Props> = ({
   const { data: datasetMetaData } = useDatasetMetaData(datasetId)
 
   const [open, setOpen] = useState(false)
-  const [step, setStep] = useState(Step.select)
+  const [step, setStep] = useState<Step>(Step.select)
   const triggerElement = React.isValidElement(trigger)
     ? trigger
     : <button type="button">{trigger}</button>
@@ -47,7 +48,7 @@ const SelectMetadataModal: FC<Props> = ({
       setStep(Step.select)
   }, [])
 
-  const handleSave = useCallback(async (data: MetadataItem) => {
+  const handleSave = useCallback(async (data: BuiltInMetadataItem) => {
     await onSave(data)
     setStep(Step.select)
   }, [onSave])

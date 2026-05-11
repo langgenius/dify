@@ -1,15 +1,15 @@
 import type { TestRunMenuRef, TriggerOption } from './test-run-menu'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowRunValidation, useWorkflowStartRun } from '@/app/components/workflow/hooks'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
-import { useStore } from '@/app/components/workflow/store'
+import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
+import { useWorkflowShortcut } from '@/app/components/workflow/shortcuts/use-workflow-hotkeys'
+import { useStore } from '@/app/components/workflow/store/workflow'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -42,16 +42,11 @@ const RunMode = ({
   const dynamicOptions = useDynamicTestRunOptions()
   const testRunMenuRef = useRef<TestRunMenuRef>(null)
 
-  useEffect(() => {
-    // @ts-expect-error - Dynamic property for backward compatibility with keyboard shortcuts
-    window._toggleTestRunDropdown = () => {
-      testRunMenuRef.current?.toggle()
-    }
-    return () => {
-      // @ts-expect-error - Dynamic property cleanup
-      delete window._toggleTestRunDropdown
-    }
+  const handleToggleTestRunMenu = useCallback(() => {
+    testRunMenuRef.current?.toggle()
   }, [])
+
+  useWorkflowShortcut('workflow.open-test-run-menu', handleToggleTestRunMenu)
 
   const handleStop = useCallback(() => {
     handleStopRun(workflowRunningData?.task_id || '')
@@ -117,7 +112,7 @@ const RunMode = ({
                 )}
                 disabled={true}
               >
-                <RiLoader2Line className="mr-1 size-4 animate-spin" />
+                <span className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
                 {isListening ? t('common.listening', { ns: 'workflow' }) : t('common.running', { ns: 'workflow' })}
               </button>
             )
@@ -127,16 +122,17 @@ const RunMode = ({
                 options={dynamicOptions}
                 onSelect={handleTriggerSelect}
               >
-                <div
+                <button
+                  type="button"
                   className={cn(
                     'flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 system-xs-medium text-text-accent hover:bg-state-accent-hover',
                   )}
                   style={{ userSelect: 'none' }}
                 >
-                  <RiPlayLargeLine className="mr-1 size-4" />
+                  <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
                   {text ?? t('common.run', { ns: 'workflow' })}
-                  <ShortcutsName keys={['alt', 'R']} textColor="secondary" />
-                </div>
+                  <ShortcutKbd shortcut="workflow.open-test-run-menu" textColor="secondary" />
+                </button>
               </TestRunMenu>
             )
       }

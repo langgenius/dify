@@ -14,7 +14,6 @@ from services.errors.account import (
     AccountRegisterError,
     CurrentPasswordIncorrectError,
 )
-from tests.unit_tests.services.services_test_help import ServiceDbTestHelper
 
 
 class TestAccountAssociatedDataFactory:
@@ -149,7 +148,6 @@ class TestAccountService:
             # Setup basic session methods
             mock_session.add = MagicMock()
             mock_session.commit = MagicMock()
-            mock_session.query = MagicMock()
 
             yield mock_db
 
@@ -1572,15 +1570,9 @@ class TestRegisterService:
             account_id="existing-user-456", email="existing@example.com", status="active"
         )
 
-        # Mock database queries
-        query_results = {
-            (
-                "TenantAccountJoin",
-                "tenant_id",
-                "tenant-456",
-            ): TestAccountAssociatedDataFactory.create_tenant_join_mock(),
-        }
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies[
+            "db"
+        ].session.scalar.return_value = TestAccountAssociatedDataFactory.create_tenant_join_mock()
 
         # Mock TenantService methods
         with (

@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import type { Area } from 'react-easy-crop'
 import type { ImageFile } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -122,11 +123,11 @@ describe('AppIconPicker', () => {
     })
   }
 
-  const renderPicker = () => {
+  const renderPicker = (props: Partial<ComponentProps<typeof AppIconPicker>> = {}) => {
     const onSelect = vi.fn()
     const onClose = vi.fn()
 
-    const { container } = render(<AppIconPicker onSelect={onSelect} onClose={onClose} />)
+    const { container } = render(<AppIconPicker onSelect={onSelect} onClose={onClose} {...props} />)
 
     return { onSelect, onClose, container }
   }
@@ -194,10 +195,10 @@ describe('AppIconPicker', () => {
       const { onSelect } = renderPicker()
 
       await waitFor(() => {
-        expect(screen.queryAllByTestId(/emoji-container-/i).length).toBeGreaterThan(0)
+        expect(document.querySelector('em-emoji')?.closest('button'))!.toBeInTheDocument()
       })
 
-      const firstEmoji = screen.queryAllByTestId(/emoji-container-/i)[0]
+      const firstEmoji = document.querySelector('em-emoji')?.closest('button')
       if (!firstEmoji)
         throw new Error('Could not find emoji option')
 
@@ -219,6 +220,20 @@ describe('AppIconPicker', () => {
       await userEvent.click(screen.getByText(/ok/i))
 
       expect(onSelect).not.toHaveBeenCalled()
+    })
+
+    it('should submit the initial emoji when provided', async () => {
+      const { onSelect } = renderPicker({ initialEmoji: { icon: 'rabbit', background: '#E4FBCC' } })
+
+      await userEvent.click(screen.getByText(/ok/i))
+
+      await waitFor(() => {
+        expect(onSelect).toHaveBeenCalledWith({
+          type: 'emoji',
+          icon: 'rabbit',
+          background: '#E4FBCC',
+        })
+      })
     })
   })
 

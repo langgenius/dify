@@ -5,6 +5,14 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
+import {
   RiArrowLeftLine,
   RiCloseLine,
 } from '@remixicon/react'
@@ -12,7 +20,6 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
@@ -165,98 +172,105 @@ const SettingBuiltInTool: FC<Props> = ({
 
   return (
     <Drawer
-      isOpen
-      clickOutsideNotOpen={false}
-      onClose={onHide}
-      footer={null}
-      mask={false}
-      positionCenter={false}
-      panelClassName={cn('mt-[64px] mr-2 mb-2 w-[420px]! max-w-[420px]! justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg! p-0! shadow-xl')}
+      open
+      modal
+      swipeDirection="right"
+      onOpenChange={(open) => {
+        if (!open)
+          onHide()
+      }}
     >
-      <>
-        {isLoading && <Loading type="app" />}
-        {!isLoading && (
-          <>
-            {/* header */}
-            <div className="relative border-b border-divider-subtle p-4 pb-3">
-              <div className="absolute top-3 right-3">
-                <ActionButton onClick={onHide}>
-                  <RiCloseLine className="h-4 w-4" />
-                </ActionButton>
-              </div>
-              {showBackButton && (
-                <div
-                  className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
-                  onClick={onHide}
-                >
-                  <RiArrowLeftLine className="h-4 w-4" />
-                  {t('detailPanel.operation.back', { ns: 'plugin' })}
-                </div>
-              )}
-              <div className="flex items-center gap-1">
-                <Icon size="tiny" className="h-6 w-6" src={collection.icon} />
-                <OrgInfo
-                  packageNameClassName="w-auto"
-                  orgName={collection.author}
-                  packageName={collection.name.split('/').pop() || ''}
-                />
-              </div>
-              <div className="mt-1 system-md-semibold text-text-primary">{currTool?.label[language]}</div>
-              {!!currTool?.description[language] && (
-                <Description className="mt-3 mb-2 h-auto" text={currTool.description[language]} descriptionLineRows={2}></Description>
-              )}
-              {
-                collection.allow_delete && collection.type === CollectionType.builtIn && (
-                  <PluginAuthInAgent
-                    pluginPayload={{
-                      provider: collection.name,
-                      category: AuthCategory.tool,
-                      providerType: collection.type,
-                      detail: collection as any,
-                    }}
-                    credentialId={credentialId}
-                    onAuthorizationItemClick={onAuthorizationItemClick}
-                  />
-                )
-              }
-            </div>
-            {/* form */}
-            <div className="h-full">
-              <div className="flex h-full flex-col">
-                {(hasSetting && !readonly)
-                  ? (
-                      <TabSlider
-                        className="mt-1 shrink-0 px-4"
-                        itemClassName="py-3"
-                        noBorderBottom
-                        value={currType}
-                        onChange={(value) => {
-                          setCurrType(value)
-                        }}
-                        options={[
-                          { value: 'info', text: t('setBuiltInTools.parameters', { ns: 'tools' })! },
-                          { value: 'setting', text: t('setBuiltInTools.setting', { ns: 'tools' })! },
-                        ]}
-                      />
-                    )
-                  : (
-                      <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
-                    )}
-                <div className="h-0 grow overflow-y-auto px-4">
-                  {isInfoActive ? infoUI : settingUI}
-                  {!readonly && !isInfoActive && (
-                    <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
-                      <Button className="flex h-8 items-center px-3! text-[13px]! font-medium" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-                      <Button className="flex h-8 items-center px-3! text-[13px]! font-medium" variant="primary" disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('operation.save', { ns: 'common' })}</Button>
+      <DrawerPortal>
+        <DrawerBackdrop className="bg-transparent" />
+        <DrawerViewport>
+          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[420px] data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
+            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+              {isLoading && <Loading type="app" />}
+              {!isLoading && (
+                <>
+                  {/* header */}
+                  <div className="relative border-b border-divider-subtle p-4 pb-3">
+                    <div className="absolute top-3 right-3">
+                      <ActionButton onClick={onHide}>
+                        <RiCloseLine className="h-4 w-4" />
+                      </ActionButton>
                     </div>
-                  )}
-                </div>
-                <ReadmeEntrance pluginDetail={collection as any} className="mt-auto" />
-              </div>
-            </div>
-          </>
-        )}
-      </>
+                    {showBackButton && (
+                      <div
+                        className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
+                        onClick={onHide}
+                      >
+                        <RiArrowLeftLine className="h-4 w-4" />
+                        {t('detailPanel.operation.back', { ns: 'plugin' })}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Icon size="tiny" className="h-6 w-6" src={collection.icon} />
+                      <OrgInfo
+                        packageNameClassName="w-auto"
+                        orgName={collection.author}
+                        packageName={collection.name.split('/').pop() || ''}
+                      />
+                    </div>
+                    <div className="mt-1 system-md-semibold text-text-primary">{currTool?.label[language]}</div>
+                    {!!currTool?.description[language] && (
+                      <Description className="mt-3 mb-2 h-auto" text={currTool.description[language]} descriptionLineRows={2}></Description>
+                    )}
+                    {
+                      collection.allow_delete && collection.type === CollectionType.builtIn && (
+                        <PluginAuthInAgent
+                          pluginPayload={{
+                            provider: collection.name,
+                            category: AuthCategory.tool,
+                            providerType: collection.type,
+                            detail: collection as any,
+                          }}
+                          credentialId={credentialId}
+                          onAuthorizationItemClick={onAuthorizationItemClick}
+                        />
+                      )
+                    }
+                  </div>
+                  {/* form */}
+                  <div className="h-full">
+                    <div className="flex h-full flex-col">
+                      {(hasSetting && !readonly)
+                        ? (
+                            <TabSlider
+                              className="mt-1 shrink-0 px-4"
+                              itemClassName="py-3"
+                              noBorderBottom
+                              value={currType}
+                              onChange={(value) => {
+                                setCurrType(value)
+                              }}
+                              options={[
+                                { value: 'info', text: t('setBuiltInTools.parameters', { ns: 'tools' })! },
+                                { value: 'setting', text: t('setBuiltInTools.setting', { ns: 'tools' })! },
+                              ]}
+                            />
+                          )
+                        : (
+                            <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
+                          )}
+                      <div className="h-0 grow overflow-y-auto px-4">
+                        {isInfoActive ? infoUI : settingUI}
+                        {!readonly && !isInfoActive && (
+                          <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
+                            <Button className="flex h-8 items-center px-3! text-[13px]! font-medium" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                            <Button className="flex h-8 items-center px-3! text-[13px]! font-medium" variant="primary" disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('operation.save', { ns: 'common' })}</Button>
+                          </div>
+                        )}
+                      </div>
+                      <ReadmeEntrance pluginDetail={collection as any} className="mt-auto" />
+                    </div>
+                  </div>
+                </>
+              )}
+            </DrawerContent>
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
     </Drawer>
   )
 }

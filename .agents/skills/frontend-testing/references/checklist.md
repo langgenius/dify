@@ -127,7 +127,7 @@ For the current file being tested:
 - [ ] Run full directory test: `pnpm test path/to/directory/`
 - [ ] Check coverage report: `pnpm test:coverage`
 - [ ] Run `pnpm lint:fix` on all test files
-- [ ] Run `pnpm type-check:tsgo`
+- [ ] Run `pnpm type-check`
 
 ## Common Issues to Watch
 

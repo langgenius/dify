@@ -1,6 +1,7 @@
 'use client'
 import type { Locale } from '@/i18n-config'
 import { Button } from '@langgenius/dify-ui/button'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiAccountCircleLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -9,7 +10,6 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
-import { SimpleSelect } from '@/app/components/base/select'
 import { LICENSE_LINK } from '@/constants/link'
 import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
@@ -21,6 +21,28 @@ import { useInvitationCheck } from '@/service/use-common'
 import { timezones } from '@/utils/timezone'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
+type LanguageSelectOption = {
+  value: Locale
+  name: string
+}
+
+type TimezoneSelectOption = {
+  value: string
+  name: string
+}
+
+const LANGUAGE_OPTIONS: LanguageSelectOption[] = languages
+  .filter(item => item.supported)
+  .map(item => ({
+    value: item.value,
+    name: item.name,
+  }))
+
+const TIMEZONE_OPTIONS: TimezoneSelectOption[] = timezones.map(item => ({
+  value: String(item.value),
+  name: item.name,
+}))
+
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -30,6 +52,20 @@ export default function InviteSettingsPage() {
   const [name, setName] = useState('')
   const [language, setLanguage] = useState(LanguagesSupported[0])
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
+  const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
+  const selectedTimezone = TIMEZONE_OPTIONS.find(item => item.value === timezone)
+
+  const handleLanguageChange = (nextValue: string | null) => {
+    const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
+    if (nextLanguage)
+      setLanguage(nextLanguage.value)
+  }
+
+  const handleTimezoneChange = (nextValue: string | null) => {
+    const nextTimezone = TIMEZONE_OPTIONS.find(item => item.value === nextValue)
+    if (nextTimezone)
+      setTimezone(nextTimezone.value)
+  }
 
   const checkParams = {
     url: '/activate/check',
@@ -57,7 +93,7 @@ export default function InviteSettingsPage() {
       if (res.result === 'success') {
         // Tokens are now stored in cookies by the backend
         await setLocaleOnClient(language!, false)
-        const redirectUrl = resolvePostLoginRedirect()
+        const redirectUrl = resolvePostLoginRedirect(searchParams)
         router.replace(redirectUrl || '/apps')
       }
     }
@@ -115,17 +151,26 @@ export default function InviteSettingsPage() {
           </div>
         </div>
         <div className="mb-5">
-          <label htmlFor="name" className="my-2 system-md-semibold text-text-secondary">
+          <label htmlFor="interface_language" className="my-2 system-md-semibold text-text-secondary">
             {t('interfaceLanguage', { ns: 'login' })}
           </label>
           <div className="mt-1">
-            <SimpleSelect
-              defaultValue={LanguagesSupported[0]}
-              items={languages.filter(item => item.supported)}
-              onSelect={(item) => {
-                setLanguage(item.value as Locale)
-              }}
-            />
+            <Select
+              value={selectedLanguage?.value ?? null}
+              onValueChange={handleLanguageChange}
+            >
+              <SelectTrigger id="interface_language" size="large">
+                {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGE_OPTIONS.map(item => (
+                  <SelectItem key={item.value} value={item.value}>
+                    <SelectItemText>{item.name}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         {/* timezone */}
@@ -134,13 +179,22 @@ export default function InviteSettingsPage() {
             {t('timezone', { ns: 'login' })}
           </label>
           <div className="mt-1">
-            <SimpleSelect
-              defaultValue={timezone}
-              items={timezones}
-              onSelect={(item) => {
-                setTimezone(item.value as string)
-              }}
-            />
+            <Select
+              value={selectedTimezone?.value ?? null}
+              onValueChange={handleTimezoneChange}
+            >
+              <SelectTrigger id="timezone" size="large">
+                {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEZONE_OPTIONS.map(item => (
+                  <SelectItem key={item.value} value={item.value}>
+                    <SelectItemText>{item.name}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div>

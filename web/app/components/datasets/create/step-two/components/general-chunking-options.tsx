@@ -10,7 +10,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { IS_CE_EDITION } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
@@ -191,7 +191,13 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     onSelect={onDocLanguageChange}
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
-                  <Tooltip popupContent={t('stepTwo.QATip', { ns: 'datasetCreation' })} />
+                  <Infotip
+                    aria-label={t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                    className="h-3.5 w-3.5"
+                    iconClassName="h-full w-full"
+                  >
+                    {t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                  </Infotip>
                 </div>
                 {currentDocForm === ChunkingMode.qa && (
                   <div

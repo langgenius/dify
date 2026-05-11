@@ -48,24 +48,21 @@ describe('ThemeSelector', () => {
     it('should call setTheme with light when light option is clicked', () => {
       render(<ThemeSelector />)
       fireEvent.click(screen.getByRole('button'))
-      const lightButton = screen.getByText(/light/i).closest('button')!
-      fireEvent.click(lightButton)
+      fireEvent.click(screen.getByText(/light/i))
       expect(mockSetTheme).toHaveBeenCalledWith('light')
     })
 
     it('should call setTheme with dark when dark option is clicked', () => {
       render(<ThemeSelector />)
       fireEvent.click(screen.getByRole('button'))
-      const darkButton = screen.getByText(/dark/i).closest('button')!
-      fireEvent.click(darkButton)
+      fireEvent.click(screen.getByText(/dark/i))
       expect(mockSetTheme).toHaveBeenCalledWith('dark')
     })
 
     it('should call setTheme with system when system option is clicked', () => {
       render(<ThemeSelector />)
       fireEvent.click(screen.getByRole('button'))
-      const systemButton = screen.getByText(/auto/i).closest('button')!
-      fireEvent.click(systemButton)
+      fireEvent.click(screen.getByText(/auto/i))
       expect(mockSetTheme).toHaveBeenCalledWith('system')
     })
   })

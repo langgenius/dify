@@ -4,6 +4,8 @@ import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -17,9 +19,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -111,11 +111,15 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     <>
       <div className="relative z-1 mx-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-md">
         <div className={cn('px-4 pt-3', userInputFieldCollapse ? 'pb-3' : 'pb-1')}>
-          <div className="flex cursor-pointer items-center gap-0.5 py-0.5" onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
+          <button
+            type="button"
+            className="flex cursor-pointer items-center gap-0.5 border-none bg-transparent px-0 py-0.5 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}
+          >
             <div className="system-md-semibold-uppercase text-text-secondary">{t('inputs.userInputField', { ns: 'appDebug' })}</div>
-            {userInputFieldCollapse && <RiArrowRightSLine className="h-4 w-4 text-text-secondary" />}
-            {!userInputFieldCollapse && <RiArrowDownSLine className="h-4 w-4 text-text-secondary" />}
-          </div>
+            {userInputFieldCollapse && <RiArrowRightSLine className="h-4 w-4 text-text-secondary" aria-hidden="true" />}
+            {!userInputFieldCollapse && <RiArrowDownSLine className="h-4 w-4 text-text-secondary" aria-hidden="true" />}
+          </button>
           {!userInputFieldCollapse && (
             <div className="mt-1 system-xs-regular text-text-tertiary">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
           )}
@@ -156,14 +160,26 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     )}
                     {type === 'select' && (
                       <Select
-                        className="w-full"
-                        defaultValue={inputs[key] as string}
-                        onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                        items={(options || []).map(i => ({ name: i, value: i }))}
-                        allowSearch={false}
-                        bgClassName="bg-gray-50"
+                        value={inputs[key] ? String(inputs[key]) : null}
                         disabled={readonly}
-                      />
+                        onValueChange={(nextValue) => {
+                          if (!nextValue)
+                            return
+                          handleInputValueChange(key, nextValue)
+                        }}
+                      >
+                        <SelectTrigger className="w-full bg-gray-50">
+                          {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(options || []).map(option => (
+                            <SelectItem key={option} value={option}>
+                              <SelectItemText>{option}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                     {type === 'number' && (
                       <Input
@@ -212,16 +228,23 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
           <div className="flex justify-between border-t border-divider-subtle p-4 pt-3">
             <Button className="w-[72px]" disabled={readonly} onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
             {canNotRun && (
-              <Tooltip popupContent={t('otherError.promptNoBeEmpty', { ns: 'appDebug' })}>
-                <Button
-                  variant="primary"
-                  disabled={canNotRun || readonly}
-                  onClick={() => onSend?.()}
-                  className="w-[96px]"
-                >
-                  <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  {t('inputs.run', { ns: 'appDebug' })}
-                </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <Button
+                      variant="primary"
+                      disabled={canNotRun || readonly}
+                      onClick={() => onSend?.()}
+                      className="w-[96px]"
+                    >
+                      <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                      {t('inputs.run', { ns: 'appDebug' })}
+                    </Button>
+                  )}
+                />
+                <TooltipContent>
+                  {t('otherError.promptNoBeEmpty', { ns: 'appDebug' })}
+                </TooltipContent>
               </Tooltip>
             )}
             {!canNotRun && (

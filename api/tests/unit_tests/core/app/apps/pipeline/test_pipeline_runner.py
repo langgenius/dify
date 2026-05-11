@@ -22,6 +22,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
@@ -126,17 +127,14 @@ def test_update_document_status_on_failure(mocker, runner):
     session.commit.assert_called_once()
 
 
-def test_run_pipeline_not_found(mocker):
+def test_run_pipeline_not_found(mocker: MockerFixture):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.invoke_from = InvokeFrom.WEB_APP
     app_generate_entity.single_iteration_run = None
     app_generate_entity.single_loop_run = None
 
-    query = MagicMock()
-    query.where.return_value.first.return_value = None
-
     session = MagicMock()
-    session.query.return_value = query
+    session.get.side_effect = [None, None]
     mocker.patch.object(module.db, "session", session)
 
     runner = PipelineRunner(
@@ -153,15 +151,13 @@ def test_run_pipeline_not_found(mocker):
         runner.run()
 
 
-def test_run_workflow_not_initialized(mocker):
+def test_run_workflow_not_initialized(mocker: MockerFixture):
     app_generate_entity = _build_app_generate_entity()
 
     pipeline = MagicMock(id="pipe")
-    query_pipeline = MagicMock()
-    query_pipeline.where.return_value.first.return_value = pipeline
 
     session = MagicMock()
-    session.query.return_value = query_pipeline
+    session.get.side_effect = [None, pipeline]
     mocker.patch.object(module.db, "session", session)
 
     runner = PipelineRunner(
@@ -179,7 +175,7 @@ def test_run_workflow_not_initialized(mocker):
         runner.run()
 
 
-def test_run_single_iteration_path(mocker):
+def test_run_single_iteration_path(mocker: MockerFixture):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.single_iteration_run = MagicMock()
 
@@ -228,7 +224,7 @@ def test_run_single_iteration_path(mocker):
     runner._handle_event.assert_called()
 
 
-def test_run_normal_path_builds_graph(mocker):
+def test_run_normal_path_builds_graph(mocker: MockerFixture):
     app_generate_entity = _build_app_generate_entity()
 
     pipeline = MagicMock(id="pipe")

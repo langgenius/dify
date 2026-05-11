@@ -7,12 +7,14 @@ import type {
   ExternalToolBlockType,
   HistoryBlockType,
   LastRunBlockType,
+  MenuTextMatch,
   QueryBlockType,
   RequestURLBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
 } from '../../types'
 import type { PickerBlockMenuOption } from './menu'
+import type { EventEmitterValue } from '@/context/event-emitter'
 import {
   flip,
   offset,
@@ -38,7 +40,7 @@ import {
 } from 'react'
 import ReactDOM from 'react-dom'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
-import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import VarReferenceVars, { VAR_REFERENCE_CHILD_POPUP_CLASS_NAME } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useBasicTypeaheadTriggerMatch } from '../../hooks'
 import { $splitNodeContainingQuery } from '../../utils'
@@ -89,14 +91,14 @@ const ComponentPicker = ({
     ],
   })
   const [editor] = useLexicalComposerContext()
-  const triggerMatchRef = useRef<string | null>(null)
+  const triggerMatchRef = useRef<MenuTextMatch | null>(null)
   const baseCheckForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
     maxLength: 75,
   })
   const checkForTriggerMatch = useCallback((text: string, editor: LexicalEditor) => {
     const match = baseCheckForTriggerMatch(text, editor)
-    triggerMatchRef.current = match?.matchingString ?? null
+    triggerMatchRef.current = match
     return match
   }, [baseCheckForTriggerMatch])
 
@@ -118,7 +120,9 @@ const ComponentPicker = ({
         (event) => {
           clearBlurTimer()
           const target = event?.relatedTarget as HTMLElement
-          if (!target?.classList?.contains('var-search-input'))
+          const isVariableMenuTarget = target?.classList?.contains('var-search-input')
+            || target?.closest?.(`.${VAR_REFERENCE_CHILD_POPUP_CLASS_NAME}`)
+          if (!isVariableMenuTarget)
             blurTimerRef.current = setTimeout(() => setBlurHidden(true), 200)
           return false
         },
@@ -142,8 +146,8 @@ const ComponentPicker = ({
     }
   }, [editor, clearBlurTimer])
 
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND)
+  eventEmitter?.useSubscription((v: EventEmitterValue) => {
+    if (typeof v !== 'string' && v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND && typeof v.payload === 'string')
       editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, `{{${v.payload}}}`)
   })
 
@@ -183,7 +187,8 @@ const ComponentPicker = ({
 
   const handleSelectWorkflowVariable = useCallback((variables: string[]) => {
     editor.update(() => {
-      const needRemove = $splitNodeContainingQuery(checkForTriggerMatch(triggerString, editor)!)
+      const currentTriggerMatch = triggerMatchRef.current ?? checkForTriggerMatch(triggerString, editor)
+      const needRemove = currentTriggerMatch ? $splitNodeContainingQuery(currentTriggerMatch) : null
       if (needRemove)
         needRemove.remove()
     })
@@ -214,7 +219,7 @@ const ComponentPicker = ({
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
-    const effectiveQueryString = triggerMatchRef.current ?? queryString
+    const effectiveQueryString = triggerMatchRef.current?.matchingString ?? queryString
 
     if (blurHidden)
       return null
@@ -301,7 +306,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [blurHidden, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
+  }, [blurHidden, allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, triggerString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
 
   return (
     <LexicalTypeaheadMenuPlugin

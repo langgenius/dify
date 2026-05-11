@@ -29,10 +29,9 @@ describe('TopKItem', () => {
     })
 
     it('should render tooltip trigger', () => {
-      const { container } = render(<TopKItem {...defaultProps} />)
+      render(<TopKItem {...defaultProps} />)
 
-      // Tooltip trigger icon should be rendered
-      expect(container.querySelector('[data-state]')).toBeInTheDocument()
+      expect(screen.getByLabelText('appDebug.datasetConfig.top_kTip')).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {

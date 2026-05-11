@@ -24,10 +24,6 @@ def app():
     return app
 
 
-def _mock_wraps_db(mock_db):
-    mock_db.session.query.return_value.first.return_value = MagicMock()
-
-
 def _build_account(email: str, account_id: str = "acc", tenant: object | None = None) -> Account:
     tenant_obj = tenant if tenant is not None else SimpleNamespace(id="tenant-id")
     account = Account(name=account_id, email=email)
@@ -62,9 +58,8 @@ class TestChangeEmailSend:
         mock_get_change_data,
         mock_current_account,
         mock_db,
-        app,
+        app: Flask,
     ):
-        _mock_wraps_db(mock_db)
         mock_features.return_value = SimpleNamespace(enable_change_email=True)
         mock_account = _build_account("current@example.com", "acc1")
         mock_current_account.return_value = (mock_account, None)
@@ -112,12 +107,11 @@ class TestChangeEmailSend:
         mock_get_change_data,
         mock_current_account,
         mock_db,
-        app,
+        app: Flask,
     ):
         """GHSA-4q3w-q5mc-45rq: a phase-1 token must not unlock the new-email send step."""
         from controllers.console.auth.error import InvalidTokenError
 
-        _mock_wraps_db(mock_db)
         mock_features.return_value = SimpleNamespace(enable_change_email=True)
         mock_account = _build_account("current@example.com", "acc1")
         mock_current_account.return_value = (mock_account, None)
@@ -161,9 +155,8 @@ class TestChangeEmailValidity:
         mock_reset_rate,
         mock_current_account,
         mock_db,
-        app,
+        app: Flask,
     ):
-        _mock_wraps_db(mock_db)
         mock_features.return_value = SimpleNamespace(enable_change_email=True)
         mock_account = _build_account("user@example.com", "acc2")
         mock_current_account.return_value = (mock_account, None)
@@ -221,9 +214,8 @@ class TestChangeEmailValidity:
         mock_reset_rate,
         mock_current_account,
         mock_db,
-        app,
+        app: Flask,
     ):
-        _mock_wraps_db(mock_db)
         mock_features.return_value = SimpleNamespace(enable_change_email=True)
         mock_current_account.return_value = (_build_account("old@example.com", "acc"), None)
         mock_is_rate_limit.return_value = False
@@ -275,12 +267,11 @@ class TestChangeEmailValidity:
         mock_reset_rate,
         mock_current_account,
         mock_db,
-        app,
+        app: Flask,
     ):
         """A token whose phase marker is a string but not a known transition must be rejected."""
         from controllers.console.auth.error import InvalidTokenError
 
-        _mock_wraps_db(mock_db)
         mock_features.return_value = SimpleNamespace(enable_change_email=True)
         mock_current_account.return_value = (_build_account("old@example.com", "acc"), None)
         mock_is_rate_limit.return_value = False
@@ -325,12 +316,11 @@ class TestChangeEmailValidity:
         mock_reset_rate,
         mock_current_account,
         mock_db,
-        app,
+        app: Flask,
     ):
         """A token minted without a phase marker (e.g. a hand-crafted token) must not validate."""
         from controllers.console.auth.error import InvalidTokenError
 
-        _mock_wraps_db(mock_db)
         mock_features.return_value = SimpleNamespace(enable_change_email=True)
         mock_current_account.return_value = (_build_account("old@example.com", "acc"), None)
         mock_is_rate_limit.return_value = False
@@ -376,9 +366,8 @@ class TestChangeEmailReset:
         mock_send_notify,
         mock_current_account,
         mock_db,
-        app,
+        app: Flask,
     ):
-        _mock_wraps_db(mock_db)
         mock_features.return_value = SimpleNamespace(enable_change_email=True)
         current_user = _build_account("old@example.com", "acc3")
         mock_current_account.return_value = (current_user, None)
@@ -429,12 +418,11 @@ class TestChangeEmailReset:
         mock_send_notify,
         mock_current_account,
         mock_db,
-        app,
+        app: Flask,
     ):
         """GHSA-4q3w-q5mc-45rq PoC: phase-1 token must not be usable against /reset."""
         from controllers.console.auth.error import InvalidTokenError
 
-        _mock_wraps_db(mock_db)
         mock_features.return_value = SimpleNamespace(enable_change_email=True)
         current_user = _build_account("old@example.com", "acc3")
         mock_current_account.return_value = (current_user, None)
@@ -483,12 +471,11 @@ class TestChangeEmailReset:
         mock_send_notify,
         mock_current_account,
         mock_db,
-        app,
+        app: Flask,
     ):
         """A verified token for address A must not be replayed to change to address B."""
         from controllers.console.auth.error import InvalidTokenError
 
-        _mock_wraps_db(mock_db)
         mock_features.return_value = SimpleNamespace(enable_change_email=True)
         current_user = _build_account("old@example.com", "acc3")
         mock_current_account.return_value = (current_user, None)
@@ -560,8 +547,7 @@ class TestAccountServiceSendChangeEmailEmail:
 class TestAccountDeletionFeedback:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.workspace.account.BillingService.update_account_deletion_feedback")
-    def test_should_normalize_feedback_email(self, mock_update, mock_db, app):
-        _mock_wraps_db(mock_db)
+    def test_should_normalize_feedback_email(self, mock_update, mock_db, app: Flask):
         with app.test_request_context(
             "/account/delete/feedback",
             method="POST",
@@ -577,8 +563,7 @@ class TestCheckEmailUnique:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.workspace.account.AccountService.check_email_unique")
     @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
-    def test_should_normalize_email(self, mock_is_freeze, mock_check_unique, mock_db, app):
-        _mock_wraps_db(mock_db)
+    def test_should_normalize_email(self, mock_is_freeze, mock_check_unique, mock_db, app: Flask):
         mock_is_freeze.return_value = False
         mock_check_unique.return_value = True
 

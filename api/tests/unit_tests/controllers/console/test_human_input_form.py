@@ -122,6 +122,35 @@ def test_post_form_invalid_recipient_type(app, monkeypatch: pytest.MonkeyPatch) 
             handler(api, form_token="token")
 
 
+def test_post_form_rejects_webapp_recipient_type(app, monkeypatch: pytest.MonkeyPatch) -> None:
+    form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.STANDALONE_WEB_APP)
+
+    class _ServiceStub:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def get_form_by_token(self, _token):
+            return form
+
+    monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
+    monkeypatch.setattr(
+        "controllers.console.human_input_form.current_account_with_tenant",
+        lambda: (SimpleNamespace(id="user-1"), "tenant-1"),
+    )
+    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
+
+    api = ConsoleHumanInputFormApi()
+    handler = _unwrap(api.post)
+
+    with app.test_request_context(
+        "/console/api/form/human_input/token",
+        method="POST",
+        json={"inputs": {"content": "ok"}, "action": "approve"},
+    ):
+        with pytest.raises(NotFoundError):
+            handler(api, form_token="token")
+
+
 def test_post_form_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
     submit_mock = Mock()
     form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.CONSOLE)

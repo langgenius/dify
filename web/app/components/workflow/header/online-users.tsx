@@ -72,10 +72,10 @@ const OnlineUsers = () => {
     const isCurrentUser = user.user_id === currentUserId
 
     return (
-      <span className={cn('inline-flex items-center gap-1', baseClassName)}>
-        <span>{baseName}</span>
+      <span className={cn('inline-flex min-w-0 items-center gap-1', baseClassName)}>
+        <span className="truncate">{baseName}</span>
         {isCurrentUser && (
-          <span className={suffixClassName}>
+          <span className={cn('shrink-0', suffixClassName)}>
             {currentUserSuffix}
           </span>
         )}
@@ -156,11 +156,11 @@ const OnlineUsers = () => {
                 <TooltipContent
                   placement="bottom"
                   sideOffset={4}
-                  className="flex h-[28px] w-[85px] items-center justify-center gap-1 rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-[6px] shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
+                  className="flex h-[28px] max-w-[220px] min-w-0 items-center justify-center rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-[6px] shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
                 >
                   {renderDisplayName(
                     user,
-                    'system-xs-medium text-text-secondary',
+                    'max-w-full system-xs-medium text-text-secondary',
                     'text-text-quaternary',
                   )}
                 </TooltipContent>
@@ -189,7 +189,6 @@ const OnlineUsers = () => {
                 placement="bottom-start"
                 sideOffset={8}
                 alignOffset={-48}
-                className="z-[9999]"
                 popupClassName={cn(
                   'mt-1.5 flex max-h-[200px] w-[240px] flex-col overflow-y-auto',
                   'rounded-xl border-[0.5px] border-components-panel-border',

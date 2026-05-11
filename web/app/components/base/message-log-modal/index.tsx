@@ -58,9 +58,14 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       ref={ref}
     >
       <h1 className="shrink-0 px-4 py-1 system-xl-semibold text-text-primary">{t('runDetail.title', { ns: 'appLog' })}</h1>
-      <span className="absolute top-4 right-3 z-20 cursor-pointer p-1" onClick={onCancel} data-testid="close-button">
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-      </span>
+      <button
+        type="button"
+        aria-label={t('operation.close', { ns: 'common' })}
+        className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        onClick={onCancel}
+      >
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+      </button>
       <Run
         hideResult
         activeTab={defaultTab as any}

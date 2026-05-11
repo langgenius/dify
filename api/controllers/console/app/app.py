@@ -1,13 +1,16 @@
 import logging
+import re
 import uuid
 from datetime import datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.helpers import FileInfo
@@ -23,6 +26,7 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
+from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -35,7 +39,7 @@ from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
-from services.app_service import AppService
+from services.app_service import AppListParams, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -57,6 +61,7 @@ ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "co
 register_enum_models(console_ns, IconType)
 
 _logger = logging.getLogger(__name__)
+_TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 
 
 class AppListQuery(BaseModel):
@@ -66,22 +71,19 @@ class AppListQuery(BaseModel):
         default="all", description="App mode filter"
     )
     name: str | None = Field(default=None, description="Filter by app name")
-    tag_ids: list[str] | None = Field(default=None, description="Comma-separated tag IDs")
+    tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     is_created_by_me: bool | None = Field(default=None, description="Filter by creator")
 
     @field_validator("tag_ids", mode="before")
     @classmethod
-    def validate_tag_ids(cls, value: str | list[str] | None) -> list[str] | None:
+    def validate_tag_ids(cls, value: list[str] | None) -> list[str] | None:
         if not value:
             return None
 
-        if isinstance(value, str):
-            items = [item.strip() for item in value.split(",") if item.strip()]
-        elif isinstance(value, list):
-            items = [str(item).strip() for item in value if item and str(item).strip()]
-        else:
-            raise TypeError("Unsupported tag_ids type.")
+        if not isinstance(value, list):
+            raise ValueError("Unsupported tag_ids type.")
 
+        items = [str(item).strip() for item in value if item and str(item).strip()]
         if not items:
             return None
 
@@ -89,6 +91,26 @@ class AppListQuery(BaseModel):
             return [str(uuid.UUID(item)) for item in items]
         except ValueError as exc:
             raise ValueError("Invalid UUID format in tag_ids.") from exc
+
+
+def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
+    normalized: dict[str, str | list[str]] = {}
+    indexed_tag_ids: list[tuple[int, str]] = []
+
+    for key in query_args:
+        match = _TAG_IDS_BRACKET_PATTERN.fullmatch(key)
+        if match:
+            indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
+            continue
+
+        value = query_args.get(key)
+        if value is not None:
+            normalized[key] = value
+
+    if indexed_tag_ids:
+        normalized["tag_ids"] = [value for _, value in sorted(indexed_tag_ids)]
+
+    return normalized
 
 
 class CreateAppPayload(BaseModel):
@@ -455,12 +477,19 @@ class AppListApi(Resource):
         """Get app list"""
         current_user, current_tenant_id = current_account_with_tenant()
 
-        args = AppListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        args_dict = args.model_dump()
+        args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
+        params = AppListParams(
+            page=args.page,
+            limit=args.limit,
+            mode=args.mode,
+            name=args.name,
+            tag_ids=args.tag_ids,
+            is_created_by_me=args.is_created_by_me,
+        )
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, args_dict)
+        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, params)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
@@ -524,9 +553,17 @@ class AppListApi(Resource):
         """Create app"""
         current_user, current_tenant_id = current_account_with_tenant()
         args = CreateAppPayload.model_validate(console_ns.payload)
+        params = CreateAppParams(
+            name=args.name,
+            description=args.description,
+            mode=args.mode,
+            icon_type=args.icon_type,
+            icon=args.icon,
+            icon_background=args.icon_background,
+        )
 
         app_service = AppService()
-        app = app_service.create_app(current_tenant_id, args.model_dump(), current_user)
+        app = app_service.create_app(current_tenant_id, params, current_user)
         app_detail = AppDetail.model_validate(app, from_attributes=True)
         return app_detail.model_dump(mode="json"), 201
 
@@ -680,7 +717,7 @@ class AppExportApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         """Export app"""
-        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
         payload = AppExportResponse(
             data=AppDslService.export_dsl(
@@ -690,6 +727,32 @@ class AppExportApi(Resource):
             )
         )
         return payload.model_dump(mode="json")
+
+
+@console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
+class AppPublishToCreatorsPlatformApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=None)
+    @edit_permission_required
+    def post(self, app_model):
+        """Publish app to Creators Platform"""
+        from configs import dify_config
+        from core.helper.creators import get_redirect_url, upload_dsl
+
+        if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
+            return {"error": "Creators Platform features are not enabled"}, 403
+
+        current_user, _ = current_account_with_tenant()
+
+        dsl_content = AppDslService.export_dsl(app_model=app_model, include_secret=False)
+        dsl_bytes = dsl_content.encode("utf-8")
+
+        claim_code = upload_dsl(dsl_bytes)
+        redirect_url = get_redirect_url(str(current_user.id), claim_code)
+
+        return {"redirect_url": redirect_url}
 
 
 @console_ns.route("/apps/<uuid:app_id>/name")
@@ -793,9 +856,10 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    def get(self, app_id: UUID):
         """Get app trace"""
-        app_trace_config = OpsTraceManager.get_app_tracing_config(app_id=app_id)
+        with session_factory.create_session() as session:
+            app_trace_config = OpsTraceManager.get_app_tracing_config(str(app_id), session)
 
         return app_trace_config
 
@@ -809,12 +873,12 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    def post(self, app_id):
+    def post(self, app_id: UUID):
         # add app trace
         args = AppTracePayload.model_validate(console_ns.payload)
 
         OpsTraceManager.update_app_tracing_config(
-            app_id=app_id,
+            app_id=str(app_id),
             enabled=args.enabled,
             tracing_provider=args.tracing_provider,
         )

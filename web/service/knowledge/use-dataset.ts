@@ -27,7 +27,7 @@ import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'dataset'
 
-const DatasetListKey = [NAME_SPACE, 'list']
+const datasetListQueryKey = [NAME_SPACE, 'list']
 
 const normalizeDatasetsParams = (params: Partial<FetchDatasetsParams['params']> = {}) => {
   const {
@@ -62,17 +62,16 @@ export const useInfiniteDatasets = (
   options?: UseInfiniteDatasetsOptions,
 ) => {
   const normalizedParams = normalizeDatasetsParams(params)
-  const buildUrl = (pageParam: number | undefined) => {
-    const queryString = qs.stringify({
-      ...normalizedParams,
-      page: pageParam ?? normalizedParams.page,
-    }, { indices: false })
-    return `/datasets?${queryString}`
-  }
 
   return useInfiniteQuery<DataSetListResponse>({
-    queryKey: [...DatasetListKey, 'infinite', normalizedParams],
-    queryFn: ({ pageParam = normalizedParams.page }) => get<DataSetListResponse>(buildUrl(pageParam as number | undefined)),
+    queryKey: [...datasetListQueryKey, 'infinite', normalizedParams],
+    queryFn: ({ pageParam = normalizedParams.page }) => {
+      const queryString = qs.stringify({
+        ...normalizedParams,
+        page: pageParam as number | undefined,
+      }, { indices: false })
+      return get<DataSetListResponse>(`/datasets?${queryString}`)
+    },
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: normalizedParams.page,
     staleTime: 0,
@@ -84,7 +83,7 @@ export const useInfiniteDatasets = (
 export const useDatasetList = (params: DatasetListRequest) => {
   const { initialPage, tag_ids, limit, include_all, keyword } = params
   return useInfiniteQuery({
-    queryKey: [...DatasetListKey, initialPage, tag_ids, limit, include_all, keyword],
+    queryKey: [...datasetListQueryKey, initialPage, tag_ids, limit, include_all, keyword],
     queryFn: ({ pageParam = 1 }) => {
       const urlParams = qs.stringify({
         tag_ids,
@@ -101,7 +100,7 @@ export const useDatasetList = (params: DatasetListRequest) => {
 }
 
 export const useInvalidDatasetList = () => {
-  return useInvalid([...DatasetListKey])
+  return useInvalid([...datasetListQueryKey])
 }
 
 export const datasetDetailQueryKeyPrefix = [NAME_SPACE, 'detail']

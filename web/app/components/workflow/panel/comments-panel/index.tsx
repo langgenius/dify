@@ -1,4 +1,4 @@
-import type { WorkflowCommentList } from '@/service/workflow-comment'
+import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiCheckboxCircleFill, RiCheckboxCircleLine, RiCheckLine, RiCloseLine, RiFilter3Line } from '@remixicon/react'
@@ -6,14 +6,11 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useWorkflowComment } from '@/app/components/workflow/hooks/use-workflow-comment'
 import { useStore } from '@/app/components/workflow/store'
 import { ControlMode } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useParams } from '@/next/navigation'
-import { resolveWorkflowComment } from '@/service/workflow-comment'
 
 const CommentsPanel = () => {
   const { t } = useTranslation()
@@ -22,9 +19,7 @@ const CommentsPanel = () => {
   const setControlMode = useStore(s => s.setControlMode)
   const showResolvedComments = useStore(s => s.showResolvedComments)
   const setShowResolvedComments = useStore(s => s.setShowResolvedComments)
-  const { comments, loading, loadComments, handleCommentIconClick } = useWorkflowComment()
-  const params = useParams()
-  const appId = params.appId as string
+  const { comments, loading, handleCommentIconClick, handleCommentResolve } = useWorkflowComment()
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   const [showOnlyMine, setShowOnlyMine] = useState(false)
@@ -48,20 +43,14 @@ const CommentsPanel = () => {
   const handleResolve = useCallback(async (comment: WorkflowCommentList) => {
     if (comment.resolved)
       return
-    if (!appId)
-      return
     try {
-      await resolveWorkflowComment(appId, comment.id)
-
-      collaborationManager.emitCommentsUpdate(appId)
-
-      await loadComments()
+      await handleCommentResolve(comment.id)
       setActiveCommentId(comment.id)
     }
     catch (e) {
       console.error('Resolve comment failed', e)
     }
-  }, [appId, loadComments, setActiveCommentId])
+  }, [handleCommentResolve, setActiveCommentId])
 
   const hasActiveFilter = showOnlyMine || !showResolvedComments
 
@@ -172,7 +161,7 @@ const CommentsPanel = () => {
                 {/* Header row: creator + time */}
                 <div className="flex items-start">
                   <div className="flex min-w-0 items-center gap-2">
-                    <div className="truncate system-sm-medium text-text-primary">{c.created_by_account.name}</div>
+                    <div className="truncate system-sm-medium text-text-primary">{c.created_by_account?.name ?? ''}</div>
                     <div className="shrink-0 system-2xs-regular text-text-tertiary">
                       {formatTimeFromNow(c.updated_at * 1000)}
                     </div>

@@ -1,16 +1,15 @@
-import type { Option } from '@/app/components/base/select/custom'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiAddLine, RiEqualizer2Line } from '@remixicon/react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionButton, ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import CustomSelect from '@/app/components/base/select/custom'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { useInitiateTriggerOAuth, useTriggerOAuthConfig, useTriggerProviderInfo } from '@/service/use-triggers'
 import { SupportedCreationMethods } from '../../../types'
@@ -28,13 +27,23 @@ type Props = {
 
 const MAX_COUNT = 10
 
+type CreateTypeOption = {
+  value: SupportedCreationMethods
+  label: string
+  show: boolean
+  extra?: React.ReactNode
+  tag?: React.ReactNode
+}
+
 export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BUTTON, shape = 'square' }: Props) => {
   const { t } = useTranslation()
   const { subscriptions } = useSubscriptionList()
   const subscriptionCount = subscriptions?.length || 0
   const [selectedCreateInfo, setSelectedCreateInfo] = useState<{ type: SupportedCreationMethods, builder?: TriggerSubscriptionBuilder } | null>(null)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   const detail = usePluginStore(state => state.detail)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
   const supportedMethods = useMemo(() => providerInfo?.supported_creation_methods || [], [providerInfo?.supported_creation_methods])
@@ -60,10 +69,21 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
   const onClickClientSettings = useCallback((e: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
     e.stopPropagation()
     e.preventDefault()
+    setIsMenuOpen(false)
     showClientSettingsModal()
   }, [showClientSettingsModal])
 
-  const allOptions = useMemo(() => {
+  const handleClientSettingsOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      showClientSettingsModal()
+      return
+    }
+
+    hideClientSettingsModal()
+    refetchOAuthConfig()
+  }, [hideClientSettingsModal, refetchOAuthConfig, showClientSettingsModal])
+
+  const allOptions = useMemo<CreateTypeOption[]>(() => {
     const showCustomBadge = oauthConfig?.custom_enabled && oauthConfig?.custom_configured
 
     return [
@@ -78,10 +98,20 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
               </Badge>
             ),
         extra: (
-          <Tooltip popupContent={t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}>
-            <ActionButton onClick={onClickClientSettings}>
-              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
-            </ActionButton>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <ActionButton
+                  aria-label={t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}
+                  onClick={onClickClientSettings}
+                >
+                  <span aria-hidden className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+                </ActionButton>
+              )}
+            />
+            <TooltipContent>
+              {t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}
+            </TooltipContent>
           </Tooltip>
         ),
         show: supportedMethods.includes(SupportedCreationMethods.OAUTH),
@@ -94,11 +124,32 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       {
         value: SupportedCreationMethods.MANUAL,
         label: t('subscription.addType.options.manual.description', { ns: 'pluginTrigger' }),
-        extra: <Tooltip popupContent={t('subscription.addType.options.manual.tip', { ns: 'pluginTrigger' })} />,
+        extra: (
+          <Infotip
+            aria-label={t('subscription.addType.options.manual.tip', { ns: 'pluginTrigger' })}
+            className="h-3.5 w-3.5"
+            iconClassName="h-full w-full"
+          >
+            {t('subscription.addType.options.manual.tip', { ns: 'pluginTrigger' })}
+          </Infotip>
+        ),
         show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
       },
     ]
-  }, [t, oauthConfig, supportedMethods, methodType, onClickClientSettings])
+  }, [t, oauthConfig, supportedMethods, onClickClientSettings])
+  const visibleOptions = useMemo(() => {
+    return allOptions.filter(option => option.show)
+  }, [allOptions])
+  const shouldAllowSelect = methodType === DEFAULT_METHOD || (methodType === SupportedCreationMethods.OAUTH && supportedMethods.length === 1)
+
+  const showCreateModal = useCallback((createInfo: { type: SupportedCreationMethods, builder?: TriggerSubscriptionBuilder }) => {
+    setSelectedCreateInfo(createInfo)
+    setIsCreateModalOpen(true)
+  }, [])
+
+  const hideCreateModal = useCallback(() => {
+    setIsCreateModalOpen(false)
+  }, [])
 
   const onChooseCreateType = async (type: SupportedCreationMethods) => {
     if (type === SupportedCreationMethods.OAUTH) {
@@ -108,7 +159,10 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
             openOAuthPopup(response.authorization_url, (callbackData) => {
               if (callbackData) {
                 toast.success(t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }))
-                setSelectedCreateInfo({ type: SupportedCreationMethods.OAUTH, builder: response.subscription_builder })
+                showCreateModal({
+                  type: SupportedCreationMethods.OAUTH,
+                  builder: response.subscription_builder,
+                })
               }
             })
           },
@@ -122,8 +176,19 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       }
     }
     else {
-      setSelectedCreateInfo({ type })
+      showCreateModal({
+        type,
+      })
     }
+  }
+
+  const handleCreateTypeChange = (value: string | null) => {
+    const option = visibleOptions.find(item => item.value === value)
+    if (!option)
+      return
+
+    setIsMenuOpen(false)
+    void onChooseCreateType(option.value)
   }
 
   const onClickCreate = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -145,24 +210,18 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
 
   return (
     <>
-      <CustomSelect<Option & { show: boolean, extra?: React.ReactNode, tag?: React.ReactNode }>
-        options={allOptions.filter(option => option.show)}
-        value={methodType}
-        onChange={value => onChooseCreateType(value as SupportedCreationMethods)}
-        containerProps={{
-          open: (methodType === DEFAULT_METHOD || (methodType === SupportedCreationMethods.OAUTH && supportedMethods.length === 1)) ? undefined : false,
-          placement: 'bottom-start',
-          offset: 4,
-          triggerPopupSameWidth: buttonType === CreateButtonType.FULL_BUTTON,
-        }}
-        triggerProps={{
-          className: cn('h-8 bg-transparent px-0 hover:bg-transparent', methodType !== DEFAULT_METHOD && supportedMethods.length > 1 && 'pointer-events-none', buttonType === CreateButtonType.FULL_BUTTON && 'grow'),
-        }}
-        popupProps={{
-          wrapperClassName: 'z-1000',
-        }}
-        CustomTrigger={() => {
-          return buttonType === CreateButtonType.FULL_BUTTON
+      <Select
+        value={methodType === DEFAULT_METHOD ? null : methodType}
+        open={shouldAllowSelect ? isMenuOpen : false}
+        onOpenChange={setIsMenuOpen}
+        onValueChange={handleCreateTypeChange}
+      >
+        <SelectTrigger
+          render={<div />}
+          nativeButton={false}
+          className={cn('h-8 border-0 bg-transparent px-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden', buttonType === CreateButtonType.FULL_BUTTON && 'grow')}
+        >
+          {buttonType === CreateButtonType.FULL_BUTTON
             ? (
                 <Button
                   variant="primary"
@@ -171,7 +230,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                   onClick={onClickCreate}
                 >
                   <div className="flex flex-1 items-center justify-center">
-                    <RiAddLine className="mr-2 size-4" />
+                    <span aria-hidden className="mr-2 i-ri-add-line size-4" />
                     {buttonTextMap[methodType!]}
                     {methodType === SupportedCreationMethods.OAUTH && oauthConfig?.custom_enabled && oauthConfig?.custom_configured && (
                       <Badge
@@ -185,62 +244,84 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                     && (
                       <div className="ml-auto flex items-center">
                         <div className="h-4 w-px bg-text-primary-on-surface opacity-15" />
-                        <Tooltip popupContent={t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}>
-                          <div onClick={onClickClientSettings} className="p-2">
-                            <RiEqualizer2Line className="size-4 text-components-button-primary-text" />
-                          </div>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={(
+                              <div onClick={onClickClientSettings} className="p-2">
+                                <span aria-hidden className="i-ri-equalizer-2-line size-4 text-components-button-primary-text" />
+                              </div>
+                            )}
+                          />
+                          <TooltipContent>
+                            {t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}
+                          </TooltipContent>
                         </Tooltip>
                       </div>
                     )}
                 </Button>
               )
             : (
-                <Tooltip
-                  popupContent={subscriptionCount >= MAX_COUNT ? t('subscription.maxCount', { ns: 'pluginTrigger', num: MAX_COUNT }) : t(`subscription.addType.options.${methodType!.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`, { ns: 'pluginTrigger' })}
-                  disabled={!(supportedMethods?.length === 1 || subscriptionCount >= MAX_COUNT)}
-                >
-                  <ActionButton
-                    onClick={onClickCreate}
-                    className={cn(
-                      'float-right',
-                      shape === 'circle' && 'rounded-full! border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs hover:border-components-button-secondary-border-disabled hover:bg-components-button-secondary-bg-disabled hover:text-components-button-secondary-accent-text-disabled',
+                <Tooltip>
+                  <TooltipTrigger
+                    disabled={!(supportedMethods?.length === 1 || subscriptionCount >= MAX_COUNT)}
+                    render={(
+                      <ActionButton
+                        aria-label={buttonTextMap[methodType!]}
+                        onClick={onClickCreate}
+                        className={cn(
+                          'float-right',
+                          shape === 'circle' && 'rounded-full! border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg-hover text-components-button-secondary-accent-text shadow-xs hover:border-components-button-secondary-border-disabled hover:bg-components-button-secondary-bg-disabled hover:text-components-button-secondary-accent-text-disabled',
+                        )}
+                        state={subscriptionCount >= MAX_COUNT ? ActionButtonState.Disabled : ActionButtonState.Default}
+                      >
+                        <span aria-hidden className="i-ri-add-line size-4" />
+                      </ActionButton>
                     )}
-                    state={subscriptionCount >= MAX_COUNT ? ActionButtonState.Disabled : ActionButtonState.Default}
-                  >
-                    <RiAddLine className="size-4" />
-                  </ActionButton>
+                  />
+                  <TooltipContent>
+                    {subscriptionCount >= MAX_COUNT ? t('subscription.maxCount', { ns: 'pluginTrigger', num: MAX_COUNT }) : t(`subscription.addType.options.${methodType!.toLowerCase() as Lowercase<SupportedCreationMethods>}.description`, { ns: 'pluginTrigger' })}
+                  </TooltipContent>
                 </Tooltip>
-              )
-        }}
-        CustomOption={option => (
-          <>
-            <div className="mr-8 flex grow items-center gap-1 truncate px-1">
-              {option.label}
-              {option.tag}
-            </div>
-            {option.extra}
-          </>
-        )}
-      />
-      {selectedCreateInfo && (
-        <CommonCreateModal
-          createType={selectedCreateInfo.type}
-          builder={selectedCreateInfo.builder}
-          onClose={() => setSelectedCreateInfo(null)}
-        />
-      )}
-      {isShowClientSettingsModal && (
-        <OAuthClientSettingsModal
-          oauthConfig={oauthConfig}
-          onClose={() => {
-            hideClientSettingsModal()
-            refetchOAuthConfig()
-          }}
-          showOAuthCreateModal={builder => setSelectedCreateInfo({ type: SupportedCreationMethods.OAUTH, builder })}
-        />
-      )}
+              )}
+        </SelectTrigger>
+        <SelectContent placement="bottom-start" sideOffset={4}>
+          {visibleOptions.map(option => (
+            <SelectItem key={option.value} value={option.value}>
+              <div className="mr-8 flex grow items-center gap-1 truncate px-1">
+                {option.label}
+                {option.tag}
+              </div>
+              {option.extra}
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {selectedCreateInfo
+        ? (
+            <CommonCreateModal
+              open={isCreateModalOpen}
+              createType={selectedCreateInfo.type}
+              builder={selectedCreateInfo.builder}
+              onClose={hideCreateModal}
+            />
+          )
+        : null}
+      {isShowClientSettingsModal
+        ? (
+            <OAuthClientSettingsModal
+              open={isShowClientSettingsModal}
+              oauthConfig={oauthConfig}
+              onOpenChange={handleClientSettingsOpenChange}
+              showOAuthCreateModal={(builder) => {
+                showCreateModal({
+                  type: SupportedCreationMethods.OAUTH,
+                  builder,
+                })
+              }}
+            />
+          )
+        : null}
     </>
   )
 }
-
-export { CreateButtonType, DEFAULT_METHOD } from './types'

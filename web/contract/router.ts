@@ -1,6 +1,7 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
+import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
 import { accountAvatarContract } from './console/account'
-import { appDeleteContract, workflowOnlineUsersContract } from './console/apps'
+import { appDeleteContract, appListContract, workflowOnlineUsersContract } from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -17,6 +18,14 @@ import { changePreferredProviderTypeContract, modelProvidersModelsContract } fro
 import { notificationContract, notificationDismissContract } from './console/notification'
 import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
 import { systemFeaturesContract } from './console/system'
+import {
+  tagBindingCreateContract,
+  tagBindingRemoveContract,
+  tagCreateContract,
+  tagDeleteContract,
+  tagListContract,
+  tagUpdateContract,
+} from './console/tags'
 import {
   triggerOAuthConfigContract,
   triggerOAuthConfigureContract,
@@ -42,22 +51,28 @@ import {
   workflowDraftUpdateFeaturesContract,
 } from './console/workflow'
 import { workflowCommentContracts } from './console/workflow-comment'
-import { collectionPluginsContract, collectionsContract, searchAdvancedContract } from './marketplace'
+import { collectionPluginsContract, collectionsContract, searchAdvancedContract, templateDetailContract } from './marketplace'
 
 export const marketplaceRouterContract = {
   collections: collectionsContract,
   collectionPlugins: collectionPluginsContract,
   searchAdvanced: searchAdvancedContract,
+  templateDetail: templateDetailContract,
 }
 
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
 export const consoleRouterContract = {
+  // `enterprise` is the only backend-generated contract wired in here. Community API contracts
+  // are generated too, but backend definitions are not complete enough to consume directly yet,
+  // so those routes stay manually maintained for now.
+  enterprise: enterpriseContract,
   account: {
     avatar: accountAvatarContract,
   },
   systemFeatures: systemFeaturesContract,
   apps: {
+    list: appListContract,
     deleteApp: appDeleteContract,
     workflowOnlineUsers: workflowOnlineUsersContract,
   },
@@ -99,6 +114,14 @@ export const consoleRouterContract = {
   workflowComments: workflowCommentContracts,
   notification: notificationContract,
   notificationDismiss: notificationDismissContract,
+  tags: {
+    list: tagListContract,
+    create: tagCreateContract,
+    update: tagUpdateContract,
+    delete: tagDeleteContract,
+    bind: tagBindingCreateContract,
+    unbind: tagBindingRemoveContract,
+  },
   triggers: {
     list: triggersContract,
     providerInfo: triggerProviderInfoContract,

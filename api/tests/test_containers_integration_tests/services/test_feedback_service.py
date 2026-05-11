@@ -13,11 +13,17 @@ from models.model import App, Conversation, Message
 from services.feedback_service import FeedbackService
 
 
+def _execute_result(rows):
+    result = mock.Mock()
+    result.all.return_value = rows
+    return result
+
+
 class TestFeedbackService:
     """Test FeedbackService methods."""
 
     @pytest.fixture
-    def mock_db_session(self, monkeypatch):
+    def mock_db_session(self, monkeypatch: pytest.MonkeyPatch):
         """Mock database session."""
         mock_session = mock.Mock()
         monkeypatch.setattr(db, "session", mock_session)
@@ -81,25 +87,17 @@ class TestFeedbackService:
 
     def test_export_feedbacks_csv_format(self, mock_db_session, sample_data):
         """Test exporting feedback data in CSV format."""
-
-        # Setup mock query result
-        mock_query = mock.Mock()
-        mock_query.join.return_value = mock_query
-        mock_query.outerjoin.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.filter.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.all.return_value = [
-            (
-                sample_data["user_feedback"],
-                sample_data["message"],
-                sample_data["conversation"],
-                sample_data["app"],
-                sample_data["user_feedback"].from_account,
-            )
-        ]
-
-        mock_db_session.execute.return_value = mock_query
+        mock_db_session.execute.return_value = _execute_result(
+            [
+                (
+                    sample_data["user_feedback"],
+                    sample_data["message"],
+                    sample_data["conversation"],
+                    sample_data["app"],
+                    sample_data["user_feedback"].from_account,
+                )
+            ]
+        )
 
         # Test CSV export
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="csv")
@@ -120,25 +118,17 @@ class TestFeedbackService:
 
     def test_export_feedbacks_json_format(self, mock_db_session, sample_data):
         """Test exporting feedback data in JSON format."""
-
-        # Setup mock query result
-        mock_query = mock.Mock()
-        mock_query.join.return_value = mock_query
-        mock_query.outerjoin.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.filter.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.all.return_value = [
-            (
-                sample_data["admin_feedback"],
-                sample_data["message"],
-                sample_data["conversation"],
-                sample_data["app"],
-                sample_data["admin_feedback"].from_account,
-            )
-        ]
-
-        mock_db_session.execute.return_value = mock_query
+        mock_db_session.execute.return_value = _execute_result(
+            [
+                (
+                    sample_data["admin_feedback"],
+                    sample_data["message"],
+                    sample_data["conversation"],
+                    sample_data["app"],
+                    sample_data["admin_feedback"].from_account,
+                )
+            ]
+        )
 
         # Test JSON export
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="json")
@@ -157,25 +147,17 @@ class TestFeedbackService:
 
     def test_export_feedbacks_with_filters(self, mock_db_session, sample_data):
         """Test exporting feedback with various filters."""
-
-        # Setup mock query result
-        mock_query = mock.Mock()
-        mock_query.join.return_value = mock_query
-        mock_query.outerjoin.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.filter.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.all.return_value = [
-            (
-                sample_data["admin_feedback"],
-                sample_data["message"],
-                sample_data["conversation"],
-                sample_data["app"],
-                sample_data["admin_feedback"].from_account,
-            )
-        ]
-
-        mock_db_session.execute.return_value = mock_query
+        mock_db_session.execute.return_value = _execute_result(
+            [
+                (
+                    sample_data["admin_feedback"],
+                    sample_data["message"],
+                    sample_data["conversation"],
+                    sample_data["app"],
+                    sample_data["admin_feedback"].from_account,
+                )
+            ]
+        )
 
         # Test with filters
         result = FeedbackService.export_feedbacks(
@@ -193,17 +175,7 @@ class TestFeedbackService:
 
     def test_export_feedbacks_no_data(self, mock_db_session, sample_data):
         """Test exporting feedback when no data exists."""
-
-        # Setup mock query result with no data
-        mock_query = mock.Mock()
-        mock_query.join.return_value = mock_query
-        mock_query.outerjoin.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.filter.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.all.return_value = []
-
-        mock_db_session.execute.return_value = mock_query
+        mock_db_session.execute.return_value = _execute_result([])
 
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="csv")
 
@@ -251,24 +223,17 @@ class TestFeedbackService:
             created_at=datetime(2024, 1, 1, 10, 0, 0),
         )
 
-        # Setup mock query result
-        mock_query = mock.Mock()
-        mock_query.join.return_value = mock_query
-        mock_query.outerjoin.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.filter.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.all.return_value = [
-            (
-                sample_data["user_feedback"],
-                long_message,
-                sample_data["conversation"],
-                sample_data["app"],
-                sample_data["user_feedback"].from_account,
-            )
-        ]
-
-        mock_db_session.execute.return_value = mock_query
+        mock_db_session.execute.return_value = _execute_result(
+            [
+                (
+                    sample_data["user_feedback"],
+                    long_message,
+                    sample_data["conversation"],
+                    sample_data["app"],
+                    sample_data["user_feedback"].from_account,
+                )
+            ]
+        )
 
         # Test export
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="json")
@@ -309,24 +274,17 @@ class TestFeedbackService:
             created_at=datetime(2024, 1, 1, 10, 0, 0),
         )
 
-        # Setup mock query result
-        mock_query = mock.Mock()
-        mock_query.join.return_value = mock_query
-        mock_query.outerjoin.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.filter.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.all.return_value = [
-            (
-                chinese_feedback,
-                chinese_message,
-                sample_data["conversation"],
-                sample_data["app"],
-                None,  # No account for user feedback
-            )
-        ]
-
-        mock_db_session.execute.return_value = mock_query
+        mock_db_session.execute.return_value = _execute_result(
+            [
+                (
+                    chinese_feedback,
+                    chinese_message,
+                    sample_data["conversation"],
+                    sample_data["app"],
+                    None,
+                )
+            ]
+        )
 
         # Test export
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="csv")
@@ -339,32 +297,24 @@ class TestFeedbackService:
 
     def test_export_feedbacks_emoji_ratings(self, mock_db_session, sample_data):
         """Test that rating emojis are properly formatted in export."""
-
-        # Setup mock query result with both like and dislike feedback
-        mock_query = mock.Mock()
-        mock_query.join.return_value = mock_query
-        mock_query.outerjoin.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.filter.return_value = mock_query
-        mock_query.order_by.return_value = mock_query
-        mock_query.all.return_value = [
-            (
-                sample_data["user_feedback"],
-                sample_data["message"],
-                sample_data["conversation"],
-                sample_data["app"],
-                sample_data["user_feedback"].from_account,
-            ),
-            (
-                sample_data["admin_feedback"],
-                sample_data["message"],
-                sample_data["conversation"],
-                sample_data["app"],
-                sample_data["admin_feedback"].from_account,
-            ),
-        ]
-
-        mock_db_session.execute.return_value = mock_query
+        mock_db_session.execute.return_value = _execute_result(
+            [
+                (
+                    sample_data["user_feedback"],
+                    sample_data["message"],
+                    sample_data["conversation"],
+                    sample_data["app"],
+                    sample_data["user_feedback"].from_account,
+                ),
+                (
+                    sample_data["admin_feedback"],
+                    sample_data["message"],
+                    sample_data["conversation"],
+                    sample_data["app"],
+                    sample_data["admin_feedback"].from_account,
+                ),
+            ]
+        )
 
         # Test export
         result = FeedbackService.export_feedbacks(app_id=sample_data["app"].id, format_type="json")

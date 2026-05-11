@@ -1,4 +1,4 @@
-import type { Placement } from '@floating-ui/react'
+import type { Placement } from '@langgenius/dify-ui/popover'
 import type { Dayjs } from 'dayjs'
 
 export enum ViewType {
@@ -30,7 +30,6 @@ export type DatePickerProps = {
   triggerWrapClassName?: string
   renderTrigger?: (props: TriggerProps) => React.ReactElement
   minuteFilter?: (minutes: string[]) => string[]
-  popupZIndexClassname?: string
   noConfirm?: boolean
   getIsDateDisabled?: (date: Dayjs) => boolean
 }

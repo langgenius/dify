@@ -13,6 +13,7 @@ export const PopoverTrigger = BasePopover.Trigger
 export const PopoverClose = BasePopover.Close
 export const PopoverTitle = BasePopover.Title
 export const PopoverDescription = BasePopover.Description
+export const createPopoverHandle = BasePopover.createHandle
 
 type PopoverContentProps = {
   children: ReactNode
@@ -50,7 +51,7 @@ export function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-1002 outline-hidden', className)}
+        className={cn('z-50 outline-hidden', className)}
         {...positionerProps}
       >
         <BasePopover.Popup

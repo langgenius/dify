@@ -25,18 +25,22 @@ vi.mock('../model-selector-trigger', () => ({
   },
 }))
 
-vi.mock('../popup', () => ({
-  default: ({ onHide, onSelect }: { onHide: () => void, onSelect: (provider: string, model: ModelItem) => void }) => (
-    <>
-      <button type="button" onClick={() => onSelect('openai', { model: 'gpt-4' } as ModelItem)}>
-        select
-      </button>
-      <button type="button" onClick={onHide}>
-        hide
-      </button>
-    </>
-  ),
-}))
+vi.mock('../popup', async () => {
+  const { ComboboxItem } = await vi.importActual<typeof import('@langgenius/dify-ui/combobox')>('@langgenius/dify-ui/combobox')
+
+  return {
+    default: ({ onHide }: { onHide: () => void }) => (
+      <>
+        <ComboboxItem value={{ provider: 'openai', model: 'gpt-4' }}>
+          select
+        </ComboboxItem>
+        <button type="button" onClick={onHide}>
+          hide
+        </button>
+      </>
+    ),
+  }
+})
 
 const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
   model: 'gpt-4',
@@ -82,7 +86,7 @@ describe('ModelSelector', () => {
   it('should toggle popup and close it after selecting a model', () => {
     renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
 
-    const triggerButton = screen.getByRole('button', { name: 'empty-trigger' })
+    const triggerButton = screen.getByRole('combobox')
 
     fireEvent.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
@@ -96,7 +100,7 @@ describe('ModelSelector', () => {
     const onSelect = vi.fn()
     renderWithQueryClient(<ModelSelector modelList={[makeModel()]} onSelect={onSelect} />)
 
-    fireEvent.click(screen.getByText('empty-trigger'))
+    fireEvent.click(screen.getByRole('combobox'))
     fireEvent.click(screen.getByText('select'))
 
     expect(onSelect).toHaveBeenCalledWith({ provider: 'openai', model: 'gpt-4' })
@@ -105,7 +109,7 @@ describe('ModelSelector', () => {
   it('should close popup when popup requests hide', () => {
     renderWithQueryClient(<ModelSelector modelList={[makeModel()]} />)
 
-    const triggerButton = screen.getByRole('button', { name: 'empty-trigger' })
+    const triggerButton = screen.getByRole('combobox')
     fireEvent.click(triggerButton)
     expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('hide')).toBeInTheDocument()

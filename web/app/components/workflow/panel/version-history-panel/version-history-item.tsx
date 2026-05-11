@@ -6,14 +6,14 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowVersion } from '../../types'
-import ContextMenu from './context-menu'
+import ActionMenu from './action-menu'
 
 type VersionHistoryItemProps = {
   item: VersionHistory
   currentVersion: VersionHistory | null
   latestVersionId: string
   onClick: (item: VersionHistory) => void
-  handleClickMenuItem: (operation: VersionHistoryContextMenuOptions) => void
+  handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
   isLast: boolean
 }
 
@@ -41,7 +41,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   currentVersion,
   latestVersionId,
   onClick,
-  handleClickMenuItem,
+  handleClickActionMenuItem,
   isLast,
 }) => {
   const { t } = useTranslation()
@@ -122,15 +122,15 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           )
         }
       </div>
-      {/* Context Menu */}
+      {/* Action Menu */}
       {!isDraft && isHovering && (
         <div className="absolute top-1 right-1">
-          <ContextMenu
+          <ActionMenu
             isShowDelete={!isLatest}
             isNamedVersion={!!item.marked_name}
             open={open}
             setOpen={setOpen}
-            handleClickMenuItem={handleClickMenuItem}
+            handleClickActionMenuItem={handleClickActionMenuItem}
           />
         </div>
       )}

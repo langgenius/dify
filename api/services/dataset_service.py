@@ -108,7 +108,7 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessRulesDict(TypedDict):
-    mode: str
+    mode: ProcessRuleMode
     rules: dict[str, Any]
 
 
@@ -204,7 +204,7 @@ class DatasetService:
             mode = dataset_process_rule.mode
             rules = dataset_process_rule.rules_dict or {}
         else:
-            mode = str(DocumentService.DEFAULT_RULES["mode"])
+            mode = ProcessRuleMode(DocumentService.DEFAULT_RULES["mode"])
             rules = dict(DocumentService.DEFAULT_RULES.get("rules") or {})
         return {"mode": mode, "rules": rules}
 
@@ -1984,7 +1984,7 @@ class DocumentService:
                         if process_rule.rules:
                             dataset_process_rule = DatasetProcessRule(
                                 dataset_id=dataset.id,
-                                mode=process_rule.mode,
+                                mode=ProcessRuleMode(process_rule.mode),
                                 rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
                                 created_by=account.id,
                             )
@@ -1995,7 +1995,7 @@ class DocumentService:
                     elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
                         dataset_process_rule = DatasetProcessRule(
                             dataset_id=dataset.id,
-                            mode=process_rule.mode,
+                            mode=ProcessRuleMode.AUTOMATIC,
                             rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                             created_by=account.id,
                         )
@@ -2572,14 +2572,14 @@ class DocumentService:
             if process_rule.mode in {ProcessRuleMode.CUSTOM, ProcessRuleMode.HIERARCHICAL}:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
-                    mode=process_rule.mode,
+                    mode=ProcessRuleMode(process_rule.mode),
                     rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
                     created_by=account.id,
                 )
             elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
-                    mode=process_rule.mode,
+                    mode=ProcessRuleMode.AUTOMATIC,
                     rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                     created_by=account.id,
                 )
@@ -3748,6 +3748,7 @@ class SegmentService:
                     ChildChunk.segment_id == segment.id,
                 )
             )
+            assert current_user.current_tenant_id
             child_chunk = ChildChunk(
                 tenant_id=current_user.current_tenant_id,
                 dataset_id=dataset.id,
@@ -3758,7 +3759,7 @@ class SegmentService:
                 index_node_hash=index_node_hash,
                 content=content,
                 word_count=len(content),
-                type="customized",
+                type=SegmentType.CUSTOMIZED,
                 created_by=current_user.id,
             )
             db.session.add(child_chunk)
@@ -3818,6 +3819,7 @@ class SegmentService:
             if new_child_chunks_args:
                 child_chunk_count = len(child_chunks)
                 for position, args in enumerate(new_child_chunks_args, start=child_chunk_count + 1):
+                    assert current_user.current_tenant_id
                     index_node_id = str(uuid.uuid4())
                     index_node_hash = helper.generate_text_hash(args.content)
                     child_chunk = ChildChunk(
@@ -3830,7 +3832,7 @@ class SegmentService:
                         index_node_hash=index_node_hash,
                         content=args.content,
                         word_count=len(args.content),
-                        type="customized",
+                        type=SegmentType.CUSTOMIZED,
                         created_by=current_user.id,
                     )
 

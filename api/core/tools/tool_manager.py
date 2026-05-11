@@ -1078,6 +1078,13 @@ class ToolManager:
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
                 if variable_pool:
                     config = tool_configurations.get(parameter.name, {})
+
+                    selector_value = cls._extract_runtime_selector_value(parameter, config)
+                    if selector_value is not None:
+                        # Selector parameters carry structured dictionaries, not scalar ToolInput values.
+                        runtime_parameters[parameter.name] = selector_value
+                        continue
+
                     if not (config and isinstance(config, dict) and config.get("value") is not None):
                         continue
                     tool_input = ToolNodeData.ToolInput.model_validate(tool_configurations.get(parameter.name, {}))
@@ -1104,6 +1111,40 @@ class ToolManager:
                     value = parameter.init_frontend_parameter(tool_configurations.get(parameter.name))
                     runtime_parameters[parameter.name] = value
         return runtime_parameters
+
+    @classmethod
+    def _extract_runtime_selector_value(cls, parameter: ToolParameter, config: Any) -> dict[str, Any] | None:
+        if parameter.type not in {
+            ToolParameter.ToolParameterType.MODEL_SELECTOR,
+            ToolParameter.ToolParameterType.APP_SELECTOR,
+        }:
+            return None
+        if not isinstance(config, dict):
+            return None
+
+        input_value = config.get("value")
+        if isinstance(input_value, dict) and cls._is_selector_value(parameter, input_value):
+            return cast("dict[str, Any]", parameter.init_frontend_parameter(input_value))
+
+        if cls._is_selector_value(parameter, config):
+            selector_value = dict(config)
+            selector_value.pop("type", None)
+            selector_value.pop("value", None)
+            return cast("dict[str, Any]", parameter.init_frontend_parameter(selector_value))
+
+        return None
+
+    @classmethod
+    def _is_selector_value(cls, parameter: ToolParameter, value: Mapping[str, Any]) -> bool:
+        if parameter.type == ToolParameter.ToolParameterType.MODEL_SELECTOR:
+            return (
+                isinstance(value.get("provider"), str)
+                and isinstance(value.get("model"), str)
+                and isinstance(value.get("model_type"), str)
+            )
+        if parameter.type == ToolParameter.ToolParameterType.APP_SELECTOR:
+            return isinstance(value.get("app_id"), str)
+        return False
 
 
 ToolManager.load_hardcoded_providers_cache()

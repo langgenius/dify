@@ -7,9 +7,9 @@ import Item from '../item'
 vi.mock('@/app/components/base/chat/chat-with-history/sidebar/operation', () => ({
   default: ({ togglePin, onRenameConversation, onDelete, isItemHovering, isActive, isPinned }: { togglePin: () => void, onRenameConversation: () => void, onDelete: () => void, isItemHovering: boolean, isActive: boolean, isPinned: boolean }) => (
     <div data-testid="mock-operation">
-      <button onClick={togglePin} data-testid="pin-button">Pin</button>
-      <button onClick={onRenameConversation} data-testid="rename-button">Rename</button>
-      <button onClick={onDelete} data-testid="delete-button">Delete</button>
+      <button onClick={togglePin}>Pin</button>
+      <button onClick={onRenameConversation}>Rename</button>
+      <button onClick={onDelete}>Delete</button>
       <span data-hovering={isItemHovering} data-testid="hover-indicator">Hovering</span>
       <span data-active={isActive} data-testid="active-indicator">Active</span>
       <span data-pinned={isPinned} data-testid="pinned-indicator">Pinned</span>
@@ -137,7 +137,7 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} isPin={true} />)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('unpin', mockItem)
     })
 
@@ -146,7 +146,7 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} isPin={false} />)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('pin', mockItem)
     })
 
@@ -155,7 +155,7 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} />)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('pin', mockItem)
     })
   })
@@ -213,7 +213,7 @@ describe('Item', () => {
       const onChangeConversation = vi.fn()
       render(<Item {...defaultProps} onChangeConversation={onChangeConversation} />)
 
-      const deleteButton = screen.getByTestId('delete-button')
+      const deleteButton = screen.getByRole('button', { name: 'Delete' })
       await user.click(deleteButton)
 
       // onChangeConversation should not be called when Operation button is clicked
@@ -225,7 +225,7 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} />)
 
-      await user.click(screen.getByTestId('delete-button'))
+      await user.click(screen.getByRole('button', { name: 'Delete' }))
       expect(onOperate).toHaveBeenCalledWith('delete', mockItem)
     })
 
@@ -234,7 +234,7 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} />)
 
-      await user.click(screen.getByTestId('rename-button'))
+      await user.click(screen.getByRole('button', { name: 'Rename' }))
       expect(onOperate).toHaveBeenCalledWith('rename', mockItem)
     })
 
@@ -243,9 +243,9 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} />)
 
-      await user.click(screen.getByTestId('rename-button'))
-      await user.click(screen.getByTestId('pin-button'))
-      await user.click(screen.getByTestId('delete-button'))
+      await user.click(screen.getByRole('button', { name: 'Rename' }))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
+      await user.click(screen.getByRole('button', { name: 'Delete' }))
 
       expect(onOperate).toHaveBeenCalledTimes(3)
     })
@@ -296,13 +296,13 @@ describe('Item', () => {
       const onOperate = vi.fn()
       render(<Item {...defaultProps} onOperate={onOperate} />)
 
-      await user.click(screen.getByTestId('rename-button'))
+      await user.click(screen.getByRole('button', { name: 'Rename' }))
       expect(onOperate).toHaveBeenNthCalledWith(1, 'rename', mockItem)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenNthCalledWith(2, 'pin', mockItem)
 
-      await user.click(screen.getByTestId('delete-button'))
+      await user.click(screen.getByRole('button', { name: 'Delete' }))
       expect(onOperate).toHaveBeenNthCalledWith(3, 'delete', mockItem)
     })
 
@@ -314,12 +314,12 @@ describe('Item', () => {
         <Item {...defaultProps} onOperate={onOperate} isPin={false} />,
       )
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('pin', mockItem)
 
       rerender(<Item {...defaultProps} onOperate={onOperate} isPin={true} />)
 
-      await user.click(screen.getByTestId('pin-button'))
+      await user.click(screen.getByRole('button', { name: 'Pin' }))
       expect(onOperate).toHaveBeenCalledWith('unpin', mockItem)
     })
   })
@@ -412,7 +412,7 @@ describe('Item', () => {
 
       rerender(<Item {...defaultProps} onOperate={newOnOperate} />)
 
-      await user.click(screen.getByTestId('delete-button'))
+      await user.click(screen.getByRole('button', { name: 'Delete' }))
 
       expect(newOnOperate).toHaveBeenCalledWith('delete', mockItem)
       expect(oldOnOperate).not.toHaveBeenCalled()

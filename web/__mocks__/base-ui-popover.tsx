@@ -23,17 +23,25 @@ type PopoverContentProps = React.HTMLAttributes<HTMLDivElement> & {
   placement?: string
   sideOffset?: number
   alignOffset?: number
+  popupClassName?: string
   positionerProps?: React.HTMLAttributes<HTMLDivElement>
   popupProps?: React.HTMLAttributes<HTMLDivElement>
 }
 
 export const Popover = ({
   children,
-  open = false,
+  open,
   onOpenChange,
 }: PopoverProps) => {
+  const [localOpen, setLocalOpen] = React.useState(false)
+  const resolvedOpen = open ?? localOpen
+  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
+    setLocalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }, [onOpenChange])
+
   React.useEffect(() => {
-    if (!open)
+    if (!resolvedOpen)
       return
 
     const handleMouseDown = (event: MouseEvent) => {
@@ -41,12 +49,12 @@ export const Popover = ({
       if (target?.closest?.('[data-popover-trigger="true"], [data-popover-content="true"]'))
         return
 
-      onOpenChange?.(false)
+      handleOpenChange(false)
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape')
-        onOpenChange?.(false)
+        handleOpenChange(false)
     }
 
     document.addEventListener('mousedown', handleMouseDown)
@@ -56,15 +64,15 @@ export const Popover = ({
       document.removeEventListener('mousedown', handleMouseDown)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [open, onOpenChange])
+  }, [resolvedOpen, handleOpenChange])
 
   return (
     <PopoverContext.Provider value={{
-      open,
-      onOpenChange: onOpenChange ?? (() => {}),
+      open: resolvedOpen,
+      onOpenChange: handleOpenChange,
     }}
     >
-      <div data-testid="popover" data-open={String(open)}>
+      <div data-testid="popover" data-open={String(resolvedOpen)}>
         {children}
       </div>
     </PopoverContext.Provider>
@@ -84,11 +92,12 @@ export const PopoverTrigger = ({
   if (React.isValidElement(node)) {
     const triggerElement = node as React.ReactElement<Record<string, unknown>>
     const childProps = (triggerElement.props ?? {}) as React.HTMLAttributes<HTMLElement> & { 'data-testid'?: string }
+    const triggerProps = props as React.HTMLAttributes<HTMLElement> & { 'data-testid'?: string }
 
     return React.cloneElement(triggerElement, {
       ...props,
       ...childProps,
-      'data-testid': childProps['data-testid'] ?? 'popover-trigger',
+      'data-testid': childProps['data-testid'] ?? triggerProps['data-testid'] ?? 'popover-trigger',
       'data-popover-trigger': 'true',
       'onClick': (event: React.MouseEvent<HTMLElement>) => {
         childProps.onClick?.(event)
@@ -97,7 +106,7 @@ export const PopoverTrigger = ({
           return
         onOpenChange(!open)
       },
-    })
+    }, render ? (children ?? childProps.children) : childProps.children)
   }
 
   return (
@@ -123,6 +132,7 @@ export const PopoverContent = ({
   placement,
   sideOffset,
   alignOffset,
+  popupClassName,
   positionerProps,
   popupProps,
   ...props
@@ -139,7 +149,7 @@ export const PopoverContent = ({
       data-placement={placement}
       data-side-offset={sideOffset}
       data-align-offset={alignOffset}
-      className={className}
+      className={className || popupClassName}
       {...positionerProps}
       {...popupProps}
       {...props}

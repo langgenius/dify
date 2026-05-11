@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { pick } from 'es-toolkit/object'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
-import Tooltip from '@/app/components/base/tooltip'
 import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-label'
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
@@ -101,8 +101,15 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
           <div className="flex shrink-0 items-center">
             <DocumentSourceIcon doc={doc} fileType={fileType} />
           </div>
-          <Tooltip popupContent={doc.name}>
-            <span className="grow truncate text-sm">{doc.name}</span>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <span className="grow truncate text-sm">{doc.name}</span>
+              )}
+            />
+            <TooltipContent>
+              {doc.name}
+            </TooltipContent>
           </Tooltip>
           {doc.summary_index_status && (
             <div className="ml-1 hidden shrink-0 group-hover:flex">
@@ -110,13 +117,20 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
             </div>
           )}
           <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
-            <Tooltip popupContent={t('list.table.rename', { ns: 'datasetDocuments' })}>
-              <div
-                className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
-                onClick={handleRenameClick}
-              >
-                <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
-              </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <div
+                    className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
+                    onClick={handleRenameClick}
+                  >
+                    <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
+                  </div>
+                )}
+              />
+              <TooltipContent>
+                {t('list.table.rename', { ns: 'datasetDocuments' })}
+              </TooltipContent>
             </Tooltip>
           </div>
         </div>

@@ -1,8 +1,6 @@
 'use client'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
+import type { OffsetOptions } from '@floating-ui/react'
+import type { Placement } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
@@ -17,7 +15,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
@@ -43,7 +41,7 @@ type Props = {
   disabled: boolean
   trigger: React.ReactNode
   placement?: Placement
-  offset?: OffsetOptions | number
+  offset?: OffsetOptions
   isShow: boolean
   onShowChange: (isShow: boolean) => void
   onSelect: (tool: ToolDefaultValue) => void
@@ -70,6 +68,8 @@ const ToolPicker: FC<Props> = ({
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
+  const sideOffset = typeof offset === 'number' ? offset : (typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0))
+  const alignOffset = typeof offset === 'number' ? 0 : (typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0))
 
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -120,6 +120,12 @@ const ToolPicker: FC<Props> = ({
 
   const handleAddedCustomTool = invalidateCustomTools
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen && disabled)
+      return
+    onShowChange(nextOpen)
+  }
+
   const handleSelect = (_type: BlockEnum, tool?: ToolDefaultValue) => {
     onSelect(tool!)
   }
@@ -132,11 +138,6 @@ const ToolPicker: FC<Props> = ({
     setFalse: hideEditCustomCollectionModal,
     setTrue: showEditCustomCollectionModal,
   }] = useBoolean(false)
-
-  const handleShowAddCustomCollectionModal = useCallback(() => {
-    onShowChange(false)
-    showEditCustomCollectionModal()
-  }, [onShowChange, showEditCustomCollectionModal])
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
@@ -156,34 +157,23 @@ const ToolPicker: FC<Props> = ({
     )
   }
 
-  const resolvedTrigger = React.isValidElement(trigger) ? trigger : <div>{trigger}</div>
-  const resolvedOffset = typeof offset === 'object' && offset !== null
-    ? offset as { mainAxis?: number, crossAxis?: number, alignmentAxis?: number | null }
-    : undefined
-  const sideOffset = typeof offset === 'number' ? offset : resolvedOffset?.mainAxis ?? 0
-  const alignOffset = typeof offset === 'number' ? 0 : resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0
-
   return (
     <Popover
       open={isShow}
-      onOpenChange={(nextOpen) => {
-        if (disabled && nextOpen)
-          return
-        onShowChange(nextOpen)
-      }}
+      onOpenChange={handleOpenChange}
     >
       <PopoverTrigger
-        render={resolvedTrigger}
-        onClick={(e) => {
-          if (disabled)
-            e.preventDefault()
-        }}
-      />
+        nativeButton={false}
+        render={<div className="inline-block" />}
+      >
+        {trigger}
+      </PopoverTrigger>
+
       <PopoverContent
         placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        popupClassName="border-none bg-transparent shadow-none"
       >
         <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs', panelClassName)}>
           <div className="p-2 pb-1">
@@ -195,7 +185,7 @@ const ToolPicker: FC<Props> = ({
               placeholder={t('searchTools', { ns: 'plugin' })!}
               supportAddCustomTool={supportAddCustomTool}
               onAddedCustomTool={handleAddedCustomTool}
-              onShowAddCustomCollectionModal={handleShowAddCustomCollectionModal}
+              onShowAddCustomCollectionModal={showEditCustomCollectionModal}
               inputClassName="grow"
             />
           </div>

@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.web.conversation import (
@@ -34,16 +35,16 @@ def _end_user() -> SimpleNamespace:
 
 class TestConversationListApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_non_chat_mode_raises(self, app) -> None:
+    def test_non_chat_mode_raises(self, app: Flask) -> None:
         with app.test_request_context("/conversations"):
             with pytest.raises(NotChatAppError):
                 ConversationListApi().get(_completion_app(), _end_user())
 
     @patch("controllers.web.conversation.WebConversationService.pagination_by_last_id")
-    def test_happy_path(self, mock_paginate: MagicMock, app) -> None:
+    def test_happy_path(self, mock_paginate: MagicMock, app: Flask) -> None:
         conv_id = str(uuid4())
         conv = SimpleNamespace(
             id=conv_id,
@@ -65,16 +66,16 @@ class TestConversationListApi:
 
 class TestConversationApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_non_chat_mode_raises(self, app) -> None:
+    def test_non_chat_mode_raises(self, app: Flask) -> None:
         with app.test_request_context(f"/conversations/{uuid4()}"):
             with pytest.raises(NotChatAppError):
                 ConversationApi().delete(_completion_app(), _end_user(), uuid4())
 
     @patch("controllers.web.conversation.ConversationService.delete")
-    def test_delete_success(self, mock_delete: MagicMock, app) -> None:
+    def test_delete_success(self, mock_delete: MagicMock, app: Flask) -> None:
         c_id = uuid4()
         with app.test_request_context(f"/conversations/{c_id}"):
             result, status = ConversationApi().delete(_chat_app(), _end_user(), c_id)
@@ -83,7 +84,7 @@ class TestConversationApi:
         assert result["result"] == "success"
 
     @patch("controllers.web.conversation.ConversationService.delete", side_effect=ConversationNotExistsError())
-    def test_delete_not_found(self, mock_delete: MagicMock, app) -> None:
+    def test_delete_not_found(self, mock_delete: MagicMock, app: Flask) -> None:
         c_id = uuid4()
         with app.test_request_context(f"/conversations/{c_id}"):
             with pytest.raises(NotFound, match="Conversation Not Exists"):
@@ -92,17 +93,17 @@ class TestConversationApi:
 
 class TestConversationRenameApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_non_chat_mode_raises(self, app) -> None:
+    def test_non_chat_mode_raises(self, app: Flask) -> None:
         with app.test_request_context(f"/conversations/{uuid4()}/name", method="POST", json={"name": "x"}):
             with pytest.raises(NotChatAppError):
                 ConversationRenameApi().post(_completion_app(), _end_user(), uuid4())
 
     @patch("controllers.web.conversation.ConversationService.rename")
     @patch("controllers.web.conversation.web_ns")
-    def test_rename_success(self, mock_ns: MagicMock, mock_rename: MagicMock, app) -> None:
+    def test_rename_success(self, mock_ns: MagicMock, mock_rename: MagicMock, app: Flask) -> None:
         c_id = uuid4()
         mock_ns.payload = {"name": "New Name", "auto_generate": False}
         conv = SimpleNamespace(
@@ -126,7 +127,7 @@ class TestConversationRenameApi:
         side_effect=ConversationNotExistsError(),
     )
     @patch("controllers.web.conversation.web_ns")
-    def test_rename_not_found(self, mock_ns: MagicMock, mock_rename: MagicMock, app) -> None:
+    def test_rename_not_found(self, mock_ns: MagicMock, mock_rename: MagicMock, app: Flask) -> None:
         c_id = uuid4()
         mock_ns.payload = {"name": "X", "auto_generate": False}
 
@@ -137,16 +138,16 @@ class TestConversationRenameApi:
 
 class TestConversationPinApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_non_chat_mode_raises(self, app) -> None:
+    def test_non_chat_mode_raises(self, app: Flask) -> None:
         with app.test_request_context(f"/conversations/{uuid4()}/pin", method="PATCH"):
             with pytest.raises(NotChatAppError):
                 ConversationPinApi().patch(_completion_app(), _end_user(), uuid4())
 
     @patch("controllers.web.conversation.WebConversationService.pin")
-    def test_pin_success(self, mock_pin: MagicMock, app) -> None:
+    def test_pin_success(self, mock_pin: MagicMock, app: Flask) -> None:
         c_id = uuid4()
         with app.test_request_context(f"/conversations/{c_id}/pin", method="PATCH"):
             result = ConversationPinApi().patch(_chat_app(), _end_user(), c_id)
@@ -154,7 +155,7 @@ class TestConversationPinApi:
         assert result["result"] == "success"
 
     @patch("controllers.web.conversation.WebConversationService.pin", side_effect=ConversationNotExistsError())
-    def test_pin_not_found(self, mock_pin: MagicMock, app) -> None:
+    def test_pin_not_found(self, mock_pin: MagicMock, app: Flask) -> None:
         c_id = uuid4()
         with app.test_request_context(f"/conversations/{c_id}/pin", method="PATCH"):
             with pytest.raises(NotFound):
@@ -163,16 +164,16 @@ class TestConversationPinApi:
 
 class TestConversationUnPinApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_non_chat_mode_raises(self, app) -> None:
+    def test_non_chat_mode_raises(self, app: Flask) -> None:
         with app.test_request_context(f"/conversations/{uuid4()}/unpin", method="PATCH"):
             with pytest.raises(NotChatAppError):
                 ConversationUnPinApi().patch(_completion_app(), _end_user(), uuid4())
 
     @patch("controllers.web.conversation.WebConversationService.unpin")
-    def test_unpin_success(self, mock_unpin: MagicMock, app) -> None:
+    def test_unpin_success(self, mock_unpin: MagicMock, app: Flask) -> None:
         c_id = uuid4()
         with app.test_request_context(f"/conversations/{c_id}/unpin", method="PATCH"):
             result = ConversationUnPinApi().patch(_chat_app(), _end_user(), c_id)

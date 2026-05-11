@@ -599,7 +599,6 @@ class TestMessageTrace:
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
 
         trace_instance.message_trace(_make_message_trace_info())
         mock_tracing["start"].assert_called_once()
@@ -609,18 +608,16 @@ class TestMessageTrace:
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
 
         trace_info = _make_message_trace_info(error="something broke")
         trace_instance.message_trace(trace_info)
         span.set_status.assert_called_once()
         span.add_event.assert_called_once()
 
-    def test_message_trace_with_file_data(self, trace_instance, mock_tracing, mock_db, monkeypatch):
+    def test_message_trace_with_file_data(self, trace_instance, mock_tracing, mock_db, monkeypatch: pytest.MonkeyPatch):
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
         monkeypatch.setenv("FILES_URL", "http://files.test")
 
         file_data = SimpleNamespace(url="path/to/file.png")
@@ -638,7 +635,6 @@ class TestMessageTrace:
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
 
         trace_info = _make_message_trace_info(file_list=None, message_file_data=None)
         trace_instance.message_trace(trace_info)
@@ -651,7 +647,6 @@ class TestMessageTrace:
 
         end_user = MagicMock()
         end_user.session_id = "session-xyz"
-        mock_db.session.query.return_value.where.return_value.first.return_value = end_user
 
         trace_info = _make_message_trace_info(
             metadata={"from_end_user_id": "eu-1", "conversation_id": "c1"},
@@ -664,7 +659,6 @@ class TestMessageTrace:
         span = MagicMock()
         mock_tracing["start"].return_value = span
         mock_tracing["set"].return_value = "token"
-        mock_db.session.query.return_value.where.return_value.first.return_value = None
 
         trace_info = _make_message_trace_info(
             metadata={"from_account_id": "acc-1"},

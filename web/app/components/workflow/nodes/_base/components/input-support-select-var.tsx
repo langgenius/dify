@@ -5,6 +5,7 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -12,7 +13,6 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import Tooltip from '@/app/components/base/tooltip'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 
@@ -119,12 +119,17 @@ const Editor: FC<Props> = ({
         {readOnly && <div className="absolute inset-0 z-10"></div>}
         {isFocus && (
           <div className={cn('absolute z-10', insertVarTipToLeft ? 'top-1.5 left-[-12px]' : 'top-[-9px] right-1')}>
-            <Tooltip
-              popupContent={`${t('common.insertVarTip', { ns: 'workflow' })}`}
-            >
-              <div className="cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg">
-                <Variable02 className="h-3.5 w-3.5 text-components-button-secondary-accent-text" />
-              </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <div className="cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg">
+                    <Variable02 className="h-3.5 w-3.5 text-components-button-secondary-accent-text" />
+                  </div>
+                )}
+              />
+              <TooltipContent>
+                {`${t('common.insertVarTip', { ns: 'workflow' })}`}
+              </TooltipContent>
             </Tooltip>
           </div>
         )}

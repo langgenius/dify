@@ -252,7 +252,7 @@ describe('ContextBlockComponent', () => {
         />,
       )
 
-      const addButton = screen.getByTestId('add-button')
+      const addButton = screen.getByRole('button', { name: 'common.promptEditor.context.modal.add' })
       await userEvent.click(addButton)
       expect(handleAddContext).toHaveBeenCalledTimes(1)
     })
