@@ -372,7 +372,9 @@ class DatasetDocumentListApi(Resource):
         match sort:
             case "hit_count":
                 sub_query = (
-                    sa.select(DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count"))
+                    sa.select(
+                        DocumentSegment.document_id, sa.func.sum(DocumentSegment.hit_count).label("total_hit_count")
+                    )
                     .where(DocumentSegment.dataset_id == str(dataset_id))
                     .group_by(DocumentSegment.document_id)
                     .subquery()
