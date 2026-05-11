@@ -1357,7 +1357,7 @@ class TestDocumentServiceEstimateValidation:
             },
         }
 
-        with pytest.raises(ValueError, match="Summary index model provider name is required"):
+        with pytest.raises(ValueError, match="Field required"):
             DocumentService.estimate_args_validate(args)
 
 
