@@ -213,6 +213,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             raise ValueError("created_by is required in repository constructor")
         if not self._creator_user_role:
             raise ValueError("created_by_role is required in repository constructor")
+        if not self._app_id:
+            raise ValueError("_app_id is required in repository constructor")
 
         converter = WorkflowRuntimeTypeConverter()
 
@@ -252,10 +254,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             created_by_role=self._creator_user_role,
             created_by=self._creator_user_id,
             finished_at=domain_model.finished_at,
+            app_id=self._app_id
         )
         db_model.id = domain_model.id
-        if self._app_id is not None:
-            db_model.app_id = self._app_id
 
         return db_model
 

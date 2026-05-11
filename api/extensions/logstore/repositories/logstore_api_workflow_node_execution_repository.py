@@ -83,7 +83,6 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
     model = WorkflowNodeExecutionModel(
         # Map all required fields with validation
         # Critical fields - must not be None
-        id=data.get("id") or "",
         tenant_id=data.get("tenant_id") or "",
         app_id=data.get("app_id") or "",
         workflow_id=data.get("workflow_id") or "",
@@ -109,6 +108,7 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         finished_at=finished_at,
     )
 
+    model.id = data.get("id") or ""
     return model
 
 
