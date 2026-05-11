@@ -290,9 +290,10 @@ def test_persist_to_database_updates_existing_and_inserts_new(monkeypatch: pytes
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     )
 
-    db_model = WorkflowNodeExecutionModel()
+    db_model = WorkflowNodeExecutionModel(
+        node_execution_id = "node1"
+    )
     db_model.id = "id1"
-    db_model.node_execution_id = "node1"
     db_model.foo = "bar"  # type: ignore[attr-defined]
     db_model.__dict__["_private"] = "x"
 
