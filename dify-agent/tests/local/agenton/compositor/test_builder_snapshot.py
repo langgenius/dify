@@ -261,10 +261,13 @@ def test_snapshot_rejects_active_sessions_and_excludes_handles() -> None:
     asyncio.run(run())
 
     snapshot = compositor.snapshot_session(session)
-    assert snapshot.model_dump(mode="json") == {
+    dumped = snapshot.model_dump(mode="json")
+    assert dumped == {
         "schema_version": 1,
         "layers": [{"name": "handle", "state": "closed", "runtime_state": {"resource_id": "abc"}}],
     }
+    assert "_entry_stack" not in str(dumped)
+    assert "_owner" not in str(dumped)
 
 
 def test_restore_validates_runtime_state_and_resume_rehydrates_handles() -> None:

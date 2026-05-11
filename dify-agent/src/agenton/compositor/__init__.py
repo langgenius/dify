@@ -264,6 +264,14 @@ class CompositorSession:
             return self._control_for_unique_dependency(owner_layer_id, dep_layer)
         return self._control_for_named_dependency(owner_layer_id, dep_name, dep_layer)
 
+    def _layer_for_control_owner(self, owner_layer_id: str) -> Layer[Any, Any, Any, Any, Any, Any, Any]:
+        """Return the layer instance that owns a control in this session."""
+        compositor = self._require_owner_compositor()
+        try:
+            return compositor.layers[owner_layer_id]
+        except KeyError as e:
+            raise KeyError(f"Layer '{owner_layer_id}' is not defined in this compositor.") from e
+
     def _control_for_unique_dependency(
         self,
         owner_layer_id: str,

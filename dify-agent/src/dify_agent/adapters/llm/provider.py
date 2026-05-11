@@ -1,4 +1,10 @@
-"""Dify plugin-daemon provider for Pydantic AI LLM adapters."""
+"""Dify plugin-daemon provider for Pydantic AI LLM adapters.
+
+The Pydantic AI provider represents daemon/plugin transport identity. Business
+model provider names such as ``openai`` are request-level model identity and are
+passed by ``DifyLLMAdapterModel`` for each invocation instead of being stored on
+this provider.
+"""
 
 from __future__ import annotations
 
@@ -27,11 +33,12 @@ class PluginDaemonBasicResponse(BaseModel):
 
 @dataclass(slots=True)
 class DifyPluginDaemonLLMClient:
+    """HTTP client wrapper for plugin-daemon LLM dispatch requests."""
+
     plugin_daemon_url: str
     plugin_daemon_api_key: str
     tenant_id: str
     plugin_id: str
-    provider: str
     user_id: str | None
     http_client: httpx.AsyncClient = field(repr=False)
 
@@ -41,6 +48,7 @@ class DifyPluginDaemonLLMClient:
     async def iter_llm_result_chunks(
         self,
         *,
+        provider: str,
         model: str,
         credentials: dict[str, object],
         prompt_messages: list[PromptMessage],
@@ -53,7 +61,7 @@ class DifyPluginDaemonLLMClient:
             model_name=model,
             path=f"plugin/{self.tenant_id}/dispatch/llm/invoke",
             request_data={
-                "provider": self.provider,
+                "provider": provider,
                 "model_type": "llm",
                 "model": model,
                 "credentials": credentials,
@@ -130,6 +138,9 @@ class DifyPluginDaemonLLMClient:
 class DifyPluginDaemonProvider(Provider[DifyPluginDaemonLLMClient]):
     """Pydantic AI provider for Dify plugin-daemon dispatch requests.
 
+    The provider ``name`` identifies the daemon/plugin context. The business LLM
+    provider is supplied by each adapter model request so one daemon provider can
+    serve different model-provider selections without mutating transport state.
     When ``http_client`` is omitted the provider owns an ``AsyncClient`` and the
     Pydantic AI provider context manager closes it. When an external client is
     supplied, ownership stays with the caller and provider exit leaves it open.
@@ -137,7 +148,6 @@ class DifyPluginDaemonProvider(Provider[DifyPluginDaemonLLMClient]):
 
     tenant_id: str
     plugin_id: str
-    plugin_provider: str
     plugin_daemon_url: str
     plugin_daemon_api_key: str = field(repr=False)
     user_id: str | None = None
@@ -162,7 +172,6 @@ class DifyPluginDaemonProvider(Provider[DifyPluginDaemonLLMClient]):
             plugin_daemon_api_key=self.plugin_daemon_api_key,
             tenant_id=self.tenant_id,
             plugin_id=self.plugin_id,
-            provider=self.plugin_provider,
             user_id=self.user_id,
             http_client=http_client,
         )
@@ -177,7 +186,7 @@ class DifyPluginDaemonProvider(Provider[DifyPluginDaemonLLMClient]):
     @property
     @override
     def name(self) -> str:
-        return f"DifyPlugin/{self.plugin_provider}"
+        return f"DifyPlugin/{self.plugin_id}"
 
     @property
     @override

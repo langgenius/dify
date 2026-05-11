@@ -38,19 +38,30 @@ def test_dify_plugin_layer_config_forbids_runtime_settings() -> None:
 def test_dify_plugin_llm_config_accepts_scalar_credentials_and_model_settings() -> None:
     credential: DifyPluginCredentialValue = "secret"
     config = DifyPluginLLMLayerConfig(
-        provider="openai",
+        model_provider="openai",
         model="gpt-4o-mini",
         credentials={"api_key": credential, "enabled": True, "retries": 2, "ratio": 0.5, "empty": None},
         model_settings={"temperature": 0.2, "max_tokens": 64},
     )
 
+    assert config.model_provider == "openai"
     assert config.credentials == {"api_key": "secret", "enabled": True, "retries": 2, "ratio": 0.5, "empty": None}
     assert config.model_settings == {"temperature": 0.2, "max_tokens": 64}
     with pytest.raises(ValidationError):
         _ = DifyPluginLLMLayerConfig.model_validate(
             {
-                "provider": "openai",
+                "model_provider": "openai",
                 "model": "gpt-4o-mini",
                 "credentials": {"nested": {"not": "allowed"}},
+            }
+        )
+
+
+def test_dify_plugin_llm_config_rejects_old_provider_field() -> None:
+    with pytest.raises(ValidationError):
+        _ = DifyPluginLLMLayerConfig.model_validate(
+            {
+                "provider": "openai",
+                "model": "gpt-4o-mini",
             }
         )

@@ -61,10 +61,10 @@ async def main() -> None:
         DifyPluginDaemonProvider(
             tenant_id=required_env("DIFY_AGENT_TENANT_ID"),
             plugin_id=required_env("DIFY_AGENT_PLUGIN_ID"),
-            plugin_provider=required_env("DIFY_AGENT_PROVIDER"),
             plugin_daemon_url=required_env("PLUGIN_DAEMON_URL"),
             plugin_daemon_api_key=required_env("PLUGIN_DAEMON_KEY"),
         ),
+        model_provider=required_env("DIFY_AGENT_PROVIDER"),
         credentials=load_credentials(),
     )
     agent = Agent(model=model)

@@ -97,7 +97,7 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
                         "type": "dify.plugin.llm",
                         "deps": {"plugin": "plugin-renamed"},
                         "config": {
-                            "provider": "openai",
+                            "model_provider": "openai",
                             "model": "gpt-4o-mini",
                             "credentials": {"api_key": "secret"},
                             "model_settings": {"temperature": 0.2},
@@ -110,6 +110,30 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
 
     assert response.status_code == 202
     assert response.json() == {"run_id": "run-1", "status": "running"}
+
+
+def test_create_run_rejects_unknown_layer_exit_signal_before_scheduling() -> None:
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: FakeScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/runs",
+        json={
+            "compositor": {
+                "schema_version": 1,
+                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+            },
+            "layer_exit_signals": {"layers": {"missing": "delete"}},
+        },
+    )
+
+    assert response.status_code == 422
+    assert "missing" in response.json()["detail"]
 
 
 def test_create_run_returns_503_when_scheduler_is_stopping() -> None:

@@ -16,6 +16,7 @@ from agenton.compositor import LayerRegistry
 from dify_agent.protocol.schemas import CreateRunRequest
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_registry
 from dify_agent.runtime.event_sink import RunEventSink, emit_run_failed
+from dify_agent.runtime.layer_exit_signals import validate_layer_exit_signals
 from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 from dify_agent.server.schemas import RunRecord
@@ -88,6 +89,7 @@ class RunScheduler:
         from ``active_tasks`` when it finishes, regardless of success or failure.
         """
         compositor = build_pydantic_ai_compositor(request.compositor, registry=self.layer_registry)
+        validate_layer_exit_signals(compositor, request.layer_exit_signals)
         if not has_non_blank_user_prompt(compositor.user_prompts):
             raise ValueError(EMPTY_USER_PROMPTS_ERROR)
 

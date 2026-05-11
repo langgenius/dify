@@ -28,7 +28,10 @@ resets to delete on every successful enter. Layer instances are shared graph and
 capability definitions, so session-local serializable ids, checkpoints, and
 other snapshot data belong in ``LayerControl.runtime_state``; live clients,
 connections, and process handles belong in ``LayerControl.runtime_handles``.
-Neither category should be stored on ``self`` when it is session-local.
+Neither category should be stored on ``self`` when it is session-local. Live
+resources that need deterministic cleanup should be registered on the control's
+per-entry resource stack; the base lifecycle closes that stack after suspend and
+delete hooks, and also when create/resume fails.
 
 ``Layer`` is framework-neutral over system prompt, user prompt, and tool item
 types. The native ``prefix_prompts``, ``suffix_prompts``, ``user_prompts``, and
@@ -39,8 +42,8 @@ native values without changing layer implementations.
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass, field
 from enum import StrEnum
 from types import UnionType
@@ -89,6 +92,7 @@ _RuntimeStateT = TypeVar("_RuntimeStateT", bound=BaseModel, default="EmptyRuntim
 _RuntimeHandlesT = TypeVar("_RuntimeHandlesT", bound=BaseModel, default="EmptyRuntimeHandles")
 _DepRuntimeStateT = TypeVar("_DepRuntimeStateT", bound=BaseModel)
 _DepRuntimeHandlesT = TypeVar("_DepRuntimeHandlesT", bound=BaseModel)
+_ResourceT = TypeVar("_ResourceT")
 
 
 class _LayerControlOwnerSession(Protocol):
@@ -100,6 +104,8 @@ class _LayerControlOwnerSession(Protocol):
         dep_name: str | None,
         dep_layer: "Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT]",
     ) -> "LayerControl[_DepRuntimeStateT, _DepRuntimeHandlesT]": ...
+
+    def _layer_for_control_owner(self, owner_layer_id: str) -> "Layer[Any, Any, Any, Any, Any, Any, Any]": ...
 
 
 class LayerDeps:
@@ -201,7 +207,9 @@ class LayerControl(Generic[_RuntimeStateT, _RuntimeHandlesT]):
     handles are not serialized in snapshots and should be rehydrated from
     runtime state in resume hooks. A compositor also binds private owner metadata
     so ``control_for`` can find controls for this layer's dependencies in the
-    same session; those links are runtime-only and not part of snapshots.
+    same session; those links are runtime-only and not part of snapshots. The
+    per-entry resource stack is also runtime-only and exists only while the layer
+    is entering, active, or exiting.
     """
 
     state: LifecycleState = LifecycleState.NEW
@@ -210,6 +218,7 @@ class LayerControl(Generic[_RuntimeStateT, _RuntimeHandlesT]):
     runtime_handles: _RuntimeHandlesT = field(default_factory=lambda: cast(_RuntimeHandlesT, EmptyRuntimeHandles()))
     _owner_session: _LayerControlOwnerSession | None = field(default=None, init=False, repr=False, compare=False)
     _owner_layer_id: str | None = field(default=None, init=False, repr=False, compare=False)
+    _entry_stack: AsyncExitStack | None = field(default=None, init=False, repr=False, compare=False)
 
     def suspend_on_exit(self) -> None:
         """Request suspend behavior when the current layer entry exits."""
@@ -218,6 +227,19 @@ class LayerControl(Generic[_RuntimeStateT, _RuntimeHandlesT]):
     def delete_on_exit(self) -> None:
         """Request delete behavior when the current layer entry exits."""
         self.exit_intent = ExitIntent.DELETE
+
+    async def enter_async_resource(self, cm: AbstractAsyncContextManager[_ResourceT]) -> _ResourceT:
+        """Enter ``cm`` on this control's current entry resource stack.
+
+        Resource registration is available only while a layer entry is in
+        progress or active. The base lifecycle closes registered resources after
+        suspend/delete hooks and when create/resume fails.
+        """
+        return await self._require_entry_stack().enter_async_context(cm)
+
+    def add_async_cleanup(self, callback: Callable[[], Awaitable[None]]) -> None:
+        """Register an async cleanup callback on the current entry resource stack."""
+        self._require_entry_stack().push_async_callback(callback)
 
     @overload
     def control_for(
@@ -269,6 +291,22 @@ class LayerControl(Generic[_RuntimeStateT, _RuntimeHandlesT]):
         """Attach runtime owner metadata used by ``control_for``."""
         self._owner_session = session
         self._owner_layer_id = layer_id
+
+    def _require_entry_stack(self) -> AsyncExitStack:
+        if self._entry_stack is None:
+            raise RuntimeError("LayerControl entry resource stack is not active.")
+        return self._entry_stack
+
+    def _begin_entry_stack(self) -> None:
+        if self._entry_stack is not None:
+            raise RuntimeError("LayerControl entry resource stack is already active.")
+        self._entry_stack = AsyncExitStack()
+
+    async def _close_entry_stack(self) -> None:
+        stack = self._entry_stack
+        self._entry_stack = None
+        if stack is not None:
+            await stack.aclose()
 
 
 @dataclass(frozen=True, slots=True)
@@ -385,44 +423,115 @@ class Layer(
             resolved_deps[name] = deps[name]
         self.deps = self.deps_type(**resolved_deps)
 
+    def require_control(
+        self,
+        control: LayerControl[Any, Any],
+        *,
+        active: bool = False,
+    ) -> LayerControl[_RuntimeStateT, _RuntimeHandlesT]:
+        """Validate and return ``control`` as this layer's current session control.
+
+        Capability methods should accept their own layer control explicitly and
+        call this helper before reading runtime state or handles. The control must
+        be attached to a compositor session whose owner layer id resolves to this
+        exact layer instance. Runtime state and handle schemas are checked against
+        the layer's declared schema types; when ``active`` is true, the lifecycle
+        state must be ``LifecycleState.ACTIVE``.
+        """
+        if control._owner_session is None or control._owner_layer_id is None:
+            raise RuntimeError("LayerControl is not attached to a compositor session.")
+        try:
+            owner_layer = control._owner_session._layer_for_control_owner(control._owner_layer_id)
+        except KeyError as e:
+            raise RuntimeError(
+                f"LayerControl owner layer '{control._owner_layer_id}' is not defined in its compositor."
+            ) from e
+        if owner_layer is not self:
+            raise RuntimeError(
+                f"LayerControl belongs to layer '{control._owner_layer_id}', not this {type(self).__name__} instance."
+            )
+        if not isinstance(control.runtime_state, self.runtime_state_type):
+            raise TypeError(
+                f"{type(self).__name__} control runtime_state must be {self.runtime_state_type.__name__}, "
+                f"got {type(control.runtime_state).__name__}."
+            )
+        if not isinstance(control.runtime_handles, self.runtime_handles_type):
+            raise TypeError(
+                f"{type(self).__name__} control runtime_handles must be {self.runtime_handles_type.__name__}, "
+                f"got {type(control.runtime_handles).__name__}."
+            )
+        if active and control.state is not LifecycleState.ACTIVE:
+            raise RuntimeError(
+                f"{type(self).__name__} requires an active LayerControl; current state is {control.state.value}."
+            )
+        return cast(LayerControl[_RuntimeStateT, _RuntimeHandlesT], control)
+
     def enter(self, control: LayerControl[_RuntimeStateT, _RuntimeHandlesT]) -> AbstractAsyncContextManager[None]:
         """Return the layer's async entry context manager.
 
         ``control`` is the lifecycle control slot for this entry. Subclasses can
-        override this to wrap extra async resources around
-        ``self.lifecycle_enter(control)``.
+        override this for unusual wrapping, but ordinary live resources should be
+        registered with ``control.enter_async_resource`` from lifecycle hooks.
         """
         return self.lifecycle_enter(control)
 
     @asynccontextmanager
     async def lifecycle_enter(self, control: LayerControl[_RuntimeStateT, _RuntimeHandlesT]) -> AsyncIterator[None]:
-        """Run the default explicit lifecycle state machine for one entry."""
-        if control.state is LifecycleState.NEW:
-            control.exit_intent = ExitIntent.DELETE
-            await self.on_context_create(control)
-            control.state = LifecycleState.ACTIVE
-        elif control.state is LifecycleState.SUSPENDED:
-            control.exit_intent = ExitIntent.DELETE
-            await self.on_context_resume(control)
-            control.state = LifecycleState.ACTIVE
-        elif control.state is LifecycleState.ACTIVE:
+        """Run the default explicit lifecycle and resource stack for one entry.
+
+        Exit state is recorded even when suspend/delete hooks fail because the
+        active entry is over once hook cleanup begins.
+        """
+        if control.state is LifecycleState.ACTIVE:
             raise RuntimeError(
                 "LayerControl is already active; duplicate or nested enter is not allowed."
             )
-        elif control.state is LifecycleState.CLOSED:
+        if control.state is LifecycleState.CLOSED:
             raise RuntimeError(
                 "LayerControl is closed; create a new compositor session before entering again."
             )
 
+        control._begin_entry_stack()
+        try:
+            if control.state is LifecycleState.NEW:
+                control.exit_intent = ExitIntent.DELETE
+                await self.on_context_create(control)
+                control.state = LifecycleState.ACTIVE
+            elif control.state is LifecycleState.SUSPENDED:
+                control.exit_intent = ExitIntent.DELETE
+                await self.on_context_resume(control)
+                control.state = LifecycleState.ACTIVE
+        except BaseException:
+            await control._close_entry_stack()
+            raise
+
         try:
             yield
         finally:
+            hook_error: BaseException | None = None
             if control.exit_intent is ExitIntent.SUSPEND:
-                await self.on_context_suspend(control)
-                control.state = LifecycleState.SUSPENDED
+                try:
+                    await self.on_context_suspend(control)
+                except BaseException as exc:
+                    hook_error = exc
+                finally:
+                    control.state = LifecycleState.SUSPENDED
             else:
-                await self.on_context_delete(control)
-                control.state = LifecycleState.CLOSED
+                try:
+                    await self.on_context_delete(control)
+                except BaseException as exc:
+                    hook_error = exc
+                finally:
+                    control.state = LifecycleState.CLOSED
+
+            try:
+                await control._close_entry_stack()
+            except BaseException:
+                if hook_error is not None:
+                    raise hook_error
+                raise
+            if hook_error is not None:
+                raise hook_error
 
     async def on_context_create(self, control: LayerControl[_RuntimeStateT, _RuntimeHandlesT]) -> None:
         """Run when the layer context is entered from ``LifecycleState.NEW``."""

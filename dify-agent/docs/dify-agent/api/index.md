@@ -14,7 +14,9 @@ server-only and should not be used by API consumers.
 Create-run requests accept a `CompositorConfig` and an optional
 `CompositorSessionSnapshot`. There is **no top-level `user_prompt` or model
 profile field**. User input and model/provider selection are supplied by Agenton
-layers. In the MVP server, the safe config-constructible layer registry includes
+layers. `layer_exit_signals` optionally controls whether layers suspend or delete
+when the run leaves the active session; the default is suspend for all layers. In
+the MVP server, the safe config-constructible layer registry includes
 `plain.prompt`, `dify.plugin`, and `dify.plugin.llm`. The runtime reads the LLM
 model layer named by `DIFY_AGENT_MODEL_LAYER_ID`, whose public value is `"llm"`.
 
@@ -62,7 +64,7 @@ Request:
           "plugin": "plugin"
         },
         "config": {
-          "provider": "openai",
+          "model_provider": "openai",
           "model": "gpt-4o-mini",
           "credentials": {
             "api_key": "replace-with-provider-key"
@@ -74,7 +76,13 @@ Request:
       }
     ]
   },
-  "session_snapshot": null
+  "session_snapshot": null,
+  "layer_exit_signals": {
+    "default": "suspend",
+    "layers": {
+      "prompt": "delete"
+    }
+  }
 }
 ```
 
@@ -94,7 +102,8 @@ event streams expire after `DIFY_AGENT_RUN_RETENTION_SECONDS`, which defaults to
 
 `dify.plugin` receives tenant/plugin identity only; daemon URL, API key, and
 timeout are server settings. `dify.plugin.llm.credentials` accepts scalar values
-only (`string`, `number`, `boolean`, or `null`).
+only (`string`, `number`, `boolean`, or `null`). Unknown
+`layer_exit_signals.layers` keys return `422` before a run record is created.
 
 Validation error example (`422`):
 
@@ -191,7 +200,7 @@ from agenton.compositor import CompositorConfig, LayerNodeConfig
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginLayerConfig
-from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, LayerExitSignals
 
 
 async def main() -> None:
@@ -209,13 +218,14 @@ async def main() -> None:
                     type="dify.plugin.llm",
                     deps={"plugin": "plugin"},
                     config=DifyPluginLLMLayerConfig(
-                        provider="openai",
+                        model_provider="openai",
                         model="gpt-4o-mini",
                         credentials={"api_key": "provider-key"},
                     ),
                 ),
             ]
-        )
+        ),
+        layer_exit_signals=LayerExitSignals(layers={"prompt": "delete"}),
     )
     async with Client(base_url="http://localhost:8000") as client:
         run = await client.create_run(request)
@@ -245,7 +255,7 @@ request = CreateRunRequest(
                 type="dify.plugin.llm",
                 deps={"plugin": "plugin"},
                 config=DifyPluginLLMLayerConfig(
-                    provider="openai",
+                    model_provider="openai",
                     model="gpt-4o-mini",
                     credentials={"api_key": "provider-key"},
                 ),

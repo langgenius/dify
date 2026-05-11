@@ -6,7 +6,8 @@ import pytest
 from pydantic import JsonValue
 
 from agenton.compositor import CompositorConfig, LayerNodeConfig
-from dify_agent.protocol.schemas import CreateRunRequest, RunEvent, RunStatus
+from agenton.layers import ExitIntent
+from dify_agent.protocol.schemas import CreateRunRequest, LayerExitSignals, RunEvent, RunStatus
 from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
 from dify_agent.server.schemas import RunRecord
 
@@ -129,6 +130,21 @@ def test_create_run_rejects_blank_prompt_before_persisting() -> None:
 
         with pytest.raises(ValueError, match="compositor.user_prompts must not be empty"):
             await scheduler.create_run(_request(["", "   "]))
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_unknown_layer_exit_signal_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        scheduler = RunScheduler(store=store)
+        request = _request()
+        request.layer_exit_signals = LayerExitSignals(layers={"missing": ExitIntent.DELETE})
+
+        with pytest.raises(ValueError, match="missing"):
+            await scheduler.create_run(request)
 
         assert store.records == {}
 

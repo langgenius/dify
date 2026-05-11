@@ -28,9 +28,9 @@ class DifyPluginLayerConfig(LayerConfig):
 
 
 class DifyPluginLLMLayerConfig(LayerConfig):
-    """Public config for selecting a Dify plugin LLM model."""
+    """Public config for selecting a business provider/model from a plugin."""
 
-    provider: str
+    model_provider: str
     model: str
     credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
     model_settings: ModelSettings | None = None

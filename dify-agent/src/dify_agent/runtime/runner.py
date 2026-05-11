@@ -2,11 +2,12 @@
 
 The runner is storage-agnostic: it builds an Agenton compositor, enters or
 resumes its session, runs pydantic-ai with ``compositor.user_prompts`` as the user
-input, emits stream events, suspends the session on exit, snapshots it, and then
-publishes a terminal success or failure event. The Pydantic AI model is resolved
-from the active Agenton layer named by ``DIFY_AGENT_MODEL_LAYER_ID``. Successful
-terminal events contain both the JSON-safe final output and session snapshot;
-there are no separate output or snapshot events to correlate.
+input, emits stream events, applies request-level layer exit signals, snapshots
+the resulting session, and then publishes a terminal success or failure event.
+The Pydantic AI model is resolved from the active Agenton layer named by
+``DIFY_AGENT_MODEL_LAYER_ID``. Successful terminal events contain both the
+JSON-safe final output and session snapshot; there are no separate output or
+snapshot events to correlate.
 """
 
 from collections.abc import AsyncIterable
@@ -27,6 +28,7 @@ from dify_agent.runtime.event_sink import (
     emit_run_started,
     emit_run_succeeded,
 )
+from dify_agent.runtime.layer_exit_signals import apply_layer_exit_signals, validate_layer_exit_signals
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 
 
@@ -83,13 +85,17 @@ class AgentRunRunner:
     async def _run_agent(self) -> tuple[JsonValue, CompositorSessionSnapshot]:
         """Run pydantic-ai inside an entered Agenton session."""
         compositor = build_pydantic_ai_compositor(self.request.compositor, registry=self.layer_registry)
+        try:
+            validate_layer_exit_signals(compositor, self.request.layer_exit_signals)
+        except ValueError as exc:
+            raise AgentRunValidationError(str(exc)) from exc
         session = (
             compositor.session_from_snapshot(self.request.session_snapshot)
             if self.request.session_snapshot is not None
             else compositor.new_session()
         )
         async with compositor.enter(session) as active_session:
-            active_session.suspend_on_exit()
+            apply_layer_exit_signals(active_session, self.request.layer_exit_signals)
             user_prompts = compositor.user_prompts
             if not has_non_blank_user_prompt(user_prompts):
                 raise AgentRunValidationError(EMPTY_USER_PROMPTS_ERROR)

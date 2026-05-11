@@ -16,6 +16,7 @@ from fastapi.responses import StreamingResponse
 from agenton.compositor import LayerRegistry
 from dify_agent.protocol.schemas import CreateRunRequest, CreateRunResponse, RunEventsResponse, RunStatusResponse
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_registry
+from dify_agent.runtime.layer_exit_signals import validate_layer_exit_signals
 from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 from dify_agent.server.sse import sse_event_stream
@@ -47,6 +48,7 @@ def create_runs_router(
                 request.compositor,
                 registry=resolved_get_layer_registry(),
             )
+            validate_layer_exit_signals(compositor, request.layer_exit_signals)
         except Exception as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         if not has_non_blank_user_prompt(compositor.user_prompts):

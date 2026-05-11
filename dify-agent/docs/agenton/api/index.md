@@ -29,6 +29,9 @@ Construction and dependency APIs:
 - `bind_deps(deps: Mapping[str, Layer | None]) -> None`: bind graph dependencies.
 - `new_control(state=LifecycleState.NEW, runtime_state=None) -> LayerControl`: create
   a schema-validated per-session control.
+- `require_control(control, active=False) -> LayerControl`: validate that a
+  capability method received this layer's own control with the expected runtime
+  schemas, optionally requiring `LifecycleState.ACTIVE`.
 
 Lifecycle hooks:
 
@@ -37,7 +40,9 @@ Lifecycle hooks:
 - `on_context_suspend(control)`
 - `on_context_delete(control)`
 - `enter(control)` / `lifecycle_enter(control)`: async context manager entry
-  surface. Override `enter()` only when a layer needs to wrap extra resources.
+  surface. The base lifecycle owns the per-entry resource stack; override
+  `enter()` only for unusual wrapping that cannot be expressed as registered
+  resources.
 
 Prompt/tool authoring surfaces:
 
@@ -67,6 +72,10 @@ Methods:
 
 - `suspend_on_exit() -> None`
 - `delete_on_exit() -> None`
+- `enter_async_resource(cm) -> T`: enter an async context manager on the current
+  entry resource stack and return its resource.
+- `add_async_cleanup(callback) -> None`: register an async cleanup callback on the
+  current entry resource stack.
 - `control_for(dep_layer) -> LayerControl`: resolve the unique dependency control
   whose resolved target is `dep_layer` in the same session.
 - `control_for(dep_name, dep_layer) -> LayerControl`: resolve a named dependency
@@ -74,7 +83,9 @@ Methods:
 
 `runtime_state` is serialized in session snapshots. `runtime_handles` is never
 serialized and should be rehydrated from runtime state in resume hooks. Private
-owner links used by `control_for` are runtime-only and are not snapshotted.
+owner links used by `control_for` and the per-entry resource stack are
+runtime-only and are not snapshotted. Resource-stack APIs are available only
+while a layer entry is being created/resumed, active, or exiting.
 
 ### Schema defaults and lifecycle enums
 

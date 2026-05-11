@@ -56,7 +56,7 @@ async def main() -> None:
                             type="dify.plugin.llm",
                             deps={"plugin": "plugin"},
                             config=DifyPluginLLMLayerConfig(
-                                provider=PLUGIN_PROVIDER,
+                                model_provider=PLUGIN_PROVIDER,
                                 model=MODEL_NAME,
                                 credentials=MODEL_CREDENTIALS,
                             ),

@@ -2,11 +2,14 @@ import pytest
 from pydantic import ValidationError
 from pydantic_ai.messages import FinalResultEvent
 
+from agenton.layers import ExitIntent
 from agenton.compositor import CompositorSessionSnapshot
+import dify_agent.protocol as protocol_exports
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID
 from dify_agent.protocol.schemas import (
     RUN_EVENT_ADAPTER,
     CreateRunRequest,
+    LayerExitSignals,
     PydanticAIStreamRunEvent,
     RunFailedEvent,
     RunFailedEventData,
@@ -60,6 +63,34 @@ def test_create_run_request_rejects_agent_profile_and_model_layer_id_is_public()
                 "agent_profile": {"provider": "test", "output_text": "done"},
             }
         )
+
+
+def test_layer_exit_signals_default_to_suspend_and_are_public() -> None:
+    assert protocol_exports.LayerExitSignals is LayerExitSignals
+    request = CreateRunRequest.model_validate({"compositor": {"layers": []}})
+
+    assert request.layer_exit_signals.default is ExitIntent.SUSPEND
+    assert request.layer_exit_signals.layers == {}
+
+
+def test_layer_exit_signals_accept_layer_overrides() -> None:
+    request = CreateRunRequest.model_validate(
+        {
+            "compositor": {"layers": []},
+            "layer_exit_signals": {
+                "default": "delete",
+                "layers": {"prompt": "suspend", "llm": "delete"},
+            },
+        }
+    )
+
+    assert request.layer_exit_signals.default is ExitIntent.DELETE
+    assert request.layer_exit_signals.layers == {"prompt": ExitIntent.SUSPEND, "llm": ExitIntent.DELETE}
+
+
+def test_layer_exit_signals_reject_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        _ = LayerExitSignals.model_validate({"default": "suspend", "unknown": "value"})
 
 
 @pytest.mark.parametrize("event_type", ["agent_output", "session_snapshot"])

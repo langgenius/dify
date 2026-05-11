@@ -16,7 +16,9 @@ on the `LayerControl` created for that layer in a `CompositorSession`.
 - **Runtime handles** are live Python objects such as clients, open files, or
   process handles. Layers declare a Pydantic `runtime_handles_type` with
   `arbitrary_types_allowed=True`. Handles are never serialized; resume hooks
-  should rehydrate them from runtime state.
+  should rehydrate them from runtime state. Register handles that need async
+  cleanup with the control's entry resource stack rather than closing them
+  manually in layer instances.
 
 ## Define a config-backed layer
 
@@ -48,6 +50,42 @@ Omitted schema slots default to `EmptyLayerConfig`, `EmptyRuntimeState`, and
 `EmptyRuntimeHandles`. Lifecycle hooks can annotate controls as
 `LayerControl[MyState, MyHandles]` to get static checking and IDE completion for
 runtime state and handles.
+
+## Live resources
+
+The base lifecycle creates a resource stack for each `LayerControl` entry before
+`on_context_create` or `on_context_resume` runs. Enter async resources through the
+control, store the live handle in `runtime_handles`, and clear the handle in
+`on_context_suspend`/`on_context_delete`; the resource stack performs the actual
+close after those hooks and also cleans up if create/resume or the context body
+raises.
+
+```python {test="skip" lint="skip"}
+class ClientHandles(BaseModel):
+    client: httpx.AsyncClient | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+@dataclass
+class ClientLayer(PlainLayer[NoLayerDeps, EmptyLayerConfig, EmptyRuntimeState, ClientHandles]):
+    async def on_context_create(self, control: LayerControl[EmptyRuntimeState, ClientHandles]) -> None:
+        control.runtime_handles.client = await control.enter_async_resource(httpx.AsyncClient())
+
+    async def on_context_delete(self, control: LayerControl[EmptyRuntimeState, ClientHandles]) -> None:
+        control.runtime_handles.client = None
+
+    def make_client_user(self, control: LayerControl) -> ClientUser:
+        control = self.require_control(control, active=True)
+        if control.runtime_handles.client is None:
+            raise RuntimeError("client is not available")
+        return ClientUser(control.runtime_handles.client)
+```
+
+`Layer.require_control(control, active=True)` is the recommended first line for
+capability methods that read runtime state or handles. It verifies that callers
+passed this layer's own control from the current session and, when requested, that
+the control is active.
 
 ## Register layers and build a compositor
 

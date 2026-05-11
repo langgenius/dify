@@ -45,7 +45,6 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         return DifyPluginDaemonProvider(
             tenant_id="tenant-1",
             plugin_id="langgenius/openai",
-            plugin_provider="openai",
             plugin_daemon_url="http://plugin-daemon",
             plugin_daemon_api_key="daemon-secret",
             user_id=user_id,
@@ -157,6 +156,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(user_id="user-123"),
+                model_provider="openai",
                 credentials={"api_key": "secret"},
                 model_settings={"temperature": 0.2, "stop_sequences": ["DEFAULT_STOP"]},
             )
@@ -168,7 +168,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(response.model_name, "demo-model")
-        self.assertEqual(response.provider_name, "DifyPlugin/openai")
+        self.assertEqual(response.provider_name, "DifyPlugin/langgenius/openai")
         self.assertEqual(response.usage.input_tokens, 11)
         self.assertEqual(response.usage.output_tokens, 7)
         self.assertEqual(response.parts[0].part_kind, "text")
@@ -178,6 +178,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         http_client = httpx.AsyncClient()
         provider = self.make_provider(http_client=http_client)
 
+        self.assertEqual(provider.name, "DifyPlugin/langgenius/openai")
         self.assertIs(provider.client.http_client, http_client)
         async with provider:
             pass
@@ -197,6 +198,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
+                model_provider="openai",
                 credentials={"api_key": "secret"},
             )
 
@@ -256,6 +258,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
+                model_provider="openai",
                 credentials={"api_key": "secret"},
             )
 
@@ -288,6 +291,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
+                model_provider="openai",
                 credentials={"api_key": "secret"},
             )
 
@@ -319,6 +323,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
+                model_provider="openai",
                 credentials={"api_key": "secret"},
             )
 
@@ -345,6 +350,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
+                model_provider="openai",
                 credentials={"api_key": "secret"},
             )
 
@@ -374,6 +380,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             adapter = DifyLLMAdapterModel(
                 "demo-model",
                 self.make_provider(),
+                model_provider="openai",
                 credentials={"api_key": "secret"},
             )
 

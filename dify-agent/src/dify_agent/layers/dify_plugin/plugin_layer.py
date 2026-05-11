@@ -3,8 +3,10 @@
 The public config identifies tenant/plugin/user context only. Plugin daemon URL,
 API key, and timeout are server-side dependencies injected by the layer registry
 factory. Each active compositor entry owns an HTTP client in ``LayerControl``
-runtime handles; callers pass the control explicitly to ``get_provider`` so
-shared layer instances never store or discover session-local clients implicitly.
+runtime handles and registers it on the control's resource stack. Callers pass
+the control explicitly to ``get_daemon_provider`` so shared layer instances never
+store or discover session-local clients implicitly. Business model-provider names
+belong to the LLM layer/model request, not this daemon context layer.
 """
 
 from dataclasses import dataclass
@@ -13,7 +15,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import Self, override
 
-from agenton.layers import EmptyRuntimeState, LayerControl, LifecycleState, NoLayerDeps, PlainLayer
+from agenton.layers import EmptyRuntimeState, LayerControl, NoLayerDeps, PlainLayer
 from dify_agent.adapters.llm import DifyPluginDaemonProvider
 from dify_agent.layers.dify_plugin.configs import DifyPluginLayerConfig
 
@@ -56,25 +58,25 @@ class DifyPluginLayer(PlainLayer[NoLayerDeps, DifyPluginLayerConfig, EmptyRuntim
         """Create a plugin layer from public config plus server-only daemon settings."""
         return cls(config=config, daemon_url=daemon_url, daemon_api_key=daemon_api_key, timeout=timeout)
 
-    def get_provider(
+    def get_daemon_provider(
         self,
         control: LayerControl[EmptyRuntimeState, DifyPluginRuntimeHandles],
-        *,
-        plugin_provider: str,
     ) -> DifyPluginDaemonProvider:
-        """Return a provider backed by ``control``'s active HTTP client.
+        """Return a daemon provider backed by ``control``'s active HTTP client.
 
         Raises:
             RuntimeError: if ``control`` is not active or its HTTP client is
                 absent/closed.
         """
+        control = self.require_control(control, active=True)
         client = control.runtime_handles.http_client
-        if control.state is not LifecycleState.ACTIVE or client is None or client.is_closed:
-            raise RuntimeError("DifyPluginLayer.get_provider() requires an entered control with an open HTTP client.")
+        if client is None or client.is_closed:
+            raise RuntimeError(
+                "DifyPluginLayer.get_daemon_provider() requires an entered control with an open HTTP client."
+            )
         return DifyPluginDaemonProvider(
             tenant_id=self.config.tenant_id,
             plugin_id=self.config.plugin_id,
-            plugin_provider=plugin_provider,
             plugin_daemon_url=self.daemon_url,
             plugin_daemon_api_key=self.daemon_api_key,
             user_id=self.config.user_id,
@@ -101,23 +103,18 @@ class DifyPluginLayer(PlainLayer[NoLayerDeps, DifyPluginLayerConfig, EmptyRuntim
         self,
         control: LayerControl[EmptyRuntimeState, DifyPluginRuntimeHandles],
     ) -> None:
-        await self._close_http_client(control)
+        control.runtime_handles.http_client = None
 
     @override
     async def on_context_delete(
         self,
         control: LayerControl[EmptyRuntimeState, DifyPluginRuntimeHandles],
     ) -> None:
-        await self._close_http_client(control)
+        control.runtime_handles.http_client = None
 
     async def _open_http_client(self, control: LayerControl[EmptyRuntimeState, DifyPluginRuntimeHandles]) -> None:
-        if control.runtime_handles.http_client is None or control.runtime_handles.http_client.is_closed:
-            control.runtime_handles.http_client = httpx.AsyncClient(timeout=self.timeout, trust_env=False)
-
-    async def _close_http_client(self, control: LayerControl[EmptyRuntimeState, DifyPluginRuntimeHandles]) -> None:
-        client = control.runtime_handles.http_client
-        control.runtime_handles.http_client = None
-        if client is not None:
-            await client.aclose()
+        control.runtime_handles.http_client = await control.enter_async_resource(
+            httpx.AsyncClient(timeout=self.timeout, trust_env=False)
+        )
 
 __all__ = ["DifyPluginLayer", "DifyPluginRuntimeHandles"]

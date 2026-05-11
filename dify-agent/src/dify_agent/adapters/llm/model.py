@@ -88,11 +88,12 @@ class _DifyRequestInput:
 
 @dataclass(slots=True)
 class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
-    """Use a Dify plugin-daemon LLM provider as a Pydantic AI model."""
+    """Use a Dify plugin-daemon transport plus request-level model identity."""
 
     model: str
     daemon_provider: DifyPluginDaemonProvider
     _: KW_ONLY
+    model_provider: str
     credentials: dict[str, object] = field(default_factory=dict, repr=False)
     model_profile: InitVar[ModelProfileSpec | None] = None
     model_settings: InitVar[ModelSettings | None] = None
@@ -140,6 +141,7 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         response = DifyStreamedResponse(
             model_request_parameters=prepared_params,
             chunks=self.daemon_provider.client.iter_llm_result_chunks(
+                provider=self.model_provider,
                 model=self.model_name,
                 credentials=request_input.credentials,
                 prompt_messages=request_input.prompt_messages,
@@ -175,6 +177,7 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         yield DifyStreamedResponse(
             model_request_parameters=prepared_params,
             chunks=self.daemon_provider.client.iter_llm_result_chunks(
+                provider=self.model_provider,
                 model=self.model_name,
                 credentials=request_input.credentials,
                 prompt_messages=request_input.prompt_messages,

@@ -10,10 +10,12 @@ by polling and SSE replay. Event envelopes keep the public
 a typed ``data`` model so OpenAPI, Redis replay, and clients parse the same
 payload contract. Model/provider selection is part of the submitted Agenton
 layer graph, not a top-level run field; the runtime reads the model layer named
-by ``DIFY_AGENT_MODEL_LAYER_ID``. Successful runs publish the final JSON-safe
-agent output and the resumable Agenton session snapshot together on the terminal
-``run_succeeded`` event so consumers can treat terminal events as complete run
-summaries.
+by ``DIFY_AGENT_MODEL_LAYER_ID``. Request-level layer exit signals decide whether
+each layer control is suspended or deleted when the active entry exits, with
+suspend as the default so successful terminal events can include resumable
+snapshots. Successful runs publish the final JSON-safe agent output and the
+resumable Agenton session snapshot together on the terminal ``run_succeeded``
+event so consumers can treat terminal events as complete run summaries.
 """
 
 from datetime import datetime, timezone
@@ -23,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorConfig, CompositorSessionSnapshot
+from agenton.layers import ExitIntent
 
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
@@ -40,15 +43,27 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class LayerExitSignals(BaseModel):
+    """Requested per-layer lifecycle behavior when a run leaves its active session."""
+
+    default: ExitIntent = ExitIntent.SUSPEND
+    layers: dict[str, ExitIntent] = Field(default_factory=dict)
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
 class CreateRunRequest(BaseModel):
     """Request body for creating one async agent run.
 
     Model/provider configuration must be supplied through the compositor layer
-    named by ``DIFY_AGENT_MODEL_LAYER_ID``.
+    named by ``DIFY_AGENT_MODEL_LAYER_ID``. ``layer_exit_signals`` defaults every
+    layer to suspend so callers receive a resumable success snapshot unless they
+    explicitly request delete for one or more layers.
     """
 
     compositor: CompositorConfig
     session_snapshot: CompositorSessionSnapshot | None = None
+    layer_exit_signals: LayerExitSignals = Field(default_factory=LayerExitSignals)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -162,6 +177,7 @@ __all__ = [
     "CreateRunResponse",
     "DIFY_AGENT_MODEL_LAYER_ID",
     "EmptyRunEventData",
+    "LayerExitSignals",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",
     "RunEvent",
