@@ -147,7 +147,7 @@ def test_get_runtime_converts_graph_provider_type_for_tool_manager(runtime: Dify
     assert workflow_tool.provider_type == CoreToolProviderType.BUILT_IN
 
 
-def test_get_runtime_passes_outer_trace_runtime_parameters_for_workflow_tools(
+def test_get_runtime_stores_parent_trace_context_for_workflow_tools(
     runtime: DifyToolNodeRuntime,
 ) -> None:
     variable_pool: VariablePool = build_test_variable_pool(
@@ -173,17 +173,18 @@ def test_get_runtime_passes_outer_trace_runtime_parameters_for_workflow_tools(
     )
 
     with patch.object(ToolManager, "get_workflow_tool_runtime", return_value=workflow_runtime):
-        runtime.get_runtime(
+        tool_runtime = runtime.get_runtime(
             node_id="node-id",
             node_data=node_data,
             variable_pool=variable_pool,
             node_execution_id="node-execution-id",
         )
 
-    assert workflow_runtime.runtime.runtime_parameters == {
-        "outer_workflow_run_id": "workflow-run-id",
-        "outer_node_execution_id": "node-execution-id",
+    assert tool_runtime.raw.parent_trace_context == {
+        "parent_workflow_run_id": "workflow-run-id",
+        "parent_node_execution_id": "node-execution-id",
     }
+    assert workflow_runtime.runtime.runtime_parameters == {}
 
 
 def test_get_runtime_leaves_non_workflow_tool_runtime_parameters_unchanged(
