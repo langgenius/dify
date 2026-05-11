@@ -3870,11 +3870,6 @@
       "count": 8
     }
   },
-  "web/app/components/workflow/nodes/start/panel.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/start/use-config.ts": {
     "ts/no-explicit-any": {
       "count": 1
