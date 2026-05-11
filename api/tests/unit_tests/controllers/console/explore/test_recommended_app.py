@@ -1,6 +1,9 @@
 from unittest.mock import MagicMock, patch
 
+from flask import Flask
+
 import controllers.console.explore.recommended_app as module
+from models.model import AppMode, IconType
 
 
 def unwrap(func):
@@ -10,7 +13,7 @@ def unwrap(func):
 
 
 class TestRecommendedAppListApi:
-    def test_get_with_language_param(self, app):
+    def test_get_with_language_param(self, app: Flask):
         api = module.RecommendedAppListApi()
         method = unwrap(api.get)
 
@@ -30,7 +33,7 @@ class TestRecommendedAppListApi:
         service_mock.assert_called_once_with("en-US")
         assert result == result_data
 
-    def test_get_fallback_to_user_language(self, app):
+    def test_get_fallback_to_user_language(self, app: Flask):
         api = module.RecommendedAppListApi()
         method = unwrap(api.get)
 
@@ -50,7 +53,7 @@ class TestRecommendedAppListApi:
         service_mock.assert_called_once_with("fr-FR")
         assert result == result_data
 
-    def test_get_fallback_to_default_language(self, app):
+    def test_get_fallback_to_default_language(self, app: Flask):
         api = module.RecommendedAppListApi()
         method = unwrap(api.get)
 
@@ -72,7 +75,7 @@ class TestRecommendedAppListApi:
 
 
 class TestRecommendedAppApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = module.RecommendedAppApi()
         method = unwrap(api.get)
 
@@ -90,3 +93,49 @@ class TestRecommendedAppApi:
 
         service_mock.assert_called_once_with("11111111-1111-1111-1111-111111111111")
         assert result == result_data
+
+
+class TestRecommendedAppResponseModels:
+    def test_recommended_app_info_response_computes_icon_url(self):
+        with patch.object(module, "build_icon_url", return_value="https://signed/icon.png"):
+            payload = module.RecommendedAppInfoResponse.model_validate(
+                {
+                    "id": "app-1",
+                    "name": "App",
+                    "mode": AppMode.CHAT,
+                    "icon": "icon.png",
+                    "icon_type": IconType.IMAGE,
+                    "icon_background": "#fff",
+                }
+            ).model_dump(mode="json")
+
+        assert payload["icon_url"] == "https://signed/icon.png"
+
+    def test_recommended_app_list_response_serialization(self):
+        response = module.RecommendedAppListResponse.model_validate(
+            {
+                "recommended_apps": [
+                    {
+                        "app": {
+                            "id": "app-1",
+                            "name": "App",
+                            "mode": "chat",
+                            "icon": "icon.png",
+                            "icon_type": "emoji",
+                            "icon_background": "#fff",
+                        },
+                        "app_id": "app-1",
+                        "description": "desc",
+                        "categories": ["cat", "other"],
+                        "position": 1,
+                        "is_listed": True,
+                        "can_trial": False,
+                    }
+                ],
+                "categories": ["cat"],
+            }
+        ).model_dump(mode="json")
+
+        assert response["recommended_apps"][0]["app_id"] == "app-1"
+        assert response["recommended_apps"][0]["categories"] == ["cat", "other"]
+        assert response["categories"] == ["cat"]

@@ -1,9 +1,16 @@
 'use client'
 import type { FC } from 'react'
+import type { HoverPopup } from './var-reference-picker.trigger'
 import type { CredentialFormSchema, CredentialFormSchemaSelect, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -14,11 +21,6 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useIsChatMode,
@@ -30,7 +32,6 @@ import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import { removeFileVars, varTypeToStructType } from './utils'
 import VarFullPathPanel from './var-full-path-panel'
@@ -81,7 +82,6 @@ type Props = {
   placeholder?: string
   minWidth?: number
   popupFor?: 'assigned' | 'toAssigned'
-  zIndex?: number
   currentTool?: Tool
   currentProvider?: ToolWithProvider | TriggerWithProvider
   preferSchemaType?: boolean
@@ -116,7 +116,6 @@ const VarReferencePicker: FC<Props> = ({
   placeholder,
   minWidth,
   popupFor,
-  zIndex,
   currentTool,
   currentProvider,
   preferSchemaType,
@@ -140,10 +139,10 @@ const VarReferencePicker: FC<Props> = ({
   })
 
   const node = nodes.find(n => n.id === nodeId)
-  const isInIteration = !!(node?.data as any)?.isInIteration
+  const isInIteration = !!node?.data.isInIteration
   const iterationNode = isInIteration ? (nodes.find(n => n.id === node?.parentId) ?? null) : null
 
-  const isInLoop = !!(node?.data as any)?.isInLoop
+  const isInLoop = !!node?.data.isInLoop
   const loopNode = isInLoop ? (nodes.find(n => n.id === node?.parentId) ?? null) : null
 
   const triggerRef = useRef<HTMLDivElement>(null)
@@ -186,7 +185,7 @@ const VarReferencePicker: FC<Props> = ({
     isLoopVar,
     iterationNode,
     loopNode,
-    outputVarNodeId,
+    outputVarNodeId: outputVarNodeId!,
     startNode,
     value,
   }), [availableNodes, hasValue, isConstant, isIterationVar, isLoopVar, iterationNode, loopNode, outputVarNodeId, startNode, value])
@@ -209,13 +208,11 @@ const VarReferencePicker: FC<Props> = ({
   }, [onChange])
 
   const inputRef = useRef<HTMLInputElement>(null)
-  const [isFocus, setIsFocus] = useState(false)
   const [controlFocus, setControlFocus] = useState(0)
+  const isFocus = controlFocus > 0
   useEffect(() => {
-    if (controlFocus && inputRef.current) {
+    if (controlFocus && inputRef.current)
       inputRef.current.focus()
-      setIsFocus(true)
-    }
   }, [controlFocus])
 
   const handleVarReferenceChange = useCallback((value: ValueSelector, varInfo: Var) => {
@@ -223,7 +220,7 @@ const VarReferencePicker: FC<Props> = ({
     const newValue = produce(value, (draft) => {
       if (draft[1] && draft[1].startsWith('sys.')) {
         draft.shift()
-        const paths = draft[0].split('.')
+        const paths = draft[0]!.split('.')
         paths.forEach((p, i) => {
           draft[i] = p
         })
@@ -254,16 +251,16 @@ const VarReferencePicker: FC<Props> = ({
     } = reactflow
     const { transform } = store.getState()
     const zoom = transform[2]
-    const position = currentNode.position
+    const position = currentNode!.position
     setViewport({
-      x: (clientWidth - 400 - currentNode.width! * zoom) / 2 - position.x * zoom,
-      y: (clientHeight - currentNode.height! * zoom) / 2 - position.y * zoom,
+      x: (clientWidth - 400 - currentNode!.width! * zoom) / 2 - position.x * zoom,
+      y: (clientHeight - currentNode!.height! * zoom) / 2 - position.y * zoom,
       zoom: transform[2],
     })
   }, [availableNodes, reactflow, store])
 
   const type = getCurrentVariableType({
-    parentNode: (isInIteration ? iterationNode : loopNode) as any,
+    parentNode: isInIteration ? iterationNode : loopNode,
     valueSelector: value as ValueSelector,
     availableNodes,
     isChatMode,
@@ -280,31 +277,33 @@ const VarReferencePicker: FC<Props> = ({
     [outputVarNode?.type, varName],
   )
   const showErrorIcon = hasValue && !isValidVar
+  const shouldShowNodeName = isShowNodeName && !isEnv && !isChatVar && !isGlobal && !isRagVar
+  const visibleNodeTitle = shouldShowNodeName ? outputVarNode?.title || '' : ''
 
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
   const {
     maxNodeNameWidth,
     maxTypeWidth,
     maxVarNameWidth,
-  } = getWidthAllocations(triggerWidth, outputVarNode?.title || '', varName || '', type || '')
+  } = getWidthAllocations(triggerWidth, visibleNodeTitle, varName || '', type || '')
 
-  const WrapElem = isSupportConstantValue ? 'div' : PortalToFollowElemTrigger
-  const VarPickerWrap = !isSupportConstantValue ? 'div' : PortalToFollowElemTrigger
-
-  const tooltipPopup = useMemo(() => {
+  const hoverPopup = useMemo<HoverPopup | null>(() => {
     const tooltipType = getTooltipContent(hasValue, isShowAPart, isValidVar)
     if (tooltipType === 'full-path') {
-      return (
-        <VarFullPathPanel
-          nodeName={outputVarNode?.title}
-          path={(value as ValueSelector).slice(1)}
-          varType={varTypeToStructType(type)}
-          nodeType={outputVarNode?.type}
-        />
-      )
+      return {
+        kind: 'full-path',
+        panel: (
+          <VarFullPathPanel
+            nodeName={outputVarNode?.title}
+            path={(value as ValueSelector).slice(1)}
+            varType={varTypeToStructType(type)}
+            nodeType={outputVarNode?.type}
+          />
+        ),
+      }
     }
     if (tooltipType === 'invalid-variable')
-      return t('errorMsg.invalidVariable', { ns: 'workflow' })
+      return { kind: 'invalid-variable', message: t('errorMsg.invalidVariable', { ns: 'workflow' }) }
 
     return null
   }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value, type])
@@ -345,15 +344,23 @@ const VarReferencePicker: FC<Props> = ({
   )
 
   const triggerPlaceholder = placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })
+  const resolvedTrigger = React.isValidElement(trigger) ? trigger : <div>{trigger}</div>
 
   return (
     <div className={cn(className)}>
-      <PortalToFollowElem
+      <Popover
         open={open}
         onOpenChange={setOpen}
-        placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
       >
-        {!!trigger && <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>{trigger}</PortalToFollowElemTrigger>}
+        {!!trigger && (
+          <PopoverTrigger
+            render={resolvedTrigger}
+            onClick={(e) => {
+              if (readonly)
+                e.preventDefault()
+            }}
+          />
+        )}
         {!trigger && (
           <VarReferencePickerTrigger
             className={className}
@@ -373,7 +380,7 @@ const VarReferencePicker: FC<Props> = ({
             isJustShowValue={isJustShowValue}
             isLoading={isLoading}
             isShowAPart={isShowAPart}
-            isShowNodeName={isShowNodeName && !isEnv && !isChatVar && !isGlobal && !isRagVar}
+            isShowNodeName={shouldShowNodeName}
             isSupportConstantValue={isSupportConstantValue}
             maxNodeNameWidth={maxNodeNameWidth}
             maxTypeWidth={maxTypeWidth}
@@ -389,7 +396,7 @@ const VarReferencePicker: FC<Props> = ({
             setControlFocus={setControlFocus}
             setOpen={setOpen}
             showErrorIcon={showErrorIcon}
-            tooltipPopup={tooltipPopup}
+            hoverPopup={hoverPopup}
             triggerRef={triggerRef}
             type={type}
             typePlaceHolder={typePlaceHolder}
@@ -399,15 +406,13 @@ const VarReferencePicker: FC<Props> = ({
             varKindTypes={varKindTypes}
             varName={varName}
             variableCategory={variableCategory}
-            VarPickerWrap={VarPickerWrap}
-            WrapElem={WrapElem}
           />
         )}
-        <PortalToFollowElemContent
-          style={{
-            zIndex: zIndex || 100,
-          }}
+        <PopoverContent
+          placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
+          sideOffset={0}
           className="mt-1"
+          popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           {!isConstant && (
             <VarReferencePopup
@@ -416,12 +421,11 @@ const VarReferencePicker: FC<Props> = ({
               onChange={handleVarReferenceChange}
               itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
               isSupportFileVar={isSupportFileVar}
-              zIndex={zIndex}
               preferSchemaType={preferSchemaType}
             />
           )}
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

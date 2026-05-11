@@ -1,7 +1,7 @@
 import type { RenderOptions } from '@testing-library/react'
 import type { Mock, MockedFunction } from 'vitest'
 import type { ModalContextState } from '@/context/modal-context'
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
 import { useModalContext as actualUseModalContext } from '@/context/modal-context'
@@ -31,6 +31,7 @@ const defaultProviderContext = {
   isAPIKeySet: false,
   plan: defaultPlan,
   isFetchedPlan: false,
+  isFetchedPlanInfo: false,
   enableBilling: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
@@ -80,6 +81,8 @@ type MockOverrides = {
 type APIKeyInfoPanelRenderOptions = {
   mockOverrides?: MockOverrides
 } & Omit<RenderOptions, 'wrapper'>
+
+const mainButtonName = /appOverview\.apiKeyInfo\.setAPIBtn/
 
 // Setup function to configure mocks
 function setupMocks(overrides: MockOverrides = {}) {
@@ -137,7 +140,7 @@ export const scenarios = {
 export const assertions = {
   // Should render main button
   shouldRenderMainButton: () => {
-    const button = document.querySelector('button.btn-primary')
+    const button = screen.getByRole('button', { name: mainButtonName })
     expect(button).toBeInTheDocument()
     return button
   },
@@ -174,9 +177,8 @@ export const assertions = {
 export const interactions = {
   // Click the main button
   clickMainButton: () => {
-    const button = document.querySelector('button.btn-primary')
-    if (button)
-      fireEvent.click(button)
+    const button = screen.getByRole('button', { name: mainButtonName })
+    fireEvent.click(button)
     return button
   },
 
@@ -191,6 +193,7 @@ export const interactions = {
 
 // Text content keys for assertions
 export const textKeys = {
+  button: mainButtonName,
   selfHost: {
     titleRow1: /appOverview\.apiKeyInfo\.selfHost\.title\.row1/,
     titleRow2: /appOverview\.apiKeyInfo\.selfHost\.title\.row2/,

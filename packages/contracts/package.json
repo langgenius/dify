@@ -1,0 +1,37 @@
+{
+  "name": "@dify/contracts",
+  "type": "module",
+  "version": "0.0.0-private",
+  "private": true,
+  "exports": {
+    "./api/*": {
+      "types": "./generated/api/*.ts",
+      "import": "./generated/api/*.ts"
+    },
+    "./enterprise/*": {
+      "types": "./generated/enterprise/*.ts",
+      "import": "./generated/enterprise/*.ts"
+    }
+  },
+  "scripts": {
+    "gen-api-contract": "pnpm gen-api-openapi && node -e \"fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts",
+    "gen-api-openapi": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi",
+    "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts",
+    "type-check": "tsgo"
+  },
+  "dependencies": {
+    "@orpc/contract": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dify/tsconfig": "workspace:*",
+    "@hey-api/openapi-ts": "catalog:",
+    "@types/js-yaml": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "eslint": "catalog:",
+    "js-yaml": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -152,7 +152,8 @@ describe('RetrievalChangeTip', () => {
     await userEvent.click(screen.getByRole('button', { name: 'close-retrieval-change-tip' }))
 
     // Assert
-    expect(screen.getByText('Test message')).toBeInTheDocument()
+    // Assert
+    expect(screen.getByText('Test message'))!.toBeInTheDocument()
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
@@ -160,6 +161,37 @@ describe('RetrievalChangeTip', () => {
     // Arrange & Act
     render(<RetrievalChangeTip {...defaultProps} visible={false} />)
 
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
+    // Assert
     // Assert
     expect(screen.queryByText('Test message')).not.toBeInTheDocument()
   })
@@ -213,12 +245,13 @@ describe('RetrievalSection', () => {
       />,
     )
     const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
-    await userEvent.click(topKIncrement)
+    await userEvent.click(topKIncrement!)
 
     // Assert
-    expect(screen.getByText('External API')).toBeInTheDocument()
-    expect(screen.getByText('https://api.external.com')).toBeInTheDocument()
-    expect(screen.getByText('ext-id-999')).toBeInTheDocument()
+    // Assert
+    expect(screen.getByText('External API'))!.toBeInTheDocument()
+    expect(screen.getByText('https://api.external.com'))!.toBeInTheDocument()
+    expect(screen.getByText('ext-id-999'))!.toBeInTheDocument()
     expect(handleExternalChange).toHaveBeenCalledWith(expect.objectContaining({ top_k: 4 }))
   })
 
@@ -243,9 +276,10 @@ describe('RetrievalSection', () => {
     )
 
     // Assert
-    expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
+    // Assert
+    expect(screen.getByText('dataset.retrieval.semantic_search.title'))!.toBeInTheDocument()
     const learnMoreLink = screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })
-    expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example/use-dify/knowledge/create-knowledge/setting-indexing-methods')
+    expect(learnMoreLink)!.toHaveAttribute('href', 'https://docs.example/use-dify/knowledge/create-knowledge/setting-indexing-methods')
     expect(docLink).toHaveBeenCalledWith('/use-dify/knowledge/create-knowledge/setting-indexing-methods')
   })
 
@@ -268,10 +302,11 @@ describe('RetrievalSection', () => {
       />,
     )
     const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
-    await userEvent.click(topKIncrement)
+    await userEvent.click(topKIncrement!)
 
     // Assert
-    expect(screen.getByText('dataset.retrieval.keyword_search.title')).toBeInTheDocument()
+    // Assert
+    expect(screen.getByText('dataset.retrieval.keyword_search.title'))!.toBeInTheDocument()
     expect(handleRetrievalChange).toHaveBeenCalledWith(expect.objectContaining({
       top_k: 3,
     }))

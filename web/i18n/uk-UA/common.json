@@ -494,6 +494,7 @@
   "operation.downloadSuccess": "Завантаження завершено.",
   "operation.duplicate": "дублікат",
   "operation.edit": "Редагувати",
+  "operation.exporting": "Експорт",
   "operation.format": "Формат",
   "operation.getForFree": "Отримати безкоштовно",
   "operation.imageCopied": "Скопійоване зображення",

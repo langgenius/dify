@@ -71,7 +71,7 @@ const ConditionValue = ({
 
   return (
     <div className="rounded-md bg-workflow-block-parma-bg">
-      <div className="flex h-6 items-center px-1 ">
+      <div className="flex h-6 items-center px-1">
         <VariableLabelInNode
           className="w-0 grow"
           variables={variableSelector}
@@ -96,7 +96,7 @@ const ConditionValue = ({
                 <div className="system-xs-medium text-text-accent">{c.key}</div>
                 <div className="system-xs-medium text-text-primary">{comparisonOperatorName}</div>
                 {c.comparison_operator && !isEmptyRelatedOperator(c.comparison_operator) && <div className="system-xs-regular text-text-secondary">{isSelect(c) ? selectName(c) : formatValue(c)}</div>}
-                {index !== sub_variable_condition.conditions.length - 1 && (<div className="absolute bottom-[-10px] right-1 z-10 text-[10px] font-medium uppercase leading-4 text-text-accent">{t(`nodes.ifElse.${sub_variable_condition.logical_operator}`, { ns: 'workflow' })}</div>)}
+                {index !== sub_variable_condition.conditions.length - 1 && (<div className="absolute right-1 bottom-[-10px] z-10 text-[10px] leading-4 font-medium text-text-accent uppercase">{t(`nodes.ifElse.${sub_variable_condition.logical_operator}`, { ns: 'workflow' })}</div>)}
               </div>
             )
           })

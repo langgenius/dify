@@ -3,15 +3,15 @@ import type { FC } from 'react'
 import type { ToolWithProvider } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import type { Tool } from '@/app/components/tools/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
-import Tooltip from '@/app/components/base/tooltip'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
@@ -57,13 +57,59 @@ const ToolItem: FC<Props> = ({
     return normalizedIcon
   }, [theme, normalizedIcon, normalizedIconDark])
 
-  return (
-    <Tooltip
+  const row = (
+    <div
       key={payload.name}
-      position="right"
-      needsDelay={false}
-      popupClassName="p-0! px-3! py-2.5! w-[200px]! leading-[18px]! text-xs! text-gray-700! border-[0.5px]! border-black/5! rounded-xl! shadow-lg!"
-      popupContent={(
+      className="flex cursor-pointer items-center justify-between rounded-lg pr-1 pl-[21px] hover:bg-state-base-hover"
+      onClick={() => {
+        if (disabled)
+          return
+        const params: Record<string, string> = {}
+        if (payload.parameters) {
+          payload.parameters.forEach((item) => {
+            params[item.name] = ''
+          })
+        }
+        onSelect(BlockEnum.Tool, {
+          provider_id: provider.id,
+          provider_type: provider.type,
+          provider_name: provider.name,
+          plugin_id: provider.plugin_id,
+          plugin_unique_identifier: provider.plugin_unique_identifier,
+          provider_icon: normalizedIcon,
+          provider_icon_dark: normalizedIconDark,
+          tool_name: payload.name,
+          tool_label: payload.label[language]!,
+          tool_description: payload.description[language],
+          title: payload.label[language]!,
+          is_team_authorization: provider.is_team_authorization,
+          paramSchemas: payload.parameters,
+          params,
+          meta: provider.meta,
+        })
+        trackEvent('tool_selected', {
+          tool_name: payload.name,
+          plugin_id: provider.plugin_id,
+        })
+      }}
+    >
+      <div className={cn('truncate border-l-2 border-divider-subtle py-2 pl-4 system-sm-medium text-text-secondary')}>
+        <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
+      </div>
+      {isAdded && (
+        <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
+      )}
+    </div>
+  )
+
+  return (
+    // Preview is supplementary: provider icon, tool label and description are all
+    // reachable from the node inspector after the row is clicked to add the tool,
+    // so hover/focus-only activation is a11y-safe. See
+    // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
+    <PreviewCard key={payload.name}>
+      <PreviewCardTrigger delay={150} closeDelay={150} render={row} />
+      <PreviewCardContent placement="right" popupClassName="w-[200px] px-3 py-2.5">
         <div>
           <BlockIcon
             size="md"
@@ -74,51 +120,8 @@ const ToolItem: FC<Props> = ({
           <div className="mb-1 text-sm leading-5 text-text-primary">{payload.label[language]}</div>
           <div className="text-xs leading-[18px] text-text-secondary">{payload.description[language]}</div>
         </div>
-      )}
-    >
-      <div
-        key={payload.name}
-        className="flex cursor-pointer items-center justify-between rounded-lg pl-[21px] pr-1 hover:bg-state-base-hover"
-        onClick={() => {
-          if (disabled)
-            return
-          const params: Record<string, string> = {}
-          if (payload.parameters) {
-            payload.parameters.forEach((item) => {
-              params[item.name] = ''
-            })
-          }
-          onSelect(BlockEnum.Tool, {
-            provider_id: provider.id,
-            provider_type: provider.type,
-            provider_name: provider.name,
-            plugin_id: provider.plugin_id,
-            plugin_unique_identifier: provider.plugin_unique_identifier,
-            provider_icon: normalizedIcon,
-            provider_icon_dark: normalizedIconDark,
-            tool_name: payload.name,
-            tool_label: payload.label[language],
-            tool_description: payload.description[language],
-            title: payload.label[language],
-            is_team_authorization: provider.is_team_authorization,
-            paramSchemas: payload.parameters,
-            params,
-            meta: provider.meta,
-          })
-          trackEvent('tool_selected', {
-            tool_name: payload.name,
-            plugin_id: provider.plugin_id,
-          })
-        }}
-      >
-        <div className={cn('truncate border-l-2 border-divider-subtle py-2 pl-4 text-text-secondary system-sm-medium')}>
-          <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
-        </div>
-        {isAdded && (
-          <div className="mr-4 text-text-tertiary system-xs-regular">{t('addToolModal.added', { ns: 'tools' })}</div>
-        )}
-      </div>
-    </Tooltip>
+      </PreviewCardContent>
+    </PreviewCard>
   )
 }
 export default React.memo(ToolItem)

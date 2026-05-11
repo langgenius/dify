@@ -34,17 +34,41 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-name'
   ),
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    <div data-testid="portal-elem" data-open={open ? 'true' : 'false'}>{children}</div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="portal-content">{children}</div>
-  ),
-}))
+vi.mock('@langgenius/dify-ui/popover', async () => {
+  const React = await import('react')
+  const PopoverContext = React.createContext<{ open: boolean, onOpenChange?: (open: boolean) => void } | null>(null)
+
+  return {
+    Popover: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+      <PopoverContext.Provider value={{ open, onOpenChange }}>
+        <div data-testid="popover-root" data-open={open ? 'true' : 'false'}>
+          {children}
+        </div>
+      </PopoverContext.Provider>
+    ),
+    PopoverTrigger: ({ children, render }: { children?: React.ReactNode, render?: React.ReactNode }) => {
+      const context = React.useContext(PopoverContext)
+      const content = render ?? children
+      const handleClick = () => {
+        context?.onOpenChange?.(!context.open)
+      }
+
+      if (React.isValidElement(content)) {
+        const element = content as React.ReactElement<{ onClick?: () => void }>
+        return React.cloneElement(element, { onClick: handleClick })
+      }
+
+      return <button type="button" data-testid="popover-trigger" onClick={handleClick}>{content}</button>
+    },
+    PopoverContent: ({ children }: { children: React.ReactNode }) => {
+      const context = React.useContext(PopoverContext)
+      if (!context?.open)
+        return null
+
+      return <div data-testid="popover-content">{children}</div>
+    },
+  }
+})
 
 describe('ModelInfo', () => {
   const defaultModel = {
@@ -92,42 +116,46 @@ describe('ModelInfo', () => {
     it('should be closed by default', () => {
       render(<ModelInfo model={defaultModel} />)
 
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'false')
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
 
     it('should open when info button is clicked', () => {
       render(<ModelInfo model={defaultModel} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByRole('button')
       fireEvent.click(trigger)
 
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'true')
+      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'true')
+      expect(screen.getByTestId('popover-content')).toBeInTheDocument()
     })
 
     it('should close when info button is clicked again', () => {
       render(<ModelInfo model={defaultModel} />)
 
-      const trigger = screen.getByTestId('portal-trigger')
+      const trigger = screen.getByRole('button')
 
       // Open
       fireEvent.click(trigger)
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'true')
+      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'true')
 
       // Close
       fireEvent.click(trigger)
-      expect(screen.getByTestId('portal-elem')).toHaveAttribute('data-open', 'false')
+      expect(screen.getByTestId('popover-root')).toHaveAttribute('data-open', 'false')
     })
   })
 
   describe('Model Parameters Display', () => {
     it('should render model params header', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('detail.modelParams')).toBeInTheDocument()
     })
 
     it('should render temperature parameter', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('Temperature')).toBeInTheDocument()
       expect(screen.getByText('0.7')).toBeInTheDocument()
@@ -135,6 +163,7 @@ describe('ModelInfo', () => {
 
     it('should render top_p parameter', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('Top P')).toBeInTheDocument()
       expect(screen.getByText('0.9')).toBeInTheDocument()
@@ -142,6 +171,7 @@ describe('ModelInfo', () => {
 
     it('should render presence_penalty parameter', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('Presence Penalty')).toBeInTheDocument()
       expect(screen.getByText('0.1')).toBeInTheDocument()
@@ -149,6 +179,7 @@ describe('ModelInfo', () => {
 
     it('should render max_tokens parameter', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('Max Token')).toBeInTheDocument()
       expect(screen.getByText('2048')).toBeInTheDocument()
@@ -156,6 +187,7 @@ describe('ModelInfo', () => {
 
     it('should render stop parameter as comma-separated values', () => {
       render(<ModelInfo model={defaultModel} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('Stop')).toBeInTheDocument()
       expect(screen.getByText('END')).toBeInTheDocument()
@@ -171,6 +203,7 @@ describe('ModelInfo', () => {
       }
 
       render(<ModelInfo model={modelWithNoParams} />)
+      fireEvent.click(screen.getByRole('button'))
 
       const dashes = screen.getAllByText('-')
       expect(dashes.length).toBeGreaterThan(0)
@@ -186,6 +219,7 @@ describe('ModelInfo', () => {
       }
 
       render(<ModelInfo model={modelWithInvalidStop} />)
+      fireEvent.click(screen.getByRole('button'))
 
       const stopValues = screen.getAllByText('-')
       expect(stopValues.length).toBeGreaterThan(0)
@@ -201,6 +235,7 @@ describe('ModelInfo', () => {
       }
 
       render(<ModelInfo model={modelWithMultipleStops} />)
+      fireEvent.click(screen.getByRole('button'))
 
       expect(screen.getByText('END,STOP,DONE')).toBeInTheDocument()
     })

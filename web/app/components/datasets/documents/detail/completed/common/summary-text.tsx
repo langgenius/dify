@@ -1,7 +1,7 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
-import { cn } from '@/utils/classnames'
 
 type SummaryTextProps = {
   value?: string
@@ -20,7 +20,7 @@ const SummaryText = ({
       <div className="system-xs-medium-uppercase text-text-tertiary">{t('segment.summary', { ns: 'datasetDocuments' })}</div>
       <Textarea
         className={cn(
-          'body-sm-regular w-full resize-none bg-transparent leading-6 text-text-secondary outline-hidden',
+          'w-full resize-none bg-transparent body-sm-regular leading-6 text-text-secondary outline-hidden',
         )}
         placeholder={t('segment.summaryPlaceholder', { ns: 'datasetDocuments' })}
         minRows={1}

@@ -20,7 +20,7 @@ const { mockNotify, mockModifyDocMetadata, mockToast } = vi.hoisted(() => {
   return { mockNotify, mockModifyDocMetadata: vi.fn(), mockToast }
 })
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 

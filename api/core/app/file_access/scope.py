@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator  # Changed from Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -32,7 +32,7 @@ def get_current_file_access_scope() -> FileAccessScope | None:
 
 
 @contextmanager
-def bind_file_access_scope(scope: FileAccessScope) -> Iterator[None]:
+def bind_file_access_scope(scope: FileAccessScope) -> Generator[None, None, None]:  # Changed from Iterator[None]
     token = _current_file_access_scope.set(scope)
     try:
         yield

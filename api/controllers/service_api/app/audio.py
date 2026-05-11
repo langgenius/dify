@@ -2,7 +2,6 @@ import logging
 
 from flask import request
 from flask_restx import Resource
-from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import InternalServerError
 
 import services
@@ -22,6 +21,7 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, EndUser
 from services.audio_service import AudioService
 from services.errors.audio import (

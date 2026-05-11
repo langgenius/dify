@@ -1,10 +1,10 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import Button from '@/app/components/base/button'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
 
 const EnvButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()

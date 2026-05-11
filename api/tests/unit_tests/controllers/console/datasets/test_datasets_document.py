@@ -1,6 +1,8 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -215,24 +217,30 @@ class TestDatasetDocumentListApi:
         method = unwrap(api.post)
 
         payload = {"indexing_technique": "economy"}
+        created_dataset = SimpleNamespace(id="ds-1", name="Dataset", indexing_technique="economy")
+        created_document = SimpleNamespace(id="doc-1", name="Document", doc_metadata_details=None)
 
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
+                return_value=created_dataset,
+            ),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.document_create_args_validate",
                 return_value=None,
             ),
             patch(
                 "controllers.console.datasets.datasets_document.DocumentService.save_document_with_dataset_id",
-                return_value=([MagicMock()], "batch-1"),
+                return_value=([created_document], "batch-1"),
             ),
         ):
             response = method(api, "ds-1")
 
         assert "documents" in response
 
-    def test_post_forbidden(self, app):
+    def test_post_forbidden(self, app: Flask):
         api = DatasetDocumentListApi()
         method = unwrap(api.post)
 
@@ -388,7 +396,7 @@ class TestDocumentDownloadApi:
 
 
 class TestDocumentProcessingApi:
-    def test_processing_forbidden_when_not_editor(self, app):
+    def test_processing_forbidden_when_not_editor(self, app: Flask):
         api = DocumentProcessingApi()
         method = unwrap(api.patch)
 
@@ -1178,7 +1186,7 @@ class TestDocumentPermissionCases:
             "preview": [],
         }
 
-    def test_document_tenant_mismatch(self, app):
+    def test_document_tenant_mismatch(self, app: Flask):
         api = DocumentApi()
         method = unwrap(api.get)
 
@@ -1246,7 +1254,7 @@ class TestDocumentPermissionCases:
         assert status == 200
         assert response["mode"] == "custom"
 
-    def test_process_rule_permission_denied(self, app):
+    def test_process_rule_permission_denied(self, app: Flask):
         api = GetProcessRuleApi()
         method = unwrap(api.get)
 

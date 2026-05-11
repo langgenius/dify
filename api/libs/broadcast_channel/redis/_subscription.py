@@ -3,7 +3,7 @@ import queue
 import threading
 import types
 from collections.abc import Generator, Iterator
-from typing import Self
+from typing import Any, Self
 
 from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
@@ -221,7 +221,7 @@ class RedisSubscriptionBase(Subscription):
         """Unsubscribe from the Redis topic using the appropriate command."""
         raise NotImplementedError
 
-    def _get_message(self) -> dict | None:
+    def _get_message(self) -> dict[str, Any] | None:
         """Get a message from Redis using the appropriate method."""
         raise NotImplementedError
 

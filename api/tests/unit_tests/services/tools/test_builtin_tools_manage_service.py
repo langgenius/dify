@@ -180,7 +180,7 @@ class TestSetDefaultProvider:
         session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="provider not found"):
-            BuiltinToolManageService.set_default_provider("t", "u", "p", "id")
+            BuiltinToolManageService.set_default_provider("t", "p", "id")
 
     @patch(f"{MODULE}.sessionmaker")
     @patch(f"{MODULE}.db")
@@ -189,10 +189,28 @@ class TestSetDefaultProvider:
         target = MagicMock()
         session.scalar.return_value = target
 
-        result = BuiltinToolManageService.set_default_provider("t", "u", "p", "id")
+        result = BuiltinToolManageService.set_default_provider("t", "p", "id")
 
         assert result == {"result": "success"}
         assert target.is_default is True
+
+    @patch(f"{MODULE}.sessionmaker")
+    @patch(f"{MODULE}.db")
+    def test_clear_default_is_tenant_scoped_not_user_scoped(self, mock_db, mock_sm_cls):
+        # Regression: clearing prior defaults must NOT filter by user_id, otherwise
+        # two workspace members can each leave their own credential as default at
+        # the same time (the default flag is tenant-scoped, not per-user).
+        session = _mock_sessionmaker(mock_sm_cls)
+        session.scalar.return_value = MagicMock()
+
+        BuiltinToolManageService.set_default_provider("tenant-1", "google", "cred-id")
+
+        session.execute.assert_called_once()
+        update_stmt = session.execute.call_args.args[0]
+        compiled = str(update_stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "user_id" not in compiled
+        assert "tenant_id" in compiled
+        assert "provider" in compiled
 
 
 class TestUpdateBuiltinToolProvider:
@@ -280,7 +298,7 @@ class TestGetOauthClient:
 
         assert result == {"client_id": "id", "client_secret": "secret"}
 
-    @patch(f"{MODULE}.decrypt_system_oauth_params", return_value={"sys_key": "sys_val"})
+    @patch(f"{MODULE}.decrypt_system_params", return_value={"sys_key": "sys_val"})
     @patch(f"{MODULE}.PluginService")
     @patch(f"{MODULE}.create_provider_encrypter")
     @patch(f"{MODULE}.ToolManager")

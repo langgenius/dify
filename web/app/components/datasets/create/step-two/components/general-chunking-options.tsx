@@ -2,15 +2,15 @@
 
 import type { FC } from 'react'
 import type { PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiAlertFill,
   RiSearchEyeLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
 import { IS_CE_EDITION } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
@@ -25,7 +25,7 @@ type TextLabelProps = {
 }
 
 const TextLabel: FC<TextLabelProps> = ({ children }) => {
-  return <label className="text-text-secondary system-sm-semibold">{children}</label>
+  return <label className="system-sm-semibold text-text-secondary">{children}</label>
 }
 
 type GeneralChunkingOptionsProps = {
@@ -147,7 +147,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                 onClick={() => onRuleToggle(rule.id)}
               >
                 <Checkbox checked={rule.enabled} />
-                <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
+                <label className="ml-2 cursor-pointer system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
                 </label>
               </div>
@@ -182,7 +182,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                       checked={currentDocForm === ChunkingMode.qa}
                       disabled={hasCurrentDatasetDocForm}
                     />
-                    <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
+                    <label className="ml-2 cursor-pointer system-sm-regular text-text-secondary">
                       {t('stepTwo.useQALanguage', { ns: 'datasetCreation' })}
                     </label>
                   </div>
@@ -191,7 +191,13 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     onSelect={onDocLanguageChange}
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
-                  <Tooltip popupContent={t('stepTwo.QATip', { ns: 'datasetCreation' })} />
+                  <Infotip
+                    aria-label={t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                    className="h-3.5 w-3.5"
+                    iconClassName="h-full w-full"
+                  >
+                    {t('stepTwo.QATip', { ns: 'datasetCreation' })}
+                  </Infotip>
                 </div>
                 {currentDocForm === ChunkingMode.qa && (
                   <div
@@ -201,7 +207,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     className="mt-2 flex h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
                   >
                     <RiAlertFill className="size-4 text-text-warning-secondary" />
-                    <span className="text-text-primary system-xs-medium">
+                    <span className="system-xs-medium text-text-primary">
                       {t('stepTwo.QATip', { ns: 'datasetCreation' })}
                     </span>
                   </div>

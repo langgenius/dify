@@ -1,24 +1,24 @@
 'use client'
 import type { FC } from 'react'
 import type { UpdateFromMarketPlacePayload } from '../types'
-import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import Button from '@/app/components/base/button'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogCloseButton,
   DialogContent,
   DialogTitle,
-} from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
+} from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import { updateFromMarketPlace } from '@/service/plugins'
 import { useInvalidateReferenceSettings, usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
-import { cn } from '@/utils/classnames'
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { TaskStatus } from '../types'
 import DowngradeWarningModal from './downgrade-warning'
@@ -166,10 +166,10 @@ const UpdatePluginModal: FC<Props> = ({
         )}
         {!doShowDowngradeWarningModal && (
           <>
-            <DialogTitle className="text-text-primary title-2xl-semi-bold">
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(`${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`, { ns: 'plugin' })}
             </DialogTitle>
-            <div className="mb-2 mt-3 text-text-secondary system-md-regular">
+            <div className="mt-3 mb-2 system-md-regular text-text-secondary">
               {t(`${i18nPrefix}.description`, { ns: 'plugin' })}
             </div>
             <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">

@@ -1,13 +1,19 @@
-import type { RefObject } from 'react'
+import type { ReactElement, RefObject } from 'react'
 import type { ChatConfig } from '../../types'
 import type { AppData, AppMeta, ConversationItem } from '@/models/share'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { vi } from 'vitest'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { defaultSystemFeatures } from '@/types/feature'
 import { useEmbeddedChatbot } from '../hooks'
 import EmbeddedChatbot from '../index'
+
+let mockBrandingWorkspaceLogo = ''
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    branding: { enabled: true, workspace_logo: mockBrandingWorkspaceLogo },
+  },
+})
 
 vi.mock('../hooks', () => ({
   useEmbeddedChatbot: vi.fn(),
@@ -24,10 +30,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: vi.fn(),
 }))
 
 vi.mock('../chat-wrapper', () => ({
@@ -125,19 +127,9 @@ const createHookReturn = (overrides: Partial<EmbeddedChatbotHookReturn> = {}): E
 describe('EmbeddedChatbot index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockBrandingWorkspaceLogo = ''
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
     vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn())
-    vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-      systemFeatures: {
-        ...defaultSystemFeatures,
-        branding: {
-          ...defaultSystemFeatures.branding,
-          enabled: true,
-          workspace_logo: '',
-        },
-      },
-      setSystemFeatures: vi.fn(),
-    }))
   })
 
   describe('Loading and chat content', () => {
@@ -159,17 +151,7 @@ describe('EmbeddedChatbot index', () => {
 
   describe('Powered by branding', () => {
     it('should show workspace logo on mobile when branding is enabled', () => {
-      vi.mocked(useGlobalPublicStore).mockImplementation(selector => selector({
-        systemFeatures: {
-          ...defaultSystemFeatures,
-          branding: {
-            ...defaultSystemFeatures.branding,
-            enabled: true,
-            workspace_logo: 'https://example.com/workspace-logo.png',
-          },
-        },
-        setSystemFeatures: vi.fn(),
-      }))
+      mockBrandingWorkspaceLogo = 'https://example.com/workspace-logo.png'
 
       render(<EmbeddedChatbot />)
 

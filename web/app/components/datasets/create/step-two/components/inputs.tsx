@@ -1,9 +1,6 @@
+import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@langgenius/dify-ui/number-field'
 import type { FC, PropsWithChildren, ReactNode } from 'react'
 import type { InputProps } from '@/app/components/base/input'
-import type { NumberFieldInputProps, NumberFieldRootProps, NumberFieldSize } from '@/app/components/base/ui/number-field'
-import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,
   NumberFieldControls,
@@ -12,11 +9,15 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
   NumberFieldUnit,
-} from '@/app/components/base/ui/number-field'
+} from '@langgenius/dify-ui/number-field'
+import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
+import Input from '@/app/components/base/input'
 import { env } from '@/env'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
-  return <label className="text-xs font-semibold leading-none text-text-secondary">{props.children}</label>
+  return <label className="text-xs leading-none font-semibold text-text-secondary">{props.children}</label>
 }
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
@@ -28,19 +29,18 @@ const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
   )
 }
 
-export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => {
+export const DelimiterInput: FC<InputProps & { tooltip?: string }> = ({ tooltip, onChange, value, ...rest }) => {
   const { t } = useTranslation()
+  const isComposing = useRef(false)
+  const [compositionValue, setCompositionValue] = useState('')
+
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
         <span className="mr-0.5 system-sm-semibold">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
-        <Tooltip
-          popupContent={(
-            <div className="max-w-[200px]">
-              {props.tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
-            </div>
-          )}
-        />
+        <Infotip aria-label={tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })} popupClassName="max-w-[200px]">
+          {tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
+        </Infotip>
       </div>
     )}
     >
@@ -48,7 +48,24 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
         type="text"
         className="h-9"
         placeholder={t('stepTwo.separatorPlaceholder', { ns: 'datasetCreation' })!}
-        {...props}
+        value={isComposing.current ? compositionValue : value}
+        onChange={(e) => {
+          if (isComposing.current)
+            setCompositionValue(e.target.value)
+          else
+            onChange?.(e)
+        }}
+        onCompositionStart={() => {
+          isComposing.current = true
+          setCompositionValue(String(value ?? ''))
+        }}
+        onCompositionEnd={(e) => {
+          const committed = e.currentTarget.value
+          isComposing.current = false
+          setCompositionValue('')
+          onChange?.({ ...e, target: { ...e.target, value: committed } } as unknown as React.ChangeEvent<HTMLInputElement>)
+        }}
+        {...rest}
       />
     </FormField>
   )
@@ -133,13 +150,9 @@ export const OverlapInput: FC<CompoundNumberInputProps> = (props) => {
     <FormField label={(
       <div className="mb-1 flex items-center">
         <span className="system-sm-semibold">{t('stepTwo.overlap', { ns: 'datasetCreation' })}</span>
-        <Tooltip
-          popupContent={(
-            <div className="max-w-[200px]">
-              {t('stepTwo.overlapTip', { ns: 'datasetCreation' })}
-            </div>
-          )}
-        />
+        <Infotip aria-label={t('stepTwo.overlapTip', { ns: 'datasetCreation' })} popupClassName="max-w-[200px]">
+          {t('stepTwo.overlapTip', { ns: 'datasetCreation' })}
+        </Infotip>
       </div>
     )}
     >

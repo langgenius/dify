@@ -61,7 +61,7 @@ export const useTextGenerationBatch = ({
       if (!isMapVarName)
         return
 
-      if (item.name !== headerData[index])
+      if (item.name !== headerData![index])
         isMapVarName = false
     })
 
@@ -81,7 +81,7 @@ export const useTextGenerationBatch = ({
       .map(item => payloadData.indexOf(item))
     if (emptyLineIndexes.length > 0) {
       let hasMiddleEmptyLine = false
-      let startIndex = emptyLineIndexes[0] - 1
+      let startIndex = emptyLineIndexes[0]! - 1
       emptyLineIndexes.forEach((index) => {
         if (hasMiddleEmptyLine)
           return

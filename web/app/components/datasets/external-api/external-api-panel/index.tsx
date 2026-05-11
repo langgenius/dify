@@ -1,3 +1,5 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
   RiBookOpenLine,
@@ -6,12 +8,10 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { cn } from '@/utils/classnames'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 
 type ExternalAPIPanelProps = {
@@ -41,7 +41,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
   return (
     <div
       tabIndex={-1}
-      className={cn('absolute bottom-2 right-0 top-14 z-10 flex outline-hidden')}
+      className={cn('absolute top-14 right-0 bottom-2 z-10 flex outline-hidden')}
     >
       <div
         className={cn(
@@ -50,15 +50,15 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
       >
         <div className="flex items-start self-stretch p-4 pb-0">
           <div className="flex grow flex-col items-start gap-1">
-            <div className="system-xl-semibold self-stretch text-text-primary">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
-            <div className="body-xs-regular self-stretch text-text-tertiary">{t('externalAPIPanelDescription', { ns: 'dataset' })}</div>
+            <div className="self-stretch system-xl-semibold text-text-primary">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
+            <div className="self-stretch body-xs-regular text-text-tertiary">{t('externalAPIPanelDescription', { ns: 'dataset' })}</div>
             <a
               className="flex cursor-pointer items-center justify-center gap-1 self-stretch"
               href={docLink('/use-dify/knowledge/external-knowledge-api')}
               target="_blank"
             >
               <RiBookOpenLine className="h-3 w-3 text-text-accent" />
-              <div className="body-xs-regular grow text-text-accent">{t('externalAPIPanelDocumentation', { ns: 'dataset' })}</div>
+              <div className="grow body-xs-regular text-text-accent">{t('externalAPIPanelDocumentation', { ns: 'dataset' })}</div>
             </a>
           </div>
           <div className="flex items-center">

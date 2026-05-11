@@ -1,4 +1,5 @@
 import type { MermaidConfig } from 'mermaid'
+import { cn } from '@langgenius/dify-ui/cn'
 import mermaid from 'mermaid'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -6,7 +7,6 @@ import { useTranslation } from 'react-i18next'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import {
   cleanUpSvgCode,
   isMermaidCodeComplete,
@@ -239,8 +239,8 @@ const Flowchart = (props: FlowchartProps) => {
               if (!taskMatch)
                 return line // Not a task line, return as is.
 
-              const taskName = taskMatch[1].trim()
-              let paramsStr = taskMatch[2].trim()
+              const taskName = taskMatch[1]!.trim()
+              let paramsStr = taskMatch[2]!.trim()
 
               // Rule 1: Correct multiple "after" dependencies ONLY if they exist.
               // This is a common mistake, e.g., "..., after task1, after task2, ..."
@@ -481,7 +481,7 @@ const Flowchart = (props: FlowchartProps) => {
   // Style classes for look options
   const getLookButtonClass = (lookType: 'classic' | 'handDrawn') => {
     return cn(
-      'mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary system-sm-medium',
+      'mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg system-sm-medium text-text-secondary',
       look === lookType && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
       currentTheme === Theme.dark && 'border-slate-600 bg-slate-800 text-slate-300',
       look === lookType && currentTheme === Theme.dark && 'border-blue-500 bg-slate-700 text-white',

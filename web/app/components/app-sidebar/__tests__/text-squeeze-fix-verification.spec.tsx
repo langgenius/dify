@@ -12,7 +12,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 // Mock classnames utility
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   default: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
 }))
 

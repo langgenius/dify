@@ -1,10 +1,16 @@
-import type { ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { AppDetailResponse } from '@/models/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import AppCard from '../app-card'
+
+const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
+  systemFeatures: { webapp_auth: { enabled: true } },
+})
 
 const mockFetchAppDetailDirect = vi.fn()
 const mockPush = vi.fn()
@@ -12,7 +18,7 @@ const mockSetAppDetail = vi.fn()
 const mockOnChangeStatus = vi.fn()
 const mockOnGenerateCode = vi.fn()
 
-let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string } }> } } | null = null
+let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string, variables?: Array<Record<string, unknown>> } }> } } | null = null
 let mockAccessSubjects: { groups?: unknown[], members?: unknown[] } = { groups: [], members: [] }
 let mockAppDetail: AppDetailResponse | undefined
 
@@ -20,6 +26,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
+  Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -34,16 +41,6 @@ vi.mock('@/context/app-context', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: { webapp_auth: { enabled: boolean } } }) => unknown) => selector({
-    systemFeatures: {
-      webapp_auth: {
-        enabled: true,
-      },
-    },
-  }),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
@@ -97,15 +94,6 @@ vi.mock('../../app-access-control', () => ({
     <div data-testid="access-control-modal">
       <button onClick={() => void onConfirm()}>confirm-access-control</button>
       <button onClick={onClose}>close-access-control</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: ReactNode, popupContent?: ReactNode }) => (
-    <div>
-      {children}
-      {popupContent}
     </div>
   ),
 }))
@@ -167,6 +155,182 @@ describe('AppCard', () => {
     fireEvent.click(screen.getByText('overview.appInfo.launch'))
 
     expect(mockWindowOpen).toHaveBeenCalledWith(`https://example.com${basePath}/chat/access-token`, '_blank')
+  })
+
+  it('should open the workflow web app directly when launch is clicked even with hidden inputs', () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'secret',
+                label: 'Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.WORKFLOW,
+        }}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('overview.appInfo.launch'))
+
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      `https://example.com${basePath}/workflow/access-token`,
+      '_blank',
+    )
+    expect(screen.queryByText('overview.appInfo.workflowLaunchHiddenInputs.title')).not.toBeInTheDocument()
+  })
+
+  it('should collect hidden workflow inputs from the config action before launching the workflow web app', async () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'secret',
+                label: 'Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.WORKFLOW,
+        }}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'operation.config' }))
+
+    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Secret'), {
+      target: { value: 'top-secret' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+
+    await waitFor(() => {
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        `https://example.com${basePath}/workflow/access-token?secret=${encodeURIComponent('top-secret')}`,
+        '_blank',
+      )
+    })
+  })
+
+  it('should open the chat web app directly when launch is clicked even with hidden inputs', () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'chat_secret',
+                label: 'Chat Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.ADVANCED_CHAT,
+        } as AppDetailResponse}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('overview.appInfo.launch'))
+
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      `https://example.com${basePath}/chat/access-token`,
+      '_blank',
+    )
+    expect(screen.queryByText('overview.appInfo.workflowLaunchHiddenInputs.title')).not.toBeInTheDocument()
+  })
+
+  it('should collect hidden chatflow inputs from the config action before launching the chat web app', async () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'chat_secret',
+                label: 'Chat Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.ADVANCED_CHAT,
+        } as AppDetailResponse}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'operation.config' }))
+
+    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Chat Secret'), {
+      target: { value: 'chat-secret' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+
+    await waitFor(() => {
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        `https://example.com${basePath}/chat/access-token?chat_secret=${encodeURIComponent('chat-secret')}`,
+        '_blank',
+      )
+    })
   })
 
   it('should show the access-control not-set badge when specific access has no subjects', () => {
@@ -275,6 +439,7 @@ describe('AppCard', () => {
       />,
     )
 
+    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.enableTooltip.description' }))
     fireEvent.click(screen.getByText('overview.appInfo.enableTooltip.learnMore'))
 
     expect(mockWindowOpen).toHaveBeenCalledWith('https://docs.example.com/use-dify/nodes/user-input', '_blank')
@@ -306,7 +471,7 @@ describe('AppCard', () => {
   })
 
   it('should report refresh failures from access control updates', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
     mockFetchAppDetailDirect.mockRejectedValueOnce(new Error('refresh failed'))
 
     render(

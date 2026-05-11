@@ -2,6 +2,7 @@ import type { OffsetOptions } from '@floating-ui/react'
 import type {
   OnSelectBlock,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddCircleFill } from '@remixicon/react'
 import {
   memo,
@@ -15,7 +16,6 @@ import {
   BlockEnum,
 } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
-import { cn } from '@/utils/classnames'
 import {
   useAvailableBlocks,
   useIsChatMode,

@@ -1,9 +1,8 @@
 from collections.abc import Mapping, Sequence
 
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
-
-from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 
 
 class TestWorkflowResponseConverterFetchFilesFromVariableValue:
@@ -12,8 +11,8 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
     def create_test_file(self, file_id: str = "test_file_1") -> File:
         """Create a test File object"""
         return File(
-            id=file_id,
-            type=FileType.DOCUMENT,
+            file_id=file_id,
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             related_id="related_123",
             filename=f"{file_id}.txt",

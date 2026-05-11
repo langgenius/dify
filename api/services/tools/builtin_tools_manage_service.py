@@ -26,7 +26,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_provider_encrypter
-from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
+from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.provider_ids import ToolProviderID
@@ -147,7 +147,7 @@ class BuiltinToolManageService:
         tenant_id: str,
         provider: str,
         credential_id: str,
-        credentials: dict | None = None,
+        credentials: dict[str, Any] | None = None,
         name: str | None = None,
     ):
         """
@@ -177,7 +177,7 @@ class BuiltinToolManageService:
                     )
 
                     original_credentials = encrypter.decrypt(db_provider.credentials)
-                    new_credentials: dict = {
+                    new_credentials: dict[str, Any] = {
                         key: value if value != HIDDEN_VALUE else original_credentials.get(key, UNKNOWN_VALUE)
                         for key, value in credentials.items()
                     }
@@ -216,7 +216,7 @@ class BuiltinToolManageService:
         api_type: CredentialType,
         tenant_id: str,
         provider: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         expires_at: int = -1,
         name: str | None = None,
     ):
@@ -408,7 +408,7 @@ class BuiltinToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def set_default_provider(tenant_id: str, user_id: str, provider: str, id: str):
+    def set_default_provider(tenant_id: str, provider: str, id: str):
         """
         set default provider
         """
@@ -422,12 +422,11 @@ class BuiltinToolManageService:
             if target_provider is None:
                 raise ValueError("provider not found")
 
-            # clear default provider
+            # clear default provider (tenant-scoped: only one default per provider per workspace)
             session.execute(
                 update(BuiltinToolProvider)
                 .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
-                    BuiltinToolProvider.user_id == user_id,
                     BuiltinToolProvider.provider == provider,
                     BuiltinToolProvider.is_default.is_(True),
                 )
@@ -521,7 +520,7 @@ class BuiltinToolManageService:
             )
             if system_client:
                 try:
-                    oauth_params = decrypt_system_oauth_params(system_client.encrypted_oauth_params)
+                    oauth_params = decrypt_system_params(system_client.encrypted_oauth_params)
                 except Exception as e:
                     raise ValueError(f"Error decrypting system oauth params: {e}")
 
@@ -657,7 +656,7 @@ class BuiltinToolManageService:
     def save_custom_oauth_client_params(
         tenant_id: str,
         provider: str,
-        client_params: dict | None = None,
+        client_params: dict[str, Any] | None = None,
         enable_oauth_custom_client: bool | None = None,
     ):
         """

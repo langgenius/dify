@@ -425,7 +425,7 @@ class TestBillingServiceUsageCalculation:
             yield mock
 
     def test_get_tenant_feature_plan_usage_info(self, mock_send_request):
-        """Test retrieval of tenant feature plan usage information."""
+        """Test retrieval of tenant feature plan usage information (legacy endpoint)."""
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {"features": {"trigger": {"used": 50, "limit": 100}, "workflow": {"used": 20, "limit": 50}}}
@@ -437,6 +437,20 @@ class TestBillingServiceUsageCalculation:
         # Assert
         assert result == expected_response
         mock_send_request.assert_called_once_with("GET", "/tenant-feature-usage/info", params={"tenant_id": tenant_id})
+
+    def test_get_quota_info(self, mock_send_request):
+        """Test retrieval of quota info from new endpoint."""
+        # Arrange
+        tenant_id = "tenant-123"
+        expected_response = {"trigger_event": {"limit": 100, "usage": 30}, "api_rate_limit": {"limit": -1, "usage": 0}}
+        mock_send_request.return_value = expected_response
+
+        # Act
+        result = BillingService.get_quota_info(tenant_id)
+
+        # Assert
+        assert result == expected_response
+        mock_send_request.assert_called_once_with("GET", "/quota/info", params={"tenant_id": tenant_id})
 
     def test_update_tenant_feature_plan_usage_positive_delta(self, mock_send_request):
         """Test updating tenant feature usage with positive delta (adding credits)."""
@@ -513,6 +527,150 @@ class TestBillingServiceUsageCalculation:
         mock_send_request.assert_called_once_with(
             "GET", "/billing/tenant_feature_plan/usage", params={"tenant_id": tenant_id, "feature_key": feature_key}
         )
+
+
+class TestBillingServiceQuotaOperations:
+    """Unit tests for quota reserve/commit/release operations."""
+
+    @pytest.fixture
+    def mock_send_request(self):
+        with patch.object(BillingService, "_send_request") as mock:
+            yield mock
+
+    def test_quota_reserve_success(self, mock_send_request):
+        expected = {"reservation_id": "rid-1", "available": 99, "reserved": 1}
+        mock_send_request.return_value = expected
+
+        result = BillingService.quota_reserve(tenant_id="t1", feature_key="trigger_event", request_id="req-1", amount=1)
+
+        assert result == expected
+        mock_send_request.assert_called_once_with(
+            "POST",
+            "/quota/reserve",
+            json={"tenant_id": "t1", "feature_key": "trigger_event", "request_id": "req-1", "amount": 1},
+        )
+
+    def test_quota_reserve_coerces_string_to_int(self, mock_send_request):
+        """Test that TypeAdapter coerces string values to int."""
+        mock_send_request.return_value = {"reservation_id": "rid-str", "available": "99", "reserved": "1"}
+
+        result = BillingService.quota_reserve(tenant_id="t1", feature_key="trigger_event", request_id="req-s", amount=1)
+
+        assert result["available"] == 99
+        assert isinstance(result["available"], int)
+        assert result["reserved"] == 1
+        assert isinstance(result["reserved"], int)
+
+    def test_quota_reserve_with_meta(self, mock_send_request):
+        mock_send_request.return_value = {"reservation_id": "rid-2", "available": 98, "reserved": 1}
+        meta = {"source": "webhook"}
+
+        BillingService.quota_reserve(
+            tenant_id="t1", feature_key="trigger_event", request_id="req-2", amount=1, meta=meta
+        )
+
+        call_json = mock_send_request.call_args[1]["json"]
+        assert call_json["meta"] == {"source": "webhook"}
+
+    def test_quota_commit_success(self, mock_send_request):
+        expected = {"available": 98, "reserved": 0, "refunded": 0}
+        mock_send_request.return_value = expected
+
+        result = BillingService.quota_commit(
+            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1", actual_amount=1
+        )
+
+        assert result == expected
+        mock_send_request.assert_called_once_with(
+            "POST",
+            "/quota/commit",
+            json={
+                "tenant_id": "t1",
+                "feature_key": "trigger_event",
+                "reservation_id": "rid-1",
+                "actual_amount": 1,
+            },
+        )
+
+    def test_quota_commit_coerces_string_to_int(self, mock_send_request):
+        """Test that TypeAdapter coerces string values to int."""
+        mock_send_request.return_value = {"available": "97", "reserved": "0", "refunded": "1"}
+
+        result = BillingService.quota_commit(
+            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-s", actual_amount=1
+        )
+
+        assert result["available"] == 97
+        assert isinstance(result["available"], int)
+        assert result["refunded"] == 1
+        assert isinstance(result["refunded"], int)
+
+    def test_quota_commit_with_meta(self, mock_send_request):
+        mock_send_request.return_value = {"available": 97, "reserved": 0, "refunded": 0}
+        meta = {"reason": "partial"}
+
+        BillingService.quota_commit(
+            tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1", actual_amount=1, meta=meta
+        )
+
+        call_json = mock_send_request.call_args[1]["json"]
+        assert call_json["meta"] == {"reason": "partial"}
+
+    def test_quota_release_success(self, mock_send_request):
+        expected = {"available": 100, "reserved": 0, "released": 1}
+        mock_send_request.return_value = expected
+
+        result = BillingService.quota_release(tenant_id="t1", feature_key="trigger_event", reservation_id="rid-1")
+
+        assert result == expected
+        mock_send_request.assert_called_once_with(
+            "POST",
+            "/quota/release",
+            json={"tenant_id": "t1", "feature_key": "trigger_event", "reservation_id": "rid-1"},
+        )
+
+    def test_quota_release_coerces_string_to_int(self, mock_send_request):
+        """Test that TypeAdapter coerces string values to int."""
+        mock_send_request.return_value = {"available": "100", "reserved": "0", "released": "1"}
+
+        result = BillingService.quota_release(tenant_id="t1", feature_key="trigger_event", reservation_id="rid-s")
+
+        assert result["available"] == 100
+        assert isinstance(result["available"], int)
+        assert result["released"] == 1
+        assert isinstance(result["released"], int)
+
+    def test_get_quota_info_coerces_string_to_int(self, mock_send_request):
+        """Test that TypeAdapter coerces string values to int for get_quota_info."""
+        mock_send_request.return_value = {
+            "trigger_event": {"usage": "42", "limit": "3000", "reset_date": "1700000000"},
+            "api_rate_limit": {"usage": "10", "limit": "-1", "reset_date": "-1"},
+        }
+
+        result = BillingService.get_quota_info("t1")
+
+        assert result["trigger_event"]["usage"] == 42
+        assert isinstance(result["trigger_event"]["usage"], int)
+        assert result["trigger_event"]["limit"] == 3000
+        assert isinstance(result["trigger_event"]["limit"], int)
+        assert result["trigger_event"]["reset_date"] == 1700000000
+        assert isinstance(result["trigger_event"]["reset_date"], int)
+        assert result["api_rate_limit"]["limit"] == -1
+        assert isinstance(result["api_rate_limit"]["limit"], int)
+
+    def test_get_quota_info_accepts_int_values(self, mock_send_request):
+        """Test that get_quota_info works with native int values."""
+        expected = {
+            "trigger_event": {"usage": 42, "limit": 3000, "reset_date": 1700000000},
+            "api_rate_limit": {"usage": 0, "limit": -1},
+        }
+        mock_send_request.return_value = expected
+
+        result = BillingService.get_quota_info("t1")
+
+        assert result["trigger_event"]["usage"] == 42
+        assert result["trigger_event"]["limit"] == 3000
+        assert result["api_rate_limit"]["limit"] == -1
 
 
 class TestBillingServiceRateLimitEnforcement:

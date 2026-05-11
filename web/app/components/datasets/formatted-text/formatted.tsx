@@ -1,5 +1,5 @@
 import type { ComponentProps, FC } from 'react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 
 type FormattedTextProps = ComponentProps<'p'>
 

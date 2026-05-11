@@ -20,6 +20,19 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks', () => ({
+  useIsChatMode: () => false,
+  useWorkflow: () => ({
+    getTreeLeafNodes: () => [],
+    getNodeById: () => undefined,
+    getBeforeNodesInSameBranchIncludeParent: () => [],
+  }),
+  useWorkflowVariables: () => ({
+    getNodeAvailableVars: () => [],
+    getCurrentVariableType: () => undefined,
+  }),
+}))
+
 vi.mock('../var-reference-popup', () => ({
   default: ({
     onChange,
@@ -144,7 +157,7 @@ describe('VarReferencePicker branches', () => {
       value: ['node-a', 'answer'],
     })
 
-    fireEvent.click(screen.getByTestId('var-reference-picker-clear'))
+    fireEvent.click(screen.getByRole('button', { name: /Clear|operation.clear/ }))
 
     expect(onChange).toHaveBeenCalledWith([], VarKindType.variable)
   })

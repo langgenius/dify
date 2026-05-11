@@ -2,12 +2,6 @@ import json
 import logging
 from typing import Any, TypedDict
 
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import (
-    ModelCredentialSchema,
-    ProviderCredentialSchema,
-)
-from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from sqlalchemy import or_, select
 
 from constants import HIDDEN_VALUE
@@ -18,6 +12,12 @@ from core.model_manager import LBModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ModelCredentialSchema,
+    ProviderCredentialSchema,
+)
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from libs.datetime_utils import naive_utc_now
 from models.enums import CredentialSourceType
 from models.provider import LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential
@@ -502,7 +502,7 @@ class ModelLoadBalancingService:
         provider: str,
         model: str,
         model_type: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         config_id: str | None = None,
     ):
         """
@@ -561,7 +561,7 @@ class ModelLoadBalancingService:
         provider_configuration: ProviderConfiguration,
         model_type: ModelType,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         load_balancing_model_config: LoadBalancingModelConfig | None = None,
         model_provider_factory: ModelProviderFactory | None = None,
         validate: bool = True,

@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react'
 import type { PluginDefaultValue } from '../../../block-selector/types'
 import type { Node } from '../../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
@@ -12,7 +13,6 @@ import {
   Handle,
   Position,
 } from 'reactflow'
-import { cn } from '@/utils/classnames'
 import BlockSelector from '../../../block-selector'
 import {
   useAvailableBlocks,
@@ -35,6 +35,16 @@ type NodeHandleProps = {
   nodeSelectorClassName?: string
   showExceptionStatus?: boolean
 } & Pick<Node, 'id' | 'data'>
+
+const canAutoOpenStartNodeSelector = (nodeType: BlockEnum, isChatMode: boolean) => {
+  if (isChatMode)
+    return false
+
+  return nodeType === BlockEnum.Start
+    || nodeType === BlockEnum.TriggerSchedule
+    || nodeType === BlockEnum.TriggerWebhook
+    || nodeType === BlockEnum.TriggerPlugin
+}
 
 export const NodeTargetHandle = memo(({
   id,
@@ -79,7 +89,7 @@ export const NodeTargetHandle = memo(({
         position={Position.Left}
         className={cn(
           'z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
-          'after:absolute after:left-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
+          'after:absolute after:top-1 after:left-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           'transition-all hover:scale-125',
           data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
           data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
@@ -103,11 +113,11 @@ export const NodeTargetHandle = memo(({
               asChild
               placement="left"
               triggerClassName={open => `
-                hidden absolute left-0 top-0 pointer-events-none
+                absolute left-0 top-0 opacity-0 pointer-events-none transition-opacity duration-150
                 ${nodeSelectorClassName}
-                group-hover:flex!
-                ${data.selected && 'flex!'}
-                ${open && 'flex!'}
+                group-hover:opacity-100
+                ${data.selected && 'opacity-100'}
+                ${open && 'opacity-100'}
               `}
               availableBlocksTypes={availablePrevBlocks}
             />
@@ -132,12 +142,13 @@ export const NodeSourceHandle = memo(({
   const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
   const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
   const workflowStoreApi = useWorkflowStore()
-  const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
   const isConnectable = !!availableNextBlocks.length
   const isChatMode = useIsChatMode()
+  const shouldAutoOpen = shouldAutoOpenStartNodeSelector && canAutoOpenStartNodeSelector(data.type, isChatMode)
+  const [open, setOpen] = useState(() => shouldAutoOpen)
 
   const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {
@@ -169,8 +180,7 @@ export const NodeSourceHandle = memo(({
       return
     }
 
-    if (data.type === BlockEnum.Start || data.type === BlockEnum.TriggerSchedule || data.type === BlockEnum.TriggerWebhook || data.type === BlockEnum.TriggerPlugin) {
-      setOpen(true)
+    if (canAutoOpenStartNodeSelector(data.type, false)) {
       if (setShouldAutoOpenStartNodeSelector)
         setShouldAutoOpenStartNodeSelector(false)
       else
@@ -190,7 +200,7 @@ export const NodeSourceHandle = memo(({
       position={Position.Right}
       className={cn(
         'group/handle z-1 h-4! w-4! rounded-none! border-none! bg-transparent! outline-hidden!',
-        'after:absolute after:right-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
+        'after:absolute after:top-1 after:right-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
         'transition-all hover:scale-125',
         data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
         data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
@@ -203,7 +213,7 @@ export const NodeSourceHandle = memo(({
     >
       <div className="absolute -top-1 left-1/2 hidden -translate-x-1/2 -translate-y-full rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg group-hover/handle:block">
         <div className="system-xs-regular text-text-tertiary">
-          <div className=" whitespace-nowrap">
+          <div className="whitespace-nowrap">
             <span className="system-xs-medium text-text-secondary">{t('common.parallelTip.click.title', { ns: 'workflow' })}</span>
             {t('common.parallelTip.click.desc', { ns: 'workflow' })}
           </div>
@@ -221,11 +231,11 @@ export const NodeSourceHandle = memo(({
             onSelect={handleSelect}
             asChild
             triggerClassName={open => `
-              hidden absolute top-0 left-0 pointer-events-none
+              absolute top-0 left-0 opacity-0 pointer-events-none transition-opacity duration-150
               ${nodeSelectorClassName}
-              group-hover:flex!
-              ${data.selected && 'flex!'}
-              ${open && 'flex!'}
+              group-hover:opacity-100
+              ${data.selected && 'opacity-100'}
+              ${open && 'opacity-100'}
             `}
             availableBlocksTypes={availableNextBlocks}
           />

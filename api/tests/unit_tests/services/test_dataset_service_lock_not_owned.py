@@ -22,7 +22,7 @@ class FakeLock:
 
 
 @pytest.fixture
-def fake_current_user(monkeypatch):
+def fake_current_user(monkeypatch: pytest.MonkeyPatch):
     user = create_autospec(Account, instance=True)
     user.id = "user-1"
     user.current_tenant_id = "tenant-1"
@@ -31,7 +31,7 @@ def fake_current_user(monkeypatch):
 
 
 @pytest.fixture
-def fake_features(monkeypatch):
+def fake_features(monkeypatch: pytest.MonkeyPatch):
     """Features.billing.enabled == False to skip quota logic."""
     features = types.SimpleNamespace(
         billing=types.SimpleNamespace(enabled=False, subscription=types.SimpleNamespace(plan="ENTERPRISE")),
@@ -45,7 +45,7 @@ def fake_features(monkeypatch):
 
 
 @pytest.fixture
-def fake_lock(monkeypatch):
+def fake_lock(monkeypatch: pytest.MonkeyPatch):
     """Patch redis_client.lock to always raise LockNotOwnedError on enter."""
 
     def _fake_lock(name, timeout=None, *args, **kwargs):
@@ -61,7 +61,7 @@ def fake_lock(monkeypatch):
 
 
 def test_save_document_with_dataset_id_ignores_lock_not_owned(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     fake_current_user,
     fake_features,
     fake_lock,
@@ -118,7 +118,7 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
 
 
 def test_add_segment_ignores_lock_not_owned(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     fake_current_user,
     fake_lock,
 ):
@@ -161,7 +161,7 @@ def test_add_segment_ignores_lock_not_owned(
 
 
 def test_multi_create_segment_ignores_lock_not_owned(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
     fake_current_user,
     fake_lock,
 ):

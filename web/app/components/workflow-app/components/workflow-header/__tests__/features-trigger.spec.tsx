@@ -26,7 +26,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
     error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
@@ -124,7 +124,7 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         <button type="button" onClick={() => { Promise.resolve(props.onPublish?.()).catch(() => undefined) }}>
           publisher-publish
         </button>
-        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ title: 'Test title', releaseNotes: 'Test notes' })).catch(() => undefined) }}>
+        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ url: '/apps/app-1/workflows/publish', title: 'Test title', releaseNotes: 'Test notes' })).catch(() => undefined) }}>
           publisher-publish-with-params
         </button>
       </div>

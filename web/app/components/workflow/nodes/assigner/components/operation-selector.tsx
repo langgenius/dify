@@ -2,19 +2,18 @@ import type { FC } from 'react'
 import type { WriteMode } from '../types'
 import type { Item } from '../utils'
 import type { VarType } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiArrowDownSLine,
-  RiCheckLine,
-} from '@remixicon/react'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { getOperationItems, isOperationItem } from '../utils'
 
 type OperationSelectorProps = {
@@ -49,65 +48,57 @@ const OperationSelector: FC<OperationSelectorProps> = ({
   const selectedItem = items.find(item => item.value === value)
 
   return (
-    <PortalToFollowElem
+    <DropdownMenu
       open={open}
       onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
     >
-      <PortalToFollowElemTrigger
-        onClick={() => !disabled && setOpen(v => !v)}
+      <DropdownMenuTrigger
+        disabled={disabled}
+        className={cn('flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1', disabled ? 'cursor-not-allowed bg-components-input-bg-disabled!' : 'cursor-pointer hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt', className)}
       >
-        <div
-          className={cn('flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1', disabled ? 'cursor-not-allowed bg-components-input-bg-disabled!' : 'cursor-pointer hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt', className)}
-        >
-          <div className="flex items-center p-1">
-            <span
-              className={`system-sm-regular overflow-hidden truncate text-ellipsis
+        <div className="flex items-center p-1">
+          <span
+            className={`truncate overflow-hidden system-sm-regular text-ellipsis
                 ${selectedItem ? 'text-components-input-text-filled' : 'text-components-input-text-disabled'}`}
-            >
-              {selectedItem && isOperationItem(selectedItem) ? t(`nodes.assigner.operations.${selectedItem.name}`, { ns: 'workflow' }) : t('nodes.assigner.operations.title', { ns: 'workflow' })}
-            </span>
-          </div>
-          <RiArrowDownSLine className={`h-4 w-4 text-text-quaternary ${disabled && 'text-components-input-text-placeholder'} ${open && 'text-text-secondary'}`} />
+          >
+            {selectedItem && isOperationItem(selectedItem) ? t(`nodes.assigner.operations.${selectedItem.name}`, { ns: 'workflow' }) : t('nodes.assigner.operations.title', { ns: 'workflow' })}
+          </span>
         </div>
-      </PortalToFollowElemTrigger>
+        <span aria-hidden className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary', disabled && 'text-components-input-text-placeholder', open && 'text-text-secondary')} />
+      </DropdownMenuTrigger>
 
-      <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
-        <div className="flex w-[140px] flex-col items-start rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
-          <div className="flex flex-col items-start self-stretch p-1">
-            <div className="flex items-start self-stretch px-3 pb-0.5 pt-1">
-              <div className="system-xs-medium-uppercase flex grow text-text-tertiary">{t('nodes.assigner.operations.title', { ns: 'workflow' })}</div>
-            </div>
-            {items.map(item => (
-              !isOperationItem(item)
-                ? (
-                    <Divider key="divider" className="my-1" />
-                  )
-                : (
-                    <div
-                      key={item.value}
-                      className={cn('flex items-center gap-1 self-stretch rounded-lg px-2 py-1', 'cursor-pointer hover:bg-state-base-hover')}
-                      onClick={() => {
-                        onSelect(item)
-                        setOpen(false)
-                      }}
-                    >
-                      <div className="flex min-h-5 grow items-center gap-1 px-1">
-                        <span className="system-sm-medium flex grow text-text-secondary">{t(`nodes.assigner.operations.${item.name}`, { ns: 'workflow' })}</span>
-                      </div>
-                      {item.value === value && (
-                        <div className="flex items-center justify-center">
-                          <RiCheckLine className="h-4 w-4 text-text-accent" />
-                        </div>
-                      )}
+      <DropdownMenuContent
+        placement="bottom-start"
+        sideOffset={4}
+        popupClassName={cn('w-[140px]', popupClassName)}
+      >
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{t('nodes.assigner.operations.title', { ns: 'workflow' })}</DropdownMenuLabel>
+          {items.map(item => (
+            !isOperationItem(item)
+              ? (
+                  <DropdownMenuSeparator key="divider" />
+                )
+              : (
+                  <DropdownMenuItem
+                    key={item.value}
+                    className="gap-1 px-2 py-1"
+                    onClick={() => onSelect(item)}
+                  >
+                    <div className="flex min-h-5 grow items-center gap-1 px-1">
+                      <span className="flex grow system-sm-medium text-text-secondary">{t(`nodes.assigner.operations.${item.name}`, { ns: 'workflow' })}</span>
                     </div>
-                  )
-            ))}
-          </div>
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+                    {item.value === value && (
+                      <div className="flex items-center justify-center">
+                        <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
+                      </div>
+                    )}
+                  </DropdownMenuItem>
+                )
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

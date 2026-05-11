@@ -16,7 +16,7 @@ const mockMutationOptions = vi.fn((options: Record<string, unknown>) => ({
   ...options,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (...args: unknown[]) => mockNotify(...args),
   },

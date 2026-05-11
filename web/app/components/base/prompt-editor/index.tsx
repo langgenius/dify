@@ -20,16 +20,17 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   $getRoot,
   TextNode,
 } from 'lexical'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
 import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,
@@ -66,6 +67,35 @@ import {
 } from './plugins/workflow-variable-block'
 import PromptEditorContent from './prompt-editor-content'
 import { textToEditorState } from './utils'
+
+const ValueSyncPlugin: FC<{ value?: string }> = ({ value }) => {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    if (value === undefined)
+      return
+
+    const incomingValue = value ?? ''
+    const shouldUpdate = editor.getEditorState().read(() => {
+      const currentText = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
+      return currentText !== incomingValue
+    })
+
+    if (!shouldUpdate)
+      return
+
+    const editorState = editor.parseEditorState(textToEditorState(incomingValue))
+    editor.setEditorState(editorState)
+    editor.update(() => {
+      $getRoot().getAllTextNodes().forEach((node) => {
+        if (node instanceof CustomTextNode)
+          node.markDirty()
+      })
+    })
+  }, [editor, value])
+
+  return null
+}
 
 export type PromptEditorProps = {
   instanceId?: string
@@ -173,12 +203,16 @@ const PromptEditor: FC<PromptEditorProps> = ({
     } as any)
   }, [eventEmitter, historyBlock?.history])
 
-  const [floatingAnchorElem, setFloatingAnchorElem] = useState(null)
+  const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null)
 
-  const onRef = (_floatingAnchorElem: any) => {
-    if (_floatingAnchorElem !== null)
-      setFloatingAnchorElem(_floatingAnchorElem)
-  }
+  const onRef = useCallback((nextFloatingAnchorElem: HTMLDivElement | null) => {
+    setFloatingAnchorElem((currentFloatingAnchorElem) => {
+      if (currentFloatingAnchorElem === nextFloatingAnchorElem)
+        return currentFloatingAnchorElem
+
+      return nextFloatingAnchorElem
+    })
+  }, [])
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
@@ -208,6 +242,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           floatingAnchorElem={floatingAnchorElem}
           onEditorChange={handleEditorChange}
         />
+        <ValueSyncPlugin value={value} />
       </div>
     </LexicalComposer>
   )

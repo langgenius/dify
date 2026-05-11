@@ -146,6 +146,24 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
           - `total_price` (decimal) オプションの総コスト
           - `currency` (string) オプション 例：`USD` / `RMB`
         - `created_at` (timestamp) 開始のタイムスタンプ、例：1705395332
+    - `event: human_input_required` ワークフローが一時停止し、Human-in-the-Loop 入力が必要
+      - `task_id` (string) タスク ID、リクエスト追跡に使用
+      - `workflow_run_id` (string) ワークフロー実行の一意の ID
+      - `event` (string) `human_input_required`に固定
+      - `data` (object) 詳細
+        - `form_id` (string) ヒューマン入力フォーム ID
+        - `node_id` (string) Human Input ノード ID
+        - `node_title` (string) Human Input ノードタイトル
+        - `form_content` (string) レンダリング済みフォーム内容
+        - `inputs` (array[object]) フォーム入力項目の定義
+        - `actions` (array[object]) ユーザーが選択できるアクションボタン
+          - `id` (string) アクション ID
+          - `title` (string) ボタンラベル
+          - `button_style` (string) ボタンスタイル
+        - `display_in_ui` (bool) UI にこのフォームを表示するかどうか
+        - `form_token` (string) `/form/human_input/:form_token` API で使用するトークン
+        - `resolved_default_values` (object) 実行時に解決されたデフォルト値
+        - `expiration_time` (timestamp) フォームの有効期限（Unix 秒）
     - `event: workflow_finished` ワークフロー実行終了、同じイベントで異なる状態で成功または失敗
       - `task_id` (string) タスク ID、リクエスト追跡と以下の Stop Generate API に使用
       - `workflow_run_id` (string) ワークフロー実行の一意の ID
@@ -214,6 +232,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       ```
     </CodeGroup>
     ### ブロッキングモード
+    ブロッキングモードでは、完了済みのワークフロー結果、または一時停止中のワークフロー結果のいずれかが返されます。
+
+    Human-in-the-Loop で実行が一時停止した場合も、レスポンスには `workflow_run_id` と `task_id` が含まれますが、`data.status` は `paused` になります。
+    一時停止レスポンスには `paused_nodes` と `reasons` も含まれます。`human_input_required` の各 reason には `form_id` と `expiration_time` が含まれます。
+
     <CodeGroup title="応答">
     ```json {{ title: '応答' }}
     {
@@ -236,6 +259,70 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     }
     ```
     </CodeGroup>
+    <CodeGroup title="一時停止レスポンス例">
+    ```json {{ title: '一時停止レスポンス例' }}
+    {
+        "task_id": "3938b985-f4c6-4806-87b6-215e0aca9d81",
+        "workflow_run_id": "4a80f375-682b-49c5-b199-e950aac4968f",
+        "data": {
+            "id": "4a80f375-682b-49c5-b199-e950aac4968f",
+            "workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+            "status": "paused",
+            "outputs": {},
+            "error": null,
+            "elapsed_time": 0.035667,
+            "total_tokens": 0,
+            "total_steps": 2,
+            "created_at": 1776074783,
+            "finished_at": null,
+            "paused_nodes": [
+              "1775717346519"
+            ],
+            "reasons": [
+              {
+                "form_id": "019d864e-7a36-74a2-b94e-e5660c47f5a7",
+                "form_content": "this is form 1:\n{{#$output.some_field#}}\n",
+                "inputs": [
+                  {
+                    "type": "paragraph",
+                    "output_variable_name": "some_field",
+                    "default": {
+                      "type": "variable",
+                      "selector": [
+                        "sys",
+                        "workflow_run_id"
+                      ],
+                      "value": ""
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "id": "approve",
+                    "title": "YES",
+                    "button_style": "default"
+                  },
+                  {
+                    "id": "reject",
+                    "title": "NO",
+                    "button_style": "default"
+                  }
+                ],
+                "display_in_ui": true,
+                "node_id": "1775717346519",
+                "node_title": "Human Input",
+                "resolved_default_values": {
+                  "some_field": "4a80f375-682b-49c5-b199-e950aac4968f"
+                },
+                "form_token": "SZwvfmL47fTIsZynP2Jr9i",
+                "type": "human_input_required",
+                "expiration_time": 1776333983
+              }
+            ]
+        }
+    }
+    ```
+    </CodeGroup>
     ### ストリーミングモード
     <CodeGroup title="応答">
     ```streaming {{ title: '応答' }}
@@ -245,6 +332,220 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
       data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
       data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+    ストリーミングモードでも Human-in-the-Loop により一時停止する場合があります。その場合、SSE ストリームではまず `human_input_required` が送られ、その後に `workflow_paused` が送られます。
+
+    <CodeGroup title="一時停止ストリーミングレスポンス例">
+    ```streaming {{ title: '一時停止ストリーミングレスポンス例' }}
+    event: ping
+
+    data: {
+      "event": "workflow_started",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+        "workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+        "inputs": {
+          "sys.files": [],
+          "sys.user_id": "abc-123",
+          "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
+          "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+          "sys.workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345"
+        },
+        "created_at": 1776129228,
+        "reason": "initial"
+      }
+    }
+
+    data: {
+      "event": "node_started",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "7d9bb041-5ecb-497f-a674-d8706eed0ab1",
+        "node_id": "1775717266623",
+        "node_type": "start",
+        "title": "User Input",
+        "index": 1,
+        "predecessor_node_id": null,
+        "inputs": null,
+        "inputs_truncated": false,
+        "created_at": 1776129228,
+        "extras": {},
+        "iteration_id": null,
+        "loop_id": null,
+        "agent_strategy": null
+      }
+    }
+
+    data: {
+      "event": "node_finished",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "7d9bb041-5ecb-497f-a674-d8706eed0ab1",
+        "node_id": "1775717266623",
+        "node_type": "start",
+        "title": "User Input",
+        "index": 1,
+        "predecessor_node_id": null,
+        "inputs": {
+          "sys.files": [],
+          "sys.user_id": "abc-123",
+          "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
+          "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+          "sys.workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+          "sys.timestamp": 1776129228
+        },
+        "inputs_truncated": false,
+        "process_data": {},
+        "process_data_truncated": false,
+        "outputs": {
+          "sys.files": [],
+          "sys.user_id": "abc-123",
+          "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
+          "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+          "sys.workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+          "sys.timestamp": 1776129228
+        },
+        "outputs_truncated": false,
+        "status": "succeeded",
+        "error": null,
+        "elapsed_time": 0.000097,
+        "execution_metadata": null,
+        "created_at": 1776129228,
+        "finished_at": 1776129228,
+        "files": [],
+        "iteration_id": null,
+        "loop_id": null
+      }
+    }
+
+    data: {
+      "event": "node_started",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "c09ff568-1d55-4f0d-9a07-512bcbfeb289",
+        "node_id": "1775717346519",
+        "node_type": "human-input",
+        "title": "Human Input",
+        "index": 1,
+        "predecessor_node_id": null,
+        "inputs": null,
+        "inputs_truncated": false,
+        "created_at": 1776129228,
+        "extras": {},
+        "iteration_id": null,
+        "loop_id": null,
+        "agent_strategy": null
+      }
+    }
+
+    data: {
+      "event": "human_input_required",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "form_id": "019d898d-3d80-7105-b920-9899ead4ff3e",
+        "node_id": "1775717346519",
+        "node_title": "Human Input",
+        "form_content": "this is form 1:\n{{#$output.some_field#}}\n",
+        "inputs": [
+          {
+            "type": "paragraph",
+            "output_variable_name": "some_field",
+            "default": {
+              "type": "variable",
+              "selector": [
+                "sys",
+                "workflow_run_id"
+              ],
+              "value": ""
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "approve",
+            "title": "YES",
+            "button_style": "default"
+          },
+          {
+            "id": "reject",
+            "title": "NO",
+            "button_style": "default"
+          }
+        ],
+        "display_in_ui": true,
+        "form_token": "0Tb1nXYe4hzQUD706nHB4y",
+        "resolved_default_values": {
+          "some_field": "a4959eb4-c852-4e0c-ac7a-348233f7f345"
+        },
+        "expiration_time": 1776388428
+      }
+    }
+
+    data: {
+      "event": "workflow_paused",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+        "paused_nodes": [
+          "1775717346519"
+        ],
+        "outputs": {},
+        "reasons": [
+          {
+            "form_id": "019d898d-3d80-7105-b920-9899ead4ff3e",
+            "form_content": "this is form 1:\n{{#$output.some_field#}}\n",
+            "inputs": [
+              {
+                "type": "paragraph",
+                "output_variable_name": "some_field",
+                "default": {
+                  "type": "variable",
+                  "selector": [
+                    "sys",
+                    "workflow_run_id"
+                  ],
+                  "value": ""
+                }
+              }
+            ],
+            "actions": [
+              {
+                "id": "approve",
+                "title": "YES",
+                "button_style": "default"
+              },
+              {
+                "id": "reject",
+                "title": "NO",
+                "button_style": "default"
+              }
+            ],
+            "display_in_ui": true,
+            "node_id": "1775717346519",
+            "node_title": "Human Input",
+            "resolved_default_values": {
+              "some_field": "a4959eb4-c852-4e0c-ac7a-348233f7f345"
+            },
+            "form_token": "0Tb1nXYe4hzQUD706nHB4y",
+            "type": "human_input_required",
+            "expiration_time": 1776388428
+          }
+        ],
+        "status": "paused",
+        "created_at": 1776129228,
+        "elapsed_time": 0.070478,
+        "total_tokens": 0,
+        "total_steps": 2
+      }
+    }
     ```
     </CodeGroup>
     <CodeGroup title="ファイルアップロードのサンプルコード">
@@ -452,6 +753,24 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
           - `total_price` (decimal) オプション 総費用
           - `currency` (string) オプション 通貨、例：`USD` / `RMB`
         - `created_at` (timestamp) 開始時間
+    - `event: human_input_required` ワークフローが一時停止し、Human-in-the-Loop 入力が必要
+      - `task_id` (string) タスク ID、リクエスト追跡に使用
+      - `workflow_run_id` (string) ワークフロー実行 ID
+      - `event` (string) `human_input_required` に固定
+      - `data` (object) 詳細内容
+        - `form_id` (string) ヒューマン入力フォーム ID
+        - `node_id` (string) Human Input ノード ID
+        - `node_title` (string) Human Input ノードタイトル
+        - `form_content` (string) レンダリング済みフォーム内容
+        - `inputs` (array[object]) フォーム入力項目の定義
+        - `actions` (array[object]) ユーザーが選択できるアクションボタン
+          - `id` (string) アクション ID
+          - `title` (string) ボタンラベル
+          - `button_style` (string) ボタンスタイル
+        - `display_in_ui` (bool) UI にこのフォームを表示するかどうか
+        - `form_token` (string) `/form/human_input/:form_token` API で使用するトークン
+        - `resolved_default_values` (object) 実行時に解決されたデフォルト値
+        - `expiration_time` (timestamp) フォームの有効期限（Unix 秒）
     - `event: workflow_finished` ワークフロー実行終了、成功と失敗は同じイベント内の異なる状態
       - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
       - `workflow_run_id` (string) ワークフロー実行ID
@@ -654,6 +973,198 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     {
       "result": "success"
     }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/form/human_input/:form_token'
+  method='GET'
+  title='Human Input フォームを取得'
+  name='#get-human-input-form'
+/>
+<Row>
+  <Col>
+    `form_token` から保留中の Human-in-the-Loop フォームを取得します。
+
+    Workflow が `human_input_required`（`form_token` を含む）で一時停止した際に使用します。
+
+    ### パス
+    - `form_token` (string) 必須、一時停止イベントで返されたフォームトークン
+
+    ### 応答
+    - `form_content` (string) レンダリング済みフォーム内容（markdown/plain text）
+    - `inputs` (array[object]) 入力項目定義
+    - `resolved_default_values` (object) 解決済みデフォルト値（文字列）
+    - `user_actions` (array[object]) アクションボタン一覧
+    - `expiration_time` (timestamp) フォーム有効期限（Unix 秒）
+
+    ### エラー
+    - 404, フォームが存在しない、または現在のアプリに属していない
+    - 412, `human_input_form_submitted`, 既に送信済み
+    - 412, `human_input_form_expired`, 期限切れ
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="リクエスト"
+      tag="GET"
+      label="/form/human_input/:form_token"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/form/human_input/{form_token}' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "form_content": "最終回答を確認してください: {{#$output.answer#}}",
+      "inputs": [
+        {
+          "label": "回答",
+          "type": "text-input",
+          "required": true,
+          "output_variable_name": "answer"
+        }
+      ],
+      "resolved_default_values": {
+        "answer": "初期値"
+      },
+      "user_actions": [
+        { "id": "approve", "title": "承認", "button_style": "primary" },
+        { "id": "reject", "title": "却下", "button_style": "warning" }
+      ],
+      "expiration_time": 1735689600
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/form/human_input/:form_token'
+  method='POST'
+  title='Human Input フォームを送信'
+  name='#submit-human-input-form'
+/>
+<Row>
+  <Col>
+    保留中の Human-in-the-Loop フォームを送信します。
+
+    ### パス
+    - `form_token` (string) 必須、一時停止イベントで返されたフォームトークン
+
+    ### リクエストボディ
+    - `inputs` (object) 必須、フォーム項目の key/value
+    - `action` (string) 必須、`user_actions` から選択したアクション ID
+    - `user` (string) 必須、エンドユーザー識別子
+
+    ### 応答
+    成功時は空オブジェクトを返します。
+
+    ### エラー
+    - 400, `invalid_form_data`, 送信データがフォームスキーマに一致しない
+    - 404, フォームが存在しない、または現在のアプリに属していない
+    - 412, `human_input_form_submitted`, 既に送信済み
+    - 412, `human_input_form_expired`, 期限切れ
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="リクエスト"
+      tag="POST"
+      label="/form/human_input/:form_token"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/form/human_input/{form_token}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+  "inputs": {"answer": "承認済み回答"},
+  "action": "approve",
+  "user": "abc-123"
+}'`}
+    />
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflow/:task_id/events'
+  method='GET'
+  title='再開後の Workflow イベントを取得'
+  name='#get-workflow-resume-events'
+/>
+<Row>
+  <Col>
+    Human Input フォーム送信後に、ワークフロー再開後のイベントを継続受信します。
+
+    このエンドポイントは `text/event-stream` を返し、完了までイベントを購読できます。
+
+    ### パス
+    - `task_id` (string) 必須、workflow 実行 ID（`workflow_run_id`）
+
+    ### クエリ
+    - `user` (string) 必須、エンドユーザー識別子
+    - `include_state_snapshot` (bool) 任意、`true` の場合は永続化済み状態スナップショットを先に再生してからリアルタイムイベントへ移行
+    - `continue_on_pause` (bool) 任意、`true` にすると `workflow_paused` イベントをまたいでもストリームを維持し、`workflow_finished` で終了します
+
+    ### 応答
+    Server-Sent Events ストリーム（`text/event-stream`）。
+    主なイベントは `workflow_paused`、`node_started`、`node_finished`、`human_input_form_filled`、`human_input_form_timeout`、`workflow_finished` です。
+    呼び出し時点でワークフローがすでに完了している場合、このエンドポイントは完了イベントを 1 件だけ即座に返します。
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="リクエスト"
+      tag="GET"
+      label="/workflow/:task_id/events"
+      targetCode={`curl -N -X GET '${props.appDetail.api_base_url}/workflow/{workflow_run_id}/events?user=abc-123&continue_on_pause=true' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="応答">
+    ```streaming {{ title: '応答' }}
+    event: ping
+
+    data: {"event":"workflow_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","inputs":{"sys.files":[],"sys.user_id":"abc-123","sys.app_id":"d1074979-f67e-4114-8691-e35878df9a89","sys.workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","sys.workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","sys.timestamp":1776087863},"created_at":1776087863,"reason":"initial"}}
+
+    data: {"event":"node_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"b552d685-1119-4e6a-9a81-e91a23e5324b","node_id":"1775717266623","node_type":"start","title":"User Input","index":1,"predecessor_node_id":null,"inputs":null,"created_at":1776087863,"extras":{},"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_finished","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"b552d685-1119-4e6a-9a81-e91a23e5324b","node_id":"1775717266623","node_type":"start","title":"User Input","index":1,"predecessor_node_id":null,"inputs":null,"process_data":null,"outputs":null,"status":"succeeded","error":null,"elapsed_time":0.00032,"execution_metadata":null,"created_at":1776087863,"finished_at":1776087863,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":2,"predecessor_node_id":null,"inputs":null,"created_at":1776087863,"extras":{},"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_finished","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":2,"predecessor_node_id":null,"inputs":null,"process_data":null,"outputs":null,"status":"paused","error":null,"elapsed_time":0.007381,"execution_metadata":null,"created_at":1776087863,"finished_at":1776087863,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"workflow_paused","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","paused_nodes":["1775717346519"],"outputs":{},"reasons":[{"form_id":"019d8716-0fde-75da-8207-1458ccde76e5","form_content":"this is form 1:\n{{#$output.some_field#}}\n","inputs":[{"type":"paragraph","output_variable_name":"some_field","default":{"type":"variable","selector":["sys","workflow_run_id"],"value":""}}],"actions":[{"id":"approve","title":"YES","button_style":"default"},{"id":"reject","title":"NO","button_style":"default"}],"display_in_ui":true,"node_id":"1775717346519","node_title":"Human Input","resolved_default_values":{"some_field":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c"},"form_token":"n7hFG4ZDYdGcgZ5VDc7EGM","type":"human_input_required"}],"status":"paused","created_at":1776087863,"elapsed_time":0.0,"total_tokens":0,"total_steps":2}}
+
+    data: {"event":"workflow_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","inputs":{"sys.files":[],"sys.user_id":"abc-123","sys.app_id":"d1074979-f67e-4114-8691-e35878df9a89","sys.workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","sys.workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c"},"created_at":1776087877,"reason":"resumption"}}
+
+    data: {"event":"node_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":1,"predecessor_node_id":null,"inputs":null,"inputs_truncated":false,"created_at":1776087877,"extras":{},"iteration_id":null,"loop_id":null,"agent_strategy":null}}
+
+    data: {"event":"human_input_form_filled","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"node_id":"1775717346519","node_title":"Human Input","rendered_content":"this is form 1:\nfield 1 filled!\n","action_id":"approve","action_text":"YES"}}
+
+    data: {"event":"node_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":1,"predecessor_node_id":null,"inputs":{},"inputs_truncated":false,"process_data":{},"process_data_truncated":false,"outputs":{"some_field":"field 1 filled!","some_field_2":"from bruno with love","__action_id":"approve","__rendered_content":"this is form 1:\nfield 1 filled!\n"},"outputs_truncated":false,"status":"succeeded","error":null,"elapsed_time":0.004431,"execution_metadata":null,"created_at":1776087877,"finished_at":1776087877,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"6d8fc3cb-19f7-440b-b83e-eed4e847a332","node_id":"1775717350710","node_type":"template-transform","title":"Template","index":1,"predecessor_node_id":null,"inputs":null,"inputs_truncated":false,"created_at":1776087877,"extras":{},"iteration_id":null,"loop_id":null,"agent_strategy":null}}
+
+    data: {"event":"text_chunk","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"text":"field 1 filled!","from_variable_selector":["1775717350710","output"]}}
+
+    data: {"event":"node_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"6d8fc3cb-19f7-440b-b83e-eed4e847a332","node_id":"1775717350710","node_type":"template-transform","title":"Template","index":1,"predecessor_node_id":null,"inputs":{"some_field":"field 1 filled!"},"inputs_truncated":false,"process_data":{},"process_data_truncated":false,"outputs":{"output":"field 1 filled!"},"outputs_truncated":false,"status":"succeeded","error":null,"elapsed_time":0.264614,"execution_metadata":null,"created_at":1776087877,"finished_at":1776087877,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"e88dec7e-aa2c-41f7-8d73-032b749e23f5","node_id":"1775717354177","node_type":"end","title":"Output","index":1,"predecessor_node_id":null,"inputs":null,"inputs_truncated":false,"created_at":1776087877,"extras":{},"iteration_id":null,"loop_id":null,"agent_strategy":null}}
+
+    data: {"event":"node_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"e88dec7e-aa2c-41f7-8d73-032b749e23f5","node_id":"1775717354177","node_type":"end","title":"Output","index":1,"predecessor_node_id":null,"inputs":{"output":"field 1 filled!"},"inputs_truncated":false,"process_data":{},"process_data_truncated":false,"outputs":{"output":"field 1 filled!"},"outputs_truncated":false,"status":"succeeded","error":null,"elapsed_time":0.00003,"execution_metadata":null,"created_at":1776087877,"finished_at":1776087877,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"workflow_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","status":"succeeded","outputs":{"output":"field 1 filled!"},"error":null,"elapsed_time":0.364935,"total_tokens":0,"total_steps":5,"created_by":{"id":"7932d34c-dcf4-4fba-b770-f2a9de88c0a0","user":"abc-123"},"created_at":1776087877,"finished_at":1776087877,"exceptions_count":0,"files":[]}}
     ```
     </CodeGroup>
   </Col>

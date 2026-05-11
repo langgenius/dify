@@ -98,7 +98,7 @@ describe('ChatLogModals', () => {
         />,
       )
 
-      await user.click(screen.getByTestId('close-btn-container'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(setCurrentLogItem).toHaveBeenCalled()
       expect(setShowPromptLogModal).toHaveBeenCalledWith(false)

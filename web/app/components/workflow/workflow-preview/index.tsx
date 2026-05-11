@@ -9,6 +9,7 @@ import type {
   Edge,
   Node,
 } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   useCallback,
   useState,
@@ -35,7 +36,6 @@ import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils/workflow-init'
-import { cn } from '@/utils/classnames'
 import CustomEdge from './components/custom-edge'
 import CustomNode from './components/nodes'
 import IterationStartNode from './components/nodes/iteration-start'

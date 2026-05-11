@@ -1,6 +1,7 @@
 'use client'
 import type { RemixiconComponentType } from '@remixicon/react'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Fill,
   RiEqualizer2Line,
@@ -24,7 +25,6 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
-import { cn } from '@/utils/classnames'
 
 type IAppDetailLayoutProps = {
   children: React.ReactNode

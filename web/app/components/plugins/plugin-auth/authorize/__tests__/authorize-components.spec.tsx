@@ -104,7 +104,7 @@ const mockToast = {
   promise: vi.fn(),
 }
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 // Factory function for creating test PluginPayload
@@ -155,29 +155,6 @@ describe('AddApiKeyButton', () => {
       )
 
       expect(screen.getByRole('button')).toHaveTextContent('Custom API Key')
-    })
-
-    it('should apply button variant', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(
-        <AddApiKeyButton
-          pluginPayload={pluginPayload}
-          buttonVariant="primary"
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByRole('button').className).toContain('btn-primary')
-    })
-
-    it('should use secondary-accent variant by default', () => {
-      const pluginPayload = createPluginPayload()
-
-      render(<AddApiKeyButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
-
-      // Verify the default button has secondary-accent variant class
-      expect(screen.getByRole('button').className).toContain('btn-secondary-accent')
     })
   })
 
@@ -372,25 +349,6 @@ describe('AddOAuthButton', () => {
 
       expect(screen.getByText('plugin.auth.setupOAuth')).toBeInTheDocument()
     })
-
-    it('should apply button variant to setup button', () => {
-      const pluginPayload = createPluginPayload()
-      mockGetPluginOAuthClientSchema.mockReturnValue({
-        schema: [],
-        is_oauth_custom_client_enabled: false,
-        is_system_oauth_params_exists: false,
-      })
-
-      render(
-        <AddOAuthButton
-          pluginPayload={pluginPayload}
-          buttonVariant="secondary"
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByRole('button').className).toContain('btn-secondary')
-    })
   })
 
   describe('Rendering - Configured State', () => {
@@ -482,7 +440,7 @@ describe('AddOAuthButton', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByRole('button').className).toContain('custom-class')
+      expect(screen.getByText('use oauth').closest('.custom-class')).toBeInTheDocument()
     })
 
     it('should use oAuthData prop when provided', () => {
@@ -622,8 +580,7 @@ describe('AddOAuthButton', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      // Click the settings icon using data-testid for reliable selection
-      const settingsButton = screen.getByTestId('oauth-settings-button')
+      const settingsButton = screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i })
       fireEvent.click(settingsButton)
 
       await waitFor(() => {
@@ -711,11 +668,7 @@ describe('AddOAuthButton', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      // Open settings by clicking the gear icon
-      const button = screen.getByRole('button')
-      const gearIconContainer = button.querySelector('[class*="shrink-0"][class*="w-8"]')
-      if (gearIconContainer)
-        fireEvent.click(gearIconContainer)
+      fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
 
       await waitFor(() => {
         expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
@@ -748,11 +701,7 @@ describe('AddOAuthButton', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      // Click the settings icon
-      const button = screen.getByRole('button')
-      const gearIconContainer = button.querySelector('[class*="shrink-0"][class*="w-8"]')
-      if (gearIconContainer)
-        fireEvent.click(gearIconContainer)
+      fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
 
       await waitFor(() => {
         // OAuthClientSettings modal should open

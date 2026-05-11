@@ -3,8 +3,8 @@
 import type { FC } from 'react'
 import type { AppIconType } from '@/types/app'
 import data from '@emoji-mart/data'
+import { cn } from '@langgenius/dify-ui/cn'
 import { init } from 'emoji-mart'
-import { cn } from '@/utils/classnames'
 
 init({ data })
 

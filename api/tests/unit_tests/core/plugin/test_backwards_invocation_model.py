@@ -1,10 +1,9 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from graphon.model_runtime.entities.message_entities import UserPromptMessage
-
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.entities.request import RequestInvokeSummary
+from graphon.model_runtime.entities.message_entities import UserPromptMessage
 
 
 def test_system_model_helpers_forward_user_id():

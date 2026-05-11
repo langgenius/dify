@@ -1,10 +1,11 @@
 import type { CommonNodeType, InputVar, TriggerNodeType, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
-import { produce } from 'immer'
 
+import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -12,7 +13,6 @@ import {
 } from 'reactflow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   useIsChatMode,
   useNodeDataUpdate,
@@ -178,12 +178,14 @@ const useOneStepRun = <T>({
     }
 
     const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables, [], allPluginInfoList, schemaTypeDefinitions)
-    const targetVar = allOutputVars.find(item => isSystem ? !!item.isStartNode : item.nodeId === valueSelector[0])
+    if (isSystem) {
+      const selectorKey = valueSelector.join('.')
+      return allOutputVars.flatMap(item => item.vars).find(item => item.variable === selectorKey)
+    }
+
+    const targetVar = allOutputVars.find(item => item.nodeId === valueSelector[0])
     if (!targetVar)
       return undefined
-
-    if (isSystem)
-      return targetVar.vars.find(item => item.variable.split('.')[1] === valueSelector[1])
 
     let curr: any = targetVar.vars
     for (let i = 1; i < valueSelector.length; i++) {
@@ -234,10 +236,10 @@ const useOneStepRun = <T>({
       const index = draft.findIndex(node => node.nodeId === nodeId)
       if (index !== -1) {
         const targetNode = draft[index]
-        if (targetNode.isSingRunRunning !== isRunning) {
-          targetNode.isSingRunRunning = isRunning
+        if (targetNode!.isSingRunRunning !== isRunning) {
+          targetNode!.isSingRunRunning = isRunning
           if (isRunning)
-            targetNode.isValueFetched = false
+            targetNode!.isValueFetched = false
           hasChanges = true
         }
       }
@@ -806,7 +808,7 @@ const useOneStepRun = <T>({
               const newIterationRunResult = produce(iterationRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
-                    ...draft[currentIndex],
+                    ...draft[currentIndex]!,
                     ...data,
                   }
                 }
@@ -910,7 +912,7 @@ const useOneStepRun = <T>({
               const newLoopRunResult = produce(loopRunResult, (draft) => {
                 if (currentIndex > -1) {
                   draft[currentIndex] = {
-                    ...draft[currentIndex],
+                    ...draft[currentIndex]!,
                     ...data,
                   }
                 }
@@ -1079,12 +1081,19 @@ const useOneStepRun = <T>({
     const varInputs = variables.filter(item => !isENV(item.value_selector)).map((item) => {
       const originalVar = getVar(item.value_selector)
       if (!originalVar) {
+        const fallbackType = item.value_type
+          ? varTypeToInputVarType(item.value_type, {
+              isSelect: !!item.options?.length,
+              isParagraph: !!item.isParagraph,
+            })
+          : InputVarType.textInput
         return {
           label: item.label || item.variable,
           variable: item.variable,
-          type: InputVarType.textInput,
+          type: fallbackType,
           required: true,
           value_selector: item.value_selector,
+          options: item.options,
         }
       }
       return {
@@ -1109,13 +1118,13 @@ const useOneStepRun = <T>({
     })
 
     const variables = unionBy(valueSelectors, item => item.join('.')).map((item) => {
-      const varInfo = getNodeInfoById(availableNodesIncludeParent, item[0])?.data
+      const varInfo = getNodeInfoById(availableNodesIncludeParent, item[0]!)?.data
 
       return {
         label: {
           nodeType: varInfo?.type,
           nodeName: varInfo?.title || availableNodesIncludeParent[0]?.data.title, // default start node title
-          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1]!,
           isChatVar: isConversationVar(item),
         },
         variable: `#${item.join('.')}#`,
@@ -1129,7 +1138,7 @@ const useOneStepRun = <T>({
 
   const varSelectorsToVarInputs = (valueSelectors: ValueSelector[] | string[]): InputVar[] => {
     return valueSelectors.filter(item => !!item).map((item) => {
-      return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]
+      return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]!
     })
   }
 
