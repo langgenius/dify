@@ -209,7 +209,10 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/decode/from_identifier",
             PluginDecodeResponse,
-            params={"plugin_unique_identifier": plugin_unique_identifier},
+            params={
+                "plugin_unique_identifier": plugin_unique_identifier,
+                "PluginUniqueIdentifier": plugin_unique_identifier,  # compat with daemon <= 0.5.4
+            },
         )
 
     def fetch_plugin_installation_by_ids(
