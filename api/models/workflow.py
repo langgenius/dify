@@ -996,6 +996,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
         uselist=True,
         lazy="raise",
         back_populates="execution",
+        init=False
     )
 
     @staticmethod
