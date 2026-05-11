@@ -25,7 +25,7 @@ from services.errors.conversation import (
 
 class ConversationServiceVariableIntegrationFactory:
     @staticmethod
-    def create_app_and_account(db_session_with_containers):
+    def create_app_and_account(db_session_with_containers: Session):
         tenant = Tenant(name=f"Tenant {uuid4()}")
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()

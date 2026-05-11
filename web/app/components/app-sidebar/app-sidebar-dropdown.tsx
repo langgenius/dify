@@ -1,3 +1,4 @@
+import type { AppInfoActions } from './app-info/use-app-info-actions'
 import type { NavIcon } from './nav-link'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -27,9 +28,10 @@ type Props = {
     icon: NavIcon
     selectedIcon: NavIcon
   }>
+  appInfoActions?: AppInfoActions
 }
 
-const AppSidebarDropdown = ({ navigation }: Props) => {
+const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const appDetail = useAppStore(state => state.appDetail)
@@ -69,7 +71,10 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
                 <div
                   className={cn('flex flex-col gap-2 rounded-lg p-2 pb-2.5', isCurrentWorkspaceEditor && 'cursor-pointer hover:bg-state-base-hover')}
                   onClick={() => {
-                    setDetailExpand(true)
+                    if (appInfoActions)
+                      appInfoActions.setPanelOpen(true)
+                    else
+                      setDetailExpand(true)
                     setOpen(false)
                   }}
                 >
@@ -109,9 +114,11 @@ const AppSidebarDropdown = ({ navigation }: Props) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="z-20">
-        <AppInfo expand onlyShowDetail openState={detailExpand} onDetailExpand={setDetailExpand} />
-      </div>
+      {!appInfoActions && (
+        <div className="z-20">
+          <AppInfo expand onlyShowDetail openState={detailExpand} onDetailExpand={setDetailExpand} />
+        </div>
+      )}
     </>
   )
 }

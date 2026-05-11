@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
 from models.model import App, DefaultEndUserSessionID, EndUser
 from services.end_user_service import EndUserService
@@ -16,7 +17,7 @@ class TestEndUserServiceFactory:
     """Factory class for creating test data and mock objects for end user service tests."""
 
     @staticmethod
-    def create_app_and_account(db_session_with_containers):
+    def create_app_and_account(db_session_with_containers: Session):
         tenant = Tenant(name=f"Tenant {uuid4()}")
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
@@ -35,7 +36,7 @@ class TestEndUserServiceFactory:
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role="owner",
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db_session_with_containers.add(tenant_join)

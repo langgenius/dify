@@ -69,7 +69,7 @@ describe('MenuBar', () => {
 
   it('should call onInputChange with empty string when input is cleared', () => {
     render(<MenuBar {...defaultProps} inputValue="some text" />)
-    const clearButton = screen.getByTestId('input-clear')
+    const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
     fireEvent.click(clearButton)
     expect(defaultProps.onInputChange).toHaveBeenCalledWith('')
   })

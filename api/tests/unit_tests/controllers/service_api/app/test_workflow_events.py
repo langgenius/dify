@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api.app.error import NotWorkflowAppError
@@ -41,7 +42,7 @@ class TestWorkflowEventsApi:
             with pytest.raises(NotWorkflowAppError):
                 handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
 
-    def test_workflow_run_not_found(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_workflow_run_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         _mock_repo_for_run(monkeypatch, workflow_run=None)
         api = WorkflowEventsApi()
         handler = _unwrap(api.get)
@@ -52,7 +53,7 @@ class TestWorkflowEventsApi:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
 
-    def test_workflow_run_permission_denied(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_workflow_run_permission_denied(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(
             id="run-1",
             app_id="app-1",
@@ -70,7 +71,7 @@ class TestWorkflowEventsApi:
             with pytest.raises(NotFound):
                 handler(api, app_model=app_model, end_user=end_user, task_id="run-1")
 
-    def test_finished_run_returns_sse(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_finished_run_returns_sse(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(
             id="run-1",
             app_id="app-1",
@@ -103,7 +104,7 @@ class TestWorkflowEventsApi:
         assert payload["task_id"] == "run-1"
         assert payload["event"] == "workflow_finished"
 
-    def test_running_run_streams_events(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_running_run_streams_events(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(
             id="run-1",
             app_id="app-1",
@@ -135,7 +136,7 @@ class TestWorkflowEventsApi:
         )
         workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
-    def test_running_run_with_snapshot(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_running_run_with_snapshot(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         workflow_run = SimpleNamespace(
             id="run-1",
             app_id="app-1",

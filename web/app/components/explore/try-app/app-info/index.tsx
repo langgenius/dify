@@ -12,7 +12,7 @@ import useGetRequirements from './use-get-requirements'
 type Props = {
   appId: string
   appDetail: TryAppInfo
-  category?: string
+  categories?: string[]
   className?: string
   onCreate: () => void
 }
@@ -52,12 +52,13 @@ const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
 const AppInfo: FC<Props> = ({
   appId,
   className,
-  category,
+  categories,
   appDetail,
   onCreate,
 }) => {
   const { t } = useTranslation()
   const mode = appDetail?.mode
+  const visibleCategories = Array.from(new Set(categories?.filter(Boolean) ?? []))
   const { requirements } = useGetRequirements({ appDetail, appId })
   return (
     <div className={cn('flex h-full flex-col px-4 pt-2', className)}>
@@ -98,10 +99,19 @@ const AppInfo: FC<Props> = ({
         <span className="truncate">{t('tryApp.createFromSampleApp', { ns: 'explore' })}</span>
       </Button>
 
-      {category && (
+      {visibleCategories.length > 0 && (
         <div className="mt-6 shrink-0">
           <div className={headerClassName}>{t('tryApp.category', { ns: 'explore' })}</div>
-          <div className="system-md-regular text-text-secondary">{category}</div>
+          <div className="flex flex-wrap gap-1.5">
+            {visibleCategories.map(category => (
+              <span
+                key={category}
+                className="rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-2 py-0.5 system-xs-medium text-text-secondary shadow-xs"
+              >
+                {category}
+              </span>
+            ))}
+          </div>
         </div>
       )}
       {requirements.length > 0 && (

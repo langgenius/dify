@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from configs import dify_config
 from constants.languages import languages
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -22,8 +23,6 @@ from services.errors.account import AccountNotFoundError, AccountRegisterError
 
 from ..error import AccountInFreezeError, EmailSendIpLimitError
 from ..wraps import email_password_login_enabled, email_register_enabled, setup_required
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class EmailRegisterSendPayload(BaseModel):
@@ -48,8 +47,7 @@ class EmailRegisterResetPayload(BaseModel):
         return valid_password(value)
 
 
-for model in (EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload):
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
 
 
 @console_ns.route("/email-register/send-email")

@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "صورة",
   "variableConfig.file.supportFileTypes": "أنواع الملفات المدعومة",
   "variableConfig.file.video.name": "فيديو",
+  "variableConfig.hidden": "مخفي ومُعبَّأ مسبقاً",
+  "variableConfig.hiddenDescription": "أخفِ هذا الحقل عن المستخدمين النهائيين وأمد بقيمته بنفسك. خيار يستبعد خيار مطلوب. <docLink>تعلم المزيد</docLink>",
   "variableConfig.hide": "إخفاء",
   "variableConfig.inputPlaceholder": "يرجى الإدخال",
   "variableConfig.json": "كود JSON",

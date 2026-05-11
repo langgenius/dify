@@ -52,8 +52,6 @@ from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
 
 class AccountInitPayload(BaseModel):
     interface_language: str
@@ -161,27 +159,26 @@ class CheckEmailUniquePayload(BaseModel):
     email: EmailStr
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(AccountInitPayload)
-reg(AccountNamePayload)
-reg(AccountAvatarPayload)
-reg(AccountAvatarQuery)
-reg(AccountInterfaceLanguagePayload)
-reg(AccountInterfaceThemePayload)
-reg(AccountTimezonePayload)
-reg(AccountPasswordPayload)
-reg(AccountDeletePayload)
-reg(AccountDeletionFeedbackPayload)
-reg(EducationActivatePayload)
-reg(EducationAutocompleteQuery)
-reg(ChangeEmailSendPayload)
-reg(ChangeEmailValidityPayload)
-reg(ChangeEmailResetPayload)
-reg(CheckEmailUniquePayload)
-register_schema_models(console_ns, AccountResponse)
+register_schema_models(
+    console_ns,
+    AccountResponse,
+    AccountInitPayload,
+    AccountNamePayload,
+    AccountAvatarPayload,
+    AccountAvatarQuery,
+    AccountInterfaceLanguagePayload,
+    AccountInterfaceThemePayload,
+    AccountTimezonePayload,
+    AccountPasswordPayload,
+    AccountDeletePayload,
+    AccountDeletionFeedbackPayload,
+    EducationActivatePayload,
+    EducationAutocompleteQuery,
+    ChangeEmailSendPayload,
+    ChangeEmailValidityPayload,
+    ChangeEmailResetPayload,
+    CheckEmailUniquePayload,
+)
 
 
 def _serialize_account(account) -> dict[str, Any]:
@@ -326,7 +323,7 @@ class AccountAvatarApi(Resource):
     @account_initialization_required
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))
         avatar = args.avatar
 
         if avatar.startswith(("http://", "https://")):

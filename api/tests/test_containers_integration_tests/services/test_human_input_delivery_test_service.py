@@ -122,7 +122,7 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestUnsupportedError):
             handler.send_test(context=MagicMock(), method=MagicMock())
 
-    def test_send_test_feature_disabled(self, monkeypatch):
+    def test_send_test_feature_disabled(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
@@ -137,7 +137,7 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestError, match="Email delivery is not available"):
             handler.send_test(context=context, method=method)
 
-    def test_send_test_mail_not_inited(self, monkeypatch):
+    def test_send_test_mail_not_inited(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
@@ -154,7 +154,7 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestError, match="Mail client is not initialized."):
             handler.send_test(context=context, method=method)
 
-    def test_send_test_no_recipients(self, monkeypatch):
+    def test_send_test_no_recipients(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
@@ -173,7 +173,7 @@ class TestEmailDeliveryTestHandler:
         with pytest.raises(DeliveryTestError, match="No recipients configured"):
             handler.send_test(context=context, method=method)
 
-    def test_send_test_success(self, monkeypatch):
+    def test_send_test_success(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",
@@ -209,7 +209,7 @@ class TestEmailDeliveryTestHandler:
         assert kwargs["to"] == "test@example.com"
         assert "RENDERED_Subj" in kwargs["subject"]
 
-    def test_send_test_sanitizes_subject(self, monkeypatch):
+    def test_send_test_sanitizes_subject(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_features",

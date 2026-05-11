@@ -63,7 +63,7 @@ class ActivateCheckApi(Resource):
         console_ns.models[ActivationCheckResponse.__name__],
     )
     def get(self):
-        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))
 
         workspaceId = args.workspace_id
         token = args.token

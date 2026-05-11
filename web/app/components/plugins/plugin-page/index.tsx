@@ -222,11 +222,11 @@ const PluginPage = ({
                   <TooltipTrigger
                     render={(
                       <Button
-                        data-testid="plugin-settings-button"
+                        aria-label={t('privilege.title', { ns: 'plugin' })}
                         className="group h-full w-full p-2 text-components-button-secondary-text"
                         onClick={setShowPluginSettingModal}
                       >
-                        <RiEqualizer2Line className="h-4 w-4" />
+                        <RiEqualizer2Line className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     )}
                   />

@@ -120,18 +120,12 @@ vi.mock('../document-title', () => ({
 }))
 
 vi.mock('../segment-add', () => ({
-  default: ({ showNewSegmentModal, showBatchModal, embedding }: { showNewSegmentModal?: () => void, showBatchModal?: () => void, embedding?: boolean }) => (
+  SegmentAdd: ({ showNewSegmentModal, showBatchModal, embedding }: { showNewSegmentModal?: () => void, showBatchModal?: () => void, embedding?: boolean }) => (
     <div data-testid="segment-add" data-embedding={embedding}>
       <button data-testid="new-segment-btn" onClick={showNewSegmentModal}>New Segment</button>
       <button data-testid="batch-btn" onClick={showBatchModal}>Batch Import</button>
     </div>
   ),
-  ProcessStatus: {
-    WAITING: 'waiting',
-    PROCESSING: 'processing',
-    ERROR: 'error',
-    COMPLETED: 'completed',
-  },
 }))
 
 vi.mock('../../components/operations', () => ({
@@ -317,19 +311,19 @@ describe('DocumentDetail', () => {
   describe('Navigation', () => {
     it('should navigate back when back button clicked', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('document-detail-back-button'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
 
     it('should expose aria label for back button', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('document-detail-back-button')).toHaveAttribute('aria-label')
+      expect(screen.getByRole('button', { name: 'common.operation.back' })).toHaveAttribute('aria-label')
     })
 
     it('should preserve query params when navigating back', () => {
       mocks.state.searchParams = 'page=2&status=active'
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('document-detail-back-button'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents?page=2&status=active')
     })
   })

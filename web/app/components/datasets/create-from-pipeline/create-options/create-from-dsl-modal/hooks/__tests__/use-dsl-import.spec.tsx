@@ -418,7 +418,10 @@ describe('useDSLImport', () => {
 
     it('should handle FAILED status', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
-      mockImportDSL.mockResolvedValue(createImportDSLResponse({ status: 'failed' }))
+      mockImportDSL.mockResolvedValue(createImportDSLResponse({
+        status: 'failed',
+        error: 'Missing rag_pipeline data in YAML content',
+      }))
 
       const { result } = renderHook(
         () => useDSLImport({
@@ -434,9 +437,42 @@ describe('useDSLImport', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.record).toHaveBeenCalledWith({
           type: 'error',
-        }))
+          message: 'Missing rag_pipeline data in YAML content',
+        })
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should show response error when import request rejects with a response body', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      mockImportDSL.mockRejectedValue(new Response(JSON.stringify({
+        error: 'Missing rag_pipeline data in YAML content',
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+
+      const { result } = renderHook(
+        () => useDSLImport({
+          activeTab: CreateFromDSLModalTab.FROM_URL,
+          dslUrl: 'https://example.com/test.pipeline',
+        }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await waitFor(() => {
+        expect(toastMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Missing rag_pipeline data in YAML content',
+        })
       })
 
       vi.useRealTimers()
@@ -692,6 +728,7 @@ describe('useDSLImport', () => {
         status: 'failed',
         pipeline_id: 'pipeline-456',
         dataset_id: 'dataset-789',
+        error: 'Import information expired or does not exist',
       })
 
       const { result } = renderHook(
@@ -718,9 +755,56 @@ describe('useDSLImport', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
+        expect(toastMocks.record).toHaveBeenCalledWith({
           type: 'error',
-        }))
+          message: 'Import information expired or does not exist',
+        })
+      })
+
+      vi.useRealTimers()
+    })
+
+    it('should show response error when confirm request rejects with a response body', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      mockImportDSL.mockResolvedValue(createImportDSLResponse({
+        id: 'import-123',
+        status: 'pending',
+      }))
+
+      mockImportDSLConfirm.mockRejectedValue(new Response(JSON.stringify({
+        error: 'Import information expired or does not exist',
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+
+      const { result } = renderHook(
+        () => useDSLImport({
+          activeTab: CreateFromDSLModalTab.FROM_URL,
+          dslUrl: 'https://example.com/test.pipeline',
+        }),
+        { wrapper: createWrapper() },
+      )
+
+      await act(async () => {
+        result.current.handleCreateApp()
+        vi.advanceTimersByTime(400)
+      })
+
+      await act(async () => {
+        vi.advanceTimersByTime(400)
+      })
+
+      await act(async () => {
+        result.current.onDSLConfirm()
+      })
+
+      await waitFor(() => {
+        expect(toastMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Import information expired or does not exist',
+        })
       })
 
       vi.useRealTimers()

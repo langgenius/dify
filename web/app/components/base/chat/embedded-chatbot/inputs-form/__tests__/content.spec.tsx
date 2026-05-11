@@ -208,7 +208,7 @@ describe('InputsFormContent', () => {
 
     await user.click(selectTrigger)
 
-    expect(screen.getByText('Option 1').closest('.z-1002')).not.toBeNull()
+    expect(screen.getByText('Option 1').closest('.z-50')).not.toBeNull()
   })
 
   it('should handle single file upload change', async () => {

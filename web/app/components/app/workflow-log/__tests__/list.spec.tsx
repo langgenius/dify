@@ -460,9 +460,10 @@ describe('WorkflowAppLogList', () => {
       // Open drawer
       const dataRows = screen.getAllByRole('row')
       await user.click(dataRows[1]!)
-      await screen.findByRole('dialog')
+      const dialog = await screen.findByRole('dialog')
 
       // Close drawer using Escape key
+      dialog.focus()
       await user.keyboard('{Escape}')
 
       await waitFor(() => {

@@ -139,6 +139,7 @@ describe('code.tsx components', () => {
         await waitFor(() => {
           expect(screen.getByText('second content')).toBeInTheDocument()
         })
+        expect(tab2).toHaveAttribute('aria-selected', 'true')
       })
 
       it('should use "Code" as default title when title not provided', () => {
@@ -329,7 +330,8 @@ describe('code.tsx components', () => {
           <pre><code>fallback</code></pre>
         </CodeGroup>,
       )
-      expect(screen.getByRole('tablist')).toBeInTheDocument()
+      expect(screen.getByRole('tablist')).toHaveClass('-mb-px', 'gap-4', 'bg-transparent')
+      expect(screen.getByRole('tab', { name: 'cURL' })).toHaveClass('data-active:text-emerald-400')
     })
   })
 

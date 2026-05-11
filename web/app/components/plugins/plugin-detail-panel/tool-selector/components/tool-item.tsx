@@ -1,8 +1,8 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -14,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import { ToolTipContent } from '@/app/components/base/tooltip/content'
 import Indicator from '@/app/components/header/indicator'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
@@ -144,11 +143,14 @@ const ToolItem = ({
             className="-mt-1"
             uniqueIdentifier={installInfo}
             tooltip={(
-              <ToolTipContent
-                title={t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
-              >
-                {`${t('detailPanel.toolSelector.unsupportedContent', { ns: 'plugin' })} ${t('detailPanel.toolSelector.unsupportedContent2', { ns: 'plugin' })}`}
-              </ToolTipContent>
+              <div className="w-[180px]" data-testid="tooltip-content">
+                <div className="mb-1.5 font-semibold text-text-secondary" data-testid="tooltip-content-title">
+                  {t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
+                </div>
+                <div className="mb-1.5 text-text-tertiary" data-testid="tooltip-content-body">
+                  {`${t('detailPanel.toolSelector.unsupportedContent', { ns: 'plugin' })} ${t('detailPanel.toolSelector.unsupportedContent2', { ns: 'plugin' })}`}
+                </div>
+              </div>
             )}
             onChange={() => {
               onInstall?.()
@@ -167,18 +169,18 @@ const ToolItem = ({
         />
       )}
       {isError && (
-        <Tooltip>
-          <TooltipTrigger
-            render={(
-              <div aria-label={typeof errorTip === 'string' ? errorTip : undefined}>
-                <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
-              </div>
-            )}
-          />
-          <TooltipContent>
+        <Popover>
+          <PopoverTrigger
+            openOnHover
+            aria-label={typeof errorTip === 'string' ? errorTip : t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
+            className="inline-flex border-0 bg-transparent p-0"
+          >
+            <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+          </PopoverTrigger>
+          <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
             {errorTip}
-          </TooltipContent>
-        </Tooltip>
+          </PopoverContent>
+        </Popover>
       )}
     </div>
   )

@@ -88,7 +88,7 @@ describe('SecretKeyModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Suppress expected React act() warnings from Headless UI Dialog transitions and async API state updates
+    // Suppress expected React act() warnings from modal transitions and async API state updates.
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ shouldAdvanceTime: true })
     mockCurrentWorkspace.mockReturnValue({ id: 'workspace-1', name: 'Test Workspace' })
@@ -288,6 +288,36 @@ describe('SecretKeyModal', () => {
       await waitFor(() => {
         expect(screen.getByText('appApi.apiKeyModal.generateTips')).toBeInTheDocument()
       })
+    })
+
+    it('should place the generated key backdrop above the API keys modal', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      mockAppApiKeysData.mockReturnValue({
+        data: [
+          { id: 'key-1', token: 'sk-abc123def456ghi789', created_at: 1700000000, last_used_at: null },
+        ],
+      })
+      await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
+
+      const createButton = screen.getByText('appApi.apiKeyModal.createNewSecretKey')
+      await act(async () => {
+        await user.click(createButton)
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText('appApi.apiKeyModal.generateTips')).toBeInTheDocument()
+      })
+
+      const parentDialog = screen.getByText('appApi.apiKeyModal.apiSecretKeyTips').closest('[role="dialog"]')
+      const generatedKeyDialog = screen.getByText('appApi.apiKeyModal.generateTips').closest('[role="dialog"]')
+      const backdrops = document.body.querySelectorAll('.bg-background-overlay')
+      const generatedKeyBackdrop = backdrops[1]
+
+      expect(parentDialog).toBeInTheDocument()
+      expect(generatedKeyDialog).toBeInTheDocument()
+      expect(backdrops).toHaveLength(2)
+      expect(parentDialog!.compareDocumentPosition(generatedKeyBackdrop!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(generatedKeyBackdrop!.compareDocumentPosition(generatedKeyDialog!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
     it('should invalidate app API keys after creating', async () => {

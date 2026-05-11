@@ -3,6 +3,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.agent.errors import AgentMaxIterationError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
@@ -68,7 +69,7 @@ class DummyResult:
 
 
 @pytest.fixture
-def runner(mocker):
+def runner(mocker: MockerFixture):
     # Completely bypass BaseAgentRunner __init__ to avoid DB / Flask context
     mocker.patch(
         "core.agent.base_agent_runner.BaseAgentRunner.__init__",
@@ -230,7 +231,7 @@ class TestOrganizeUserQuery:
         result = runner._organize_user_query(None, [])
         assert len(result) == 1
 
-    def test_with_files_uses_image_detail_config(self, runner, mocker):
+    def test_with_files_uses_image_detail_config(self, runner, mocker: MockerFixture):
         file_content = TextPromptMessageContent(data="file-content")
         mock_to_prompt = mocker.patch(
             "core.agent.fc_agent_runner.file_manager.to_prompt_message_content",
@@ -352,7 +353,7 @@ class TestRunMethod:
         assert len(outputs) == 1
         assert runner.save_agent_thought.call_args.kwargs["thought"] == "hi"
 
-    def test_run_streaming_tool_call_inputs_type_error(self, runner, mocker):
+    def test_run_streaming_tool_call_inputs_type_error(self, runner, mocker: MockerFixture):
         message = MagicMock(id="m1")
         runner.stream_tool_call = True
 
@@ -398,7 +399,7 @@ class TestRunMethod:
         outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
 
-    def test_run_with_tool_instance_and_files(self, runner, mocker):
+    def test_run_with_tool_instance_and_files(self, runner, mocker: MockerFixture):
         message = MagicMock(id="m1")
 
         tool_call = MagicMock()

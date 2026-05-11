@@ -1,12 +1,10 @@
-import type { Placement } from '@floating-ui/react'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
-import Tooltip from '@/app/components/base/tooltip'
 import { formatFileSize } from '@/utils/format'
 import FileIcon from './file-icon'
 
@@ -33,14 +31,7 @@ const Item = ({
   const isBucket = type === 'bucket'
   const isFolder = type === 'folder'
 
-  const Wrapper = disabled ? Tooltip : React.Fragment
-  const wrapperProps = disabled
-    ? {
-        popupContent: t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' }),
-        position: 'top-end' as Placement,
-        offset: { mainAxis: 4, crossAxis: -104 },
-      }
-    : {}
+  const disabledTip = t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' })
 
   const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
     e.stopPropagation()
@@ -80,27 +71,44 @@ const Item = ({
           onCheck={handleSelect}
         />
       )}
-      <Wrapper
-        {...wrapperProps}
-      >
-        <div
-          className={cn(
-            'flex grow items-center gap-x-1 overflow-hidden py-0.5',
-            disabled && 'opacity-30',
+      {disabled
+        ? (
+            <Popover>
+              <PopoverTrigger
+                openOnHover
+                aria-label={disabledTip}
+                className="flex grow items-center gap-x-1 overflow-hidden border-0 bg-transparent p-0 py-0.5 text-left opacity-30"
+              >
+                <FileIcon type={type} fileName={name} className="shrink-0 transform-gpu" />
+                <span
+                  className="grow truncate system-sm-medium text-text-secondary"
+                  title={name}
+                >
+                  {name}
+                </span>
+                {!isFolder && typeof size === 'number' && (
+                  <span className="shrink-0 system-xs-regular text-text-tertiary">{formatFileSize(size)}</span>
+                )}
+              </PopoverTrigger>
+              <PopoverContent placement="top-end" popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                {disabledTip}
+              </PopoverContent>
+            </Popover>
+          )
+        : (
+            <div className="flex grow items-center gap-x-1 overflow-hidden py-0.5">
+              <FileIcon type={type} fileName={name} className="shrink-0 transform-gpu" />
+              <span
+                className="grow truncate system-sm-medium text-text-secondary"
+                title={name}
+              >
+                {name}
+              </span>
+              {!isFolder && typeof size === 'number' && (
+                <span className="shrink-0 system-xs-regular text-text-tertiary">{formatFileSize(size)}</span>
+              )}
+            </div>
           )}
-        >
-          <FileIcon type={type} fileName={name} className="shrink-0 transform-gpu" />
-          <span
-            className="grow truncate system-sm-medium text-text-secondary"
-            title={name}
-          >
-            {name}
-          </span>
-          {!isFolder && typeof size === 'number' && (
-            <span className="shrink-0 system-xs-regular text-text-tertiary">{formatFileSize(size)}</span>
-          )}
-        </div>
-      </Wrapper>
     </div>
   )
 }
