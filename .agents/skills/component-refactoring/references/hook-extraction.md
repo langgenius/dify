@@ -160,7 +160,6 @@ const Configuration: FC = () => {
 When hook extraction touches query or mutation code, do not use this reference as the source of truth for data-layer patterns.
 
 - Follow `web/AGENTS.md` first.
-- Use `frontend-query-mutation` for contracts, query shape, data-fetching wrappers, query/mutation call-site patterns, conditional queries, invalidation, and mutation error handling.
 - Do not introduce deprecated `useInvalid` / `useReset`.
 - Do not extract thin passthrough `useQuery` hooks; only extract orchestration hooks.
 
