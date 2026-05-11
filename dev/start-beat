@@ -55,6 +55,6 @@ echo "  Log Level: ${LOGLEVEL}"
 echo "  Scheduler: ${SCHEDULER}"
 
 uv --directory api run \
-  celery -A app.celery beat \
+  celery -A celery_entrypoint.celery beat \
   --loglevel ${LOGLEVEL} \
   --scheduler ${SCHEDULER}

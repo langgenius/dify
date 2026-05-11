@@ -2,27 +2,51 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: API (gevent)",
+            "name": "Python: API (Gunicorn gevent)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/api/app.py",
+            "module": "gunicorn",
+            "args": [
+                "--config",
+                "gunicorn.conf.py",
+                "--reload",
+                "--bind",
+                "0.0.0.0:5001",
+                "--workers",
+                "1",
+                "--worker-class",
+                "geventwebsocket.gunicorn.workers.GeventWebSocketWorker",
+                "--worker-connections",
+                "10",
+                "--timeout",
+                "200",
+                "app:socketio_app"
+            ],
+            "env": {
+                "GEVENT_SUPPORT": "True"
+            },
+            "envFile": "${workspaceFolder}/api/.env",
+            "gevent": true,
             "jinja": true,
-            "justMyCode": true,
+            "justMyCode": false,
+            "subProcess": true,
             "cwd": "${workspaceFolder}/api",
             "python": "${workspaceFolder}/api/.venv/bin/python"
         },
         {
-            "name": "Python: Celery Worker (Solo)",
+            "name": "Python: Celery Worker (gevent)",
             "type": "debugpy",
             "request": "launch",
             "module": "celery",
-            "env": {},
+            "env": {
+                "GEVENT_SUPPORT": "True"
+            },
             "args": [
                 "-A",
-                "app.celery",
+                "celery_entrypoint.celery",
                 "worker",
                 "-P",
-                "solo",
+                "gevent",
                 "-c",
                 "1",
                 "-Q",
@@ -30,6 +54,31 @@
                 "--loglevel",
                 "INFO"
             ],
+            "envFile": "${workspaceFolder}/api/.env",
+            "gevent": true,
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/api",
+            "python": "${workspaceFolder}/api/.venv/bin/python"
+        },
+        {
+            "name": "Python: Celery Beat",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "env": {
+                "GEVENT_SUPPORT": "True"
+            },
+            "args": [
+                "-A",
+                "celery_entrypoint.celery",
+                "beat",
+                "--loglevel",
+                "INFO",
+                "--scheduler",
+                "celery.beat:PersistentScheduler"
+            ],
+            "envFile": "${workspaceFolder}/api/.env",
+            "gevent": true,
             "justMyCode": false,
             "cwd": "${workspaceFolder}/api",
             "python": "${workspaceFolder}/api/.venv/bin/python"
@@ -49,6 +98,6 @@
               "webRoot": "${workspaceFolder}/web"
             },
             "cwd": "${workspaceFolder}/web"
-          }
+        }
     ]
 }

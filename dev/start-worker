@@ -125,5 +125,5 @@ echo "  Pool: ${POOL}"
 echo "  Log Level: ${LOGLEVEL}"
 
 uv run \
-  celery -A app.celery worker \
+  celery -A celery_entrypoint.celery worker \
   -P ${POOL} -c ${CONCURRENCY} --loglevel ${LOGLEVEL} -Q ${QUEUES}

@@ -1,6 +1,13 @@
+"""Application module for framework-managed Flask and Celery startup.
+
+The supported API runtime is Gunicorn with gevent workers. This module exposes
+`socketio_app`, `flask_app`, and `celery` for framework entrypoints, but
+starting the server manually via `python -m app` is intentionally unsupported
+because it bypasses the framework-owned gevent patch timing.
+"""
+
 from __future__ import annotations
 
-import logging
 import sys
 from typing import TYPE_CHECKING, cast
 
@@ -10,23 +17,10 @@ if TYPE_CHECKING:
     celery: Celery
 
 
-HOST = "0.0.0.0"
-PORT = 5001
-logger = logging.getLogger(__name__)
-
-
 def is_db_command() -> bool:
     if len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db":
         return True
     return False
-
-
-def log_startup_banner(host: str, port: int) -> None:
-    debugger_attached = sys.gettrace() is not None
-    logger.info("Serving Dify API via gevent WebSocket server")
-    logger.info("Bound to http://%s:%s", host, port)
-    logger.info("Debugger attached: %s", "on" if debugger_attached else "off")
-    logger.info("Press CTRL+C to quit")
 
 
 # create app
@@ -40,12 +34,8 @@ if is_db_command():
     socketio_app = app
     flask_app = app
 else:
-    # Gunicorn and Celery handle monkey patching automatically in production by
-    # specifying the `gevent` worker class. Manual monkey patching is not required here.
-    #
-    # See `api/docker/entrypoint.sh` (lines 33 and 47) for details.
-    #
-    # For third-party library patching, refer to `gunicorn.conf.py` and `celery_entrypoint.py`.
+    # Gunicorn and Celery own gevent patch timing. Third-party compatibility
+    # patching is added by `gunicorn.conf.py` and `celery_entrypoint.py`.
 
     from app_factory import create_app
 
@@ -54,9 +44,4 @@ else:
     celery = cast("Celery", app.extensions["celery"])
 
 if __name__ == "__main__":
-    from gevent import pywsgi
-    from geventwebsocket.handler import WebSocketHandler  # type: ignore[reportMissingTypeStubs]
-
-    log_startup_banner(HOST, PORT)
-    server = pywsgi.WSGIServer((HOST, PORT), socketio_app, handler_class=WebSocketHandler)
-    server.serve_forever()
+    raise SystemExit("Direct API server startup via `python -m app` is unsupported. Use Gunicorn or `./dev/start-api`.")
