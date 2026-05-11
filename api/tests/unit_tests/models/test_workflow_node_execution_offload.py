@@ -53,6 +53,7 @@ class TestWorkflowNodeExecutionModel:
     def test_process_data_truncated_property_false_when_no_process_data_file(self):
         """Test process_data_truncated returns False when no process_data file."""
         from models.enums import ExecutionOffLoadType
+
         # Create real offload instances for inputs and outputs but not process_data
         inputs_offload = WorkflowNodeExecutionOffload()
         inputs_offload.type_ = ExecutionOffLoadType.INPUTS
@@ -62,11 +63,7 @@ class TestWorkflowNodeExecutionModel:
         outputs_offload.type_ = ExecutionOffLoadType.OUTPUTS
         outputs_offload.file_id = "outputs-file"
 
-
-        execution = WorkflowNodeExecutionModel(
-offload_data = [inputs_offload, outputs_offload]
-        )
-
+        execution = WorkflowNodeExecutionModel(offload_data=[inputs_offload, outputs_offload])
 
         assert execution.process_data_truncated is False
 

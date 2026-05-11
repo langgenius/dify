@@ -1,5 +1,3 @@
-from graphon.enums import WorkflowNodeExecutionStatus
-from models import WorkflowNodeExecutionTriggeredFrom
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -9,6 +7,8 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from graphon.enums import WorkflowNodeExecutionStatus
+from models import WorkflowNodeExecutionTriggeredFrom
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import (
     Message,
