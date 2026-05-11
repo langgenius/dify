@@ -1,14 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiEditLine,
-  RiFileEditLine,
-} from '@remixicon/react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { RiEditLine, RiFileEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Toast from '@/app/components/base/toast'
-import Tooltip from '@/app/components/base/tooltip'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { addAnnotation } from '@/service/annotation'
@@ -22,16 +19,7 @@ type Props = {
   onAdded: (annotationId: string, authorName: string) => void
   onEdit: () => void
 }
-
-const AnnotationCtrlButton: FC<Props> = ({
-  cached,
-  query,
-  answer,
-  appId,
-  messageId,
-  onAdded,
-  onEdit,
-}) => {
+const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, messageId, onAdded, onEdit }) => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
   const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
@@ -46,31 +34,37 @@ const AnnotationCtrlButton: FC<Props> = ({
       question: query,
       answer,
     })
-    Toast.notify({
-      message: t('api.actionSuccess', { ns: 'common' }) as string,
-      type: 'success',
-    })
+    toast.success(t('api.actionSuccess', { ns: 'common' }) as string)
     onAdded(res.id, res.account?.name ?? '')
   }
-
   return (
     <>
       {cached && (
-        <Tooltip
-          popupContent={t('feature.annotation.edit', { ns: 'appDebug' })}
-        >
-          <ActionButton onClick={onEdit}>
-            <RiEditLine className="h-4 w-4" />
-          </ActionButton>
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <ActionButton onClick={onEdit}>
+                <RiEditLine className="h-4 w-4" />
+              </ActionButton>
+            )}
+          />
+          <TooltipContent>
+            {t('feature.annotation.edit', { ns: 'appDebug' })}
+          </TooltipContent>
         </Tooltip>
       )}
       {!cached && answer && (
-        <Tooltip
-          popupContent={t('feature.annotation.add', { ns: 'appDebug' })}
-        >
-          <ActionButton onClick={handleAdd}>
-            <RiFileEditLine className="h-4 w-4" />
-          </ActionButton>
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <ActionButton onClick={handleAdd}>
+                <RiFileEditLine className="h-4 w-4" />
+              </ActionButton>
+            )}
+          />
+          <TooltipContent>
+            {t('feature.annotation.add', { ns: 'appDebug' })}
+          </TooltipContent>
         </Tooltip>
       )}
     </>

@@ -1,14 +1,14 @@
 from dataclasses import dataclass
-from typing import Annotated, Literal, Self, TypeAlias
+from typing import Annotated, Literal, Self
 
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
 from pydantic import BaseModel, Field
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -27,7 +27,7 @@ class _AdvancedChatAppGenerateEntityWrapper(BaseModel):
     entity: AdvancedChatAppGenerateEntity
 
 
-_GenerateEntityUnion: TypeAlias = Annotated[
+type _GenerateEntityUnion = Annotated[
     _WorkflowGenerateEntityWrapper | _AdvancedChatAppGenerateEntityWrapper,
     Field(discriminator="type"),
 ]

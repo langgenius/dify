@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from sqlalchemy.orm import Session
 
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
@@ -79,7 +80,7 @@ class TestAuthIntegration:
 
     @patch("services.auth.api_key_auth_service.encrypter.encrypt_token")
     @patch("services.auth.firecrawl.firecrawl.httpx.post")
-    @patch("services.auth.jina.jina.httpx.post")
+    @patch("services.auth.jina.jina._http_client.post")
     def test_multi_tenant_isolation(
         self,
         mock_jina_http,
@@ -114,7 +115,7 @@ class TestAuthIntegration:
         assert result2[0].tenant_id == tenant_id_2
 
     def test_cross_tenant_access_prevention(
-        self, flask_app_with_containers, db_session_with_containers, tenant_id_2, category
+        self, flask_app_with_containers, db_session_with_containers: Session, tenant_id_2, category
     ):
         result = ApiKeyAuthService.get_auth_credentials(tenant_id_2, category, AuthType.FIRECRAWL)
 

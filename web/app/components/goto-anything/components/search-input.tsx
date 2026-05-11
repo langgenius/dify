@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 
-export type SearchInputProps = {
+type SearchInputProps = {
   inputRef: RefObject<HTMLInputElement | null>
   value: string
   onChange: (value: string) => void
@@ -44,12 +44,12 @@ const SearchInput: FC<SearchInputProps> = ({
           placeholder={placeholder || t('gotoAnything.searchPlaceholder', { ns: 'app' })}
           onChange={e => onChange(e.target.value)}
           onKeyDown={onKeyDown}
-          className="flex-1 !border-0 !bg-transparent !shadow-none"
-          wrapperClassName="flex-1 !border-0 !bg-transparent"
+          className="flex-1 border-0! bg-transparent! shadow-none!"
+          wrapperClassName="flex-1 border-0! bg-transparent!"
           autoFocus
         />
         {searchMode !== 'general' && (
-          <div className="flex items-center gap-1 rounded bg-gray-100 px-2 py-[2px] text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+          <div className="flex items-center gap-1 rounded-sm bg-gray-100 px-2 py-[2px] text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
             <span>{getModeLabel()}</span>
           </div>
         )}

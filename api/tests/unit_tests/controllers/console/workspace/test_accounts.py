@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
+from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
 from controllers.console.auth.error import (
@@ -29,6 +31,7 @@ from controllers.console.workspace.error import (
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
 )
+from models.enums import CreatorUserRole
 from services.errors.account import CurrentPasswordIncorrectError as ServicePwdError
 
 
@@ -39,7 +42,7 @@ def unwrap(func):
 
 
 class TestAccountInitApi:
-    def test_init_success(self, app):
+    def test_init_success(self, app: Flask):
         api = AccountInitApi()
         method = unwrap(api.post)
 
@@ -62,7 +65,7 @@ class TestAccountInitApi:
 
         assert resp["result"] == "success"
 
-    def test_init_already_initialized(self, app):
+    def test_init_already_initialized(self, app: Flask):
         api = AccountInitApi()
         method = unwrap(api.post)
 
@@ -77,7 +80,7 @@ class TestAccountInitApi:
 
 
 class TestAccountProfileApi:
-    def test_get_profile_success(self, app):
+    def test_get_profile_success(self, app: Flask):
         api = AccountProfileApi()
         method = unwrap(api.get)
 
@@ -135,8 +138,133 @@ class TestAccountUpdateApis:
         assert result["id"] == "u1"
 
 
+class TestAccountAvatarApiGet:
+    """GET /account/avatar must not sign arbitrary upload_file IDs (IDOR)."""
+
+    def test_get_avatar_signed_url_when_upload_owned_by_current_account(self, app: Flask):
+        api = AccountAvatarApi()
+        method = unwrap(api.get)
+
+        user = MagicMock()
+        user.id = "acc-owner"
+        tenant_id = "tenant-1"
+        file_id = "550e8400-e29b-41d4-a716-446655440000"
+
+        upload_file = MagicMock()
+        upload_file.id = file_id
+        upload_file.tenant_id = tenant_id
+        upload_file.created_by = user.id
+        upload_file.created_by_role = CreatorUserRole.ACCOUNT
+
+        with (
+            app.test_request_context(f"/account/avatar?avatar={file_id}"),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant",
+                return_value=(user, tenant_id),
+            ),
+            patch("controllers.console.workspace.account.db.session.scalar", return_value=upload_file),
+            patch(
+                "controllers.console.workspace.account.file_helpers.get_signed_file_url",
+                return_value="https://signed/example",
+            ) as sign_mock,
+        ):
+            result = method(api)
+
+        assert result == {"avatar_url": "https://signed/example"}
+        sign_mock.assert_called_once_with(upload_file_id=file_id)
+
+    def test_get_avatar_not_found_when_upload_created_by_other_account_same_tenant(self, app: Flask):
+        api = AccountAvatarApi()
+        method = unwrap(api.get)
+
+        user = MagicMock()
+        user.id = "acc-a"
+        tenant_id = "tenant-1"
+        file_id = "550e8400-e29b-41d4-a716-446655440001"
+
+        upload_file = MagicMock()
+        upload_file.id = file_id
+        upload_file.tenant_id = tenant_id
+        upload_file.created_by = "acc-b"
+        upload_file.created_by_role = CreatorUserRole.ACCOUNT
+
+        with (
+            app.test_request_context(f"/account/avatar?avatar={file_id}"),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant",
+                return_value=(user, tenant_id),
+            ),
+            patch("controllers.console.workspace.account.db.session.scalar", return_value=upload_file),
+            patch(
+                "controllers.console.workspace.account.file_helpers.get_signed_file_url",
+                return_value="https://signed/leak",
+            ) as sign_mock,
+        ):
+            with pytest.raises(NotFound):
+                method(api)
+
+        sign_mock.assert_not_called()
+
+    def test_get_avatar_not_found_when_upload_belongs_to_other_tenant(self, app: Flask):
+        api = AccountAvatarApi()
+        method = unwrap(api.get)
+
+        user = MagicMock()
+        user.id = "acc-owner"
+        tenant_id = "tenant-1"
+        file_id = "550e8400-e29b-41d4-a716-446655440002"
+
+        upload_file = MagicMock()
+        upload_file.id = file_id
+        upload_file.tenant_id = "tenant-other"
+        upload_file.created_by = user.id
+        upload_file.created_by_role = CreatorUserRole.ACCOUNT
+
+        with (
+            app.test_request_context(f"/account/avatar?avatar={file_id}"),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant",
+                return_value=(user, tenant_id),
+            ),
+            patch("controllers.console.workspace.account.db.session.scalar", return_value=upload_file),
+            patch(
+                "controllers.console.workspace.account.file_helpers.get_signed_file_url",
+                return_value="https://signed/leak",
+            ) as sign_mock,
+        ):
+            with pytest.raises(NotFound):
+                method(api)
+
+        sign_mock.assert_not_called()
+
+    def test_get_avatar_https_pass_through_without_signing(self, app: Flask):
+        api = AccountAvatarApi()
+        method = unwrap(api.get)
+
+        user = MagicMock()
+        user.id = "acc-owner"
+        tenant_id = "tenant-1"
+        external = "https://cdn.example/avatar.png"
+
+        with (
+            app.test_request_context(f"/account/avatar?avatar={external}"),
+            patch(
+                "controllers.console.workspace.account.current_account_with_tenant",
+                return_value=(user, tenant_id),
+            ),
+            patch(
+                "controllers.console.workspace.account.file_helpers.get_signed_file_url",
+                return_value="https://signed/should-not-use",
+            ) as sign_mock,
+        ):
+            result = method(api)
+
+        assert result == {"avatar_url": external}
+        sign_mock.assert_not_called()
+
+
 class TestAccountPasswordApi:
-    def test_password_success(self, app):
+    def test_password_success(self, app: Flask):
         api = AccountPasswordApi()
         method = unwrap(api.post)
 
@@ -165,7 +293,7 @@ class TestAccountPasswordApi:
 
         assert result["id"] == "u1"
 
-    def test_password_wrong_current(self, app):
+    def test_password_wrong_current(self, app: Flask):
         api = AccountPasswordApi()
         method = unwrap(api.post)
 
@@ -190,7 +318,7 @@ class TestAccountPasswordApi:
 
 
 class TestAccountIntegrateApi:
-    def test_get_integrates(self, app):
+    def test_get_integrates(self, app: Flask):
         api = AccountIntegrateApi()
         method = unwrap(api.get)
 
@@ -209,7 +337,7 @@ class TestAccountIntegrateApi:
 
 
 class TestAccountDeleteApi:
-    def test_delete_verify_success(self, app):
+    def test_delete_verify_success(self, app: Flask):
         api = AccountDeleteVerifyApi()
         method = unwrap(api.get)
 
@@ -231,7 +359,7 @@ class TestAccountDeleteApi:
 
         assert result["result"] == "success"
 
-    def test_delete_invalid_code(self, app):
+    def test_delete_invalid_code(self, app: Flask):
         api = AccountDeleteApi()
         method = unwrap(api.post)
 
@@ -252,7 +380,7 @@ class TestAccountDeleteApi:
 
 
 class TestChangeEmailApis:
-    def test_check_email_code_invalid(self, app):
+    def test_check_email_code_invalid(self, app: Flask):
         api = ChangeEmailCheckApi()
         method = unwrap(api.post)
 
@@ -278,7 +406,7 @@ class TestChangeEmailApis:
             with pytest.raises(EmailCodeError):
                 method(api)
 
-    def test_reset_email_already_used(self, app):
+    def test_reset_email_already_used(self, app: Flask):
         api = ChangeEmailResetApi()
         method = unwrap(api.post)
 
@@ -300,7 +428,7 @@ class TestChangeEmailApis:
 
 
 class TestCheckEmailUniqueApi:
-    def test_email_unique_success(self, app):
+    def test_email_unique_success(self, app: Flask):
         api = CheckEmailUnique()
         method = unwrap(api.post)
 
@@ -321,7 +449,7 @@ class TestCheckEmailUniqueApi:
 
         assert result["result"] == "success"
 
-    def test_email_in_freeze(self, app):
+    def test_email_in_freeze(self, app: Flask):
         api = CheckEmailUnique()
         method = unwrap(api.post)
 

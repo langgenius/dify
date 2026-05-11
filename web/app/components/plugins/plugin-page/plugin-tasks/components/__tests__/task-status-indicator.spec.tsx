@@ -7,12 +7,6 @@ vi.mock('@/app/components/base/progress-bar/progress-circle', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (
-    <div data-testid="tooltip" data-tip={popupContent}>{children}</div>
-  ),
-}))
-
 vi.mock('@/app/components/header/plugins-nav/downloading-icon', () => ({
   default: () => <span data-testid="downloading-icon" />,
 }))
@@ -38,18 +32,17 @@ describe('TaskStatusIndicator', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<TaskStatusIndicator {...defaultProps} />)
-      expect(screen.getByTestId('tooltip')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Installing plugins' })).toBeInTheDocument()
     })
 
-    it('should pass tip to tooltip', () => {
+    it('should use tip as the trigger accessible name', () => {
       render(<TaskStatusIndicator {...defaultProps} tip="My tip" />)
-      expect(screen.getByTestId('tooltip')).toHaveAttribute('data-tip', 'My tip')
+      expect(screen.getByRole('button', { name: 'My tip' })).toBeInTheDocument()
     })
 
     it('should render install icon by default', () => {
       const { container } = render(<TaskStatusIndicator {...defaultProps} />)
-      // RiInstallLine renders as svg
-      expect(container.querySelector('svg')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-install-line')).toBeInTheDocument()
       expect(screen.queryByTestId('downloading-icon')).not.toBeInTheDocument()
     })
   })
@@ -127,7 +120,6 @@ describe('TaskStatusIndicator', () => {
           totalPluginsLength={3}
         />,
       )
-      // RiCheckboxCircleFill is rendered as svg with text-text-success
       const successIcon = container.querySelector('.text-text-success')
       expect(successIcon).toBeInTheDocument()
     })

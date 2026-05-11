@@ -18,6 +18,7 @@ import uuid
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api.dataset.segment import (
@@ -768,6 +769,7 @@ class TestSegmentApiGet:
     ``current_account_with_tenant()`` and ``marshal``.
     """
 
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
     @patch("controllers.service_api.dataset.segment.marshal")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
@@ -780,7 +782,8 @@ class TestSegmentApiGet:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        app,
+        mock_summary_svc,
+        app: Flask,
         mock_tenant,
         mock_dataset,
         mock_segment,
@@ -791,7 +794,8 @@ class TestSegmentApiGet:
         mock_db.session.scalar.return_value = mock_dataset
         mock_doc_svc.get_document.return_value = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_seg_svc.get_segments.return_value = ([mock_segment], 1)
-        mock_marshal.return_value = [{"id": mock_segment.id}]
+        mock_marshal.return_value = {"id": mock_segment.id}
+        mock_summary_svc.get_segments_summaries.return_value = {}
 
         # Act
         with app.test_request_context(
@@ -872,6 +876,7 @@ class TestSegmentApiPost:
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
     @patch("controllers.service_api.dataset.segment.marshal")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
@@ -888,7 +893,8 @@ class TestSegmentApiPost:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        app,
+        mock_summary_svc,
+        app: Flask,
         mock_tenant,
         mock_dataset,
         mock_segment,
@@ -909,7 +915,8 @@ class TestSegmentApiPost:
 
         mock_seg_svc.segment_create_args_validate.return_value = None
         mock_seg_svc.multi_create_segment.return_value = [mock_segment]
-        mock_marshal.return_value = [{"id": mock_segment.id}]
+        mock_marshal.return_value = {"id": mock_segment.id}
+        mock_summary_svc.get_segments_summaries.return_value = {}
 
         segments_data = [{"content": "Test segment content", "answer": "Test answer"}]
 
@@ -940,7 +947,7 @@ class TestSegmentApiPost:
         mock_db,
         mock_account_fn,
         mock_doc_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -983,7 +990,7 @@ class TestSegmentApiPost:
         mock_db,
         mock_account_fn,
         mock_doc_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1035,7 +1042,7 @@ class TestDatasetSegmentApiDelete:
         mock_doc_svc,
         mock_dataset_svc,
         mock_seg_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
         mock_segment,
@@ -1080,7 +1087,7 @@ class TestDatasetSegmentApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1122,7 +1129,7 @@ class TestDatasetSegmentApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_dataset_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1156,7 +1163,7 @@ class TestDatasetSegmentApiDelete:
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1206,6 +1213,7 @@ class TestDatasetSegmentApiUpdate:
         mock_rate_limit.enabled = False
         mock_feature_svc.get_knowledge_rate_limit.return_value = mock_rate_limit
 
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
     @patch("controllers.service_api.dataset.segment.marshal")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
@@ -1224,7 +1232,8 @@ class TestDatasetSegmentApiUpdate:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        app,
+        mock_summary_svc,
+        app: Flask,
         mock_tenant,
         mock_dataset,
         mock_segment,
@@ -1240,6 +1249,7 @@ class TestDatasetSegmentApiUpdate:
         updated = Mock()
         mock_seg_svc.update_segment.return_value = updated
         mock_marshal.return_value = {"id": mock_segment.id}
+        mock_summary_svc.get_segment_summary.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
@@ -1273,7 +1283,7 @@ class TestDatasetSegmentApiUpdate:
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1313,7 +1323,7 @@ class TestDatasetSegmentApiUpdate:
         mock_dataset_svc,
         mock_doc_svc,
         mock_seg_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1349,6 +1359,7 @@ class TestDatasetSegmentApiGetSingle:
     ``current_account_with_tenant()`` and ``marshal``.
     """
 
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
     @patch("controllers.service_api.dataset.segment.marshal")
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
@@ -1363,7 +1374,8 @@ class TestDatasetSegmentApiGetSingle:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        app,
+        mock_summary_svc,
+        app: Flask,
         mock_tenant,
         mock_dataset,
         mock_segment,
@@ -1376,6 +1388,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_doc_svc.get_document.return_value = mock_doc
         mock_seg_svc.get_segment_by_id.return_value = mock_segment
         mock_marshal.return_value = {"id": mock_segment.id}
+        mock_summary_svc.get_segment_summary.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
@@ -1393,13 +1406,62 @@ class TestDatasetSegmentApiGetSingle:
         assert "data" in response
         assert response["doc_form"] == IndexStructureType.PARAGRAPH_INDEX
 
+    @patch("controllers.service_api.dataset.segment.SummaryIndexService")
+    @patch("controllers.service_api.dataset.segment.marshal")
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.DatasetService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    @patch("controllers.service_api.dataset.segment.db")
+    def test_get_single_segment_includes_summary(
+        self,
+        mock_db,
+        mock_account_fn,
+        mock_dataset_svc,
+        mock_doc_svc,
+        mock_seg_svc,
+        mock_marshal,
+        mock_summary_svc,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+        mock_segment,
+    ):
+        """Test that single segment response includes summary content from SummaryIndexService."""
+        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        mock_db.session.scalar.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_model_setting.return_value = None
+        mock_doc = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        mock_doc_svc.get_document.return_value = mock_doc
+        mock_seg_svc.get_segment_by_id.return_value = mock_segment
+        mock_marshal.return_value = {"id": mock_segment.id, "summary": None}
+
+        mock_summary_record = Mock()
+        mock_summary_record.summary_content = "This is the segment summary"
+        mock_summary_svc.get_segment_summary.return_value = mock_summary_record
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{mock_segment.id}",
+            method="GET",
+        ):
+            api = DatasetSegmentApi()
+            response, status = api.get(
+                tenant_id=mock_tenant.id,
+                dataset_id=mock_dataset.id,
+                document_id="doc-id",
+                segment_id=mock_segment.id,
+            )
+
+        assert status == 200
+        assert response["data"]["summary"] == "This is the segment summary"
+
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     @patch("controllers.service_api.dataset.segment.db")
     def test_get_single_segment_dataset_not_found(
         self,
         mock_db,
         mock_account_fn,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1430,7 +1492,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_account_fn,
         mock_dataset_svc,
         mock_doc_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1465,7 +1527,7 @@ class TestDatasetSegmentApiGetSingle:
         mock_dataset_svc,
         mock_doc_svc,
         mock_seg_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1509,7 +1571,7 @@ class TestChildChunkApiGet:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1548,7 +1610,7 @@ class TestChildChunkApiGet:
         self,
         mock_db,
         mock_account_fn,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1577,7 +1639,7 @@ class TestChildChunkApiGet:
         mock_db,
         mock_account_fn,
         mock_doc_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1609,7 +1671,7 @@ class TestChildChunkApiGet:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1668,7 +1730,7 @@ class TestChildChunkApiPost:
         mock_doc_svc,
         mock_seg_svc,
         mock_marshal,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1710,7 +1772,7 @@ class TestChildChunkApiPost:
         mock_feature_svc,
         mock_db,
         mock_account_fn,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1748,7 +1810,7 @@ class TestChildChunkApiPost:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1802,7 +1864,7 @@ class TestDatasetChildChunkApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1852,7 +1914,7 @@ class TestDatasetChildChunkApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1893,7 +1955,7 @@ class TestDatasetChildChunkApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):
@@ -1933,7 +1995,7 @@ class TestDatasetChildChunkApiDelete:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
-        app,
+        app: Flask,
         mock_tenant,
         mock_dataset,
     ):

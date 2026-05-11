@@ -1,9 +1,5 @@
 from collections.abc import Generator, Sequence
-from typing import Union
-
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
-from graphon.model_runtime.entities.model_entities import ModelType
+from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.app.llm import deduct_llm_quota
@@ -12,6 +8,9 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.rag.retrieval.output_parser.react_output import ReactAction
 from core.rag.retrieval.output_parser.structured_chat import StructuredChatOutputParser
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
+from graphon.model_runtime.entities.model_entities import ModelType
 
 PREFIX = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:"""
 
@@ -139,7 +138,7 @@ class ReactMultiDatasetRouter:
 
     def _invoke_llm(
         self,
-        completion_param: dict,
+        completion_param: dict[str, Any],
         model_instance: ModelInstance,
         prompt_messages: list[PromptMessage],
         stop: list[str],

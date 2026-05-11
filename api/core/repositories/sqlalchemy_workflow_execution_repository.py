@@ -4,15 +4,14 @@ SQLAlchemy implementation of the WorkflowExecutionRepository.
 
 import json
 import logging
-from typing import Union
 
-from graphon.entities import WorkflowExecution
-from graphon.enums import WorkflowExecutionStatus, WorkflowType
-from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.factory import WorkflowExecutionRepository
+from graphon.entities import WorkflowExecution
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
 from models import (
     Account,
@@ -40,7 +39,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowRunTriggeredFrom | None,
     ):

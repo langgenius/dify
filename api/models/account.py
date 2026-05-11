@@ -2,7 +2,7 @@ import enum
 import json
 from dataclasses import field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional, TypedDict
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -232,6 +232,11 @@ class TenantStatus(enum.StrEnum):
     ARCHIVE = "archive"
 
 
+class TenantCustomConfigDict(TypedDict, total=False):
+    remove_webapp_brand: bool
+    replace_webapp_logo: str | None
+
+
 class Tenant(TypeBase):
     __tablename__ = "tenants"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="tenant_pkey"),)
@@ -263,11 +268,11 @@ class Tenant(TypeBase):
         )
 
     @property
-    def custom_config_dict(self) -> dict[str, Any]:
+    def custom_config_dict(self) -> TenantCustomConfigDict:
         return json.loads(self.custom_config) if self.custom_config else {}
 
     @custom_config_dict.setter
-    def custom_config_dict(self, value: dict[str, Any]) -> None:
+    def custom_config_dict(self, value: TenantCustomConfigDict) -> None:
         self.custom_config = json.dumps(value)
 
 

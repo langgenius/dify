@@ -1,14 +1,14 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
-from graphon.file import File, FileUploadConfig
-from graphon.model_runtime.entities.model_entities import AIModelEntity
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
+from graphon.file import File, FileUploadConfig
+from graphon.model_runtime.entities.model_entities import AIModelEntity
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -131,7 +131,7 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    trace_manager: Optional["TraceQueueManager"] = Field(default=None, exclude=True, repr=False)
+    trace_manager: "TraceQueueManager | None" = Field(default=None, exclude=True, repr=False)
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):

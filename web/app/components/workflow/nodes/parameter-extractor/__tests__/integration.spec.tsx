@@ -4,9 +4,9 @@ import type { Param, ParameterExtractorNodeType } from '../types'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { PanelProps } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -22,6 +22,9 @@ import Panel from '../panel'
 import { ParamType, ReasoningModeType } from '../types'
 import useConfig from '../use-config'
 
+const reasoningModeFunctionToolCallingLabel = 'workflow.nodes.parameterExtractor.reasoningModeFunctionToolCalling'
+const reasoningModePromptLabel = 'workflow.nodes.parameterExtractor.reasoningModePrompt'
+
 type MockToolCollection = {
   id: string
   tools: Array<{
@@ -36,7 +39,7 @@ let mockWorkflowTools: MockToolCollection[] = []
 let mockSelectedToolInfo: ToolDefaultValue | undefined
 let mockBlockSelectorOpen = false
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -107,24 +110,23 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-param
   ),
 }))
 
-vi.mock('@/app/components/base/modal', () => ({
+vi.mock('@langgenius/dify-ui/dialog', () => ({
   __esModule: true,
-  default: ({
+  Dialog: ({
     children,
-    isShow,
-    title,
+    open,
   }: {
     children: ReactNode
-    isShow?: boolean
-    title?: ReactNode
-  }) => isShow
+    open?: boolean
+  }) => open !== false
     ? (
         <div data-testid="base-modal">
-          <div>{title}</div>
           {children}
         </div>
       )
     : null,
+  DialogContent: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
@@ -602,7 +604,7 @@ describe('parameter-extractor path', () => {
         />,
       )
 
-      expect(screen.getByTestId('add-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' })).toBeInTheDocument()
     })
 
     it('should reject invalid names and reset add modal fields after canceling', async () => {
@@ -617,7 +619,7 @@ describe('parameter-extractor path', () => {
         />,
       )
 
-      await user.click(screen.getByTestId('add-button'))
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }))
 
       const nameInput = screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')
       const descriptionInput = screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder')
@@ -633,7 +635,7 @@ describe('parameter-extractor path', () => {
       expect(onCancel).toHaveBeenCalledTimes(1)
       expect(screen.queryByTestId('base-modal')).not.toBeInTheDocument()
 
-      await user.click(screen.getByTestId('add-button'))
+      await user.click(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }))
       expect(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')).toHaveValue('')
       expect(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder')).toHaveValue('')
     })
@@ -735,8 +737,8 @@ describe('parameter-extractor path', () => {
         />,
       )
 
-      await user.click(screen.getByRole('button', { name: 'Function/Tool Calling' }))
-      await user.click(screen.getByRole('button', { name: 'Prompt' }))
+      await user.click(screen.getByRole('button', { name: reasoningModeFunctionToolCallingLabel }))
+      await user.click(screen.getByRole('button', { name: reasoningModePromptLabel }))
 
       expect(onChange).toHaveBeenNthCalledWith(1, ReasoningModeType.functionCall)
       expect(onChange).toHaveBeenNthCalledWith(2, ReasoningModeType.prompt)
@@ -826,7 +828,7 @@ describe('parameter-extractor path', () => {
         target: { value: 'Extract city, budget, and due date' },
       })
       await user.click(screen.getByRole('button', { name: 'memory-config' }))
-      await user.click(screen.getByRole('button', { name: 'Function/Tool Calling' }))
+      await user.click(screen.getByRole('button', { name: reasoningModeFunctionToolCallingLabel }))
 
       expect(handleModelChanged).toHaveBeenCalledWith({
         provider: 'anthropic',

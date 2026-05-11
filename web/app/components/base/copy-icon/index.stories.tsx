@@ -50,7 +50,7 @@ export const InlineUsage: Story = {
       </p>
       <div className="flex items-center gap-1">
         <span className="font-medium text-text-primary">Client ID</span>
-        <span className="rounded bg-background-default-subtle px-2 py-1 font-mono text-xs text-text-secondary">acc-3f92fa</span>
+        <span className="rounded-sm bg-background-default-subtle px-2 py-1 font-mono text-xs text-text-secondary">acc-3f92fa</span>
         <CopyIcon {...args} content="acc-3f92fa" />
       </div>
     </div>

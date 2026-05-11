@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -37,25 +37,31 @@ const RadioCard: FC<Props> = ({
         className,
       )}
     >
-      <div className="flex gap-x-2" onClick={onChosen}>
+      <button
+        type="button"
+        className="flex w-full gap-x-2 border-none bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        onClick={onChosen}
+      >
         <div className={cn(iconBgClassName, 'flex size-8 shrink-0 items-center justify-center rounded-lg shadow-md')}>
           {icon}
         </div>
         <div className="grow">
-          <div className="system-sm-semibold mb-1 text-text-secondary">{title}</div>
+          <div className="mb-1 system-sm-semibold text-text-secondary">{title}</div>
           <div className="system-xs-regular text-text-tertiary">{description}</div>
         </div>
         {!noRadio && (
-          <div className="absolute right-3 top-3">
-            <div className={cn(
-              'h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
-              isChosen && 'border-[5px] border-components-radio-border-checked',
-            )}
+          <div className="absolute top-3 right-3">
+            <div
+              className={cn(
+                'h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
+                isChosen && 'border-[5px] border-components-radio-border-checked',
+              )}
+              aria-hidden="true"
             >
             </div>
           </div>
         )}
-      </div>
+      </button>
       {!!((isChosen && chosenConfig) || noRadio) && (
         <div className="mt-2 flex gap-x-2">
           <div className="size-8 shrink-0"></div>

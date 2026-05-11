@@ -67,7 +67,7 @@ class TestWorkflowAppGeneratorValidation:
 
 
 class TestWorkflowAppGeneratorHandleResponse:
-    def test_handle_response_closed_file_raises_stopped(self, monkeypatch):
+    def test_handle_response_closed_file_raises_stopped(self, monkeypatch: pytest.MonkeyPatch):
         generator = WorkflowAppGenerator()
 
         app_config = WorkflowUIBasedAppConfig(
@@ -116,7 +116,7 @@ class TestWorkflowAppGeneratorHandleResponse:
 
 
 class TestWorkflowAppGeneratorGenerate:
-    def test_generate_skips_prepare_inputs_when_flag_set(self, monkeypatch):
+    def test_generate_skips_prepare_inputs_when_flag_set(self, monkeypatch: pytest.MonkeyPatch):
         generator = WorkflowAppGenerator()
 
         app_config = WorkflowUIBasedAppConfig(

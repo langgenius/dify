@@ -27,7 +27,7 @@ export type SyncDraftCallback = {
   onError?: () => void
   onSettled?: () => void
 }
-export type CommonHooksFnMap = {
+type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
@@ -162,8 +162,4 @@ export function useHooksStore<T>(selector: (state: Shape) => T): T {
     throw new Error('Missing HooksStoreContext.Provider in the tree')
 
   return useZustandStore(store, selector)
-}
-
-export const useHooksStoreApi = () => {
-  return useContext(HooksStoreContext)!
 }

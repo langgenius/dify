@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -90,7 +90,7 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
           className="absolute bottom-0 left-0 flex h-2 w-full cursor-row-resize justify-center"
           onMouseDown={handleStartResize}
         >
-          <div className="h-[3px] w-5 rounded-sm bg-gray-300"></div>
+          <div className="h-[3px] w-5 rounded-xs bg-gray-300"></div>
         </div>
       )}
     </div>

@@ -3,11 +3,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 import core.app.apps.pipeline.pipeline_generator as module
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceProviderType
+from models.enums import DataSourceType
 
 
 class FakeRagPipelineGenerateEntity(SimpleNamespace):
@@ -22,7 +24,7 @@ class FakeRagPipelineGenerateEntity(SimpleNamespace):
 
 
 @pytest.fixture
-def generator(mocker):
+def generator(mocker: MockerFixture):
     gen = module.PipelineGenerator()
 
     mocker.patch.object(module, "RagPipelineGenerateEntity", FakeRagPipelineGenerateEntity)
@@ -87,7 +89,7 @@ class DummySession:
         return False
 
 
-def test_generate_dataset_missing(generator, mocker):
+def test_generate_dataset_missing(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     pipeline.retrieve_dataset.return_value = None
 
@@ -105,7 +107,7 @@ def test_generate_dataset_missing(generator, mocker):
         )
 
 
-def test_generate_debugger_calls_generate(generator, mocker):
+def test_generate_debugger_calls_generate(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     workflow = _build_workflow()
 
@@ -149,7 +151,7 @@ def test_generate_debugger_calls_generate(generator, mocker):
     assert result == {"result": "ok"}
 
 
-def test_generate_published_pipeline_creates_documents_and_delay(generator, mocker):
+def test_generate_published_pipeline_creates_documents_and_delay(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     workflow = _build_workflow()
 
@@ -227,7 +229,7 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
     task_proxy.delay.assert_called_once()
 
 
-def test_generate_is_retry_calls_generate(generator, mocker):
+def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     workflow = _build_workflow()
 
@@ -272,7 +274,7 @@ def test_generate_is_retry_calls_generate(generator, mocker):
     assert result == {"result": "ok"}
 
 
-def test_generate_worker_handles_errors(generator, mocker):
+def test_generate_worker_handles_errors(generator, mocker: MockerFixture):
     flask_app = MagicMock()
     flask_app.app_context.return_value = contextlib.nullcontext()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
@@ -307,7 +309,7 @@ def test_generate_worker_handles_errors(generator, mocker):
     queue_manager.publish_error.assert_called_once()
 
 
-def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker):
+def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker: MockerFixture):
     flask_app = MagicMock()
     flask_app.app_context.return_value = contextlib.nullcontext()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
@@ -340,12 +342,12 @@ def test_generate_worker_sets_system_user_id_for_external_call(generator, mocker
     assert module.PipelineRunner.call_args.kwargs["system_user_id"] == "session"
 
 
-def test_generate_raises_when_workflow_not_found(generator, mocker):
+def test_generate_raises_when_workflow_not_found(generator, mocker: MockerFixture):
     flask_app = MagicMock()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
 
     session = MagicMock()
-    session.query.return_value.where.return_value.first.return_value = None
+    session.get.return_value = None
     mocker.patch.object(module.db, "session", session)
 
     with pytest.raises(ValueError):
@@ -368,13 +370,13 @@ def test_generate_raises_when_workflow_not_found(generator, mocker):
         )
 
 
-def test_generate_success_returns_converted(generator, mocker):
+def test_generate_success_returns_converted(generator, mocker: MockerFixture):
     flask_app = MagicMock()
     mocker.patch.object(module, "preserve_flask_contexts", _dummy_preserve)
 
     workflow = MagicMock(id="wf", tenant_id="tenant", app_id="pipe", graph_dict={})
     session = MagicMock()
-    session.query.return_value.where.return_value.first.return_value = workflow
+    session.get.return_value = workflow
     mocker.patch.object(module.db, "session", session)
 
     queue_manager = MagicMock()
@@ -408,7 +410,7 @@ def test_generate_success_returns_converted(generator, mocker):
     assert result == "converted"
 
 
-def test_single_iteration_generate_validates_inputs(generator, mocker):
+def test_single_iteration_generate_validates_inputs(generator, mocker: MockerFixture):
     with pytest.raises(ValueError):
         generator.single_iteration_generate(_build_pipeline(), _build_workflow(), "", _build_user(), {})
 
@@ -418,7 +420,7 @@ def test_single_iteration_generate_validates_inputs(generator, mocker):
         )
 
 
-def test_single_iteration_generate_dataset_required(generator, mocker):
+def test_single_iteration_generate_dataset_required(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     pipeline.retrieve_dataset.return_value = None
 
@@ -435,7 +437,7 @@ def test_single_iteration_generate_dataset_required(generator, mocker):
         )
 
 
-def test_single_iteration_generate_success(generator, mocker):
+def test_single_iteration_generate_success(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
 
     session = DummySession()
@@ -475,7 +477,7 @@ def test_single_iteration_generate_success(generator, mocker):
     assert result == {"ok": True}
 
 
-def test_single_loop_generate_success(generator, mocker):
+def test_single_loop_generate_success(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
 
     session = DummySession()
@@ -515,7 +517,7 @@ def test_single_loop_generate_success(generator, mocker):
     assert result == {"ok": True}
 
 
-def test_handle_response_value_error_triggers_generate_task_stopped(generator, mocker):
+def test_handle_response_value_error_triggers_generate_task_stopped(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     workflow = _build_workflow()
     app_entity = FakeRagPipelineGenerateEntity(task_id="t")
@@ -535,7 +537,7 @@ def test_handle_response_value_error_triggers_generate_task_stopped(generator, m
         )
 
 
-def test_build_document_sets_metadata_for_builtin_fields(generator, mocker):
+def test_build_document_sets_metadata_for_builtin_fields(generator, mocker: MockerFixture):
     class DummyDocument(SimpleNamespace):
         pass
 
@@ -556,6 +558,24 @@ def test_build_document_sets_metadata_for_builtin_fields(generator, mocker):
 
     assert document.name == "file"
     assert document.doc_metadata
+
+
+def test_build_document_supports_online_drive_datasource_type(generator):
+    document = generator._build_document(
+        tenant_id="tenant",
+        dataset_id="ds",
+        built_in_field_enabled=True,
+        datasource_type=DatasourceProviderType.ONLINE_DRIVE,
+        datasource_info={"id": "file-1", "bucket": "bucket-1", "name": "drive.pdf", "type": "file"},
+        created_from="rag-pipeline",
+        position=1,
+        account=_build_user(),
+        batch="batch",
+        document_form="text",
+    )
+
+    assert DataSourceType(document.data_source_type) == DataSourceType.ONLINE_DRIVE
+    assert document.name == "drive.pdf"
 
 
 def test_build_document_invalid_datasource_type(generator):
@@ -601,7 +621,7 @@ def test_format_datasource_info_list_missing_node_data(generator):
         )
 
 
-def test_format_datasource_info_list_online_drive_folder(generator, mocker):
+def test_format_datasource_info_list_online_drive_folder(generator, mocker: MockerFixture):
     workflow = MagicMock(
         graph_dict={
             "nodes": [

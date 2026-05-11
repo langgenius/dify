@@ -5,7 +5,7 @@ import { VarType } from '@/app/components/workflow/types'
 import { checkKeys, hasDuplicateStr } from '@/utils/var'
 import { WEBHOOK_RAW_VARIABLE_NAME } from './utils/raw-variable'
 
-export type VariableSyncSource = 'param' | 'header' | 'body'
+type VariableSyncSource = 'param' | 'header' | 'body'
 
 type SanitizedEntry = {
   item: WebhookParameter | WebhookHeader

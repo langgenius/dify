@@ -1,17 +1,14 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, NoReturn, ParamSpec, TypeVar
+from typing import Any, TypedDict
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
-from graphon.file import helpers as file_helpers
-from graphon.variables.segment_group import SegmentGroup
-from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
-from graphon.variables.types import SegmentType
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
@@ -22,8 +19,13 @@ from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
+from factories import variable_factory
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
+from graphon.file import helpers as file_helpers
+from graphon.variables.segment_group import SegmentGroup
+from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
+from graphon.variables.types import SegmentType
 from libs.login import current_user, login_required
 from models import App, AppMode
 from models.workflow import WorkflowDraftVariable
@@ -32,7 +34,6 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class WorkflowDraftVariableListQuery(BaseModel):
@@ -45,25 +46,35 @@ class WorkflowDraftVariableUpdatePayload(BaseModel):
     value: Any | None = Field(default=None, description="Variable value")
 
 
-console_ns.schema_model(
-    WorkflowDraftVariableListQuery.__name__,
-    WorkflowDraftVariableListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    WorkflowDraftVariableUpdatePayload.__name__,
-    WorkflowDraftVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+class ConversationVariableUpdatePayload(BaseModel):
+    conversation_variables: list[dict[str, Any]] = Field(
+        ..., description="Conversation variables for the draft workflow"
+    )
+
+
+class EnvironmentVariableUpdatePayload(BaseModel):
+    environment_variables: list[dict[str, Any]] = Field(..., description="Environment variables for the draft workflow")
+
+
+register_schema_models(
+    console_ns,
+    WorkflowDraftVariableListQuery,
+    WorkflowDraftVariableUpdatePayload,
+    ConversationVariableUpdatePayload,
+    EnvironmentVariableUpdatePayload,
 )
 
 
 def _convert_values_to_json_serializable_object(value: Segment):
-    if isinstance(value, FileSegment):
-        return value.value.model_dump()
-    elif isinstance(value, ArrayFileSegment):
-        return [i.model_dump() for i in value.value]
-    elif isinstance(value, SegmentGroup):
-        return [_convert_values_to_json_serializable_object(i) for i in value.value]
-    else:
-        return value.value
+    match value:
+        case FileSegment():
+            return value.value.model_dump()
+        case ArrayFileSegment():
+            return [i.model_dump() for i in value.value]
+        case SegmentGroup():
+            return [_convert_values_to_json_serializable_object(i) for i in value.value]
+        case _:
+            return value.value
 
 
 def _serialize_var_value(variable: WorkflowDraftVariable):
@@ -83,10 +94,17 @@ def _serialize_var_value(variable: WorkflowDraftVariable):
 
 def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
     value_type = workflow_draft_var.value_type
-    return value_type.exposed_type().value
+    return str(value_type.exposed_type())
 
 
-def _serialize_full_content(variable: WorkflowDraftVariable) -> dict | None:
+class FullContentDict(TypedDict):
+    size_bytes: int | None
+    value_type: str
+    length: int | None
+    download_url: str
+
+
+def _serialize_full_content(variable: WorkflowDraftVariable) -> FullContentDict | None:
     """Serialize full_content information for large variables."""
     if not variable.is_truncated():
         return None
@@ -94,12 +112,13 @@ def _serialize_full_content(variable: WorkflowDraftVariable) -> dict | None:
     variable_file = variable.variable_file
     assert variable_file is not None
 
-    return {
+    result: FullContentDict = {
         "size_bytes": variable_file.size,
-        "value_type": variable_file.value_type.exposed_type().value,
+        "value_type": str(variable_file.value_type.exposed_type()),
         "length": variable_file.length,
         "download_url": file_helpers.get_signed_file_url(variable_file.upload_file_id, as_attachment=True),
     }
+    return result
 
 
 def _ensure_variable_access(
@@ -192,11 +211,8 @@ workflow_draft_variable_list_model = console_ns.model(
     "WorkflowDraftVariableList", workflow_draft_variable_list_fields_copy
 )
 
-P = ParamSpec("P")
-R = TypeVar("R")
 
-
-def _api_prerequisite(f: Callable[P, R]):
+def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
     """Common prerequisites for all draft workflow variable APIs.
 
     It ensures the following conditions are satisfied:
@@ -213,7 +229,7 @@ def _api_prerequisite(f: Callable[P, R]):
     @edit_permission_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @wraps(f)
-    def wrapper(*args: P.args, **kwargs: P.kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
         return f(*args, **kwargs)
 
     return wrapper
@@ -235,7 +251,7 @@ class WorkflowVariableCollectionApi(Resource):
         """
         Get draft workflow
         """
-        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
@@ -244,7 +260,7 @@ class WorkflowVariableCollectionApi(Resource):
             raise DraftWorkflowNotExist()
 
         # fetch draft workflow by app_model
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -270,7 +286,7 @@ class WorkflowVariableCollectionApi(Resource):
         return Response("", 204)
 
 
-def validate_node_id(node_id: str) -> NoReturn | None:
+def validate_node_id(node_id: str) -> None:
     if node_id in [
         CONVERSATION_VARIABLE_NODE_ID,
         SYSTEM_VARIABLE_NODE_ID,
@@ -285,7 +301,6 @@ def validate_node_id(node_id: str) -> NoReturn | None:
         raise InvalidArgumentError(
             f"invalid node_id, please use correspond api for conversation and system variables, node_id={node_id}",
         )
-    return None
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
@@ -298,7 +313,7 @@ class NodeVariableCollectionApi(Resource):
     @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App, node_id: str):
         validate_node_id(node_id)
-        with Session(bind=db.engine, expire_on_commit=False) as session:
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
@@ -388,24 +403,27 @@ class VariableApi(Resource):
 
         new_value = None
         if raw_value is not None:
-            if variable.value_type == SegmentType.FILE:
-                if not isinstance(raw_value, dict):
-                    raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
-                raw_value = build_from_mapping(
-                    mapping=raw_value,
-                    tenant_id=app_model.tenant_id,
-                    access_controller=_file_access_controller,
-                )
-            elif variable.value_type == SegmentType.ARRAY_FILE:
-                if not isinstance(raw_value, list):
-                    raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
-                if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
-                    raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
-                raw_value = build_from_mappings(
-                    mappings=raw_value,
-                    tenant_id=app_model.tenant_id,
-                    access_controller=_file_access_controller,
-                )
+            match variable.value_type:
+                case SegmentType.FILE:
+                    if not isinstance(raw_value, dict):
+                        raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
+                    raw_value = build_from_mapping(
+                        mapping=raw_value,
+                        tenant_id=app_model.tenant_id,
+                        access_controller=_file_access_controller,
+                    )
+                case SegmentType.ARRAY_FILE:
+                    if not isinstance(raw_value, list):
+                        raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
+                    if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
+                        raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
+                    raw_value = build_from_mappings(
+                        mappings=raw_value,
+                        tenant_id=app_model.tenant_id,
+                        access_controller=_file_access_controller,
+                    )
+                case _:
+                    pass
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
@@ -465,7 +483,7 @@ class VariableResetApi(Resource):
 
 
 def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
-    with Session(bind=db.engine, expire_on_commit=False) as session:
+    with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
         draft_var_srv = WorkflowDraftVariableService(
             session=session,
         )
@@ -502,6 +520,34 @@ class ConversationVariableCollectionApi(Resource):
         draft_var_srv.prefill_conversation_variable_default_values(draft_workflow, user_id=current_user.id)
         db.session.commit()
         return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
+
+    @console_ns.expect(console_ns.models[ConversationVariableUpdatePayload.__name__])
+    @console_ns.doc("update_conversation_variables")
+    @console_ns.doc(description="Update conversation variables for workflow draft")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Conversation variables updated successfully")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_app_model(mode=AppMode.ADVANCED_CHAT)
+    def post(self, app_model: App):
+        payload = ConversationVariableUpdatePayload.model_validate(console_ns.payload or {})
+
+        workflow_service = WorkflowService()
+
+        conversation_variables_list = payload.conversation_variables
+        conversation_variables = [
+            variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
+        ]
+
+        workflow_service.update_draft_workflow_conversation_variables(
+            app_model=app_model,
+            account=current_user,
+            conversation_variables=conversation_variables,
+        )
+
+        return {"result": "success"}
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/system-variables")
@@ -544,7 +590,7 @@ class EnvironmentVariableCollectionApi(Resource):
                     "name": v.name,
                     "description": v.description,
                     "selector": v.selector,
-                    "value_type": v.value_type.exposed_type().value,
+                    "value_type": str(v.value_type.exposed_type()),
                     "value": v.value,
                     # Do not track edited for env vars.
                     "edited": False,
@@ -554,3 +600,31 @@ class EnvironmentVariableCollectionApi(Resource):
             )
 
         return {"items": env_vars_list}
+
+    @console_ns.expect(console_ns.models[EnvironmentVariableUpdatePayload.__name__])
+    @console_ns.doc("update_environment_variables")
+    @console_ns.doc(description="Update environment variables for workflow draft")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Environment variables updated successfully")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        payload = EnvironmentVariableUpdatePayload.model_validate(console_ns.payload or {})
+
+        workflow_service = WorkflowService()
+
+        environment_variables_list = payload.environment_variables
+        environment_variables = [
+            variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
+        ]
+
+        workflow_service.update_draft_workflow_environment_variables(
+            app_model=app_model,
+            account=current_user,
+            environment_variables=environment_variables,
+        )
+
+        return {"result": "success"}

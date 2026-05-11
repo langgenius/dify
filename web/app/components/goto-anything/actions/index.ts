@@ -296,4 +296,3 @@ export const matchAction = (query: string, actions: Record<string, ActionItem>) 
 
 export * from './commands'
 export * from './types'
-export { appAction, knowledgeAction, pluginAction, workflowNodesAction }

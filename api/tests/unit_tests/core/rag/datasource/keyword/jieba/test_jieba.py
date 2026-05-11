@@ -1,5 +1,6 @@
 import json
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -28,15 +29,6 @@ class _Field:
         return ("in", self._name, tuple(values))
 
 
-class _FakeQuery:
-    def __init__(self):
-        self.where_calls: list[tuple] = []
-
-    def where(self, *conditions):
-        self.where_calls.append(conditions)
-        return self
-
-
 class _FakeExecuteResult:
     def __init__(self, segments: list[SimpleNamespace]):
         self._segments = segments
@@ -57,7 +49,7 @@ class _FakeSelect:
         return self
 
 
-def _dataset_keyword_table(data_source_type: str = "database", keyword_table_dict: dict | None = None):
+def _dataset_keyword_table(data_source_type: str = "database", keyword_table_dict: dict[str, Any] | None = None):
     return SimpleNamespace(
         data_source_type=data_source_type,
         keyword_table_dict=keyword_table_dict,
@@ -75,7 +67,7 @@ def _dataset(dataset_keyword_table=None, keyword_number=None):
 
 
 @pytest.fixture
-def patched_runtime(monkeypatch):
+def patched_runtime(monkeypatch: pytest.MonkeyPatch):
     session = MagicMock()
     db = SimpleNamespace(session=session)
     storage = MagicMock()
@@ -159,7 +151,7 @@ def test_add_texts_without_keywords_list_always_uses_extractor(monkeypatch, patc
     assert set(keyword._update_segment_keywords.call_args.args[2]) == {"from-extractor"}
 
 
-def test_text_exists_handles_missing_and_existing_keyword_table(monkeypatch):
+def test_text_exists_handles_missing_and_existing_keyword_table(monkeypatch: pytest.MonkeyPatch):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
 
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value=None))
@@ -201,27 +193,23 @@ def test_search_returns_documents_in_rank_order_and_applies_filter(monkeypatch, 
         document_id = _Field("document_id")
 
     keyword = Jieba(_dataset(_dataset_keyword_table()))
-    query_stmt = _FakeQuery()
-    patched_runtime.session.query.return_value = query_stmt
-    patched_runtime.session.execute.return_value = _FakeExecuteResult(
-        [
-            SimpleNamespace(
-                index_node_id="node-2",
-                content="segment-content",
-                index_node_hash="hash-2",
-                document_id="doc-2",
-                dataset_id="dataset-1",
-            )
-        ]
-    )
+    patched_runtime.session.scalars.return_value.all.return_value = [
+        SimpleNamespace(
+            index_node_id="node-2",
+            content="segment-content",
+            index_node_hash="hash-2",
+            document_id="doc-2",
+            dataset_id="dataset-1",
+        )
+    ]
 
     monkeypatch.setattr(jieba_module, "DocumentSegment", _FakeDocumentSegment)
+    monkeypatch.setattr(jieba_module, "select", lambda *_: _FakeSelect())
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={"k": {"node-1", "node-2"}}))
     monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=["node-1", "node-2"]))
 
     documents = keyword.search("query", top_k=2, document_ids_filter=["doc-2"])
 
-    assert len(query_stmt.where_calls) == 2
     assert len(documents) == 1
     assert documents[0].page_content == "segment-content"
     assert documents[0].metadata["doc_id"] == "node-2"
@@ -320,7 +308,7 @@ def test_add_and_delete_ids_from_keyword_table_helpers():
     assert deleted["kw2"] == {"node-2"}
 
 
-def test_retrieve_ids_by_query_ranks_by_keyword_frequency(monkeypatch):
+def test_retrieve_ids_by_query_ranks_by_keyword_frequency(monkeypatch: pytest.MonkeyPatch):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     handler = MagicMock()
     handler.extract_keywords.return_value = ["kw-a", "kw-b"]
@@ -362,7 +350,7 @@ def test_update_segment_keywords_updates_when_segment_exists(monkeypatch, patche
     patched_runtime.session.commit.assert_not_called()
 
 
-def test_create_segment_keywords_and_update_segment_keywords_index(monkeypatch):
+def test_create_segment_keywords_and_update_segment_keywords_index(monkeypatch: pytest.MonkeyPatch):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={}))
     monkeypatch.setattr(keyword, "_update_segment_keywords", MagicMock())
@@ -377,7 +365,7 @@ def test_create_segment_keywords_and_update_segment_keywords_index(monkeypatch):
     keyword._save_dataset_keyword_table.assert_called_once()
 
 
-def test_multi_create_segment_keywords_uses_provided_and_extracted_keywords(monkeypatch):
+def test_multi_create_segment_keywords_uses_provided_and_extracted_keywords(monkeypatch: pytest.MonkeyPatch):
     keyword = Jieba(_dataset(_dataset_keyword_table(), keyword_number=2))
     handler = MagicMock()
     handler.extract_keywords.return_value = {"auto"}

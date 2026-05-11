@@ -1,6 +1,12 @@
 import { DifyClient } from "./base";
 import type { WorkflowRunRequest, WorkflowRunResponse } from "../types/workflow";
-import type { DifyResponse, DifyStream, QueryParams } from "../types/common";
+import type {
+  DifyResponse,
+  DifyStream,
+  JsonObject,
+  QueryParams,
+  SuccessResponse,
+} from "../types/common";
 import {
   ensureNonEmptyString,
   ensureOptionalInt,
@@ -12,12 +18,12 @@ export class WorkflowClient extends DifyClient {
     request: WorkflowRunRequest
   ): Promise<DifyResponse<WorkflowRunResponse> | DifyStream<WorkflowRunResponse>>;
   run(
-    inputs: Record<string, unknown>,
+    inputs: JsonObject,
     user: string,
     stream?: boolean
   ): Promise<DifyResponse<WorkflowRunResponse> | DifyStream<WorkflowRunResponse>>;
   run(
-    inputOrRequest: WorkflowRunRequest | Record<string, unknown>,
+    inputOrRequest: WorkflowRunRequest | JsonObject,
     user?: string,
     stream = false
   ): Promise<DifyResponse<WorkflowRunResponse> | DifyStream<WorkflowRunResponse>> {
@@ -30,7 +36,7 @@ export class WorkflowClient extends DifyClient {
     } else {
       ensureNonEmptyString(user, "user");
       payload = {
-        inputs: inputOrRequest as Record<string, unknown>,
+        inputs: inputOrRequest,
         user,
         response_mode: stream ? "streaming" : "blocking",
       };
@@ -84,10 +90,10 @@ export class WorkflowClient extends DifyClient {
   stop(
     taskId: string,
     user: string
-  ): Promise<DifyResponse<WorkflowRunResponse>> {
+  ): Promise<DifyResponse<SuccessResponse>> {
     ensureNonEmptyString(taskId, "taskId");
     ensureNonEmptyString(user, "user");
-    return this.http.request<WorkflowRunResponse>({
+    return this.http.request<SuccessResponse>({
       method: "POST",
       path: `/workflows/tasks/${taskId}/stop`,
       data: { user },
@@ -111,7 +117,7 @@ export class WorkflowClient extends DifyClient {
     limit?: number;
     startTime?: string;
     endTime?: string;
-  }): Promise<DifyResponse<Record<string, unknown>>> {
+  }): Promise<DifyResponse<JsonObject>> {
     if (options?.keyword) {
       ensureOptionalString(options.keyword, "keyword");
     }

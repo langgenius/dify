@@ -11,7 +11,9 @@ describe('KeyWordNumber', () => {
     vi.clearAllMocks()
   })
 
-  const getSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords')
+  const getSlider = () => screen.getByLabelText('datasetSettings.form.numberOfKeywords', {
+    selector: 'input[type="range"]',
+  })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
@@ -24,9 +26,10 @@ describe('KeyWordNumber', () => {
       expect(screen.getByText(/form\.numberOfKeywords/)).toBeInTheDocument()
     })
 
-    it('should render tooltip with question icon', () => {
+    it('should render infotip with question icon', () => {
       render(<KeyWordNumber {...defaultProps} />)
-      const container = screen.getByText(/form\.numberOfKeywords/).closest('div')?.parentElement
+      const trigger = screen.getByRole('button', { name: 'datasetSettings.form.numberOfKeywords' })
+      const container = trigger.parentElement
       const questionIcon = container?.querySelector('.i-ri-question-line')
       expect(questionIcon).toBeInTheDocument()
     })

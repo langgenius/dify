@@ -5,12 +5,12 @@ from collections.abc import Generator
 from typing import cast
 
 from flask import Response, stream_with_context
-from graphon.model_runtime.entities.model_entities import ModelType
 from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
 from core.model_manager import ModelManager
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message
 from services.errors.audio import (
@@ -54,7 +54,7 @@ class AudioService:
         if extension not in [f"audio/{ext}" for ext in AUDIO_EXTENSIONS]:
             raise UnsupportedAudioTypeServiceError()
 
-        file_content = file.read()
+        file_content = file.stream.read()
         file_size = len(file_content)
 
         if file_size > FILE_SIZE_LIMIT:
@@ -132,7 +132,7 @@ class AudioService:
                 uuid.UUID(message_id)
             except ValueError:
                 return None
-            message = db.session.query(Message).where(Message.id == message_id).first()
+            message = db.session.get(Message, message_id)
             if message is None:
                 return None
             if message.answer == "" and message.status in {MessageStatus.NORMAL, MessageStatus.PAUSED}:

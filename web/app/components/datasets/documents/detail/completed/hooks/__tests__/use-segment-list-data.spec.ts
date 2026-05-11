@@ -1,11 +1,12 @@
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
 import type { ChunkingMode, ParentMode, SegmentDetailModel, SegmentsResponse } from '@/models/datasets'
+import type { SegmentImportStatus } from '@/types/dataset'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import { ChunkingMode as ChunkingModeEnum } from '@/models/datasets'
-import { ProcessStatus } from '../../../segment-add'
+import { segmentImportStatus } from '@/types/dataset'
 import { useSegmentListData } from '../use-segment-list-data'
 
 // Type for mutation callbacks
@@ -92,8 +93,11 @@ vi.mock('../../../context', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({ notify: mockNotify }),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: (message: string) => mockNotify({ type: 'success', message }),
+    error: (message: string) => mockNotify({ type: 'error', message }),
+  },
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -173,7 +177,7 @@ const defaultOptions = {
   searchValue: '',
   selectedStatus: 'all' as boolean | 'all',
   selectedSegmentIds: [] as string[],
-  importStatus: undefined as ProcessStatus | string | undefined,
+  importStatus: undefined as SegmentImportStatus | undefined,
   currentPage: 1,
   limit: 10,
   onCloseSegmentDetail: vi.fn(),
@@ -686,7 +690,7 @@ describe('useSegmentListData', () => {
 
       renderHook(() => useSegmentListData({
         ...defaultOptions,
-        importStatus: ProcessStatus.COMPLETED,
+        importStatus: segmentImportStatus.completed,
         clearSelection,
       }), {
         wrapper: createWrapper(),

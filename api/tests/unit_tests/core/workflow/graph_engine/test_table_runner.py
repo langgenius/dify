@@ -19,6 +19,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
+from core.tools.utils.yaml_utils import _load_yaml_file
+from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from graphon.entities import GraphInitParams
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
@@ -38,12 +43,6 @@ from graphon.variables import (
     ObjectVariable,
     StringVariable,
 )
-
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
-from core.tools.utils.yaml_utils import _load_yaml_file
-from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
-from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 
 from .test_mock_config import MockConfig
 from .test_mock_factory import MockNodeFactory

@@ -30,7 +30,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
         <div className="relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1">
           <div className="flex flex-col items-start gap-1 self-stretch">
             <div className="flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg px-[5px] py-1">
-              <div className="system-xs-medium flex-1 text-text-tertiary">{t(`${i18nPrefix}.varNotSet`, { ns: 'workflow' })}</div>
+              <div className="flex-1 system-xs-medium text-text-tertiary">{t(`${i18nPrefix}.varNotSet`, { ns: 'workflow' })}</div>
             </div>
           </div>
         </div>
@@ -51,7 +51,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
               nodeType={node?.data.type}
               nodeTitle={node?.data.title}
               rightSlot={
-                !!value.operation && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${value.operation}`, { ns: 'workflow' })} />
+                !!value.operation && <Badge className="ml-auto! shrink-0" text={t(`${i18nPrefix}.operations.${value.operation}`, { ns: 'workflow' })} />
               }
             />
           )
@@ -75,7 +75,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
         nodeType={node?.data.type}
         nodeTitle={node?.data.title}
         rightSlot={
-          writeMode && <Badge className="!ml-auto shrink-0" text={t(`nodes.assigner.operations.${writeMode}`, { ns: 'workflow' })} />
+          writeMode && <Badge className="ml-auto! shrink-0" text={t(`nodes.assigner.operations.${writeMode}`, { ns: 'workflow' })} />
         }
       />
     </div>

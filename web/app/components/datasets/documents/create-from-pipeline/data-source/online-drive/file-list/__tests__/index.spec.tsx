@@ -337,7 +337,7 @@ describe('FileList', () => {
         render(<FileList {...props} />)
 
         // Act - Click the clear icon div (it contains RiCloseCircleFill icon)
-        const clearButton = screen.getByTestId('input-clear')
+        const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
         expect(clearButton).toBeInTheDocument()
         fireEvent.click(clearButton!)
 
@@ -351,7 +351,7 @@ describe('FileList', () => {
         fireEvent.change(input, { target: { value: 'some-search' } })
 
         // Act - Find and click the clear icon
-        const clearButton = screen.getByTestId('input-clear')
+        const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
         expect(clearButton).toBeInTheDocument()
         fireEvent.click(clearButton!)
 

@@ -12,7 +12,7 @@ import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Protocol, TypeVar
+from typing import Protocol
 
 import psycopg2
 import pytest
@@ -32,6 +32,7 @@ from extensions.ext_database import db
 # Configure logging for test containers
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+_TEST_SANDBOX_IMAGE = os.getenv("TEST_SANDBOX_IMAGE", "langgenius/dify-sandbox:0.2.12")
 
 DEFAULT_SANDBOX_TEST_IMAGE = "langgenius/dify-sandbox:0.2.14"
 SANDBOX_TEST_IMAGE_ENV = "DIFY_SANDBOX_TEST_IMAGE"
@@ -47,11 +48,8 @@ class _CloserProtocol(Protocol):
         pass
 
 
-_Closer = TypeVar("_Closer", bound=_CloserProtocol)
-
-
 @contextmanager
-def _auto_close(closer: _Closer) -> Generator[_Closer, None, None]:
+def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T, None, None]:
     yield closer
     closer.close()
 
@@ -371,7 +369,7 @@ def _create_app_with_containers() -> Flask:
 
     # Create and configure the Flask application
     logger.info("Initializing Flask application...")
-    app = create_app()
+    sio_app, app = create_app()
     logger.info("Flask application created successfully")
 
     # Initialize database schema
@@ -435,7 +433,7 @@ def flask_app_with_containers(set_up_containers_and_env) -> Flask:
 
 
 @pytest.fixture
-def flask_req_ctx_with_containers(flask_app_with_containers) -> Generator[None, None, None]:
+def flask_req_ctx_with_containers(flask_app_with_containers: Flask) -> Generator[None, None, None]:
     """
     Request context fixture for containerized Flask application.
 
@@ -456,7 +454,7 @@ def flask_req_ctx_with_containers(flask_app_with_containers) -> Generator[None, 
 
 
 @pytest.fixture
-def test_client_with_containers(flask_app_with_containers) -> Generator[FlaskClient, None, None]:
+def test_client_with_containers(flask_app_with_containers: Flask) -> Generator[FlaskClient, None, None]:
     """
     Test client fixture for containerized Flask application.
 
@@ -477,7 +475,7 @@ def test_client_with_containers(flask_app_with_containers) -> Generator[FlaskCli
 
 
 @pytest.fixture
-def db_session_with_containers(flask_app_with_containers) -> Generator[Session, None, None]:
+def db_session_with_containers(flask_app_with_containers: Flask) -> Generator[Session, None, None]:
     """
     Database session fixture for containerized testing.
 

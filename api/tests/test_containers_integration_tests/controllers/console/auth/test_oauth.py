@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.console.auth.oauth import (
     OAuthCallback,
@@ -21,7 +22,7 @@ from services.errors.account import AccountRegisterError
 
 class TestGetOAuthProviders:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     @pytest.mark.parametrize(
@@ -65,7 +66,7 @@ class TestOAuthLogin:
         return OAuthLogin()
 
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     @pytest.fixture
@@ -89,7 +90,7 @@ class TestOAuthLogin:
         mock_redirect,
         mock_get_providers,
         resource,
-        app,
+        app: Flask,
         mock_oauth_provider,
         invite_token,
         expected_token,
@@ -130,7 +131,7 @@ class TestOAuthCallback:
         return OAuthCallback()
 
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     @pytest.fixture
@@ -164,7 +165,7 @@ class TestOAuthCallback:
         mock_get_providers,
         mock_config,
         resource,
-        app,
+        app: Flask,
         oauth_setup,
     ):
         mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
@@ -217,7 +218,7 @@ class TestOAuthCallback:
         mock_get_providers,
         mock_config,
         resource,
-        app,
+        app: Flask,
         oauth_setup,
     ):
         mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
@@ -261,7 +262,7 @@ class TestOAuthCallback:
         mock_tenant_service,
         mock_account_service,
         resource,
-        app,
+        app: Flask,
         oauth_setup,
         account_status,
         expected_redirect,
@@ -300,7 +301,7 @@ class TestOAuthCallback:
         mock_get_providers,
         mock_config,
         resource,
-        app,
+        app: Flask,
         oauth_setup,
     ):
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
@@ -336,7 +337,7 @@ class TestOAuthCallback:
         mock_get_providers,
         mock_config,
         resource,
-        app,
+        app: Flask,
         oauth_setup,
     ):
         """Defensive test for CLOSED account status handling in OAuth callback.
@@ -394,7 +395,7 @@ class TestOAuthCallback:
 
 class TestAccountGeneration:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
     @pytest.fixture
@@ -437,7 +438,10 @@ class TestAccountGeneration:
         second_result.scalar_one_or_none.return_value = expected_account
         mock_session.execute.side_effect = [first_result, second_result]
 
-        result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
+        with patch("services.account_service.session_factory") as mock_factory:
+            mock_factory.create_session.return_value.__enter__ = MagicMock(return_value=mock_session)
+            mock_factory.create_session.return_value.__exit__ = MagicMock(return_value=False)
+            result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com")
 
         assert result is expected_account
         assert mock_session.execute.call_count == 2
@@ -462,7 +466,7 @@ class TestAccountGeneration:
         mock_register_service,
         mock_feature_service,
         mock_get_account,
-        app,
+        app: Flask,
         user_info,
         mock_account,
         allow_register,
@@ -501,7 +505,7 @@ class TestAccountGeneration:
         mock_register_service,
         mock_feature_service,
         mock_get_account,
-        app,
+        app: Flask,
     ):
         user_info = OAuthUserInfo(id="123", name="Test User", email="Upper@Example.com")
         mock_feature_service.get_system_features.return_value.is_allow_register = True
@@ -526,7 +530,7 @@ class TestAccountGeneration:
         mock_feature_service,
         mock_tenant_service,
         mock_get_account,
-        app,
+        app: Flask,
         user_info,
         mock_account,
     ):

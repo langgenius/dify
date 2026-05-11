@@ -147,9 +147,9 @@ describe('assigner path', () => {
       )
 
       await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
-      expect(screen.getByText('workflow.nodes.assigner.operations.clear')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.set')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.+=')).toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.assigner.operations.clear'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.assigner.operations.set'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.assigner.operations.+='))!.toBeInTheDocument()
 
       await user.click(screen.getByText('workflow.nodes.assigner.operations.+='))
       expect(onSelect).toHaveBeenCalledWith({ value: WriteMode.increment, name: WriteMode.increment })
@@ -185,7 +185,7 @@ describe('assigner path', () => {
         />,
       )
 
-      expect(screen.getByText('workflow.nodes.assigner.noVarTip')).toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.assigner.noVarTip'))!.toBeInTheDocument()
 
       rerender(
         <VarList
@@ -232,7 +232,7 @@ describe('assigner path', () => {
         />,
       )
 
-      expect(screen.getByText('filter:false:true')).toBeInTheDocument()
+      expect(screen.getByText('filter:false:true'))!.toBeInTheDocument()
       await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
       await user.click(screen.getByText('workflow.nodes.assigner.operations.set'))
       expect(onChange).toHaveBeenLastCalledWith([
@@ -320,7 +320,7 @@ describe('assigner path', () => {
         <VarList
           readonly={false}
           nodeId="node-1"
-          list={[createOperation({ operation: WriteMode.set, value: '{\"a\":1}' })]}
+          list={[createOperation({ operation: WriteMode.set, value: '{"a":1}' })]}
           onChange={onChange}
           filterVar={vi.fn(() => true)}
           filterToAssignedVar={vi.fn(() => true)}
@@ -332,9 +332,9 @@ describe('assigner path', () => {
         />,
       )
 
-      fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '{\"a\":2}' } })
+      fireEvent.change(screen.getByLabelText('code-editor'), { target: { value: '{"a":2}' } })
       expect(onChange).toHaveBeenLastCalledWith([
-        createOperation({ operation: WriteMode.set, value: '{\"a\":2}' }),
+        createOperation({ operation: WriteMode.set, value: '{"a":2}' }),
       ], '{"a":2}')
 
       onChange.mockClear()
@@ -381,7 +381,7 @@ describe('assigner path', () => {
         },
       )
 
-      expect(screen.getByText('workflow.nodes.assigner.varNotSet')).toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.assigner.varNotSet'))!.toBeInTheDocument()
 
       rerender(
         <Node
@@ -392,9 +392,9 @@ describe('assigner path', () => {
         />,
       )
 
-      expect(screen.getByText('Answer')).toBeInTheDocument()
-      expect(screen.getByText('node-1.count')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.over-write')).toBeInTheDocument()
+      expect(screen.getByText('Answer'))!.toBeInTheDocument()
+      expect(screen.getByText('node-1.count'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.assigner.operations.over-write'))!.toBeInTheDocument()
 
       rerender(
         <Node
@@ -409,9 +409,9 @@ describe('assigner path', () => {
         />,
       )
 
-      expect(screen.getByText('Start')).toBeInTheDocument()
-      expect(screen.getByText('sys.query')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.append')).toBeInTheDocument()
+      expect(screen.getByText('Start'))!.toBeInTheDocument()
+      expect(screen.getByText('sys.query'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.assigner.operations.append'))!.toBeInTheDocument()
     })
 
     it('should skip empty version 2 items and resolve system variables without an operation badge', () => {
@@ -437,8 +437,8 @@ describe('assigner path', () => {
         },
       )
 
-      expect(screen.getByText('Start')).toBeInTheDocument()
-      expect(screen.getByText('sys.query')).toBeInTheDocument()
+      expect(screen.getByText('Start'))!.toBeInTheDocument()
+      expect(screen.getByText('sys.query'))!.toBeInTheDocument()
       expect(screen.queryByText('workflow.nodes.assigner.operations.over-write')).not.toBeInTheDocument()
     })
 
@@ -479,9 +479,9 @@ describe('assigner path', () => {
         />,
       )
 
-      expect(screen.getByText('Answer')).toBeInTheDocument()
-      expect(screen.getByText('node-1.count')).toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.assigner.operations.append')).toBeInTheDocument()
+      expect(screen.getByText('Answer'))!.toBeInTheDocument()
+      expect(screen.getByText('node-1.count'))!.toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.assigner.operations.append'))!.toBeInTheDocument()
     })
 
     it('should add panel operations with the real variable list inside the panel', async () => {
@@ -499,7 +499,7 @@ describe('assigner path', () => {
         />,
       )
 
-      await user.click(screen.getAllByRole('button')[0])
+      await user.click(screen.getAllByRole('button')[0]!)
 
       expect(mockHandleAddOperationItem).toHaveBeenCalledWith(createData().items)
       expect(config.handleOperationListChanges).toHaveBeenCalledWith([
@@ -507,8 +507,8 @@ describe('assigner path', () => {
         createOperation({ variable_selector: [] }),
       ])
 
-      expect(screen.getByText('workflow.nodes.assigner.variables')).toBeInTheDocument()
-      expect(screen.getByText('node-1.count')).toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.assigner.variables'))!.toBeInTheDocument()
+      expect(screen.getByText('node-1.count'))!.toBeInTheDocument()
     })
   })
 })

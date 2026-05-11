@@ -4,15 +4,16 @@ from collections.abc import Generator
 from datetime import date, datetime
 from decimal import Decimal
 from mimetypes import guess_extension
+from typing import Any
 from uuid import UUID
 
 import numpy as np
 import pytz
-from graphon.file import File, FileTransferMethod, FileType
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.file_reference import parse_file_reference
+from graphon.file import File, FileTransferMethod, FileType
 from libs.login import current_user
 from models import Account
 
@@ -22,35 +23,40 @@ _TOOL_FILE_URL_PATTERN = re.compile(r"(?:^|/+)files/tools/(?P<tool_file_id>[^/?#
 
 
 def safe_json_value(v):
-    if isinstance(v, datetime):
-        tz_name = "UTC"
-        if isinstance(current_user, Account) and current_user.timezone is not None:
-            tz_name = current_user.timezone
-        return v.astimezone(pytz.timezone(tz_name)).isoformat()
-    elif isinstance(v, date):
-        return v.isoformat()
-    elif isinstance(v, UUID):
-        return str(v)
-    elif isinstance(v, Decimal):
-        return float(v)
-    elif isinstance(v, bytes):
-        try:
-            return v.decode("utf-8")
-        except UnicodeDecodeError:
-            return v.hex()
-    elif isinstance(v, memoryview):
-        return v.tobytes().hex()
-    elif isinstance(v, np.ndarray):
-        return v.tolist()
-    elif isinstance(v, dict):
-        return safe_json_dict(v)
-    elif isinstance(v, list | tuple | set):
-        return [safe_json_value(i) for i in v]
-    else:
-        return v
+    match v:
+        case datetime():
+            tz_name = "UTC"
+            if isinstance(current_user, Account) and current_user.timezone is not None:
+                tz_name = current_user.timezone
+            return v.astimezone(pytz.timezone(tz_name)).isoformat()
+        case date():
+            return v.isoformat()
+        case UUID():
+            return str(v)
+        case Decimal():
+            return float(v)
+        case bytes():
+            try:
+                return v.decode("utf-8")
+            except UnicodeDecodeError:
+                return v.hex()
+        case memoryview():
+            return v.tobytes().hex()
+        case np.integer():
+            return int(v)
+        case np.floating():
+            return float(v)
+        case np.ndarray():
+            return v.tolist()
+        case dict():
+            return safe_json_dict(v)
+        case list() | tuple() | set():
+            return [safe_json_value(i) for i in v]
+        case _:
+            return v
 
 
-def safe_json_dict(d: dict):
+def safe_json_dict(d: dict[str, Any]):
     if not isinstance(d, dict):
         raise TypeError("safe_json_dict() expects a dictionary (dict) as input")
     return {k: safe_json_value(v) for k, v in d.items()}
@@ -118,7 +124,8 @@ class ToolFileMessageTransformer:
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
                     raise ValueError("unexpected message type")
 
-                assert isinstance(message.message.blob, bytes)
+                if not isinstance(message.message.blob, bytes):
+                    raise TypeError(f"Expected blob to be bytes, got {type(message.message.blob).__name__}")
                 tool_file_manager = ToolFileManager()
                 tool_file = tool_file_manager.create_file_by_raw(
                     user_id=user_id,
@@ -195,11 +202,11 @@ class ToolFileMessageTransformer:
 
     @staticmethod
     def _with_tool_file_meta(
-        meta: dict | None,
+        meta: dict[str, Any] | None,
         *,
         tool_file_id: str | None = None,
         url: str | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         normalized_meta = meta.copy() if meta is not None else {}
         resolved_tool_file_id = tool_file_id or ToolFileMessageTransformer._extract_tool_file_id(url)
         if resolved_tool_file_id and "tool_file_id" not in normalized_meta:

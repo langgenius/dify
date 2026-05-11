@@ -4,19 +4,16 @@ from collections.abc import Sequence
 from typing import Any
 
 from flask import abort, request
-from flask_restx import Resource, fields, marshal_with
-from graphon.enums import NodeType
-from graphon.file import File
-from graphon.graph_engine.manager import GraphEngineManager
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
+from flask_restx import Resource, fields, marshal, marshal_with
+from pydantic import BaseModel, Field, ValidationError, field_validator
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
+from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.schema import register_response_schema_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
-from controllers.console.app.workflow_run import workflow_run_node_execution_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -38,7 +35,14 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
+from fields.online_user_fields import online_user_list_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
+from fields.workflow_run_fields import WorkflowRunNodeExecutionResponse
+from graphon.enums import NodeType
+from graphon.file import File
+from graphon.file import helpers as file_helpers
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
@@ -46,16 +50,20 @@ from libs.login import current_account_with_tenant, login_required
 from models import App
 from models.model import AppMode
 from models.workflow import Workflow
+from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
+
 _file_access_controller = DatabaseFileAccessController()
 LISTENING_RETRY_IN = 2000
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be published"
+MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS = 1000
+WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE = 50
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -142,10 +150,6 @@ class PublishWorkflowPayload(BaseModel):
     marked_comment: str | None = Field(default=None, max_length=100)
 
 
-class DefaultBlockConfigQuery(BaseModel):
-    q: str | None = None
-
-
 class ConvertToWorkflowPayload(BaseModel):
     name: str | None = None
     icon_type: str | None = None
@@ -153,16 +157,17 @@ class ConvertToWorkflowPayload(BaseModel):
     icon_background: str | None = None
 
 
-class WorkflowListQuery(BaseModel):
-    page: int = Field(default=1, ge=1, le=99999)
-    limit: int = Field(default=10, ge=1, le=100)
-    user_id: str | None = None
-    named_only: bool = False
+class WorkflowFeaturesPayload(BaseModel):
+    features: dict[str, Any] = Field(..., description="Workflow feature configuration")
 
 
-class WorkflowUpdatePayload(BaseModel):
-    marked_name: str | None = Field(default=None, max_length=20)
-    marked_comment: str | None = Field(default=None, max_length=100)
+class WorkflowOnlineUsersPayload(BaseModel):
+    app_ids: list[str] = Field(default_factory=list, description="App IDs")
+
+    @field_validator("app_ids")
+    @classmethod
+    def normalize_app_ids(cls, app_ids: list[str]) -> list[str]:
+        return list(dict.fromkeys(app_id.strip() for app_id in app_ids if app_id.strip()))
 
 
 class DraftWorkflowTriggerRunPayload(BaseModel):
@@ -173,23 +178,25 @@ class DraftWorkflowTriggerRunAllPayload(BaseModel):
     node_ids: list[str]
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(SyncDraftWorkflowPayload)
-reg(AdvancedChatWorkflowRunPayload)
-reg(IterationNodeRunPayload)
-reg(LoopNodeRunPayload)
-reg(DraftWorkflowRunPayload)
-reg(DraftWorkflowNodeRunPayload)
-reg(PublishWorkflowPayload)
-reg(DefaultBlockConfigQuery)
-reg(ConvertToWorkflowPayload)
-reg(WorkflowListQuery)
-reg(WorkflowUpdatePayload)
-reg(DraftWorkflowTriggerRunPayload)
-reg(DraftWorkflowTriggerRunAllPayload)
+register_schema_models(
+    console_ns,
+    SyncDraftWorkflowPayload,
+    AdvancedChatWorkflowRunPayload,
+    IterationNodeRunPayload,
+    LoopNodeRunPayload,
+    DraftWorkflowRunPayload,
+    DraftWorkflowNodeRunPayload,
+    PublishWorkflowPayload,
+    DefaultBlockConfigQuery,
+    ConvertToWorkflowPayload,
+    WorkflowListQuery,
+    WorkflowUpdatePayload,
+    WorkflowFeaturesPayload,
+    WorkflowOnlineUsersPayload,
+    DraftWorkflowTriggerRunPayload,
+    DraftWorkflowTriggerRunAllPayload,
+)
+register_response_schema_model(console_ns, WorkflowRunNodeExecutionResponse)
 
 
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
@@ -268,22 +275,18 @@ class DraftWorkflowApi(Resource):
 
         content_type = request.headers.get("Content-Type", "")
 
-        payload_data: dict[str, Any] | None = None
         if "application/json" in content_type:
             payload_data = request.get_json(silent=True)
             if not isinstance(payload_data, dict):
                 return {"message": "Invalid JSON data"}, 400
+            args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         elif "text/plain" in content_type:
             try:
-                payload_data = json.loads(request.data.decode("utf-8"))
-            except json.JSONDecodeError:
-                return {"message": "Invalid JSON data"}, 400
-            if not isinstance(payload_data, dict):
+                args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
+            except (ValueError, ValidationError):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-
-        args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         args = args_model.model_dump()
         workflow_service = WorkflowService()
 
@@ -539,9 +542,12 @@ class HumanInputDeliveryTestPayload(BaseModel):
     )
 
 
-reg(HumanInputFormPreviewPayload)
-reg(HumanInputFormSubmitPayload)
-reg(HumanInputDeliveryTestPayload)
+register_schema_models(
+    console_ns,
+    HumanInputFormPreviewPayload,
+    HumanInputFormSubmitPayload,
+    HumanInputDeliveryTestPayload,
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form/preview")
@@ -759,14 +765,17 @@ class DraftWorkflowNodeRunApi(Resource):
     @console_ns.doc(description="Run draft workflow node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[DraftWorkflowNodeRunPayload.__name__])
-    @console_ns.response(200, "Node run started successfully", workflow_run_node_execution_model)
+    @console_ns.response(
+        200,
+        "Node run started successfully",
+        console_ns.models[WorkflowRunNodeExecutionResponse.__name__],
+    )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_model)
     @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
@@ -798,7 +807,9 @@ class DraftWorkflowNodeRunApi(Resource):
             files=files,
         )
 
-        return workflow_node_execution
+        return WorkflowRunNodeExecutionResponse.model_validate(
+            workflow_node_execution, from_attributes=True
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
@@ -840,7 +851,7 @@ class PublishedWorkflowApi(Resource):
         args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,
@@ -857,8 +868,6 @@ class PublishedWorkflowApi(Resource):
                 app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
-
-            session.commit()
 
         return {
             "result": "success",
@@ -903,7 +912,7 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        args = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))
 
         filters = None
         if args.q:
@@ -952,6 +961,32 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/features")
+class WorkflowFeaturesApi(Resource):
+    """Update draft workflow features."""
+
+    @console_ns.expect(console_ns.models[WorkflowFeaturesPayload.__name__])
+    @console_ns.doc("update_workflow_features")
+    @console_ns.doc(description="Update draft workflow features")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Workflow features updated successfully")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
+    def post(self, app_model: App):
+        current_user, _ = current_account_with_tenant()
+
+        args = WorkflowFeaturesPayload.model_validate(console_ns.payload or {})
+        features = args.features
+
+        workflow_service = WorkflowService()
+        workflow_service.update_draft_workflow_features(app_model=app_model, features=features, account=current_user)
+
+        return {"result": "success"}
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowListQuery.__name__])
@@ -963,7 +998,6 @@ class PublishedAllWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_pagination_model)
     @edit_permission_required
     def get(self, app_model: App):
         """
@@ -971,7 +1005,7 @@ class PublishedAllWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))
         page = args.page
         limit = args.limit
         user_id = args.user_id
@@ -982,7 +1016,7 @@ class PublishedAllWorkflowApi(Resource):
                 raise Forbidden()
 
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             workflows, has_more = workflow_service.get_all_published_workflow(
                 session=session,
                 app_model=app_model,
@@ -991,9 +1025,10 @@ class PublishedAllWorkflowApi(Resource):
                 user_id=user_id,
                 named_only=named_only,
             )
+            serialized_workflows = marshal(workflows, workflow_fields_copy)
 
             return {
-                "items": workflows,
+                "items": serialized_workflows,
                 "page": page,
                 "limit": limit,
                 "has_more": has_more,
@@ -1072,7 +1107,7 @@ class WorkflowByIdApi(Resource):
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction
-        with Session(db.engine, expire_on_commit=False) as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = workflow_service.update_workflow(
                 session=session,
                 workflow_id=workflow_id,
@@ -1083,9 +1118,6 @@ class WorkflowByIdApi(Resource):
 
             if not workflow:
                 raise NotFound("Workflow not found")
-
-            # Commit the transaction in the controller
-            session.commit()
 
         return workflow
 
@@ -1101,13 +1133,11 @@ class WorkflowByIdApi(Resource):
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction
-        with Session(db.engine) as session:
+        with sessionmaker(db.engine).begin() as session:
             try:
                 workflow_service.delete_workflow(
                     session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id
                 )
-                # Commit the transaction in the controller
-                session.commit()
             except WorkflowInUseError as e:
                 abort(400, description=str(e))
             except DraftWorkflowDeletionError as e:
@@ -1123,14 +1153,17 @@ class DraftWorkflowNodeLastRunApi(Resource):
     @console_ns.doc("get_draft_workflow_node_last_run")
     @console_ns.doc(description="Get last run result for draft workflow node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.response(200, "Node last run retrieved successfully", workflow_run_node_execution_model)
+    @console_ns.response(
+        200,
+        "Node last run retrieved successfully",
+        console_ns.models[WorkflowRunNodeExecutionResponse.__name__],
+    )
     @console_ns.response(404, "Node last run not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_model)
     def get(self, app_model: App, node_id: str):
         srv = WorkflowService()
         workflow = srv.get_draft_workflow(app_model)
@@ -1143,7 +1176,7 @@ class DraftWorkflowNodeLastRunApi(Resource):
         )
         if node_exec is None:
             raise NotFound("last run not found")
-        return node_exec
+        return WorkflowRunNodeExecutionResponse.model_validate(node_exec, from_attributes=True).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run")
@@ -1366,3 +1399,73 @@ class DraftWorkflowTriggerRunAllApi(Resource):
                     "status": "error",
                 }
             ), 400
+
+
+@console_ns.route("/apps/workflows/online-users")
+class WorkflowOnlineUsersApi(Resource):
+    @console_ns.expect(console_ns.models[WorkflowOnlineUsersPayload.__name__])
+    @console_ns.doc("get_workflow_online_users")
+    @console_ns.doc(description="Get workflow online users")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(online_user_list_fields)
+    def post(self):
+        args = WorkflowOnlineUsersPayload.model_validate(console_ns.payload or {})
+
+        app_ids = args.app_ids
+        if len(app_ids) > MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS:
+            raise BadRequest(f"Maximum {MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS} app_ids are allowed per request.")
+
+        if not app_ids:
+            return {"data": []}
+
+        _, current_tenant_id = current_account_with_tenant()
+        workflow_service = WorkflowService()
+        accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id)
+        ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]
+
+        users_json_by_app_id: dict[str, Any] = {}
+        for start_index in range(0, len(ordered_accessible_app_ids), WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE):
+            app_id_batch = ordered_accessible_app_ids[
+                start_index : start_index + WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
+            ]
+            pipe = redis_client.pipeline(transaction=False)
+            for app_id in app_id_batch:
+                pipe.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{app_id}")
+
+            users_json_batch = pipe.execute()
+            for app_id, users_json in zip(app_id_batch, users_json_batch):
+                users_json_by_app_id[app_id] = users_json
+
+        results = []
+        for app_id in ordered_accessible_app_ids:
+            users_json = users_json_by_app_id.get(app_id, {})
+
+            users = []
+            for _, user_info_json in users_json.items():
+                try:
+                    user_info = json.loads(user_info_json)
+                except Exception:
+                    continue
+
+                if not isinstance(user_info, dict):
+                    continue
+
+                avatar = user_info.get("avatar")
+                if isinstance(avatar, str) and avatar and not avatar.startswith(("http://", "https://")):
+                    try:
+                        user_info["avatar"] = file_helpers.get_signed_file_url(avatar)
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to sign workflow online user avatar; using original value. "
+                            "app_id=%s avatar=%s error=%s",
+                            app_id,
+                            avatar,
+                            exc,
+                        )
+
+                users.append(user_info)
+            results.append({"app_id": app_id, "users": users})
+
+        return {"data": results}

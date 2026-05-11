@@ -8,8 +8,10 @@ import type {
   CredentialFormSchemaTextInput,
   FormValue,
 } from '../../declarations'
+import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '../../declarations'
 import Form from '../Form'
 
@@ -28,8 +30,8 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
-  default: ({ onSelect }: { onSelect: (item: { id: string }) => void }) => (
-    <button type="button" onClick={() => onSelect({ id: 'app-1' })}>Select App</button>
+  AppSelector: ({ onSelect }: { onSelect: (item: AppSelectorValue) => void }) => (
+    <button type="button" onClick={() => onSelect({ app_id: 'app-1', inputs: {}, files: [] })}>Select App</button>
   ),
 }))
 
@@ -192,9 +194,9 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByPlaceholderText('API Key')).toHaveValue('default-key')
-      expect(screen.getByPlaceholderText('Secret')).toHaveValue('top-secret')
-      expect(screen.getByPlaceholderText('Limit')).toHaveValue(5)
+      expect(screen.getByPlaceholderText('API Key'))!.toHaveValue('default-key')
+      expect(screen.getByPlaceholderText('Secret'))!.toHaveValue('top-secret')
+      expect(screen.getByPlaceholderText('Limit'))!.toHaveValue(5)
       expect(screen.queryByText('Hidden')).not.toBeInTheDocument()
       expect(screen.getAllByText('*')).toHaveLength(1)
     })
@@ -234,7 +236,7 @@ describe('Form', () => {
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith({ api_key: 'new-key', dependent: 'reset' })
-        expect(screen.getByText('Validating...')).toBeInTheDocument()
+        expect(screen.getByText('Validating...'))!.toBeInTheDocument()
       })
     })
 
@@ -279,7 +281,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('EU')).toBeInTheDocument()
+      expect(screen.getByText('EU'))!.toBeInTheDocument()
       expect(screen.queryByText('Hidden Region')).not.toBeInTheDocument()
       fireEvent.click(screen.getByText('EU'))
       fireEvent.click(screen.getByText('Locked A'))
@@ -288,7 +290,8 @@ describe('Form', () => {
       expect(onChange).toHaveBeenCalledTimes(1)
     })
 
-    it('should render select and checkbox fields and update checkbox value', () => {
+    it('should render select and checkbox fields and update checkbox value', async () => {
+      const user = userEvent.setup()
       const formSchemas: AnyFormSchema[] = [
         createSelectSchema({
           variable: 'model',
@@ -338,11 +341,11 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Select A')).toBeInTheDocument()
-      fireEvent.click(screen.getByText('Select A'))
-      fireEvent.click(screen.getByText('Select B'))
+      expect(screen.getByText('Select A'))!.toBeInTheDocument()
+      await user.click(screen.getByRole('combobox'))
+      await user.click(screen.getByRole('option', { name: 'Select B' }))
 
-      fireEvent.click(screen.getByText('True'))
+      await user.click(screen.getByText('True'))
 
       expect(onChange).toHaveBeenCalledWith({ model: 'b', agree: false, toggle: 'on' })
       expect(onChange).toHaveBeenCalledWith({ model: 'a', agree: true, toggle: 'on' })
@@ -406,7 +409,7 @@ describe('Form', () => {
         multi_tool: [{ id: 'tool-1' }],
       }))
       expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        app_selector: { id: 'app-1', type: FormTypeEnum.appSelector },
+        app_selector: { app_id: 'app-1', inputs: {}, files: [], type: FormTypeEnum.appSelector },
       }))
     })
 
@@ -459,12 +462,12 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Override Field')).toBeInTheDocument()
-      expect(screen.getByText(/Custom Render:.*custom_field/)).toBeInTheDocument()
+      expect(screen.getByText('Override Field'))!.toBeInTheDocument()
+      expect(screen.getByText(/Custom Render:.*custom_field/))!.toBeInTheDocument()
       expect(screen.getAllByText('allowed')).toHaveLength(3)
       expect(screen.getAllByText('blocked')).toHaveLength(1)
 
-      fireEvent.click(screen.getAllByText('Pick Variable')[0])
+      fireEvent.click(screen.getAllByText('Pick Variable')[0]!)
 
       expect(onChange).toHaveBeenCalledWith({ override: '', any_var: [{ name: 'var-1' }], any_without_scope: [], custom_field: '' })
       expect(screen.getAllByText('Extra Info')).toHaveLength(2)
@@ -497,7 +500,8 @@ describe('Form', () => {
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('API Key')).toBeDisabled()
+      // Assert
+      expect(screen.getByPlaceholderText('API Key'))!.toBeDisabled()
     })
 
     // Override returns null: falls through to default renderer
@@ -528,7 +532,8 @@ describe('Form', () => {
       )
 
       // Assert - should fall through to default textInput renderer
-      expect(screen.getByPlaceholderText('Field 1')).toBeInTheDocument()
+      // Assert - should fall through to default textInput renderer
+      expect(screen.getByPlaceholderText('Field 1'))!.toBeInTheDocument()
     })
 
     // isShowDefaultValue=true, value is null → default shown
@@ -559,7 +564,8 @@ describe('Form', () => {
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('Nullable')).toHaveValue('default-val')
+      // Assert
+      expect(screen.getByPlaceholderText('Nullable'))!.toHaveValue('default-val')
     })
 
     // isShowDefaultValue=true, value is undefined → default shown
@@ -590,7 +596,8 @@ describe('Form', () => {
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('Undef')).toHaveValue('default-undef')
+      // Assert
+      expect(screen.getByPlaceholderText('Undef'))!.toHaveValue('default-undef')
     })
 
     // isEditMode=true, variable=__model_type → textInput disabled
@@ -619,7 +626,8 @@ describe('Form', () => {
       )
 
       // Assert
-      expect(screen.getByPlaceholderText('Model Type')).toBeDisabled()
+      // Assert
+      expect(screen.getByPlaceholderText('Model Type'))!.toBeDisabled()
     })
 
     // Label with missing language key → en_US fallback used
@@ -649,7 +657,8 @@ describe('Form', () => {
       )
 
       // Assert
-      expect(screen.getByText('English Label')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('English Label'))!.toBeInTheDocument()
     })
 
     // Select field with isShowDefaultValue=true
@@ -680,7 +689,8 @@ describe('Form', () => {
       )
 
       // Assert - Select B should be the rendered default
-      expect(screen.getByText('Select B')).toBeInTheDocument()
+      // Assert - Select B should be the rendered default
+      expect(screen.getByText('Select B'))!.toBeInTheDocument()
     })
 
     // Radio option with show_on condition not met → option filtered out
@@ -712,7 +722,8 @@ describe('Form', () => {
       )
 
       // Assert
-      expect(screen.getByText('Always Visible')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Always Visible'))!.toBeInTheDocument()
       expect(screen.queryByText('Conditional')).not.toBeInTheDocument()
     })
 
@@ -804,8 +815,9 @@ describe('Form', () => {
       )
 
       // Both rendered successfully
-      expect(screen.getByPlaceholderText('Secret')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Number')).toBeInTheDocument()
+      // Both rendered successfully
+      expect(screen.getByPlaceholderText('Secret'))!.toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Number'))!.toBeInTheDocument()
     })
 
     // Placeholder fallback: null placeholder
@@ -830,7 +842,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('No Placeholder')).toBeInTheDocument()
+      expect(screen.getByText('No Placeholder'))!.toBeInTheDocument()
     })
 
     // validating=true + changeKey matches variable: ValidatingTip shown
@@ -866,7 +878,8 @@ describe('Form', () => {
       fireEvent.change(screen.getByPlaceholderText('API Key'), { target: { value: 'new' } })
 
       // ValidatingTip should appear for api_key
-      expect(screen.getByText('Validating...')).toBeInTheDocument()
+      // ValidatingTip should appear for api_key
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     // Select with show_on not met: hidden
@@ -923,7 +936,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Always')).toBeInTheDocument()
+      expect(screen.getByText('Always'))!.toBeInTheDocument()
       expect(screen.queryByText('Conditional')).not.toBeInTheDocument()
     })
 
@@ -979,9 +992,8 @@ describe('Form', () => {
         />,
       )
 
-      const selectTrigger = screen.getByRole('button', { name: 'Select A' })
-      fireEvent.click(selectTrigger)
-      expect(screen.queryByText('Select B')).not.toBeInTheDocument()
+      const selectTrigger = screen.getByRole('combobox')
+      expect(selectTrigger).toBeDisabled()
     })
 
     // isShowDefaultValue=false: value used even if empty
@@ -1009,7 +1021,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByPlaceholderText('Field')).toHaveValue('')
+      expect(screen.getByPlaceholderText('Field'))!.toHaveValue('')
     })
 
     // Radio with disabled=true in edit mode for __model_type
@@ -1066,7 +1078,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Select Tools')).toBeInTheDocument()
+      expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
     })
 
     // Override with non-matching type: falls through to default
@@ -1095,7 +1107,7 @@ describe('Form', () => {
       )
 
       expect(screen.queryByText('Override Hit')).not.toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Secret Field')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Secret Field'))!.toBeInTheDocument()
     })
 
     // Select with isShowDefaultValue: null value shows default
@@ -1123,7 +1135,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Select B')).toBeInTheDocument()
+      expect(screen.getByText('Select B'))!.toBeInTheDocument()
     })
 
     // Select with isShowDefaultValue: undefined value shows default
@@ -1151,7 +1163,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Select A')).toBeInTheDocument()
+      expect(screen.getByText('Select A'))!.toBeInTheDocument()
     })
 
     // No fieldMoreInfo: should not crash
@@ -1177,7 +1189,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByPlaceholderText('Field 1')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Field 1'))!.toBeInTheDocument()
     })
 
     it('should render tooltip when schema has tooltip property', () => {
@@ -1220,10 +1232,14 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('API Key')).toBeInTheDocument()
-      expect(screen.getByText('Region')).toBeInTheDocument()
-      expect(screen.getByText('Model')).toBeInTheDocument()
-      expect(screen.getByText('Agree')).toBeInTheDocument()
+      expect(screen.getByText('API Key'))!.toBeInTheDocument()
+      expect(screen.getByText('Region'))!.toBeInTheDocument()
+      expect(screen.getByText('Model'))!.toBeInTheDocument()
+      expect(screen.getByText('Agree'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Enter your API key here'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Select region'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Choose model'))!.toBeInTheDocument()
+      expect(screen.getByLabelText('Agree tooltip'))!.toBeInTheDocument()
     })
 
     it('should render required asterisk for radio, select, checkbox, and other field types', () => {
@@ -1319,7 +1335,7 @@ describe('Form', () => {
       )
 
       fireEvent.click(screen.getByText('Option B'))
-      expect(screen.getByText('Validating...')).toBeInTheDocument()
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     it('should render textInput with show_on condition met', () => {
@@ -1345,7 +1361,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByPlaceholderText('Conditional')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Conditional'))!.toBeInTheDocument()
     })
 
     it('should render radio with show_on condition met', () => {
@@ -1370,7 +1386,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Cond Radio')).toBeInTheDocument()
+      expect(screen.getByText('Cond Radio'))!.toBeInTheDocument()
     })
 
     it('should proceed with onChange when isEditMode is true but key is not locked', () => {
@@ -1425,6 +1441,37 @@ describe('Form', () => {
       )
 
       // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
+      // Should not crash - the field simply doesn't render
       expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
     })
 
@@ -1452,7 +1499,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Check Extra')).toBeInTheDocument()
+      expect(screen.getByText('Check Extra'))!.toBeInTheDocument()
     })
   })
 
@@ -1497,10 +1544,10 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('API Key Fallback')).toBeInTheDocument()
-      expect(screen.getByText('Region Fallback')).toBeInTheDocument()
-      expect(screen.getByText('Model Fallback')).toBeInTheDocument()
-      expect(screen.getByText('Agree Fallback')).toBeInTheDocument()
+      expect(screen.getByText('API Key Fallback'))!.toBeInTheDocument()
+      expect(screen.getByText('Region Fallback'))!.toBeInTheDocument()
+      expect(screen.getByText('Model Fallback'))!.toBeInTheDocument()
+      expect(screen.getByText('Agree Fallback'))!.toBeInTheDocument()
     })
 
     it('should fallback to en_US for modelSelector, toolSelector, and appSelector labels', () => {
@@ -1542,10 +1589,10 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('ModelSel Fallback')).toBeInTheDocument()
-      expect(screen.getByText('ToolSel Fallback')).toBeInTheDocument()
-      expect(screen.getByText('AppSel Fallback')).toBeInTheDocument()
-      expect(screen.getByText('Any Fallback')).toBeInTheDocument()
+      expect(screen.getByText('ModelSel Fallback'))!.toBeInTheDocument()
+      expect(screen.getByText('ToolSel Fallback'))!.toBeInTheDocument()
+      expect(screen.getByText('AppSel Fallback'))!.toBeInTheDocument()
+      expect(screen.getByText('Any Fallback'))!.toBeInTheDocument()
     })
 
     it('should not change value when __model_type is edited in edit mode', () => {
@@ -1602,7 +1649,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByDisplayValue('actual-value')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('actual-value'))!.toBeInTheDocument()
     })
 
     it('should pass nodeOutputVars and availableNodes to toolSelector', () => {
@@ -1632,7 +1679,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Select Tool')).toBeInTheDocument()
+      expect(screen.getByText('Select Tool'))!.toBeInTheDocument()
       expect(toolSelectorPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
         nodeOutputVars,
         availableNodes,
@@ -1663,7 +1710,7 @@ describe('Form', () => {
         />,
       )
 
-      expect(screen.getByText('Select Model')).toBeInTheDocument()
+      expect(screen.getByText('Select Model'))!.toBeInTheDocument()
       expect(modelSelectorPropsSpy).toHaveBeenCalledWith(expect.objectContaining({
         isAgentStrategy: true,
       }))
@@ -1695,7 +1742,8 @@ describe('Form', () => {
       )
 
       // Assert - should render without crash (value[variable] || [] path taken)
-      expect(screen.getByText('Select Tools')).toBeInTheDocument()
+      // Assert - should render without crash (value[variable] || [] path taken)
+      expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
     })
 
     it('should show ValidatingTip for multiToolSelector field being validated', () => {
@@ -1726,7 +1774,8 @@ describe('Form', () => {
       fireEvent.click(screen.getByText('Select Tools'))
 
       // Assert
-      expect(screen.getByText('Validating...')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     it('should show ValidatingTip for appSelector field being validated', () => {
@@ -1757,7 +1806,8 @@ describe('Form', () => {
       fireEvent.click(screen.getByText('Select App'))
 
       // Assert
-      expect(screen.getByText('Validating...')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     it('should show ValidatingTip for any-type field being validated', () => {
@@ -1789,7 +1839,8 @@ describe('Form', () => {
       fireEvent.click(screen.getByText('Pick Variable'))
 
       // Assert
-      expect(screen.getByText('Validating...')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     it('should use empty string fallback for nodeId in any-type when nodeId is not provided', () => {
@@ -1818,7 +1869,8 @@ describe('Form', () => {
       )
 
       // Assert - should render without crash
-      expect(screen.getByText('Any Field')).toBeInTheDocument()
+      // Assert - should render without crash
+      expect(screen.getByText('Any Field'))!.toBeInTheDocument()
     })
 
     it('should use en_US label fallback for multiToolSelector when language key is missing', () => {
@@ -1849,10 +1901,12 @@ describe('Form', () => {
       )
 
       // Assert - MultipleToolSelector mock renders with the label prop
-      expect(screen.getByText('Select Tools')).toBeInTheDocument()
+      // Assert - MultipleToolSelector mock renders with the label prop
+      expect(screen.getByText('Select Tools'))!.toBeInTheDocument()
     })
 
-    it('should show ValidatingTip for select field being validated', () => {
+    it('should show ValidatingTip for select field being validated', async () => {
+      const user = userEvent.setup()
       // Arrange: value 'a' is pre-selected so 'Select A' text appears in the trigger button
       const formSchemas: AnyFormSchema[] = [
         createSelectSchema({
@@ -1876,13 +1930,14 @@ describe('Form', () => {
         />,
       )
 
-      // First click opens the dropdown (Select A is the trigger button text)
-      fireEvent.click(screen.getByText('Select A'))
-      // Then click on 'Select B' option in the open dropdown
-      fireEvent.click(screen.getByText('Select B'))
+      await user.click(screen.getByRole('combobox'))
+      await user.click(screen.getByRole('option', { name: 'Select B' }))
 
       // Assert: ValidatingTip shows for the select field
-      expect(screen.getByText('Validating...')).toBeInTheDocument()
+      // Assert: ValidatingTip shows for the select field
+      await waitFor(() => {
+        expect(screen.getByText('Validating...'))!.toBeInTheDocument()
+      })
     })
 
     it('should show ValidatingTip for toolSelector field being validated', () => {
@@ -1914,7 +1969,8 @@ describe('Form', () => {
       fireEvent.click(screen.getByText('Select Tool'))
 
       // Assert
-      expect(screen.getByText('Validating...')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Validating...'))!.toBeInTheDocument()
     })
 
     it('should not render customRenderField for a FormTypeEnum value that is unhandled by Form', () => {

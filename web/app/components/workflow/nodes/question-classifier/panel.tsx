@@ -53,7 +53,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           required
         >
           <ModelParameterModal
-            popupClassName="!w-[387px]"
+            popupClassName="w-[387px]!"
             isInWorkflow
             isAdvancedMode={true}
             provider={model?.provider}
@@ -126,6 +126,11 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
               name="class_name"
               type="string"
               description={t(`${i18nPrefix}.outputVars.className`, { ns: 'workflow' })}
+            />
+            <VarItem
+              name="class_label"
+              type="string"
+              description={t(`${i18nPrefix}.outputVars.classLabel`, { ns: 'workflow' })}
             />
             <VarItem
               name="usage"

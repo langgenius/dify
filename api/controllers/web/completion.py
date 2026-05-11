@@ -1,7 +1,6 @@
 import logging
 from typing import Any, Literal
 
-from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -26,6 +25,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
 from models.model import AppMode

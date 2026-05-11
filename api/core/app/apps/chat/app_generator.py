@@ -3,10 +3,9 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, overload
+from typing import Any, Literal, overload
 
 from flask import Flask, copy_current_request_context, current_app
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from pydantic import ValidationError
 
 from configs import dify_config
@@ -24,6 +23,7 @@ from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeF
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.model import App, EndUser
 from services.conversation_service import ConversationService
@@ -36,7 +36,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
@@ -46,7 +46,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
@@ -56,20 +56,20 @@ class ChatAppGenerator(MessageBasedAppGenerator):
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
 
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         """
         Generate App response.
 

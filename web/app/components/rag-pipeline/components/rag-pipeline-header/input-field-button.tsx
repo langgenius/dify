@@ -1,6 +1,6 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import { useStore } from '@/app/components/workflow/store'
 

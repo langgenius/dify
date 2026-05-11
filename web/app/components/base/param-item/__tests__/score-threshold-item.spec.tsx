@@ -24,10 +24,9 @@ describe('ScoreThresholdItem', () => {
     })
 
     it('should render tooltip trigger', () => {
-      const { container } = render(<ScoreThresholdItem {...defaultProps} />)
+      render(<ScoreThresholdItem {...defaultProps} />)
 
-      // Tooltip trigger icon should be rendered
-      expect(container.querySelector('[data-state]')).toBeInTheDocument()
+      expect(screen.getByLabelText('appDebug.datasetConfig.score_thresholdTip')).toBeInTheDocument()
     })
 
     it('should render InputNumber and Slider', () => {
@@ -87,7 +86,7 @@ describe('ScoreThresholdItem', () => {
       expect(screen.getByRole('textbox')).toHaveValue('0.5')
     })
 
-    it('should call onChange with rounded value when input changes', async () => {
+    it('should call onChange with rounded-sm value when input changes', async () => {
       const user = userEvent.setup()
       const StatefulScoreThresholdItem = () => {
         const [value, setValue] = useState(defaultProps.value)

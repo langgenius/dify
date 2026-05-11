@@ -1,8 +1,7 @@
-import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { DataSet } from '@/models/datasets'
-import { useCallback, useEffect, useState } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { useCheckDatasetUsage, useDeleteDataset } from '@/service/use-dataset-card'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
@@ -20,11 +19,6 @@ type UseDatasetCardStateOptions = {
 
 export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateOptions) => {
   const { t } = useTranslation()
-  const [tags, setTags] = useState<Tag[]>(dataset.tags)
-
-  useEffect(() => {
-    setTags(dataset.tags)
-  }, [dataset.tags])
 
   // Modal state
   const [modalState, setModalState] = useState<ModalState>({
@@ -113,10 +107,6 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   }, [dataset.id, deleteDatasetMutation, onSuccess, t, closeConfirmDelete])
 
   return {
-    // Tag state
-    tags,
-    setTags,
-
     // Modal state
     modalState,
     openRenameModal,

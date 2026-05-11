@@ -12,7 +12,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models import Account, App, Workflow
+from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.model import AppMode
 from models.workflow import WorkflowType
 from services.workflow_service import WorkflowService
@@ -33,7 +33,7 @@ class TestWorkflowService:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_account(self, db_session_with_containers: Session, fake=None):
+    def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
         Helper method to create a test account with realistic data.
 
@@ -49,7 +49,7 @@ class TestWorkflowService:
             email=fake.email(),
             name=fake.name(),
             avatar=fake.url(),
-            status="active",
+            status=AccountStatus.ACTIVE,
             interface_language="en-US",  # Set interface language for Site creation
         )
         account.created_at = fake.date_time_this_year()
@@ -62,7 +62,7 @@ class TestWorkflowService:
         tenant = Tenant(
             name=f"Test Tenant {fake.company()}",
             plan="basic",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()
@@ -77,7 +77,7 @@ class TestWorkflowService:
 
         return account
 
-    def _create_test_app(self, db_session_with_containers: Session, fake=None):
+    def _create_test_app(self, db_session_with_containers: Session, fake: Faker | None = None):
         """
         Helper method to create a test app with realistic data.
 
@@ -109,7 +109,7 @@ class TestWorkflowService:
         db_session_with_containers.commit()
         return app
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app, account, fake=None):
+    def _create_test_workflow(self, db_session_with_containers: Session, app, account, fake: Faker | None = None):
         """
         Helper method to create a test workflow associated with an app.
 
@@ -554,6 +554,124 @@ class TestWorkflowService:
         # Assert
         assert len(result_workflows) == 2
         assert all(wf.marked_name for wf in result_workflows)
+
+    def test_get_all_published_workflow_no_workflow_id(self, db_session_with_containers: Session):
+        """Test that an app with no workflow_id returns empty results."""
+        # Arrange
+        fake = Faker()
+        app = self._create_test_app(db_session_with_containers, fake)
+        app.workflow_id = None
+        db_session_with_containers.commit()
+
+        workflow_service = WorkflowService()
+
+        # Act
+        result_workflows, has_more = workflow_service.get_all_published_workflow(
+            session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None
+        )
+
+        # Assert
+        assert result_workflows == []
+        assert has_more is False
+
+    def test_get_all_published_workflow_basic(self, db_session_with_containers: Session):
+        """Test basic retrieval of published workflows."""
+        # Arrange
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
+
+        workflow1 = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow1.version = "2024.01.01.001"
+        workflow2 = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow2.version = "2024.01.02.001"
+
+        app.workflow_id = workflow1.id
+        db_session_with_containers.commit()
+
+        workflow_service = WorkflowService()
+
+        # Act
+        result_workflows, has_more = workflow_service.get_all_published_workflow(
+            session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None
+        )
+
+        # Assert
+        assert len(result_workflows) == 2
+        assert has_more is False
+
+    def test_get_all_published_workflow_combined_filters(self, db_session_with_containers: Session):
+        """Test combined user_id and named_only filters."""
+        # Arrange
+        fake = Faker()
+        account1 = self._create_test_account(db_session_with_containers, fake)
+        account2 = self._create_test_account(db_session_with_containers, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
+
+        # account1 named
+        wf1 = self._create_test_workflow(db_session_with_containers, app, account1, fake)
+        wf1.version = "2024.01.01.001"
+        wf1.marked_name = "Named by user1"
+        wf1.created_by = account1.id
+
+        # account1 unnamed
+        wf2 = self._create_test_workflow(db_session_with_containers, app, account1, fake)
+        wf2.version = "2024.01.02.001"
+        wf2.marked_name = ""
+        wf2.created_by = account1.id
+
+        # account2 named
+        wf3 = self._create_test_workflow(db_session_with_containers, app, account2, fake)
+        wf3.version = "2024.01.03.001"
+        wf3.marked_name = "Named by user2"
+        wf3.created_by = account2.id
+
+        app.workflow_id = wf1.id
+        db_session_with_containers.commit()
+
+        workflow_service = WorkflowService()
+
+        # Act - Filter by account1 + named_only
+        result_workflows, has_more = workflow_service.get_all_published_workflow(
+            session=db_session_with_containers,
+            app_model=app,
+            page=1,
+            limit=10,
+            user_id=account1.id,
+            named_only=True,
+        )
+
+        # Assert - Only wf1 matches (account1 + named)
+        assert len(result_workflows) == 1
+        assert result_workflows[0].marked_name == "Named by user1"
+        assert result_workflows[0].created_by == account1.id
+
+    def test_get_all_published_workflow_empty_result(self, db_session_with_containers: Session):
+        """Test that querying with no matching workflows returns empty."""
+        # Arrange
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, fake)
+        app = self._create_test_app(db_session_with_containers, fake)
+
+        # Create a draft workflow (no version set = draft)
+        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        app.workflow_id = workflow.id
+        db_session_with_containers.commit()
+
+        workflow_service = WorkflowService()
+
+        # Act - Filter by a user that has no workflows
+        result_workflows, has_more = workflow_service.get_all_published_workflow(
+            session=db_session_with_containers,
+            app_model=app,
+            page=1,
+            limit=10,
+            user_id="00000000-0000-0000-0000-000000000000",
+        )
+
+        # Assert
+        assert result_workflows == []
+        assert has_more is False
 
     def test_sync_draft_workflow_create_new(self, db_session_with_containers: Session):
         """

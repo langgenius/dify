@@ -1,8 +1,17 @@
-from flask_restx import Namespace, fields
+from __future__ import annotations
 
-from fields.end_user_fields import simple_end_user_fields
-from fields.member_fields import simple_account_fields
+from datetime import datetime
+from typing import Any
+
+from flask_restx import Namespace, fields
+from pydantic import field_validator
+
+from fields.base import ResponseModel
+from fields.end_user_fields import SimpleEndUser, simple_end_user_fields
+from fields.member_fields import SimpleAccount, simple_account_fields
 from fields.workflow_run_fields import (
+    WorkflowRunForArchivedLogResponse,
+    WorkflowRunForLogResponse,
     build_workflow_run_for_archived_log_model,
     build_workflow_run_for_log_model,
     workflow_run_for_archived_log_fields,
@@ -85,3 +94,55 @@ def build_workflow_archived_log_pagination_model(api_or_ns: Namespace):
     copied_fields = workflow_archived_log_pagination_fields.copy()
     copied_fields["data"] = fields.List(fields.Nested(workflow_archived_log_partial_model))
     return api_or_ns.model("WorkflowArchivedLogPagination", copied_fields)
+
+
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
+class WorkflowAppLogPartialResponse(ResponseModel):
+    id: str
+    workflow_run: WorkflowRunForLogResponse | None = None
+    details: Any = None
+    created_from: str | None = None
+    created_by_role: str | None = None
+    created_by_account: SimpleAccount | None = None
+    created_by_end_user: SimpleEndUser | None = None
+    created_at: int | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+class WorkflowArchivedLogPartialResponse(ResponseModel):
+    id: str
+    workflow_run: WorkflowRunForArchivedLogResponse | None = None
+    trigger_metadata: Any = None
+    created_by_account: SimpleAccount | None = None
+    created_by_end_user: SimpleEndUser | None = None
+    created_at: int | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+class WorkflowAppLogPaginationResponse(ResponseModel):
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[WorkflowAppLogPartialResponse]
+
+
+class WorkflowArchivedLogPaginationResponse(ResponseModel):
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[WorkflowArchivedLogPartialResponse]

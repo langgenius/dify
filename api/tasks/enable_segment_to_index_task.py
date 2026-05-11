@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.doc_type import DocType
@@ -29,7 +30,7 @@ def enable_segment_to_index_task(segment_id: str):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        segment = session.query(DocumentSegment).where(DocumentSegment.id == segment_id).first()
+        segment = session.scalar(select(DocumentSegment).where(DocumentSegment.id == segment_id).limit(1))
         if not segment:
             logger.info(click.style(f"Segment not found: {segment_id}", fg="red"))
             return

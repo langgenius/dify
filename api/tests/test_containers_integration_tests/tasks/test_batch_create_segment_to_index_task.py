@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -37,13 +38,13 @@ class TestBatchCreateSegmentToIndexTask:
         from extensions.ext_redis import redis_client
 
         # Clear all test data
-        db_session_with_containers.query(DocumentSegment).delete()
-        db_session_with_containers.query(Document).delete()
-        db_session_with_containers.query(Dataset).delete()
-        db_session_with_containers.query(UploadFile).delete()
-        db_session_with_containers.query(TenantAccountJoin).delete()
-        db_session_with_containers.query(Tenant).delete()
-        db_session_with_containers.query(Account).delete()
+        db_session_with_containers.execute(delete(DocumentSegment))
+        db_session_with_containers.execute(delete(Document))
+        db_session_with_containers.execute(delete(Dataset))
+        db_session_with_containers.execute(delete(UploadFile))
+        db_session_with_containers.execute(delete(TenantAccountJoin))
+        db_session_with_containers.execute(delete(Tenant))
+        db_session_with_containers.execute(delete(Account))
         db_session_with_containers.commit()
 
         # Clear Redis cache
@@ -292,12 +293,9 @@ class TestBatchCreateSegmentToIndexTask:
         # Verify results
 
         # Check that segments were created
-        segments = (
-            db_session_with_containers.query(DocumentSegment)
-            .filter_by(document_id=document.id)
-            .order_by(DocumentSegment.position)
-            .all()
-        )
+        segments = db_session_with_containers.scalars(
+            select(DocumentSegment).where(DocumentSegment.document_id == document.id).order_by(DocumentSegment.position)
+        ).all()
         assert len(segments) == 3
 
         # Verify segment content and metadata
@@ -367,11 +365,11 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Verify no segments were created (since dataset doesn't exist)
 
-        segments = db_session_with_containers.query(DocumentSegment).all()
+        segments = db_session_with_containers.scalars(select(DocumentSegment)).all()
         assert len(segments) == 0
 
         # Verify no documents were modified
-        documents = db_session_with_containers.query(Document).all()
+        documents = db_session_with_containers.scalars(select(Document)).all()
         assert len(documents) == 0
 
     def test_batch_create_segment_to_index_task_document_not_found(
@@ -415,12 +413,14 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Verify no segments were created
 
-        segments = db_session_with_containers.query(DocumentSegment).all()
+        segments = db_session_with_containers.scalars(select(DocumentSegment)).all()
         assert len(segments) == 0
 
         # Verify dataset remains unchanged (no segments were added to the dataset)
         db_session_with_containers.refresh(dataset)
-        segments_for_dataset = db_session_with_containers.query(DocumentSegment).filter_by(dataset_id=dataset.id).all()
+        segments_for_dataset = db_session_with_containers.scalars(
+            select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
+        ).all()
         assert len(segments_for_dataset) == 0
 
     def test_batch_create_segment_to_index_task_document_not_available(
@@ -516,7 +516,9 @@ class TestBatchCreateSegmentToIndexTask:
             assert cache_value == b"error"
 
             # Verify no segments were created
-            segments = db_session_with_containers.query(DocumentSegment).filter_by(document_id=document.id).all()
+            segments = db_session_with_containers.scalars(
+                select(DocumentSegment).where(DocumentSegment.document_id == document.id)
+            ).all()
             assert len(segments) == 0
 
     def test_batch_create_segment_to_index_task_upload_file_not_found(
@@ -560,7 +562,7 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Verify no segments were created
 
-        segments = db_session_with_containers.query(DocumentSegment).all()
+        segments = db_session_with_containers.scalars(select(DocumentSegment)).all()
         assert len(segments) == 0
 
         # Verify document remains unchanged
@@ -611,7 +613,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Verify error handling
         # Since exception was raised, no segments should be created
 
-        segments = db_session_with_containers.query(DocumentSegment).all()
+        segments = db_session_with_containers.scalars(select(DocumentSegment)).all()
         assert len(segments) == 0
 
         # Verify document remains unchanged
@@ -682,12 +684,9 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Verify results
         # Check that new segments were created with correct positions
-        all_segments = (
-            db_session_with_containers.query(DocumentSegment)
-            .filter_by(document_id=document.id)
-            .order_by(DocumentSegment.position)
-            .all()
-        )
+        all_segments = db_session_with_containers.scalars(
+            select(DocumentSegment).where(DocumentSegment.document_id == document.id).order_by(DocumentSegment.position)
+        ).all()
         assert len(all_segments) == 6  # 3 existing + 3 new
 
         # Verify position ordering

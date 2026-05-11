@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import MagicMock, Mock, call, patch
 from uuid import uuid4
 
@@ -20,7 +21,7 @@ def create_mock_document(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict | None = None,
+    additional_metadata: dict[str, Any] | None = None,
 ) -> Document:
     """
     Create a mock Document object for testing.
@@ -108,15 +109,12 @@ class _FakeExecuteResult:
         return _FakeExecuteScalarResult(self._data)
 
 
-class _FakeSummaryQuery:
-    def __init__(self, summaries: list) -> None:
-        self._summaries = summaries
-
-    def filter(self, *args, **kwargs):
-        return self
+class _FakeScalarsResult:
+    def __init__(self, data: list) -> None:
+        self._data = data
 
     def all(self) -> list:
-        return self._summaries
+        return self._data
 
 
 class _FakeSession:
@@ -128,8 +126,8 @@ class _FakeSession:
         data = self._payloads.pop(0) if self._payloads else []
         return _FakeExecuteResult(data)
 
-    def query(self, model):
-        return _FakeSummaryQuery(self._summaries)
+    def scalars(self, stmt):
+        return _FakeScalarsResult(self._summaries)
 
 
 class _FakeSessionContext:
@@ -184,7 +182,7 @@ class TestRetrievalServiceInternals:
         app.app_context.return_value.__exit__.return_value = False
         return app
 
-    def test_retrieve_with_attachment_ids_only(self, monkeypatch, internal_dataset):
+    def test_retrieve_with_attachment_ids_only(self, monkeypatch: pytest.MonkeyPatch, internal_dataset):
         with (
             patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset", return_value=internal_dataset),
             patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve") as mock_retrieve,
@@ -228,7 +226,7 @@ class TestRetrievalServiceInternals:
         assert mock_retrieve.call_count == 2
 
     @patch("core.rag.datasource.retrieval_service.ExternalDatasetService.fetch_external_knowledge_retrieval")
-    @patch("core.rag.datasource.retrieval_service.MetadataCondition.model_validate")
+    @patch("core.rag.datasource.retrieval_service.MetadataFilteringCondition.model_validate")
     @patch("core.rag.datasource.retrieval_service.db.session.scalar")
     def test_external_retrieve_with_metadata_conditions(self, mock_scalar, mock_validate, mock_fetch):
         mock_scalar.return_value = SimpleNamespace(tenant_id="tenant-1")
@@ -265,14 +263,14 @@ class TestRetrievalServiceInternals:
     def test_get_dataset_queries_by_id(self, mock_session_class):
         expected_dataset = Mock(spec=Dataset)
         mock_session = Mock()
-        mock_session.query.return_value.where.return_value.first.return_value = expected_dataset
+        mock_session.scalar.return_value = expected_dataset
         mock_session_class.return_value.__enter__.return_value = mock_session
 
         with patch.object(retrieval_service_module, "db", SimpleNamespace(engine=Mock())):
             result = RetrievalService._get_dataset("dataset-123")
 
         assert result == expected_dataset
-        mock_session.query.assert_called_once()
+        mock_session.scalar.assert_called_once()
 
     @patch("core.rag.datasource.retrieval_service.Keyword")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
@@ -701,7 +699,9 @@ class TestRetrievalServiceInternals:
 
         assert RetrievalService.format_retrieval_documents(documents) == []
 
-    def test_format_retrieval_documents_with_parent_child_summary_and_attachments(self, monkeypatch):
+    def test_format_retrieval_documents_with_parent_child_summary_and_attachments(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         dataset_doc_parent = SimpleNamespace(
             id="doc-parent",
             doc_form=IndexStructureType.PARENT_CHILD_INDEX,
@@ -714,13 +714,13 @@ class TestRetrievalServiceInternals:
             dataset_id="dataset-id",
         )
 
-        dataset_query = Mock()
-        dataset_query.where.return_value.options.return_value.all.return_value = [
+        scalars_result = Mock()
+        scalars_result.all.return_value = [
             dataset_doc_parent,
             dataset_doc_text,
             dataset_doc_parent_summary,
         ]
-        monkeypatch.setattr(retrieval_service_module.db.session, "query", Mock(return_value=dataset_query))
+        monkeypatch.setattr(retrieval_service_module.db.session, "scalars", Mock(return_value=scalars_result))
         monkeypatch.setattr(retrieval_service_module, "RetrievalChildChunk", _SimpleRetrievalChildChunk)
         monkeypatch.setattr(retrieval_service_module, "RetrievalSegments", _SimpleRetrievalSegment)
 
@@ -879,10 +879,10 @@ class TestRetrievalServiceInternals:
         assert result_by_segment_id["segment-parent-summary"].summary == "summary for parent"
         assert result_by_segment_id["segment-parent-summary"].child_chunks == []
 
-    def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(self, monkeypatch):
+    def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(self, monkeypatch: pytest.MonkeyPatch):
         rollback = Mock()
         monkeypatch.setattr(retrieval_service_module.db.session, "rollback", rollback)
-        monkeypatch.setattr(retrieval_service_module.db.session, "query", Mock(side_effect=RuntimeError("db error")))
+        monkeypatch.setattr(retrieval_service_module.db.session, "scalars", Mock(side_effect=RuntimeError("db error")))
 
         documents = [Document(page_content="content", metadata={"document_id": "doc-1"}, provider="dify")]
 
@@ -938,7 +938,7 @@ class TestRetrievalServiceInternals:
         future_ok.cancel.assert_called()
 
     def test_retrieve_internal_raises_value_error_when_exceptions_exist(
-        self, monkeypatch, internal_dataset, internal_flask_app
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app
     ):
         executor = _ImmediateExecutor()
         monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
@@ -960,7 +960,9 @@ class TestRetrievalServiceInternals:
                     query="query",
                 )
 
-    def test_retrieve_internal_hybrid_weighted_attachment_flow(self, monkeypatch, internal_dataset, internal_flask_app):
+    def test_retrieve_internal_hybrid_weighted_attachment_flow(
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app
+    ):
         executor = _ImmediateExecutor()
         monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
         monkeypatch.setattr(
@@ -1036,7 +1038,7 @@ class TestRetrievalServiceInternals:
         assert any(doc.metadata["doc_id"] == "processed-doc" for doc in all_documents)
         processor_instance.invoke.assert_called_once()
 
-    @patch("core.rag.datasource.retrieval_service.sign_upload_file", return_value="signed://file")
+    @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
     def test_get_segment_attachment_info_success(self, mock_sign):
         upload_file = SimpleNamespace(
             id="upload-1",
@@ -1046,12 +1048,8 @@ class TestRetrievalServiceInternals:
             size=42,
         )
         binding = SimpleNamespace(segment_id="segment-1", attachment_id="upload-1")
-        upload_query = Mock()
-        upload_query.where.return_value.first.return_value = upload_file
-        binding_query = Mock()
-        binding_query.where.return_value.first.return_value = binding
         session = Mock()
-        session.query.side_effect = [upload_query, binding_query]
+        session.scalar.side_effect = [upload_file, binding]
 
         result = RetrievalService.get_segment_attachment_info("dataset-id", "tenant-id", "upload-1", session)
 
@@ -1076,32 +1074,26 @@ class TestRetrievalServiceInternals:
             mime_type="image/png",
             size=42,
         )
-        upload_query = Mock()
-        upload_query.where.return_value.first.return_value = upload_file
-        binding_query = Mock()
-        binding_query.where.return_value.first.return_value = None
         session = Mock()
-        session.query.side_effect = [upload_query, binding_query]
+        session.scalar.side_effect = [upload_file, None]
 
         result = RetrievalService.get_segment_attachment_info("dataset-id", "tenant-id", "upload-1", session)
 
         assert result is None
 
     def test_get_segment_attachment_info_returns_none_when_upload_file_missing(self):
-        upload_query = Mock()
-        upload_query.where.return_value.first.return_value = None
         session = Mock()
-        session.query.return_value = upload_query
+        session.scalar.return_value = None
 
         result = RetrievalService.get_segment_attachment_info("dataset-id", "tenant-id", "upload-1", session)
 
         assert result is None
 
     def test_get_segment_attachment_infos_returns_empty_when_upload_files_missing(self):
-        upload_query = Mock()
-        upload_query.where.return_value.all.return_value = []
+        scalars_result = Mock()
+        scalars_result.all.return_value = []
         session = Mock()
-        session.query.return_value = upload_query
+        session.scalars.return_value = scalars_result
 
         result = RetrievalService.get_segment_attachment_infos(["upload-1"], session)
 
@@ -1115,18 +1107,18 @@ class TestRetrievalServiceInternals:
             mime_type="image/png",
             size=42,
         )
-        upload_query = Mock()
-        upload_query.where.return_value.all.return_value = [upload_file]
-        binding_query = Mock()
-        binding_query.where.return_value.all.return_value = []
+        upload_scalars = Mock()
+        upload_scalars.all.return_value = [upload_file]
+        binding_scalars = Mock()
+        binding_scalars.all.return_value = []
         session = Mock()
-        session.query.side_effect = [upload_query, binding_query]
+        session.scalars.side_effect = [upload_scalars, binding_scalars]
 
         result = RetrievalService.get_segment_attachment_infos(["upload-1"], session)
 
         assert result == []
 
-    @patch("core.rag.datasource.retrieval_service.sign_upload_file", return_value="signed://file")
+    @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
     def test_get_segment_attachment_infos_success(self, mock_sign):
         upload_file_1 = SimpleNamespace(
             id="upload-1",
@@ -1144,12 +1136,12 @@ class TestRetrievalServiceInternals:
         )
         binding = SimpleNamespace(attachment_id="upload-1", segment_id="segment-1")
 
-        upload_query = Mock()
-        upload_query.where.return_value.all.return_value = [upload_file_1, upload_file_2]
-        binding_query = Mock()
-        binding_query.where.return_value.all.return_value = [binding]
+        upload_scalars = Mock()
+        upload_scalars.all.return_value = [upload_file_1, upload_file_2]
+        binding_scalars = Mock()
+        binding_scalars.all.return_value = [binding]
         session = Mock()
-        session.query.side_effect = [upload_query, binding_query]
+        session.scalars.side_effect = [upload_scalars, binding_scalars]
 
         result = RetrievalService.get_segment_attachment_infos(["upload-1", "upload-2"], session)
 

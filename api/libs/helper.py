@@ -10,26 +10,38 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Optional, Protocol, Union, cast
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast
 from uuid import UUID
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
-from graphon.file import helpers as file_helpers
-from graphon.model_runtime.utils.encoders import jsonable_encoder
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from pydantic.functional_validators import AfterValidator
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from extensions.ext_redis import redis_client
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 
 if TYPE_CHECKING:
     from models import Account
     from models.model import EndUser
 
 logger = logging.getLogger(__name__)
+
+
+class _TokenData(TypedDict, total=False):
+    account_id: str | None
+    email: str
+    token_type: str
+    code: str
+    old_email: str
+
+
+_token_data_adapter: TypeAdapter[_TokenData] = TypeAdapter(_TokenData)
 
 
 def _stream_with_request_context(response: object) -> Any:
@@ -69,7 +81,7 @@ def escape_like_pattern(pattern: str) -> str:
     return pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
+def extract_tenant_id(user: "Account | EndUser") -> str | None:
     """
     Extract tenant_id from Account or EndUser object.
 
@@ -108,8 +120,20 @@ class AppIconUrlField(fields.Raw):
             obj = obj["app"]
 
         if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE:
-            return file_helpers.get_signed_file_url(obj.icon)
+            return build_icon_url(obj.icon_type, obj.icon)
         return None
+
+
+def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
+    if icon is None or icon_type is None:
+        return None
+
+    from models.model import IconType
+
+    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
+    if icon_type_value.lower() != IconType.IMAGE:
+        return None
+    return file_helpers.get_signed_file_url(icon)
 
 
 class AvatarUrlField(fields.Raw):
@@ -152,7 +176,10 @@ def email(email):
 EmailStr = Annotated[str, AfterValidator(email)]
 
 
-def uuid_value(value: Any) -> str:
+def uuid_value(value: str | UUID) -> str:
+    if isinstance(value, UUID):
+        return str(value)
+
     if value == "":
         return str(value)
 
@@ -393,9 +420,9 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: Optional["Account"] = None,
+        account: "Account | None" = None,
         email: str | None = None,
-        additional_data: dict | None = None,
+        additional_data: dict[str, Any] | None = None,
     ) -> str:
         if account is None and email is None:
             raise ValueError("Account or email must be provided")
@@ -443,7 +470,7 @@ class TokenManager:
         if token_data_json is None:
             logger.warning("%s token %s not found with key %s", token_type, token, key)
             return None
-        token_data: dict[str, Any] | None = json.loads(token_data_json)
+        token_data = dict(_token_data_adapter.validate_json(token_data_json))
         return token_data
 
     @classmethod
@@ -453,9 +480,7 @@ class TokenManager:
         return current_token
 
     @classmethod
-    def _set_current_token_for_account(
-        cls, account_id: str, token: str, token_type: str, expiry_minutes: Union[int, float]
-    ):
+    def _set_current_token_for_account(cls, account_id: str, token: str, token_type: str, expiry_minutes: int | float):
         key = cls._get_account_token_key(account_id, token_type)
         expiry_seconds = int(expiry_minutes * 60)
         redis_client.setex(key, expiry_seconds, token)

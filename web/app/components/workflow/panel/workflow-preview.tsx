@@ -1,3 +1,6 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import copy from 'copy-to-clipboard'
 import {
   memo,
@@ -6,11 +9,8 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import { toast } from '@/app/components/base/ui/toast'
 import { submitHumanInputForm } from '@/service/workflow'
-import { cn } from '@/utils/classnames'
 import {
   useWorkflowInteractions,
 } from '../hooks'
@@ -101,28 +101,37 @@ const WorkflowPreview = () => {
     await submitHumanInputForm(formToken, formData)
   }, [])
 
+  const handleOpenTracingTab = useCallback(() => {
+    switchTab('TRACING')
+  }, [])
+
   return (
     <div
       className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{ width: `${panelWidth}px` }}
     >
       <div
-        className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
+        className="absolute top-1/2 bottom-0 left-[3px] z-50 h-6 w-[3px] cursor-col-resize rounded-sm bg-gray-300"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
         {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at, workflowRunningData?.result.status)}`}
-        <div className="cursor-pointer p-1" onClick={() => handleCancelDebugAndPreviewPanel()}>
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" />
-        </div>
+        <button
+          type="button"
+          aria-label={t('operation.close', { ns: 'common' })}
+          className="cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={() => handleCancelDebugAndPreviewPanel()}
+        >
+          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+        </button>
       </div>
       <div className="relative flex grow flex-col">
         <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {showInputsPanel && (
             <div
               className={cn(
-                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
-                currentTab === 'INPUT' && '!border-[rgb(21,94,239)] text-text-secondary',
+                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
+                currentTab === 'INPUT' && 'border-[rgb(21,94,239)]! text-text-secondary',
               )}
               onClick={() => switchTab('INPUT')}
             >
@@ -131,9 +140,9 @@ const WorkflowPreview = () => {
           )}
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
-              currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-text-secondary',
-              !workflowRunningData && '!cursor-not-allowed opacity-30',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
+              currentTab === 'RESULT' && 'border-[rgb(21,94,239)]! text-text-secondary',
+              !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
             onClick={() => {
               if (!workflowRunningData)
@@ -145,9 +154,9 @@ const WorkflowPreview = () => {
           </div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
-              currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-text-secondary',
-              !workflowRunningData && '!cursor-not-allowed opacity-30',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
+              currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
+              !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
             onClick={() => {
               if (!workflowRunningData)
@@ -159,9 +168,9 @@ const WorkflowPreview = () => {
           </div>
           <div
             className={cn(
-              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
-              currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-text-secondary',
-              !workflowRunningData && '!cursor-not-allowed opacity-30',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary',
+              currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
+              !workflowRunningData && 'cursor-not-allowed! opacity-30',
             )}
             onClick={() => {
               if (!workflowRunningData)
@@ -174,7 +183,7 @@ const WorkflowPreview = () => {
         </div>
         <div className={cn(
           'h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg',
-          (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-background-section-burn',
+          (currentTab === 'RESULT' || currentTab === 'TRACING') && 'bg-background-section-burn!',
         )}
         >
           {currentTab === 'INPUT' && showInputsPanel && (
@@ -236,6 +245,7 @@ const WorkflowPreview = () => {
               created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
               exceptionCounts={workflowRunningData?.result?.exceptions_count}
+              onOpenTracingTab={handleOpenTracingTab}
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (
@@ -250,7 +260,7 @@ const WorkflowPreview = () => {
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
-            <div className="flex h-full items-center justify-center !bg-background-section-burn">
+            <div className="flex h-full items-center justify-center bg-background-section-burn!">
               <Loading />
             </div>
           )}

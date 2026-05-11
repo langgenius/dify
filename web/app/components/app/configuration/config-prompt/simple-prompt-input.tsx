@@ -3,6 +3,8 @@ import type { FC } from 'react'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import type { GenRes } from '@/service/debug'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -14,22 +16,20 @@ import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/confi
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
-import { useToastContext } from '@/app/components/base/toast/context'
-import Tooltip from '@/app/components/base/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { getNewVar, getVars } from '@/utils/var'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 
-export type ISimplePromptInput = {
+type ISimplePromptInput = {
   mode: AppModeEnum
   promptTemplate: string
   promptVariables: PromptVariable[]
@@ -72,7 +72,6 @@ const Prompt: FC<ISimplePromptInput> = ({
     showSelectDataSet,
     externalDataToolsConfig,
   } = useContext(ConfigContext)
-  const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
@@ -91,8 +90,8 @@ const Prompt: FC<ISimplePromptInput> = ({
       },
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
-          if (promptVariables[i].key === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
+          if (promptVariables[i]!.key === newExternalDataTool.variable) {
+            toast.error(t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i]!.key }))
             return false
           }
         }
@@ -173,20 +172,20 @@ const Prompt: FC<ISimplePromptInput> = ({
   const [editorHeight, setEditorHeight] = useState(minHeight)
 
   return (
-    <div className={cn('relative rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
+    <div className={cn('relative rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
       <div className="rounded-xl bg-background-section-burn">
         {!noTitle && (
-          <div className="flex h-11 items-center justify-between pl-3 pr-2.5">
+          <div className="flex h-11 items-center justify-between pr-2.5 pl-3">
             <div className="flex items-center space-x-1">
-              <div className="h2 text-text-secondary system-sm-semibold-uppercase">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
+              <div className="system-sm-semibold-uppercase text-text-secondary">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
               {!readonly && (
-                <Tooltip
-                  popupContent={(
-                    <div className="w-[180px]">
-                      {t('promptTip', { ns: 'appDebug' })}
-                    </div>
-                  )}
-                />
+                <Infotip
+                  aria-label={t('promptTip', { ns: 'appDebug' })}
+                  className="ml-1"
+                  popupClassName="w-[180px]"
+                >
+                  {t('promptTip', { ns: 'appDebug' })}
+                </Infotip>
               )}
             </div>
             <div className="flex items-center">

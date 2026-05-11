@@ -9,6 +9,8 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
 import NotionPageSelector from '../base'
 
+vi.mock('@tanstack/react-virtual')
+
 vi.mock('@/service/knowledge/use-import', () => ({
   usePreImportNotionPages: vi.fn(),
   useInvalidPreImportNotionPages: vi.fn(),
@@ -146,11 +148,11 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
 
-    const searchInput = screen.getByTestId('notion-search-input')
+    const searchInput = screen.getByPlaceholderText('common.dataSource.notion.selector.searchPages')
     await user.type(searchInput, 'no-such-page')
     expect(screen.getByText('common.dataSource.notion.selector.noSearchResult')).toBeInTheDocument()
 
-    await user.click(screen.getByTestId('notion-search-input-clear'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
     expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
   })
 
@@ -168,7 +170,7 @@ describe('NotionPageSelector Base', () => {
       />,
     )
 
-    const selectorBtn = screen.getByTestId('notion-credential-selector-btn')
+    const selectorBtn = screen.getByRole('combobox', { name: /Workspace 1/ })
     await user.click(selectorBtn)
     const item2 = screen.getByTestId('notion-credential-item-c2')
     await user.click(item2)
@@ -183,7 +185,7 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Configure Notion' }))
+    await user.click(screen.getByRole('button', { name: 'common.dataSource.notion.selector.configure' }))
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
   })
 

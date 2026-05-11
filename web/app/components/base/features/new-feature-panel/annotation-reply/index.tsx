@@ -1,11 +1,11 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { AnnotationReplyConfig } from '@/models/debug'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line, RiExternalLinkLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import useAnnotationConfig from '@/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config'
@@ -92,20 +92,20 @@ const AnnotationReply = ({
       >
         <>
           {!annotationReply?.enabled && (
-            <div className="line-clamp-2 min-h-8 text-text-tertiary system-xs-regular">{t('feature.annotation.description', { ns: 'appDebug' })}</div>
+            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t('feature.annotation.description', { ns: 'appDebug' })}</div>
           )}
           {!!annotationReply?.enabled && (
             <>
               {!isHovering && (
                 <div className="flex items-center gap-4 pt-0.5">
                   <div className="">
-                    <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}</div>
-                    <div className="text-text-secondary system-xs-regular">{annotationReply.score_threshold || '-'}</div>
+                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}</div>
+                    <div className="system-xs-regular text-text-secondary">{annotationReply.score_threshold || '-'}</div>
                   </div>
                   <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                   <div className="">
-                    <div className="mb-0.5 text-text-tertiary system-2xs-medium-uppercase">{t('modelProvider.embeddingModel.key', { ns: 'common' })}</div>
-                    <div className="text-text-secondary system-xs-regular">{annotationReply.embedding_model?.embedding_model_name}</div>
+                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('modelProvider.embeddingModel.key', { ns: 'common' })}</div>
+                    <div className="system-xs-regular text-text-secondary">{annotationReply.embedding_model?.embedding_model_name}</div>
                   </div>
                 </div>
               )}

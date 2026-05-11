@@ -27,7 +27,10 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
-from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.semconv._incubating.attributes.host_attributes import (  # type: ignore[import-untyped]
+    HOST_NAME,
+)
+from opentelemetry.semconv.attributes import service_attributes
 from opentelemetry.trace import SpanContext, TraceFlags
 from opentelemetry.util.types import Attributes, AttributeValue
 
@@ -114,8 +117,8 @@ class EnterpriseExporter:
 
         resource = Resource(
             attributes={
-                ResourceAttributes.SERVICE_NAME: service_name,
-                ResourceAttributes.HOST_NAME: socket.gethostname(),
+                service_attributes.SERVICE_NAME: service_name,
+                HOST_NAME: socket.gethostname(),
             }
         )
         sampler = ParentBasedTraceIdRatio(sampling_rate)

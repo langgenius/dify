@@ -19,7 +19,7 @@ describe('TopKAndScoreThreshold', () => {
     render(<TopKAndScoreThreshold {...defaultProps} />)
 
     const [topKInput] = screen.getAllByRole('textbox')
-    fireEvent.change(topKInput, { target: { value: '3.7' } })
+    fireEvent.change(topKInput!, { target: { value: '3.7' } })
 
     expect(defaultProps.onTopKChange).toHaveBeenCalledWith(4)
   })
@@ -28,7 +28,7 @@ describe('TopKAndScoreThreshold', () => {
     render(<TopKAndScoreThreshold {...defaultProps} />)
 
     const [, scoreThresholdInput] = screen.getAllByRole('textbox')
-    fireEvent.change(scoreThresholdInput, { target: { value: '0.456' } })
+    fireEvent.change(scoreThresholdInput!, { target: { value: '0.456' } })
 
     expect(defaultProps.onScoreThresholdChange).toHaveBeenCalledWith(0.46)
   })
@@ -50,10 +50,10 @@ describe('TopKAndScoreThreshold', () => {
     )
 
     const [topKInput, scoreThresholdInput] = screen.getAllByRole('textbox')
-    fireEvent.change(topKInput, { target: { value: '' } })
+    fireEvent.change(topKInput!, { target: { value: '' } })
 
     expect(defaultProps.onTopKChange).toHaveBeenCalledWith(0)
-    expect(scoreThresholdInput).toHaveValue('')
+    expect(scoreThresholdInput)!.toHaveValue('')
   })
 
   it('should default the score-threshold switch to off when the flag is missing', () => {
@@ -64,6 +64,6 @@ describe('TopKAndScoreThreshold', () => {
       />,
     )
 
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('switch'))!.toHaveAttribute('aria-checked', 'false')
   })
 })
