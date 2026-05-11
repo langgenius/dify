@@ -353,7 +353,9 @@ describe('BaseField', () => {
     expect(screen.getByText('This is a warning')).toBeInTheDocument()
   })
 
-  it('should render tooltip when provided', async () => {
+  it('should render infotip when tooltip content is provided', async () => {
+    const user = userEvent.setup()
+
     renderBaseField({
       formSchema: {
         type: FormTypeEnum.textInput,
@@ -366,8 +368,7 @@ describe('BaseField', () => {
 
     expect(screen.getByText('Info')).toBeInTheDocument()
 
-    const tooltipTrigger = screen.getByTestId('base-field-tooltip-trigger')
-    fireEvent.mouseEnter(tooltipTrigger)
+    await user.click(screen.getByRole('button', { name: 'Extra info' }))
 
     expect(screen.getByText('Extra info')).toBeInTheDocument()
   })

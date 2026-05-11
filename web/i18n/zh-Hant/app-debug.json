@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "圖像",
   "variableConfig.file.supportFileTypes": "支援檔案類型",
   "variableConfig.file.video.name": "視頻",
+  "variableConfig.hidden": "隱藏並預填",
+  "variableConfig.hiddenDescription": "對終端用戶隱藏此欄位，並由你預填欄位值。與 必填 互斥。<docLink>了解更多</docLink>",
   "variableConfig.hide": "隱藏",
   "variableConfig.inputPlaceholder": "請輸入",
   "variableConfig.json": "JSON 代碼",

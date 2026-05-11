@@ -11,29 +11,18 @@ vi.mock('../app-list', () => ({
     onSuccess: () => void
   }) {
     return (
-      <div data-testid="app-list">
-        <button data-testid="app-list-success" onClick={onSuccess}>
+      <div role="region" aria-label="App list">
+        <button type="button" onClick={onSuccess}>
           Success
         </button>
         {onCreateFromBlank && (
-          <button data-testid="create-from-blank" onClick={onCreateFromBlank}>
+          <button type="button" onClick={onCreateFromBlank}>
             Create from Blank
           </button>
         )}
       </div>
     )
   },
-}))
-
-// Store captured callbacks from useKeyPress
-let capturedEscCallback: (() => void) | undefined
-const mockUseKeyPress = vi.fn((key: string, callback: () => void) => {
-  if (key === 'esc')
-    capturedEscCallback = callback
-})
-
-vi.mock('ahooks', () => ({
-  useKeyPress: (key: string, callback: () => void) => mockUseKeyPress(key, callback),
 }))
 
 describe('CreateAppTemplateDialog', () => {
@@ -46,61 +35,26 @@ describe('CreateAppTemplateDialog', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    capturedEscCallback = undefined
   })
 
   describe('Rendering', () => {
     it('should not render when show is false', () => {
       render(<CreateAppTemplateDialog {...defaultProps} />)
 
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
-      // FullScreenModal should not render any content when open is false
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('should render modal when show is true', () => {
       render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
 
-      // FullScreenModal renders with role="dialog"
-      // FullScreenModal renders with role="dialog"
       expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-      expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
     })
 
     it('should render create from blank button when onCreateFromBlank is provided', () => {
       render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
 
-      expect(screen.getByTestId('create-from-blank'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Create from Blank' }))!.toBeInTheDocument()
     })
 
     it('should not render create from blank button when onCreateFromBlank is not provided', () => {
@@ -108,12 +62,12 @@ describe('CreateAppTemplateDialog', () => {
 
       render(<CreateAppTemplateDialog {...propsWithoutOnCreate} show={true} />)
 
-      expect(screen.queryByTestId('create-from-blank')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Create from Blank' })).not.toBeInTheDocument()
     })
   })
 
   describe('Props', () => {
-    it('should pass show prop to FullScreenModal', () => {
+    it('should pass show prop to the dialog shell', () => {
       const { rerender } = render(<CreateAppTemplateDialog {...defaultProps} />)
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -122,15 +76,17 @@ describe('CreateAppTemplateDialog', () => {
       expect(screen.getByRole('dialog'))!.toBeInTheDocument()
     })
 
-    it('should pass closable prop to FullScreenModal', () => {
-      // Since the FullScreenModal is always rendered with closable=true
-      // we can verify that the modal renders with the proper structure
-      render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
+    it('should close from the dialog shell close button', () => {
+      const mockOnClose = vi.fn()
 
-      // Verify that the modal has the proper dialog structure
-      const dialog = screen.getByRole('dialog')
-      expect(dialog)!.toBeInTheDocument()
-      expect(dialog)!.toHaveAttribute('aria-modal', 'true')
+      render(<CreateAppTemplateDialog {...defaultProps} show={true} onClose={mockOnClose} />)
+
+      const closeButton = screen.getByRole('button', { name: 'Close' })
+      expect(closeButton)!.toBeInTheDocument()
+
+      fireEvent.click(closeButton)
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -143,10 +99,8 @@ describe('CreateAppTemplateDialog', () => {
       const dialog = screen.getByRole('dialog')
       expect(dialog)!.toBeInTheDocument()
 
-      // Test that AppList component renders (child component interactions)
-      // Test that AppList component renders (child component interactions)
-      expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
-      expect(screen.getByTestId('app-list-success'))!.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Success' }))!.toBeInTheDocument()
     })
 
     it('should call both onSuccess and onClose when app list success is triggered', () => {
@@ -161,7 +115,7 @@ describe('CreateAppTemplateDialog', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('app-list-success'))
+      fireEvent.click(screen.getByRole('button', { name: 'Success' }))
 
       expect(mockOnSuccess).toHaveBeenCalledTimes(1)
       expect(mockOnClose).toHaveBeenCalledTimes(1)
@@ -177,68 +131,9 @@ describe('CreateAppTemplateDialog', () => {
         />,
       )
 
-      fireEvent.click(screen.getByTestId('create-from-blank'))
+      fireEvent.click(screen.getByRole('button', { name: 'Create from Blank' }))
 
       expect(mockOnCreateFromBlank).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('useKeyPress Integration', () => {
-    it('should set up ESC key listener when modal is shown', () => {
-      render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
-
-      expect(mockUseKeyPress).toHaveBeenCalledWith('esc', expect.any(Function))
-    })
-
-    it('should handle ESC key press to close modal', () => {
-      const mockOnClose = vi.fn()
-      render(
-        <CreateAppTemplateDialog
-          {...defaultProps}
-          show={true}
-          onClose={mockOnClose}
-        />,
-      )
-
-      expect(capturedEscCallback).toBeDefined()
-      expect(typeof capturedEscCallback).toBe('function')
-
-      // Simulate ESC key press
-      capturedEscCallback?.()
-
-      expect(mockOnClose).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not call onClose when ESC key is pressed and modal is not shown', () => {
-      const mockOnClose = vi.fn()
-      render(
-        <CreateAppTemplateDialog
-          {...defaultProps}
-          show={false} // Modal not shown
-          onClose={mockOnClose}
-        />,
-      )
-
-      // The callback should still be created but not execute onClose
-      expect(capturedEscCallback).toBeDefined()
-
-      // Simulate ESC key press
-      capturedEscCallback?.()
-
-      // onClose should not be called because modal is not shown
-      expect(mockOnClose).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('Callback Dependencies', () => {
-    it('should create stable callback reference for ESC key handler', () => {
-      render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
-
-      // Verify that useKeyPress was called with a function
-      const calls = mockUseKeyPress.mock.calls
-      expect(calls.length).toBeGreaterThan(0)
-      expect(calls[0]![0]).toBe('esc')
-      expect(typeof calls[0]![1]).toBe('function')
     })
   })
 
@@ -291,8 +186,8 @@ describe('CreateAppTemplateDialog', () => {
         render(<CreateAppTemplateDialog {...propsWithoutOnCreate} show={true} />)
       }).not.toThrow()
 
-      expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
-      expect(screen.queryByTestId('create-from-blank')).not.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Create from Blank' })).not.toBeInTheDocument()
     })
 
     it('should work with all required props only', () => {
@@ -307,7 +202,7 @@ describe('CreateAppTemplateDialog', () => {
       }).not.toThrow()
 
       expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-      expect(screen.getByTestId('app-list'))!.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App list' }))!.toBeInTheDocument()
     })
   })
 })

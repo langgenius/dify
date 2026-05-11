@@ -9,6 +9,7 @@ from werkzeug.http import HTTP_STATUS_CODES
 
 from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
+from libs.flask_restx_compat import patch_swagger_for_inline_nested_dicts
 from libs.token import build_force_logout_cookie_headers
 
 
@@ -120,6 +121,7 @@ class ExternalApi(Api):
     }
 
     def __init__(self, app: Blueprint | Flask, *args, **kwargs):
+        patch_swagger_for_inline_nested_dicts()
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
         kwargs["add_specs"] = dify_config.SWAGGER_UI_ENABLED

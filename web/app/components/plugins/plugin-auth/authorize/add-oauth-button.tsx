@@ -187,19 +187,15 @@ const AddOAuthButton = ({
     <>
       {
         isConfigured && (
-          <Button
-            variant={buttonVariant}
-            className={cn(
-              'w-full px-0 py-0 hover:bg-components-button-primary-bg',
-              className,
-            )}
-            disabled={disabled}
-            onClick={handleOAuth}
-          >
-            <div className={cn(
-              'flex h-full w-0 grow items-center justify-center rounded-l-lg pl-0.5 hover:bg-components-button-primary-bg-hover',
-              buttonLeftClassName,
-            )}
+          <div className={cn('flex w-full', className)}>
+            <Button
+              variant={buttonVariant}
+              className={cn(
+                'h-8 min-w-0 flex-1 rounded-r-none px-0 py-0 hover:bg-components-button-primary-bg-hover',
+                buttonLeftClassName,
+              )}
+              disabled={disabled}
+              onClick={handleOAuth}
             >
               <div
                 className="truncate"
@@ -219,27 +215,28 @@ const AddOAuthButton = ({
                   </Badge>
                 )
               }
-            </div>
+            </Button>
             <div className={cn(
-              'h-4 w-px shrink-0 bg-text-primary-on-surface opacity-[0.15]',
+              'h-4 w-px shrink-0 self-center bg-text-primary-on-surface opacity-[0.15]',
               dividerClassName,
             )}
             >
             </div>
-            <div
-              data-testid="oauth-settings-button"
+            <Button
+              variant={buttonVariant}
+              aria-label={t('auth.oauthClientSettings', { ns: 'plugin' })}
               className={cn(
-                'flex h-full w-8 shrink-0 items-center justify-center rounded-r-lg hover:bg-components-button-primary-bg-hover',
+                'h-8 w-8 shrink-0 rounded-l-none px-0 py-0 hover:bg-components-button-primary-bg-hover',
                 buttonRightClassName,
               )}
-              onClick={(e) => {
-                e.stopPropagation()
+              disabled={disabled}
+              onClick={() => {
                 openOAuthSettings()
               }}
             >
-              <span className="i-ri-equalizer-2-line h-4 w-4" />
-            </div>
-          </Button>
+              <span className="i-ri-equalizer-2-line h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
         )
       }
       {

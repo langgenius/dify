@@ -115,6 +115,14 @@ describe('BatchModal', () => {
     expect(props.onCancel).toHaveBeenCalledTimes(1)
   })
 
+  it('should call onCancel when close button is clicked', () => {
+    const { props } = renderComponent()
+
+    fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
+
+    expect(props.onCancel).toHaveBeenCalledTimes(1)
+  })
+
   it('should submit the csv file, poll status, and notify when import completes', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const { props } = renderComponent()

@@ -21,7 +21,7 @@ def make_features(
 
 
 @pytest.fixture
-def mock_installer(monkeypatch):
+def mock_installer(monkeypatch: pytest.MonkeyPatch):
     """Patch PluginInstaller at the service import site."""
     mock = MagicMock()
     monkeypatch.setattr("services.plugin.plugin_service.PluginInstaller", lambda: mock)

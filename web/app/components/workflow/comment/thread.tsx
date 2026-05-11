@@ -545,7 +545,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                   <DropdownMenuContent
                     placement="bottom-end"
                     sideOffset={4}
-                    popupClassName="z-[100] w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+                    popupClassName="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
                   >
                     <button
                       className="flex w-full items-center justify-start rounded-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
@@ -635,7 +635,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                           <DropdownMenuContent
                             placement="bottom-end"
                             sideOffset={4}
-                            popupClassName="z-[100] w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+                            popupClassName="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
                             data-reply-menu
                           >
                             <div className={cn(deletingReplyId === reply.id ? 'hidden' : 'block')}>

@@ -75,7 +75,7 @@ class PromptTemplateConfigManager:
         if not config.get("prompt_type"):
             config["prompt_type"] = PromptTemplateEntity.PromptType.SIMPLE
 
-        prompt_type_vals = [typ.value for typ in PromptTemplateEntity.PromptType]
+        prompt_type_vals = list(PromptTemplateEntity.PromptType)
         if config["prompt_type"] not in prompt_type_vals:
             raise ValueError(f"prompt_type must be in {prompt_type_vals}")
 

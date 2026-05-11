@@ -81,8 +81,12 @@ const TryApp: FC<Props> = ({
               <Tooltip>
                 <TooltipTrigger
                   render={(
-                    <ActionButton size="l" onClick={handleNewConversation}>
-                      <RiResetLeftLine className="h-[18px] w-[18px]" />
+                    <ActionButton
+                      size="l"
+                      aria-label={t('chat.resetChat', { ns: 'share' })}
+                      onClick={handleNewConversation}
+                    >
+                      <RiResetLeftLine className="h-[18px] w-[18px]" aria-hidden="true" />
                     </ActionButton>
                   )}
                 />

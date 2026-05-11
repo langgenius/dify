@@ -5,34 +5,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
-import { CreateButtonType, CreateSubscriptionButton, DEFAULT_METHOD } from '../index'
-
-let mockPortalOpenState = false
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => {
-    mockPortalOpenState = open || false
-    return (
-      <div data-testid="portal-elem" data-open={open}>
-        {children}
-      </div>
-    )
-  },
-  PortalToFollowElemTrigger: ({ children, onClick, className }: { children: React.ReactNode, onClick?: () => void, className?: string }) => (
-    <div data-testid="portal-trigger" onClick={onClick} className={className}>
-      {children}
-    </div>
-  ),
-  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-    if (!mockPortalOpenState)
-      return null
-    return (
-      <div data-testid="portal-content" className={className}>
-        {children}
-      </div>
-    )
-  },
-}))
+import { CreateSubscriptionButton } from '../index'
+import { CreateButtonType, DEFAULT_METHOD } from '../types'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(vi.fn(), {
@@ -80,56 +54,74 @@ vi.mock('@/hooks/use-oauth', () => ({
 }))
 
 vi.mock('../common-modal', () => ({
-  CommonCreateModal: ({ createType, onClose, builder }: {
+  CommonCreateModal: ({ open, createType, onClose, builder }: {
+    open?: boolean
     createType: SupportedCreationMethods
     onClose: () => void
     builder?: TriggerSubscriptionBuilder
-  }) => (
-    <div
-      data-testid="common-create-modal"
-      data-create-type={createType}
-      data-has-builder={!!builder}
-    >
-      <button data-testid="close-modal" onClick={onClose}>Close</button>
-    </div>
-  ),
+  }) => {
+    if (open === false)
+      return null
+
+    return (
+      <div
+        data-testid="common-create-modal"
+        data-create-type={createType}
+        data-has-builder={!!builder}
+      >
+        <button
+          data-testid="close-modal"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('../oauth-client', () => ({
-  OAuthClientSettingsModal: ({ oauthConfig, onClose, showOAuthCreateModal }: {
+  OAuthClientSettingsModal: ({ open, oauthConfig, onOpenChange, showOAuthCreateModal }: {
+    open: boolean
     oauthConfig?: TriggerOAuthConfig
-    onClose: () => void
+    onOpenChange: (open: boolean) => void
     showOAuthCreateModal: (builder: TriggerSubscriptionBuilder) => void
-  }) => (
-    <div
-      data-testid="oauth-client-modal"
-      data-has-config={!!oauthConfig}
-    >
-      <button data-testid="close-oauth-modal" onClick={onClose}>Close</button>
-      <button
-        data-testid="show-create-modal"
-        onClick={() => showOAuthCreateModal({
-          id: 'test-builder',
-          name: 'test',
-          provider: 'test-provider',
-          credential_type: TriggerCredentialTypeEnum.Oauth2,
-          credentials: {},
-          endpoint: 'https://test.com',
-          parameters: {},
-          properties: {},
-          workflows_in_use: 0,
-        })}
+  }) => {
+    if (!open)
+      return null
+
+    return (
+      <div
+        data-testid="oauth-client-modal"
+        data-has-config={!!oauthConfig}
       >
-        Show Create Modal
-      </button>
-    </div>
-  ),
+        <button data-testid="close-oauth-modal" onClick={() => onOpenChange(false)}>Close</button>
+        <button
+          data-testid="show-create-modal"
+          onClick={() => showOAuthCreateModal({
+            id: 'test-builder',
+            name: 'test',
+            provider: 'test-provider',
+            credential_type: TriggerCredentialTypeEnum.Oauth2,
+            credentials: {},
+            endpoint: 'https://test.com',
+            parameters: {},
+            properties: {},
+            workflows_in_use: 0,
+          })}
+        >
+          Show Create Modal
+        </button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/select', async () => {
   const React = await import('react')
 
   const SelectContext = React.createContext<{
+    onOpenChange?: (open: boolean) => void
     onValueChange?: (value: string) => void
   }>({})
 
@@ -149,11 +141,13 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       children,
       value,
       open,
+      onOpenChange,
       onValueChange,
     }: {
       children: React.ReactNode
       value: string | null
       open?: boolean
+      onOpenChange?: (open: boolean) => void
       onValueChange?: (value: string) => void
     }) => {
       const currentValue = value ?? DEFAULT_METHOD
@@ -164,10 +158,11 @@ vi.mock('@langgenius/dify-ui/select', async () => {
           : String(open ?? false)
 
       return (
-        <SelectContext.Provider value={{ onValueChange }}>
+        <SelectContext.Provider value={{ onOpenChange, onValueChange }}>
           <div
             data-testid="custom-select"
             data-value={currentValue}
+            data-open={String(open ?? false)}
             data-options-count={optionsCount}
             data-container-open={containerOpen}
           >
@@ -177,7 +172,16 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       )
     },
     SelectTrigger: ({ children, className }: { children: React.ReactNode, render?: React.ReactNode, className?: string }) => {
-      return <div data-testid="custom-trigger" className={className}>{children}</div>
+      const context = React.useContext(SelectContext)
+      return (
+        <div
+          data-testid="custom-trigger"
+          className={className}
+          onClick={() => context.onOpenChange?.(true)}
+        >
+          {children}
+        </div>
+      )
     },
     SelectContent: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="options-container">{children}</div>
@@ -253,6 +257,10 @@ const createDefaultProps = (overrides: Partial<Parameters<typeof CreateSubscript
   ...overrides,
 })
 
+const getCreateButton = () => screen.getByRole('button', {
+  name: /pluginTrigger\.subscription\.(createButton|empty\.button)/,
+})
+
 const setupMocks = (config: {
   providerInfo?: TriggerProviderApiEntity
   oauthConfig?: TriggerOAuthConfig
@@ -270,7 +278,6 @@ const setupMocks = (config: {
 describe('CreateSubscriptionButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPortalOpenState = false
     setupMocks()
   })
 
@@ -350,7 +357,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-      expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(getCreateButton()).toBeInTheDocument()
     })
 
     it('should render icon button when buttonType is ICON_BUTTON', () => {
@@ -384,7 +391,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-      expect(screen.getByRole('button'))!.toBeInTheDocument()
+      expect(getCreateButton()).toBeInTheDocument()
     })
 
     it('should apply shape prop correctly', () => {
@@ -483,6 +490,38 @@ describe('CreateSubscriptionButton', () => {
       })
     })
 
+    it('should close dropdown when oauth settings is clicked from option extra action', async () => {
+      // Arrange
+      setupMocks({
+        storeDetail: createStoreDetail(),
+        providerInfo: createProviderInfo({
+          supported_creation_methods: [
+            SupportedCreationMethods.OAUTH,
+            SupportedCreationMethods.APIKEY,
+            SupportedCreationMethods.MANUAL,
+          ],
+        }),
+        oauthConfig: createOAuthConfig({ configured: false }),
+      })
+      const props = createDefaultProps()
+
+      // Act
+      render(<CreateSubscriptionButton {...props} />)
+
+      fireEvent.click(screen.getByTestId('custom-trigger'))
+      expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-open', 'true')
+
+      fireEvent.click(screen.getByRole('button', {
+        name: 'pluginTrigger.subscription.addType.options.oauth.clientSettings',
+      }))
+
+      // Assert
+      await waitFor(() => {
+        expect(screen.getByTestId('oauth-client-modal'))!.toBeInTheDocument()
+        expect(screen.getByTestId('custom-select'))!.toHaveAttribute('data-open', 'false')
+      })
+    })
+
     it('should close OAuthClientSettingsModal and refetch config when closed', async () => {
       // Arrange
       const mockRefetchOAuth = vi.fn()
@@ -557,7 +596,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-      expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.createButton.apiKey')
+      expect(getCreateButton()).toHaveTextContent('pluginTrigger.subscription.createButton.apiKey')
     })
 
     it('should display correct button text for MANUAL method', () => {
@@ -575,7 +614,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-      expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.createButton.manual')
+      expect(getCreateButton()).toHaveTextContent('pluginTrigger.subscription.createButton.manual')
     })
 
     it('should display default button text when multiple methods are supported', () => {
@@ -593,7 +632,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Assert
       // Assert
-      expect(screen.getByRole('button'))!.toHaveTextContent('pluginTrigger.subscription.empty.button')
+      expect(getCreateButton()).toHaveTextContent('pluginTrigger.subscription.empty.button')
     })
   })
 
@@ -745,7 +784,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Act
       render(<CreateSubscriptionButton {...props} />)
-      const button = screen.getByRole('button')
+      const button = getCreateButton()
       fireEvent.click(button)
 
       // Assert - modal should not open
@@ -795,7 +834,7 @@ describe('CreateSubscriptionButton', () => {
 
       // Act
       render(<CreateSubscriptionButton {...props} />)
-      const button = screen.getByRole('button')
+      const button = getCreateButton()
       fireEvent.click(button)
 
       // Assert - modal should open
@@ -1293,7 +1332,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert - should not have settings divider
-      const button = screen.getByRole('button')
+      const button = getCreateButton()
       const divider = button.querySelector('.bg-text-primary-on-surface')
       expect(divider).not.toBeInTheDocument()
     })
@@ -1412,7 +1451,7 @@ describe('CreateSubscriptionButton', () => {
       render(<CreateSubscriptionButton {...props} />)
 
       // Assert
-      const button = screen.getByRole('button')
+      const button = getCreateButton()
       expect(button)!.toHaveClass('w-full')
     })
 

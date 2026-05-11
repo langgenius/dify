@@ -19,6 +19,7 @@ const CheckboxField = ({
         <Checkbox
           id={field.name}
           checked={field.state.value}
+          ariaLabel={label}
           onCheck={() => {
             field.handleChange(!field.state.value)
           }}

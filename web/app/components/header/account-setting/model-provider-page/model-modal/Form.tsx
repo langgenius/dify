@@ -18,7 +18,7 @@ import { useCallback, useState } from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
-import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
@@ -302,7 +302,7 @@ function Form<
             <SelectTrigger size="medium" className={cn(inputClassName)}>
               {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
             </SelectTrigger>
-            <SelectContent popupClassName="w-(--anchor-width)">
+            <SelectContent>
               {filteredOptions.map(option => (
                 <SelectItem key={option.value} value={option.value}>
                   <SelectItemText>{option.name}</SelectItemText>
@@ -494,7 +494,6 @@ function Form<
             {infotipContent}
           </div>
           <VarReferencePicker
-            zIndex={1001}
             readonly={false}
             isShowNodeName
             nodeId={nodeId || ''}

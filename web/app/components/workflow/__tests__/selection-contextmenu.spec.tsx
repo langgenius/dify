@@ -120,24 +120,24 @@ describe('SelectionContextmenu', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByTestId('selection-contextmenu-item-copy')).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /common.copy/ })).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-copy'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /common.copy/ }))
     expect(mockHandleNodesCopy).toHaveBeenCalledTimes(1)
     expect(store.getState().selectionMenu).toBeUndefined()
 
     act(() => {
       store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
     })
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-duplicate'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /common.duplicate/ }))
     expect(mockHandleNodesDuplicate).toHaveBeenCalledTimes(1)
     expect(store.getState().selectionMenu).toBeUndefined()
 
     act(() => {
       store.setState({ selectionMenu: { clientX: 120, clientY: 120 } })
     })
-    fireEvent.click(screen.getByTestId('selection-contextmenu-item-delete'))
+    fireEvent.click(screen.getByRole('menuitem', { name: /operation.delete/ }))
     expect(mockHandleNodesDelete).toHaveBeenCalledTimes(1)
     expect(store.getState().selectionMenu).toBeUndefined()
   })

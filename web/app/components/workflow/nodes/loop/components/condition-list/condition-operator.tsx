@@ -2,17 +2,18 @@ import type { ComparisonOperator } from '../../types'
 import type { VarType } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   useMemo,
-  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { getOperators, isComparisonOperatorNeedTranslate } from '../../utils'
 
 const i18nPrefix = 'nodes.ifElse'
@@ -34,7 +35,6 @@ const ConditionOperator = ({
   onSelect,
 }: ConditionOperatorProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
 
   const options = useMemo(() => {
     return getOperators(varType, file).map((o) => {
@@ -46,49 +46,48 @@ const ConditionOperator = ({
   }, [t, varType, file])
   const selectedOption = options.find(o => Array.isArray(value) ? o.value === value[0] : o.value === value)
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-end"
-      offset={{
-        mainAxis: 4,
-        crossAxis: 0,
-      }}
-    >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <Button
-          className={cn('shrink-0', !selectedOption && 'opacity-50', className)}
-          size="small"
-          variant="ghost"
-          disabled={disabled}
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={(
+          <Button
+            className={cn('shrink-0', !selectedOption && 'opacity-50', className)}
+            size="small"
+            variant="ghost"
+            disabled={disabled}
+          />
+        )}
+      >
+        {
+          selectedOption
+            ? selectedOption.label
+            : t(`${i18nPrefix}.select`, { ns: 'workflow' })
+        }
+        <RiArrowDownSLine className="ml-1 h-3.5 w-3.5" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+      >
+        <DropdownMenuRadioGroup
+          value={selectedOption?.value}
+          onValueChange={onSelect}
         >
           {
-            selectedOption
-              ? selectedOption.label
-              : t(`${i18nPrefix}.select`, { ns: 'workflow' })
-          }
-          <RiArrowDownSLine className="ml-1 h-3.5 w-3.5" />
-        </Button>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-10">
-        <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
-          {
             options.map(option => (
-              <div
+              <DropdownMenuRadioItem
                 key={option.value}
-                className="flex h-7 cursor-pointer items-center rounded-lg px-3 py-1.5 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover"
-                onClick={() => {
-                  onSelect(option.value)
-                  setOpen(false)
-                }}
+                value={option.value}
+                closeOnClick
+                className="h-7 rounded-lg px-3 py-1.5 text-[13px] font-medium text-text-secondary"
               >
                 {option.label}
-              </div>
+              </DropdownMenuRadioItem>
             ))
           }
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

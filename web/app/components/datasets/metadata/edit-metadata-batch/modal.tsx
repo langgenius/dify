@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiQuestionLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -11,8 +11,7 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
 import Checkbox from '../../../base/checkbox'
-import Modal from '../../../base/modal'
-import Tooltip from '../../../base/tooltip'
+import { Infotip } from '../../../base/infotip'
 import AddMetadataButton from '../add-metadata-button'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
 import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
@@ -91,46 +90,62 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
     onSave(templeList.filter(item => item.updateType !== UpdateType.delete), addedList, isApplyToAllSelectDocument)
   }, [templeList, addedList, isApplyToAllSelectDocument, onSave])
   return (
-    <Modal title={t(`${i18nPrefix}.editMetadata`, { ns: 'dataset' })} isShow closable onClose={onHide} className="!max-w-[640px]">
-      <div className="mt-1 system-xs-medium text-text-accent">{t(`${i18nPrefix}.editDocumentsNum`, { ns: 'dataset', num: documentNum })}</div>
-      <div className="max-h-[305px] overflow-x-hidden overflow-y-auto">
-        <div className="mt-4 space-y-2">
-          {templeList.map(item => (<EditMetadataBatchItem key={item.id} payload={item} onChange={handleTemplesChange} onRemove={handleTempleItemRemove} onReset={handleItemReset} />))}
-        </div>
-        <div className="mt-4 pl-[18px]">
-          <div className="flex items-center">
-            <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('metadata.createMetadata.title', { ns: 'dataset' })}</div>
-            <Divider bgStyle="gradient" />
-          </div>
-          <div className="mt-2 space-y-2">
-            {addedList.map((item, i) => (<AddedMetadataItem key={i} payload={item} onChange={handleAddedListChange} onRemove={handleAddedItemRemove(i)} />))}
-          </div>
-          <div className="mt-3">
-            <SelectMetadataModal datasetId={datasetId} popupPlacement="top-start" popupOffset={{ mainAxis: 4, crossAxis: 0 }} trigger={<AddMetadataButton />} onSave={handleAddMetaData} onSelect={data => setAddedList([...addedList, data as MetadataItemWithEdit])} onManage={onShowManage} />
-          </div>
-        </div>
-      </div>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open)
+          onHide()
+      }}
+    >
+      <DialogContent className="w-full !max-w-[640px] overflow-hidden! border-none text-left align-middle">
+        <DialogCloseButton />
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t(`${i18nPrefix}.editMetadata`, { ns: 'dataset' })}
+        </DialogTitle>
 
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center select-none">
-          <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} id="apply-to-all" />
-          <div className="mr-1 ml-2 system-xs-medium text-text-secondary">{t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}</div>
-          <Tooltip popupContent={<div className="max-w-[240px]">{t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}</div>}>
-            <div className="cursor-pointer p-px">
-              <RiQuestionLine className="size-3.5 text-text-tertiary" />
+        <div className="mt-1 system-xs-medium text-text-accent">{t(`${i18nPrefix}.editDocumentsNum`, { ns: 'dataset', num: documentNum })}</div>
+        <div className="max-h-[305px] overflow-x-hidden overflow-y-auto">
+          <div className="mt-4 space-y-2">
+            {templeList.map(item => (<EditMetadataBatchItem key={item.id} payload={item} onChange={handleTemplesChange} onRemove={handleTempleItemRemove} onReset={handleItemReset} />))}
+          </div>
+          <div className="mt-4 pl-[18px]">
+            <div className="flex items-center">
+              <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('metadata.createMetadata.title', { ns: 'dataset' })}</div>
+              <Divider bgStyle="gradient" />
             </div>
-          </Tooltip>
+            <div className="mt-2 space-y-2">
+              {addedList.map((item, i) => (<AddedMetadataItem key={i} payload={item} onChange={handleAddedListChange} onRemove={handleAddedItemRemove(i)} />))}
+            </div>
+            <div className="mt-3">
+              <SelectMetadataModal datasetId={datasetId} popupPlacement="top-start" popupOffset={{ mainAxis: 4, crossAxis: 0 }} trigger={<AddMetadataButton />} onSave={handleAddMetaData} onSelect={data => setAddedList([...addedList, data as MetadataItemWithEdit])} onManage={onShowManage} />
+            </div>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button onClick={onHide}>
-            {t('operation.cancel', { ns: 'common' })}
-          </Button>
-          <Button onClick={handleSave} variant="primary">
-            {t('operation.save', { ns: 'common' })}
-          </Button>
+
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex items-center select-none">
+            <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} id="apply-to-all" />
+            <div className="mr-1 ml-2 system-xs-medium text-text-secondary">{t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}</div>
+            <Infotip
+              aria-label={t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
+              className="p-px"
+              iconClassName="size-3.5 text-text-tertiary"
+              popupClassName="max-w-[240px]"
+            >
+              {t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}
+            </Infotip>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button onClick={onHide}>
+              {t('operation.cancel', { ns: 'common' })}
+            </Button>
+            <Button onClick={handleSave} variant="primary">
+              {t('operation.save', { ns: 'common' })}
+            </Button>
+          </div>
         </div>
-      </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   )
 }
 export default React.memo(EditMetadataBatchModal)

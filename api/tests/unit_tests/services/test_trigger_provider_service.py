@@ -325,7 +325,7 @@ def test_update_trigger_subscription_should_raise_error_when_name_conflicts(
         id="sub-1",
         name="old",
         provider_id="langgenius/github/github",
-        credential_type=CredentialType.API_KEY.value,
+        credential_type=CredentialType.API_KEY,
     )
     mock_session.scalar.side_effect = [subscription, object()]  # found sub, name conflict
     _mock_get_trigger_provider(mocker, provider_controller)
@@ -350,7 +350,7 @@ def test_update_trigger_subscription_should_update_fields_and_clear_cache(
         properties={"project": "enc-old"},
         parameters={"event": "old"},
         credentials={"api_key": "enc-old"},
-        credential_type=CredentialType.API_KEY.value,
+        credential_type=CredentialType.API_KEY,
         credential_expires_at=0,
         expires_at=0,
     )
@@ -456,7 +456,7 @@ def test_delete_trigger_provider_should_delete_and_clear_cache_even_if_unsubscri
         id="sub-1",
         user_id="user-1",
         provider_id=str(provider_id),
-        credential_type=CredentialType.OAUTH2.value,
+        credential_type=CredentialType.OAUTH2,
         credentials={"token": "enc"},
         to_entity=lambda: SimpleNamespace(id="sub-1"),
     )
@@ -492,7 +492,7 @@ def test_delete_trigger_provider_should_skip_unsubscribe_for_unauthorized(
         id="sub-2",
         user_id="user-1",
         provider_id=str(provider_id),
-        credential_type=CredentialType.UNAUTHORIZED.value,
+        credential_type=CredentialType.UNAUTHORIZED,
         credentials={},
         to_entity=lambda: SimpleNamespace(id="sub-2"),
     )
@@ -527,7 +527,7 @@ def test_refresh_oauth_token_should_raise_error_for_non_oauth_credentials(
     mocker: MockerFixture, mock_session: MagicMock
 ) -> None:
     # Arrange
-    subscription = SimpleNamespace(credential_type=CredentialType.API_KEY.value)
+    subscription = SimpleNamespace(credential_type=CredentialType.API_KEY)
     mock_session.scalar.return_value = subscription
 
     # Act + Assert
@@ -545,7 +545,7 @@ def test_refresh_oauth_token_should_refresh_and_persist_new_credentials(
     subscription = SimpleNamespace(
         provider_id=str(provider_id),
         user_id="user-1",
-        credential_type=CredentialType.OAUTH2.value,
+        credential_type=CredentialType.OAUTH2,
         credentials={"access_token": "enc"},
         credential_expires_at=0,
     )
@@ -613,7 +613,7 @@ def test_refresh_subscription_should_refresh_and_persist_properties(
         parameters={"event": "push"},
         properties={"p": "enc"},
         credentials={"c": "enc"},
-        credential_type=CredentialType.API_KEY.value,
+        credential_type=CredentialType.API_KEY,
     )
     mock_session.scalar.return_value = subscription
     _mock_get_trigger_provider(mocker, provider_controller)
@@ -989,7 +989,7 @@ def test_verify_subscription_credentials_should_raise_when_api_key_validation_fa
     provider_controller: MagicMock,
 ) -> None:
     # Arrange
-    subscription = SimpleNamespace(credential_type=CredentialType.API_KEY.value, credentials={"api_key": "old"})
+    subscription = SimpleNamespace(credential_type=CredentialType.API_KEY, credentials={"api_key": "old"})
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=subscription)
     provider_controller.validate_credentials.side_effect = RuntimeError("bad credentials")
@@ -1012,7 +1012,7 @@ def test_verify_subscription_credentials_should_return_verified_when_api_key_val
     provider_controller: MagicMock,
 ) -> None:
     # Arrange
-    subscription = SimpleNamespace(credential_type=CredentialType.API_KEY.value, credentials={"api_key": "old"})
+    subscription = SimpleNamespace(credential_type=CredentialType.API_KEY, credentials={"api_key": "old"})
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=subscription)
 
@@ -1036,7 +1036,7 @@ def test_verify_subscription_credentials_should_return_verified_for_non_api_key_
     provider_controller: MagicMock,
 ) -> None:
     # Arrange
-    subscription = SimpleNamespace(credential_type=CredentialType.OAUTH2.value, credentials={})
+    subscription = SimpleNamespace(credential_type=CredentialType.OAUTH2, credentials={})
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=subscription)
 
@@ -1100,7 +1100,7 @@ def test_rebuild_trigger_subscription_should_raise_for_unsupported_credential_ty
     provider_controller: MagicMock,
 ) -> None:
     # Arrange
-    subscription = SimpleNamespace(credential_type=CredentialType.UNAUTHORIZED.value)
+    subscription = SimpleNamespace(credential_type=CredentialType.UNAUTHORIZED)
     _mock_get_trigger_provider(mocker, provider_controller)
     mocker.patch.object(TriggerProviderService, "get_subscription_by_id", return_value=subscription)
 
@@ -1126,7 +1126,7 @@ def test_rebuild_trigger_subscription_should_raise_when_unsubscribe_fails(
         id="sub-1",
         user_id="user-1",
         endpoint_id="endpoint-1",
-        credential_type=CredentialType.API_KEY.value,
+        credential_type=CredentialType.API_KEY,
         credentials={"api_key": "old"},
         to_entity=lambda: SimpleNamespace(id="sub-1"),
     )
@@ -1159,7 +1159,7 @@ def test_rebuild_trigger_subscription_should_resubscribe_and_update_existing_sub
         id="sub-1",
         user_id="user-1",
         endpoint_id="endpoint-1",
-        credential_type=CredentialType.API_KEY.value,
+        credential_type=CredentialType.API_KEY,
         credentials={"api_key": "old-key"},
         to_entity=lambda: SimpleNamespace(id="sub-1"),
     )

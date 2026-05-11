@@ -99,12 +99,24 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
               <Divider type="vertical" className="mr-2 ml-4 h-3.5 bg-divider-regular" />
             </>
           )}
-          <div className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={toggleFullScreen}>
-            {fullScreen ? <RiCollapseDiagonalLine className="h-4 w-4 text-text-tertiary" /> : <RiExpandDiagonalLine className="h-4 w-4 text-text-tertiary" />}
-          </div>
-          <div className="flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onCancel}>
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-          </div>
+          <button
+            type="button"
+            aria-label={t(fullScreen ? 'operation.zoomOut' : 'operation.zoomIn', { ns: 'common' })}
+            className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
+            onClick={toggleFullScreen}
+          >
+            {fullScreen
+              ? <RiCollapseDiagonalLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+              : <RiExpandDiagonalLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />}
+          </button>
+          <button
+            type="button"
+            aria-label={t('operation.close', { ns: 'common' })}
+            className="flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
+            onClick={onCancel}
+          >
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          </button>
         </div>
       </div>
       <div className={cn('flex w-full grow', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'px-4 py-3')}>

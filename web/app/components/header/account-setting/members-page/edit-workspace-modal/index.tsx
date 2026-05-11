@@ -61,7 +61,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
       }}
     >
       <DialogContent backdropProps={{ forceRender: true }} className="overflow-visible">
-        <DialogCloseButton data-testid="edit-workspace-close" />
+        <DialogCloseButton />
 
         <form
           className="flex flex-col"
@@ -102,10 +102,10 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           </div>
 
           <div className="sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4">
-            <Button size="large" type="button" data-testid="edit-workspace-cancel" onClick={onCancel}>
+            <Button size="large" type="button" onClick={onCancel}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>
-            <Button size="large" type="submit" variant="primary" data-testid="edit-workspace-save" disabled={isSaveDisabled} loading={isSubmitting}>
+            <Button size="large" type="submit" variant="primary" disabled={isSaveDisabled} loading={isSubmitting}>
               {t(isSubmitting ? 'operation.saving' : 'operation.save', { ns: 'common' })}
             </Button>
           </div>

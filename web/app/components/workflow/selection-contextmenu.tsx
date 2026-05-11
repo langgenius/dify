@@ -383,7 +383,6 @@ const SelectionContextmenu = () => {
         <ContextMenuGroup>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
-            data-testid="selection-contextmenu-item-copy"
             onClick={handleCopyNodes}
           >
             <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
@@ -391,7 +390,6 @@ const SelectionContextmenu = () => {
           </ContextMenuItem>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
-            data-testid="selection-contextmenu-item-duplicate"
             onClick={handleDuplicateNodes}
           >
             <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
@@ -402,7 +400,6 @@ const SelectionContextmenu = () => {
         <ContextMenuGroup>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
-            data-testid="selection-contextmenu-item-delete"
             onClick={handleDeleteNodes}
           >
             <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
