@@ -23,17 +23,6 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 - Keep callbacks in a parent only for workflow coordination such as form submission, shared selection, batch behavior, or navigation. Otherwise let the child or row own its action.
 - Prefer uncontrolled DOM state and CSS variables before adding controlled props.
 
-## State And URL State
-
-- Keep one source of truth for each user-editable value. If URL state, form state, Jotai, TanStack Query, or another owner already controls a value, do not mirror it into `useState` just to make an input responsive.
-- Use derived values for delayed consumers. For search inputs backed by URL state, bind the input to the URL state directly, then debounce the value consumed by TanStack Query or expensive rendering with `useDebounce`/`useDeferredValue` instead of maintaining a second submitted state.
-- Do not use `useEffect` to copy one state variable into another state variable that represents the same concept. An effect whose main job is `setLocal(external)` usually means the ownership model is wrong.
-- For `nuqs`, define a parser map at the feature hook boundary, use `inferParserType`, prefer `.withDefault(...)` to remove nullable cleanup code, and put parser-specific options on the parser when they always apply to that key.
-- Treat `nuqs` `limitUrlUpdates` as URL/history rate limiting only. The hook state still updates immediately; debounce client-side fetching separately when TanStack Query consumes the value.
-- Let search/text input URL updates use the default `replace` history unless the product explicitly wants each keystroke to create history entries. Use `history: 'push'` only for discrete navigation-like changes such as tabs or committed filters.
-- Avoid hook-level `history: 'push'` when the same `useQueryStates` parser map includes high-frequency search keys. Put `push` on the specific setter call that needs it.
-- Expose feature-specific URL state actions such as `setKeywords`, `setTagIDs`, or `setSort`, not a generic `setQuery`, unless callers truly need arbitrary atomic multi-key updates.
-
 ## Components, Props, And Types
 
 - Type component signatures directly; do not use `FC` or `React.FC`.
@@ -66,10 +55,17 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 - Avoid unnecessary DOM hierarchy. Do not add wrapper elements unless they provide layout, semantics, accessibility, state ownership, or integration with a library API; prefer fragments or styling an existing element when possible.
 - Avoid shallow wrappers and prop renaming unless the wrapper adds validation, orchestration, error handling, state ownership, or a real semantic boundary.
 
-## Navigation, Effects, And Performance
+## You Might Not Need An Effect
+
+- Use Effects only to synchronize with external systems such as browser APIs, non-React widgets, subscriptions, timers, analytics that must run because the component was shown, or imperative DOM integration.
+- Do not use Effects to transform props or state for rendering. Calculate derived values during render, and use `useMemo` only when the calculation is actually expensive.
+- Do not use Effects to handle user actions. Put action-specific logic in the event handler where the cause is known.
+- Do not use Effects to copy one state value into another state value representing the same concept. Pick one source of truth and derive the rest during render.
+- Do not reset or adjust state from props with an Effect. Prefer a `key` reset, storing a stable ID and deriving the selected object, or guarded same-component render-time adjustment when truly necessary.
+- Prefer framework data APIs or TanStack Query for data fetching instead of writing request Effects in components.
+- If an Effect still seems necessary, first name the external system it synchronizes with. If there is no external system, remove the Effect and restructure the state or event flow.
+
+## Navigation And Performance
 
 - Prefer `Link` for normal navigation. Use router APIs only for command-flow side effects such as mutation success, guarded redirects, or form submission.
-- Treat `useEffect` as a last resort. First try deriving values during render, moving event-driven work into handlers, or using existing hooks/APIs for persistence, subscriptions, media queries, timers, and DOM sync.
-- Before adding an effect to synchronize state, identify the source of truth and check whether the consumer can read that state directly or read a derived value during render.
-- Do not use `useEffect` directly in components. If unavoidable, encapsulate it in a purpose-built hook so the component consumes a declarative API.
 - Avoid `memo`, `useMemo`, and `useCallback` unless there is a clear performance reason.
