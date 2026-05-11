@@ -13,50 +13,40 @@ _LEGACY_SELECTOR = [_LEGACY_NODE_ID, _LEGACY_VARIABLE_NAME]
 _LEGACY_TEMPLATE = "{{#" + ".".join((_LEGACY_NODE_ID, _LEGACY_VARIABLE_NAME)) + "#}}"
 _LEGACY_ALIAS_SELECTOR = [_LEGACY_ALIAS_NODE_ID, _LEGACY_VARIABLE_NAME]
 _LEGACY_ALIAS_TEMPLATE = "{{#" + ".".join((_LEGACY_ALIAS_NODE_ID, _LEGACY_VARIABLE_NAME)) + "#}}"
+_LEGACY_ALIAS_INPUT_KEY = ".".join((_LEGACY_ALIAS_NODE_ID, _LEGACY_VARIABLE_NAME))
 
 
 def test_migrate_legacy_sys_files_graph_ignores_invalid_or_unrelated_graphs():
     assert not migrate_legacy_sys_files_graph_with_result({}).changed
     assert not migrate_legacy_sys_files_graph_with_result({"nodes": [], "edges": [_LEGACY_SELECTOR]}).changed
-    assert not migrate_legacy_sys_files_graph_with_result({"nodes": [{"data": {"value": _LEGACY_SELECTOR}}]}).changed
-    assert not migrate_legacy_sys_files_graph_with_result(
-        {"nodes": [{"id": 1, "data": {"type": "start"}}, {"data": {"value": _LEGACY_SELECTOR}}]}
-    ).changed
+    assert not migrate_legacy_sys_files_graph_with_result({"nodes": [{"data": {"value": ["sys", "query"]}}]}).changed
 
 
-def test_migrate_legacy_sys_files_graph_creates_collision_free_file_input_from_features():
+def test_migrate_legacy_sys_files_graph_rewrites_sys_files_to_userinput_files_without_start_variable():
     graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "variables": [{"variable": "sys_files"}]}},
-            {"id": "answer", "data": {"type": "answer", "answer": _LEGACY_SELECTOR}},
+            {
+                "id": "answer",
+                "data": {
+                    "type": "answer",
+                    "answer": _LEGACY_SELECTOR,
+                    "template": _LEGACY_TEMPLATE,
+                },
+            },
         ],
     }
 
-    result = migrate_legacy_sys_files_graph_with_result(
-        graph,
-        features={
-            "file_upload": {
-                "enabled": True,
-                "allowed_file_upload_methods": ["remote_url"],
-                "allowed_file_types": ["image"],
-                "allowed_file_extensions": [".png"],
-                "number_limits": 9,
-            }
-        },
-    )
+    result = migrate_legacy_sys_files_graph_with_result(graph)
 
     assert result.changed
     start_data = result.graph["nodes"][0]["data"]
-    created_variable = start_data["variables"][1]
-    assert created_variable["variable"] == "sys_files_1"
-    assert created_variable["allowed_file_upload_methods"] == ["remote_url"]
-    assert created_variable["allowed_file_types"] == ["image"]
-    assert created_variable["allowed_file_extensions"] == [".png"]
-    assert created_variable["max_length"] == 9
-    assert result.graph["nodes"][1]["data"]["answer"] == ["start", "sys_files_1"]
+    assert start_data["variables"] == [{"variable": "sys_files"}]
+    assert result.graph["nodes"][1]["data"]["answer"] == _LEGACY_ALIAS_SELECTOR
+    assert result.graph["nodes"][1]["data"]["template"] == _LEGACY_ALIAS_TEMPLATE
 
 
-def test_migrate_legacy_sys_files_graph_rewrites_userinput_files_alias_to_same_start_input():
+def test_migrate_legacy_sys_files_graph_leaves_userinput_files_target_unchanged():
     graph = {
         "nodes": [
             {"id": "start", "data": {"type": "start", "variables": []}},
@@ -73,25 +63,25 @@ def test_migrate_legacy_sys_files_graph_rewrites_userinput_files_alias_to_same_s
 
     result = migrate_legacy_sys_files_graph_with_result(graph)
 
-    assert result.changed
-    assert result.graph["nodes"][1]["data"]["answer"] == ["start", "sys_files"]
-    assert result.graph["nodes"][1]["data"]["template"] == "{{#start.sys_files#}}"
+    assert not result.changed
+    assert result.graph == graph
 
 
-def test_resolve_legacy_sys_files_compat_variable_handles_missing_start_variable():
+def test_resolve_legacy_sys_files_compat_variable_returns_userinput_files_target():
     assert resolve_legacy_sys_files_compat_variable({}) is None
-    assert resolve_legacy_sys_files_compat_variable({"nodes": [1, {"data": {"value": _LEGACY_SELECTOR}}]}) is None
-    assert (
-        resolve_legacy_sys_files_compat_variable(
-            {"nodes": [{"id": 1, "data": {"type": "start"}}, {"data": {"value": _LEGACY_SELECTOR}}]}
-        )
-        is None
+    assert resolve_legacy_sys_files_compat_variable({"nodes": [{"data": {"value": ["sys", "query"]}}]}) is None
+
+    compat_variable = resolve_legacy_sys_files_compat_variable({"nodes": [{"data": {"value": _LEGACY_SELECTOR}}]})
+
+    assert compat_variable == LegacySysFilesCompatVariable(
+        start_node_id=_LEGACY_ALIAS_NODE_ID,
+        variable_name=_LEGACY_VARIABLE_NAME,
     )
     assert (
         resolve_legacy_sys_files_compat_variable(
-            {"nodes": [{"id": "start", "data": {"type": "start", "variables": []}}]}
+            {"nodes": [{"data": {"value": _LEGACY_ALIAS_SELECTOR}}]}
         )
-        is None
+        == compat_variable
     )
 
 
@@ -117,7 +107,19 @@ def test_normalize_legacy_sys_files_args_handles_no_compat_and_top_level_files()
 
     assert compat_variable is not None
     assert normalized_args["files"] == files
-    assert normalized_args["inputs"][compat_variable.variable_name] == files
+    assert normalized_args["inputs"][".".join((compat_variable.start_node_id, compat_variable.variable_name))] == files
+
+
+def test_normalize_legacy_sys_files_args_maps_userinput_files_to_top_level_files_without_warning():
+    files = [{"id": "file-1"}]
+    normalized_args, compat_variable = normalize_legacy_sys_files_args(
+        graph={"nodes": [{"data": {"type": "answer", "answer": _LEGACY_ALIAS_TEMPLATE}}]},
+        args={"inputs": {_LEGACY_ALIAS_INPUT_KEY: files}},
+    )
+
+    assert compat_variable is None
+    assert normalized_args["files"] == files
+    assert normalized_args["inputs"] == {_LEGACY_ALIAS_INPUT_KEY: files}
 
 
 def test_attach_legacy_sys_files_warning_wraps_stream_and_closes_source():
@@ -133,7 +135,7 @@ def test_attach_legacy_sys_files_warning_wraps_stream_and_closes_source():
     stream = CloseableStream()
     wrapped = attach_legacy_sys_files_warning(
         stream,
-        LegacySysFilesCompatVariable(start_node_id="start", variable_name="generated_files_input"),
+        LegacySysFilesCompatVariable(start_node_id=_LEGACY_ALIAS_NODE_ID, variable_name=_LEGACY_VARIABLE_NAME),
     )
 
     chunks = list(wrapped)

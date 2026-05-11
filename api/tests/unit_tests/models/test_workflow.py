@@ -19,6 +19,8 @@ from models.workflow import (
 
 _LEGACY_FILE_TEMPLATE = "{{#" + ".".join(("sys", "files")) + "#}}"
 _LEGACY_FILE_SELECTOR = ["sys", "files"]
+_USER_INPUT_FILE_TEMPLATE = "{{#" + ".".join(("userinput", "files")) + "#}}"
+_USER_INPUT_FILE_SELECTOR = ["userinput", "files"]
 
 
 def test_environment_variables():
@@ -210,7 +212,7 @@ class TestWorkflowLegacySysFilesCompatibility:
             conversation_variables=[],
         )
 
-    def test_graph_dict_rewrites_legacy_sys_files_references_to_start_variable(self):
+    def test_graph_dict_rewrites_legacy_sys_files_references_to_userinput_files(self):
         workflow = self._make_workflow(
             {
                 "nodes": [
@@ -239,19 +241,16 @@ class TestWorkflowLegacySysFilesCompatibility:
         start_node = next(node for node in graph["nodes"] if node["id"] == "start")
         llm_node = next(node for node in graph["nodes"] if node["id"] == "llm")
 
-        compat_variable = start_node["data"]["variables"][0]
-        assert compat_variable["variable"] == "sys_files"
-        assert compat_variable["type"] == "file-list"
-        assert compat_variable["required"] is False
-        assert llm_node["data"]["prompt_template"][0]["text"] == "files: {{#start.sys_files#}}"
-        assert llm_node["data"]["context"]["variable_selector"] == ["start", "sys_files"]
+        assert start_node["data"]["variables"] == []
+        assert llm_node["data"]["prompt_template"][0]["text"] == f"files: {_USER_INPUT_FILE_TEMPLATE}"
+        assert llm_node["data"]["context"]["variable_selector"] == _USER_INPUT_FILE_SELECTOR
 
         stored_graph = json.loads(workflow.graph)
         stored_llm_node = next(node for node in stored_graph["nodes"] if node["id"] == "llm")
-        assert stored_llm_node["data"]["prompt_template"][0]["text"] == "files: {{#start.sys_files#}}"
-        assert stored_llm_node["data"]["context"]["variable_selector"] == ["start", "sys_files"]
+        assert stored_llm_node["data"]["prompt_template"][0]["text"] == f"files: {_USER_INPUT_FILE_TEMPLATE}"
+        assert stored_llm_node["data"]["context"]["variable_selector"] == _USER_INPUT_FILE_SELECTOR
 
-    def test_graph_dict_uses_unique_compat_variable_name(self):
+    def test_graph_dict_preserves_existing_start_variables_when_migrating_legacy_sys_files(self):
         workflow = self._make_workflow(
             {
                 "nodes": [
@@ -281,14 +280,10 @@ class TestWorkflowLegacySysFilesCompatibility:
         start_node = next(node for node in graph["nodes"] if node["id"] == "start")
         answer_node = next(node for node in graph["nodes"] if node["id"] == "answer")
 
-        assert [variable["variable"] for variable in start_node["data"]["variables"]] == [
-            "sys_files",
-            "sys_files_1",
-        ]
-        assert start_node["data"]["variables"][1]["type"] == "file-list"
-        assert answer_node["data"]["answer"] == "{{#start.sys_files_1#}}"
+        assert [variable["variable"] for variable in start_node["data"]["variables"]] == ["sys_files"]
+        assert answer_node["data"]["answer"] == _USER_INPUT_FILE_TEMPLATE
 
-    def test_graph_dict_copies_file_upload_settings_to_compat_variable(self):
+    def test_graph_dict_leaves_userinput_files_references_unchanged(self):
         workflow = self._make_workflow(
             {
                 "nodes": [
@@ -304,7 +299,7 @@ class TestWorkflowLegacySysFilesCompatibility:
                         "id": "answer",
                         "data": {
                             "type": "answer",
-                            "answer": _LEGACY_FILE_TEMPLATE,
+                            "answer": _USER_INPUT_FILE_TEMPLATE,
                         },
                     },
                 ],
@@ -323,12 +318,9 @@ class TestWorkflowLegacySysFilesCompatibility:
 
         graph = workflow.graph_dict
         start_node = next(node for node in graph["nodes"] if node["id"] == "start")
-        compat_variable = start_node["data"]["variables"][0]
 
-        assert compat_variable["allowed_file_upload_methods"] == ["remote_url"]
-        assert compat_variable["allowed_file_types"] == ["document", "custom"]
-        assert compat_variable["allowed_file_extensions"] == [".pdf"]
-        assert compat_variable["max_length"] == 8
+        assert start_node["data"]["variables"] == []
+        assert json.loads(workflow.graph) == graph
 
 
 class TestWorkflowDraftVariableGetValue:

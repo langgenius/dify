@@ -7,6 +7,7 @@ from controllers.service_api.app.legacy_system_files import (
 from services.app_generate_service import AppGenerateService
 
 _LEGACY_FILE_TEMPLATE = "{{#" + ".".join(("sys", "files")) + "#}}"
+_USER_INPUT_FILE_INPUT_KEY = ".".join(("userinput", "files"))
 
 
 def _legacy_file_graph() -> dict:
@@ -19,7 +20,7 @@ def _legacy_file_graph() -> dict:
     }
 
 
-def test_hidden_service_api_file_payload_maps_to_generated_start_input(mocker):
+def test_hidden_service_api_file_payload_maps_to_userinput_files(mocker):
     workflow = MagicMock()
     workflow.graph_dict = _legacy_file_graph()
     get_workflow = mocker.patch.object(AppGenerateService, "get_workflow", return_value=workflow)
@@ -35,7 +36,7 @@ def test_hidden_service_api_file_payload_maps_to_generated_start_input(mocker):
     get_workflow.assert_called_once()
     assert compat_variable is not None
     assert args["files"] == files
-    assert args["inputs"][compat_variable.variable_name] == files
+    assert args["inputs"][_USER_INPUT_FILE_INPUT_KEY] == files
 
 
 def test_service_api_file_payload_is_ignored_when_absent(mocker):
@@ -73,7 +74,7 @@ def test_top_level_service_api_file_payload_still_checks_workflow_graph(mocker):
 
 
 def test_service_api_warning_is_attached_only_when_compatibility_was_used():
-    compat_variable = MagicMock(variable_name="generated_files_input")
+    compat_variable = MagicMock(start_node_id="userinput", variable_name="files")
 
     response = attach_legacy_system_file_warning_for_service_api({"answer": "ok"}, compat_variable)
     response_without_warning = attach_legacy_system_file_warning_for_service_api({"answer": "ok"}, None)

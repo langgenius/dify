@@ -86,6 +86,7 @@ def _make_workflow(*, workflow_id: str = "workflow-id", created_by: str = "owner
 
 
 _LEGACY_FILE_TEMPLATE = "{{#" + ".".join(("sys", "files")) + "#}}"
+_USER_INPUT_FILE_INPUT_KEY = ".".join(("userinput", "files"))
 
 
 def _legacy_system_file_graph() -> dict:
@@ -441,7 +442,7 @@ class TestGenerate:
         assert result == {"result": "workflow-blocking"}
         forwarded_args = gen_spy.call_args.kwargs["args"]
         assert forwarded_args["files"] == files
-        assert forwarded_args["inputs"]["sys_files"] == files
+        assert forwarded_args["inputs"][_USER_INPUT_FILE_INPUT_KEY] == files
 
     def test_advanced_chat_service_api_maps_files_to_compat_start_input(self, mocker: MockerFixture):
         workflow = _make_workflow()
@@ -468,7 +469,7 @@ class TestGenerate:
         assert result == {"result": "advanced-blocking"}
         forwarded_args = gen_spy.call_args.kwargs["args"]
         assert forwarded_args["files"] == files
-        assert forwarded_args["inputs"]["sys_files"] == files
+        assert forwarded_args["inputs"][_USER_INPUT_FILE_INPUT_KEY] == files
 
     # -- WORKFLOW streaming -------------------------------------------------
     def test_workflow_streaming(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
@@ -535,7 +536,7 @@ class TestGenerate:
         assert next(iter(result)) == 'data: {"event": "done"}\n\n'
         forwarded_args = params_spy.call_args.kwargs["args"]
         assert forwarded_args["files"] == files
-        assert forwarded_args["inputs"]["sys_files"] == files
+        assert forwarded_args["inputs"][_USER_INPUT_FILE_INPUT_KEY] == files
 
     # -- Invalid mode -------------------------------------------------------
     def test_invalid_mode_raises(self, mocker: MockerFixture):

@@ -16,6 +16,7 @@ from .variable_prefixes import (
     ENVIRONMENT_VARIABLE_NODE_ID,
     RAG_PIPELINE_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
+    USER_INPUT_VARIABLE_NODE_ID,
 )
 
 
@@ -118,6 +119,11 @@ def build_bootstrap_variables(
         *(_with_selector(variable, ENVIRONMENT_VARIABLE_NODE_ID) for variable in environment_variables),
         *(_with_selector(variable, CONVERSATION_VARIABLE_NODE_ID) for variable in conversation_variables),
     ]
+    # TODO: Remove this alias once all `sys.files` references and Service API callers are migrated.
+    for variable in system_variables:
+        if variable.name == SystemVariableKey.FILES.value:
+            variables.append(_with_selector(variable, USER_INPUT_VARIABLE_NODE_ID))
+            break
 
     rag_pipeline_variables_map: defaultdict[str, dict[str, Any]] = defaultdict(dict)
     for rag_var in rag_pipeline_variables:

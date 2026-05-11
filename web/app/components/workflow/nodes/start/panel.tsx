@@ -19,6 +19,12 @@ const chatQueryInputVar: InputVar = {
   type: InputVarType.textInput,
   required: false,
 }
+const userInputFilesVar: InputVar = {
+  variable: 'userinput.files',
+  label: '',
+  type: InputVarType.multiFiles,
+  required: false,
+}
 
 const Panel: FC<NodePanelProps<StartNodeType>> = ({
   id,
@@ -90,6 +96,16 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
                   </>
                 )
               }
+              <VarItem
+                readonly
+                payload={userInputFilesVar}
+                rightContent={(
+                  <div className="text-xs font-normal text-text-tertiary">
+                    Array[File]
+                  </div>
+                )}
+                showLegacyBadge={!isChatMode}
+              />
             </div>
           </>
         </Field>

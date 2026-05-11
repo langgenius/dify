@@ -1,7 +1,7 @@
 """Compatibility helpers for workflows that still reference deprecated `sys.files`.
 
 TODO: Remove this module after all persisted Workflow and Advanced Chat graphs
-have been migrated away from the deprecated system file variable.
+have been migrated from the deprecated system file variable to `userinput.files`.
 """
 
 from __future__ import annotations
@@ -14,15 +14,15 @@ from dataclasses import dataclass
 from typing import Any
 
 _LEGACY_SYSTEM_NODE_ID = "sys"
-_LEGACY_USER_INPUT_NODE_ID = "userinput"
+_USER_INPUT_NODE_ID = "userinput"
 _LEGACY_FILES_VARIABLE = "files"
-_COMPAT_VARIABLE_PREFIX = "sys_files"
-_COMPAT_VARIABLE_DESCRIPTION = "Compatibility input for deprecated sys.files."
-_FILE_LIST_TYPE = "file-list"
-_DEFAULT_FILE_NUMBER_LIMITS = 3
-_DEFAULT_ALLOWED_FILE_UPLOAD_METHODS = ["local_file", "remote_url"]
-_DEFAULT_ALLOWED_FILE_TYPES = ["image", "document", "audio", "video"]
-_LEGACY_FILES_TEMPLATE_PATTERN = re.compile(r"\{\{#(?:sys|userinput)\.files#\}\}")
+_LEGACY_FILE_SELECTOR = [_LEGACY_SYSTEM_NODE_ID, _LEGACY_FILES_VARIABLE]
+_USER_INPUT_FILE_SELECTOR = [_USER_INPUT_NODE_ID, _LEGACY_FILES_VARIABLE]
+_USER_INPUT_FILE_INPUT_KEY = ".".join(_USER_INPUT_FILE_SELECTOR)
+_LEGACY_FILES_TEMPLATE = "{{#sys.files#}}"
+_USER_INPUT_FILES_TEMPLATE = "{{#userinput.files#}}"
+_LEGACY_FILES_TEMPLATE_PATTERN = re.compile(r"\{\{#sys\.files#\}\}")
+_USER_INPUT_FILES_TEMPLATE_PATTERN = re.compile(r"\{\{#userinput\.files#\}\}")
 
 
 @dataclass(frozen=True)
@@ -42,7 +42,7 @@ def migrate_legacy_sys_files_graph(
     *,
     features: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Return a graph where legacy file-system references point to a Start-node file-list variable."""
+    """Return a graph where legacy file-system references point to `userinput.files`."""
 
     return migrate_legacy_sys_files_graph_with_result(graph, features=features).graph
 
@@ -54,6 +54,7 @@ def migrate_legacy_sys_files_graph_with_result(
 ) -> LegacySysFilesGraphMigrationResult:
     """Return the migrated graph and whether any legacy reference was rewritten."""
 
+    _ = features
     graph_copy = dict(graph)
     nodes = graph_copy.get("nodes")
     if not isinstance(nodes, list):
@@ -61,54 +62,29 @@ def migrate_legacy_sys_files_graph_with_result(
 
     # Legacy references are stored in node data. Restricting both search and replacement to `nodes`
     # avoids recursively scanning graph-level metadata and edges for every workflow load.
-    if not _contains_legacy_sys_files_reference(nodes):
+    if not _may_contain_legacy_sys_files_reference(nodes) or not _contains_legacy_sys_files_reference(nodes):
         return LegacySysFilesGraphMigrationResult(graph=graph_copy, changed=False)
 
     nodes_copy = copy.deepcopy(nodes)
-    start_node = _find_start_node(nodes_copy)
-    if start_node is None:
-        return LegacySysFilesGraphMigrationResult(graph=graph_copy, changed=False)
-
-    start_node_id = start_node.get("id")
-    start_node_data = start_node.get("data")
-    if not isinstance(start_node_id, str) or not isinstance(start_node_data, dict):
-        return LegacySysFilesGraphMigrationResult(graph=graph_copy, changed=False)
-
-    variables = _get_start_variables(start_node_data)
-    variable_name = _find_existing_compat_variable_name(variables)
-    if variable_name is None:
-        variable_name = _next_compat_variable_name(variables)
-        variables.append(_build_compat_variable(variable_name, features=features))
-
-    graph_copy["nodes"] = _replace_legacy_sys_files_references(
-        nodes_copy,
-        start_node_id=start_node_id,
-        variable_name=variable_name,
-    )
+    graph_copy["nodes"] = _replace_legacy_sys_files_references(nodes_copy)
     return LegacySysFilesGraphMigrationResult(graph=graph_copy, changed=True)
 
 
 def resolve_legacy_sys_files_compat_variable(graph: Mapping[str, Any]) -> LegacySysFilesCompatVariable | None:
-    """Resolve the Start-node variable used by the `sys.files` compatibility layer."""
+    """Resolve the target variable used by the `sys.files` compatibility layer."""
 
-    migrated_graph = migrate_legacy_sys_files_graph(graph)
-    nodes = migrated_graph.get("nodes")
+    nodes = graph.get("nodes")
     if not isinstance(nodes, list):
         return None
-
-    start_node = _find_start_node(nodes)
-    if start_node is None:
+    has_legacy_reference = (
+        _may_contain_legacy_sys_files_reference(nodes) and _contains_legacy_sys_files_reference(nodes)
+    )
+    has_userinput_reference = (
+        _may_contain_userinput_files_reference(nodes) and _contains_userinput_files_reference(nodes)
+    )
+    if not (has_legacy_reference or has_userinput_reference):
         return None
-
-    start_node_id = start_node.get("id")
-    start_node_data = start_node.get("data")
-    if not isinstance(start_node_id, str) or not isinstance(start_node_data, dict):
-        return None
-
-    variable_name = _find_existing_compat_variable_name(_get_start_variables(start_node_data))
-    if variable_name is None:
-        return None
-    return LegacySysFilesCompatVariable(start_node_id=start_node_id, variable_name=variable_name)
+    return LegacySysFilesCompatVariable(start_node_id=_USER_INPUT_NODE_ID, variable_name=_LEGACY_FILES_VARIABLE)
 
 
 def normalize_legacy_sys_files_args(
@@ -116,25 +92,32 @@ def normalize_legacy_sys_files_args(
     graph: Mapping[str, Any],
     args: Mapping[str, Any],
 ) -> tuple[dict[str, Any], LegacySysFilesCompatVariable | None]:
-    """Map legacy Service/Web API file arguments onto the generated Start-node variable.
+    """Map Service/Web API file arguments onto the `userinput.files` system alias.
 
-    The top-level `files` argument is the existing API surface for system files.
-    Some callers send the same payload as `system.files`; both forms are accepted
-    here so old integrations keep working after graph references are migrated.
+    The top-level `files` argument and hidden `system.files` payload both feed
+    the same runtime file collection. After graph references are migrated, the
+    file collection is exposed in the variable pool as `userinput.files`.
     """
 
     compat_variable = resolve_legacy_sys_files_compat_variable(graph)
-    files, legacy_files_used = _extract_legacy_files(args)
-    if compat_variable is None or not legacy_files_used:
+    if compat_variable is None:
         return dict(args), None
 
     normalized_args = dict(args)
-    if "files" not in normalized_args:
-        normalized_args["files"] = files
+    files_from_input, input_files_used = _extract_userinput_files(args)
+    if input_files_used:
+        normalized_args.setdefault("files", files_from_input)
+        return normalized_args, None
+
+    files, legacy_files_used = _extract_legacy_files(args)
+    if not legacy_files_used:
+        return normalized_args, None
+
+    normalized_args.setdefault("files", files)
 
     raw_inputs = normalized_args.get("inputs")
     inputs = dict(raw_inputs) if isinstance(raw_inputs, Mapping) else {}
-    inputs.setdefault(compat_variable.variable_name, files)
+    inputs.setdefault(_USER_INPUT_FILE_INPUT_KEY, files)
     normalized_args["inputs"] = inputs
     return normalized_args, compat_variable
 
@@ -168,31 +151,12 @@ def attach_legacy_sys_files_warning(
 
 
 def build_legacy_sys_files_warning(compat_variable: LegacySysFilesCompatVariable) -> str:
+    variable_selector = ".".join((compat_variable.start_node_id, compat_variable.variable_name))
     return (
-        "sys.files is deprecated. This workflow now reads files from the Start node variable "
-        f"`{compat_variable.variable_name}`; update Service API calls to pass files in "
-        f"`inputs.{compat_variable.variable_name}` instead of `system.files` or top-level `files`."
+        "sys.files is deprecated. This workflow now reads files from "
+        f"`{variable_selector}`; update Service API calls to pass files in "
+        f"`inputs.{variable_selector}` instead of `system.files` or top-level `files`."
     )
-
-
-def _find_start_node(nodes: list[Any]) -> dict[str, Any] | None:
-    for node in nodes:
-        if not isinstance(node, dict):
-            continue
-        data = node.get("data")
-        if isinstance(data, dict) and data.get("type") == "start":
-            return node
-    return None
-
-
-def _get_start_variables(start_node_data: dict[str, Any]) -> list[dict[str, Any]]:
-    variables = start_node_data.get("variables")
-    if isinstance(variables, list):
-        return variables
-
-    variables = []
-    start_node_data["variables"] = variables
-    return variables
 
 
 def _contains_legacy_sys_files_reference(value: Any) -> bool:
@@ -211,32 +175,34 @@ def _contains_legacy_sys_files_reference(value: Any) -> bool:
     return False
 
 
-def _replace_legacy_sys_files_references(value: Any, *, start_node_id: str, variable_name: str) -> Any:
-    if _is_legacy_sys_files_selector(value):
-        return [start_node_id, variable_name]
+def _contains_userinput_files_reference(value: Any) -> bool:
+    if _is_userinput_files_selector(value):
+        return True
 
     if isinstance(value, str):
-        return _LEGACY_FILES_TEMPLATE_PATTERN.sub(f"{{{{#{start_node_id}.{variable_name}#}}}}", value)
+        return bool(_USER_INPUT_FILES_TEMPLATE_PATTERN.search(value))
 
     if isinstance(value, Mapping):
-        return {
-            key: _replace_legacy_sys_files_references(
-                item,
-                start_node_id=start_node_id,
-                variable_name=variable_name,
-            )
-            for key, item in value.items()
-        }
+        return any(_contains_userinput_files_reference(item) for item in value.values())
 
     if isinstance(value, list):
-        return [
-            _replace_legacy_sys_files_references(
-                item,
-                start_node_id=start_node_id,
-                variable_name=variable_name,
-            )
-            for item in value
-        ]
+        return any(_contains_userinput_files_reference(item) for item in value)
+
+    return False
+
+
+def _replace_legacy_sys_files_references(value: Any) -> Any:
+    if _is_legacy_sys_files_selector(value):
+        return list(_USER_INPUT_FILE_SELECTOR)
+
+    if isinstance(value, str):
+        return _LEGACY_FILES_TEMPLATE_PATTERN.sub(_USER_INPUT_FILES_TEMPLATE, value)
+
+    if isinstance(value, Mapping):
+        return {key: _replace_legacy_sys_files_references(item) for key, item in value.items()}
+
+    if isinstance(value, list):
+        return [_replace_legacy_sys_files_references(item) for item in value]
 
     return value
 
@@ -245,64 +211,34 @@ def _is_legacy_sys_files_selector(value: Any) -> bool:
     return (
         isinstance(value, list)
         and len(value) == 2
-        and value[0] in (_LEGACY_SYSTEM_NODE_ID, _LEGACY_USER_INPUT_NODE_ID)
+        and value[0] == _LEGACY_SYSTEM_NODE_ID
         and value[1] == _LEGACY_FILES_VARIABLE
     )
 
 
-def _find_existing_compat_variable_name(variables: list[dict[str, Any]]) -> str | None:
-    for variable in variables:
-        if (
-            variable.get("type") == _FILE_LIST_TYPE
-            and variable.get("description") == _COMPAT_VARIABLE_DESCRIPTION
-            and isinstance(variable.get("variable"), str)
-        ):
-            return variable["variable"]
-    return None
+def _is_userinput_files_selector(value: Any) -> bool:
+    return isinstance(value, list) and value == _USER_INPUT_FILE_SELECTOR
 
 
-def _next_compat_variable_name(variables: list[dict[str, Any]]) -> str:
-    used_names = {variable.get("variable") for variable in variables if isinstance(variable.get("variable"), str)}
-    candidate = _COMPAT_VARIABLE_PREFIX
-    suffix = 1
-    while candidate in used_names:
-        candidate = f"{_COMPAT_VARIABLE_PREFIX}_{suffix}"
-        suffix += 1
-    return candidate
+def _may_contain_legacy_sys_files_reference(value: list[Any]) -> bool:
+    serialized_value = _serialize_for_fast_reference_search(value)
+    if serialized_value is None:
+        return True
+    return _LEGACY_FILES_TEMPLATE in serialized_value or '["sys","files"]' in serialized_value
 
 
-def _build_compat_variable(variable_name: str, *, features: Mapping[str, Any] | None) -> dict[str, Any]:
-    return {
-        "variable": variable_name,
-        "label": "sys.files",
-        "description": _COMPAT_VARIABLE_DESCRIPTION,
-        "type": _FILE_LIST_TYPE,
-        "required": False,
-        "hide": False,
-        "default": [],
-        **_build_compat_file_upload_settings(features),
-    }
+def _may_contain_userinput_files_reference(value: list[Any]) -> bool:
+    serialized_value = _serialize_for_fast_reference_search(value)
+    if serialized_value is None:
+        return True
+    return _USER_INPUT_FILES_TEMPLATE in serialized_value or '["userinput","files"]' in serialized_value
 
 
-def _build_compat_file_upload_settings(features: Mapping[str, Any] | None) -> dict[str, Any]:
-    file_upload = features.get("file_upload") if isinstance(features, Mapping) else None
-    if not isinstance(file_upload, Mapping) or not file_upload.get("enabled"):
-        return {
-            "allowed_file_upload_methods": _DEFAULT_ALLOWED_FILE_UPLOAD_METHODS,
-            "allowed_file_types": _DEFAULT_ALLOWED_FILE_TYPES,
-            "allowed_file_extensions": [],
-            "max_length": _DEFAULT_FILE_NUMBER_LIMITS,
-        }
-
-    return {
-        "allowed_file_upload_methods": file_upload.get(
-            "allowed_file_upload_methods",
-            _DEFAULT_ALLOWED_FILE_UPLOAD_METHODS,
-        ),
-        "allowed_file_types": file_upload.get("allowed_file_types", _DEFAULT_ALLOWED_FILE_TYPES),
-        "allowed_file_extensions": file_upload.get("allowed_file_extensions", []),
-        "max_length": file_upload.get("number_limits", _DEFAULT_FILE_NUMBER_LIMITS),
-    }
+def _serialize_for_fast_reference_search(value: list[Any]) -> str | None:
+    try:
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return None
 
 
 def _extract_legacy_files(args: Mapping[str, Any]) -> tuple[Any, bool]:
@@ -312,5 +248,13 @@ def _extract_legacy_files(args: Mapping[str, Any]) -> tuple[Any, bool]:
     system = args.get("system")
     if isinstance(system, Mapping) and "files" in system and system["files"] is not None:
         return system["files"], True
+
+    return None, False
+
+
+def _extract_userinput_files(args: Mapping[str, Any]) -> tuple[Any, bool]:
+    inputs = args.get("inputs")
+    if isinstance(inputs, Mapping) and inputs.get(_USER_INPUT_FILE_INPUT_KEY) is not None:
+        return inputs[_USER_INPUT_FILE_INPUT_KEY], True
 
     return None, False

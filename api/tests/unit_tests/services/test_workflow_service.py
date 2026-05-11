@@ -44,6 +44,7 @@ from services.workflow_service import (
 )
 
 _LEGACY_FILE_TEMPLATE = "{{#" + ".".join(("sys", "files")) + "#}}"
+_USER_INPUT_FILE_TEMPLATE = "{{#" + ".".join(("userinput", "files")) + "#}}"
 
 
 class TestWorkflowAssociatedDataFactory:
@@ -381,7 +382,7 @@ class TestWorkflowService:
 
         assert result == workflow
         assert _LEGACY_FILE_TEMPLATE not in workflow.graph
-        assert "{{#start.sys_files#}}" in workflow.graph
+        assert _USER_INPUT_FILE_TEMPLATE in workflow.graph
         migration_session.execute.assert_called_once()
         update_stmt = migration_session.execute.call_args.args[0]
         assert str(workflow.id) in str(update_stmt.compile(compile_kwargs={"literal_binds": True}))
