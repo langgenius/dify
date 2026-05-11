@@ -174,7 +174,7 @@ class TestSetDefaultProvider:
         session.query.return_value.filter_by.return_value.first.return_value = None
 
         with pytest.raises(ValueError, match="provider not found"):
-            BuiltinToolManageService.set_default_provider("t", "u", "p", "id")
+            BuiltinToolManageService.set_default_provider("t", "p", "id")
 
     @patch(f"{MODULE}.Session")
     @patch(f"{MODULE}.db")
@@ -183,11 +183,32 @@ class TestSetDefaultProvider:
         target = MagicMock()
         session.query.return_value.filter_by.return_value.first.return_value = target
 
-        result = BuiltinToolManageService.set_default_provider("t", "u", "p", "id")
+        result = BuiltinToolManageService.set_default_provider("t", "p", "id")
 
         assert result == {"result": "success"}
         assert target.is_default is True
         session.commit.assert_called_once()
+
+    @patch(f"{MODULE}.Session")
+    @patch(f"{MODULE}.db")
+    def test_clear_default_is_tenant_scoped_not_user_scoped(self, mock_db, mock_session_cls):
+        # Regression: clearing prior defaults must NOT filter by user_id, otherwise
+        # two workspace members can each leave their own credential as default at
+        # the same time (the default flag is tenant-scoped, not per-user).
+        session = _mock_session(mock_session_cls)
+        session.query.return_value.filter_by.return_value.first.return_value = MagicMock()
+
+        BuiltinToolManageService.set_default_provider("tenant-1", "google", "cred-id")
+
+        clear_calls = [
+            call
+            for call in session.query.return_value.filter_by.call_args_list
+            if call.kwargs.get("is_default") is True
+        ]
+        assert len(clear_calls) == 1
+        assert "user_id" not in clear_calls[0].kwargs
+        assert clear_calls[0].kwargs["tenant_id"] == "tenant-1"
+        assert clear_calls[0].kwargs["provider"] == "google"
 
 
 class TestUpdateBuiltinToolProvider:

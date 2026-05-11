@@ -54,7 +54,7 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
-from core.tools.signature import sign_upload_file
+from core.tools.signature import sign_upload_file_preview_url
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import (
@@ -524,7 +524,7 @@ class DatasetRetrieval:
                                     related_id=upload_file.id,
                                     size=upload_file.size,
                                     storage_key=upload_file.key,
-                                    url=sign_upload_file(upload_file.id, upload_file.extension),
+                                    url=sign_upload_file_preview_url(upload_file.id, upload_file.extension),
                                 )
                                 context_files.append(attachment_info)
                 if show_retrieve_source:

@@ -406,7 +406,7 @@ class BuiltinToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def set_default_provider(tenant_id: str, user_id: str, provider: str, id: str):
+    def set_default_provider(tenant_id: str, provider: str, id: str):
         """
         set default provider
         """
@@ -416,9 +416,9 @@ class BuiltinToolManageService:
             if target_provider is None:
                 raise ValueError("provider not found")
 
-            # clear default provider
+            # clear default provider (tenant-scoped: only one default per provider per workspace)
             session.query(BuiltinToolProvider).filter_by(
-                tenant_id=tenant_id, user_id=user_id, provider=provider, is_default=True
+                tenant_id=tenant_id, provider=provider, is_default=True
             ).update({"is_default": False})
 
             # set new default provider
