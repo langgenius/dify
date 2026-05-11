@@ -213,6 +213,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const bottomPanelHeight = useStore(s => s.bottomPanelHeight)
   const setWorkflowCanvasWidth = useStore(s => s.setWorkflowCanvasWidth)
   const setWorkflowCanvasHeight = useStore(s => s.setWorkflowCanvasHeight)
+  const workflowCanvasSizeRef = useRef<{ width?: number, height?: number }>({})
+  const workflowCanvasResizeFrameRef = useRef<number | undefined>(undefined)
   const controlHeight = useMemo(() => {
     if (!workflowCanvasHeight)
       return '100%'
@@ -222,15 +224,33 @@ export const Workflow: FC<WorkflowProps> = memo(({
   // update workflow Canvas width and height
   useEffect(() => {
     if (workflowContainerRef.current) {
+      const updateWorkflowCanvasSize = (width: number, height: number) => {
+        if (workflowCanvasSizeRef.current.width === width && workflowCanvasSizeRef.current.height === height)
+          return
+
+        workflowCanvasSizeRef.current = { width, height }
+        if (workflowCanvasResizeFrameRef.current)
+          cancelAnimationFrame(workflowCanvasResizeFrameRef.current)
+
+        workflowCanvasResizeFrameRef.current = requestAnimationFrame(() => {
+          workflowCanvasResizeFrameRef.current = undefined
+          setWorkflowCanvasWidth(width)
+          setWorkflowCanvasHeight(height)
+        })
+      }
+
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { inlineSize, blockSize } = entry.borderBoxSize[0]!
-          setWorkflowCanvasWidth(inlineSize)
-          setWorkflowCanvasHeight(blockSize)
+          updateWorkflowCanvasSize(inlineSize, blockSize)
         }
       })
       resizeContainerObserver.observe(workflowContainerRef.current)
       return () => {
+        if (workflowCanvasResizeFrameRef.current) {
+          cancelAnimationFrame(workflowCanvasResizeFrameRef.current)
+          workflowCanvasResizeFrameRef.current = undefined
+        }
         resizeContainerObserver.disconnect()
       }
     }

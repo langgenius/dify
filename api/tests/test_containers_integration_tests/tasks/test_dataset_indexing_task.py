@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from enums.cloud_plan import CloudPlan
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from tasks.document_indexing_task import (
@@ -54,7 +54,7 @@ class _TrackedSessionContext:
 
 
 @pytest.fixture(autouse=True)
-def _ensure_testcontainers_db(db_session_with_containers):
+def _ensure_testcontainers_db(db_session_with_containers: Session):
     """Ensure this suite always runs on testcontainers infrastructure."""
     return db_session_with_containers
 
@@ -121,12 +121,12 @@ class TestDatasetIndexingTaskIntegration:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()
 
-        tenant = Tenant(name=fake.company(), status="normal")
+        tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
 

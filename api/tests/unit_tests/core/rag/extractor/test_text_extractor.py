@@ -19,7 +19,7 @@ class TestTextExtractor:
         assert docs[0].page_content == "hello world"
         assert docs[0].metadata == {"source": str(file_path)}
 
-    def test_extract_autodetect_success_after_decode_error(self, monkeypatch):
+    def test_extract_autodetect_success_after_decode_error(self, monkeypatch: pytest.MonkeyPatch):
         extractor = TextExtractor("dummy.txt", autodetect_encoding=True)
 
         calls = []
@@ -44,7 +44,7 @@ class TestTextExtractor:
         assert docs[0].page_content == "decoded text"
         assert calls == [None, "bad", "utf-8"]
 
-    def test_extract_autodetect_all_fail_raises_runtime_error(self, monkeypatch):
+    def test_extract_autodetect_all_fail_raises_runtime_error(self, monkeypatch: pytest.MonkeyPatch):
         extractor = TextExtractor("dummy.txt", autodetect_encoding=True)
 
         def always_decode_error(self, encoding=None):
@@ -56,7 +56,7 @@ class TestTextExtractor:
         with pytest.raises(RuntimeError, match="all detected encodings failed"):
             extractor.extract()
 
-    def test_extract_decode_error_without_autodetect_raises_runtime_error(self, monkeypatch):
+    def test_extract_decode_error_without_autodetect_raises_runtime_error(self, monkeypatch: pytest.MonkeyPatch):
         extractor = TextExtractor("dummy.txt", autodetect_encoding=False)
 
         def always_decode_error(self, encoding=None):
@@ -67,7 +67,7 @@ class TestTextExtractor:
         with pytest.raises(RuntimeError, match="specified encoding failed"):
             extractor.extract()
 
-    def test_extract_wraps_non_decode_exceptions(self, monkeypatch):
+    def test_extract_wraps_non_decode_exceptions(self, monkeypatch: pytest.MonkeyPatch):
         extractor = TextExtractor("dummy.txt")
 
         def raise_other(self, encoding=None):

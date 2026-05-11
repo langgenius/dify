@@ -35,7 +35,7 @@ def opik_config():
 
 
 @pytest.fixture
-def trace_instance(opik_config, monkeypatch):
+def trace_instance(opik_config, monkeypatch: pytest.MonkeyPatch):
     mock_client = MagicMock()
     monkeypatch.setattr("dify_trace_opik.opik_trace.Opik", lambda **kwargs: mock_client)
 
@@ -65,7 +65,7 @@ def test_prepare_opik_uuid():
     assert result is not None
 
 
-def test_init(opik_config, monkeypatch):
+def test_init(opik_config, monkeypatch: pytest.MonkeyPatch):
     mock_opik = MagicMock()
     monkeypatch.setattr("dify_trace_opik.opik_trace.Opik", mock_opik)
     monkeypatch.setenv("FILES_URL", "http://test.url")
@@ -82,7 +82,7 @@ def test_init(opik_config, monkeypatch):
     assert instance.project == opik_config.project
 
 
-def test_trace_dispatch(trace_instance, monkeypatch):
+def test_trace_dispatch(trace_instance, monkeypatch: pytest.MonkeyPatch):
     methods = [
         "workflow_trace",
         "message_trace",
@@ -132,7 +132,7 @@ def test_trace_dispatch(trace_instance, monkeypatch):
     mocks["generate_name_trace"].assert_called_once_with(info)
 
 
-def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
+def test_workflow_trace_with_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     # Define constants for better readability
     WORKFLOW_ID = "fb05c7cd-6cec-4add-8a84-df03a408b4ce"
     WORKFLOW_RUN_ID = "33c67568-7a8a-450e-8916-a5f135baeaef"
@@ -221,7 +221,7 @@ def test_workflow_trace_with_message_id(trace_instance, monkeypatch):
     assert trace_instance.add_span.call_count >= 1
 
 
-def test_workflow_trace_no_message_id(trace_instance, monkeypatch):
+def test_workflow_trace_no_message_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     # Define constants for better readability
     WORKFLOW_ID = "f0708b36-b1d7-42b3-a876-1d01b7d8f1a3"
     WORKFLOW_RUN_ID = "d42ec285-c2fd-4248-8866-5c9386b101ac"
@@ -265,7 +265,7 @@ def test_workflow_trace_no_message_id(trace_instance, monkeypatch):
     trace_instance.add_trace.assert_called_once()
 
 
-def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
+def test_workflow_trace_missing_app_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     trace_info = WorkflowTraceInfo(
         workflow_id="5745f1b8-f8e6-4859-8110-996acb6c8d6a",
         tenant_id="tenant-1",
@@ -293,7 +293,7 @@ def test_workflow_trace_missing_app_id(trace_instance, monkeypatch):
         trace_instance.workflow_trace(trace_info)
 
 
-def test_message_trace_basic(trace_instance, monkeypatch):
+def test_message_trace_basic(trace_instance, monkeypatch: pytest.MonkeyPatch):
     # Define constants for better readability
     MESSAGE_DATA_ID = "e3a26712-8cac-4a25-94a4-a3bff21ee3ab"
     CONVERSATION_ID = "9d3f3751-7521-4c19-9307-20e3cf6789a3"
@@ -340,7 +340,7 @@ def test_message_trace_basic(trace_instance, monkeypatch):
     trace_instance.add_span.assert_called_once()
 
 
-def test_message_trace_with_end_user(trace_instance, monkeypatch):
+def test_message_trace_with_end_user(trace_instance, monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.id = "85411059-79fb-4deb-a76c-c2e215f1b97e"
     message_data.from_account_id = "acc-1"
@@ -614,7 +614,7 @@ def test_get_project_url_error(trace_instance):
         trace_instance.get_project_url()
 
 
-def test_workflow_trace_usage_extraction_error_fixed(trace_instance, monkeypatch, caplog):
+def test_workflow_trace_usage_extraction_error_fixed(trace_instance, monkeypatch: pytest.MonkeyPatch, caplog):
     trace_info = WorkflowTraceInfo(
         workflow_id="86a52565-4a6b-4a1b-9bfd-98e4595e70de",
         tenant_id="66e8e918-472e-4b69-8051-12502c34fc07",

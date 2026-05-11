@@ -17,11 +17,8 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
     renderTagSelector(props)
 
     return (
-      <div data-testid="tag-selector">
-        <span data-testid="target-id">{props.targetId}</span>
-        <span data-testid="tag-type">{props.type}</span>
-        <span data-testid="selected-tag-ids">{props.value.map(tag => tag.id).join(',')}</span>
-        <span data-testid="selected-tag-names">{props.value.map(tag => tag.name).join(',')}</span>
+      <div role="group" aria-label="Tag selector mock">
+        <span>{props.value.map(tag => tag.name).join(',')}</span>
         <button type="button" onClick={props.onOpenTagManagement}>Manage Tags</button>
         <button type="button" onClick={props.onTagsChange}>Tags Changed</button>
       </div>
@@ -43,11 +40,8 @@ describe('AppCardTags', () => {
     it('should render TagSelector with app tag bindings', () => {
       render(<AppCardTags appId="app-1" tags={tags} />)
 
-      expect(screen.getByTestId('tag-selector')).toBeInTheDocument()
-      expect(screen.getByTestId('target-id')).toHaveTextContent('app-1')
-      expect(screen.getByTestId('tag-type')).toHaveTextContent('app')
-      expect(screen.getByTestId('selected-tag-ids')).toHaveTextContent('tag-1,tag-2')
-      expect(screen.getByTestId('selected-tag-names')).toHaveTextContent('Frontend,Backend')
+      expect(screen.getByRole('group', { name: 'Tag selector mock' })).toBeInTheDocument()
+      expect(screen.getByText('Frontend,Backend')).toBeInTheDocument()
       expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
         placement: 'bottom-start',
         targetId: 'app-1',
@@ -83,7 +77,6 @@ describe('AppCardTags', () => {
     it('should pass an empty selection when the app has no tags', () => {
       render(<AppCardTags appId="app-1" tags={[]} />)
 
-      expect(screen.getByTestId('selected-tag-ids')).toHaveTextContent('')
       expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
         value: [],
       }))

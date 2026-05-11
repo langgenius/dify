@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import FullScreenDrawer from '../full-screen-drawer'
+import { DocumentDetailDrawer } from '../full-screen-drawer'
 
 // Mock the Drawer component since it has high complexity
 vi.mock('../drawer', () => ({
-  default: ({ children, open, panelClassName, panelContentClassName, showOverlay, needCheckChunks, modal }: { children: ReactNode, open: boolean, panelClassName: string, panelContentClassName: string, showOverlay: boolean, needCheckChunks: boolean, modal: boolean }) => {
+  CompletedDrawer: ({ children, open, panelClassName, panelContentClassName, modal }: { children: ReactNode, open: boolean, panelClassName: string, panelContentClassName: string, modal: boolean }) => {
     if (!open)
       return null
     return (
@@ -13,8 +13,6 @@ vi.mock('../drawer', () => ({
         data-testid="drawer-mock"
         data-panel-class={panelClassName}
         data-panel-content-class={panelContentClassName}
-        data-show-overlay={showOverlay}
-        data-need-check-chunks={needCheckChunks}
         data-modal={modal}
       >
         {children}
@@ -23,7 +21,7 @@ vi.mock('../drawer', () => ({
   },
 }))
 
-describe('FullScreenDrawer', () => {
+describe('DocumentDetailDrawer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -31,9 +29,9 @@ describe('FullScreenDrawer', () => {
   describe('Rendering', () => {
     it('should render without crashing when open', () => {
       render(
-        <FullScreenDrawer isOpen={true} fullScreen={false}>
+        <DocumentDetailDrawer open={true} fullScreen={false}>
           <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       expect(screen.getByTestId('drawer-mock')).toBeInTheDocument()
@@ -41,9 +39,9 @@ describe('FullScreenDrawer', () => {
 
     it('should not render when closed', () => {
       render(
-        <FullScreenDrawer isOpen={false} fullScreen={false}>
+        <DocumentDetailDrawer open={false} fullScreen={false}>
           <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       expect(screen.queryByTestId('drawer-mock')).not.toBeInTheDocument()
@@ -51,9 +49,9 @@ describe('FullScreenDrawer', () => {
 
     it('should render children content', () => {
       render(
-        <FullScreenDrawer isOpen={true} fullScreen={false}>
+        <DocumentDetailDrawer open={true} fullScreen={false}>
           <div>Test Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       expect(screen.getByText('Test Content')).toBeInTheDocument()
@@ -63,86 +61,46 @@ describe('FullScreenDrawer', () => {
   describe('Props', () => {
     it('should pass fullScreen=true to Drawer with full width class', () => {
       render(
-        <FullScreenDrawer isOpen={true} fullScreen={true}>
+        <DocumentDetailDrawer open={true} fullScreen={true}>
           <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       const drawer = screen.getByTestId('drawer-mock')
       expect(drawer.getAttribute('data-panel-class')).toContain('w-full')
+      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=right]:w-full')
+      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=left]:w-full')
     })
 
     it('should pass fullScreen=false to Drawer with fixed width class', () => {
       render(
-        <FullScreenDrawer isOpen={true} fullScreen={false}>
+        <DocumentDetailDrawer open={true} fullScreen={false}>
           <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       const drawer = screen.getByTestId('drawer-mock')
       expect(drawer.getAttribute('data-panel-class')).toContain('w-[568px]')
+      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=right]:w-[568px]')
+      expect(drawer.getAttribute('data-panel-class')).toContain('data-[swipe-direction=left]:w-[568px]')
     })
 
-    it('should pass showOverlay prop with default true', () => {
+    it('should render as non-modal by default', () => {
       render(
-        <FullScreenDrawer isOpen={true} fullScreen={false}>
+        <DocumentDetailDrawer open={true} fullScreen={false}>
           <div>Content</div>
-        </FullScreenDrawer>,
-      )
-
-      const drawer = screen.getByTestId('drawer-mock')
-      expect(drawer.getAttribute('data-show-overlay')).toBe('true')
-    })
-
-    it('should pass showOverlay=false when specified', () => {
-      render(
-        <FullScreenDrawer isOpen={true} fullScreen={false} showOverlay={false}>
-          <div>Content</div>
-        </FullScreenDrawer>,
-      )
-
-      const drawer = screen.getByTestId('drawer-mock')
-      expect(drawer.getAttribute('data-show-overlay')).toBe('false')
-    })
-
-    it('should pass needCheckChunks prop with default false', () => {
-      render(
-        <FullScreenDrawer isOpen={true} fullScreen={false}>
-          <div>Content</div>
-        </FullScreenDrawer>,
-      )
-
-      const drawer = screen.getByTestId('drawer-mock')
-      expect(drawer.getAttribute('data-need-check-chunks')).toBe('false')
-    })
-
-    it('should pass needCheckChunks=true when specified', () => {
-      render(
-        <FullScreenDrawer isOpen={true} fullScreen={false} needCheckChunks={true}>
-          <div>Content</div>
-        </FullScreenDrawer>,
-      )
-
-      const drawer = screen.getByTestId('drawer-mock')
-      expect(drawer.getAttribute('data-need-check-chunks')).toBe('true')
-    })
-
-    it('should pass modal prop with default false', () => {
-      render(
-        <FullScreenDrawer isOpen={true} fullScreen={false}>
-          <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       const drawer = screen.getByTestId('drawer-mock')
       expect(drawer.getAttribute('data-modal')).toBe('false')
     })
 
-    it('should pass modal=true when specified', () => {
+    it('should pass modal when specified', () => {
       render(
-        <FullScreenDrawer isOpen={true} fullScreen={false} modal={true}>
+        <DocumentDetailDrawer open={true} fullScreen={false} modal>
           <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       const drawer = screen.getByTestId('drawer-mock')
@@ -154,9 +112,9 @@ describe('FullScreenDrawer', () => {
   describe('Styling', () => {
     it('should apply panel content classes for non-fullScreen mode', () => {
       render(
-        <FullScreenDrawer isOpen={true} fullScreen={false}>
+        <DocumentDetailDrawer open={true} fullScreen={false}>
           <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       const drawer = screen.getByTestId('drawer-mock')
@@ -167,9 +125,9 @@ describe('FullScreenDrawer', () => {
 
     it('should apply panel content classes without border for fullScreen mode', () => {
       render(
-        <FullScreenDrawer isOpen={true} fullScreen={true}>
+        <DocumentDetailDrawer open={true} fullScreen={true}>
           <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       const drawer = screen.getByTestId('drawer-mock')
@@ -184,24 +142,24 @@ describe('FullScreenDrawer', () => {
       // Arrange & Act & Assert - should not throw
       expect(() => {
         render(
-          <FullScreenDrawer isOpen={true} fullScreen={false}>
+          <DocumentDetailDrawer open={true} fullScreen={false}>
             <div>Content</div>
-          </FullScreenDrawer>,
+          </DocumentDetailDrawer>,
         )
       }).not.toThrow()
     })
 
     it('should maintain structure when rerendered', () => {
       const { rerender } = render(
-        <FullScreenDrawer isOpen={true} fullScreen={false}>
+        <DocumentDetailDrawer open={true} fullScreen={false}>
           <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       rerender(
-        <FullScreenDrawer isOpen={true} fullScreen={true}>
+        <DocumentDetailDrawer open={true} fullScreen={true}>
           <div>Updated Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       expect(screen.getByText('Updated Content')).toBeInTheDocument()
@@ -209,16 +167,16 @@ describe('FullScreenDrawer', () => {
 
     it('should handle toggle between open and closed states', () => {
       const { rerender } = render(
-        <FullScreenDrawer isOpen={true} fullScreen={false}>
+        <DocumentDetailDrawer open={true} fullScreen={false}>
           <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
       expect(screen.getByTestId('drawer-mock')).toBeInTheDocument()
 
       rerender(
-        <FullScreenDrawer isOpen={false} fullScreen={false}>
+        <DocumentDetailDrawer open={false} fullScreen={false}>
           <div>Content</div>
-        </FullScreenDrawer>,
+        </DocumentDetailDrawer>,
       )
 
       expect(screen.queryByTestId('drawer-mock')).not.toBeInTheDocument()

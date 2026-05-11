@@ -5,6 +5,7 @@ import {
   RiDownloadLine,
 } from '@remixicon/react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
@@ -30,6 +31,7 @@ const FileImageItem = ({
   onRemove,
   onReUpload,
 }: FileImageItemProps) => {
+  const { t } = useTranslation()
   const { id, progress, base64Url, url, name } = file
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const download_url = url ? `${url}&as_attachment=true` : base64Url
@@ -43,10 +45,14 @@ const FileImageItem = ({
         {
           showDeleteAction && (
             <Button
+              aria-label={t('operation.remove', { ns: 'common' })}
               className="absolute -top-1.5 -right-1.5 z-11 hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex"
-              onClick={() => onRemove?.(id)}
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemove?.(id)
+              }}
             >
-              <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" />
+              <RiCloseLine className="h-4 w-4 text-components-button-secondary-text" aria-hidden="true" />
             </Button>
           )
         }
@@ -71,25 +77,34 @@ const FileImageItem = ({
         {
           progress === -1 && (
             <div className="absolute inset-0 z-10 flex items-center justify-center border-2 border-state-destructive-border bg-background-overlay-destructive">
-              <ReplayLine
-                className="h-5 w-5"
-                onClick={() => onReUpload?.(id)}
-              />
+              <button
+                type="button"
+                aria-label={t('operation.retry', { ns: 'common' })}
+                className="h-5 w-5 border-none bg-transparent p-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onReUpload?.(id)
+                }}
+              >
+                <ReplayLine className="h-5 w-5" aria-hidden="true" />
+              </button>
             </div>
           )
         }
         {
           showDownloadAction && (
             <div className="absolute inset-0.5 z-10 hidden bg-background-overlay-alt group-hover/file-image:block">
-              <div
-                className="absolute right-0.5 bottom-0.5 flex h-6 w-6 items-center justify-center rounded-lg bg-components-actionbar-bg shadow-md"
+              <button
+                type="button"
+                aria-label={t('operation.download', { ns: 'common' })}
+                className="absolute right-0.5 bottom-0.5 flex h-6 w-6 items-center justify-center rounded-lg border-none bg-components-actionbar-bg p-0 shadow-md"
                 onClick={(e) => {
                   e.stopPropagation()
                   downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
                 }}
               >
-                <RiDownloadLine className="h-4 w-4 text-text-tertiary" />
-              </div>
+                <RiDownloadLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+              </button>
             </div>
           )
         }

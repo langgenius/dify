@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models import Account
+from models import Account, App
 from models.enums import ConversationFromSource
 from models.model import Conversation, EndUser
 from models.web import PinnedConversation
@@ -93,7 +93,7 @@ class TestWebConversationService:
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers: Session, app):
+    def _create_test_end_user(self, db_session_with_containers: Session, app: App):
         """
         Helper method to create a test end user for testing.
 

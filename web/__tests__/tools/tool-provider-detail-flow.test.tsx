@@ -120,19 +120,6 @@ vi.mock('@/utils/var', () => ({
   basePath: '',
 }))
 
-vi.mock('@/app/components/base/drawer', () => ({
-  default: ({ isOpen, children, onClose }: { isOpen: boolean, children: React.ReactNode, onClose: () => void }) => (
-    isOpen
-      ? (
-          <div data-testid="drawer">
-            {children}
-            <button data-testid="drawer-close" onClick={onClose}>Close Drawer</button>
-          </div>
-        )
-      : null
-  ),
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: vi.fn() },
   toast: {
@@ -205,7 +192,7 @@ vi.mock('@/app/components/tools/setting/build-in/config-credentials', () => ({
 }))
 
 vi.mock('@/app/components/tools/workflow-tool', () => ({
-  default: ({ onHide, onSave, onRemove }: { payload: unknown, onHide: () => void, onSave: (d: unknown) => void, onRemove: () => void }) => (
+  WorkflowToolDrawer: ({ onHide, onSave, onRemove }: { payload: unknown, onHide: () => void, onSave: (d: unknown) => void, onRemove: () => void }) => (
     <div data-testid="workflow-tool-modal">
       <button data-testid="wf-modal-hide" onClick={onHide}>Hide</button>
       <button data-testid="wf-modal-save" onClick={() => onSave({ name: 'updated-wf' })}>Save</button>
@@ -525,10 +512,10 @@ describe('Tool Provider Detail Flow Integration', () => {
       render(<ProviderDetail collection={collection} onHide={mockOnHide} onRefreshData={mockOnRefreshData} />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('drawer')).toBeInTheDocument()
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('drawer-close'))
+      fireEvent.click(screen.getByRole('button', { name: 'operation.close' }))
       expect(mockOnHide).toHaveBeenCalled()
     })
   })

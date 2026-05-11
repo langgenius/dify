@@ -28,7 +28,7 @@ describe('InvitationLink', () => {
 
     render(<InvitationLink value={value} />)
 
-    const copyBtn = screen.getByTestId('invitation-link-copy')
+    const copyBtn = screen.getByRole('button', { name: 'appApi.copy' })
     await user.click(copyBtn)
 
     expect(copy).toHaveBeenCalledWith('http://localhost:3000/invite/123')
@@ -45,7 +45,7 @@ describe('InvitationLink', () => {
 
     render(<InvitationLink value={absoluteValue} />)
 
-    await user.click(screen.getByTestId('invitation-link-url'))
+    await user.click(screen.getByRole('button', { name: 'https://dify.ai/invite/123' }))
 
     expect(copy).toHaveBeenCalledWith('https://dify.ai/invite/123')
   })
@@ -54,7 +54,7 @@ describe('InvitationLink', () => {
     vi.useFakeTimers()
     render(<InvitationLink value={value} />)
 
-    const url = screen.getByTestId('invitation-link-url')
+    const url = screen.getByRole('button', { name: '/invite/123' })
 
     // Initial state check - PopupContent should be "copy"
     // Since we mock i18next to return the key, we check for 'appApi.copy'

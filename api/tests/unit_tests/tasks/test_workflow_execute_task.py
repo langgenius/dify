@@ -122,7 +122,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(m
     workflow_run = SimpleNamespace(
         workflow_id="wf-id",
         app_id="app-id",
-        created_by_role=CreatorUserRole.ACCOUNT.value,
+        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-id",
         tenant_id="tenant-id",
     )
@@ -208,7 +208,7 @@ def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversat
     workflow_run = SimpleNamespace(
         workflow_id="wf-id",
         app_id="app-id",
-        created_by_role=CreatorUserRole.ACCOUNT.value,
+        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-id",
         tenant_id="tenant-id",
     )

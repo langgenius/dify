@@ -54,7 +54,7 @@ class AudioService:
         if extension not in [f"audio/{ext}" for ext in AUDIO_EXTENSIONS]:
             raise UnsupportedAudioTypeServiceError()
 
-        file_content = file.read()
+        file_content = file.stream.read()
         file_size = len(file_content)
 
         if file_size > FILE_SIZE_LIMIT:

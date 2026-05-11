@@ -9,11 +9,11 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import Modal from '@/app/components/base/modal'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { useGetModelCredential, useUpdateModelLoadBalancingConfig } from '@/service/use-models'
 import { ConfigurationMethodEnum, FormTypeEnum } from '../declarations'
@@ -180,114 +180,118 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
   }, [refetch, onClose])
   return (
     <>
-      <Modal
-        isShow={Boolean(model) && open}
-        onClose={onClose}
-        wrapperClassName="z-1002"
-        className="w-[640px] max-w-none px-8 pt-8"
-        title={(
-          <div className="pb-3 font-semibold">
-            <div className="h-[30px]">
-              {draftConfig?.enabled
-                ? t('modelProvider.auth.configLoadBalancing', { ns: 'common' })
-                : t('modelProvider.auth.configModel', { ns: 'common' })}
-            </div>
-            {Boolean(model) && (
-              <div className="flex h-5 items-center">
-                <ModelIcon className="mr-2 shrink-0" provider={provider} modelName={model!.model} />
-                <ModelName className="grow system-md-regular text-text-secondary" modelItem={model!} showModelType showMode showContextSize />
-              </div>
-            )}
-          </div>
-        )}
+      <Dialog
+        open={Boolean(model) && open}
+        onOpenChange={(open) => {
+          if (!open)
+            onClose?.()
+        }}
       >
-        {!draftConfig
-          ? <Loading type="area" />
-          : (
-              <>
-                <div className="py-2">
-                  <div className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors', draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600')} onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}>
-                    <div className="flex items-center gap-2 px-[15px] py-3 select-none">
-                      <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-components-card-border bg-components-card-bg">
-                        {Boolean(model) && (<ModelIcon className="shrink-0" provider={provider} modelName={model!.model} />)}
-                      </div>
-                      <div className="grow">
-                        <div className="text-sm text-text-secondary">
-                          {providerFormSchemaPredefined
-                            ? t('modelProvider.auth.providerManaged', { ns: 'common' })
-                            : t('modelProvider.auth.specifyModelCredential', { ns: 'common' })}
-                        </div>
-                        <div className="text-xs text-text-tertiary">
-                          {providerFormSchemaPredefined
-                            ? t('modelProvider.auth.providerManagedTip', { ns: 'common' })
-                            : t('modelProvider.auth.specifyModelCredentialTip', { ns: 'common' })}
-                        </div>
-                      </div>
-                      {!providerFormSchemaPredefined && (<SwitchCredentialInLoadBalancing provider={provider} customModelCredential={customModelCredential ?? initialCustomModelCredential} setCustomModelCredential={setCustomModelCredential} model={model} credentials={available_credentials} onUpdate={handleUpdateWhenSwitchCredential} onRemove={handleUpdateWhenSwitchCredential} />)}
-                    </div>
-                  </div>
-                  {modelCredential && (
-                    <ModelLoadBalancingConfigs {...{
-                      draftConfig,
-                      setDraftConfig,
-                      provider,
-                      currentCustomConfigurationModelFixedFields: {
-                        __model_name: model.model,
-                        __model_type: model.model_type,
-                      },
-                      configurationMethod: model.fetch_from,
-                      className: 'mt-2',
-                      modelCredential,
-                      onUpdate: handleUpdate,
-                      onRemove: handleUpdateWhenSwitchCredential,
-                      model: {
-                        model: model.model,
-                        model_type: model.model_type,
-                      },
-                    }}
-                    />
-                  )}
+        <DialogContent className="w-[640px] max-w-none overflow-hidden! border-none px-8 pt-8 text-left align-middle">
+          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+            <div className="pb-3 font-semibold">
+              <div className="h-[30px]">
+                {draftConfig?.enabled
+                  ? t('modelProvider.auth.configLoadBalancing', { ns: 'common' })
+                  : t('modelProvider.auth.configModel', { ns: 'common' })}
+              </div>
+              {Boolean(model) && (
+                <div className="flex h-5 items-center">
+                  <ModelIcon className="mr-2 shrink-0" provider={provider} modelName={model!.model} />
+                  <ModelName className="grow system-md-regular text-text-secondary" modelItem={model!} showModelType showMode showContextSize />
                 </div>
+              )}
+            </div>
+          </DialogTitle>
 
-                <div className="mt-6 flex items-center justify-between gap-2">
-                  <div>
-                    {!providerFormSchemaPredefined && (
-                      <Button onClick={() => openConfirmDelete(undefined, { model: model.model, model_type: model.model_type })} className="text-components-button-destructive-secondary-text">
-                        {t('modelProvider.auth.removeModel', { ns: 'common' })}
-                      </Button>
+          {!draftConfig
+            ? <Loading type="area" />
+            : (
+                <>
+                  <div className="py-2">
+                    <div className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors', draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600')} onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}>
+                      <div className="flex items-center gap-2 px-[15px] py-3 select-none">
+                        <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-components-card-border bg-components-card-bg">
+                          {Boolean(model) && (<ModelIcon className="shrink-0" provider={provider} modelName={model!.model} />)}
+                        </div>
+                        <div className="grow">
+                          <div className="text-sm text-text-secondary">
+                            {providerFormSchemaPredefined
+                              ? t('modelProvider.auth.providerManaged', { ns: 'common' })
+                              : t('modelProvider.auth.specifyModelCredential', { ns: 'common' })}
+                          </div>
+                          <div className="text-xs text-text-tertiary">
+                            {providerFormSchemaPredefined
+                              ? t('modelProvider.auth.providerManagedTip', { ns: 'common' })
+                              : t('modelProvider.auth.specifyModelCredentialTip', { ns: 'common' })}
+                          </div>
+                        </div>
+                        {!providerFormSchemaPredefined && (<SwitchCredentialInLoadBalancing provider={provider} customModelCredential={customModelCredential ?? initialCustomModelCredential} setCustomModelCredential={setCustomModelCredential} model={model} credentials={available_credentials} onUpdate={handleUpdateWhenSwitchCredential} onRemove={handleUpdateWhenSwitchCredential} />)}
+                      </div>
+                    </div>
+                    {modelCredential && (
+                      <ModelLoadBalancingConfigs {...{
+                        draftConfig,
+                        setDraftConfig,
+                        provider,
+                        currentCustomConfigurationModelFixedFields: {
+                          __model_name: model.model,
+                          __model_type: model.model_type,
+                        },
+                        configurationMethod: model.fetch_from,
+                        className: 'mt-2',
+                        modelCredential,
+                        onUpdate: handleUpdate,
+                        onRemove: handleUpdateWhenSwitchCredential,
+                        model: {
+                          model: model.model,
+                          model_type: model.model_type,
+                        },
+                      }}
+                      />
                     )}
                   </div>
-                  <div className="space-x-2">
-                    <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleSave}
-                      disabled={loading
-                        || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
-                        || isLoading}
-                    >
-                      {t('operation.save', { ns: 'common' })}
-                    </Button>
+
+                  <div className="mt-6 flex items-center justify-between gap-2">
+                    <div>
+                      {!providerFormSchemaPredefined && (
+                        <Button onClick={() => openConfirmDelete(undefined, { model: model.model, model_type: model.model_type })} className="text-components-button-destructive-secondary-text">
+                          {t('modelProvider.auth.removeModel', { ns: 'common' })}
+                        </Button>
+                      )}
+                    </div>
+                    <div className="space-x-2">
+                      <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+                      <Button
+                        variant="primary"
+                        onClick={handleSave}
+                        disabled={loading
+                          || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
+                          || isLoading}
+                      >
+                        {t('operation.save', { ns: 'common' })}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-      </Modal>
-      <AlertDialog open={!!deleteModel} onOpenChange={open => !open && closeConfirmDelete()}>
-        <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t('modelProvider.confirmDelete', { ns: 'common' })}
-            </AlertDialogTitle>
-          </div>
-          <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteModel}>
-              {t('operation.confirm', { ns: 'common' })}
-            </AlertDialogConfirmButton>
-          </AlertDialogActions>
-        </AlertDialogContent>
-      </AlertDialog>
+                </>
+              )}
+          <AlertDialog open={!!deleteModel} onOpenChange={open => !open && closeConfirmDelete()}>
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  {t('modelProvider.confirmDelete', { ns: 'common' })}
+                </AlertDialogTitle>
+              </div>
+              <AlertDialogActions>
+                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteModel}>
+                  {t('operation.confirm', { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogActions>
+            </AlertDialogContent>
+          </AlertDialog>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

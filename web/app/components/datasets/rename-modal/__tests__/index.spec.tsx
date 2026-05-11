@@ -167,11 +167,7 @@ describe('RenameDatasetModal', () => {
 
     it('should render close icon button', () => {
       render(<RenameDatasetModal {...defaultProps} />)
-      // The modal renders with title and other elements
-      // The close functionality is tested in user interactions
-      // The modal renders with title and other elements
-      // The close functionality is tested in user interactions
-      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /operation\.close$/ }))!.toBeInTheDocument()
     })
 
     it('should render form labels', () => {
@@ -296,14 +292,10 @@ describe('RenameDatasetModal', () => {
     })
 
     it('should call onClose when close icon is clicked', () => {
-      // This test is covered by the cancel button test
-      // The close icon functionality works the same way as cancel button
       const handleClose = vi.fn()
       render(<RenameDatasetModal {...defaultProps} onClose={handleClose} />)
 
-      // Use the cancel button to verify close callback works
-      const cancelButton = screen.getByText('common.operation.cancel')
-      fireEvent.click(cancelButton)
+      fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
       expect(handleClose).toHaveBeenCalledTimes(1)
     })

@@ -56,7 +56,7 @@ from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
-    from graphon.model_runtime.runtime import ModelRuntime
+    from graphon.model_runtime.protocols.runtime import ModelRuntime
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
@@ -165,7 +165,7 @@ class ProviderManager:
                 )
 
         # Get all provider entities
-        model_provider_factory = ModelProviderFactory(model_runtime=self._model_runtime)
+        model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
         provider_entities = model_provider_factory.get_providers()
 
         # Get All preferred provider types of the workspace
@@ -362,7 +362,7 @@ class ProviderManager:
         if not default_model:
             return None
 
-        model_provider_factory = ModelProviderFactory(model_runtime=self._model_runtime)
+        model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
         provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
 
         return DefaultModelEntity(

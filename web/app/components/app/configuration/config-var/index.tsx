@@ -22,7 +22,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { useContext } from 'use-context-selector'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import { InputVarType } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -257,13 +257,9 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         <div className="flex items-center">
           <div className="mr-1">{t('variableTitle', { ns: 'appDebug' })}</div>
           {!readonly && (
-            <Tooltip
-              popupContent={(
-                <div className="w-[180px]">
-                  {t('variableTip', { ns: 'appDebug' })}
-                </div>
-              )}
-            />
+            <Infotip aria-label={t('variableTip', { ns: 'appDebug' })} popupClassName="w-[180px]">
+              {t('variableTip', { ns: 'appDebug' })}
+            </Infotip>
           )}
         </div>
       )}

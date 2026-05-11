@@ -11,6 +11,7 @@ import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowDownSLine, RiCloseLine, RiErrorWarningFill, RiLoader4Line, RiMoreLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -114,6 +115,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
   varName,
   variableCategory,
 }) => {
+  const { t } = useTranslation()
   const handleTriggerReadonlyClick = (e: React.MouseEvent<HTMLElement>) => {
     if (!readonly)
       return
@@ -252,9 +254,14 @@ const VarReferencePickerTrigger: FC<Props> = ({
         {isAddBtnTrigger
           ? (
               <div>
-                <div className="cursor-pointer rounded-md p-1 select-none hover:bg-state-base-hover" onClick={() => {}} data-testid="add-button">
-                  <span className="i-ri-add-line h-4 w-4 text-text-tertiary" />
-                </div>
+                <button
+                  type="button"
+                  aria-label={t('operation.add', { ns: 'common' })}
+                  className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={() => {}}
+                >
+                  <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                </button>
               </div>
             )
           : (
@@ -303,13 +310,14 @@ const VarReferencePickerTrigger: FC<Props> = ({
                     )
                   : resolvedVariablePicker}
                 {(hasValue && !readonly && !isInTable && !isJustShowValue) && (
-                  <div
-                    className="group invisible absolute top-[50%] right-1 h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 group-hover/wrap:visible hover:bg-state-base-hover"
+                  <button
+                    type="button"
+                    aria-label={t('operation.clear', { ns: 'common' })}
+                    className="group invisible absolute top-[50%] right-1 h-5 translate-y-[-50%] cursor-pointer rounded-md border-none bg-transparent p-1 group-hover/wrap:visible hover:bg-state-base-hover"
                     onClick={handleClearVar}
-                    data-testid="var-reference-picker-clear"
                   >
-                    <RiCloseLine className="h-3.5 w-3.5 text-text-tertiary group-hover:text-text-secondary" />
-                  </div>
+                    <RiCloseLine className="h-3.5 w-3.5 text-text-tertiary group-hover:text-text-secondary" aria-hidden="true" />
+                  </button>
                 )}
                 {!hasValue && valueTypePlaceHolder && (
                   <Badge
