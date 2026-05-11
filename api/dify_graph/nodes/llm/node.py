@@ -16,7 +16,7 @@ from core.llm_generator.output_parser.structured_output import invoke_llm_with_s
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.tools.signature import sign_upload_file
+from core.tools.signature import sign_upload_file_preview_url
 from dify_graph.constants import SYSTEM_VARIABLE_NODE_ID
 from dify_graph.entities import GraphInitParams
 from dify_graph.entities.graph_config import NodeConfigDict
@@ -712,7 +712,7 @@ class LLMNode(Node[LLMNodeData]):
                                         related_id=upload_file.id,
                                         size=upload_file.size,
                                         storage_key=upload_file.key,
-                                        url=sign_upload_file(upload_file.id, upload_file.extension),
+                                        url=sign_upload_file_preview_url(upload_file.id, upload_file.extension),
                                     )
                                     context_files.append(attachment_info)
                 yield RunRetrieverResourceEvent(
