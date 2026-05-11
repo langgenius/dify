@@ -71,7 +71,9 @@ class TestAgentChatAppGenerateResponseConverterBlocking:
 
         result = AgentChatAppGenerateResponseConverter.convert_blocking_simple_response(blocking)
 
-        assert "annotation_reply" not in result["metadata"]
+        # annotation_reply must be preserved so the frontend can detect annotation hits
+        # and clear the "stop responding" state on message_end.
+        assert result["metadata"]["annotation_reply"] == {"id": "a"}
         assert "usage" not in result["metadata"]
 
     def test_convert_blocking_simple_response_with_non_dict_metadata(self):
@@ -169,7 +171,9 @@ class TestAgentChatAppGenerateResponseConverterStream:
         assert items[2]["event"] == "message_end"
         assert "metadata" in items[2]
         metadata = items[2]["metadata"]
-        assert "annotation_reply" not in metadata
+        # annotation_reply must be preserved so the frontend can detect annotation hits
+        # and clear the "stop responding" state on message_end.
+        assert metadata["annotation_reply"] == {"id": "a"}
         assert "usage" not in metadata
         assert metadata["retriever_resources"] == [
             {
