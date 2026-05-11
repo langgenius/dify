@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from dify_agent.protocol.schemas import CreateRunRequest
 from dify_agent.runtime.run_scheduler import SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
@@ -122,7 +123,6 @@ def test_create_run_does_not_map_infrastructure_failure_to_422() -> None:
 
 def _request():
     from agenton.compositor import CompositorConfig, LayerNodeConfig
-    from dify_agent.server.schemas import CreateRunRequest
 
     return CreateRunRequest(
         compositor=CompositorConfig(

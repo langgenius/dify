@@ -11,7 +11,7 @@ from typing import Protocol
 from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.server.schemas import (
+from dify_agent.protocol.schemas import (
     AgentOutputRunEvent,
     AgentOutputRunEventData,
     EmptyRunEventData,

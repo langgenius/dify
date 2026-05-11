@@ -1,40 +1,12 @@
-from pydantic_ai.messages import FinalResultEvent
-
-from dify_agent.server.schemas import (
-    RUN_EVENT_ADAPTER,
-    AgentOutputRunEvent,
-    AgentOutputRunEventData,
-    PydanticAIStreamRunEvent,
-    RunFailedEvent,
-    RunFailedEventData,
-    RunStartedEvent,
-)
+import dify_agent.server.schemas as server_schemas
 
 
-def test_run_event_adapter_round_trips_typed_variants() -> None:
-    events = [
-        RunStartedEvent(run_id="run-1"),
-        PydanticAIStreamRunEvent(run_id="run-1", data=FinalResultEvent(tool_name=None, tool_call_id=None)),
-        AgentOutputRunEvent(run_id="run-1", data=AgentOutputRunEventData(output="done")),
-        RunFailedEvent(run_id="run-1", data=RunFailedEventData(error="boom", reason="shutdown")),
-    ]
-
-    for event in events:
-        payload = RUN_EVENT_ADAPTER.dump_json(event)
-        decoded = RUN_EVENT_ADAPTER.validate_json(payload)
-
-        assert decoded.type == event.type
-        assert decoded.run_id == event.run_id
+def test_server_schemas_do_not_reexport_public_protocol_dtos() -> None:
+    assert server_schemas.__all__ == ["RunRecord", "new_run_id"]
+    assert not hasattr(server_schemas, "CreateRunRequest")
+    assert not hasattr(server_schemas, "RunStartedEvent")
 
 
-def test_pydantic_ai_event_data_uses_agent_stream_event_model() -> None:
-    event = RUN_EVENT_ADAPTER.validate_python(
-        {
-            "run_id": "run-1",
-            "type": "pydantic_ai_event",
-            "data": {"event_kind": "final_result", "tool_name": None, "tool_call_id": None},
-        }
-    )
-
-    assert isinstance(event, PydanticAIStreamRunEvent)
-    assert isinstance(event.data, FinalResultEvent)
+def test_server_schemas_keep_server_only_run_helpers() -> None:
+    assert isinstance(server_schemas.new_run_id(), str)
+    assert hasattr(server_schemas, "RunRecord")

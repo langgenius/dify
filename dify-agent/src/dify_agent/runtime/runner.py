@@ -11,6 +11,7 @@ from collections.abc import AsyncIterable
 from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.schemas import CreateRunRequest
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor
 from dify_agent.runtime.event_sink import (
@@ -23,7 +24,6 @@ from dify_agent.runtime.event_sink import (
     emit_session_snapshot,
 )
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
-from dify_agent.server.schemas import CreateRunRequest
 
 
 class AgentRunValidationError(ValueError):

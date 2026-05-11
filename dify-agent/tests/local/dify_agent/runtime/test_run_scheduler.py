@@ -6,8 +6,9 @@ import pytest
 from pydantic import JsonValue
 
 from agenton.compositor import CompositorConfig, LayerNodeConfig
+from dify_agent.protocol.schemas import CreateRunRequest, RunEvent, RunStatus
 from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
-from dify_agent.server.schemas import CreateRunRequest, RunEvent, RunRecord, RunStatus
+from dify_agent.server.schemas import RunRecord
 
 
 def _request(user: str | list[str] = "hello") -> CreateRunRequest:

@@ -11,6 +11,7 @@ EXAMPLE_MODULES = (
     "run_pydantic_ai_agent",
     "run_server_consumer",
     "run_server_sse_consumer",
+    "run_server_sync_client",
 )
 
 

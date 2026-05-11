@@ -3,9 +3,9 @@ import asyncio
 import pytest
 
 from agenton.compositor import CompositorConfig, LayerNodeConfig
+from dify_agent.protocol.schemas import AgentProfileConfig, CreateRunRequest
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError
-from dify_agent.server.schemas import AgentProfileConfig, CreateRunRequest
 
 
 def test_runner_emits_terminal_success_and_snapshot() -> None:

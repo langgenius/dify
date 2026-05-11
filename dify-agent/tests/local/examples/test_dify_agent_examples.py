@@ -8,5 +8,6 @@ def test_dify_agent_examples_are_importable() -> None:
         "dify_agent_examples.run_pydantic_ai_agent",
         "dify_agent_examples.run_server_consumer",
         "dify_agent_examples.run_server_sse_consumer",
+        "dify_agent_examples.run_server_sync_client",
     ]:
         importlib.import_module(module_name)

@@ -1,4 +1,4 @@
-"""Example consumer for the Dify Agent run server.
+"""Async Python client example for the Dify Agent run server.
 
 Requires Redis and a running API server. The server schedules runs in-process, for
 example:
@@ -7,21 +7,22 @@ example:
 
 The default request uses the credential-free pydantic-ai TestModel profile. This
 script prints the created run and every event observed through cursor polling.
+``Client.create_run`` performs one POST attempt only; use polling or SSE replay to
+recover after client-side uncertainty.
 """
 
 import asyncio
 
-import httpx
+from dify_agent.client import Client
 
 
 API_BASE_URL = "http://localhost:8000"
 
 
 async def main() -> None:
-    async with httpx.AsyncClient(base_url=API_BASE_URL, timeout=30) as client:
-        create_response = await client.post(
-            "/runs",
-            json={
+    async with Client(base_url=API_BASE_URL) as client:
+        run = await client.create_run(
+            {
                 "compositor": {
                     "schema_version": 1,
                     "layers": [
@@ -36,21 +37,17 @@ async def main() -> None:
                     ],
                 },
                 "agent_profile": {"provider": "test", "output_text": "Hello from the example TestModel."},
-            },
+            }
         )
-        create_response.raise_for_status()
-        run = create_response.json()
         print("created run", run)
 
         cursor = "0-0"
         while True:
-            events_response = await client.get(f"/runs/{run['run_id']}/events", params={"after": cursor})
-            events_response.raise_for_status()
-            page = events_response.json()
-            cursor = page["next_cursor"] or cursor
-            for event in page["events"]:
+            page = await client.get_events(run.run_id, after=cursor)
+            cursor = page.next_cursor or cursor
+            for event in page.events:
                 print("event", event)
-                if event["type"] in {"run_succeeded", "run_failed"}:
+                if event.type in {"run_succeeded", "run_failed"}:
                     return
             await asyncio.sleep(0.5)
 

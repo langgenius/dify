@@ -13,7 +13,7 @@ from pydantic_ai.messages import UserContent
 from pydantic_ai.models.test import TestModel
 
 from agenton.layers.types import PydanticAIPrompt, PydanticAITool
-from dify_agent.server.schemas import AgentProfileConfig
+from dify_agent.protocol.schemas import AgentProfileConfig
 
 
 def create_agent(

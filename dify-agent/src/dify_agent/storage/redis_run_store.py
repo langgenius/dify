@@ -12,17 +12,16 @@ from typing import cast
 
 from redis.asyncio import Redis
 
-from dify_agent.runtime.event_sink import RunEventSink
-from dify_agent.server.schemas import (
+from dify_agent.protocol.schemas import (
     CreateRunRequest,
     RUN_EVENT_ADAPTER,
     RunEvent,
     RunEventsResponse,
-    RunRecord,
     RunStatus,
-    new_run_id,
     utc_now,
 )
+from dify_agent.runtime.event_sink import RunEventSink
+from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import run_events_key, run_record_key
 

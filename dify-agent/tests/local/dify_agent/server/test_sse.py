@@ -1,4 +1,4 @@
-from dify_agent.server.schemas import RunStartedEvent
+from dify_agent.protocol.schemas import RunStartedEvent
 from dify_agent.server.sse import format_sse_event
 
 

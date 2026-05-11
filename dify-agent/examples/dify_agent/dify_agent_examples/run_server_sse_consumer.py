@@ -1,13 +1,14 @@
-"""SSE consumer sketch for the Dify Agent run server.
+"""Async SSE client example for the Dify Agent run server.
 
 Create a run with ``run_server_consumer.py`` or any HTTP client, then set RUN_ID
-below and run this script while the server is available. It prints raw SSE frames
-without requiring model credentials.
+below and run this script while the server is available. The Python client parses
+SSE frames into typed protocol events and reconnects with the latest event id by
+default. Malformed frames and HTTP 4xx responses fail without reconnecting.
 """
 
 import asyncio
 
-import httpx
+from dify_agent.client import Client
 
 
 API_BASE_URL = "http://localhost:8000"
@@ -15,11 +16,9 @@ RUN_ID = "replace-with-run-id"
 
 
 async def main() -> None:
-    async with httpx.AsyncClient(base_url=API_BASE_URL, timeout=None) as client:
-        async with client.stream("GET", f"/runs/{RUN_ID}/events/sse") as response:
-            response.raise_for_status()
-            async for line in response.aiter_lines():
-                print(line)
+    async with Client(base_url=API_BASE_URL, stream_timeout=None) as client:
+        async for event in client.stream_events(RUN_ID):
+            print(event)
 
 
 if __name__ == "__main__":

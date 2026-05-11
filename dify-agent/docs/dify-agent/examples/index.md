@@ -14,6 +14,11 @@ such as the FastAPI server, Redis, or the plugin daemon.
 ```snippet {path="/examples/dify_agent/dify_agent_examples/run_server_consumer.py"}
 ```
 
+## Use the synchronous client
+
+```snippet {path="/examples/dify_agent/dify_agent_examples/run_server_sync_client.py"}
+```
+
 ## Stream run events with SSE
 
 ```snippet {path="/examples/dify_agent/dify_agent_examples/run_server_sse_consumer.py"}

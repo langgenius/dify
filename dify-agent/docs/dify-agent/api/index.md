@@ -5,6 +5,10 @@ configuration, Pydantic AI runtime execution, Redis run records, and per-run Red
 Streams event logs. The FastAPI application lives at
 `dify-agent/src/dify_agent/server/app.py`.
 
+Public Python DTOs and event models are exported from
+`dify_agent.protocol.schemas`. `dify_agent.server.schemas` is intentionally
+server-only and should not be used by API consumers.
+
 ## Input model
 
 Create-run requests accept a `CompositorConfig` and an optional
@@ -154,6 +158,52 @@ Replay can start from a cursor with either:
 
 If both are provided, the `after` query parameter takes precedence.
 
+## Python client
+
+Use `dify_agent.client.Client` for both async and sync code. Async methods use
+normal names; sync methods add `_sync`.
+
+```python {test="skip" lint="skip"}
+from dify_agent.client import Client
+
+
+async def main() -> None:
+    async with Client(base_url="http://localhost:8000") as client:
+        run = await client.create_run(
+            {
+                "compositor": {
+                    "schema_version": 1,
+                    "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+                }
+            }
+        )
+        async for event in client.stream_events(run.run_id):
+            print(event)
+```
+
+```python {test="skip" lint="skip"}
+from dify_agent.client import Client
+
+
+with Client(base_url="http://localhost:8000") as client:
+    run = client.create_run_sync(
+        {
+            "compositor": {
+                "schema_version": 1,
+                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+            }
+        }
+    )
+    terminal = client.wait_run_sync(run.run_id)
+```
+
+`stream_events` and `stream_events_sync` parse SSE without an extra dependency.
+They reconnect by default from the latest yielded event id and stop after
+`run_succeeded` or `run_failed`. They do not reconnect for HTTP 4xx responses,
+DTO validation failures, or malformed SSE frames. `create_run` and
+`create_run_sync` never retry `POST /runs`; if a timeout occurs, the caller must
+decide whether to inspect existing runs or submit a new run.
+
 ## Event types and order
 
 A normal successful run emits:
@@ -184,3 +234,4 @@ See:
 
 - `dify-agent/examples/dify_agent/dify_agent_examples/run_server_consumer.py` for cursor polling
 - `dify-agent/examples/dify_agent/dify_agent_examples/run_server_sse_consumer.py` for SSE consumption
+- `dify-agent/examples/dify_agent/dify_agent_examples/run_server_sync_client.py` for synchronous client usage

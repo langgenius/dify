@@ -7,7 +7,7 @@ name. Payload data is the full public ``RunEvent`` JSON object.
 
 from collections.abc import AsyncIterable, AsyncIterator
 
-from dify_agent.server.schemas import RUN_EVENT_ADAPTER, RunEvent
+from dify_agent.protocol.schemas import RUN_EVENT_ADAPTER, RunEvent
 
 
 def format_sse_event(event: RunEvent) -> str:

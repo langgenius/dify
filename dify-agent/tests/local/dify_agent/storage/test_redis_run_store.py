@@ -2,7 +2,7 @@ import asyncio
 from collections.abc import Mapping
 
 from agenton.compositor import CompositorConfig, LayerNodeConfig
-from dify_agent.server.schemas import CreateRunRequest, RunStartedEvent
+from dify_agent.protocol.schemas import CreateRunRequest, RunStartedEvent
 from dify_agent.storage.redis_run_store import DEFAULT_RUN_RETENTION_SECONDS, RedisRunStore
 
 

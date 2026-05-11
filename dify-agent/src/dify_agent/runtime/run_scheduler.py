@@ -12,11 +12,12 @@ import logging
 from collections.abc import Callable
 from typing import Protocol
 
+from dify_agent.protocol.schemas import CreateRunRequest
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor
 from dify_agent.runtime.event_sink import RunEventSink, emit_run_failed
 from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
-from dify_agent.server.schemas import CreateRunRequest, RunRecord
+from dify_agent.server.schemas import RunRecord
 
 logger = logging.getLogger(__name__)
 
