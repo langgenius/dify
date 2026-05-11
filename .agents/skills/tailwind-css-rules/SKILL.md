@@ -45,23 +45,20 @@ description: Tailwind CSS v4.1+ rules and best practices. Use when writing, revi
 | `decoration-slice`      | `box-decoration-slice`                            |
 | `decoration-clone`      | `box-decoration-clone`                            |
 
-### Renamed Utilities (ALWAYS use the v4 name)
+### Renamed Utilities
 
-| ❌ v3              | ✅ v4              |
-| ------------------ | ------------------ |
-| `bg-gradient-*`    | `bg-linear-*`      |
-| `shadow-sm`        | `shadow-xs`        |
-| `shadow`           | `shadow-sm`        |
-| `drop-shadow-sm`   | `drop-shadow-xs`   |
-| `drop-shadow`      | `drop-shadow-sm`   |
-| `blur-sm`          | `blur-xs`          |
-| `blur`             | `blur-sm`          |
-| `backdrop-blur-sm` | `backdrop-blur-xs` |
-| `backdrop-blur`    | `backdrop-blur-sm` |
-| `rounded-sm`       | `rounded-xs`       |
-| `rounded`          | `rounded-sm`       |
-| `outline-none`     | `outline-hidden`   |
-| `ring`             | `ring-3`           |
+Use the v4 name when migrating code that still carries Tailwind v3 semantics. Do not blanket-replace existing v4 classes: classes such as `rounded-sm`, `shadow-sm`, `ring-1`, and `ring-2` are valid in this codebase when they intentionally represent the current design scale.
+
+| ❌ v3 pattern       | ✅ v4 pattern                                      |
+| ------------------- | -------------------------------------------------- |
+| `bg-gradient-*`     | `bg-linear-*`                                      |
+| old shadow scale    | verify against the current Tailwind/design scale   |
+| old blur scale      | verify against the current Tailwind/design scale   |
+| old radius scale    | use the Dify radius token mapping when applicable  |
+| `outline-none`      | `outline-hidden`                                   |
+| bare `ring` utility | use an explicit ring width such as `ring-1`/`ring-2`/`ring-3` |
+
+For Figma radius tokens, follow `packages/dify-ui/AGENTS.md`. For example, `--radius/xs` maps to `rounded-sm`; do not rewrite it to `rounded-xs`.
 
 ## Layout and Spacing Rules
 

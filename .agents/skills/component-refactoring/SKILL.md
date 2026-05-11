@@ -63,7 +63,7 @@ pnpm analyze-component <path> --json
 
 ```typescript
 // ❌ Before: Complex state logic in component
-const Configuration: FC = () => {
+function Configuration() {
   const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>(...)
   const [completionParams, setCompletionParams] = useState<FormValue>({})
@@ -85,7 +85,7 @@ export const useModelConfig = (appId: string) => {
 }
 
 // Component becomes cleaner
-const Configuration: FC = () => {
+function Configuration() {
   const { modelConfig, setModelConfig } = useModelConfig(appId)
   return <div>...</div>
 }

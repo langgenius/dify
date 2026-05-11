@@ -112,13 +112,13 @@ export const useModelConfig = ({
 
 ```typescript
 // Before: 50+ lines of state management
-const Configuration: FC = () => {
+function Configuration() {
   const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
   // ... lots of related state and effects
 }
 
 // After: Clean component
-const Configuration: FC = () => {
+function Configuration() {
   const {
     modelConfig,
     setModelConfig,

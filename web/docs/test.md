@@ -4,15 +4,9 @@ This document is the complete testing specification for the Dify frontend projec
 Goal: Readable, change-friendly, reusable, and debuggable tests.
 When I ask you to write/refactor/fix tests, follow these rules by default.
 
-## Tech Stack
-
-- **Framework**: Next.js 15 + React 19 + TypeScript
-- **Testing Tools**: Vitest 4.0.16 + React Testing Library 16.0
-- **Test Environment**: happy-dom
-- **File Naming**: `ComponentName.spec.tsx` inside a same-level `__tests__/` directory
-- **Placement Rule**: Component, hook, and utility tests must live in a sibling `__tests__/` folder at the same level as the source under test. For example, `foo/index.tsx` maps to `foo/__tests__/index.spec.tsx`, and `foo/bar.ts` maps to `foo/__tests__/bar.spec.ts`.
-
 ## Running Tests
+
+Run these commands from `web/`. From the repository root, prefix them with `pnpm -C web`.
 
 ```bash
 # Run all tests
@@ -31,6 +25,8 @@ pnpm test path/to/file.spec.tsx
 ## Project Test Setup
 
 - **Configuration**: `vite.config.ts` sets the `happy-dom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
+- **File naming**: `ComponentName.spec.tsx` inside a same-level `__tests__/` directory.
+- **Placement rule**: Component, hook, and utility tests must live in a sibling `__tests__/` folder at the same level as the source under test. For example, `foo/index.tsx` maps to `foo/__tests__/index.spec.tsx`, and `foo/bar.ts` maps to `foo/__tests__/bar.spec.ts`.
 - **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Reusable mocks**: Place shared mock factories inside `web/__mocks__/` and use `vi.mock('module-name')` to point to them rather than redefining mocks in every spec.
 - **Mocking behavior**: Modules are not mocked automatically. Use `vi.mock(...)` in tests, or place global mocks in `vitest.setup.ts`.
@@ -216,8 +212,8 @@ Simulate the interactions that matter to users—primary clicks, change events, 
 
 **Guidelines**:
 
-- Prefer spying on `global.fetch`/`axios`/`ky` and returning deterministic responses over reaching out to the network.
-- Use MSW (`msw` is already installed) when you need declarative request handlers across multiple specs.
+- Prefer mocking `@/service/*` modules or spying on `global.fetch` / `ky` clients with deterministic responses over reaching out to the network.
+- Do not introduce an HTTP interception dependency such as MSW unless it is already declared in the workspace or adding it is part of the task.
 - Keep async assertions inside `await waitFor(...)` blocks or the async `findBy*` queries to avoid race conditions.
 
 ### 7. Next.js Routing
@@ -281,7 +277,7 @@ For complex inputs/entities, use Builders with solid defaults and chainable over
 
 Reserve snapshots for static, deterministic fragments (icons, badges, layout chrome). Keep them tight, prefer explicit assertions for behavior, and review any snapshot updates deliberately instead of accepting them wholesale.
 
-**Note**: Dify is a desktop application. **No need for** responsive/mobile testing.
+**Note**: Dify primarily targets desktop workflows, but the supported browsers list includes mobile browsers. Do not add responsive/mobile assertions to ordinary unit tests unless the component has responsive behavior, mobile-specific behavior, or accessibility behavior that must be covered.
 
 ## Code Style
 

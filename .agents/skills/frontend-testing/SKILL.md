@@ -5,7 +5,7 @@ description: Generate Vitest + React Testing Library tests for Dify frontend com
 
 # Dify Frontend Testing Skill
 
-This skill enables Claude to generate high-quality, comprehensive frontend tests for the Dify project following established conventions and best practices.
+This skill enables Codex to generate high-quality, comprehensive frontend tests for the Dify project following established conventions and best practices.
 
 > **⚠️ Authoritative Source**: This skill is derived from `web/docs/test.md`. Use Vitest mock/timer APIs (`vi.*`).
 
@@ -24,22 +24,14 @@ Apply this skill when the user:
 **Do NOT apply** when:
 
 - User is asking about backend/API tests (Python/pytest)
-- User is asking about E2E tests (Playwright/Cypress)
+- User is asking about E2E tests (Cucumber + Playwright under `e2e/`)
 - User is only asking conceptual questions without code context
 
 ## Quick Reference
 
-### Tech Stack
-
-| Tool | Version | Purpose |
-|------|---------|---------|
-| Vitest | 4.0.16 | Test runner |
-| React Testing Library | 16.0 | Component testing |
-| jsdom | - | Test environment |
-| nock | 14.0 | HTTP mocking |
-| TypeScript | 5.x | Type safety |
-
 ### Key Commands
+
+Run these commands from `web/`. From the repository root, prefix them with `pnpm -C web`.
 
 ```bash
 # Run all tests
