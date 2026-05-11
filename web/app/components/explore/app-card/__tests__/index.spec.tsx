@@ -90,7 +90,14 @@ describe('AppCard', () => {
       renderComponent({ app: createApp({ description: 'Very long description text' }) })
 
       const descWrapper = screen.getByText('Very long description text')
-      expect(descWrapper).toHaveClass('line-clamp-4')
+      expect(descWrapper).toHaveClass('line-clamp-2')
+    })
+
+    it('should render category badges', () => {
+      renderComponent({ app: createApp({ categories: ['Search', 'Productivity'] }) })
+
+      expect(screen.getByText('Search')).toBeInTheDocument()
+      expect(screen.getByText('Productivity')).toBeInTheDocument()
     })
   })
 

@@ -341,18 +341,20 @@ describe('MainNav', () => {
     window.removeEventListener(GOTO_ANYTHING_OPEN_EVENT, handleOpen)
   })
 
-  it('shows hidden Learn Dify in help menu and restores it from localStorage', async () => {
+  it('shows Learn Dify switch in help menu and restores it from localStorage', async () => {
     localStorage.setItem(LEARN_DIFY_HIDDEN_STORAGE_KEY, 'true')
 
     renderMainNav()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
-    fireEvent.click(await screen.findByText('common.mainNav.help.learnDify'))
+    expect(await screen.findByText('common.mainNav.help.learnDify')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('switch', { name: 'common.mainNav.help.learnDify' }))
 
     await waitFor(() => {
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('false')
     })
-    expect(mockPush).toHaveBeenCalledWith('/explore/apps')
+    expect(mockPush).not.toHaveBeenCalled()
   })
 
   it('opens workspace settings, members, provider credits, upgrade, and workspace switching actions', async () => {

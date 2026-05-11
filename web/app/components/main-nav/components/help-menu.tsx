@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,7 +25,6 @@ import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { env } from '@/env'
-import { useRouter } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 const HelpMenu = () => {
@@ -32,7 +32,6 @@ const HelpMenu = () => {
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
-  const router = useRouter()
   const [learnDifyHidden, setLearnDifyHidden] = useLearnDifyHiddenState()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
@@ -66,21 +65,19 @@ const HelpMenu = () => {
                   />
                 </DropdownMenuLinkItem>
                 <Support closeAccountDropdown={() => setOpen(false)} />
-                {learnDifyHidden && (
-                  <DropdownMenuItem
-                    className="mx-0 h-8 gap-1 px-3 py-1.5"
-                    onClick={() => {
-                      setLearnDifyHidden(false)
-                      setOpen(false)
-                      router.push('/explore/apps')
-                    }}
-                  >
-                    <MenuItemContent
-                      iconClassName="i-ri-graduation-cap-line"
-                      label={t('mainNav.help.learnDify', { ns: 'common' })}
-                    />
-                  </DropdownMenuItem>
-                )}
+                <div className="mx-0 flex h-8 items-center gap-1 rounded-lg py-1 pr-2 pl-3">
+                  <span aria-hidden className="i-custom-vender-workflow-docs-extractor size-4 shrink-0 text-text-tertiary" />
+                  <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
+                    {t('mainNav.help.learnDify', { ns: 'common' })}
+                  </span>
+                  <Switch
+                    size="md"
+                    checked={!learnDifyHidden}
+                    aria-label={t('mainNav.help.learnDify', { ns: 'common' })}
+                    onClick={event => event.stopPropagation()}
+                    onCheckedChange={checked => setLearnDifyHidden(!checked)}
+                  />
+                </div>
                 {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
               </DropdownMenuGroup>
               <DropdownMenuSeparator className="my-0!" />
