@@ -1,6 +1,6 @@
+import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
 
 When('I open the apps console', async function (this: DifyWorld) {
   await this.getPage().goto('/apps')
@@ -8,6 +8,10 @@ When('I open the apps console', async function (this: DifyWorld) {
 
 Then('I should stay on the apps console', async function (this: DifyWorld) {
   await expect(this.getPage()).toHaveURL(/\/apps(?:\?.*)?$/)
+})
+
+Then('I should be redirected to the signin page', async function (this: DifyWorld) {
+  await expect(this.getPage()).toHaveURL(/\/signin(?:\?.*)?$/)
 })
 
 Then('I should see the {string} button', async function (this: DifyWorld, label: string) {

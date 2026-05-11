@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from constants.model_template import default_app_templates
 from models import Account
+from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, IconType, Site
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -658,15 +659,17 @@ class TestAppService:
         # Update app icon
         new_icon = "🌟"
         new_icon_background = "#FFD93D"
+        new_icon_type = "image"
         mock_current_user = create_autospec(Account, instance=True)
         mock_current_user.id = account.id
         mock_current_user.current_tenant_id = account.current_tenant_id
 
         with patch("services.app_service.current_user", mock_current_user):
-            updated_app = app_service.update_app_icon(app, new_icon, new_icon_background)
+            updated_app = app_service.update_app_icon(app, new_icon, new_icon_background, new_icon_type)
 
         assert updated_app.icon == new_icon
         assert updated_app.icon_background == new_icon_background
+        assert str(updated_app.icon_type).lower() == new_icon_type
         assert updated_app.updated_by == account.id
 
         # Verify other fields remain unchanged
@@ -1077,9 +1080,9 @@ class TestAppService:
         site.app_id = app.id
         site.code = fake.postalcode()
         site.title = fake.company()
-        site.status = "normal"
+        site.status = AppStatus.NORMAL
         site.default_language = "en-US"
-        site.customize_token_strategy = "uuid"
+        site.customize_token_strategy = CustomizeTokenStrategy.UUID
 
         db_session_with_containers.add(site)
         db_session_with_containers.commit()

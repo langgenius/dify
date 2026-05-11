@@ -24,8 +24,8 @@ from enums.cloud_plan import CloudPlan
 from models.account import TenantStatus
 from models.model import ApiToken
 from tests.unit_tests.conftest import (
-    setup_mock_dataset_tenant_query,
-    setup_mock_tenant_account_query,
+    setup_mock_dataset_owner_execute_result,
+    setup_mock_tenant_owner_execute_result,
 )
 
 
@@ -39,7 +39,7 @@ class TestValidateAndGetApiToken:
         app.config["TESTING"] = True
         return app
 
-    def test_missing_authorization_header(self, app):
+    def test_missing_authorization_header(self, app: Flask):
         """Test that Unauthorized is raised when Authorization header is missing."""
         # Arrange
         with app.test_request_context("/", method="GET"):
@@ -50,7 +50,7 @@ class TestValidateAndGetApiToken:
                 validate_and_get_api_token("app")
             assert "Authorization header must be provided" in str(exc_info.value)
 
-    def test_invalid_auth_scheme(self, app):
+    def test_invalid_auth_scheme(self, app: Flask):
         """Test that Unauthorized is raised when auth scheme is not Bearer."""
         # Arrange
         with app.test_request_context("/", method="GET", headers={"Authorization": "Basic token123"}):
@@ -62,7 +62,7 @@ class TestValidateAndGetApiToken:
     @patch("controllers.service_api.wraps.record_token_usage")
     @patch("controllers.service_api.wraps.ApiTokenCache")
     @patch("controllers.service_api.wraps.fetch_token_with_single_flight")
-    def test_valid_token_returns_api_token(self, mock_fetch_token, mock_cache_cls, mock_record_usage, app):
+    def test_valid_token_returns_api_token(self, mock_fetch_token, mock_cache_cls, mock_record_usage, app: Flask):
         """Test that valid token returns the ApiToken object."""
         # Arrange
         mock_api_token = Mock(spec=ApiToken)
@@ -84,7 +84,7 @@ class TestValidateAndGetApiToken:
     @patch("controllers.service_api.wraps.record_token_usage")
     @patch("controllers.service_api.wraps.ApiTokenCache")
     @patch("controllers.service_api.wraps.fetch_token_with_single_flight")
-    def test_invalid_token_raises_unauthorized(self, mock_fetch_token, mock_cache_cls, mock_record_usage, app):
+    def test_invalid_token_raises_unauthorized(self, mock_fetch_token, mock_cache_cls, mock_record_usage, app: Flask):
         """Test that invalid token raises Unauthorized."""
         # Arrange
         from werkzeug.exceptions import Unauthorized
@@ -141,14 +141,11 @@ class TestValidateAppToken:
         mock_account = Mock()
         mock_account.id = str(uuid.uuid4())
 
-        mock_ta = Mock()
-        mock_ta.account_id = mock_account.id
-
         # Use side_effect to return app first, then tenant via session.get()
         mock_db.session.get.side_effect = [mock_app, mock_tenant]
 
-        # Mock the tenant owner query (execute(select(...)).one_or_none())
-        setup_mock_tenant_account_query(mock_db, mock_tenant, mock_ta)
+        # Mock the tenant owner execute result (execute(select(...)).one_or_none())
+        setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
         @validate_app_token
         def protected_view(app_model):
@@ -164,7 +161,7 @@ class TestValidateAppToken:
 
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    def test_app_not_found_raises_forbidden(self, mock_validate_token, mock_db, app):
+    def test_app_not_found_raises_forbidden(self, mock_validate_token, mock_db, app: Flask):
         """Test that Forbidden is raised when app no longer exists."""
         # Arrange
         mock_api_token = Mock()
@@ -185,7 +182,7 @@ class TestValidateAppToken:
 
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    def test_app_status_abnormal_raises_forbidden(self, mock_validate_token, mock_db, app):
+    def test_app_status_abnormal_raises_forbidden(self, mock_validate_token, mock_db, app: Flask):
         """Test that Forbidden is raised when app status is abnormal."""
         # Arrange
         mock_api_token = Mock()
@@ -208,7 +205,7 @@ class TestValidateAppToken:
 
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    def test_app_api_disabled_raises_forbidden(self, mock_validate_token, mock_db, app):
+    def test_app_api_disabled_raises_forbidden(self, mock_validate_token, mock_db, app: Flask):
         """Test that Forbidden is raised when app API is disabled."""
         # Arrange
         mock_api_token = Mock()
@@ -243,7 +240,7 @@ class TestCloudEditionBillingResourceCheck:
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
-    def test_allows_when_under_limit(self, mock_get_features, mock_validate_token, app):
+    def test_allows_when_under_limit(self, mock_get_features, mock_validate_token, app: Flask):
         """Test that request is allowed when under resource limit."""
         # Arrange
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
@@ -267,7 +264,7 @@ class TestCloudEditionBillingResourceCheck:
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
-    def test_rejects_when_at_limit(self, mock_get_features, mock_validate_token, app):
+    def test_rejects_when_at_limit(self, mock_get_features, mock_validate_token, app: Flask):
         """Test that Forbidden is raised when at resource limit."""
         # Arrange
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
@@ -290,7 +287,7 @@ class TestCloudEditionBillingResourceCheck:
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
-    def test_allows_when_billing_disabled(self, mock_get_features, mock_validate_token, app):
+    def test_allows_when_billing_disabled(self, mock_get_features, mock_validate_token, app: Flask):
         """Test that request is allowed when billing is disabled."""
         # Arrange
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
@@ -323,7 +320,7 @@ class TestCloudEditionBillingKnowledgeLimitCheck:
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
-    def test_rejects_add_segment_in_sandbox(self, mock_get_features, mock_validate_token, app):
+    def test_rejects_add_segment_in_sandbox(self, mock_get_features, mock_validate_token, app: Flask):
         """Test that add_segment is rejected in SANDBOX plan."""
         # Arrange
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
@@ -345,7 +342,7 @@ class TestCloudEditionBillingKnowledgeLimitCheck:
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_features")
-    def test_allows_other_operations_in_sandbox(self, mock_get_features, mock_validate_token, app):
+    def test_allows_other_operations_in_sandbox(self, mock_get_features, mock_validate_token, app: Flask):
         """Test that non-add_segment operations are allowed in SANDBOX."""
         # Arrange
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
@@ -379,7 +376,7 @@ class TestCloudEditionBillingRateLimitCheck:
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_knowledge_rate_limit")
-    def test_allows_within_rate_limit(self, mock_get_rate_limit, mock_validate_token, app):
+    def test_allows_within_rate_limit(self, mock_get_rate_limit, mock_validate_token, app: Flask):
         """Test that request is allowed when within rate limit."""
         # Arrange
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
@@ -409,7 +406,7 @@ class TestCloudEditionBillingRateLimitCheck:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_knowledge_rate_limit")
     @patch("controllers.service_api.wraps.db")
-    def test_rejects_over_rate_limit(self, mock_db, mock_get_rate_limit, mock_validate_token, app):
+    def test_rejects_over_rate_limit(self, mock_db, mock_get_rate_limit, mock_validate_token, app: Flask):
         """Test that Forbidden is raised when over rate limit."""
         # Arrange
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
@@ -448,7 +445,7 @@ class TestValidateDatasetToken:
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.current_app")
-    def test_valid_dataset_token(self, mock_current_app, mock_validate_token, mock_db, mock_user_logged_in, app):
+    def test_valid_dataset_token(self, mock_current_app, mock_validate_token, mock_db, mock_user_logged_in, app: Flask):
         """Test that valid dataset token allows access."""
         # Arrange
         # Use standard Mock for login_manager
@@ -471,7 +468,7 @@ class TestValidateDatasetToken:
         mock_account.current_tenant = mock_tenant
 
         # Mock the tenant account join query (execute(select(...)).one_or_none())
-        setup_mock_dataset_tenant_query(mock_db, mock_tenant, mock_ta)
+        setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_ta)
 
         # Mock the account lookup via session.get()
         mock_db.session.get.return_value = mock_account
@@ -490,7 +487,7 @@ class TestValidateDatasetToken:
 
     @patch("controllers.service_api.wraps.db")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    def test_dataset_not_found_raises_not_found(self, mock_validate_token, mock_db, app):
+    def test_dataset_not_found_raises_not_found(self, mock_validate_token, mock_db, app: Flask):
         """Test that NotFound is raised when dataset doesn't exist."""
         # Arrange
         mock_api_token = Mock()

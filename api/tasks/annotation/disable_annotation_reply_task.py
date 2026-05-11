@@ -24,14 +24,16 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
     start_at = time.perf_counter()
     # get app info
     with session_factory.create_session() as session:
-        app = session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
+        app = session.scalar(
+            select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
+        )
         annotations_exists = session.scalar(select(exists().where(MessageAnnotation.app_id == app_id)))
         if not app:
             logger.info(click.style(f"App not found: {app_id}", fg="red"))
             return
 
-        app_annotation_setting = (
-            session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
+        app_annotation_setting = session.scalar(
+            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
         )
 
         if not app_annotation_setting:

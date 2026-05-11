@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import type { SegmentListContextValue } from '..'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { Markdown } from '@/app/components/base/markdown'
-import { cn } from '@/utils/classnames'
 import { useSegmentListContext } from '..'
 
 type ChunkContentProps = {
@@ -29,7 +29,7 @@ const ChunkContent: FC<ChunkContentProps> = ({
     return (
       <div className={className}>
         <div className="flex gap-x-1">
-          <div className="w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">Q</div>
+          <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">Q</div>
           <Markdown
             className={cn('body-md-regular text-text-secondary', isCollapsed ? 'line-clamp-2' : 'line-clamp-20')}
             content={content}
@@ -37,7 +37,7 @@ const ChunkContent: FC<ChunkContentProps> = ({
           />
         </div>
         <div className="flex gap-x-1">
-          <div className="w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">A</div>
+          <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">A</div>
           <Markdown
             className={cn('body-md-regular text-text-secondary', isCollapsed ? 'line-clamp-2' : 'line-clamp-20')}
             content={answer}

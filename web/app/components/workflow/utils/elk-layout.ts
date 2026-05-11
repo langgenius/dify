@@ -6,7 +6,6 @@ import type {
   Edge,
   Node,
 } from '@/app/components/workflow/types'
-import ELK from 'elkjs/lib/elk.bundled.js'
 import { cloneDeep } from 'es-toolkit/object'
 import {
   CUSTOM_NODE,
@@ -19,7 +18,15 @@ import {
   BlockEnum,
 } from '@/app/components/workflow/types'
 
-const elk = new ELK()
+let elk: import('elkjs/lib/elk-api').ELK | undefined
+
+async function getELK() {
+  if (!elk) {
+    const { default: ELK } = await import('elkjs/lib/elk.bundled.js')
+    elk = new ELK()
+  }
+  return elk
+}
 
 const DEFAULT_NODE_WIDTH = 244
 const DEFAULT_NODE_HEIGHT = 100
@@ -473,7 +480,7 @@ export const getLayoutByELK = async (originNodes: Node[], originEdges: Edge[]): 
     edges: elkEdges,
   }
 
-  const layoutedGraph = await elk.layout(graph)
+  const layoutedGraph = await (await getELK()).layout(graph)
   const layout = collectLayout(layoutedGraph, () => true)
   return normaliseBounds(layout)
 }
@@ -571,7 +578,7 @@ export const getLayoutForChildNodes = async (
     edges: elkEdges,
   }
 
-  const layoutedGraph = await elk.layout(graph)
+  const layoutedGraph = await (await getELK()).layout(graph)
   const layout = collectLayout(layoutedGraph, () => true)
   return normaliseChildLayout(layout, nodes)
 }

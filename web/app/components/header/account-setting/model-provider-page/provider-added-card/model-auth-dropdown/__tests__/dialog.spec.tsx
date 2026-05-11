@@ -34,7 +34,7 @@ vi.mock('../use-activate-credential', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/alert-dialog', () => ({
+vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
   AlertDialog: ({ children, onOpenChange }: AlertDialogProps) => {
     latestOnOpenChange = onOpenChange
     return <div>{children}</div>

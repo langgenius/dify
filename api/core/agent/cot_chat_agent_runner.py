@@ -1,5 +1,6 @@
 import json
 
+from core.agent.cot_agent_runner import CotAgentRunner
 from graphon.file import file_manager
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
@@ -10,8 +11,6 @@ from graphon.model_runtime.entities import (
 )
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-
-from core.agent.cot_agent_runner import CotAgentRunner
 
 
 class CotChatAgentRunner(CotAgentRunner):
@@ -79,21 +78,18 @@ class CotChatAgentRunner(CotAgentRunner):
         if not agent_scratchpad:
             assistant_messages = []
         else:
-            assistant_message = AssistantPromptMessage(content="")
-            assistant_message.content = ""  # FIXME: type check tell mypy that assistant_message.content is str
+            content = ""
             for unit in agent_scratchpad:
                 if unit.is_final():
-                    assert isinstance(assistant_message.content, str)
-                    assistant_message.content += f"Final Answer: {unit.agent_response}"
+                    content += f"Final Answer: {unit.agent_response}"
                 else:
-                    assert isinstance(assistant_message.content, str)
-                    assistant_message.content += f"Thought: {unit.thought}\n\n"
+                    content += f"Thought: {unit.thought}\n\n"
                     if unit.action_str:
-                        assistant_message.content += f"Action: {unit.action_str}\n\n"
+                        content += f"Action: {unit.action_str}\n\n"
                     if unit.observation:
-                        assistant_message.content += f"Observation: {unit.observation}\n\n"
+                        content += f"Observation: {unit.observation}\n\n"
 
-            assistant_messages = [assistant_message]
+            assistant_messages = [AssistantPromptMessage(content=content)]
 
         # query messages
         query_messages = self._organize_user_query(self._query, [])

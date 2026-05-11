@@ -310,7 +310,6 @@ class TestSystemSetup:
     def test_should_allow_when_setup_complete(self, mock_db):
         """Test that requests are allowed when setup is complete"""
         # Arrange
-        mock_db.session.query.return_value.first.return_value = MagicMock()  # Setup exists
 
         @setup_required
         def admin_view():

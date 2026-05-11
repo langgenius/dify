@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ToolCall } from '@/models/log'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiCheckboxCircleLine,
   RiErrorWarningLine,
@@ -10,10 +11,9 @@ import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { BlockEnum } from '@/app/components/workflow/types'
 
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useLocale } from '@/context/i18n'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   toolCall: ToolCall
@@ -51,7 +51,7 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
       <div className={cn('group rounded-2xl border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md')}>
         <div
           className={cn(
-            'flex cursor-pointer items-center py-3 pl-[6px] pr-3',
+            'flex cursor-pointer items-center py-3 pr-3 pl-[6px]',
             !collapseState && 'pb-2!',
           )}
           onClick={() => setCollapseState(!collapseState)}
@@ -65,7 +65,7 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
           <BlockIcon className={cn('mr-2 shrink-0')} type={isLLM ? BlockEnum.LLM : BlockEnum.Tool} toolIcon={toolCall.tool_icon} />
           <div
             className={cn(
-              'grow truncate text-[13px] font-semibold leading-[16px] text-text-secondary',
+              'grow truncate text-[13px] leading-[16px] font-semibold text-text-secondary',
             )}
             title={toolName}
           >

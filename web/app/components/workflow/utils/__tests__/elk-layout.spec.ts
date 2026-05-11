@@ -152,7 +152,7 @@ describe('getLayoutByELK', () => {
     await getLayoutByELK(nodes, edges)
     const ifElkNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'if-1')!
     expect(ifElkNode.ports).toHaveLength(1)
-    expect(ifElkNode.ports![0].layoutOptions!['elk.port.side']).toBe('EAST')
+    expect(ifElkNode.ports![0]!.layoutOptions!['elk.port.side']).toBe('EAST')
   })
 
   it('should build ports for HumanInput nodes with multiple branches', async () => {
@@ -187,7 +187,7 @@ describe('getLayoutByELK', () => {
     await getLayoutByELK(nodes, edges)
     const hiElkNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'hi-1')!
     expect(hiElkNode.ports).toHaveLength(1)
-    expect(hiElkNode.ports![0].layoutOptions!['elk.port.side']).toBe('EAST')
+    expect(hiElkNode.ports![0]!.layoutOptions!['elk.port.side']).toBe('EAST')
   })
 
   it('should normalise bounds so minX and minY start at 0', async () => {
@@ -537,7 +537,7 @@ describe('getLayoutByELK', () => {
     await getLayoutByELK(nodes, edges)
     const qcNode = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'qc-1')!
     expect(qcNode.ports).toHaveLength(1)
-    expect(qcNode.ports![0].layoutOptions!['elk.port.side']).toBe('EAST')
+    expect(qcNode.ports![0]!.layoutOptions!['elk.port.side']).toBe('EAST')
   })
 
   it('should only create output (EAST) ports, not input (WEST) ports', async () => {
@@ -692,8 +692,8 @@ describe('getLayoutByELK', () => {
     await getLayoutByELK(nodes, edges)
     const elkEdges = layoutCallArgs!.edges as Array<{ sources: string[], targets: string[] }>
     const ifEdges = elkEdges.filter(e => e.sources[0] === 'if-1')
-    expect(ifEdges[0].targets[0]).toBe('a')
-    expect(ifEdges[1].targets[0]).toBe('b')
+    expect(ifEdges[0]!.targets[0]).toBe('a')
+    expect(ifEdges[1]!.targets[0]).toBe('b')
   })
 
   it('should keep edges for components where every node has an incoming edge', async () => {
@@ -918,8 +918,8 @@ describe('getLayoutForChildNodes', () => {
 
     const qcElk = layoutCallArgs!.children!.find((c: ElkChild) => c.id === 'qc-child')!
     expect(qcElk.ports).toHaveLength(2)
-    expect(qcElk.ports![0].id).toContain('cls-1')
-    expect(qcElk.ports![1].id).toContain('cls-2')
+    expect(qcElk.ports![0]!.id).toContain('cls-1')
+    expect(qcElk.ports![1]!.id).toContain('cls-2')
 
     const childIds = layoutCallArgs!.children!.map((c: ElkChild) => c.id)
     expect(childIds.indexOf('upper')).toBeLessThan(childIds.indexOf('lower'))

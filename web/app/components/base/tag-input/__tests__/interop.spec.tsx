@@ -25,7 +25,7 @@ describe('TagInput autosize interop', () => {
       update: vi.fn(),
       promise: vi.fn(),
     })
-    vi.doMock('@/app/components/base/ui/toast', () => ({
+    vi.doMock('@langgenius/dify-ui/toast', () => ({
       toast,
     }))
     vi.doMock('react-18-input-autosize', () => ({
@@ -52,7 +52,7 @@ describe('TagInput autosize interop', () => {
       update: vi.fn(),
       promise: vi.fn(),
     })
-    vi.doMock('@/app/components/base/ui/toast', () => ({
+    vi.doMock('@langgenius/dify-ui/toast', () => ({
       toast,
     }))
     vi.doMock('react-18-input-autosize', () => ({

@@ -23,7 +23,7 @@ vi.mock('../../hooks/use-check-metadata-name', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
     notify: (args: unknown) => mockToastNotify(args),
   },
@@ -86,27 +86,31 @@ describe('DatasetMetadataDrawer', () => {
     vi.clearAllMocks()
   })
 
+  const clickFirstMetadataAction = (name: string) => {
+    fireEvent.click(screen.getAllByRole('button', { name })[0]!)
+  }
+
   describe('Rendering', () => {
     it('should render without crashing', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
     })
 
     it('should render user metadata items', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByText('field_one')).toBeInTheDocument()
-        expect(screen.getByText('field_two')).toBeInTheDocument()
+        expect(screen.getByText('field_one'))!.toBeInTheDocument()
+        expect(screen.getByText('field_two'))!.toBeInTheDocument()
       })
     })
 
     it('should render built-in metadata items', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByText('created_at')).toBeInTheDocument()
-        expect(screen.getByText('modified_at')).toBeInTheDocument()
+        expect(screen.getByText('created_at'))!.toBeInTheDocument()
+        expect(screen.getByText('modified_at'))!.toBeInTheDocument()
       })
     })
 
@@ -121,7 +125,7 @@ describe('DatasetMetadataDrawer', () => {
     it('should render add metadata button', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByTestId('create-trigger')).toBeInTheDocument()
+        expect(screen.getByTestId('create-trigger'))!.toBeInTheDocument()
       })
     })
 
@@ -129,12 +133,25 @@ describe('DatasetMetadataDrawer', () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
         const switchBtn = screen.getByRole('switch')
-        expect(switchBtn).toBeInTheDocument()
+        expect(switchBtn)!.toBeInTheDocument()
       })
     })
   })
 
   describe('User Interactions', () => {
+    it('should call onClose when drawer close button is clicked', async () => {
+      const onClose = vi.fn()
+      render(<DatasetMetadataDrawer {...defaultProps} onClose={onClose} />)
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
     it('should call onIsBuiltInEnabledChange when switch is toggled', async () => {
       const onIsBuiltInEnabledChange = vi.fn()
       render(
@@ -145,7 +162,7 @@ describe('DatasetMetadataDrawer', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       const switchBtn = screen.getByRole('switch')
@@ -160,14 +177,14 @@ describe('DatasetMetadataDrawer', () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       const trigger = screen.getByTestId('create-trigger')
       fireEvent.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByTestId('create-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('create-modal'))!.toBeInTheDocument()
       })
     })
 
@@ -176,7 +193,7 @@ describe('DatasetMetadataDrawer', () => {
       render(<DatasetMetadataDrawer {...defaultProps} onAdd={onAdd} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       // Open create modal
@@ -184,7 +201,7 @@ describe('DatasetMetadataDrawer', () => {
       fireEvent.click(trigger)
 
       await waitFor(() => {
-        expect(screen.getByTestId('create-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('create-modal'))!.toBeInTheDocument()
       })
 
       // Save new metadata
@@ -208,14 +225,14 @@ describe('DatasetMetadataDrawer', () => {
       render(<DatasetMetadataDrawer {...defaultProps} onAdd={onAdd} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       // Open create modal
       fireEvent.click(screen.getByTestId('create-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('create-modal')).toBeInTheDocument()
+        expect(screen.getByTestId('create-modal'))!.toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByTestId('create-save'))
@@ -231,24 +248,10 @@ describe('DatasetMetadataDrawer', () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find user metadata items with group/item class (these have edit/delete icons)
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      expect(items.length).toBe(2) // 2 user metadata items
-
-      // Find the hidden container with edit/delete icons
-      const actionsContainer = items[0].querySelector('.hidden.items-center')
-      expect(actionsContainer).toBeTruthy()
-
-      // Find and click the first SVG (edit icon)
-      if (actionsContainer) {
-        const svgs = actionsContainer.querySelectorAll('svg')
-        expect(svgs.length).toBeGreaterThan(0)
-        fireEvent.click(svgs[0])
-      }
+      clickFirstMetadataAction('common.operation.edit')
 
       // Wait for rename modal (contains input)
       await waitFor(() => {
@@ -262,17 +265,10 @@ describe('DatasetMetadataDrawer', () => {
       render(<DatasetMetadataDrawer {...defaultProps} onRename={onRename} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find and click edit icon
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      const actionsContainer = items[0].querySelector('.hidden.items-center')
-      if (actionsContainer) {
-        const svgs = actionsContainer.querySelectorAll('svg')
-        fireEvent.click(svgs[0])
-      }
+      clickFirstMetadataAction('common.operation.edit')
 
       // Change name and save
       await waitFor(() => {
@@ -280,16 +276,11 @@ describe('DatasetMetadataDrawer', () => {
         expect(inputs.length).toBeGreaterThan(0)
       })
 
-      const inputs = document.querySelectorAll('input')
-      fireEvent.change(inputs[0], { target: { value: 'renamed_field' } })
+      const input = screen.getByPlaceholderText('dataset.metadata.datasetMetadata.namePlaceholder')
+      fireEvent.change(input, { target: { value: 'renamed_field' } })
 
       // Find and click save button
-      const saveBtns = screen.getAllByText(/save/i)
-      const primaryBtn = saveBtns.find(btn =>
-        btn.closest('button')?.classList.contains('btn-primary'),
-      )
-      if (primaryBtn)
-        fireEvent.click(primaryBtn)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       await waitFor(() => {
         expect(onRename).toHaveBeenCalled()
@@ -308,17 +299,10 @@ describe('DatasetMetadataDrawer', () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find and click edit icon
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      const actionsContainer = items[0].querySelector('.hidden.items-center')
-      if (actionsContainer) {
-        const svgs = actionsContainer.querySelectorAll('svg')
-        fireEvent.click(svgs[0])
-      }
+      clickFirstMetadataAction('common.operation.edit')
 
       // Wait for modal and click cancel
       await waitFor(() => {
@@ -327,8 +311,8 @@ describe('DatasetMetadataDrawer', () => {
       })
 
       // Change name first
-      const inputs = document.querySelectorAll('input')
-      fireEvent.change(inputs[0], { target: { value: 'changed_name' } })
+      const input = screen.getByPlaceholderText('dataset.metadata.datasetMetadata.namePlaceholder')
+      fireEvent.change(input, { target: { value: 'changed_name' } })
 
       // Find and click cancel button
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
@@ -340,21 +324,14 @@ describe('DatasetMetadataDrawer', () => {
       })
     })
 
-    it('should close rename modal when modal close button is clicked', async () => {
+    it('should close rename modal when dialog requests close', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find and click edit icon
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      const actionsContainer = items[0].querySelector('.hidden.items-center')
-      if (actionsContainer) {
-        const svgs = actionsContainer.querySelectorAll('svg')
-        fireEvent.click(svgs[0])
-      }
+      clickFirstMetadataAction('common.operation.edit')
 
       // Wait for rename modal
       await waitFor(() => {
@@ -362,23 +339,12 @@ describe('DatasetMetadataDrawer', () => {
         expect(inputs.length).toBeGreaterThan(0)
       })
 
-      // Find and click the modal close button (X button)
-      // The Modal component has a close button in the header
-      const dialogs = screen.getAllByRole('dialog')
-      const renameModal = dialogs.find(d => d.querySelector('input'))
-      if (renameModal) {
-        // Find close button by looking for a button with close-related class or X icon
-        const closeButtons = renameModal.querySelectorAll('button')
-        for (const btn of Array.from(closeButtons)) {
-          // Skip cancel/save buttons
-          if (!btn.textContent?.toLowerCase().includes('cancel')
-            && !btn.textContent?.toLowerCase().includes('save')
-            && btn.querySelector('svg')) {
-            fireEvent.click(btn)
-            break
-          }
-        }
-      }
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'dataset.metadata.datasetMetadata.rename' })).not.toBeInTheDocument()
+        expect(screen.getAllByRole('dialog')).toHaveLength(1)
+      })
     })
   })
 
@@ -387,22 +353,10 @@ describe('DatasetMetadataDrawer', () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find user metadata items
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-
-      // Find the delete container
-      const deleteContainer = items[0].querySelector('.hover\\:text-text-destructive')
-      expect(deleteContainer).toBeTruthy()
-
-      if (deleteContainer) {
-        const deleteIcon = deleteContainer.querySelector('svg')
-        if (deleteIcon)
-          fireEvent.click(deleteIcon)
-      }
+      clickFirstMetadataAction('common.operation.remove')
 
       // Confirm dialog should appear
       await waitFor(() => {
@@ -419,18 +373,10 @@ describe('DatasetMetadataDrawer', () => {
       render(<DatasetMetadataDrawer {...defaultProps} onRemove={onRemove} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find and click delete icon
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      const deleteContainer = items[0].querySelector('.hover\\:text-text-destructive')
-      if (deleteContainer) {
-        const deleteIcon = deleteContainer.querySelector('svg')
-        if (deleteIcon)
-          fireEvent.click(deleteIcon)
-      }
+      clickFirstMetadataAction('common.operation.remove')
 
       // Wait for confirm dialog
       await waitFor(() => {
@@ -465,18 +411,10 @@ describe('DatasetMetadataDrawer', () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      // Find and click delete icon
-      const dialog = screen.getByRole('dialog')
-      const items = dialog.querySelectorAll('.group\\/item')
-      const deleteContainer = items[0].querySelector('.hover\\:text-text-destructive')
-      if (deleteContainer) {
-        const deleteIcon = deleteContainer.querySelector('svg')
-        if (deleteIcon)
-          fireEvent.click(deleteIcon)
-      }
+      clickFirstMetadataAction('common.operation.remove')
 
       // Wait for confirm dialog
       await waitFor(() => {
@@ -500,14 +438,14 @@ describe('DatasetMetadataDrawer', () => {
     it('should handle empty userMetadata', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} userMetadata={[]} />)
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
     })
 
     it('should handle empty builtInMetadata', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} builtInMetadata={[]} />)
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
     })
   })
@@ -519,7 +457,7 @@ describe('DatasetMetadataDrawer', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
       const dialog = screen.getByRole('dialog')
@@ -533,7 +471,7 @@ describe('DatasetMetadataDrawer', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument()
+        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
     })
   })
@@ -545,7 +483,7 @@ describe('DatasetMetadataDrawer', () => {
       ]
       render(<DatasetMetadataDrawer {...defaultProps} userMetadata={specialMetadata} />)
       await waitFor(() => {
-        expect(screen.getByText('field_with_underscore')).toBeInTheDocument()
+        expect(screen.getByText('field_with_underscore'))!.toBeInTheDocument()
       })
     })
 
@@ -555,7 +493,7 @@ describe('DatasetMetadataDrawer', () => {
       ]
       render(<DatasetMetadataDrawer {...defaultProps} userMetadata={singleMetadata} />)
       await waitFor(() => {
-        expect(screen.getByText('only_field')).toBeInTheDocument()
+        expect(screen.getByText('only_field'))!.toBeInTheDocument()
       })
     })
 
@@ -565,7 +503,7 @@ describe('DatasetMetadataDrawer', () => {
       ]
       render(<DatasetMetadataDrawer {...defaultProps} builtInMetadata={singleBuiltIn} />)
       await waitFor(() => {
-        expect(screen.getByText('created_at')).toBeInTheDocument()
+        expect(screen.getByText('created_at'))!.toBeInTheDocument()
       })
     })
 
@@ -575,7 +513,7 @@ describe('DatasetMetadataDrawer', () => {
       ]
       render(<DatasetMetadataDrawer {...defaultProps} userMetadata={zeroCountMetadata} />)
       await waitFor(() => {
-        expect(screen.getByText('empty_field')).toBeInTheDocument()
+        expect(screen.getByText('empty_field'))!.toBeInTheDocument()
       })
     })
   })

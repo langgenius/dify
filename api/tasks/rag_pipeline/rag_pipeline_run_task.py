@@ -11,7 +11,8 @@ from typing import Any
 import click
 from celery import group, shared_task
 from flask import current_app, g
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
@@ -130,22 +131,22 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
             workflow_thread_pool_id = rag_pipeline_invoke_entity_model.workflow_thread_pool_id
             application_generate_entity = rag_pipeline_invoke_entity_model.application_generate_entity
 
-            with Session(db.engine) as session:
+            with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
                 # Load required entities
-                account = session.query(Account).where(Account.id == user_id).first()
+                account = session.scalar(select(Account).where(Account.id == user_id).limit(1))
                 if not account:
                     raise ValueError(f"Account {user_id} not found")
 
-                tenant = session.query(Tenant).where(Tenant.id == tenant_id).first()
+                tenant = session.scalar(select(Tenant).where(Tenant.id == tenant_id).limit(1))
                 if not tenant:
                     raise ValueError(f"Tenant {tenant_id} not found")
                 account.current_tenant = tenant
 
-                pipeline = session.query(Pipeline).where(Pipeline.id == pipeline_id).first()
+                pipeline = session.scalar(select(Pipeline).where(Pipeline.id == pipeline_id).limit(1))
                 if not pipeline:
                     raise ValueError(f"Pipeline {pipeline_id} not found")
 
-                workflow = session.query(Workflow).where(Workflow.id == pipeline.workflow_id).first()
+                workflow = session.scalar(select(Workflow).where(Workflow.id == pipeline.workflow_id).limit(1))
                 if not workflow:
                     raise ValueError(f"Workflow {pipeline.workflow_id} not found")
 

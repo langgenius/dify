@@ -2,13 +2,6 @@ import logging
 import time
 from typing import cast
 
-from graphon.entities import GraphInitParams
-from graphon.enums import WorkflowType
-from graphon.graph import Graph
-from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.variable_loader import VariableLoader
-from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from sqlalchemy import select
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -22,11 +15,17 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.workflow.node_factory import DifyNodeFactory, get_default_root_node_id
+from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
+from graphon.enums import WorkflowType
+from graphon.graph import Graph
+from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variable_loader import VariableLoader
+from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Document, Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
@@ -265,22 +264,23 @@ class PipelineRunner(WorkflowBasedAppRunner):
         # graph_config["nodes"] = real_run_nodes
         # graph_config["edges"] = real_edges
         # init graph
-        # Create required parameters for Graph.init
-        graph_init_params = GraphInitParams(
+        # Create explicit graph init context for Graph.init.
+        run_context = build_dify_run_context(
+            tenant_id=workflow.tenant_id,
+            app_id=self._app_id,
+            user_id=self.application_generate_entity.user_id,
+            user_from=user_from,
+            invoke_from=invoke_from,
+        )
+        graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
             graph_config=graph_config,
-            run_context=build_dify_run_context(
-                tenant_id=workflow.tenant_id,
-                app_id=self._app_id,
-                user_id=self.application_generate_entity.user_id,
-                user_from=user_from,
-                invoke_from=invoke_from,
-            ),
+            run_context=run_context,
             call_depth=0,
         )
 
-        node_factory = DifyNodeFactory(
-            graph_init_params=graph_init_params,
+        node_factory = DifyNodeFactory.from_graph_init_context(
+            graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
         )
         if start_node_id is None:

@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin } from './types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { getPluginLinkInMarketplace } from '@/app/components/plugins/marketplace/utils'
 import { useLocale } from '@/context/i18n'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { cn } from '@/utils/classnames'
 import Badge from '../base/badge'
 import Icon from './card/base/card-icon'
 import Description from './card/base/description'
@@ -54,7 +54,7 @@ const ProviderCardComponent: FC<Props> = ({
           <div className="mb-1 flex h-4 items-center justify-between">
             <div className="flex items-center">
               <div className="system-xs-regular text-text-tertiary">{org}</div>
-              <div className="system-xs-regular mx-2 text-text-quaternary">·</div>
+              <div className="mx-2 system-xs-regular text-text-quaternary">·</div>
               <DownloadCount downloadCount={payload.install_count || 0} />
             </div>
           </div>
@@ -67,7 +67,7 @@ const ProviderCardComponent: FC<Props> = ({
         ))}
       </div>
       <div
-        className="absolute bottom-0 left-0 right-0 hidden items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 group-hover:flex"
+        className="absolute right-0 bottom-0 left-0 hidden items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 group-hover:flex"
       >
         <Button
           className="grow"

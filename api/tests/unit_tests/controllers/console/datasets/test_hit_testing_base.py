@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.errors.invoke import InvokeError
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -21,6 +20,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from graphon.model_runtime.errors.invoke import InvokeError
 from models.account import Account
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
@@ -133,6 +133,42 @@ class TestPerformHitTesting:
 
         assert result["query"] == "hello"
         assert result["records"] == []
+
+    def test_success_normalizes_legacy_query_and_nullable_list_fields(self, dataset):
+        response = {
+            "query": {"content": "hello"},
+            "records": [
+                {
+                    "segment": {"id": "segment-1", "keywords": None},
+                    "child_chunks": None,
+                    "files": None,
+                    "score": 0.8,
+                }
+            ],
+        }
+
+        with (
+            patch.object(
+                HitTestingService,
+                "retrieve",
+                return_value=response,
+            ),
+            patch(
+                "controllers.console.datasets.hit_testing_base.marshal",
+                return_value=response["records"],
+            ),
+        ):
+            result = DatasetsHitTestingBase.perform_hit_testing(dataset, {"query": "hello"})
+
+        assert result["query"] == "hello"
+        assert result["records"] == [
+            {
+                "segment": {"id": "segment-1", "keywords": []},
+                "child_chunks": [],
+                "files": [],
+                "score": 0.8,
+            }
+        ]
 
     def test_index_not_initialized(self, dataset):
         with patch.object(

@@ -66,7 +66,7 @@ describe('getToolCheckParams', () => {
       { label: 'Query', variable: 'query', type: 'string', required: true },
     ])
     expect(result.toolSettingSchema).toHaveLength(1)
-    expect(result.toolSettingSchema[0].variable).toBe('api_key')
+    expect(result.toolSettingSchema[0]!.variable).toBe('api_key')
   })
 
   it('should mark notAuthed for builtin tools without team auth', () => {
@@ -157,7 +157,7 @@ describe('getToolCheckParams', () => {
       'ja_JP',
     )
 
-    expect(result.toolInputsSchema[0].label).toBe('Query')
+    expect(result.toolInputsSchema[0]!.label).toBe('Query')
   })
 })
 

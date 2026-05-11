@@ -3,6 +3,7 @@ import logging
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import register_schema_models
@@ -86,8 +87,8 @@ class CustomizedPipelineTemplateApi(Resource):
     @enterprise_license_required
     def post(self, template_id: str):
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-            template = (
-                session.query(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).first()
+            template = session.scalar(
+                select(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id).limit(1)
             )
             if not template:
                 raise ValueError("Customized pipeline template not found.")

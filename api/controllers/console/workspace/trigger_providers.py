@@ -3,7 +3,6 @@ from typing import Any
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
-from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel, model_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
@@ -16,6 +15,7 @@ from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.entities.entities import SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_user, login_required
 from models.account import Account
 from models.provider_ids import TriggerProviderID

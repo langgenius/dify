@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.console.auth.forgot_password import (
     ForgotPasswordCheckApi,
@@ -16,7 +17,7 @@ from services.account_service import AccountService
 
 
 @pytest.fixture
-def app(flask_app_with_containers):
+def app(flask_app_with_containers: Flask):
     return flask_app_with_containers
 
 
@@ -31,7 +32,7 @@ class TestForgotPasswordSendEmailApi:
         mock_is_ip_limit,
         mock_send_email,
         mock_get_account,
-        app,
+        app: Flask,
     ):
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
@@ -80,7 +81,7 @@ class TestForgotPasswordCheckApi:
         mock_revoke_token,
         mock_generate_token,
         mock_reset_rate,
-        app,
+        app: Flask,
     ):
         mock_rate_limit_check.return_value = False
         mock_get_data.return_value = {"email": "Admin@Example.com", "code": "4321"}
@@ -113,19 +114,22 @@ class TestForgotPasswordCheckApi:
 class TestForgotPasswordResetApi:
     @patch("controllers.console.auth.forgot_password.ForgotPasswordResetApi._update_existing_account")
     @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
+    @patch("controllers.console.auth.forgot_password.db")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     def test_reset_fetches_account_with_original_email(
         self,
         mock_get_reset_data,
         mock_revoke_token,
+        mock_db,
         mock_get_account,
         mock_update_account,
-        app,
+        app: Flask,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com"}
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
+        mock_db.session.merge.return_value = mock_account
 
         wraps_features = SimpleNamespace(enable_email_password_login=True)
         with (
@@ -161,7 +165,10 @@ def test_get_account_by_email_with_case_fallback_falls_back_to_lowercase():
     second_result.scalar_one_or_none.return_value = expected_account
     mock_session.execute.side_effect = [first_result, second_result]
 
-    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=mock_session)
+    with patch("services.account_service.session_factory") as mock_factory:
+        mock_factory.create_session.return_value.__enter__ = MagicMock(return_value=mock_session)
+        mock_factory.create_session.return_value.__exit__ = MagicMock(return_value=False)
+        result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com")
 
     assert result is expected_account
     assert mock_session.execute.call_count == 2

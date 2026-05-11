@@ -5,46 +5,46 @@ import QueryBlockComponent from './component'
 type SerializedNode = SerializedLexicalNode
 
 export class QueryBlockNode extends DecoratorNode<React.JSX.Element> {
-  static getType(): string {
+  static override getType(): string {
     return 'query-block'
   }
 
-  static clone(): QueryBlockNode {
+  static override clone(): QueryBlockNode {
     return new QueryBlockNode()
   }
 
-  isInline(): boolean {
+  override isInline(): boolean {
     return true
   }
 
-  createDOM(): HTMLElement {
+  override createDOM(): HTMLElement {
     const div = document.createElement('div')
     div.classList.add('inline-flex', 'items-center', 'align-middle')
     return div
   }
 
-  updateDOM(): false {
+  override updateDOM(): false {
     return false
   }
 
-  decorate(): React.JSX.Element {
+  override decorate(): React.JSX.Element {
     return <QueryBlockComponent nodeKey={this.getKey()} />
   }
 
-  static importJSON(): QueryBlockNode {
+  static override importJSON(): QueryBlockNode {
     const node = $createQueryBlockNode()
 
     return node
   }
 
-  exportJSON(): SerializedNode {
+  override exportJSON(): SerializedNode {
     return {
       type: 'query-block',
       version: 1,
     }
   }
 
-  getTextContent(): string {
+  override getTextContent(): string {
     return '{{#query#}}'
   }
 }

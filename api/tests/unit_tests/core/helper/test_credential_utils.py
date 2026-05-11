@@ -4,8 +4,8 @@ from typing import cast
 import pytest
 from pytest_mock import MockerFixture
 
+from core.entities import PluginCredentialType
 from core.helper.credential_utils import check_credential_policy_compliance, is_credential_exists
-from services.enterprise.plugin_manager_service import PluginCredentialType
 
 
 def test_check_credential_policy_compliance_returns_when_feature_disabled(

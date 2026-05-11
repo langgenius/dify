@@ -10,8 +10,6 @@ from collections.abc import Generator, Mapping
 from typing import Any, Literal, cast, overload
 
 from flask import Flask, current_app
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
-from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -29,7 +27,11 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
-from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.entities.task_entities import (
+    WorkflowAppBlockingResponse,
+    WorkflowAppPausedBlockingResponse,
+    WorkflowAppStreamResponse,
+)
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     OnlineDriveBrowseFilesRequest,
@@ -43,6 +45,8 @@ from core.repositories.factory import (
     WorkflowNodeExecutionRepository,
 )
 from extensions.ext_database import db
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
@@ -627,7 +631,11 @@ class PipelineGenerator(BaseAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> WorkflowAppBlockingResponse | Generator[WorkflowAppStreamResponse, None, None]:
+    ) -> (
+        WorkflowAppBlockingResponse
+        | WorkflowAppPausedBlockingResponse
+        | Generator[WorkflowAppStreamResponse, None, None]
+    ):
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -782,7 +790,7 @@ class PipelineGenerator(BaseAppGenerator):
         user_id: str,
         all_files: list,
         datasource_info: Mapping[str, Any],
-        next_page_parameters: dict | None = None,
+        next_page_parameters: dict[str, Any] | None = None,
     ):
         """
         Get files in a folder.

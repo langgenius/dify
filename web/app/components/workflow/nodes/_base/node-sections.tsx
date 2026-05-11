@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 
 type HeaderMetaProps = {
@@ -25,11 +25,11 @@ export const NodeHeaderMeta = ({
       {data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
         <Tooltip>
           <TooltipTrigger>
-            <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] text-text-warning system-2xs-medium-uppercase">
+            <div className="ml-1 flex items-center justify-center rounded-[5px] border border-text-warning px-[5px] py-[3px] system-2xs-medium-uppercase text-text-warning">
               {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
             </div>
           </TooltipTrigger>
-          <TooltipContent popupClassName="w-[180px]">
+          <TooltipContent className="w-[180px]">
             <div className="font-extrabold">
               {t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
             </div>
@@ -73,7 +73,7 @@ export const NodeBody = ({
 }: NodeBodyProps) => {
   if (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) {
     return (
-      <div className="grow pb-1 pl-1 pr-1">
+      <div className="grow pr-1 pb-1 pl-1">
         {child}
       </div>
     )
@@ -87,7 +87,7 @@ export const NodeDescription = ({ data }: { data: NodeProps['data'] }) => {
     return null
 
   return (
-    <div className="whitespace-pre-line wrap-break-word px-3 pb-2 pt-1 text-text-tertiary system-xs-regular">
+    <div className="px-3 pt-1 pb-2 system-xs-regular wrap-break-word whitespace-pre-line text-text-tertiary">
       {data.desc}
     </div>
   )

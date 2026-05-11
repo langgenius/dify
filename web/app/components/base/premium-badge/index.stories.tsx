@@ -12,14 +12,14 @@ const PremiumBadgeGallery = ({
 }) => {
   return (
     <div className="flex w-full max-w-xl flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Brand badge variants</p>
+      <p className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Brand badge variants</p>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {colors.map(color => (
           <div key={color} className="flex flex-col items-center gap-2 rounded-xl border border-transparent px-2 py-4 hover:border-divider-subtle hover:bg-background-default-subtle">
             <PremiumBadge color={color} size={size} allowHover={allowHover}>
-              <span className="px-2 text-xs font-semibold uppercase tracking-[0.14em]">Premium</span>
+              <span className="px-2 text-xs font-semibold tracking-[0.14em] uppercase">Premium</span>
             </PremiumBadge>
-            <span className="text-[11px] uppercase tracking-[0.16em] text-text-tertiary">{color}</span>
+            <span className="text-[11px] tracking-[0.16em] text-text-tertiary uppercase">{color}</span>
           </div>
         ))}
       </div>

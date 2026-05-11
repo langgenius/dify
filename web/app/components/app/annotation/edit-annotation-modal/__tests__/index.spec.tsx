@@ -1,6 +1,6 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
 import EditAnnotationModal from '../index'
 
 const { mockAddAnnotation, mockEditAnnotation } = vi.hoisted(() => ({
@@ -75,7 +75,8 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert - Check for modal title as it appears in the mock
-      expect(screen.getByText('appAnnotation.editModal.title')).toBeInTheDocument()
+      // Assert - Check for modal title as it appears in the mock
+      expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
     })
 
     it('should not render modal when isShow is false', () => {
@@ -85,6 +86,37 @@ describe('EditAnnotationModal', () => {
       // Act
       render(<EditAnnotationModal {...props} />)
 
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
+      // Assert
       // Assert
       expect(screen.queryByText('appAnnotation.editModal.title')).not.toBeInTheDocument()
     })
@@ -97,8 +129,9 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert - Look for query and answer content
-      expect(screen.getByText('Test query')).toBeInTheDocument()
-      expect(screen.getByText('Test answer')).toBeInTheDocument()
+      // Assert - Look for query and answer content
+      expect(screen.getByText('Test query'))!.toBeInTheDocument()
+      expect(screen.getByText('Test answer'))!.toBeInTheDocument()
     })
   })
 
@@ -116,8 +149,9 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert - Check content is displayed
-      expect(screen.getByText('Custom query content')).toBeInTheDocument()
-      expect(screen.getByText('Custom answer content')).toBeInTheDocument()
+      // Assert - Check content is displayed
+      expect(screen.getByText('Custom query content'))!.toBeInTheDocument()
+      expect(screen.getByText('Custom answer content'))!.toBeInTheDocument()
     })
 
     it('should show remove option when annotationId is provided', () => {
@@ -131,7 +165,8 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert - Remove option should be present (using pattern)
-      expect(screen.getByText('appAnnotation.editModal.removeThisCache')).toBeInTheDocument()
+      // Assert - Remove option should be present (using pattern)
+      expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDocument()
     })
   })
 
@@ -160,7 +195,8 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert
-      expect(screen.getByText('appAnnotation.editModal.removeThisCache')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDocument()
     })
 
     it('should save content when edited', async () => {
@@ -183,7 +219,7 @@ describe('EditAnnotationModal', () => {
 
       // Find and click edit link for query
       const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0])
+      await user.click(editLinks[0]!)
 
       // Find textarea and enter new content
       const textarea = screen.getByRole('textbox')
@@ -225,7 +261,7 @@ describe('EditAnnotationModal', () => {
 
       // Edit query content
       const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0])
+      await user.click(editLinks[0]!)
 
       const textarea = screen.getByRole('textbox')
       await user.clear(textarea)
@@ -258,7 +294,7 @@ describe('EditAnnotationModal', () => {
 
       // Edit query content
       const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0])
+      await user.click(editLinks[0]!)
 
       const textarea = screen.getByRole('textbox')
       await user.clear(textarea)
@@ -290,6 +326,37 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
+      // Assert - Confirm dialog should not be visible initially
       expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBeInTheDocument()
     })
 
@@ -306,7 +373,8 @@ describe('EditAnnotationModal', () => {
       await user.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
 
       // Assert - Confirmation dialog should appear
-      expect(screen.getByText('appDebug.feature.annotation.removeConfirm')).toBeInTheDocument()
+      // Assert - Confirmation dialog should appear
+      expect(screen.getByText('appDebug.feature.annotation.removeConfirm'))!.toBeInTheDocument()
     })
 
     it('should call onRemove when removal is confirmed', async () => {
@@ -332,6 +400,24 @@ describe('EditAnnotationModal', () => {
       // Assert
       expect(mockOnRemove).toHaveBeenCalled()
     })
+
+    it('should hide confirm modal when removal is cancelled', async () => {
+      const props = {
+        ...defaultProps,
+        annotationId: 'test-annotation-id',
+      }
+      const user = userEvent.setup()
+
+      render(<EditAnnotationModal {...props} />)
+      await user.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
+      expect(screen.getByText('appDebug.feature.annotation.removeConfirm'))!.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+      await waitFor(() => {
+        expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBeInTheDocument()
+      })
+    })
   })
 
   // Edge Cases (REQUIRED)
@@ -348,7 +434,8 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert
-      expect(screen.getByText('appAnnotation.editModal.title')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
     })
 
     it('should handle very long content', () => {
@@ -365,8 +452,9 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert
-      expect(screen.getByText(longQuery)).toBeInTheDocument()
-      expect(screen.getByText(longAnswer)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(longQuery))!.toBeInTheDocument()
+      expect(screen.getByText(longAnswer))!.toBeInTheDocument()
     })
 
     it('should handle special characters in content', () => {
@@ -383,8 +471,9 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert
-      expect(screen.getByText(specialQuery)).toBeInTheDocument()
-      expect(screen.getByText(specialAnswer)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(specialQuery))!.toBeInTheDocument()
+      expect(screen.getByText(specialAnswer))!.toBeInTheDocument()
     })
 
     it('should handle onlyEditResponse prop', () => {
@@ -422,7 +511,7 @@ describe('EditAnnotationModal', () => {
 
       // Find and click edit link for query
       const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0])
+      await user.click(editLinks[0]!)
 
       // Find textarea and enter new content
       const textarea = screen.getByRole('textbox')
@@ -440,8 +529,9 @@ describe('EditAnnotationModal', () => {
       expect(mockOnAdded).not.toHaveBeenCalled()
 
       // Verify edit mode remains open (textarea should still be visible)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+      // Verify edit mode remains open (textarea should still be visible)
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeInTheDocument()
     })
 
     it('should show fallback error message when addAnnotation error has no message', async () => {
@@ -459,7 +549,7 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0])
+      await user.click(editLinks[0]!)
 
       const textarea = screen.getByRole('textbox')
       await user.clear(textarea)
@@ -475,8 +565,9 @@ describe('EditAnnotationModal', () => {
       expect(mockOnAdded).not.toHaveBeenCalled()
 
       // Verify edit mode remains open (textarea should still be visible)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+      // Verify edit mode remains open (textarea should still be visible)
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeInTheDocument()
     })
 
     it('should show error toast and skip callbacks when editAnnotation fails', async () => {
@@ -498,7 +589,7 @@ describe('EditAnnotationModal', () => {
 
       // Edit query content
       const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0])
+      await user.click(editLinks[0]!)
 
       const textarea = screen.getByRole('textbox')
       await user.clear(textarea)
@@ -514,8 +605,9 @@ describe('EditAnnotationModal', () => {
       expect(mockOnEdited).not.toHaveBeenCalled()
 
       // Verify edit mode remains open (textarea should still be visible)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+      // Verify edit mode remains open (textarea should still be visible)
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeInTheDocument()
     })
 
     it('should show fallback error message when editAnnotation error is not an Error instance', async () => {
@@ -535,7 +627,7 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0])
+      await user.click(editLinks[0]!)
 
       const textarea = screen.getByRole('textbox')
       await user.clear(textarea)
@@ -551,8 +643,9 @@ describe('EditAnnotationModal', () => {
       expect(mockOnEdited).not.toHaveBeenCalled()
 
       // Verify edit mode remains open (textarea should still be visible)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+      // Verify edit mode remains open (textarea should still be visible)
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' }))!.toBeInTheDocument()
     })
   })
 
@@ -571,7 +664,7 @@ describe('EditAnnotationModal', () => {
 
       // Assert - Check that the formatted time appears somewhere in the component
       const container = screen.getByRole('dialog')
-      expect(container).toHaveTextContent('2023-12-01 10:30:00')
+      expect(container)!.toHaveTextContent('2023-12-01 10:30:00')
     })
 
     it('should not show createdAt when not provided', () => {
@@ -601,7 +694,8 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert - Should have remove functionality
-      expect(screen.getByText('appAnnotation.editModal.removeThisCache')).toBeInTheDocument()
+      // Assert - Should have remove functionality
+      expect(screen.getByText('appAnnotation.editModal.removeThisCache'))!.toBeInTheDocument()
     })
   })
 
@@ -616,7 +710,7 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-      await user.click(editLinks[0])
+      await user.click(editLinks[0]!)
 
       const textarea = screen.getByRole('textbox')
       await user.clear(textarea)
@@ -643,7 +737,8 @@ describe('EditAnnotationModal', () => {
       rerender(<EditAnnotationModal {...props} />)
 
       // Assert - Component should still be visible (no errors thrown)
-      expect(screen.getByText('appAnnotation.editModal.title')).toBeInTheDocument()
+      // Assert - Component should still be visible (no errors thrown)
+      expect(screen.getByText('appAnnotation.editModal.title'))!.toBeInTheDocument()
     })
 
     it('should re-render when props change', () => {
@@ -656,7 +751,8 @@ describe('EditAnnotationModal', () => {
       rerender(<EditAnnotationModal {...newProps} />)
 
       // Assert - Should show new content
-      expect(screen.getByText('New query content')).toBeInTheDocument()
+      // Assert - Should show new content
+      expect(screen.getByText('New query content'))!.toBeInTheDocument()
     })
   })
 })

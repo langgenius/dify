@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiDraggable } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import { toast } from '@/app/components/base/ui/toast'
 import { ChangeType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import { hasDuplicateStr } from '@/utils/var'
 import VarItem from './var-item'
 
@@ -61,7 +61,7 @@ const VarList: FC<Props> = ({
         payload: {
           type: ChangeType.remove,
           payload: {
-            beforeKey: list[index].variable,
+            beforeKey: list[index]!.variable,
           },
         },
       })
@@ -79,7 +79,7 @@ const VarList: FC<Props> = ({
 
   if (list.length === 0) {
     return (
-      <div className="flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs font-normal leading-[18px] text-text-tertiary">
+      <div className="flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs leading-[18px] font-normal text-text-tertiary">
         {t('nodes.start.noVarTip', { ns: 'workflow' })}
       </div>
     )
@@ -109,7 +109,7 @@ const VarList: FC<Props> = ({
           />
           {canDrag && (
             <RiDraggable className={cn(
-              'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+              'handle absolute top-2.5 left-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
               'group-hover:block',
             )}
             />

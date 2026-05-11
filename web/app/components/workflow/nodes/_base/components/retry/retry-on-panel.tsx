@@ -1,10 +1,10 @@
 import type {
   Node,
 } from '@/app/components/workflow/types'
+import { Slider } from '@langgenius/dify-ui/slider'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Switch from '@/app/components/base/switch'
-import { Slider } from '@/app/components/base/ui/slider'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useRetryConfig } from './hooks'
 import s from './style.module.css'
@@ -55,18 +55,18 @@ const RetryOnPanel = ({
       <div className="pt-2">
         <div className="flex h-10 items-center justify-between px-4 py-2">
           <div className="flex items-center">
-            <div className="mr-0.5 text-text-secondary system-sm-semibold-uppercase">{t('nodes.common.retry.retryOnFailure', { ns: 'workflow' })}</div>
+            <div className="mr-0.5 system-sm-semibold-uppercase text-text-secondary">{t('nodes.common.retry.retryOnFailure', { ns: 'workflow' })}</div>
           </div>
           <Switch
-            value={retry_config?.retry_enabled ?? false}
-            onChange={v => handleRetryEnabledChange(v)}
+            checked={retry_config?.retry_enabled ?? false}
+            onCheckedChange={v => handleRetryEnabledChange(v)}
           />
         </div>
         {
           retry_config?.retry_enabled && (
             <div className="px-4 pb-2">
               <div className="mb-1 flex w-full items-center">
-                <div className="mr-2 grow text-text-secondary system-xs-medium-uppercase">{t('nodes.common.retry.maxRetries', { ns: 'workflow' })}</div>
+                <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">{t('nodes.common.retry.maxRetries', { ns: 'workflow' })}</div>
                 <Slider
                   className="mr-3 w-[108px]"
                   value={retry_config?.max_retries || 3}
@@ -88,7 +88,7 @@ const RetryOnPanel = ({
                 />
               </div>
               <div className="flex items-center">
-                <div className="mr-2 grow text-text-secondary system-xs-medium-uppercase">{t('nodes.common.retry.retryInterval', { ns: 'workflow' })}</div>
+                <div className="mr-2 grow system-xs-medium-uppercase text-text-secondary">{t('nodes.common.retry.retryInterval', { ns: 'workflow' })}</div>
                 <Slider
                   className="mr-3 w-[108px]"
                   value={retry_config?.retry_interval || 1000}

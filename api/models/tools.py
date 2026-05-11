@@ -356,7 +356,7 @@ class MCPToolProvider(TypeBase):
             return {}
 
     @property
-    def headers(self) -> dict[str, Any]:
+    def headers(self) -> dict[str, str]:
         if self.encrypted_headers is None:
             return {}
         try:

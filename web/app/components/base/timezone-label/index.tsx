@@ -1,7 +1,7 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
-import { cn } from '@/utils/classnames'
 
 type TimezoneLabelProps = {
   /** IANA timezone identifier (e.g., 'Asia/Shanghai', 'America/New_York') */
@@ -43,7 +43,7 @@ const TimezoneLabel: React.FC<TimezoneLabelProps> = ({
   return (
     <span
       className={cn(
-        'text-text-tertiary system-sm-regular',
+        'system-sm-regular text-text-tertiary',
         inline && 'text-text-quaternary',
         className,
       )}

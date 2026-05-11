@@ -4,6 +4,10 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -15,12 +19,8 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge/index'
-import Button from '@/app/components/base/button'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { cn } from '@/utils/classnames'
 import { DeliveryMethodType } from '../../types'
 import EmailConfigureModal from './email-configure-modal'
 import TestEmailSender from './test-email-sender'
@@ -79,6 +79,8 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
     }
     return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTip`, { ns: 'workflow' })
   }, [method.type, method.config?.debug_mode, t, email])
+  const configureLabel = t('common.configure', { ns: 'workflow' })
+  const removeLabel = t('operation.remove', { ns: 'common' })
 
   const jumpToEmailConfigModal = useCallback(() => {
     setShowTestEmailModal(false)
@@ -89,22 +91,22 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
     <>
       <div
         className={cn(
-          'group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-1.5 pr-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+          'group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pr-2 pl-1.5 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
           isHovering && 'border-state-destructive-border bg-state-destructive-hover hover:bg-state-destructive-hover',
         )}
       >
         <div className="flex items-center gap-1.5">
           {method.type === DeliveryMethodType.WebApp && (
-            <div className="radius-xs border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
+            <div className="rounded-sm border border-divider-regular bg-components-icon-bg-indigo-solid p-0.5">
               <RiRobot2Fill className="h-3.5 w-3.5 text-text-primary-on-surface" />
             </div>
           )}
           {method.type === DeliveryMethodType.Email && (
-            <div className="radius-xs border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
+            <div className="rounded-sm border border-divider-regular bg-components-icon-bg-blue-solid p-0.5">
               <RiMailSendFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
             </div>
           )}
-          <div className="system-xs-medium capitalize text-text-secondary">{method.type}</div>
+          <div className="system-xs-medium text-text-secondary capitalize">{method.type}</div>
           {method.type === DeliveryMethodType.Email
             && (method.config as EmailConfig)?.debug_mode
             && <Badge size="s" className="px-1! py-0.5!">DEBUG</Badge>}
@@ -114,54 +116,56 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
             <div className="hidden items-end gap-1 group-hover:flex">
               {method.type === DeliveryMethodType.Email && method.config && (
                 <>
-                  <Tooltip
-                    popupContent={emailSenderTooltipContent}
-                    asChild={false}
-                    needsDelay={false}
-                  >
-                    <ActionButton
-                      onClick={() => {
-                        setShowTestEmailModal(true)
-                      }}
-                    >
-                      <RiSendPlane2Line className="h-4 w-4" />
-                    </ActionButton>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={(
+                        <ActionButton
+                          aria-label={emailSenderTooltipContent}
+                          onClick={() => setShowTestEmailModal(true)}
+                        >
+                          <RiSendPlane2Line className="h-4 w-4" />
+                        </ActionButton>
+                      )}
+                    />
+                    <TooltipContent>{emailSenderTooltipContent}</TooltipContent>
                   </Tooltip>
-                  <Tooltip
-                    popupContent={t('common.configure', { ns: 'workflow' })}
-                    asChild={false}
-                    needsDelay={false}
-                  >
-                    <ActionButton onClick={() => setShowEmailModal(true)}>
-                      <RiEqualizer2Line className="h-4 w-4" />
-                    </ActionButton>
-
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={(
+                        <ActionButton
+                          aria-label={configureLabel}
+                          onClick={() => setShowEmailModal(true)}
+                        >
+                          <RiEqualizer2Line className="h-4 w-4" />
+                        </ActionButton>
+                      )}
+                    />
+                    <TooltipContent>{configureLabel}</TooltipContent>
                   </Tooltip>
                 </>
               )}
-              <Tooltip
-                popupContent={t('operation.remove', { ns: 'common' })}
-                asChild={false}
-                needsDelay={false}
-              >
-                <div
-                  onMouseEnter={() => setIsHovering(true)}
-                  onMouseLeave={() => setIsHovering(false)}
-                >
-                  <ActionButton
-                    state={isHovering ? ActionButtonState.Destructive : ActionButtonState.Default}
-                    onClick={() => onDelete(method.type)}
-                  >
-                    <RiDeleteBinLine className="h-4 w-4" />
-                  </ActionButton>
-                </div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <ActionButton
+                      aria-label={removeLabel}
+                      state={isHovering ? ActionButtonState.Destructive : ActionButtonState.Default}
+                      onMouseEnter={() => setIsHovering(true)}
+                      onMouseLeave={() => setIsHovering(false)}
+                      onClick={() => onDelete(method.type)}
+                    >
+                      <RiDeleteBinLine className="h-4 w-4" />
+                    </ActionButton>
+                  )}
+                />
+                <TooltipContent>{removeLabel}</TooltipContent>
               </Tooltip>
             </div>
           )}
           {(method.config || method.type === DeliveryMethodType.WebApp) && (
             <Switch
-              value={method.enabled}
-              onChange={handleEnableStatusChange}
+              checked={method.enabled}
+              onCheckedChange={handleEnableStatusChange}
               disabled={readonly}
             />
           )}
@@ -178,33 +182,29 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
           )}
         </div>
       </div>
-      {showEmailModal && (
-        <EmailConfigureModal
-          isShow={showEmailModal}
-          config={method.config as EmailConfig}
-          nodesOutputVars={nodesOutputVars}
-          availableNodes={availableNodes}
-          onClose={() => setShowEmailModal(false)}
-          onConfirm={(data) => {
-            handleConfigChange(data)
-            setShowEmailModal(false)
-          }}
-        />
-      )}
-      {showTestEmailModal && (
-        <TestEmailSender
-          nodeId={nodeId}
-          deliveryId={method.id}
-          isShow={showTestEmailModal}
-          config={method.config as EmailConfig}
-          formContent={formContent}
-          formInputs={formInputs}
-          nodesOutputVars={nodesOutputVars}
-          availableNodes={availableNodes}
-          onClose={() => setShowTestEmailModal(false)}
-          jumpToEmailConfigModal={jumpToEmailConfigModal}
-        />
-      )}
+      <EmailConfigureModal
+        open={showEmailModal}
+        config={method.config as EmailConfig}
+        nodesOutputVars={nodesOutputVars}
+        availableNodes={availableNodes}
+        onOpenChange={setShowEmailModal}
+        onConfirm={(data) => {
+          handleConfigChange(data)
+          setShowEmailModal(false)
+        }}
+      />
+      <TestEmailSender
+        nodeId={nodeId}
+        deliveryId={method.id}
+        open={showTestEmailModal}
+        config={method.config as EmailConfig}
+        formContent={formContent}
+        formInputs={formInputs}
+        nodesOutputVars={nodesOutputVars}
+        availableNodes={availableNodes}
+        onOpenChange={setShowTestEmailModal}
+        jumpToEmailConfigModal={jumpToEmailConfigModal}
+      />
     </>
   )
 }

@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datasets'
@@ -27,11 +27,12 @@ type Props = {
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
 }
-enum Step {
-  init = 'init',
-  running = 'running',
-  finished = 'finished',
-}
+const Step = {
+  init: 'init',
+  running: 'running',
+  finished: 'finished',
+} as const
+type Step = typeof Step[keyof typeof Step]
 const JinaReader: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlResultChange, onJobIdChange, crawlOptions, onCrawlOptionsChange }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)

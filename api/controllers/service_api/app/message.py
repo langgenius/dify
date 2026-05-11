@@ -1,5 +1,4 @@
 import logging
-from typing import Literal
 
 from flask import request
 from flask_restx import Resource
@@ -7,6 +6,7 @@ from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
+from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
@@ -14,7 +14,6 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
-from libs.helper import UUIDStrOrEmpty
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.message import (
@@ -25,17 +24,6 @@ from services.errors.message import (
 from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
-
-
-class MessageListQuery(BaseModel):
-    conversation_id: UUIDStrOrEmpty
-    first_id: UUIDStrOrEmpty | None = None
-    limit: int = Field(default=20, ge=1, le=100, description="Number of messages to return")
-
-
-class MessageFeedbackPayload(BaseModel):
-    rating: Literal["like", "dislike"] | None = Field(default=None, description="Feedback rating")
-    content: str | None = Field(default=None, description="Feedback content")
 
 
 class FeedbackListQuery(BaseModel):

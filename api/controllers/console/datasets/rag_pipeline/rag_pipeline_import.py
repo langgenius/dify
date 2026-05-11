@@ -19,7 +19,7 @@ from fields.rag_pipeline_fields import (
 )
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Pipeline
-from services.app_dsl_service import ImportStatus
+from services.entities.dsl_entities import ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
@@ -83,11 +83,13 @@ class RagPipelineImportApi(Resource):
 
         # Return appropriate status code based on result
         status = result.status
-        if status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
-        elif status == ImportStatus.PENDING:
-            return result.model_dump(mode="json"), 202
-        return result.model_dump(mode="json"), 200
+        match status:
+            case ImportStatus.FAILED:
+                return result.model_dump(mode="json"), 400
+            case ImportStatus.PENDING:
+                return result.model_dump(mode="json"), 202
+            case ImportStatus.COMPLETED | ImportStatus.COMPLETED_WITH_WARNINGS:
+                return result.model_dump(mode="json"), 200
 
 
 @console_ns.route("/rag/pipelines/imports/<string:import_id>/confirm")

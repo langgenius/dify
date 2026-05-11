@@ -1,12 +1,12 @@
 from collections.abc import Generator
 
 import pytest
-from graphon.file import File, FileTransferMethod, FileType
 
 from core.agent.entities import AgentInvokeMessage
 from core.plugin.utils.chunk_merger import FileChunk, merge_blob_chunks
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolSelector
+from graphon.file import File, FileTransferMethod, FileType
 
 
 class TestChunkMerger:
@@ -466,7 +466,7 @@ class TestConverter:
     def test_convert_parameters_to_plugin_format_with_single_file_and_selector(self):
         file_param = File(
             tenant_id="tenant-1",
-            type=FileType.IMAGE,
+            file_type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/file.png",
             storage_key="",
@@ -499,14 +499,14 @@ class TestConverter:
     def test_convert_parameters_to_plugin_format_with_lists_and_passthrough_values(self):
         file_one = File(
             tenant_id="tenant-1",
-            type=FileType.DOCUMENT,
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/a.txt",
             storage_key="",
         )
         file_two = File(
             tenant_id="tenant-1",
-            type=FileType.DOCUMENT,
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.REMOTE_URL,
             remote_url="https://example.com/b.txt",
             storage_key="",

@@ -1,13 +1,13 @@
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 from unittest.mock import MagicMock, Mock
 
 import pytest
 import yaml
-from graphon.enums import BuiltinNodeTypes
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+from graphon.enums import BuiltinNodeTypes
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import (
     ImportStatus,
@@ -247,10 +247,11 @@ workflow:
     dataset_mock = Mock()
     dataset_mock.id = "d1"
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Dataset", return_value=dataset_mock)
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.select", return_value=MagicMock())
 
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
-    session.query.return_value.filter_by.return_value.all.return_value = []
+    session.scalars.return_value.all.return_value = []
     account = Mock(current_tenant_id="t1")
 
     result = service.import_rag_pipeline(account=account, import_mode="yaml-content", yaml_content=yaml_content)
@@ -320,6 +321,7 @@ workflow:
     dataset_mock.id = "d1"
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Dataset", return_value=dataset_mock)
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.DatasetCollectionBinding", return_value=Mock(id="b1"))
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.select", return_value=MagicMock())
 
     service = RagPipelineDslService(session=Mock())
     # Mocking self._session.scalar for the pipeline lookup
@@ -406,12 +408,14 @@ def test_create_or_update_pipeline_create_new(mocker) -> None:
 
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.current_user", SimpleNamespace(id="u1"))
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Workflow", return_value=Mock())
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.select", return_value=MagicMock())
     pipeline_cls = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Pipeline")
     pipeline_instance = pipeline_cls.return_value
     pipeline_instance.tenant_id = "t1"
     pipeline_instance.id = "p1"
     pipeline_instance.name = "P"
     pipeline_instance.is_published = False
+    session.scalar.return_value = None
 
     result = service._create_or_update_pipeline(pipeline=None, data=data, account=account, dependencies=[])
 
@@ -447,8 +451,7 @@ def test_export_rag_pipeline_dsl_with_workflow(mocker) -> None:
     workflow.rag_pipeline_variables = []
     workflow.to_dict.return_value = {"graph": {"nodes": []}}
 
-    # Mocking single .where() call
-    session.query.return_value.where.return_value.first.return_value = workflow
+    session.scalar.return_value = workflow
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.generate_dependencies",
         return_value=[],
@@ -550,12 +553,12 @@ def test_append_workflow_export_data_filters_credentials(mocker) -> None:
             ]
         }
     }
-    session.query.return_value.where.return_value.first.return_value = workflow
+    session.scalar.return_value = workflow
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.generate_dependencies",
         return_value=[],
     )
-    export_data: dict = {}
+    export_data: dict[str, Any] = {}
     pipeline = Mock(id="p1", tenant_id="t1")
 
     service._append_workflow_export_data(export_data=export_data, pipeline=pipeline, include_secret=False)
@@ -568,7 +571,7 @@ def test_append_workflow_export_data_filters_credentials(mocker) -> None:
 def test_create_rag_pipeline_dataset_raises_when_name_conflicts(mocker) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
-    session.query.return_value.filter_by.return_value.first.return_value = Mock()
+    session.scalar.return_value = Mock()
     create_entity = RagPipelineDatasetCreateEntity(
         name="Existing Name",
         description="",
@@ -584,8 +587,8 @@ def test_create_rag_pipeline_dataset_raises_when_name_conflicts(mocker) -> None:
 def test_create_rag_pipeline_dataset_generates_name_when_missing(mocker) -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
-    session.query.return_value.filter_by.return_value.first.return_value = None
-    session.query.return_value.filter_by.return_value.all.return_value = [Mock(name="Untitled")]
+    session.scalar.return_value = None
+    session.scalars.return_value.all.return_value = [Mock(name="Untitled")]
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.generate_incremental_name", return_value="Untitled 2")
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.current_user", Mock(id="u1", current_tenant_id="t1"))
     mocker.patch.object(
@@ -632,13 +635,13 @@ def test_append_workflow_export_data_encrypts_knowledge_retrieval_dataset_ids(mo
             ]
         }
     }
-    session.query.return_value.where.return_value.first.return_value = workflow
+    session.scalar.return_value = workflow
     mocker.patch.object(service, "encrypt_dataset_id", side_effect=lambda dataset_id, tenant_id: f"enc-{dataset_id}")
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.generate_dependencies",
         return_value=[],
     )
-    export_data: dict = {}
+    export_data: dict[str, Any] = {}
     pipeline = Mock(id="p1", tenant_id="t1")
 
     service._append_workflow_export_data(export_data=export_data, pipeline=pipeline, include_secret=False)
@@ -727,7 +730,7 @@ def test_create_or_update_pipeline_decrypts_knowledge_retrieval_dataset_ids(mock
         },
     }
     draft_workflow = Mock(id="wf1")
-    session.query.return_value.where.return_value.first.return_value = draft_workflow
+    session.scalar.return_value = draft_workflow
     mocker.patch.object(service, "decrypt_dataset_id", side_effect=["d1", None])
 
     result = service._create_or_update_pipeline(pipeline=pipeline, data=data, account=account)
@@ -743,7 +746,8 @@ def test_create_or_update_pipeline_creates_draft_when_missing(mocker) -> None:
     account = Mock(id="u1", current_tenant_id="t1")
     pipeline = Mock(id="p1", tenant_id="t1", name="N", description="D")
     data = {"rag_pipeline": {"name": "N2", "description": "D2"}, "workflow": {"graph": {"nodes": []}}}
-    session.query.return_value.where.return_value.first.return_value = None
+    session.scalar.return_value = None
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.select", return_value=MagicMock())
     workflow_cls = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Workflow")
     workflow_cls.return_value.id = "wf-new"
 
@@ -817,7 +821,7 @@ def test_import_rag_pipeline_fails_for_non_string_version_type() -> None:
 def test_append_workflow_export_data_raises_when_draft_workflow_missing() -> None:
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
-    session.query.return_value.where.return_value.first.return_value = None
+    session.scalar.return_value = None
 
     with pytest.raises(ValueError, match="Missing draft workflow configuration"):
         service._append_workflow_export_data(export_data={}, pipeline=Mock(tenant_id="t1"), include_secret=False)
@@ -841,7 +845,7 @@ def test_append_workflow_export_data_keeps_secret_fields_when_include_secret_tru
             ]
         }
     }
-    session.query.return_value.where.return_value.first.return_value = workflow
+    session.scalar.return_value = workflow
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.generate_dependencies",
         return_value=[],
@@ -1003,7 +1007,8 @@ def test_import_rag_pipeline_sets_default_version_and_kind(mocker) -> None:
     )
     dataset = Mock(id="d1")
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Dataset", return_value=dataset)
-    session.query.return_value.filter_by.return_value.all.return_value = []
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.select", return_value=MagicMock())
+    session.scalars.return_value.all.return_value = []
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.generate_incremental_name", return_value="P")
 
     result = service.import_rag_pipeline(
@@ -1061,7 +1066,7 @@ def test_append_workflow_export_data_skips_empty_node_data(mocker) -> None:
     workflow = Mock()
     workflow.graph_dict = {"nodes": []}
     workflow.to_dict.return_value = {"graph": {"nodes": [{"data": {}}, {}]}}
-    session.query.return_value.where.return_value.first.return_value = workflow
+    session.scalar.return_value = workflow
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.generate_dependencies",
         return_value=[],
@@ -1246,11 +1251,12 @@ def test_create_or_update_pipeline_saves_dependencies_to_redis(mocker) -> None:
     account = Mock(id="u1", current_tenant_id="t1")
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.current_user", SimpleNamespace(id="u1"))
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Workflow", return_value=Mock(id="wf-1"))
+    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.select", return_value=MagicMock())
     pipeline_cls = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.Pipeline")
     pipeline = pipeline_cls.return_value
     pipeline.tenant_id = "t1"
     pipeline.id = "p1"
-    session.query.return_value.where.return_value.first.return_value = None
+    session.scalar.return_value = None
     setex = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.redis_client.setex")
     dependency = PluginDependency(
         type=PluginDependency.Type.Marketplace,

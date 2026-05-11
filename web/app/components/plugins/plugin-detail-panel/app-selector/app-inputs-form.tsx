@@ -1,8 +1,8 @@
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
-import { PortalSelect } from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import { InputVarType } from '@/app/components/workflow/types'
 
@@ -62,14 +62,23 @@ const AppInputsForm = ({
       )
     }
     if (form.type === InputVarType.select) {
+      const selectOptions: Array<{ value: string, name: string }> = options.map((option: string) => ({ value: option, name: option }))
+      const selectedOption = selectOptions.find(option => option.value === (inputs[variable] || '')) ?? null
+
       return (
-        <PortalSelect
-          popupClassName="w-[356px] z-1050"
-          value={inputs[variable] || ''}
-          items={options.map((option: string) => ({ value: option, name: option }))}
-          onSelect={item => handleFormChange(variable, item.value as string)}
-          placeholder={label}
-        />
+        <Select value={selectedOption?.value ?? null} onValueChange={value => value && handleFormChange(variable, value)}>
+          <SelectTrigger className="w-full">
+            {selectedOption?.name ?? label}
+          </SelectTrigger>
+          <SelectContent>
+            {selectOptions.map(option => (
+              <SelectItem key={option.value} value={option.value}>
+                <SelectItemText>{option.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )
     }
     if (form.type === InputVarType.singleFile) {
@@ -111,7 +120,7 @@ const AppInputsForm = ({
     <div className="flex flex-col gap-4 px-4 py-2">
       {inputsForms.map(form => (
         <div key={form.variable}>
-          <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
+          <div className="mb-1 flex h-6 items-center gap-1 system-sm-semibold text-text-secondary">
             <div className="truncate">{form.label}</div>
             {!form.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
           </div>

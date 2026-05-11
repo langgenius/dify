@@ -1,3 +1,4 @@
+import { Popover } from '@langgenius/dify-ui/popover'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,18 +8,15 @@ vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
 
-vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) =>
-    isShow ? <div data-testid="secret-key-modal"><button onClick={onClose}>close</button></div> : null,
-}))
-
 const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <Popover open>
+        {children}
+      </Popover>
     </QueryClientProvider>
   )
 }
@@ -28,8 +26,10 @@ const renderWithProviders = (ui: React.ReactElement) => {
 }
 
 describe('Card (Service API)', () => {
+  const onOpenSecretKeyModal = vi.fn()
   const defaultProps = {
     apiBaseUrl: 'https://api.dify.ai/v1',
+    onOpenSecretKeyModal,
   }
 
   beforeEach(() => {
@@ -77,48 +77,33 @@ describe('Card (Service API)', () => {
   // Props: tests different apiBaseUrl values
   describe('Props', () => {
     it('should display provided apiBaseUrl', () => {
-      renderWithProviders(<Card apiBaseUrl="https://custom-api.example.com" />)
+      renderWithProviders(<Card apiBaseUrl="https://custom-api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
       expect(screen.getByText('https://custom-api.example.com')).toBeInTheDocument()
     })
 
     it('should show green indicator when apiBaseUrl is provided', () => {
-      renderWithProviders(<Card apiBaseUrl="https://api.dify.ai" />)
+      renderWithProviders(<Card apiBaseUrl="https://api.dify.ai" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
       // The Indicator component receives color="green" when apiBaseUrl is truthy
       const statusText = screen.getByText(/serviceApi\.enabled/)
       expect(statusText).toHaveClass('text-text-success')
     })
 
     it('should show yellow indicator when apiBaseUrl is empty', () => {
-      renderWithProviders(<Card apiBaseUrl="" />)
+      renderWithProviders(<Card apiBaseUrl="" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
       // Still shows "enabled" text but indicator color differs
       expect(screen.getByText(/serviceApi\.enabled/)).toBeInTheDocument()
     })
   })
 
-  // User Interactions: tests button clicks and modal
+  // User Interactions: tests button clicks
   describe('User Interactions', () => {
-    it('should open secret key modal when API key button is clicked', () => {
-      renderWithProviders(<Card {...defaultProps} />)
-
-      // Modal should not be visible before clicking
-      expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
-
-      const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/).closest('button')
-      fireEvent.click(apiKeyButton!)
-
-      // Modal should appear after clicking
-      expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
-    })
-
-    it('should close secret key modal when onClose is called', () => {
+    it('should call onOpenSecretKeyModal when API key button is clicked', () => {
       renderWithProviders(<Card {...defaultProps} />)
 
       const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/).closest('button')
       fireEvent.click(apiKeyButton!)
-      expect(screen.getByTestId('secret-key-modal')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByText('close'))
-      expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
+      expect(onOpenSecretKeyModal).toHaveBeenCalledTimes(1)
     })
 
     it('should render API reference as a link', () => {
@@ -148,20 +133,20 @@ describe('Card (Service API)', () => {
   // Edge Cases: tests empty/long URLs
   describe('Edge Cases', () => {
     it('should handle empty apiBaseUrl', () => {
-      renderWithProviders(<Card apiBaseUrl="" />)
+      renderWithProviders(<Card apiBaseUrl="" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
       // Should still render the structure
       expect(screen.getByText(/serviceApi\.card\.endpoint/)).toBeInTheDocument()
     })
 
     it('should handle very long apiBaseUrl', () => {
       const longUrl = `https://api.dify.ai/${'path/'.repeat(50)}`
-      renderWithProviders(<Card apiBaseUrl={longUrl} />)
+      renderWithProviders(<Card apiBaseUrl={longUrl} onOpenSecretKeyModal={onOpenSecretKeyModal} />)
       expect(screen.getByText(longUrl)).toBeInTheDocument()
     })
 
     it('should handle apiBaseUrl with special characters', () => {
       const specialUrl = 'https://api.dify.ai/v1?key=value&foo=bar'
-      renderWithProviders(<Card apiBaseUrl={specialUrl} />)
+      renderWithProviders(<Card apiBaseUrl={specialUrl} onOpenSecretKeyModal={onOpenSecretKeyModal} />)
       expect(screen.getByText(specialUrl)).toBeInTheDocument()
     })
   })

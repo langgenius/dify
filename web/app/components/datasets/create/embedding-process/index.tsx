@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiArrowRightLine,
   RiLoader2Fill,
@@ -8,7 +9,6 @@ import {
 } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
@@ -39,7 +39,7 @@ const StatusHeader: FC<{ isEmbedding: boolean, isCompleted: boolean }> = ({
   const { t } = useTranslation()
 
   return (
-    <div className="system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary">
+    <div className="flex items-center gap-x-1 system-md-semibold-uppercase text-text-secondary">
       {isEmbedding && (
         <>
           <RiLoader2Fill className="size-4 animate-spin" />

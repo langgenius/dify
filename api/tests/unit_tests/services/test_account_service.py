@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account, AccountStatus
+from models.account import Account, AccountStatus, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -14,7 +14,6 @@ from services.errors.account import (
     AccountRegisterError,
     CurrentPasswordIncorrectError,
 )
-from tests.unit_tests.services.services_test_help import ServiceDbTestHelper
 
 
 class TestAccountAssociatedDataFactory:
@@ -149,7 +148,6 @@ class TestAccountService:
             # Setup basic session methods
             mock_session.add = MagicMock()
             mock_session.commit = MagicMock()
-            mock_session.query = MagicMock()
 
             yield mock_db
 
@@ -1427,16 +1425,9 @@ class TestRegisterService:
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
 
-        # Mock database queries - need to mock the Session query
-        mock_session = MagicMock()
-        mock_session.query.return_value.filter_by.return_value.first.return_value = None  # No existing account
-
         with (
-            patch("services.account_service.Session") as mock_session_class,
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
         ):
-            mock_session_class.return_value.__enter__.return_value = mock_session
-            mock_session_class.return_value.__exit__.return_value = None
             mock_lookup.return_value = None
 
             # Mock RegisterService.register
@@ -1473,7 +1464,7 @@ class TestRegisterService:
                         status=AccountStatus.PENDING,
                         is_setup=True,
                     )
-                    mock_lookup.assert_called_once_with("newuser@example.com", session=mock_session)
+                    mock_lookup.assert_called_once_with("newuser@example.com")
 
     def test_invite_new_member_normalizes_new_account_email(
         self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
@@ -1484,13 +1475,9 @@ class TestRegisterService:
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
         mixed_email = "Invitee@Example.com"
 
-        mock_session = MagicMock()
         with (
-            patch("services.account_service.Session") as mock_session_class,
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
         ):
-            mock_session_class.return_value.__enter__.return_value = mock_session
-            mock_session_class.return_value.__exit__.return_value = None
             mock_lookup.return_value = None
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1521,7 +1508,7 @@ class TestRegisterService:
                         status=AccountStatus.PENDING,
                         is_setup=True,
                     )
-                    mock_lookup.assert_called_once_with(mixed_email, session=mock_session)
+                    mock_lookup.assert_called_once_with(mixed_email)
                     mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, None, "add")
                     mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, "normal")
                     mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id)
@@ -1541,16 +1528,9 @@ class TestRegisterService:
             account_id="existing-user-456", email="existing@example.com", status="pending"
         )
 
-        # Mock database queries - need to mock the Session query
-        mock_session = MagicMock()
-        mock_session.query.return_value.filter_by.return_value.first.return_value = mock_existing_account
-
         with (
-            patch("services.account_service.Session") as mock_session_class,
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
         ):
-            mock_session_class.return_value.__enter__.return_value = mock_session
-            mock_session_class.return_value.__exit__.return_value = None
             mock_lookup.return_value = mock_existing_account
 
             # Mock scalar for TenantAccountJoin lookup - no existing member
@@ -1578,7 +1558,7 @@ class TestRegisterService:
                 mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, "normal")
                 mock_generate_token.assert_called_once_with(mock_tenant, mock_existing_account)
                 mock_task_dependencies.delay.assert_called_once()
-                mock_lookup.assert_called_once_with("existing@example.com", session=mock_session)
+                mock_lookup.assert_called_once_with("existing@example.com")
 
     def test_invite_new_member_already_in_tenant(self, mock_db_dependencies, mock_redis_dependencies):
         """Test inviting a member who is already in the tenant."""
@@ -1590,15 +1570,9 @@ class TestRegisterService:
             account_id="existing-user-456", email="existing@example.com", status="active"
         )
 
-        # Mock database queries
-        query_results = {
-            (
-                "TenantAccountJoin",
-                "tenant_id",
-                "tenant-456",
-            ): TestAccountAssociatedDataFactory.create_tenant_join_mock(),
-        }
-        ServiceDbTestHelper.setup_db_query_filter_by_mock(mock_db_dependencies["db"], query_results)
+        mock_db_dependencies[
+            "db"
+        ].session.scalar.return_value = TestAccountAssociatedDataFactory.create_tenant_join_mock()
 
         # Mock TenantService methods
         with (
@@ -1715,7 +1689,7 @@ class TestRegisterService:
         # Setup test data
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="user-123", email="test@example.com"
         )
@@ -1777,7 +1751,7 @@ class TestRegisterService:
         # Setup test data
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
 
         # Mock Redis data
         invitation_data = {
@@ -1802,7 +1776,7 @@ class TestRegisterService:
         # Setup test data
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="different-user-456", email="test@example.com"
         )

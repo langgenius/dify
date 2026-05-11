@@ -116,81 +116,6 @@ def test_get_all_published_workflow_applies_limit_and_has_more(rag_pipeline_serv
     assert has_more is True
 
 
-def test_get_pipeline_raises_when_dataset_not_found(mocker, rag_pipeline_service) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=None)
-
-    with pytest.raises(ValueError, match="Dataset not found"):
-        rag_pipeline_service.get_pipeline("tenant-1", "dataset-1")
-
-
-# --- update_customized_pipeline_template ---
-
-
-def test_update_customized_pipeline_template_success(mocker) -> None:
-    template = SimpleNamespace(name="old", description="old", icon={}, updated_by=None)
-
-    # First scalar finds the template, second scalar (duplicate check) returns None
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", side_effect=[template, None])
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
-
-    info = PipelineTemplateInfoEntity(
-        name="new",
-        description="new desc",
-        icon_info=IconInfo(icon="🔥"),
-    )
-    result = RagPipelineService.update_customized_pipeline_template("tpl-1", info)
-
-    assert result.name == "new"
-    assert result.description == "new desc"
-
-
-def test_update_customized_pipeline_template_not_found(mocker) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=None)
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
-
-    info = PipelineTemplateInfoEntity(name="x", description="d", icon_info=IconInfo(icon="i"))
-    with pytest.raises(ValueError, match="Customized pipeline template not found"):
-        RagPipelineService.update_customized_pipeline_template("tpl-missing", info)
-
-
-def test_update_customized_pipeline_template_duplicate_name(mocker) -> None:
-    template = SimpleNamespace(name="old", description="old", icon={}, updated_by=None)
-    duplicate = SimpleNamespace(name="dup")
-
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", side_effect=[template, duplicate])
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
-
-    info = PipelineTemplateInfoEntity(name="dup", description="d", icon_info=IconInfo(icon="i"))
-    with pytest.raises(ValueError, match="Template name is already exists"):
-        RagPipelineService.update_customized_pipeline_template("tpl-1", info)
-
-
-# --- delete_customized_pipeline_template ---
-
-
-def test_delete_customized_pipeline_template_success(mocker) -> None:
-    template = SimpleNamespace(id="tpl-1")
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=template)
-    delete_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.delete")
-    commit_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
-
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
-
-    RagPipelineService.delete_customized_pipeline_template("tpl-1")
-
-    delete_mock.assert_called_once_with(template)
-    commit_mock.assert_called_once()
-
-
-def test_delete_customized_pipeline_template_not_found(mocker) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=None)
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
-
-    with pytest.raises(ValueError, match="Customized pipeline template not found"):
-        RagPipelineService.delete_customized_pipeline_template("tpl-missing")
-
-
 # --- sync_draft_workflow ---
 
 
@@ -449,24 +374,14 @@ def test_publish_workflow_success(mocker, rag_pipeline_service) -> None:
     mock_db = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db", mock_db)
     mock_dataset_service_class = mocker.patch("services.dataset_service.DatasetService")
-    mock_dataset_service = mock_dataset_service_class.return_value
 
-    # 6. Mock session and its scalar/query methods
+    # 6. Mock session and dataset lookup
     mock_session = mocker.Mock()
     mock_session.scalar.return_value = draft_wf
 
-    # Mock dataset update query (needed even if service is mocked, as rag_pipeline fetches it first)
     dataset = mocker.Mock()
     dataset.retrieval_model_dict = {}
-    dataset_query = mocker.Mock()
-    dataset_query.where.return_value.first.return_value = dataset
-
-    # Mock node execution copy
-    node_exec_query = mocker.Mock()
-    node_exec_query.where.return_value.all.return_value = []
-
-    # Mocked session query side effects
-    mock_session.query.side_effect = [node_exec_query, dataset_query]
+    pipeline.retrieve_dataset.return_value = dataset
 
     # 7. Run test
     result = rag_pipeline_service.publish_workflow(session=mock_session, pipeline=pipeline, account=account)
@@ -862,7 +777,6 @@ def test_retry_error_document_success(mocker, rag_pipeline_service) -> None:
 
 def test_set_datasource_variables_success(mocker, rag_pipeline_service) -> None:
     from graphon.entities.workflow_node_execution import WorkflowNodeExecution
-
     from models.dataset import Pipeline
 
     # 1. Setup mocks
@@ -1558,11 +1472,10 @@ def test_handle_node_run_result_raises_when_no_terminal_event(mocker, rag_pipeli
 
 
 def test_handle_node_run_result_marks_document_error_for_published_invoke(mocker, rag_pipeline_service) -> None:
+    from core.app.entities.app_invoke_entities import InvokeFrom
     from graphon.enums import WorkflowNodeExecutionStatus
     from graphon.graph_events import NodeRunFailedEvent
     from graphon.node_events.base import NodeRunResult
-
-    from core.app.entities.app_invoke_entities import InvokeFrom
 
     class FakeVariablePool:
         def __init__(self):
@@ -1601,7 +1514,6 @@ def test_handle_node_run_result_marks_document_error_for_published_invoke(mocker
         )
 
     document = SimpleNamespace(indexing_status="waiting", error=None)
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.get", return_value=document)
     add_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.add")
     commit_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
@@ -1672,7 +1584,6 @@ def test_publish_customized_pipeline_template_raises_for_missing_workflow_id(moc
 
 
 def test_get_pipeline_raises_when_dataset_missing(mocker, rag_pipeline_service) -> None:
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=None)
 
     with pytest.raises(ValueError, match="Dataset not found"):
@@ -1681,7 +1592,6 @@ def test_get_pipeline_raises_when_dataset_missing(mocker, rag_pipeline_service) 
 
 def test_get_pipeline_raises_when_pipeline_missing(mocker, rag_pipeline_service) -> None:
     dataset = SimpleNamespace(pipeline_id="p1")
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", side_effect=[dataset, None])
 
     with pytest.raises(ValueError, match="Pipeline not found"):
@@ -1721,7 +1631,6 @@ def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker) -> None:
 
 def test_update_customized_pipeline_template_commits_when_name_empty(mocker) -> None:
     template = SimpleNamespace(name="old", description="old", icon={}, updated_by=None)
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=template)
     commit = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
     mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
@@ -1948,7 +1857,6 @@ def test_run_free_workflow_node_delegates_to_handle_result(mocker, rag_pipeline_
 
 def test_publish_customized_pipeline_template_raises_when_workflow_missing(mocker, rag_pipeline_service) -> None:
     pipeline = SimpleNamespace(id="p1", tenant_id="t1", workflow_id="wf-1")
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.get", side_effect=[pipeline, None])
 
     with pytest.raises(ValueError, match="Workflow not found"):
@@ -1987,7 +1895,6 @@ def test_get_recommended_plugins_skips_manifest_when_missing(mocker, rag_pipelin
 
 def test_retry_error_document_raises_when_pipeline_missing(mocker, rag_pipeline_service) -> None:
     exec_log = SimpleNamespace(pipeline_id="p1")
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=exec_log)
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.get", return_value=None)
 
@@ -2000,7 +1907,6 @@ def test_retry_error_document_raises_when_pipeline_missing(mocker, rag_pipeline_
 def test_retry_error_document_raises_when_workflow_missing(mocker, rag_pipeline_service) -> None:
     exec_log = SimpleNamespace(pipeline_id="p1")
     pipeline = SimpleNamespace(id="p1")
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=exec_log)
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.get", return_value=pipeline)
     mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=None)
@@ -2017,7 +1923,6 @@ def test_get_datasource_plugins_returns_empty_for_non_datasource_nodes(mocker, r
     workflow = SimpleNamespace(
         graph_dict={"nodes": [{"id": "n1", "data": {"type": "start"}}]}, rag_pipeline_variables=[]
     )
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", side_effect=[dataset, pipeline])
     mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
 
@@ -2180,7 +2085,6 @@ def test_get_datasource_plugins_handles_empty_datasource_data_and_non_published(
         graph_dict={"nodes": [{"id": "n1", "data": {"type": "datasource", "datasource_parameters": {}}}]},
         rag_pipeline_variables=[{"variable": "v1", "belong_to_node_id": "shared"}],
     )
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", side_effect=[dataset, pipeline])
     mocker.patch.object(rag_pipeline_service, "get_draft_workflow", return_value=workflow)
     mocker.patch(
@@ -2220,7 +2124,6 @@ def test_get_datasource_plugins_extracts_user_inputs_and_credentials(mocker, rag
             {"variable": "v3", "belong_to_node_id": "shared"},
         ],
     )
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", side_effect=[dataset, pipeline])
     mocker.patch.object(rag_pipeline_service, "get_published_workflow", return_value=workflow)
     mocker.patch(
@@ -2238,7 +2141,6 @@ def test_get_datasource_plugins_extracts_user_inputs_and_credentials(mocker, rag
 def test_get_pipeline_returns_pipeline_when_found(mocker, rag_pipeline_service) -> None:
     dataset = SimpleNamespace(pipeline_id="p1")
     pipeline = SimpleNamespace(id="p1")
-    query = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", side_effect=[dataset, pipeline])
 
     result = rag_pipeline_service.get_pipeline("t1", "d1")

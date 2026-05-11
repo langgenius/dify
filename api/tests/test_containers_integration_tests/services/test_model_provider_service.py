@@ -2,10 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
-from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
 from sqlalchemy.orm import Session
 
 from core.entities.model_entities import ModelStatus
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
 from services.model_provider_service import ModelProviderService
@@ -405,10 +405,9 @@ class TestModelProviderService:
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
 
         # Create mock models
+        from core.entities.model_entities import ModelWithProviderEntity, SimpleModelProviderEntity
         from graphon.model_runtime.entities.common_entities import I18nObject
         from graphon.model_runtime.entities.provider_entities import ProviderEntity
-
-        from core.entities.model_entities import ModelWithProviderEntity, SimpleModelProviderEntity
 
         # Create real model objects instead of mocks
         provider_entity_1 = SimpleModelProviderEntity(
@@ -644,9 +643,8 @@ class TestModelProviderService:
         mock_provider_manager = mock_external_service_dependencies["provider_manager"].return_value
 
         # Create mock default model response
-        from graphon.model_runtime.entities.common_entities import I18nObject
-
         from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
+        from graphon.model_runtime.entities.common_entities import I18nObject
 
         mock_default_model = DefaultModelEntity(
             model="gpt-3.5-turbo",

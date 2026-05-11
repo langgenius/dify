@@ -2,17 +2,16 @@ import base64
 from typing import Literal
 
 from flask import request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
 from enums.cloud_plan import CloudPlan
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class SubscriptionQuery(BaseModel):
@@ -24,8 +23,7 @@ class PartnerTenantsPayload(BaseModel):
     click_id: str = Field(..., description="Click Id from partner referral link")
 
 
-for model in (SubscriptionQuery, PartnerTenantsPayload):
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+register_schema_models(console_ns, SubscriptionQuery, PartnerTenantsPayload)
 
 
 @console_ns.route("/billing/subscription")
@@ -58,12 +56,7 @@ class PartnerTenants(Resource):
     @console_ns.doc("sync_partner_tenants_bindings")
     @console_ns.doc(description="Sync partner tenants bindings")
     @console_ns.doc(params={"partner_key": "Partner key"})
-    @console_ns.expect(
-        console_ns.model(
-            "SyncPartnerTenantsBindingsRequest",
-            {"click_id": fields.String(required=True, description="Click Id from partner referral link")},
-        )
-    )
+    @console_ns.expect(console_ns.models[PartnerTenantsPayload.__name__])
     @console_ns.response(200, "Tenants synced to partner successfully")
     @console_ns.response(400, "Invalid partner information")
     @setup_required

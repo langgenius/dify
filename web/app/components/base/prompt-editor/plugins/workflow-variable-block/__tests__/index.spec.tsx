@@ -105,7 +105,10 @@ describe('WorkflowVariableBlock', () => {
     )
 
     expect(mockUpdate).toHaveBeenCalled()
-    expect(mockDispatchCommand).toHaveBeenCalledWith(UPDATE_WORKFLOW_NODES_MAP, workflowNodesMap)
+    expect(mockDispatchCommand).toHaveBeenCalledWith(UPDATE_WORKFLOW_NODES_MAP, {
+      workflowNodesMap,
+      availableVariables: [],
+    })
   })
 
   it('should throw when WorkflowVariableBlockNode is not registered', () => {
@@ -130,13 +133,14 @@ describe('WorkflowVariableBlock', () => {
       />,
     )
 
-    const insertHandler = mockRegisterCommand.mock.calls[0][1] as (variables: string[]) => boolean
+    const insertHandler = mockRegisterCommand.mock.calls[0]![1] as (variables: string[]) => boolean
     const result = insertHandler(['node-1', 'answer'])
 
     expect($createWorkflowVariableBlockNode).toHaveBeenCalledWith(
       ['node-1', 'answer'],
       workflowNodesMap,
       getVarType,
+      [],
     )
     expect($insertNodes).toHaveBeenCalledWith([{ id: 'workflow-node' }])
     expect(onInsert).toHaveBeenCalledTimes(1)
@@ -150,7 +154,7 @@ describe('WorkflowVariableBlock', () => {
       />,
     )
 
-    const insertHandler = mockRegisterCommand.mock.calls[0][1] as (variables: string[]) => boolean
+    const insertHandler = mockRegisterCommand.mock.calls[0]![1] as (variables: string[]) => boolean
     expect(insertHandler(['node-1', 'answer'])).toBe(true)
   })
 
@@ -164,7 +168,7 @@ describe('WorkflowVariableBlock', () => {
       />,
     )
 
-    const deleteHandler = mockRegisterCommand.mock.calls[1][1] as () => boolean
+    const deleteHandler = mockRegisterCommand.mock.calls[1]![1] as () => boolean
     const result = deleteHandler()
 
     expect(onDelete).toHaveBeenCalledTimes(1)
@@ -178,7 +182,7 @@ describe('WorkflowVariableBlock', () => {
       />,
     )
 
-    const deleteHandler = mockRegisterCommand.mock.calls[1][1] as () => boolean
+    const deleteHandler = mockRegisterCommand.mock.calls[1]![1] as () => boolean
     expect(deleteHandler()).toBe(true)
   })
 

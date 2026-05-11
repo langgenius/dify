@@ -1,13 +1,12 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
   QuotaUnitEnum,
 } from '../declarations'
 import ModelProviderPage from '../index'
-
-let mockEnableMarketplace = true
 
 const mockQuotaConfig = {
   quota_type: CurrentSystemQuotaTypeEnum.free,
@@ -18,13 +17,14 @@ const mockQuotaConfig = {
   is_valid: true,
 }
 
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({
-    data: {
-      enable_marketplace: mockEnableMarketplace,
-    },
-  }),
-}))
+const renderModelProviderPage = (
+  props: { searchText?: string, enableMarketplace?: boolean } = {},
+) => {
+  const { searchText = '', enableMarketplace = true } = props
+  return renderWithSystemFeatures(<ModelProviderPage searchText={searchText} />, {
+    systemFeatures: { enable_marketplace: enableMarketplace },
+  })
+}
 
 const mockProviders = [
   {
@@ -83,28 +83,40 @@ vi.mock('../system-model-selector', () => ({
   default: () => <div data-testid="system-model-selector" />,
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const originalPlugins = actual.consoleQuery.plugins as unknown as Record<string, unknown>
   return {
     ...actual,
-    useQuery: () => ({ data: undefined }),
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, prop) {
+        if (prop === 'plugins') {
+          return {
+            ...originalPlugins,
+            checkInstalled: {
+              queryOptions: () => ({
+                queryKey: ['plugins', 'checkInstalled'],
+                queryFn: () => new Promise(() => {}),
+              }),
+            },
+            latestVersions: {
+              queryOptions: () => ({
+                queryKey: ['plugins', 'latestVersions'],
+                queryFn: () => new Promise(() => {}),
+              }),
+            },
+          }
+        }
+        return Reflect.get(target, prop)
+      },
+    }),
   }
 })
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    plugins: {
-      checkInstalled: { queryOptions: () => ({}) },
-      latestVersions: { queryOptions: () => ({}) },
-    },
-  },
-}))
 
 describe('ModelProviderPage', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    mockEnableMarketplace = true
     Object.keys(mockDefaultModels).forEach((key) => {
       mockDefaultModels[key] = { data: null, isLoading: false }
     })
@@ -134,21 +146,21 @@ describe('ModelProviderPage', () => {
   })
 
   it('should render main elements', () => {
-    render(<ModelProviderPage searchText="" />)
+    renderModelProviderPage()
     expect(screen.getByText('common.modelProvider.models')).toBeInTheDocument()
     expect(screen.getByTestId('system-model-selector')).toBeInTheDocument()
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
   })
 
   it('should render configured and not configured providers sections', () => {
-    render(<ModelProviderPage searchText="" />)
+    renderModelProviderPage()
     expect(screen.getByText('openai')).toBeInTheDocument()
     expect(screen.getByText('common.modelProvider.toBeConfigured')).toBeInTheDocument()
     expect(screen.getByText('anthropic')).toBeInTheDocument()
   })
 
   it('should filter providers based on search text', () => {
-    render(<ModelProviderPage searchText="open" />)
+    renderModelProviderPage({ searchText: 'open' })
     act(() => {
       vi.advanceTimersByTime(600)
     })
@@ -157,7 +169,7 @@ describe('ModelProviderPage', () => {
   })
 
   it('should show empty state if no configured providers match', () => {
-    render(<ModelProviderPage searchText="non-existent" />)
+    renderModelProviderPage({ searchText: 'non-existent' })
     act(() => {
       vi.advanceTimersByTime(600)
     })
@@ -165,9 +177,7 @@ describe('ModelProviderPage', () => {
   })
 
   it('should hide marketplace section when marketplace feature is disabled', () => {
-    mockEnableMarketplace = false
-
-    render(<ModelProviderPage searchText="" />)
+    renderModelProviderPage({ enableMarketplace: false })
 
     expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
   })
@@ -185,14 +195,14 @@ describe('ModelProviderPage', () => {
         },
       })
 
-      render(<ModelProviderPage searchText="" />)
+      renderModelProviderPage()
       expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
     })
 
     it('should show none-configured warning when providers exist but no default models set', () => {
-      render(<ModelProviderPage searchText="" />)
+      renderModelProviderPage()
       expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
     })
 
@@ -202,7 +212,7 @@ describe('ModelProviderPage', () => {
         isLoading: false,
       }
 
-      render(<ModelProviderPage searchText="" />)
+      renderModelProviderPage()
       expect(screen.getByText('common.modelProvider.notConfigured')).toBeInTheDocument()
     })
 
@@ -217,7 +227,7 @@ describe('ModelProviderPage', () => {
       mockDefaultModels.speech2text = makeModel('whisper-1', 'speech2text')
       mockDefaultModels.tts = makeModel('tts-1', 'tts')
 
-      render(<ModelProviderPage searchText="" />)
+      renderModelProviderPage()
       expect(screen.queryByText('common.modelProvider.noProviderInstalled')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
@@ -228,7 +238,7 @@ describe('ModelProviderPage', () => {
         mockDefaultModels[key] = { data: null, isLoading: true }
       })
 
-      render(<ModelProviderPage searchText="" />)
+      renderModelProviderPage()
       expect(screen.queryByText('common.modelProvider.noProviderInstalled')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
@@ -265,7 +275,7 @@ describe('ModelProviderPage', () => {
       },
     })
 
-    render(<ModelProviderPage searchText="" />)
+    renderModelProviderPage()
 
     const renderedProviders = screen.getAllByTestId('provider-card').map(item => item.textContent)
     expect(renderedProviders).toEqual([

@@ -1,6 +1,6 @@
 import enum
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
@@ -103,10 +103,14 @@ class AdjustedJSON(TypeDecorator[dict | list | None]):
         else:
             return dialect.type_descriptor(sa.JSON())
 
-    def process_bind_param(self, value: dict | list | None, dialect: Dialect) -> dict | list | None:
+    def process_bind_param(
+        self, value: dict[str, Any] | list[Any] | None, dialect: Dialect
+    ) -> dict[str, Any] | list[Any] | None:
         return value
 
-    def process_result_value(self, value: dict | list | None, dialect: Dialect) -> dict | list | None:
+    def process_result_value(
+        self, value: dict[str, Any] | list[Any] | None, dialect: Dialect
+    ) -> dict[str, Any] | list[Any] | None:
         return value
 
 
@@ -143,8 +147,14 @@ class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
     def process_result_value(self, value: str | None, dialect: Dialect) -> T | None:
         if value is None or value == "":
             return None
-        # Type annotation guarantees value is str at this point
-        return self._enum_class(value)
+        try:
+            # Type annotation guarantees value is str at this point
+            return self._enum_class(value)
+        except ValueError:
+            value_of = getattr(self._enum_class, "value_of", None)
+            if callable(value_of):
+                return cast(T, value_of(value))
+            raise
 
     def compare_values(self, x: T | None, y: T | None) -> bool:
         if x is None or y is None:

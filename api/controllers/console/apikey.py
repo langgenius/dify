@@ -1,12 +1,16 @@
+from datetime import datetime
+
 import flask_restx
-from flask_restx import Resource, fields, marshal_with
+from flask_restx import Resource
 from flask_restx._http import HTTPStatus
+from pydantic import field_validator
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.schema import register_schema_models
 from extensions.ext_database import db
-from libs.helper import TimestampField
+from fields.base import ResponseModel
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.enums import ApiTokenType
@@ -16,21 +20,31 @@ from services.api_token_service import ApiTokenCache
 from . import console_ns
 from .wraps import account_initialization_required, edit_permission_required, setup_required
 
-api_key_fields = {
-    "id": fields.String,
-    "type": fields.String,
-    "token": fields.String,
-    "last_used_at": TimestampField,
-    "created_at": TimestampField,
-}
 
-api_key_item_model = console_ns.model("ApiKeyItem", api_key_fields)
+def _to_timestamp(value: datetime | int | None) -> int | None:
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
 
-api_key_list = {"data": fields.List(fields.Nested(api_key_item_model), attribute="items")}
 
-api_key_list_model = console_ns.model(
-    "ApiKeyList", {"data": fields.List(fields.Nested(api_key_item_model), attribute="items")}
-)
+class ApiKeyItem(ResponseModel):
+    id: str
+    type: str
+    token: str
+    last_used_at: int | None = None
+    created_at: int | None = None
+
+    @field_validator("last_used_at", "created_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return _to_timestamp(value)
+
+
+class ApiKeyList(ResponseModel):
+    data: list[ApiKeyItem]
+
+
+register_schema_models(console_ns, ApiKeyItem, ApiKeyList)
 
 
 def _get_resource(resource_id, tenant_id, resource_model):
@@ -54,7 +68,6 @@ class BaseApiKeyListResource(Resource):
     token_prefix: str | None = None
     max_keys = 10
 
-    @marshal_with(api_key_list_model)
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
@@ -66,9 +79,8 @@ class BaseApiKeyListResource(Resource):
                 ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
             )
         ).all()
-        return {"items": keys}
+        return ApiKeyList.model_validate({"data": keys}, from_attributes=True).model_dump(mode="json")
 
-    @marshal_with(api_key_item_model)
     @edit_permission_required
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
@@ -100,7 +112,7 @@ class BaseApiKeyListResource(Resource):
         api_token.type = self.resource_type
         db.session.add(api_token)
         db.session.commit()
-        return api_token, 201
+        return ApiKeyItem.model_validate(api_token, from_attributes=True).model_dump(mode="json"), 201
 
 
 class BaseApiKeyResource(Resource):
@@ -147,7 +159,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("get_app_api_keys")
     @console_ns.doc(description="Get all API keys for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
-    @console_ns.response(200, "Success", api_key_list_model)
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     def get(self, resource_id):  # type: ignore
         """Get all API keys for an app"""
         return super().get(resource_id)
@@ -155,7 +167,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("create_app_api_key")
     @console_ns.doc(description="Create a new API key for an app")
     @console_ns.doc(params={"resource_id": "App ID"})
-    @console_ns.response(201, "API key created successfully", api_key_item_model)
+    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     def post(self, resource_id):  # type: ignore
         """Create a new API key for an app"""
@@ -187,7 +199,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get all API keys for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
-    @console_ns.response(200, "Success", api_key_list_model)
+    @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
     def get(self, resource_id):  # type: ignore
         """Get all API keys for a dataset"""
         return super().get(resource_id)
@@ -195,7 +207,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.doc("create_dataset_api_key")
     @console_ns.doc(description="Create a new API key for a dataset")
     @console_ns.doc(params={"resource_id": "Dataset ID"})
-    @console_ns.response(201, "API key created successfully", api_key_item_model)
+    @console_ns.response(201, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     def post(self, resource_id):  # type: ignore
         """Create a new API key for a dataset"""

@@ -1,14 +1,39 @@
 import uuid
+from typing import cast
 
 import sqlalchemy as sa
 from flask_login import current_user
-from sqlalchemy import func, select
+from pydantic import BaseModel, Field
+from sqlalchemy import delete, func, select
+from sqlalchemy.engine import CursorResult
 from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from models.dataset import Dataset
 from models.enums import TagType
 from models.model import App, Tag, TagBinding
+
+
+class SaveTagPayload(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+    type: TagType
+
+
+class UpdateTagPayload(BaseModel):
+    name: str = Field(min_length=1, max_length=50)
+    type: TagType
+
+
+class TagBindingCreatePayload(BaseModel):
+    tag_ids: list[str]
+    target_id: str
+    type: TagType
+
+
+class TagBindingDeletePayload(BaseModel):
+    tag_ids: list[str] = Field(min_length=1)
+    target_id: str
+    type: TagType
 
 
 class TagService:
@@ -78,12 +103,12 @@ class TagService:
         return tags or []
 
     @staticmethod
-    def save_tags(args: dict) -> Tag:
-        if TagService.get_tag_by_tag_name(args["type"], current_user.current_tenant_id, args["name"]):
+    def save_tags(payload: SaveTagPayload) -> Tag:
+        if TagService.get_tag_by_tag_name(payload.type, current_user.current_tenant_id, payload.name):
             raise ValueError("Tag name already exists")
         tag = Tag(
-            name=args["name"],
-            type=TagType(args["type"]),
+            name=payload.name,
+            type=TagType(payload.type),
             created_by=current_user.id,
             tenant_id=current_user.current_tenant_id,
         )
@@ -93,13 +118,24 @@ class TagService:
         return tag
 
     @staticmethod
-    def update_tags(args: dict, tag_id: str) -> Tag:
-        if TagService.get_tag_by_tag_name(args.get("type", ""), current_user.current_tenant_id, args.get("name", "")):
-            raise ValueError("Tag name already exists")
+    def update_tags(payload: UpdateTagPayload, tag_id: str) -> Tag:
         tag = db.session.scalar(select(Tag).where(Tag.id == tag_id).limit(1))
         if not tag:
             raise NotFound("Tag not found")
-        tag.name = args["name"]
+        if payload.name != tag.name:
+            existing = db.session.scalar(
+                select(Tag)
+                .where(
+                    Tag.name == payload.name,
+                    Tag.tenant_id == current_user.current_tenant_id,
+                    Tag.type == tag.type,
+                    Tag.id != tag_id,
+                )
+                .limit(1)
+            )
+            if existing:
+                raise ValueError("Tag name already exists")
+        tag.name = payload.name
         db.session.commit()
         return tag
 
@@ -122,21 +158,19 @@ class TagService:
         db.session.commit()
 
     @staticmethod
-    def save_tag_binding(args):
-        # check if target exists
-        TagService.check_target_exists(args["type"], args["target_id"])
-        # save tag binding
-        for tag_id in args["tag_ids"]:
+    def save_tag_binding(payload: TagBindingCreatePayload):
+        TagService.check_target_exists(payload.type, payload.target_id)
+        for tag_id in payload.tag_ids:
             tag_binding = db.session.scalar(
                 select(TagBinding)
-                .where(TagBinding.tag_id == tag_id, TagBinding.target_id == args["target_id"])
+                .where(TagBinding.tag_id == tag_id, TagBinding.target_id == payload.target_id)
                 .limit(1)
             )
             if tag_binding:
                 continue
             new_tag_binding = TagBinding(
                 tag_id=tag_id,
-                target_id=args["target_id"],
+                target_id=payload.target_id,
                 tenant_id=current_user.current_tenant_id,
                 created_by=current_user.id,
             )
@@ -144,17 +178,20 @@ class TagService:
         db.session.commit()
 
     @staticmethod
-    def delete_tag_binding(args):
-        # check if target exists
-        TagService.check_target_exists(args["type"], args["target_id"])
-        # delete tag binding
-        tag_bindings = db.session.scalar(
-            select(TagBinding)
-            .where(TagBinding.target_id == args["target_id"], TagBinding.tag_id == args["tag_id"])
-            .limit(1)
+    def delete_tag_binding(payload: TagBindingDeletePayload):
+        TagService.check_target_exists(payload.type, payload.target_id)
+        result = cast(
+            CursorResult,
+            db.session.execute(
+                delete(TagBinding).where(
+                    TagBinding.target_id == payload.target_id,
+                    TagBinding.tag_id.in_(payload.tag_ids),
+                    TagBinding.tenant_id == current_user.current_tenant_id,
+                )
+            ),
         )
-        if tag_bindings:
-            db.session.delete(tag_bindings)
+
+        if result.rowcount:
             db.session.commit()
 
     @staticmethod
