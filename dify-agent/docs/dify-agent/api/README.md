@@ -63,7 +63,9 @@ Response (`202 Accepted`):
 ```
 
 The server persists the run record and schedules execution immediately in the
-same FastAPI process. Redis is not used as a job queue.
+same FastAPI process. Redis is not used as a job queue. Run records and per-run
+event streams expire after `DIFY_AGENT_RUN_RETENTION_SECONDS`, which defaults to
+`259200` seconds (3 days).
 
 `agent_profile.provider` currently supports the credential-free `test` profile.
 
@@ -99,7 +101,7 @@ Status values are:
 - `succeeded`
 - `failed`
 
-Unknown run ids return `404` with `"run not found"`.
+Unknown or expired run ids return `404` with `"run not found"`.
 
 ## Poll events
 

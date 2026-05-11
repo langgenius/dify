@@ -2,7 +2,8 @@
 
 The store writes run records as JSON strings and events as Redis streams. HTTP
 event cursors are Redis stream ids; ``0-0`` means replay from the beginning for
-polling and SSE. Execution is scheduled in-process by
+polling and SSE. Records and streams share one retention window that is refreshed
+when status or event data is written. Execution is scheduled in-process by
 ``dify_agent.runtime.run_scheduler``; Redis is not a job queue.
 """
 
@@ -22,6 +23,7 @@ from dify_agent.server.schemas import (
     new_run_id,
     utc_now,
 )
+from dify_agent.server.settings import DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import run_events_key, run_record_key
 
 
@@ -30,20 +32,39 @@ class RunNotFoundError(LookupError):
 
 
 class RedisRunStore(RunEventSink):
-    """Async Redis implementation for run records and event logs."""
+    """Async Redis implementation for run records and event logs.
+
+    ``run_retention_seconds`` is applied to both the run record key and the
+    per-run Redis stream. Event writes also refresh the record TTL so long-running
+    runs that keep producing events do not lose their status record mid-run.
+    """
 
     redis: Redis
     prefix: str
+    run_retention_seconds: int
 
-    def __init__(self, redis: Redis, *, prefix: str = "dify-agent") -> None:
+    def __init__(
+        self,
+        redis: Redis,
+        *,
+        prefix: str = "dify-agent",
+        run_retention_seconds: int = DEFAULT_RUN_RETENTION_SECONDS,
+    ) -> None:
+        if run_retention_seconds <= 0:
+            raise ValueError("run_retention_seconds must be positive")
         self.redis = redis
         self.prefix = prefix
+        self.run_retention_seconds = run_retention_seconds
 
     async def create_run(self, request: CreateRunRequest) -> RunRecord:
         """Persist a running run record without enqueueing external work."""
         run_id = new_run_id()
         record = RunRecord(run_id=run_id, status="running", request=request)
-        await self.redis.set(run_record_key(self.prefix, run_id), record.model_dump_json())
+        await self.redis.set(
+            run_record_key(self.prefix, run_id),
+            record.model_dump_json(),
+            ex=self.run_retention_seconds,
+        )
         return record
 
     async def get_run(self, run_id: str) -> RunRecord:
@@ -59,15 +80,22 @@ class RedisRunStore(RunEventSink):
         """Update the status fields of an existing run record."""
         record = await self.get_run(run_id)
         updated = record.model_copy(update={"status": status, "updated_at": utc_now(), "error": error})
-        await self.redis.set(run_record_key(self.prefix, run_id), updated.model_dump_json())
+        await self.redis.set(
+            run_record_key(self.prefix, run_id),
+            updated.model_dump_json(),
+            ex=self.run_retention_seconds,
+        )
 
     async def append_event(self, event: RunEvent) -> str:
         """Append an event JSON payload to the run's Redis stream."""
+        events_key = run_events_key(self.prefix, event.run_id)
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
         event_id = await self.redis.xadd(
-            run_events_key(self.prefix, event.run_id),
+            events_key,
             {"payload": payload},
         )
+        await self.redis.expire(events_key, self.run_retention_seconds)
+        await self.redis.expire(run_record_key(self.prefix, event.run_id), self.run_retention_seconds)
         return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
 
     async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
@@ -112,4 +140,4 @@ class RedisRunStore(RunEventSink):
         return event.model_copy(update={"id": event_id, "run_id": run_id})
 
 
-__all__ = ["RedisRunStore", "RunNotFoundError"]
+__all__ = ["DEFAULT_RUN_RETENTION_SECONDS", "RedisRunStore", "RunNotFoundError"]

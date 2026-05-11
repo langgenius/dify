@@ -3,7 +3,8 @@
 The HTTP process owns Redis clients, route wiring, and a process-local scheduler.
 Run execution happens in background ``asyncio`` tasks rather than request
 handlers, so client disconnects do not cancel the agent runtime. Redis persists
-run records and per-run event streams only; it is not used as a job queue.
+run records and per-run event streams with configured retention only; it is not
+used as a job queue.
 """
 
 from collections.abc import AsyncGenerator
@@ -26,7 +27,11 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         redis = Redis.from_url(resolved_settings.redis_url)
-        store = RedisRunStore(redis, prefix=resolved_settings.redis_prefix)
+        store = RedisRunStore(
+            redis,
+            prefix=resolved_settings.redis_prefix,
+            run_retention_seconds=resolved_settings.run_retention_seconds,
+        )
         scheduler = RunScheduler(store=store, shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds)
         state["store"] = store
         state["scheduler"] = scheduler

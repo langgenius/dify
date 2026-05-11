@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 import dify_agent.server.app as app_module
 from dify_agent.server.app import create_app
 from dify_agent.server.settings import ServerSettings
+from dify_agent.storage.redis_run_store import RedisRunStore
 
 
 class FakeRedis:
@@ -19,6 +20,7 @@ class FakeRedis:
 class FakeRunScheduler:
     created: list["FakeRunScheduler"] = []
 
+    store: object
     shutdown_grace_seconds: float
     shutdown_called: bool
 
@@ -28,7 +30,7 @@ class FakeRunScheduler:
         store: object,
         shutdown_grace_seconds: float,
     ) -> None:
-        del store
+        self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.shutdown_called = False
         self.created.append(self)
@@ -47,12 +49,16 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         redis_url="redis://example.invalid/0",
         redis_prefix="test",
         shutdown_grace_seconds=5,
+        run_retention_seconds=7,
     )
 
     with TestClient(create_app(settings)):
         assert len(FakeRunScheduler.created) == 1
         scheduler = FakeRunScheduler.created[0]
         assert scheduler.shutdown_grace_seconds == 5
+        store = scheduler.store
+        assert isinstance(store, RedisRunStore)
+        assert store.run_retention_seconds == 7
 
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert fake_redis.closed is True

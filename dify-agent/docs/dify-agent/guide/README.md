@@ -31,6 +31,7 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL. |
 | `DIFY_AGENT_REDIS_PREFIX` | `dify-agent` | Prefix for Redis record and event keys. |
 | `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
+| `DIFY_AGENT_RUN_RETENTION_SECONDS` | `259200` | Seconds to retain Redis run records and per-run event streams; defaults to 3 days. |
 
 Example `.env`:
 
@@ -38,7 +39,12 @@ Example `.env`:
 DIFY_AGENT_REDIS_URL=redis://localhost:6379/0
 DIFY_AGENT_REDIS_PREFIX=dify-agent-dev
 DIFY_AGENT_SHUTDOWN_GRACE_SECONDS=30
+DIFY_AGENT_RUN_RETENTION_SECONDS=259200
 ```
+
+Run records and event streams use the same retention. Status writes refresh the
+record TTL, and event writes refresh both the stream TTL and the corresponding
+record TTL so active runs that keep producing events remain observable.
 
 ## Scheduling and shutdown semantics
 
