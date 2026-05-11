@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import StructureOutput from './structure-output'
+import { StructureOutput } from './structure-output'
 
 type Props = {
   readOnly: boolean

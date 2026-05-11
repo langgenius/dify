@@ -10,6 +10,7 @@ describe('AccessControlDialog', () => {
     )
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toHaveClass('custom-dialog')
     expect(screen.getByText('Dialog Content')).toBeInTheDocument()
   })
 

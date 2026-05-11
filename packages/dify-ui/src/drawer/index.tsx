@@ -32,7 +32,7 @@ export function DrawerBackdrop({
   return (
     <BaseDrawer.Backdrop
       className={cn(
-        'fixed inset-0 z-1002 bg-background-overlay opacity-[calc(1-var(--drawer-swipe-progress,0))]',
+        'fixed inset-0 z-50 bg-background-overlay opacity-[calc(1-var(--drawer-swipe-progress,0))]',
         'transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-swiping:duration-0 motion-reduce:transition-none',
         className,
       )}
@@ -47,7 +47,7 @@ export function DrawerViewport({
 }: BaseDrawer.Viewport.Props) {
   return (
     <BaseDrawer.Viewport
-      className={cn('fixed inset-0 z-1002 touch-none overflow-hidden overscroll-contain outline-hidden', className)}
+      className={cn('fixed inset-0 z-50 touch-none overflow-hidden overscroll-contain outline-hidden', className)}
       {...props}
     />
   )
@@ -60,7 +60,7 @@ export function DrawerPopup({
   return (
     <BaseDrawer.Popup
       className={cn(
-        'fixed z-1002 flex min-h-0 flex-col overflow-hidden border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl outline-hidden touch-none',
+        'fixed z-50 flex min-h-0 flex-col overflow-hidden border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl outline-hidden touch-none',
         'transition-[transform,opacity,box-shadow] duration-200 data-swiping:select-none data-swiping:duration-0 motion-reduce:transition-none',
         'data-[swipe-direction=right]:inset-y-0 data-[swipe-direction=right]:right-0 data-[swipe-direction=right]:h-dvh data-[swipe-direction=right]:w-120 data-[swipe-direction=right]:max-w-[calc(100vw-2rem)] data-[swipe-direction=right]:rounded-l-2xl data-[swipe-direction=right]:border-r-0 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))]',
         'data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%+2px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%+2px))]',

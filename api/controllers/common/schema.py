@@ -8,7 +8,7 @@ These helpers keep that translation centralized so models registered through
 
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 from flask_restx import Namespace
 from pydantic import BaseModel, TypeAdapter
@@ -54,14 +54,21 @@ def _register_json_schema(namespace: Namespace, name: str, schema: dict) -> None
             _register_json_schema(namespace, nested_name, nested_schema)
 
 
-def register_schema_model(namespace: Namespace, model: type[BaseModel]) -> None:
-    """Register a BaseModel and its nested schema definitions for Swagger documentation."""
+JsonSchemaMode = Literal["validation", "serialization"]
 
+
+def _register_schema_model(namespace: Namespace, model: type[BaseModel], *, mode: JsonSchemaMode) -> None:
     _register_json_schema(
         namespace,
         model.__name__,
-        model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+        model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0, mode=mode),
     )
+
+
+def register_schema_model(namespace: Namespace, model: type[BaseModel]) -> None:
+    """Register a BaseModel and its nested schema definitions for Swagger documentation."""
+
+    _register_schema_model(namespace, model, mode="validation")
 
 
 def register_schema_models(namespace: Namespace, *models: type[BaseModel]) -> None:
@@ -69,6 +76,19 @@ def register_schema_models(namespace: Namespace, *models: type[BaseModel]) -> No
 
     for model in models:
         register_schema_model(namespace, model)
+
+
+def register_response_schema_model(namespace: Namespace, model: type[BaseModel]) -> None:
+    """Register a BaseModel using its serialized response shape."""
+
+    _register_schema_model(namespace, model, mode="serialization")
+
+
+def register_response_schema_models(namespace: Namespace, *models: type[BaseModel]) -> None:
+    """Register multiple response BaseModels using their serialized response shape."""
+
+    for model in models:
+        register_response_schema_model(namespace, model)
 
 
 def get_or_create_model(model_name: str, field_def):
@@ -190,6 +210,8 @@ __all__ = [
     "get_or_create_model",
     "query_params_from_model",
     "register_enum_models",
+    "register_response_schema_model",
+    "register_response_schema_models",
     "register_schema_model",
     "register_schema_models",
 ]

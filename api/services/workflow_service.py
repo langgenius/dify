@@ -1066,8 +1066,13 @@ class WorkflowService:
         )
 
         rendered_content = node.render_form_content_before_submission()
+        selected_action = next(
+            (user_action for user_action in node_data.user_actions if user_action.id == action),
+            None,
+        )
         outputs: dict[str, Any] = dict(form_inputs)
         outputs["__action_id"] = action
+        outputs["__action_value"] = selected_action.title if selected_action else ""
         outputs["__rendered_content"] = node.render_form_content_with_outputs(
             rendered_content, outputs, node_data.outputs_field_names()
         )

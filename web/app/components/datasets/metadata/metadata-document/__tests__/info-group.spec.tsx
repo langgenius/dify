@@ -41,7 +41,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 // Mock AddMetadataButton
 vi.mock('../../add-metadata-button', () => ({
-  default: () => <button data-testid="add-metadata-btn">Add Metadata</button>,
+  default: () => <button>Add Metadata</button>,
 }))
 
 // Mock InputCombined
@@ -61,9 +61,9 @@ vi.mock('../../metadata-dataset/select-metadata-modal', () => ({
   default: ({ trigger, onSelect, onSave, onManage }: SelectModalProps) => (
     <div data-testid="select-metadata-modal">
       {trigger}
-      <button data-testid="select-action" onClick={() => onSelect({ id: '1', name: 'test', type: DataType.string, value: null })}>Select</button>
-      <button data-testid="save-action" onClick={() => onSave({ name: 'new_field', type: DataType.string })}>Save</button>
-      <button data-testid="manage-action" onClick={onManage}>Manage</button>
+      <button onClick={() => onSelect({ id: '1', name: 'test', type: DataType.string, value: null })}>Select</button>
+      <button onClick={() => onSave({ name: 'new_field', type: DataType.string })}>Save</button>
+      <button onClick={onManage}>Manage</button>
     </div>
   ),
 }))
@@ -145,14 +145,14 @@ describe('InfoGroup', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit />,
       )
-      expect(screen.getByTestId('add-metadata-btn'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add Metadata' }))!.toBeInTheDocument()
     })
 
     it('should not render add metadata button when isEdit is false', () => {
       render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit={false} />,
       )
-      expect(screen.queryByTestId('add-metadata-btn')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add Metadata' })).not.toBeInTheDocument()
     })
 
     it('should render input combined for each item in edit mode', () => {
@@ -164,11 +164,10 @@ describe('InfoGroup', () => {
     })
 
     it('should render delete icons in edit mode', () => {
-      const { container } = render(
+      render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit />,
       )
-      const deleteIcons = container.querySelectorAll('.cursor-pointer svg')
-      expect(deleteIcons.length).toBeGreaterThan(0)
+      expect(screen.getAllByRole('button', { name: 'common.operation.remove' })).toHaveLength(3)
     })
   })
 
@@ -187,14 +186,11 @@ describe('InfoGroup', () => {
 
     it('should call onDelete when delete icon is clicked', () => {
       const handleDelete = vi.fn()
-      const { container } = render(
+      render(
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit onDelete={handleDelete} />,
       )
 
-      // Find delete icons (RiDeleteBinLine SVGs inside cursor-pointer divs)
-      const deleteButtons = container.querySelectorAll('svg.size-4')
-      if (deleteButtons.length > 0)
-        fireEvent.click(deleteButtons[0]!)
+      fireEvent.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[0]!)
 
       expect(handleDelete).toHaveBeenCalled()
     })
@@ -205,7 +201,7 @@ describe('InfoGroup', () => {
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit onSelect={handleSelect} />,
       )
 
-      fireEvent.click(screen.getByTestId('select-action'))
+      fireEvent.click(screen.getByRole('button', { name: 'Select' }))
 
       expect(handleSelect).toHaveBeenCalledWith({
         id: '1',
@@ -221,7 +217,7 @@ describe('InfoGroup', () => {
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit onAdd={handleAdd} />,
       )
 
-      fireEvent.click(screen.getByTestId('save-action'))
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
       expect(handleAdd).toHaveBeenCalledWith({
         name: 'new_field',
@@ -234,11 +230,9 @@ describe('InfoGroup', () => {
         <InfoGroup dataSetId="ds-1" list={mockList} isEdit />,
       )
 
-      fireEvent.click(screen.getByTestId('manage-action'))
+      fireEvent.click(screen.getByRole('button', { name: 'Manage' }))
 
-      // The onManage callback triggers the navigation
-      // The onManage callback triggers the navigation
-      expect(screen.getByTestId('manage-action'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Manage' }))!.toBeInTheDocument()
     })
   })
 

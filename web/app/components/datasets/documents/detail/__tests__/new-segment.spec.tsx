@@ -201,13 +201,9 @@ describe('NewSegmentModal', () => {
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       const mockOnCancel = vi.fn()
-      const { container } = render(<NewSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
+      render(<NewSegmentModal {...defaultProps} onCancel={mockOnCancel} />)
 
-      // Act - find and click close button (RiCloseLine icon wrapper)
-      const closeButtons = container.querySelectorAll('.cursor-pointer')
-      // The close button is the second cursor-pointer element
-      if (closeButtons.length > 1)
-        fireEvent.click(closeButtons[1]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalled()
     })
@@ -350,12 +346,9 @@ describe('NewSegmentModal', () => {
     })
 
     it('should call toggleFullScreen when expand button is clicked', () => {
-      const { container } = render(<NewSegmentModal {...defaultProps} />)
+      render(<NewSegmentModal {...defaultProps} />)
 
-      // Act - click the expand button (first cursor-pointer)
-      const expandButtons = container.querySelectorAll('.cursor-pointer')
-      if (expandButtons.length > 0)
-        fireEvent.click(expandButtons[0]!)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.zoomIn' }))
 
       expect(mockToggleFullScreen).toHaveBeenCalled()
     })

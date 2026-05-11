@@ -14,9 +14,9 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
-import ContentDialog from '@/app/components/base/content-dialog'
 import { AppModeEnum } from '@/types/app'
 import AppIcon from '../../base/app-icon'
+import { AppInfoDetailDrawer } from './app-info-detail-drawer'
 import { getAppModeLabel } from './app-mode-labels'
 import AppOperations from './app-operations'
 
@@ -94,10 +94,9 @@ const AppInfoDetailPanel = ({
   }, [appDetail.mode, t, openModal])
 
   return (
-    <ContentDialog
-      show={show}
+    <AppInfoDetailDrawer
+      open={show}
       onClose={onClose}
-      className="absolute top-2 bottom-2 left-2 flex w-[452px] max-w-[calc(100vw-1rem)] flex-col rounded-2xl p-0!"
     >
       <div className="flex shrink-0 flex-col items-start justify-center gap-3 self-stretch p-4">
         <div className="flex items-center gap-3 self-stretch">
@@ -109,16 +108,16 @@ const AppInfoDetailPanel = ({
             imageUrl={appDetail.icon_url}
           />
           <div className="flex flex-1 flex-col items-start justify-center overflow-hidden">
-            <div className="w-full truncate system-md-semibold text-text-secondary">{appDetail.name}</div>
+            <h2 className="w-full truncate system-md-semibold text-text-secondary">{appDetail.name}</h2>
             <div className="system-2xs-medium-uppercase text-text-tertiary">
               {getAppModeLabel(appDetail.mode, t)}
             </div>
           </div>
         </div>
         {appDetail.description && (
-          <div className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto system-xs-regular wrap-break-word whitespace-normal text-text-tertiary">
+          <p className="overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto system-xs-regular wrap-break-word whitespace-normal text-text-tertiary">
             {appDetail.description}
-          </div>
+          </p>
         )}
         <AppOperations
           gap={4}
@@ -144,7 +143,7 @@ const AppInfoDetailPanel = ({
           </Button>
         </div>
       )}
-    </ContentDialog>
+    </AppInfoDetailDrawer>
   )
 }
 

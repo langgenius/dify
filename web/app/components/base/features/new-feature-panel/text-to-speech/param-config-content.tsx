@@ -79,7 +79,7 @@ const VoiceParamConfig = ({
         <div className="system-xl-semibold text-text-primary">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
         <button
           type="button"
-          className="rounded-md p-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+          className="rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
           aria-label={t('appDebug:voice.voiceSettings.close')}
           onClick={onClose}
         >
@@ -158,7 +158,11 @@ const VoiceParamConfig = ({
             </div>
           </Select>
           {languageItem?.example && (
-            <div className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1" data-testid="audition-button">
+            <div
+              className="h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1"
+              role="group"
+              aria-label={t('play', { ns: 'appApi', defaultValue: 'Play' })}
+            >
               <AudioBtn
                 value={languageItem?.example}
                 isAudition

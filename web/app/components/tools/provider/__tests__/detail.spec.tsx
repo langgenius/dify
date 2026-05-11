@@ -74,11 +74,6 @@ vi.mock('@/utils/var', () => ({
   basePath: '',
 }))
 
-vi.mock('@/app/components/base/drawer', () => ({
-  default: ({ children, isOpen }: { children: React.ReactNode, isOpen: boolean }) =>
-    isOpen ? <div data-testid="drawer">{children}</div> : null,
-}))
-
 const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
 vi.mock('@langgenius/dify-ui/toast', () => ({

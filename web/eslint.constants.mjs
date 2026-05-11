@@ -39,35 +39,19 @@ const BASE_UI_RESTRICTED_IMPORT_PATTERNS = [
   },
 ]
 
+const FLOATING_UI_RESTRICTED_IMPORT_PATTERNS = [
+  {
+    group: [
+      '@floating-ui/*',
+    ],
+    message: 'Do not import Floating UI directly in web. Use @langgenius/dify-ui/* primitives instead.',
+  },
+]
+
 export const WEB_RESTRICTED_IMPORT_PATTERNS = [
   ...NEXT_PLATFORM_RESTRICTED_IMPORT_PATTERNS,
   ...BASE_UI_RESTRICTED_IMPORT_PATTERNS,
-]
-
-export const OVERLAY_RESTRICTED_IMPORT_PATTERNS = [
-  {
-    group: [
-      '**/base/modal',
-      '**/base/modal/index',
-    ],
-    message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/dialog',
-      '**/base/dialog/index',
-    ],
-    message: 'Deprecated: use @langgenius/dify-ui/dialog instead. See issue #32767.',
-  },
-  {
-    group: [
-      '**/base/drawer',
-      '**/base/drawer/index',
-      '**/base/drawer-plus',
-      '**/base/drawer-plus/index',
-    ],
-    message: 'Deprecated: use @langgenius/dify-ui/drawer instead. See issue #32767.',
-  },
+  ...FLOATING_UI_RESTRICTED_IMPORT_PATTERNS,
 ]
 
 export const HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS = {

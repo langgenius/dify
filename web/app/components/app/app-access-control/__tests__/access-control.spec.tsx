@@ -1,4 +1,3 @@
-/* eslint-disable ts/no-explicit-any */
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -42,34 +41,6 @@ vi.mock('@/service/access-control', () => ({
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
   useUpdateAccessMode: () => mockUseUpdateAccessMode(),
 }))
-
-vi.mock('@headlessui/react', () => {
-  const DialogComponent: any = ({ children, className, ...rest }: any) => (
-    <div role="dialog" className={className} {...rest}>{children}</div>
-  )
-  DialogComponent.Panel = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const DialogTitle = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const DialogDescription = ({ children, className, ...rest }: any) => (
-    <div className={className} {...rest}>{children}</div>
-  )
-  const TransitionChild = ({ children }: any) => (
-    <>{typeof children === 'function' ? children({}) : children}</>
-  )
-  const Transition = ({ show = true, children }: any) => (
-    show ? <>{typeof children === 'function' ? children({}) : children}</> : null
-  )
-  Transition.Child = TransitionChild
-  return {
-    Dialog: DialogComponent,
-    Transition,
-    DialogTitle,
-    Description: DialogDescription,
-  }
-})
 
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ahooks')>()
@@ -241,16 +212,16 @@ describe('SpecificGroupsOrMembers', () => {
       expect(screen.getByText(baseMember.name)).toBeInTheDocument()
     })
 
-    const groupItem = screen.getByText(baseGroup.name).closest('div')
-    const groupRemove = groupItem?.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement
+    const groupRemove = screen.getAllByRole('button', { name: /operation\.remove$/ })[0]!
+
     fireEvent.click(groupRemove)
 
     await waitFor(() => {
       expect(screen.queryByText(baseGroup.name)).not.toBeInTheDocument()
     })
 
-    const memberItem = screen.getByText(baseMember.name).closest('div')
-    const memberRemove = memberItem?.querySelector('.h-4.w-4.cursor-pointer') as HTMLElement
+    const memberRemove = screen.getAllByRole('button', { name: /operation\.remove$/ })[0]!
+
     fireEvent.click(memberRemove)
 
     await waitFor(() => {

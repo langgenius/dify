@@ -805,18 +805,17 @@ Get advanced chat workflow run list
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowRunListQuery](#workflowrunlistquery) |
 | app_id | path | Application ID | Yes | string |
 | last_id | query | Last run ID for pagination | No | string |
-| limit | query | Number of items per page (1-100) | No | string |
-| status | query | Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded | No | string |
-| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
+| limit | query | Number of items per page (1-100) | No | integer |
+| status | query | Workflow run status filter | No | string |
+| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string |
 
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow runs retrieved successfully | [AdvancedChatWorkflowRunPagination](#advancedchatworkflowrunpagination) |
+| 200 | Workflow runs retrieved successfully | [AdvancedChatWorkflowRunPaginationResponse](#advancedchatworkflowrunpaginationresponse) |
 
 ### /apps/{app_id}/advanced-chat/workflow-runs/count
 
@@ -833,17 +832,16 @@ Get advanced chat workflow runs count statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowRunCountQuery](#workflowruncountquery) |
 | app_id | path | Application ID | Yes | string |
-| status | query | Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded | No | string |
+| status | query | Workflow run status filter | No | string |
 | time_range | query | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No | string |
-| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
+| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string |
 
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow runs count retrieved successfully | [WorkflowRunCount](#workflowruncount) |
+| 200 | Workflow runs count retrieved successfully | [WorkflowRunCountResponse](#workflowruncountresponse) |
 
 ### /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview
 
@@ -2361,18 +2359,17 @@ Get workflow run list
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowRunListQuery](#workflowrunlistquery) |
 | app_id | path | Application ID | Yes | string |
 | last_id | query | Last run ID for pagination | No | string |
-| limit | query | Number of items per page (1-100) | No | string |
-| status | query | Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded | No | string |
-| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
+| limit | query | Number of items per page (1-100) | No | integer |
+| status | query | Workflow run status filter | No | string |
+| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string |
 
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow runs retrieved successfully | [WorkflowRunPagination](#workflowrunpagination) |
+| 200 | Workflow runs retrieved successfully | [WorkflowRunPaginationResponse](#workflowrunpaginationresponse) |
 
 ### /apps/{app_id}/workflow-runs/count
 
@@ -2389,17 +2386,16 @@ Get workflow runs count statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowRunCountQuery](#workflowruncountquery) |
 | app_id | path | Application ID | Yes | string |
-| status | query | Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded | No | string |
+| status | query | Workflow run status filter | No | string |
 | time_range | query | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No | string |
-| triggered_from | query | Filter by trigger source (optional): debugging or app-run. Default: debugging | No | string |
+| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string |
 
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow runs count retrieved successfully | [WorkflowRunCount](#workflowruncount) |
+| 200 | Workflow runs count retrieved successfully | [WorkflowRunCountResponse](#workflowruncountresponse) |
 
 ### /apps/{app_id}/workflow-runs/tasks/{task_id}/stop
 
@@ -2449,7 +2445,7 @@ Get workflow run detail
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow run detail retrieved successfully | [WorkflowRunDetail](#workflowrundetail) |
+| 200 | Workflow run detail retrieved successfully | [WorkflowRunDetailResponse](#workflowrundetailresponse) |
 | 404 | Workflow run not found |  |
 
 ### /apps/{app_id}/workflow-runs/{run_id}/export
@@ -2470,7 +2466,7 @@ Generate a download URL for an archived workflow run.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Export URL generated | [WorkflowRunExport](#workflowrunexport) |
+| 200 | Export URL generated | [WorkflowRunExportResponse](#workflowrunexportresponse) |
 
 ### /apps/{app_id}/workflow-runs/{run_id}/node-executions
 
@@ -2494,7 +2490,7 @@ Get workflow run node execution list
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node executions retrieved successfully | [WorkflowRunNodeExecutionList](#workflowrunnodeexecutionlist) |
+| 200 | Node executions retrieved successfully | [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse) |
 | 404 | Workflow run not found |  |
 
 ### /apps/{app_id}/workflow/comments
@@ -3180,7 +3176,7 @@ Get last run result for draft workflow node
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node last run retrieved successfully | [WorkflowRunNodeExecution](#workflowrunnodeexecution) |
+| 200 | Node last run retrieved successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
 | 403 | Permission denied |  |
 | 404 | Node last run not found |  |
 
@@ -3207,7 +3203,7 @@ Run draft workflow node
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node run started successfully | [WorkflowRunNodeExecution](#workflowrunnodeexecution) |
+| 200 | Node run started successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
 | 403 | Permission denied |  |
 | 404 | Node not found |  |
 
@@ -6720,9 +6716,9 @@ Get workflow run list
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow runs retrieved successfully | [WorkflowRunPaginationResponse](#workflowrunpaginationresponse) |
 
 ### /rag/pipelines/{pipeline_id}/workflow-runs/tasks/{task_id}/stop
 
@@ -6760,9 +6756,9 @@ Get workflow run detail
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run detail retrieved successfully | [WorkflowRunDetailResponse](#workflowrundetailresponse) |
 
 ### /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/node-executions
 
@@ -6780,9 +6776,9 @@ Get workflow run node execution list
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node executions retrieved successfully | [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse) |
 
 ### /rag/pipelines/{pipeline_id}/workflows
 
@@ -6915,9 +6911,9 @@ Set datasource variables
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Datasource variables set successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
 
 ### /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables
 
@@ -6988,9 +6984,9 @@ Run draft workflow loop node
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node last run retrieved successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
 
 ### /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/run
 
@@ -7009,9 +7005,9 @@ Run draft workflow node
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node run started successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
 
 ### /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables
 
@@ -7947,6 +7943,7 @@ Get workflow pause details
 
 ##### Description
 
+Get workflow pause details
 GET /console/api/workflow/<workflow_run_id>/pause-details
 
 Returns information about why and where the workflow is paused.
@@ -7955,13 +7952,14 @@ Returns information about why and where the workflow is paused.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| workflow_run_id | path |  | Yes | string |
+| workflow_run_id | path | Workflow run ID | Yes | string |
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow pause details retrieved successfully | [WorkflowPauseDetailsResponse](#workflowpausedetailsresponse) |
+| 404 | Workflow run not found |  |
 
 ### /workspaces
 
@@ -10256,31 +10254,31 @@ Get banner list
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result | Yes |
 
-#### AdvancedChatWorkflowRunForList
+#### AdvancedChatWorkflowRunForListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id | string |  | No |
-| created_at | object |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| message_id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
+| conversation_id |  |  | No |
+| created_at |  |  | No |
+| created_by_account |  |  | No |
+| elapsed_time |  |  | No |
+| exceptions_count |  |  | No |
+| finished_at |  |  | No |
+| id | string |  | Yes |
+| message_id |  |  | No |
+| retry_index |  |  | No |
+| status |  |  | No |
+| total_steps |  |  | No |
+| total_tokens |  |  | No |
+| version |  |  | No |
 
-#### AdvancedChatWorkflowRunPagination
+#### AdvancedChatWorkflowRunPaginationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [AdvancedChatWorkflowRunForList](#advancedchatworkflowrunforlist) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
+| data | [ [AdvancedChatWorkflowRunForListResponse](#advancedchatworkflowrunforlistresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 
 #### AdvancedChatWorkflowRunPayload
 
@@ -12169,6 +12167,14 @@ Form input types.
 | form_inputs | object | Values the user provides for the form's own fields | Yes |
 | inputs | object | Values used to fill missing upstream variables referenced in form_content | Yes |
 
+#### HumanInputPauseTypeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| backstage_input_url |  |  | No |
+| form_id | string |  | Yes |
+| type | string |  | Yes |
+
 #### IconType
 
 | Name | Type | Description | Required |
@@ -13100,6 +13106,14 @@ Enum class for model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | click_id | string | Click Id from partner referral link | Yes |
+
+#### PausedNodeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| node_title | string |  | Yes |
+| pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
 
 #### Payload
 
@@ -14306,53 +14320,60 @@ User action configuration.
 | updated_at |  |  | No |
 | updated_by |  |  | No |
 
-#### WorkflowRunCount
+#### WorkflowPauseDetailsResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| failed | integer |  | No |
-| partial_succeeded | integer |  | No |
-| running | integer |  | No |
-| stopped | integer |  | No |
-| succeeded | integer |  | No |
-| total | integer |  | No |
+| paused_at |  |  | No |
+| paused_nodes | [ [PausedNodeResponse](#pausednoderesponse) ] |  | Yes |
 
 #### WorkflowRunCountQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | status |  | Workflow run status filter | No |
-| time_range |  | Time range filter (e.g., 7d, 4h, 30m, 30s) | No |
-| triggered_from |  | Filter by trigger source: debugging or app-run | No |
+| time_range |  | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No |
+| triggered_from |  | Filter by trigger source: debugging or app-run. Default: debugging | No |
 
-#### WorkflowRunDetail
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
-| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| graph | object |  | No |
-| id | string |  | No |
-| inputs | object |  | No |
-| outputs | object |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
-
-#### WorkflowRunExport
+#### WorkflowRunCountResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| presigned_url | string | Pre-signed URL for download | No |
-| presigned_url_expires_at | string | Pre-signed URL expiration time | No |
-| status | string | Export status: success/failed | No |
+| failed | integer |  | Yes |
+| partial_succeeded | integer |  | Yes |
+| running | integer |  | Yes |
+| stopped | integer |  | Yes |
+| succeeded | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### WorkflowRunDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at |  |  | No |
+| created_by_account |  |  | No |
+| created_by_end_user |  |  | No |
+| created_by_role |  |  | No |
+| elapsed_time |  |  | No |
+| error |  |  | No |
+| exceptions_count |  |  | No |
+| finished_at |  |  | No |
+| graph |  |  | Yes |
+| id | string |  | Yes |
+| inputs |  |  | Yes |
+| outputs |  |  | Yes |
+| status |  |  | No |
+| total_steps |  |  | No |
+| total_tokens |  |  | No |
+| version |  |  | No |
+
+#### WorkflowRunExportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| presigned_url |  | Pre-signed URL for download | No |
+| presigned_url_expires_at |  | Pre-signed URL expiration time | No |
+| status | string | Export status: success/failed | Yes |
 
 #### WorkflowRunForArchivedLogResponse
 
@@ -14364,21 +14385,21 @@ User action configuration.
 | total_tokens |  |  | No |
 | triggered_from |  |  | No |
 
-#### WorkflowRunForList
+#### WorkflowRunForListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
-| elapsed_time | number |  | No |
-| exceptions_count | integer |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| retry_index | integer |  | No |
-| status | string |  | No |
-| total_steps | integer |  | No |
-| total_tokens | integer |  | No |
-| version | string |  | No |
+| created_at |  |  | No |
+| created_by_account |  |  | No |
+| elapsed_time |  |  | No |
+| exceptions_count |  |  | No |
+| finished_at |  |  | No |
+| id | string |  | Yes |
+| retry_index |  |  | No |
+| status |  |  | No |
+| total_steps |  |  | No |
+| total_tokens |  |  | No |
+| version |  |  | No |
 
 #### WorkflowRunForLogResponse
 
@@ -14403,48 +14424,48 @@ User action configuration.
 | last_id |  | Last run ID for pagination | No |
 | limit | integer | Number of items per page (1-100) | No |
 | status |  | Workflow run status filter | No |
-| triggered_from |  | Filter by trigger source: debugging or app-run | No |
+| triggered_from |  | Filter by trigger source: debugging or app-run. Default: debugging | No |
 
-#### WorkflowRunNodeExecution
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
-| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
-| created_by_role | string |  | No |
-| elapsed_time | number |  | No |
-| error | string |  | No |
-| execution_metadata | object |  | No |
-| extras | object |  | No |
-| finished_at | object |  | No |
-| id | string |  | No |
-| index | integer |  | No |
-| inputs | object |  | No |
-| inputs_truncated | boolean |  | No |
-| node_id | string |  | No |
-| node_type | string |  | No |
-| outputs | object |  | No |
-| outputs_truncated | boolean |  | No |
-| predecessor_node_id | string |  | No |
-| process_data | object |  | No |
-| process_data_truncated | boolean |  | No |
-| status | string |  | No |
-| title | string |  | No |
-
-#### WorkflowRunNodeExecutionList
+#### WorkflowRunNodeExecutionListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [WorkflowRunNodeExecution](#workflowrunnodeexecution) ] |  | No |
+| data | [ [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) ] |  | Yes |
 
-#### WorkflowRunPagination
+#### WorkflowRunNodeExecutionResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [WorkflowRunForList](#workflowrunforlist) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
+| created_at |  |  | No |
+| created_by_account |  |  | No |
+| created_by_end_user |  |  | No |
+| created_by_role |  |  | No |
+| elapsed_time |  |  | No |
+| error |  |  | No |
+| execution_metadata |  |  | No |
+| extras |  |  | No |
+| finished_at |  |  | No |
+| id | string |  | Yes |
+| index |  |  | No |
+| inputs |  |  | No |
+| inputs_truncated |  |  | No |
+| node_id |  |  | No |
+| node_type |  |  | No |
+| outputs |  |  | No |
+| outputs_truncated |  |  | No |
+| predecessor_node_id |  |  | No |
+| process_data |  |  | No |
+| process_data_truncated |  |  | No |
+| status |  |  | No |
+| title |  |  | No |
+
+#### WorkflowRunPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowRunForListResponse](#workflowrunforlistresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 
 #### WorkflowRunPayload
 

@@ -168,7 +168,7 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
             <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
               {title}
             </DialogTitle>
-            <DialogCloseButton data-testid="modal-close-button" className="top-5 right-5 h-8 w-8 rounded-lg" />
+            <DialogCloseButton className="top-5 right-5 h-8 w-8 rounded-lg" />
           </div>
           <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginDetail && (
@@ -185,14 +185,12 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
             <div />
             <div className="flex items-center">
               <Button
-                data-testid="modal-cancel-button"
                 onClick={onClose}
                 disabled={isUpdating}
               >
                 {t('operation.cancel', { ns: 'common' })}
               </Button>
               <Button
-                data-testid="modal-confirm-button"
                 className="ml-2"
                 variant="primary"
                 onClick={handleConfirm}

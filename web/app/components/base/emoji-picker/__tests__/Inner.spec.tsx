@@ -75,10 +75,10 @@ describe('EmojiPickerInner', () => {
 
     it('updates selected emoji and calls onSelect when an emoji is clicked', async () => {
       render(<EmojiPickerInner onSelect={mockOnSelect} />)
-      const emojiContainers = screen.getAllByTestId(/^emoji-container-/)
+      const emojiButton = screen.getByRole('button', { name: 'rabbit' })
 
       await act(async () => {
-        fireEvent.click(emojiContainers[0]!)
+        fireEvent.click(emojiButton)
       })
 
       expect(mockOnSelect).toHaveBeenCalledWith('rabbit', expect.any(String))
@@ -89,7 +89,7 @@ describe('EmojiPickerInner', () => {
 
       expect(screen.queryByText('#FFEAD5')).not.toBeInTheDocument()
 
-      const toggleButton = screen.getByTestId('toggle-colors')
+      const toggleButton = screen.getByRole('button', { name: 'Choose Style' })
       expect(toggleButton)!.toBeInTheDocument()
 
       await act(async () => {
@@ -104,21 +104,21 @@ describe('EmojiPickerInner', () => {
     it('updates background color and calls onSelect when a color is clicked', async () => {
       render(<EmojiPickerInner onSelect={mockOnSelect} />)
 
-      const toggleButton = screen.getByTestId('toggle-colors')
+      const toggleButton = screen.getByRole('button', { name: 'Choose Style' })
       await act(async () => {
         fireEvent.click(toggleButton!)
       })
 
-      const emojiContainers = screen.getAllByTestId(/^emoji-container-/)
+      const emojiButton = screen.getByRole('button', { name: 'rabbit' })
       await act(async () => {
-        fireEvent.click(emojiContainers[0]!)
+        fireEvent.click(emojiButton)
       })
 
       mockOnSelect.mockClear()
 
-      const colorOptions = document.querySelectorAll('[style^="background:"]')
+      const colorOptions = screen.getAllByRole('button', { name: /^#/ })
       await act(async () => {
-        fireEvent.click(colorOptions[1]!.parentElement!)
+        fireEvent.click(colorOptions[1]!)
       })
 
       expect(mockOnSelect).toHaveBeenCalledWith('rabbit', '#E4FBCC')
@@ -134,9 +134,9 @@ describe('EmojiPickerInner', () => {
 
       await screen.findByText('Search')
 
-      const searchEmojis = screen.getAllByTestId(/^emoji-search-result-/)
+      const searchEmoji = screen.getByRole('button', { name: 'dog' })
       await act(async () => {
-        fireEvent.click(searchEmojis![0]!)
+        fireEvent.click(searchEmoji)
       })
 
       expect(mockOnSelect).toHaveBeenCalledWith('dog', expect.any(String))
@@ -145,7 +145,7 @@ describe('EmojiPickerInner', () => {
     it('toggles style colors display back and forth', async () => {
       render(<EmojiPickerInner onSelect={mockOnSelect} />)
 
-      const toggleButton = screen.getByTestId('toggle-colors')
+      const toggleButton = screen.getByRole('button', { name: 'Choose Style' })
 
       await act(async () => {
         fireEvent.click(toggleButton!)
@@ -153,7 +153,7 @@ describe('EmojiPickerInner', () => {
       expect(screen.getByText('Choose Style'))!.toBeInTheDocument()
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('toggle-colors')!) // It should be the other icon now
+        fireEvent.click(screen.getByRole('button', { name: 'Choose Style' }))
       })
       expect(screen.queryByText('#FFEAD5')).not.toBeInTheDocument()
     })

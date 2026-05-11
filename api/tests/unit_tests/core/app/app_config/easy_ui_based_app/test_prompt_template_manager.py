@@ -1,3 +1,4 @@
+from collections import UserString
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,21 +13,25 @@ from core.app.app_config.easy_ui_based_app.prompt_template.manager import (
 # -----------------------------
 
 
-class DummyEnumValue:
+class DummyEnumValue(UserString):
     def __init__(self, value):
+        super().__init__(value)
         self.value = value
 
 
 class DummyPromptType:
     def __init__(self):
-        self.SIMPLE = "simple"
-        self.ADVANCED = "advanced"
+        self.SIMPLE = DummyEnumValue("simple")
+        self.ADVANCED = DummyEnumValue("advanced")
 
     def value_of(self, value):
-        return value
+        for enum_value in self:
+            if enum_value.value == value:
+                return enum_value
+        raise ValueError(f"invalid prompt type value {value}")
 
     def __iter__(self):
-        return iter([DummyEnumValue("simple"), DummyEnumValue("advanced")])
+        return iter([self.SIMPLE, self.ADVANCED])
 
 
 # -----------------------------

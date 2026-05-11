@@ -328,13 +328,12 @@ function Operation({
                   copy(content)
                   toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                 }}
-                data-testid="copy-btn"
               >
                 <span aria-hidden="true" className="i-ri-clipboard-line h-4 w-4" />
               </ActionButton>
             )}
             {!noChatInput && (
-              <ActionButton aria-label={regenerateLabel} onClick={() => onRegenerate?.(item)} data-testid="regenerate-btn">
+              <ActionButton aria-label={regenerateLabel} onClick={() => onRegenerate?.(item)}>
                 <span aria-hidden="true" className="i-ri-reset-left-line h-4 w-4" />
               </ActionButton>
             )}

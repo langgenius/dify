@@ -100,11 +100,18 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
               </TooltipTrigger>
               <TooltipContent>{t('common.tagBound', { ns: 'workflow' })}</TooltipContent>
             </Tooltip>
-            <div className="group/edit shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover" onClick={() => setIsEditing(true)}>
-              <span className="i-ri-edit-line h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary" data-testid="tag-item-editor-edit-button" />
-            </div>
-            <div
-              className="group/remove shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
+            <button
+              type="button"
+              aria-label={`${t('operation.edit', { ns: 'common' })} ${tag.name}`}
+              className="group/edit shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              onClick={() => setIsEditing(true)}
+            >
+              <span aria-hidden="true" className="i-ri-edit-line h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary" />
+            </button>
+            <button
+              type="button"
+              aria-label={`${t('operation.remove', { ns: 'common' })} ${tag.name}`}
+              className="group/remove shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={() => {
                 if (tag.binding_count)
                   setShowRemoveModal(true)
@@ -112,11 +119,11 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
                   handleRemove()
               }}
             >
-              <span className="i-ri-delete-bin-line h-3 w-3 text-text-tertiary group-hover/remove:text-text-secondary" data-testid="tag-item-editor-remove-button" />
-            </div>
+              <span aria-hidden="true" className="i-ri-delete-bin-line h-3 w-3 text-text-tertiary group-hover/remove:text-text-secondary" />
+            </button>
           </>
         )}
-        {isEditing && (<input className="shrink-0 appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary" autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && editTag(tag.id, name)} onBlur={() => editTag(tag.id, name)} />)}
+        {isEditing && (<input aria-label={`${t('operation.rename', { ns: 'common' })} ${tag.name}`} className="shrink-0 appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary" autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && editTag(tag.id, name)} onBlur={() => editTag(tag.id, name)} />)}
       </div>
       <AlertDialog open={showRemoveModal} onOpenChange={open => !open && setShowRemoveModal(false)}>
         <AlertDialogContent>

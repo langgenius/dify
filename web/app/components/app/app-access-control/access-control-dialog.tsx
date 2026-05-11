@@ -23,9 +23,15 @@ const AccessControlDialog = ({
   const close = useCallback(() => {
     onClose?.()
   }, [onClose])
+
   return (
-    <Dialog open={show} onOpenChange={open => !open && close()}>
-      <DialogContent className={cn('min-h-[323px] w-[600px] p-0', className)}>
+    <Dialog open={show} disablePointerDismissal onOpenChange={open => !open && close()}>
+      <DialogContent
+        className={cn(
+          'h-auto max-h-none min-h-[323px] w-[600px] max-w-none overflow-y-auto rounded-2xl border-none bg-components-panel-bg p-0 shadow-xl transition-all',
+          className,
+        )}
+      >
         <DialogCloseButton className="top-5 right-5 h-8 w-8" />
         {children}
       </DialogContent>

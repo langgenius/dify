@@ -38,11 +38,9 @@ const CopyFeedback = ({ content }: Props) => {
     <Tooltip>
       <TooltipTrigger
         render={(
-          <ActionButton>
-            <div onClick={handleCopy}>
-              {copied && <RiClipboardFill className="h-4 w-4" />}
-              {!copied && <RiClipboardLine className="h-4 w-4" />}
-            </div>
+          <ActionButton aria-label={safeText} onClick={handleCopy}>
+            {copied && <RiClipboardFill className="h-4 w-4" aria-hidden="true" />}
+            {!copied && <RiClipboardLine className="h-4 w-4" aria-hidden="true" />}
           </ActionButton>
         )}
       />
@@ -73,15 +71,17 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
     <Tooltip>
       <TooltipTrigger
         render={(
-          <div
-            className={`h-8 w-8 cursor-pointer rounded-lg hover:bg-components-button-ghost-bg-hover ${className ?? ''}`}
+          <button
+            type="button"
+            aria-label={safeText}
+            className={`h-8 w-8 cursor-pointer rounded-lg border-none bg-transparent p-0 hover:bg-components-button-ghost-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden ${className ?? ''}`}
+            onClick={handleCopy}
           >
             <div
-              onClick={handleCopy}
               className={`h-full w-full ${copyStyle.copyIcon} ${copied ? copyStyle.copied : ''}`}
             >
             </div>
-          </div>
+          </button>
         )}
       />
       <TooltipContent>
