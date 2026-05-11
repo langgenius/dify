@@ -96,8 +96,15 @@ def _create_node_execution_from_domain(
     """
     # Serialize complex data as JSON
     json_converter = WorkflowRuntimeTypeConverter()
+    # Convert metadata enum keys to strings for JSON serialization
+    if execution.metadata:
+        metadata_for_json = {
+            key.value if hasattr(key, "value") else str(key): value for key, value in execution.metadata.items()
+        }
+        execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
+    else:
+        execution_metadata = "{}"
     node_execution = WorkflowNodeExecutionModel(
-        id=execution.id,
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=execution.workflow_id,
@@ -121,16 +128,10 @@ def _create_node_execution_from_domain(
         created_by=creator_user_id,
         created_at=execution.created_at,
         finished_at=execution.finished_at,
+        execution_metadata=execution_metadata,
     )
+    node_execution.id=execution.id
 
-    # Convert metadata enum keys to strings for JSON serialization
-    if execution.metadata:
-        metadata_for_json = {
-            key.value if hasattr(key, "value") else str(key): value for key, value in execution.metadata.items()
-        }
-        node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
-    else:
-        node_execution.execution_metadata = "{}"
     return node_execution
 
 

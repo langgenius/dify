@@ -218,7 +218,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         # json_converter = WorkflowRuntimeTypeConverter()
         db_model = WorkflowNodeExecutionModel(
-            id=domain_model.id,
             tenant_id=self._tenant_id,
             workflow_id=domain_model.workflow_id,
             triggered_from=self._triggered_from,
@@ -254,6 +253,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             created_by=self._creator_user_id,
             finished_at=domain_model.finished_at,
         )
+        db_model.id = domain_model.id
         if self._app_id is not None:
             db_model.app_id = self._app_id
 
