@@ -1,21 +1,21 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help lint format typecheck test update-examples docs docs-serve
+.PHONY: help check fix typecheck test update-examples docs docs-serve
 
 help:
 	@echo "Dify agent targets:"
-	@echo "  make lint            - Run Ruff for dify-agent"
-	@echo "  make format          - Format and fix Ruff issues"
+	@echo "  make check           - Run Ruff for dify-agent"
+	@echo "  make fix             - Format and fix Ruff issues"
 	@echo "  make typecheck       - Run basedpyright for src, examples, and tests"
 	@echo "  make test            - Run local tests and docs/example tests"
 	@echo "  make update-examples - Rewrite docs example outputs when needed"
 	@echo "  make docs            - Build MkDocs documentation"
 	@echo "  make docs-serve      - Serve MkDocs documentation locally"
 
-lint:
+check:
 	@uv run --project . python -m ruff check .
 
-format:
+fix:
 	@uv run --project . python -m ruff format .
 	@uv run --project . python -m ruff check --fix .
 
