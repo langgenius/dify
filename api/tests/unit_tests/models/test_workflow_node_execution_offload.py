@@ -45,9 +45,7 @@ class TestWorkflowNodeExecutionModel:
 
     def test_process_data_truncated_property_false_when_no_offload_data(self):
         """Test process_data_truncated returns False when no offload_data."""
-        execution = WorkflowNodeExecutionModel(
-            offload_data = []
-        )
+        execution = WorkflowNodeExecutionModel(offload_data=[])
 
         assert execution.process_data_truncated is False
 
@@ -76,20 +74,13 @@ class TestWorkflowNodeExecutionModel:
         process_data_offload = WorkflowNodeExecutionOffload()
         process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
         process_data_offload.file_id = "process-data-file-id"
-        execution = WorkflowNodeExecutionModel(
-            offload_data = [process_data_offload]
-
-        )
-
+        execution = WorkflowNodeExecutionModel(offload_data=[process_data_offload])
 
         assert execution.process_data_truncated is True
 
     def test_load_full_process_data_with_no_offload_data(self):
         """Test load_full_process_data when no offload data exists."""
-        execution = WorkflowNodeExecutionModel(
-            offload_data = []
-            ,process_data = '{"test": "data"}'
-        )
+        execution = WorkflowNodeExecutionModel(offload_data=[], process_data='{"test": "data"}')
 
         # Mock session and storage
         mock_session = Mock()
@@ -128,10 +119,8 @@ class TestWorkflowNodeExecutionModel:
         process_data_offload.file_id = "file-id"
 
         execution = WorkflowNodeExecutionModel(
-            offload_data = [process_data_offload],
-            process_data = '{"truncated": "data"}'
+            offload_data=[process_data_offload], process_data='{"truncated": "data"}'
         )
-
 
         # Mock session and storage
         mock_session = Mock()
@@ -171,10 +160,7 @@ class TestWorkflowNodeExecutionModel:
         process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
         process_data_offload.file_id = "process-data-file"
 
-
-        execution = WorkflowNodeExecutionModel(
-            offload_data = [inputs_offload, outputs_offload, process_data_offload]
-        )
+        execution = WorkflowNodeExecutionModel(offload_data=[inputs_offload, outputs_offload, process_data_offload])
 
         # All three should be truncated
         assert execution.inputs_truncated is True
@@ -190,10 +176,7 @@ class TestWorkflowNodeExecutionModel:
         process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
         process_data_offload.file_id = "process-data-file"
 
-        execution = WorkflowNodeExecutionModel(
-            offload_data = [process_data_offload]
-        )
-
+        execution = WorkflowNodeExecutionModel(offload_data=[process_data_offload])
 
         assert execution.inputs_truncated is False
         assert execution.outputs_truncated is False

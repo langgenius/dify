@@ -139,25 +139,24 @@ class TestSQLAlchemyWorkflowNodeExecutionRepositoryTruncation:
 
         # Create a mock database model without offload data
         db_model = WorkflowNodeExecutionModel(
-
-        node_execution_id = "node-exec-id"
-        ,workflow_id = "workflow-id"
-        ,workflow_run_id = "run-id"
-        ,index = 1
-        ,predecessor_node_id = None
-        ,node_id = "node-id"
-        ,node_type = BuiltinNodeTypes.LLM
-        ,title = "Test Node"
-        ,inputs = json.dumps({"value": "inputs"})
-        ,process_data = json.dumps({"value": "process_data"})
-        ,outputs = json.dumps({"value": "outputs"})
-        ,status = WorkflowNodeExecutionStatus.SUCCEEDED
-        ,error = None
-        ,elapsed_time = 1.0
-        ,execution_metadata = "{}"
-        ,created_at = datetime.now(UTC)
-        ,finished_at = None
-        ,offload_data = []
+            node_execution_id="node-exec-id",
+            workflow_id="workflow-id",
+            workflow_run_id="run-id",
+            index=1,
+            predecessor_node_id=None,
+            node_id="node-id",
+            node_type=BuiltinNodeTypes.LLM,
+            title="Test Node",
+            inputs=json.dumps({"value": "inputs"}),
+            process_data=json.dumps({"value": "process_data"}),
+            outputs=json.dumps({"value": "outputs"}),
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            error=None,
+            elapsed_time=1.0,
+            execution_metadata="{}",
+            created_at=datetime.now(UTC),
+            finished_at=None,
+            offload_data=[],
         )
         db_model.id = "test-id"
 
@@ -174,9 +173,7 @@ class TestWorkflowNodeExecutionModelTruncatedProperties:
     def test_inputs_truncated_with_offload_data(self):
         """Test inputs_truncated property when offload data exists."""
         offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
-        model = WorkflowNodeExecutionModel(
-            offload_data = [offload]
-        )
+        model = WorkflowNodeExecutionModel(offload_data=[offload])
 
         assert model.inputs_truncated is True
         assert model.process_data_truncated is False
@@ -186,10 +183,7 @@ class TestWorkflowNodeExecutionModelTruncatedProperties:
         """Test outputs_truncated property when offload data exists."""
         # Mock offload data with outputs file
         offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
-        model = WorkflowNodeExecutionModel(
-            offload_data = [offload]
-        )
-
+        model = WorkflowNodeExecutionModel(offload_data=[offload])
 
         assert model.inputs_truncated is False
         assert model.process_data_truncated is False
@@ -197,19 +191,14 @@ class TestWorkflowNodeExecutionModelTruncatedProperties:
 
     def test_process_data_truncated_with_offload_data(self):
         offload = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.PROCESS_DATA)
-        model = WorkflowNodeExecutionModel(
-            offload_data = [offload]
-        )
+        model = WorkflowNodeExecutionModel(offload_data=[offload])
         assert model.process_data_truncated is True
         assert model.inputs_truncated is False
         assert model.outputs_truncated is False
 
     def test_truncated_properties_without_offload_data(self):
         """Test truncated properties when no offload data exists."""
-        model = WorkflowNodeExecutionModel(
-            offload_data = []
-        )
-        
+        model = WorkflowNodeExecutionModel(offload_data=[])
 
         assert model.inputs_truncated is False
         assert model.outputs_truncated is False
