@@ -6,12 +6,19 @@ import { useTranslation } from 'react-i18next'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { InputVarType } from '@/app/components/workflow/types'
 import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confirm'
 import VarItem from './components/var-item'
 import VarList from './components/var-list'
 import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.start'
+const chatQueryInputVar: InputVar = {
+  variable: 'userinput.query',
+  label: '',
+  type: InputVarType.textInput,
+  required: false,
+}
 
 const Panel: FC<NodePanelProps<StartNodeType>> = ({
   id,
@@ -67,35 +74,22 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
             />
 
             <div className="mt-1 space-y-1">
-              <Split className="my-2" />
               {
                 isChatMode && (
-                  <VarItem
-                    readonly
-                    payload={{
-                      variable: 'userinput.query',
-                    } as any}
-                    rightContent={(
-                      <div className="text-xs font-normal text-text-tertiary">
-                        String
-                      </div>
-                    )}
-                  />
+                  <>
+                    <Split className="my-2" />
+                    <VarItem
+                      readonly
+                      payload={chatQueryInputVar}
+                      rightContent={(
+                        <div className="text-xs font-normal text-text-tertiary">
+                          String
+                        </div>
+                      )}
+                    />
+                  </>
                 )
               }
-
-              <VarItem
-                readonly
-                showLegacyBadge={!isChatMode}
-                payload={{
-                  variable: 'userinput.files',
-                } as any}
-                rightContent={(
-                  <div className="text-xs font-normal text-text-tertiary">
-                    Array[File]
-                  </div>
-                )}
-              />
             </div>
           </>
         </Field>

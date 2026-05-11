@@ -7,9 +7,12 @@ from core.workflow.legacy_system_files import (
 )
 
 _LEGACY_NODE_ID = "sys"
+_LEGACY_ALIAS_NODE_ID = "userinput"
 _LEGACY_VARIABLE_NAME = "files"
 _LEGACY_SELECTOR = [_LEGACY_NODE_ID, _LEGACY_VARIABLE_NAME]
 _LEGACY_TEMPLATE = "{{#" + ".".join((_LEGACY_NODE_ID, _LEGACY_VARIABLE_NAME)) + "#}}"
+_LEGACY_ALIAS_SELECTOR = [_LEGACY_ALIAS_NODE_ID, _LEGACY_VARIABLE_NAME]
+_LEGACY_ALIAS_TEMPLATE = "{{#" + ".".join((_LEGACY_ALIAS_NODE_ID, _LEGACY_VARIABLE_NAME)) + "#}}"
 
 
 def test_migrate_legacy_sys_files_graph_ignores_invalid_or_unrelated_graphs():
@@ -51,6 +54,28 @@ def test_migrate_legacy_sys_files_graph_creates_collision_free_file_input_from_f
     assert created_variable["allowed_file_extensions"] == [".png"]
     assert created_variable["max_length"] == 9
     assert result.graph["nodes"][1]["data"]["answer"] == ["start", "sys_files_1"]
+
+
+def test_migrate_legacy_sys_files_graph_rewrites_userinput_files_alias_to_same_start_input():
+    graph = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "variables": []}},
+            {
+                "id": "answer",
+                "data": {
+                    "type": "answer",
+                    "answer": _LEGACY_ALIAS_SELECTOR,
+                    "template": _LEGACY_ALIAS_TEMPLATE,
+                },
+            },
+        ],
+    }
+
+    result = migrate_legacy_sys_files_graph_with_result(graph)
+
+    assert result.changed
+    assert result.graph["nodes"][1]["data"]["answer"] == ["start", "sys_files"]
+    assert result.graph["nodes"][1]["data"]["template"] == "{{#start.sys_files#}}"
 
 
 def test_resolve_legacy_sys_files_compat_variable_handles_missing_start_variable():

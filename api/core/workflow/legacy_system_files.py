@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Any
 
 _LEGACY_SYSTEM_NODE_ID = "sys"
+_LEGACY_USER_INPUT_NODE_ID = "userinput"
 _LEGACY_FILES_VARIABLE = "files"
 _COMPAT_VARIABLE_PREFIX = "sys_files"
 _COMPAT_VARIABLE_DESCRIPTION = "Compatibility input for deprecated sys.files."
@@ -21,7 +22,7 @@ _FILE_LIST_TYPE = "file-list"
 _DEFAULT_FILE_NUMBER_LIMITS = 3
 _DEFAULT_ALLOWED_FILE_UPLOAD_METHODS = ["local_file", "remote_url"]
 _DEFAULT_ALLOWED_FILE_TYPES = ["image", "document", "audio", "video"]
-_SYS_FILES_TEMPLATE_PATTERN = re.compile(r"\{\{#sys\.files#\}\}")
+_LEGACY_FILES_TEMPLATE_PATTERN = re.compile(r"\{\{#(?:sys|userinput)\.files#\}\}")
 
 
 @dataclass(frozen=True)
@@ -41,7 +42,7 @@ def migrate_legacy_sys_files_graph(
     *,
     features: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Return a graph where `sys.files` references point to a Start-node file-list variable."""
+    """Return a graph where legacy file-system references point to a Start-node file-list variable."""
 
     return migrate_legacy_sys_files_graph_with_result(graph, features=features).graph
 
@@ -199,7 +200,7 @@ def _contains_legacy_sys_files_reference(value: Any) -> bool:
         return True
 
     if isinstance(value, str):
-        return bool(_SYS_FILES_TEMPLATE_PATTERN.search(value))
+        return bool(_LEGACY_FILES_TEMPLATE_PATTERN.search(value))
 
     if isinstance(value, Mapping):
         return any(_contains_legacy_sys_files_reference(item) for item in value.values())
@@ -215,7 +216,7 @@ def _replace_legacy_sys_files_references(value: Any, *, start_node_id: str, vari
         return [start_node_id, variable_name]
 
     if isinstance(value, str):
-        return _SYS_FILES_TEMPLATE_PATTERN.sub(f"{{{{#{start_node_id}.{variable_name}#}}}}", value)
+        return _LEGACY_FILES_TEMPLATE_PATTERN.sub(f"{{{{#{start_node_id}.{variable_name}#}}}}", value)
 
     if isinstance(value, Mapping):
         return {
@@ -244,7 +245,7 @@ def _is_legacy_sys_files_selector(value: Any) -> bool:
     return (
         isinstance(value, list)
         and len(value) == 2
-        and value[0] == _LEGACY_SYSTEM_NODE_ID
+        and value[0] in (_LEGACY_SYSTEM_NODE_ID, _LEGACY_USER_INPUT_NODE_ID)
         and value[1] == _LEGACY_FILES_VARIABLE
     )
 
