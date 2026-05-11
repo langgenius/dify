@@ -213,10 +213,10 @@ class WorkflowCommentMention(TypeBase):
     comment_id: Mapped[str] = mapped_column(
         StringUUID, sa.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )
-    reply_id: Mapped[str | None] = mapped_column(
-        StringUUID, sa.ForeignKey("workflow_comment_replies.id", ondelete="CASCADE"), nullable=True
-    )
     mentioned_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    reply_id: Mapped[str | None] = mapped_column(
+        StringUUID, sa.ForeignKey("workflow_comment_replies.id", ondelete="CASCADE"), nullable=True, default=None
+    )
 
     # Relationships
     comment: Mapped[WorkflowComment] = relationship(lambda: WorkflowComment, back_populates="mentions", init=False)

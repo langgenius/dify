@@ -21,6 +21,8 @@ def test_workflow_comment_account_properties_and_cache() -> None:
         get_mock.assert_not_called()
 
     comment_without_resolver = WorkflowComment(
+        tenant_id="xxx",
+        app_id="yyy",
         created_by="user-1",
         resolved_by=None,
         content="hello",
