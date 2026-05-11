@@ -138,12 +138,15 @@ class WaterCrawlAPIClient(BaseAPIClient):
             )
         )
 
-    def get_crawl_request(self, item_id: str):
-        return self.process_response(
+    def get_crawl_request(self, item_id: str) -> dict[str, Any]:
+        result = self.process_response(
             self._get(
                 f"/api/v1/core/crawl-requests/{item_id}/",
             )
         )
+        if not isinstance(result, dict):
+            raise ValueError(f"Expected dict response from get_crawl_request, got {type(result).__name__}")
+        return result
 
     def create_crawl_request(
         self,
@@ -151,7 +154,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
         spider_options: SpiderOptions | None = None,
         page_options: PageOptions | None = None,
         plugin_options: dict[str, Any] | None = None,
-    ):
+    ) -> dict[str, Any]:
         data = {
             # 'urls': url if isinstance(url, list) else [url],
             "url": url,
@@ -161,12 +164,15 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 "plugin_options": plugin_options or {},
             },
         }
-        return self.process_response(
+        result = self.process_response(
             self._post(
                 "/api/v1/core/crawl-requests/",
                 data=data,
             )
         )
+        if not isinstance(result, dict):
+            raise ValueError(f"Expected dict response from create_crawl_request, got {type(result).__name__}")
+        return result
 
     def stop_crawl_request(self, item_id: str):
         return self.process_response(
@@ -193,12 +199,15 @@ class WaterCrawlAPIClient(BaseAPIClient):
 
     def get_crawl_request_results(
         self, item_id: str, page: int = 1, page_size: int = 25, query_params: dict[str, Any] | None = None
-    ):
+    ) -> dict[str, Any]:
         query_params = query_params or {}
         query_params.update({"page": page or 1, "page_size": page_size or 25})
-        return self.process_response(
+        result = self.process_response(
             self._get(f"/api/v1/core/crawl-requests/{item_id}/results/", query_params=query_params)
         )
+        if not isinstance(result, dict):
+            raise ValueError(f"Expected dict response from get_crawl_request_results, got {type(result).__name__}")
+        return result
 
     def scrape_url(
         self,
@@ -207,7 +216,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
         plugin_options: dict[str, Any] | None = None,
         sync: bool = True,
         prefetched: bool = True,
-    ):
+    ) -> dict[str, Any] | None:
         response_result = self.create_crawl_request(url=url, page_options=page_options, plugin_options=plugin_options)
         if not sync:
             return response_result
@@ -215,6 +224,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
         for event_data in self.monitor_crawl_request(response_result["uuid"], prefetched):
             if event_data["type"] == "result":
                 return event_data["data"]
+        return None
 
     def download_result(self, result_object: dict[str, Any]):
         response = httpx.get(result_object["result"], timeout=None)

@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from core.rag.models.document import BaseDocumentTransformer, Document
 
@@ -215,7 +215,7 @@ class TokenTextSplitter(TextSplitter):
         def _encode(_text: str) -> list[int]:
             return self._tokenizer.encode(
                 _text,
-                allowed_special=self._allowed_special,
+                allowed_special=cast("Set[str] | Literal['all']", self._allowed_special),
                 disallowed_special=self._disallowed_special,
             )
 
