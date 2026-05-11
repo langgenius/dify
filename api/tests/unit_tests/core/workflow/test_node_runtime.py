@@ -5,7 +5,6 @@ import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.llm_generator.output_parser.errors import OutputParserError
-from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow import node_runtime
 from core.workflow.file_reference import parse_file_reference
 from core.workflow.human_input_adapter import (
