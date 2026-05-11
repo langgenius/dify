@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from models.base import TypeBase
 
 from .account import Account
-from .base import Base, gen_uuidv7_string
+from .base import gen_uuidv7_string
 from .engine import db
 from .types import StringUUID
 
@@ -140,7 +140,7 @@ class WorkflowComment(TypeBase):
         return participants
 
 
-class WorkflowCommentReply(Base):
+class WorkflowCommentReply(TypeBase):
     """Workflow comment reply model.
 
     Attributes:
@@ -158,18 +158,18 @@ class WorkflowCommentReply(Base):
         Index("comment_replies_created_at_idx", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=gen_uuidv7_string)
+    id: Mapped[str] = mapped_column(StringUUID, default_factory=gen_uuidv7_string, init=False)
     comment_id: Mapped[str] = mapped_column(
         StringUUID, sa.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
     # Relationships
-    comment: Mapped[WorkflowComment] = relationship("WorkflowComment", back_populates="replies")
+    comment: Mapped[WorkflowComment] = relationship(lambda: WorkflowComment, back_populates="replies", init=False)
 
     @property
     def created_by_account(self):
@@ -183,7 +183,7 @@ class WorkflowCommentReply(Base):
         self._created_by_account_cache = account
 
 
-class WorkflowCommentMention(Base):
+class WorkflowCommentMention(TypeBase):
     """Workflow comment mention model.
 
     Mentions are only for internal accounts since end users
@@ -203,7 +203,7 @@ class WorkflowCommentMention(Base):
         Index("comment_mentions_user_idx", "mentioned_user_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=gen_uuidv7_string)
+    id: Mapped[str] = mapped_column(StringUUID, default_factory=gen_uuidv7_string, init=False)
     comment_id: Mapped[str] = mapped_column(
         StringUUID, sa.ForeignKey("workflow_comments.id", ondelete="CASCADE"), nullable=False
     )
@@ -213,8 +213,8 @@ class WorkflowCommentMention(Base):
     mentioned_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     # Relationships
-    comment: Mapped[WorkflowComment] = relationship("WorkflowComment", back_populates="mentions")
-    reply: Mapped[WorkflowCommentReply | None] = relationship("WorkflowCommentReply")
+    comment: Mapped[WorkflowComment] = relationship(lambda: WorkflowComment, back_populates="mentions", init=False)
+    reply: Mapped[Optional[WorkflowCommentReply]] = relationship(lambda: WorkflowCommentReply)
 
     @property
     def mentioned_user_account(self):
