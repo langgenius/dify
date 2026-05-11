@@ -85,10 +85,15 @@ const Sort: FC<Props> = ({
           </DropdownMenuContent>
         </div>
       </DropdownMenu>
-      <div className="ml-px cursor-pointer rounded-r-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover" onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
-        {!order && <RiSortAsc className="h-4 w-4 text-components-button-tertiary-text" />}
-        {order && <RiSortDesc className="h-4 w-4 text-components-button-tertiary-text" />}
-      </div>
+      <button
+        type="button"
+        aria-label={t(`filter.${order ? 'ascending' : 'descending'}`, { ns: 'appLog' })}
+        className="ml-px cursor-pointer rounded-r-lg border-none bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        onClick={() => onSelect(`${order ? '' : '-'}${value}`)}
+      >
+        {!order && <RiSortAsc className="h-4 w-4 text-components-button-tertiary-text" aria-hidden="true" />}
+        {order && <RiSortDesc className="h-4 w-4 text-components-button-tertiary-text" aria-hidden="true" />}
+      </button>
     </div>
 
   )

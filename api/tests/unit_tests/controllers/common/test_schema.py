@@ -1,10 +1,11 @@
 import sys
 from enum import StrEnum
+from typing import Literal
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask_restx import Namespace
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserModel(BaseModel):
@@ -15,6 +16,39 @@ class UserModel(BaseModel):
 class ProductModel(BaseModel):
     id: int
     price: float
+
+
+class ChildModel(BaseModel):
+    value: str
+
+
+class ParentModel(BaseModel):
+    child: ChildModel
+
+
+class StatusEnum(StrEnum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+class PriorityEnum(StrEnum):
+    HIGH = "high"
+    LOW = "low"
+
+
+class QueryModel(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    page: int = Field(default=1, ge=1, le=100, description="Page number")
+    keyword: str | None = Field(default=None, min_length=1, max_length=50, description="Search keyword")
+    status: Literal["active", "inactive"] | None = Field(default=None, description="Status filter")
+    app_id: str = Field(..., alias="appId", description="Application ID")
+    tag_ids: list[str] = Field(default_factory=list, min_length=1, max_length=3, description="Tag IDs")
+    ambiguous: int | str | None = Field(default=None, description="Ambiguous query parameter")
+
+
+class ResponseAliasModel(BaseModel):
+    public_name: str = Field(validation_alias="internal_name")
 
 
 @pytest.fixture(autouse=True)
@@ -64,6 +98,22 @@ def test_register_schema_model_passes_schema_from_pydantic():
     assert schema == expected_schema
 
 
+def test_register_schema_model_promotes_nested_pydantic_definitions():
+    from controllers.common.schema import DEFAULT_REF_TEMPLATE_SWAGGER_2_0, register_schema_model
+
+    namespace = MagicMock(spec=Namespace)
+
+    register_schema_model(namespace, ParentModel)
+
+    called_schemas = {call.args[0]: call.args[1] for call in namespace.schema_model.call_args_list}
+    parent_schema = ParentModel.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+
+    assert set(called_schemas) == {"ParentModel", "ChildModel"}
+    assert "$defs" not in called_schemas["ParentModel"]
+    assert called_schemas["ParentModel"]["properties"]["child"]["$ref"] == "#/definitions/ChildModel"
+    assert called_schemas["ChildModel"] == parent_schema["$defs"]["ChildModel"]
+
+
 def test_register_schema_models_registers_multiple_models():
     from controllers.common.schema import register_schema_models
 
@@ -77,7 +127,7 @@ def test_register_schema_models_registers_multiple_models():
     assert called_names == ["UserModel", "ProductModel"]
 
 
-def test_register_schema_models_calls_register_schema_model(monkeypatch):
+def test_register_schema_models_calls_register_schema_model(monkeypatch: pytest.MonkeyPatch):
     from controllers.common.schema import register_schema_models
 
     namespace = MagicMock(spec=Namespace)
@@ -100,14 +150,18 @@ def test_register_schema_models_calls_register_schema_model(monkeypatch):
     ]
 
 
-class StatusEnum(StrEnum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
+def test_register_response_schema_model_uses_serialized_field_names():
+    from controllers.common.schema import register_response_schema_model
 
+    namespace = MagicMock(spec=Namespace)
 
-class PriorityEnum(StrEnum):
-    HIGH = "high"
-    LOW = "low"
+    register_response_schema_model(namespace, ResponseAliasModel)
+
+    model_name, schema = namespace.schema_model.call_args.args
+
+    assert model_name == "ResponseAliasModel"
+    assert "public_name" in schema["properties"]
+    assert "internal_name" not in schema["properties"]
 
 
 def test_get_or_create_model_returns_existing_model(mock_console_ns):
@@ -187,3 +241,54 @@ def test_register_enum_models_uses_correct_ref_template():
 
     # Verify the schema contains enum values
     assert "enum" in schema or "anyOf" in schema
+
+
+def test_query_params_from_model_builds_flask_restx_doc_params():
+    from controllers.common.schema import query_params_from_model
+
+    params = query_params_from_model(QueryModel)
+
+    assert params["page"] == {
+        "in": "query",
+        "required": False,
+        "description": "Page number",
+        "type": "integer",
+        "default": 1,
+        "minimum": 1,
+        "maximum": 100,
+    }
+    assert params["keyword"] == {
+        "in": "query",
+        "required": False,
+        "description": "Search keyword",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 50,
+    }
+    assert params["status"] == {
+        "in": "query",
+        "required": False,
+        "description": "Status filter",
+        "type": "string",
+        "enum": ["active", "inactive"],
+    }
+    assert params["appId"] == {
+        "in": "query",
+        "required": True,
+        "description": "Application ID",
+        "type": "string",
+    }
+    assert params["tag_ids"] == {
+        "in": "query",
+        "required": False,
+        "description": "Tag IDs",
+        "type": "array",
+        "items": {"type": "string"},
+        "minItems": 1,
+        "maxItems": 3,
+    }
+    assert params["ambiguous"] == {
+        "in": "query",
+        "required": False,
+        "description": "Ambiguous query parameter",
+    }

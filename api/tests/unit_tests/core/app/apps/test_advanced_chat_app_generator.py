@@ -45,7 +45,7 @@ def _make_generate_entity(app_config: WorkflowUIBasedAppConfig) -> AdvancedChatA
 
 
 @pytest.fixture(autouse=True)
-def _mock_db_session(monkeypatch):
+def _mock_db_session(monkeypatch: pytest.MonkeyPatch):
     session = MagicMock()
 
     def refresh_side_effect(obj):
@@ -108,7 +108,7 @@ def test_init_generate_records_marks_existing_conversation():
     assert entity.is_new_conversation is False
 
 
-def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch):
+def test_message_cycle_manager_uses_new_conversation_flag(monkeypatch: pytest.MonkeyPatch):
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
     entity.conversation_id = "existing-conversation-id"

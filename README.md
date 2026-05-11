@@ -76,10 +76,9 @@ The easiest way to start the Dify server is through [Docker Compose](docker/dock
 ```bash
 cd dify
 cd docker
-./dify-compose up -d
+cp .env.example .env
+docker compose up -d
 ```
-
-On Windows PowerShell, run `.\dify-compose.ps1 up -d` from the `docker` directory.
 
 After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process.
 
@@ -138,7 +137,7 @@ Star Dify on GitHub and be instantly notified of new releases.
 
 ### Custom configurations
 
-If you need to customize the configuration, add only the values you want to override to `docker/.env`. The default values live in [`docker/.env.default`](docker/.env.default), and the full reference remains in [`docker/.env.example`](docker/.env.example). After making any changes, re-run `./dify-compose up -d` or `.\dify-compose.ps1 up -d` from the `docker` directory. You can find the full list of available environment variables [here](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+If you need to customize the configuration, edit `docker/.env`. The essential startup defaults live in [`docker/.env.example`](docker/.env.example), and optional advanced variables are split under `docker/envs/` by theme. After making any changes, re-run `docker compose up -d` from the `docker` directory. You can find the full list of available environment variables [here](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 ### Metrics Monitoring with Grafana
 

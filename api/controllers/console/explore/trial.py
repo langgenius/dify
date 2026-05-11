@@ -10,7 +10,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 import services
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
-from controllers.common.schema import get_or_create_model
+from controllers.common.schema import get_or_create_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -120,10 +120,6 @@ workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipel
 workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
 
 
-# Pydantic models for request validation
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
 class WorkflowRunRequest(BaseModel):
     inputs: dict
     files: list | None = None
@@ -153,19 +149,7 @@ class CompletionRequest(BaseModel):
     retriever_from: str = "explore_app"
 
 
-# Register schemas for Swagger documentation
-console_ns.schema_model(
-    WorkflowRunRequest.__name__, WorkflowRunRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    ChatRequest.__name__, ChatRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    TextToSpeechRequest.__name__, TextToSpeechRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    CompletionRequest.__name__, CompletionRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_schema_models(console_ns, WorkflowRunRequest, ChatRequest, TextToSpeechRequest, CompletionRequest)
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):

@@ -12,7 +12,6 @@ import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { useUpdateTriggerSubscription } from '@/service/use-triggers'
-import { ReadmeShowType } from '../../../readme-panel/store'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 
@@ -169,11 +168,11 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
             <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
               {title}
             </DialogTitle>
-            <DialogCloseButton data-testid="modal-close-button" className="top-5 right-5 h-8 w-8 rounded-lg" />
+            <DialogCloseButton className="top-5 right-5 h-8 w-8 rounded-lg" />
           </div>
           <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginDetail && (
-              <ReadmeEntrance pluginDetail={pluginDetail} showType={ReadmeShowType.modal} />
+              <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />
             )}
             <BaseForm
               formSchemas={formSchemas}
@@ -186,14 +185,12 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
             <div />
             <div className="flex items-center">
               <Button
-                data-testid="modal-cancel-button"
                 onClick={onClose}
                 disabled={isUpdating}
               >
                 {t('operation.cancel', { ns: 'common' })}
               </Button>
               <Button
-                data-testid="modal-confirm-button"
                 className="ml-2"
                 variant="primary"
                 onClick={handleConfirm}

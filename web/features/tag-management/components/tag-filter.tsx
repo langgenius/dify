@@ -80,7 +80,7 @@ export const TagFilter = ({
         >
           <span className="flex min-w-0 items-center gap-1">
             <span className="p-px">
-              <Tag01Icon className="h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-trigger-icon" />
+              <Tag01Icon className="h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
             </span>
             <span className="min-w-0 truncate text-[13px] leading-4.5 text-text-secondary">
               {!value.length && t('tag.placeholder', { ns: 'common' })}
@@ -91,7 +91,7 @@ export const TagFilter = ({
             )}
             {!value.length && (
               <span className="shrink-0 p-px">
-                <span aria-hidden className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" data-testid="tag-filter-arrow-down-icon" />
+                <span aria-hidden className="i-ri-arrow-down-s-line h-3.5 w-3.5 text-text-tertiary" />
               </span>
             )}
           </span>
@@ -100,14 +100,13 @@ export const TagFilter = ({
           <button
             type="button"
             aria-label={t('operation.clear', { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 p-px"
+            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
             onClick={(event) => {
               event.stopPropagation()
               onChange([])
             }}
-            data-testid="tag-filter-clear-button"
           >
-            <XCircleIcon className="h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" />
+            <XCircleIcon className="h-3.5 w-3.5 text-text-tertiary group-hover/clear:text-text-secondary" aria-hidden="true" />
           </button>
         )}
         <ComboboxContent

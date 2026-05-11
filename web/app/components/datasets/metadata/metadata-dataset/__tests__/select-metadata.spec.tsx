@@ -68,8 +68,7 @@ describe('SelectMetadata', () => {
           onManage={vi.fn()}
         />,
       )
-      // New action button should be present (from i18n)
-      expect(screen.getByText(/new/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' })).toBeInTheDocument()
     })
 
     it('should render manage action button', () => {
@@ -81,8 +80,7 @@ describe('SelectMetadata', () => {
           onManage={vi.fn()}
         />,
       )
-      // Manage action button should be present (from i18n)
-      expect(screen.getByText(/manage/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' })).toBeInTheDocument()
     })
 
     it('should display type for each item', () => {
@@ -187,7 +185,7 @@ describe('SelectMetadata', () => {
         />,
       )
 
-      fireEvent.click(screen.getByText('field_one'))
+      fireEvent.click(screen.getByRole('button', { name: /field_one/i }))
 
       expect(handleSelect).toHaveBeenCalledWith({
         id: '1',
@@ -207,9 +205,7 @@ describe('SelectMetadata', () => {
         />,
       )
 
-      // Find and click the new action button
-      const newButton = screen.getByText(/new/i)
-      fireEvent.click(newButton.closest('div') || newButton)
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }))
 
       expect(handleNew).toHaveBeenCalled()
     })
@@ -225,9 +221,7 @@ describe('SelectMetadata', () => {
         />,
       )
 
-      // Find and click the manage action button
-      const manageButton = screen.getByText(/manage/i)
-      fireEvent.click(manageButton.closest('div') || manageButton)
+      fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' }))
 
       expect(handleManage).toHaveBeenCalled()
     })
@@ -255,8 +249,8 @@ describe('SelectMetadata', () => {
           onManage={vi.fn()}
         />,
       )
-      expect(screen.getByText(/new/i)).toBeInTheDocument()
-      expect(screen.getByText(/manage/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.manageAction' })).toBeInTheDocument()
     })
   })
 

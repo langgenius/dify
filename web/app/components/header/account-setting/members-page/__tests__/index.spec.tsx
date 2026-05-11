@@ -200,7 +200,7 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    await user.click(screen.getByTestId('edit-workspace-pencil'))
+    await user.click(screen.getByRole('button', { name: /account\.editWorkspaceInfo/i }))
     expect(screen.getByText('Edit Workspace Modal'))!.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Close Edit Workspace' }))

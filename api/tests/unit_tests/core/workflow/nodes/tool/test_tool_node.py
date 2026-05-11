@@ -24,7 +24,14 @@ if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
 
 
 class _StubToolRuntime:
-    def get_runtime(self, *, node_id: str, node_data: Any, variable_pool: Any) -> ToolRuntimeHandle:
+    def get_runtime(
+        self,
+        *,
+        node_id: str,
+        node_data: Any,
+        variable_pool: Any,
+        node_execution_id: str | None = None,
+    ) -> ToolRuntimeHandle:
         raise NotImplementedError
 
     def get_runtime_parameters(self, *, tool_runtime: ToolRuntimeHandle) -> list[Any]:
@@ -99,7 +106,7 @@ def tool_node(monkeypatch) -> ToolNode:
         call_depth=0,
     )
 
-    variable_pool = VariablePool(system_variables=build_system_variables(user_id="user-id"))
+    variable_pool = VariablePool.from_bootstrap(system_variables=build_system_variables(user_id="user-id"))
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
 
     config = graph_config["nodes"][0]
@@ -110,7 +117,7 @@ def tool_node(monkeypatch) -> ToolNode:
 
     node = ToolNode(
         node_id="node-instance",
-        config=ToolNodeData.model_validate(config["data"]),
+        data=ToolNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
         tool_file_manager_factory=tool_file_manager_factory,

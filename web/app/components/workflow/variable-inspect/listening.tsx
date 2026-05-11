@@ -4,12 +4,12 @@ import type { Node } from 'reactflow'
 import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
 import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import { getNextExecutionTime } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
@@ -179,28 +179,32 @@ const Listening: FC<ListeningProps> = ({
           <div className="shrink-0 system-xs-regular whitespace-pre-line text-text-tertiary">
             {t('nodes.triggerWebhook.debugUrlTitle', { ns: 'workflow' })}
           </div>
-          <Tooltip
-            popupContent={debugUrlCopied
-              ? t('nodes.triggerWebhook.debugUrlCopied', { ns: 'workflow' })
-              : t('nodes.triggerWebhook.debugUrlCopy', { ns: 'workflow' })}
-            popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-xs rounded-md px-1.5 py-1"
-            position="top"
-            offset={{ mainAxis: -4 }}
-            needsDelay={true}
-          >
-            <button
-              type="button"
-              aria-label={t('nodes.triggerWebhook.debugUrlCopy', { ns: 'workflow' }) || ''}
-              className={`inline-flex items-center rounded-md border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-[2px] font-mono text-[13px] leading-[18px] text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-components-panel-border focus-visible:outline-solid ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
-              onClick={() => {
-                copy(webhookDebugUrl)
-                setDebugUrlCopied(true)
-              }}
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <button
+                  type="button"
+                  aria-label={t('nodes.triggerWebhook.debugUrlCopy', { ns: 'workflow' }) || ''}
+                  className={`inline-flex items-center rounded-md border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-[2px] font-mono text-[13px] leading-[18px] text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-hidden focus-visible:outline-2 focus-visible:outline-components-panel-border focus-visible:outline-solid ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
+                  onClick={() => {
+                    copy(webhookDebugUrl)
+                    setDebugUrlCopied(true)
+                  }}
+                >
+                  <span className="whitespace-nowrap text-text-primary">
+                    {webhookDebugUrl}
+                  </span>
+                </button>
+              )}
+            />
+            <TooltipContent
+              placement="top"
+              className="rounded-md border border-components-panel-border bg-components-tooltip-bg px-1.5 py-1 system-xs-regular text-text-primary shadow-lg backdrop-blur-xs"
             >
-              <span className="whitespace-nowrap text-text-primary">
-                {webhookDebugUrl}
-              </span>
-            </button>
+              {debugUrlCopied
+                ? t('nodes.triggerWebhook.debugUrlCopied', { ns: 'workflow' })
+                : t('nodes.triggerWebhook.debugUrlCopy', { ns: 'workflow' })}
+            </TooltipContent>
           </Tooltip>
         </div>
       )}

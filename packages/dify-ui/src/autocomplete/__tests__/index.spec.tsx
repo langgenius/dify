@@ -173,7 +173,7 @@ describe('Autocomplete wrappers', () => {
 
       await expect.element(screen.getByRole('group', { name: 'autocomplete positioner' })).toHaveAttribute('data-side', 'bottom')
       await expect.element(screen.getByRole('group', { name: 'autocomplete positioner' })).toHaveAttribute('data-align', 'start')
-      await expect.element(screen.getByRole('group', { name: 'autocomplete positioner' })).toHaveClass('z-1002')
+      await expect.element(screen.getByRole('group', { name: 'autocomplete positioner' })).toHaveClass('z-50')
       await expect.element(screen.getByRole('dialog', { name: 'autocomplete popup' })).toHaveClass('rounded-xl')
       await expect.element(screen.getByRole('dialog', { name: 'autocomplete popup' })).toHaveClass('w-(--anchor-width)')
       await expect.element(screen.getByRole('listbox', { name: 'autocomplete list' })).toHaveClass('scroll-py-1')

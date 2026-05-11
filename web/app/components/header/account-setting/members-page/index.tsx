@@ -63,17 +63,19 @@ const MembersPage = () => {
                   <Tooltip>
                     <TooltipTrigger
                       render={(
-                        <div
-                          className="cursor-pointer rounded-md p-1 hover:bg-black/5"
+                        <button
+                          type="button"
+                          aria-label={t('account.editWorkspaceInfo', { ns: 'common' })}
+                          className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-black/5"
                           onClick={() => {
                             setEditWorkspaceModalVisible(true)
                           }}
                         >
-                          <div
-                            data-testid="edit-workspace-pencil"
+                          <span
+                            aria-hidden="true"
                             className="i-ri-pencil-line h-4 w-4 text-text-tertiary"
                           />
-                        </div>
+                        </button>
                       )}
                     />
                     <TooltipContent>
