@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account, AccountStatus, TenantStatus
+from models.account import Account, AccountStatus, TenantAccountRole, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -546,6 +546,21 @@ class TestTenantService:
             callable_func(*args, **kwargs)
 
     # ==================== Tenant Creation Tests ====================
+
+    def test_create_owner_tenant_if_not_exist_checks_owner_membership_only(self, mock_db_dependencies):
+        """Joining another workspace as a member must not count as owning a personal workspace."""
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        existing_owner_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            account_id=mock_account.id,
+            role=TenantAccountRole.OWNER,
+        )
+        mock_db_dependencies["db"].session.scalar.return_value = existing_owner_join
+
+        TenantService.create_owner_tenant_if_not_exist(mock_account)
+
+        first_query = mock_db_dependencies["db"].session.scalar.call_args.args[0]
+        assert "tenant_account_joins.role" in str(first_query)
+        mock_db_dependencies["db"].session.add.assert_not_called()
 
     def test_create_owner_tenant_if_not_exist_new_user(
         self, mock_db_dependencies, mock_rsa_dependencies, mock_external_service_dependencies

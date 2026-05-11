@@ -1090,15 +1090,19 @@ class TenantService:
 
     @staticmethod
     def create_owner_tenant_if_not_exist(account: Account, name: str | None = None, is_setup: bool | None = False):
-        """Check if user have a workspace or not"""
-        available_ta = db.session.scalar(
+        """Create a personal owner workspace when the account does not own one.
+
+        Accounts can belong to multiple workspaces as normal members or dataset operators. Those memberships should not
+        block creating the account's own workspace; only an existing owner membership does.
+        """
+        owned_tenant_join = db.session.scalar(
             select(TenantAccountJoin)
-            .where(TenantAccountJoin.account_id == account.id)
+            .where(TenantAccountJoin.account_id == account.id, TenantAccountJoin.role == TenantAccountRole.OWNER)
             .order_by(TenantAccountJoin.id.asc())
             .limit(1)
         )
 
-        if available_ta:
+        if owned_tenant_join:
             return
 
         """Create owner tenant if not exist"""

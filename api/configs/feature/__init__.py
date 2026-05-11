@@ -1074,7 +1074,7 @@ class DataSetConfig(BaseSettings):
 
     DATASET_OPERATOR_ENABLED: bool = Field(
         description="Enable or disable dataset operator functionality",
-        default=False,
+        default=True,
     )
 
     TIDB_SERVERLESS_NUMBER: PositiveInt = Field(
@@ -1325,7 +1325,7 @@ class LoginConfig(BaseSettings):
     )
     ALLOW_CREATE_WORKSPACE: bool = Field(
         description="whether to enable create workspace",
-        default=False,
+        default=True,
     )
 
 
