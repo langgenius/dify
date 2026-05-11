@@ -2,44 +2,6 @@
 
 import * as z from 'zod'
 
-export const zAccessModeOption = z.object({
-  mode: z.string().optional(),
-  label: z.string().optional(),
-  disabled: z.boolean().optional(),
-  selected: z.boolean().optional(),
-})
-
-export const zAccessStatus = z.object({
-  accessChannelsEnabled: z.boolean().optional(),
-  webappUrl: z.string().optional(),
-  cliUrl: z.string().optional(),
-  developerApiEnabled: z.boolean().optional(),
-  apiKeyCount: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-})
-
-export const zAccessSubject = z.object({
-  subjectId: z.string().optional(),
-  subjectType: z.string().optional(),
-})
-
-export const zAccessSubjectDisplay = z.object({
-  id: z.string().optional(),
-  subjectType: z.string().optional(),
-  name: z.string().optional(),
-  avatarUrl: z.string().optional(),
-  memberCount: z.string().optional(),
-})
-
-export const zAccessPolicyDetail = z.object({
-  accessMode: z.string().optional(),
-  subjects: z.array(zAccessSubjectDisplay).optional(),
-  options: z.array(zAccessModeOption).optional(),
-})
-
 /**
  * Account represents a basic user account
  */
@@ -75,101 +37,9 @@ export const zAccountDetail = z.object({
   groups: z.array(zAccountDetailGroup).optional(),
 })
 
-export const zAckDeploymentReply = z.object({
-  accepted: z.boolean().optional(),
-  newVersion: z.string().optional(),
-})
-
-export const zAppInstanceBasicInfo = z.object({
+export const zAddGroupAppsRequest = z.object({
   id: z.string().optional(),
-  name: z.string().optional(),
-  description: z.string().optional(),
-  sourceAppId: z.string().optional(),
-  sourceAppName: z.string().optional(),
-  mode: z.string().optional(),
-  createdAt: z.iso.datetime().optional(),
-})
-
-export const zAppRunnerBootstrapAssignment = z.object({
-  appId: z.string().optional(),
-  environmentId: z.string().optional(),
-  workflowId: z.string().optional(),
-  instanceId: z.string().optional(),
-  workspaceId: z.string().optional(),
-  instanceVersion: z.string().optional(),
-  bindingSnapshotVersion: z.string().optional(),
-  executionTokenVersion: z.string().optional(),
-  executionToken: z.string().optional(),
-  releaseId: z.string().optional(),
-})
-
-export const zAppRunnerBootstrapReply = z.object({
-  runnerId: z.string().optional(),
-  assignmentRevision: z.string().optional(),
-  assignments: z.array(zAppRunnerBootstrapAssignment).optional(),
-})
-
-export const zAppRunnerRunnerInfo = z.object({
-  hostname: z.string().optional(),
-})
-
-export const zAppRunnerBootstrapRequest = z.object({
-  runner: zAppRunnerRunnerInfo.optional(),
-})
-
-export const zAppRunnerRuntimeArtifactReply = z.object({
-  dslYaml: z.string().optional(),
-  bindingSnapshotVersion: z.string().optional(),
-  bindingSnapshot: z.record(z.string(), z.unknown()).optional(),
-})
-
-export const zAppRunnerRuntimeArtifactRequest = z.object({
-  instanceId: z.string().optional(),
-  releaseId: z.string().optional(),
-  bindingSnapshotVersion: z.string().optional(),
-})
-
-export const zAppRunnerBatchRuntimeArtifactRequest = z.object({
-  artifacts: z.array(zAppRunnerRuntimeArtifactRequest).optional(),
-})
-
-export const zAppRunnerRuntimeArtifactResult = z.object({
-  instanceId: z.string().optional(),
-  releaseId: z.string().optional(),
-  artifact: zAppRunnerRuntimeArtifactReply.optional(),
-  errorCode: z.string().optional(),
-  errorMessage: z.string().optional(),
-})
-
-export const zAppRunnerBatchRuntimeArtifactReply = z.object({
-  results: z.array(zAppRunnerRuntimeArtifactResult).optional(),
-})
-
-export const zAppRunnerTokenExchangeReply = z.object({
-  accessToken: z.string().optional(),
-  expiresAt: z.iso.datetime().optional(),
-})
-
-export const zAppRunnerTokenExchangeRequest = z.object({
-  joinToken: z.string().optional(),
-})
-
-/**
- * BootstrapProgress is step-list-agnostic. Reconcilers emit step names as
- * strings owned by each executor (e.g. "connectivity", "namespace"), so adding
- * or removing steps does not break the API.
- */
-export const zBootstrapProgress = z.object({
-  currentStep: z.string().optional(),
-  completedSteps: z.array(z.string()).optional(),
-  attemptCount: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-  lastAttemptAt: z.iso.datetime().optional(),
-  lastErrorCode: z.string().optional(),
-  lastErrorMessage: z.string().optional(),
+  app_ids: z.array(z.string()).optional(),
 })
 
 export const zBrandingInfo = z.object({
@@ -178,15 +48,6 @@ export const zBrandingInfo = z.object({
   loginPageLogo: z.string().optional(),
   workspaceLogo: z.string().optional(),
   favicon: z.string().optional(),
-})
-
-export const zCancelRuntimeDeploymentReply = z.object({
-  status: z.string().optional(),
-})
-
-export const zCancelRuntimeDeploymentReq = z.object({
-  appInstanceId: z.string().optional(),
-  runtimeInstanceId: z.string().optional(),
 })
 
 export const zCheckPasswordStatusReply = z.object({
@@ -202,55 +63,8 @@ export const zCheckPasswordStatusReply = z.object({
 
 export const zClearDefaultWorkspaceReply = z.record(z.string(), z.unknown())
 
-export const zCliAccess = z.object({
-  url: z.string().optional(),
-})
-
-export const zConsoleEnvironment = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  runtime: z.string().optional(),
-  type: z.string().optional(),
-  status: z.string().optional(),
-})
-
-export const zConsoleRelease = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  shortCommitId: z.string().optional(),
-  createdAt: z.iso.datetime().optional(),
-})
-
-export const zConsoleUser = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-})
-
-export const zCreateAppInstanceReply = z.object({
-  appInstanceId: z.string().optional(),
-  initialRelease: zConsoleRelease.optional(),
-})
-
-export const zCreateAppInstanceReq = z.object({
-  sourceAppId: z.string().optional(),
-  name: z.string().optional(),
-  description: z.string().optional(),
-})
-
 export const zCreateBearerTokenResponse = z.object({
   token: z.string().optional(),
-})
-
-export const zCreateDeploymentReply = z.object({
-  runtimeInstanceId: z.string().optional(),
-  deploymentId: z.string().optional(),
-  status: z.string().optional(),
-})
-
-export const zCreateDeveloperApiKeyReq = z.object({
-  appInstanceId: z.string().optional(),
-  environmentId: z.string().optional(),
-  name: z.string().optional(),
 })
 
 export const zCreateMemberReply = z.object({
@@ -275,12 +89,7 @@ export const zCreateNewGroupsReq = z.object({
   groups: z.array(zCreateNewGroupsReqGroup).optional(),
 })
 
-export const zCreateReleaseReply = z.object({
-  release: zConsoleRelease.optional(),
-})
-
-export const zCreateReleaseReq = z.object({
-  appInstanceId: z.string().optional(),
+export const zCreateResourceGroupRequest = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
 })
@@ -342,19 +151,8 @@ export const zDashboardSsosamlLoginReply = z.object({
   url: z.string().optional(),
 })
 
-export const zDeleteAppInstanceReply = z.record(z.string(), z.unknown())
-
-export const zDeleteDeveloperApiKeyReply = z.record(z.string(), z.unknown())
-
-export const zDeleteEnvironmentReply = z.record(z.string(), z.unknown())
-
 export const zDeleteGroupsRes = z.object({
   message: z.string().optional(),
-})
-
-export const zDeleteGuard = z.object({
-  canDelete: z.boolean().optional(),
-  disabledReason: z.string().optional(),
 })
 
 export const zDeleteMemberReply = z.object({
@@ -371,82 +169,6 @@ export const zDeleteUserReply = z.object({
 
 export const zDeleteWorkspaceReply = z.record(z.string(), z.unknown())
 
-export const zDeployedEnvironment = z.object({
-  environmentId: z.string().optional(),
-  environmentName: z.string().optional(),
-})
-
-export const zDeploymentCredentialOption = z.object({
-  credentialId: z.string().optional(),
-  displayName: z.string().optional(),
-  pluginId: z.string().optional(),
-  pluginName: z.string().optional(),
-  pluginVersion: z.string().optional(),
-})
-
-export const zDeploymentEnvVarOption = z.object({
-  envVarId: z.string().optional(),
-  name: z.string().optional(),
-  valueType: z.string().optional(),
-  displayValue: z.string().optional(),
-})
-
-export const zDeploymentBindingOptionSlot = z.object({
-  slot: z.string().optional(),
-  kind: z.string().optional(),
-  label: z.string().optional(),
-  required: z.boolean().optional(),
-  candidates: z.array(zDeploymentCredentialOption).optional(),
-  envVarCandidates: z.array(zDeploymentEnvVarOption).optional(),
-})
-
-export const zDeploymentEnvironmentOption = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  type: z.string().optional(),
-  backend: z.string().optional(),
-  status: z.string().optional(),
-  managedBy: z.string().optional(),
-  deployable: z.boolean().optional(),
-  disabledReason: z.string().optional(),
-})
-
-export const zDeploymentRuntimeBinding = z.object({
-  slot: z.string().optional(),
-  credentialId: z.string().optional(),
-  envVarId: z.string().optional(),
-})
-
-export const zCreateDeploymentReq = z.object({
-  appInstanceId: z.string().optional(),
-  environmentId: z.string().optional(),
-  releaseId: z.string().optional(),
-  bindings: z.array(zDeploymentRuntimeBinding).optional(),
-})
-
-export const zDeploymentStatusRow = z.object({
-  environment: zConsoleEnvironment.optional(),
-  release: zConsoleRelease.optional(),
-  status: z.string().optional(),
-})
-
-export const zDeveloperApiKeyRow = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  environment: zConsoleEnvironment.optional(),
-  maskedKey: z.string().optional(),
-})
-
-export const zCreateDeveloperApiKeyReply = z.object({
-  apiKey: zDeveloperApiKeyRow.optional(),
-  token: z.string().optional(),
-})
-
-export const zDeveloperApiAccess = z.object({
-  enabled: z.boolean().optional(),
-  apiKeys: z.array(zDeveloperApiKeyRow).optional(),
-})
-
 /**
  * System user setting messages
  */
@@ -454,53 +176,6 @@ export const zEnterpriseSystemUserSettingReply = z.object({
   ssoEnforcedForSignin: z.boolean().optional(),
   ssoEnforcedForSigninProtocol: z.string().optional(),
   enableEmailPasswordLogin: z.boolean().optional(),
-})
-
-export const zEnvironment = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  description: z.string().optional(),
-  mode: z.int().optional(),
-  namespace: z.string().optional(),
-  apiServer: z.string().optional(),
-  status: z.int().optional(),
-  statusMessage: z.string().optional(),
-  bootstrapProgress: zBootstrapProgress.optional(),
-  managedBy: z.string().optional(),
-  createdAt: z.iso.datetime().optional(),
-  updatedAt: z.iso.datetime().optional(),
-  backend: z.int().optional(),
-  host: z.string().optional(),
-})
-
-export const zCreateEnvironmentReply = z.object({
-  environment: zEnvironment.optional(),
-})
-
-export const zEnvironmentAccessRow = z.object({
-  environment: zConsoleEnvironment.optional(),
-  currentRelease: zConsoleRelease.optional(),
-  accessMode: z.string().optional(),
-  accessModeLabel: z.string().optional(),
-  hint: z.string().optional(),
-})
-
-export const zEnvironmentFilter = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  kind: z.string().optional(),
-})
-
-export const zGetAppInstanceOverviewReply = z.object({
-  instance: zAppInstanceBasicInfo.optional(),
-  deployments: z.array(zDeploymentStatusRow).optional(),
-  access: zAccessStatus.optional(),
-})
-
-export const zGetAppInstanceSettingsReply = z.object({
-  name: z.string().optional(),
-  description: z.string().optional(),
-  deleteGuard: zDeleteGuard.optional(),
 })
 
 export const zGetBearerTokenResponse = z.object({
@@ -511,23 +186,6 @@ export const zGetClusterInfoReply = z.object({
   mode: z.string().optional(),
   clusterId: z.string().optional(),
   verifyMode: z.string().optional(),
-})
-
-export const zGetEnvironmentAccessPolicyReply = z.object({
-  policy: zAccessPolicyDetail.optional(),
-})
-
-export const zGetEnvironmentReply = z.object({
-  environment: zEnvironment.optional(),
-})
-
-export const zGetInstanceReply = z.object({
-  instanceId: z.string().optional(),
-  status: z.string().optional(),
-  desiredReleaseId: z.string().optional(),
-  observedReleaseId: z.string().optional(),
-  currentDeploymentId: z.string().optional(),
-  version: z.string().optional(),
 })
 
 export const zGetLicenseStatusReply = z.object({
@@ -565,14 +223,25 @@ export const zGetWebAppWhitelistSubjectsResMember = z.object({
   avatar: z.string().optional(),
 })
 
+export const zGroupAppItem = z.object({
+  app_id: z.string().optional(),
+  app_name: z.string().optional(),
+  workspace_id: z.string().optional(),
+  workspace_name: z.string().optional(),
+  app_status: z.int().optional(),
+  token_usage: z.string().optional(),
+  rpm: z.string().optional(),
+  concurrency: z.string().optional(),
+})
+
 export const zHealthzReply = z.object({
   message: z.string().optional(),
   status: z.string().optional(),
 })
 
-export const zHostEnvironmentConfig = z.object({
-  machineId: z.string().optional(),
-  joinTokenHash: z.string().optional(),
+export const zInnerAdmission = z.object({
+  marker: z.string().optional(),
+  concurrencyGroupIds: z.array(z.string()).optional(),
 })
 
 export const zInnerBatchGetWebAppAccessModesByIdReq = z.object({
@@ -592,48 +261,8 @@ export const zInnerBatchIsUserAllowedToAccessWebAppRes = z.object({
   permissions: z.record(z.string(), z.boolean()).optional(),
 })
 
-export const zInnerCheckAppDeployAccessReply = z.object({
-  allowed: z.boolean().optional(),
-  matchedPolicyId: z.string().optional(),
-  matchedScopeType: z.string().optional(),
-  reason: z.string().optional(),
-  cacheTtlSeconds: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-})
-
-export const zInnerCheckAppDeployAccessReq = z.object({
-  appInstanceId: z.string().optional(),
-  environmentId: z.string().optional(),
-  principalType: z.string().optional(),
-  principalId: z.string().optional(),
-})
-
 export const zInnerCleanAppRes = z.object({
   message: z.string().optional(),
-})
-
-export const zInnerGetTokenRouteReply = z.object({
-  environmentId: z.string().optional(),
-  namespace: z.string().optional(),
-  serviceName: z.string().optional(),
-  servicePort: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-  environmentStatus: z.string().optional(),
-  appId: z.string().optional(),
-  tenantId: z.string().optional(),
-  instanceId: z.string().optional(),
-  observedReleaseId: z.string().optional(),
-  instanceStatus: z.string().optional(),
-})
-
-export const zInnerGetTokenRouteReq = z.object({
-  token: z.string().optional(),
 })
 
 export const zInnerGetWebAppAccessModeByCodeRes = z.object({
@@ -647,6 +276,12 @@ export const zInnerGetWebAppAccessModeByIdRes = z.object({
 export const zInnerIsUserAllowedToAccessWebAppRes = z.object({
   result: z.boolean().optional(),
 })
+
+export const zInnerReleaseAdmissionRequest = z.object({
+  admission: zInnerAdmission.optional(),
+})
+
+export const zInnerReleaseAdmissionResponse = z.record(z.string(), z.unknown())
 
 export const zInnerTryAddAccountToDefaultWorkspaceReply = z.object({
   workspaceId: z.string().optional(),
@@ -678,48 +313,32 @@ export const zJoinWorkspaceReq = z.object({
   role: z.string().optional(),
 })
 
-export const zK8sEnvironmentConfig = z.object({
-  namespace: z.string().optional(),
-  apiServer: z.string().optional(),
-  caBundle: z.string().optional(),
-  bearerToken: z.string().optional(),
+export const zLimitConfig = z.object({
+  type: z.int().optional(),
+  threshold: z.string().optional(),
+  action: z.int().optional(),
+  reached: z.boolean().optional(),
 })
 
-/**
- * Field-level validation only; target (api_server) and RBAC validation happen
- * in the bootstrap reconciler.
- */
-export const zCreateEnvironmentReq = z.object({
-  name: z.string().optional(),
-  description: z.string().optional(),
-  mode: z.int().optional(),
-  backend: z.int().optional(),
-  k8s: zK8sEnvironmentConfig.optional(),
-  host: zHostEnvironmentConfig.optional(),
+export const zInnerGroupConfig = z.object({
+  id: z.string().optional(),
+  enabled: z.boolean().optional(),
+  membershipId: z.string().optional(),
+  limits: z.array(zLimitConfig).optional(),
 })
 
-export const zLastError = z.object({
-  phase: z.string().optional(),
-  code: z.string().optional(),
-  message: z.string().optional(),
-  releaseId: z.string().optional(),
+export const zInnerResolveResponse = z.object({
+  appId: z.string().optional(),
+  groups: z.array(zInnerGroupConfig).optional(),
+  blocked: z.boolean().optional(),
+  blockGroupId: z.string().optional(),
+  blockReason: z.string().optional(),
+  admission: zInnerAdmission.optional(),
 })
 
-export const zAckDeploymentReq = z.object({
-  deploymentId: z.string().optional(),
-  instanceId: z.string().optional(),
-  expectedVersion: z.string().optional(),
-  status: z.string().optional(),
-  observedReleaseId: z.string().optional(),
-  lastError: zLastError.optional(),
-})
-
-export const zListDeploymentBindingOptionsReply = z.object({
-  slots: z.array(zDeploymentBindingOptionSlot).optional(),
-})
-
-export const zListDeploymentEnvironmentOptionsReply = z.object({
-  environments: z.array(zDeploymentEnvironmentOption).optional(),
+export const zListGroupAppsResponse = z.object({
+  items: z.array(zGroupAppItem).optional(),
+  total: z.string().optional(),
 })
 
 export const zLoginTypesReply = z.object({
@@ -871,31 +490,6 @@ export const zPluginInstallationSettingsReply = z.object({
   restrictToMarketplaceOnly: z.boolean().optional(),
 })
 
-export const zPreviewReleaseReq = z.object({
-  appInstanceId: z.string().optional(),
-  releaseId: z.string().optional(),
-})
-
-export const zReleaseRow = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  createdAt: z.iso.datetime().optional(),
-  createdBy: zConsoleUser.optional(),
-  deployedTo: z.array(zDeployedEnvironment).optional(),
-})
-
-export const zReleaseRuntimeBinding = z.object({
-  kind: z.string().optional(),
-  label: z.string().optional(),
-  displayValue: z.string().optional(),
-  valueType: z.string().optional(),
-})
-
-export const zPreviewReleaseReply = z.object({
-  release: zConsoleRelease.optional(),
-  bindings: z.array(zReleaseRuntimeBinding).optional(),
-})
-
 export const zResetMemberPasswordReply = z.object({
   id: z.string().optional(),
   password: z.string().optional(),
@@ -930,26 +524,56 @@ export const zResetUserPasswordReq = z.object({
   id: z.string().optional(),
 })
 
-export const zResolveCredentialsReq = z.object({
-  instanceId: z.string().optional(),
-  deploymentId: z.string().optional(),
-  slots: z.array(z.string()).optional(),
+export const zResourceGroupDetail = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  rpm_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  rpm_action: z.int().optional(),
+  concurrency_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  concurrency_action: z.int().optional(),
+  token_quota: z.string().optional(),
+  token_action: z.int().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 })
 
-/**
- * Exactly one of credential_id / env_var_id is populated; model/plugin slots
- * carry credential_id (pool A), env_var slots carry env_var_id (pool B).
- * See design §4.1.
- */
-export const zResolvedCredential = z.object({
-  slot: z.string().optional(),
-  credentialId: z.string().optional(),
-  envVarId: z.string().optional(),
-  value: z.string().optional(),
+export const zResourceGroupItem = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  rpm_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  concurrency_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  token_quota: z.string().optional(),
+  token_usage: z.string().optional(),
+  app_count: z.string().optional(),
+  rpm_status: z.int().optional(),
+  conc_status: z.int().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 })
 
-export const zResolveCredentialsReply = z.object({
-  resolved: z.array(zResolvedCredential).optional(),
+export const zListResourceGroupsResponse = z.object({
+  items: z.array(zResourceGroupItem).optional(),
+  total: z.string().optional(),
 })
 
 /**
@@ -1000,44 +624,6 @@ export const zLicenseInfo = z.object({
  */
 export const zGetLicenseReply = z.object({
   license: zLicenseInfo.optional(),
-})
-
-export const zRetryEnvironmentReply = z.object({
-  environment: zEnvironment.optional(),
-})
-
-export const zRetryEnvironmentReq = z.object({
-  id: z.string().optional(),
-})
-
-export const zRuntimeEndpoints = z.object({
-  run: z.string().optional(),
-  health: z.string().optional(),
-})
-
-export const zRuntimeInstanceDetail = z.object({
-  deploymentName: z.string().optional(),
-  replicas: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-  runtimeMode: z.string().optional(),
-  runtimeNote: z.string().optional(),
-  endpoints: zRuntimeEndpoints.optional(),
-  bindings: z.array(zReleaseRuntimeBinding).optional(),
-})
-
-export const zRuntimeInstanceRow = z.object({
-  id: z.string().optional(),
-  environment: zConsoleEnvironment.optional(),
-  status: z.string().optional(),
-  currentRelease: zConsoleRelease.optional(),
-  detail: zRuntimeInstanceDetail.optional(),
-})
-
-export const zListRuntimeInstancesReply = z.object({
-  data: z.array(zRuntimeInstanceRow).optional(),
 })
 
 /**
@@ -1102,8 +688,21 @@ export const zScimSettings = z.object({
   lastSyncTime: z.iso.datetime().optional(),
 })
 
-export const zSearchAccessSubjectsReply = z.object({
-  data: z.array(zAccessSubjectDisplay).optional(),
+export const zSearchAppItem = z.object({
+  app_id: z.string().optional(),
+  app_name: z.string().optional(),
+  workspace_id: z.string().optional(),
+  workspace_name: z.string().optional(),
+  app_status: z.int().optional(),
+  icon: z.string().optional(),
+  icon_type: z.string().optional(),
+  icon_background: z.string().optional(),
+  created_by_name: z.string().optional(),
+})
+
+export const zSearchAppsResponse = z.object({
+  items: z.array(zSearchAppItem).optional(),
+  total: z.string().optional(),
 })
 
 export const zSecretKey = z.object({
@@ -1120,25 +719,6 @@ export const zSetDefaultWorkspaceReply = z.object({
 
 export const zSetDefaultWorkspaceReq = z.object({
   id: z.string().optional(),
-})
-
-export const zStatusCount = z.object({
-  status: z.string().optional(),
-  count: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-})
-
-export const zAppInstanceCard = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  icon: z.string().optional(),
-  mode: z.string().optional(),
-  sourceAppName: z.string().optional(),
-  statuses: z.array(zStatusCount).optional(),
-  lastDeployedAt: z.iso.datetime().optional(),
 })
 
 export const zSubjectAccountData = z.object({
@@ -1214,35 +794,7 @@ export const zTestConnectionReply = z.object({
   error: z.string().optional(),
 })
 
-export const zTestEnvironmentConnectionReply = z.object({
-  ok: z.boolean().optional(),
-  reachableServerVersion: z.string().optional(),
-  namespaceExists: z.boolean().optional(),
-  missingPermissions: z.array(z.string()).optional(),
-  error: z.string().optional(),
-  probedAt: z.iso.datetime().optional(),
-})
-
-export const zTestEnvironmentConnectionReq = z.object({
-  id: z.string().optional(),
-})
-
 export const zToggleEndpointRequest = z.object({
-  enabled: z.boolean().optional(),
-})
-
-export const zUndeployRuntimeInstanceReply = z.object({
-  deploymentId: z.string().optional(),
-  status: z.string().optional(),
-})
-
-export const zUndeployRuntimeInstanceReq = z.object({
-  appInstanceId: z.string().optional(),
-  runtimeInstanceId: z.string().optional(),
-})
-
-export const zUpdateAccessChannelsReq = z.object({
-  appInstanceId: z.string().optional(),
   enabled: z.boolean().optional(),
 })
 
@@ -1255,52 +807,12 @@ export const zUpdateAccessModeRes = z.object({
   message: z.string().optional(),
 })
 
-export const zUpdateAppInstanceReply = z.object({
-  appInstanceId: z.string().optional(),
-})
-
-export const zUpdateAppInstanceReq = z.object({
-  appInstanceId: z.string().optional(),
-  name: z.string().optional(),
-  description: z.string().optional(),
-})
-
 export const zUpdateBrandingInfoReq = z.object({
   enabled: z.boolean().optional(),
   applicationTitle: z.string().optional(),
   loginPageLogo: z.string().optional(),
   workspaceLogo: z.string().optional(),
   favicon: z.string().optional(),
-})
-
-export const zUpdateDeveloperApiReply = z.object({
-  developerApi: zDeveloperApiAccess.optional(),
-})
-
-export const zUpdateDeveloperApiReq = z.object({
-  appInstanceId: z.string().optional(),
-  enabled: z.boolean().optional(),
-})
-
-export const zUpdateEnvironmentAccessPolicyReply = z.object({
-  permission: zEnvironmentAccessRow.optional(),
-})
-
-export const zUpdateEnvironmentAccessPolicyReq = z.object({
-  appInstanceId: z.string().optional(),
-  environmentId: z.string().optional(),
-  accessMode: z.string().optional(),
-  subjects: z.array(zAccessSubject).optional(),
-})
-
-export const zUpdateEnvironmentReply = z.object({
-  environment: zEnvironment.optional(),
-})
-
-export const zUpdateEnvironmentReq = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  description: z.string().optional(),
 })
 
 export const zUpdateGroupSubjectsReq = z.object({
@@ -1386,6 +898,27 @@ export const zUpdatePluginInstallationSettingsRequest = z.object({
   restrictToMarketplaceOnly: z.boolean().optional(),
 })
 
+export const zUpdateResourceGroupRequest = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  enabled: z.boolean().optional(),
+  rpm_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  rpm_action: z.int().optional(),
+  concurrency_limit: z
+    .int()
+    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
+    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
+    .optional(),
+  concurrency_action: z.int().optional(),
+  token_quota: z.string().optional(),
+  token_action: z.int().optional(),
+})
+
 export const zUpdateUserReply = z.object({
   account: zAccountDetail.optional(),
 })
@@ -1428,27 +961,6 @@ export const zUpdateWorkspaceReq = z.object({
   name: z.string().optional(),
   email: z.string().optional(),
   status: z.string().optional(),
-})
-
-export const zWebAppAccessRow = z.object({
-  environment: zConsoleEnvironment.optional(),
-  url: z.string().optional(),
-})
-
-export const zAccessChannels = z.object({
-  enabled: z.boolean().optional(),
-  webappRows: z.array(zWebAppAccessRow).optional(),
-  cli: zCliAccess.optional(),
-})
-
-export const zGetAppInstanceAccessReply = z.object({
-  permissions: z.array(zEnvironmentAccessRow).optional(),
-  accessChannels: zAccessChannels.optional(),
-  developerApi: zDeveloperApiAccess.optional(),
-})
-
-export const zUpdateAccessChannelsReply = z.object({
-  accessChannels: zAccessChannels.optional(),
 })
 
 export const zWebAppAuthInfo = z.object({
@@ -1572,24 +1084,8 @@ export const zPagination = z.object({
     .optional(),
 })
 
-export const zListAppInstancesReply = z.object({
-  filters: z.array(zEnvironmentFilter).optional(),
-  data: z.array(zAppInstanceCard).optional(),
-  pagination: zPagination.optional(),
-})
-
-export const zListEnvironmentsReply = z.object({
-  data: z.array(zEnvironment).optional(),
-  pagination: zPagination.optional(),
-})
-
 export const zListMembersReply = z.object({
   data: z.array(zAccountDetail).optional(),
-  pagination: zPagination.optional(),
-})
-
-export const zListReleasesReply = z.object({
-  data: z.array(zReleaseRow).optional(),
   pagination: zPagination.optional(),
 })
 
@@ -1607,271 +1103,6 @@ export const zListWorkspacesReply = z.object({
   data: z.array(zWorkspace).optional(),
   pagination: zPagination.optional(),
 })
-
-export const zEnterpriseAppDeployConsoleListAppInstancesQuery = z.object({
-  environmentId: z.string().optional(),
-  notDeployed: z.boolean().optional(),
-  query: z.string().optional(),
-  pageNumber: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-  resultsPerPage: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleListAppInstancesResponse = zListAppInstancesReply
-
-export const zEnterpriseAppDeployConsoleCreateAppInstanceBody = zCreateAppInstanceReq
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleCreateAppInstanceResponse = zCreateAppInstanceReply
-
-export const zEnterpriseAppDeployConsoleDeleteAppInstancePath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleDeleteAppInstanceResponse = zDeleteAppInstanceReply
-
-export const zEnterpriseAppDeployConsoleUpdateAppInstanceBody = zUpdateAppInstanceReq
-
-export const zEnterpriseAppDeployConsoleUpdateAppInstancePath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleUpdateAppInstanceResponse = zUpdateAppInstanceReply
-
-export const zEnterpriseAppDeployConsoleGetAppInstanceAccessPath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleGetAppInstanceAccessResponse = zGetAppInstanceAccessReply
-
-export const zEnterpriseAppDeployConsoleUpdateAccessChannelsBody = zUpdateAccessChannelsReq
-
-export const zEnterpriseAppDeployConsoleUpdateAccessChannelsPath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleUpdateAccessChannelsResponse = zUpdateAccessChannelsReply
-
-export const zEnterpriseAppDeployConsoleSearchAccessSubjectsPath = z.object({
-  appInstanceId: z.string(),
-})
-
-export const zEnterpriseAppDeployConsoleSearchAccessSubjectsQuery = z.object({
-  keyword: z.string().optional(),
-  subjectTypes: z.array(z.string()).optional(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleSearchAccessSubjectsResponse = zSearchAccessSubjectsReply
-
-export const zEnterpriseAppDeployConsoleCreateDeveloperApiKeyBody = zCreateDeveloperApiKeyReq
-
-export const zEnterpriseAppDeployConsoleCreateDeveloperApiKeyPath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleCreateDeveloperApiKeyResponse = zCreateDeveloperApiKeyReply
-
-export const zEnterpriseAppDeployConsoleDeleteDeveloperApiKeyPath = z.object({
-  appInstanceId: z.string(),
-  apiKeyId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleDeleteDeveloperApiKeyResponse = zDeleteDeveloperApiKeyReply
-
-export const zEnterpriseAppDeployConsoleListDeploymentBindingOptionsPath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleListDeploymentBindingOptionsResponse
-  = zListDeploymentBindingOptionsReply
-
-export const zEnterpriseAppDeployConsoleCreateDeploymentBody = zCreateDeploymentReq
-
-export const zEnterpriseAppDeployConsoleCreateDeploymentPath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleCreateDeploymentResponse = zCreateDeploymentReply
-
-export const zEnterpriseAppDeployConsoleUpdateDeveloperApiBody = zUpdateDeveloperApiReq
-
-export const zEnterpriseAppDeployConsoleUpdateDeveloperApiPath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleUpdateDeveloperApiResponse = zUpdateDeveloperApiReply
-
-export const zEnterpriseAppDeployConsoleGetEnvironmentAccessPolicyPath = z.object({
-  appInstanceId: z.string(),
-  environmentId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleGetEnvironmentAccessPolicyResponse
-  = zGetEnvironmentAccessPolicyReply
-
-export const zEnterpriseAppDeployConsoleUpdateEnvironmentAccessPolicyBody
-  = zUpdateEnvironmentAccessPolicyReq
-
-export const zEnterpriseAppDeployConsoleUpdateEnvironmentAccessPolicyPath = z.object({
-  appInstanceId: z.string(),
-  environmentId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleUpdateEnvironmentAccessPolicyResponse
-  = zUpdateEnvironmentAccessPolicyReply
-
-export const zEnterpriseAppDeployConsoleGetAppInstanceOverviewPath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleGetAppInstanceOverviewResponse
-  = zGetAppInstanceOverviewReply
-
-export const zEnterpriseAppDeployConsoleListReleasesPath = z.object({
-  appInstanceId: z.string(),
-})
-
-export const zEnterpriseAppDeployConsoleListReleasesQuery = z.object({
-  pageNumber: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-  resultsPerPage: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleListReleasesResponse = zListReleasesReply
-
-export const zEnterpriseAppDeployConsoleCreateReleaseBody = zCreateReleaseReq
-
-export const zEnterpriseAppDeployConsoleCreateReleasePath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleCreateReleaseResponse = zCreateReleaseReply
-
-export const zEnterpriseAppDeployConsolePreviewReleaseBody = zPreviewReleaseReq
-
-export const zEnterpriseAppDeployConsolePreviewReleasePath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsolePreviewReleaseResponse = zPreviewReleaseReply
-
-export const zEnterpriseAppDeployConsoleListRuntimeInstancesPath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleListRuntimeInstancesResponse = zListRuntimeInstancesReply
-
-export const zEnterpriseAppDeployConsoleCancelRuntimeDeploymentBody = zCancelRuntimeDeploymentReq
-
-export const zEnterpriseAppDeployConsoleCancelRuntimeDeploymentPath = z.object({
-  appInstanceId: z.string(),
-  runtimeInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleCancelRuntimeDeploymentResponse
-  = zCancelRuntimeDeploymentReply
-
-export const zEnterpriseAppDeployConsoleUndeployRuntimeInstanceBody = zUndeployRuntimeInstanceReq
-
-export const zEnterpriseAppDeployConsoleUndeployRuntimeInstancePath = z.object({
-  appInstanceId: z.string(),
-  runtimeInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleUndeployRuntimeInstanceResponse
-  = zUndeployRuntimeInstanceReply
-
-export const zEnterpriseAppDeployConsoleGetAppInstanceSettingsPath = z.object({
-  appInstanceId: z.string(),
-})
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleGetAppInstanceSettingsResponse
-  = zGetAppInstanceSettingsReply
-
-/**
- * OK
- */
-export const zEnterpriseAppDeployConsoleListDeploymentEnvironmentOptionsResponse
-  = zListDeploymentEnvironmentOptionsReply
 
 /**
  * OK
