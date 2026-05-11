@@ -39,6 +39,48 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         Relationship fields (like offload_data) are not loaded from LogStore.
     """
     logger.debug("_dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
+    triggered_from_val = data.get("triggered_from")
+
+    try:
+        triggered_from = (
+            WorkflowNodeExecutionTriggeredFrom(str(triggered_from_val))
+            if triggered_from_val
+            else WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+        )
+    except ValueError:
+        logger.warning("Invalid triggered_from value: %s, falling back to WORKFLOW_RUN", triggered_from_val)
+        triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+
+    created_by_role_val = data.get("created_by_role")
+    try:
+        created_by_role = (
+            CreatorUserRole(str(created_by_role_val)) if created_by_role_val else CreatorUserRole.ACCOUNT
+        )
+    except ValueError:
+        logger.warning("Invalid created_by_role value: %s, falling back to ACCOUNT", created_by_role_val)
+        created_by_role = CreatorUserRole.ACCOUNT
+
+    # Handle datetime fields
+    created_at = data.get("created_at")
+    if created_at:
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at)
+        elif isinstance(created_at, (int, float)):
+            created_at = datetime.fromtimestamp(created_at)
+        else:
+            created_at = created_at
+    else:
+        # Provide default created_at if missing
+        created_at = datetime.now()
+
+    finished_at = data.get("finished_at")
+    if finished_at:
+        if isinstance(finished_at, str):
+            finished_at = datetime.fromisoformat(finished_at)
+        elif isinstance(finished_at, (int, float)):
+            finished_at = datetime.fromtimestamp(finished_at)
+        else:
+            finished_at = finished_at
     # Create model instance without session
     model = WorkflowNodeExecutionModel(
         # Map all required fields with validation
@@ -48,64 +90,26 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         app_id=data.get("app_id") or "",
         workflow_id=data.get("workflow_id") or "",
         # Optional fields
-        workflow_run_id=data.get("workflow_run_id"),
-        predecessor_node_id=data.get("predecessor_node_id"),
-        node_execution_id=data.get("node_execution_id"),
-        inputs=data.get("inputs"),
-        process_data=data.get("process_data"),
-        outputs=data.get("outputs"),
-        error=data.get("error"),
-        execution_metadata=data.get("execution_metadata"),
-        node_id=data.get("node_id") or "",
-        node_type=data.get("node_type") or "",
-        status=WorkflowNodeExecutionStatus(data.get("status") or "running"),
-        title=data.get("title") or "",
+        workflow_run_id = data.get("workflow_run_id")
+        ,predecessor_node_id = data.get("predecessor_node_id")
+        ,node_execution_id = data.get("node_execution_id")
+        ,inputs = data.get("inputs")
+        ,process_data = data.get("process_data")
+        ,outputs = data.get("outputs")
+        ,error = data.get("error")
+        ,execution_metadata = data.get("execution_metadata")
+        ,node_id = data.get("node_id") or ""
+        ,node_type = data.get("node_type") or ""
+        ,status = WorkflowNodeExecutionStatus(data.get("status") or "running")
+        ,title = data.get("title") or ""
+        ,index = safe_int(data.get("index", 0))
+        ,elapsed_time = safe_float(data.get("elapsed_time", 0))
+        ,created_by = data.get("created_by") or ""
+        ,triggered_from=triggered_from
+        ,created_by_role=created_by_role
+        ,created_at=created_at
+        ,finished_at=finished_at
     )
-    triggered_from_val = data.get("triggered_from")
-
-    try:
-        model.triggered_from = (
-            WorkflowNodeExecutionTriggeredFrom(str(triggered_from_val))
-            if triggered_from_val
-            else WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
-        )
-    except ValueError:
-        logger.warning("Invalid triggered_from value: %s, falling back to WORKFLOW_RUN", triggered_from_val)
-        model.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
-    created_by_role_val = data.get("created_by_role")
-    try:
-        model.created_by_role = (
-            CreatorUserRole(str(created_by_role_val)) if created_by_role_val else CreatorUserRole.ACCOUNT
-        )
-    except ValueError:
-        logger.warning("Invalid created_by_role value: %s, falling back to ACCOUNT", created_by_role_val)
-        model.created_by_role = CreatorUserRole.ACCOUNT
-    model.created_by = data.get("created_by") or ""
-
-    model.index = safe_int(data.get("index", 0))
-    model.elapsed_time = safe_float(data.get("elapsed_time", 0))
-
-    # Handle datetime fields
-    created_at = data.get("created_at")
-    if created_at:
-        if isinstance(created_at, str):
-            model.created_at = datetime.fromisoformat(created_at)
-        elif isinstance(created_at, (int, float)):
-            model.created_at = datetime.fromtimestamp(created_at)
-        else:
-            model.created_at = created_at
-    else:
-        # Provide default created_at if missing
-        model.created_at = datetime.now()
-
-    finished_at = data.get("finished_at")
-    if finished_at:
-        if isinstance(finished_at, str):
-            model.finished_at = datetime.fromisoformat(finished_at)
-        elif isinstance(finished_at, (int, float)):
-            model.finished_at = datetime.fromtimestamp(finished_at)
-        else:
-            model.finished_at = finished_at
 
     return model
 
