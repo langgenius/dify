@@ -66,8 +66,8 @@ from .base import Base, DefaultFieldsDCMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 
-# UploadFile uses TypeBase while workflow execution offload models use Base, so relationships
-# must target the class object directly instead of relying on string lookup across registries.
+# Base and TypeBase use separate declarative registries. Relationships that cross
+# those registries must target class objects or callables instead of string lookups.
 from .model import UploadFile
 from .types import EnumText, LongText, StringUUID
 from .utils.file_input_compat import (
@@ -989,7 +989,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     offload_data: Mapped[list[WorkflowNodeExecutionOffload]] = orm.relationship(
-        "WorkflowNodeExecutionOffload",
+        lambda: WorkflowNodeExecutionOffload,
         primaryjoin=lambda: (
             WorkflowNodeExecutionModel.id == orm.foreign(WorkflowNodeExecutionOffload.node_execution_id)
         ),
@@ -1133,6 +1133,13 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
 
 
 class WorkflowNodeExecutionOffload(Base):
+    """External storage reference for oversized workflow node execution fields.
+
+    This model is intentionally kept on ``Base`` while ``WorkflowNodeExecutionModel`` is
+    on ``TypeBase``. Cross-registry relationships must therefore use callable targets
+    and explicit joins instead of SQLAlchemy's registry-local string resolution.
+    """
+
     __tablename__ = "workflow_node_execution_offload"
     __table_args__ = (
         # PostgreSQL 14 treats NULL values as distinct in unique constraints by default,
@@ -1189,11 +1196,12 @@ class WorkflowNodeExecutionOffload(Base):
     file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     execution: Mapped[WorkflowNodeExecutionModel] = orm.relationship(
+        lambda: WorkflowNodeExecutionModel,
         foreign_keys=[node_execution_id],
         lazy="raise",
         uselist=False,
         primaryjoin=lambda: (
-            WorkflowNodeExecutionOffload.node_execution_id == orm.foreign(WorkflowNodeExecutionModel.id)
+            orm.foreign(WorkflowNodeExecutionOffload.node_execution_id) == WorkflowNodeExecutionModel.id
         ),
         back_populates="offload_data",
     )
