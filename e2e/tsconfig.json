@@ -1,16 +1,9 @@
 {
+  "extends": "@dify/tsconfig/node.json",
   "compilerOptions": {
-    "target": "ES2023",
     "lib": ["ES2023", "DOM"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "allowJs": false,
-    "resolveJsonModule": true,
-    "noEmit": true,
-    "strict": true,
-    "skipLibCheck": true,
     "types": ["node", "@playwright/test", "@cucumber/cucumber"],
-    "isolatedModules": true,
+    "allowJs": false,
     "verbatimModuleSyntax": true
   },
   "include": ["./**/*.ts"],

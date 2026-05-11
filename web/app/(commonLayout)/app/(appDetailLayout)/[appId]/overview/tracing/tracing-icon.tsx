@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { TracingIcon as Icon } from '@/app/components/base/icons/src/public/tracing'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -10,7 +10,7 @@ type Props = {
 }
 
 const sizeClassMap = {
-  lg: 'w-9 h-9 p-2 radius-lg',
+  lg: 'w-9 h-9 p-2 rounded-[10px]',
   md: 'w-6 h-6 p-1 rounded-lg',
 }
 

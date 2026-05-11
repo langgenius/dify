@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.conversation as conversation_module
@@ -53,10 +54,10 @@ def user():
 
 class TestConversationListApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_get_success(self, app, chat_app, user):
+    def test_get_success(self, app: Flask, chat_app, user):
         api = conversation_module.ConversationListApi()
         method = unwrap(api.get)
 
@@ -81,7 +82,7 @@ class TestConversationListApi:
         assert result["has_more"] is False
         assert len(result["data"]) == 2
 
-    def test_last_conversation_not_exists(self, app, chat_app, user):
+    def test_last_conversation_not_exists(self, app: Flask, chat_app, user):
         api = conversation_module.ConversationListApi()
         method = unwrap(api.get)
 
@@ -97,7 +98,7 @@ class TestConversationListApi:
             with pytest.raises(NotFound):
                 method(chat_app)
 
-    def test_wrong_app_mode(self, app, non_chat_app):
+    def test_wrong_app_mode(self, app: Flask, non_chat_app):
         api = conversation_module.ConversationListApi()
         method = unwrap(api.get)
 
@@ -108,10 +109,10 @@ class TestConversationListApi:
 
 class TestConversationApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_delete_success(self, app, chat_app, user):
+    def test_delete_success(self, app: Flask, chat_app, user):
         api = conversation_module.ConversationApi()
         method = unwrap(api.delete)
 
@@ -129,7 +130,7 @@ class TestConversationApi:
         assert status == 204
         assert body["result"] == "success"
 
-    def test_delete_not_found(self, app, chat_app, user):
+    def test_delete_not_found(self, app: Flask, chat_app, user):
         api = conversation_module.ConversationApi()
         method = unwrap(api.delete)
 
@@ -145,7 +146,7 @@ class TestConversationApi:
             with pytest.raises(NotFound):
                 method(chat_app, "cid")
 
-    def test_delete_wrong_app_mode(self, app, non_chat_app):
+    def test_delete_wrong_app_mode(self, app: Flask, non_chat_app):
         api = conversation_module.ConversationApi()
         method = unwrap(api.delete)
 
@@ -156,10 +157,10 @@ class TestConversationApi:
 
 class TestConversationRenameApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_rename_success(self, app, chat_app, user):
+    def test_rename_success(self, app: Flask, chat_app, user):
         api = conversation_module.ConversationRenameApi()
         method = unwrap(api.post)
 
@@ -178,7 +179,7 @@ class TestConversationRenameApi:
 
         assert result["id"] == "cid"
 
-    def test_rename_not_found(self, app, chat_app, user):
+    def test_rename_not_found(self, app: Flask, chat_app, user):
         api = conversation_module.ConversationRenameApi()
         method = unwrap(api.post)
 
@@ -197,10 +198,10 @@ class TestConversationRenameApi:
 
 class TestConversationPinApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_pin_success(self, app, chat_app, user):
+    def test_pin_success(self, app: Flask, chat_app, user):
         api = conversation_module.ConversationPinApi()
         method = unwrap(api.patch)
 
@@ -219,10 +220,10 @@ class TestConversationPinApi:
 
 class TestConversationUnPinApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers):
+    def app(self, flask_app_with_containers: Flask):
         return flask_app_with_containers
 
-    def test_unpin_success(self, app, chat_app, user):
+    def test_unpin_success(self, app: Flask, chat_app, user):
         api = conversation_module.ConversationUnPinApi()
         method = unwrap(api.patch)
 

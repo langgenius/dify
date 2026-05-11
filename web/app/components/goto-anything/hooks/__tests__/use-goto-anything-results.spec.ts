@@ -29,10 +29,15 @@ vi.mock('@/context/i18n', () => ({
 
 const mockMatchAction = vi.fn()
 const mockSearchAnything = vi.fn()
+const mockGetRecentItems = vi.fn(() => [] as Array<Record<string, unknown>>)
 
 vi.mock('../../actions', () => ({
   matchAction: (...args: unknown[]) => mockMatchAction(...args),
   searchAnything: (...args: unknown[]) => mockSearchAnything(...args),
+}))
+
+vi.mock('../../actions/recent-store', () => ({
+  getRecentItems: () => mockGetRecentItems(),
 }))
 
 const createMockActionItem = (key: '@app' | '@knowledge' | '@plugin' | '@node' | '/') => ({
@@ -61,6 +66,7 @@ describe('useGotoAnythingResults', () => {
     capturedQueryFn = null
     mockMatchAction.mockReset()
     mockSearchAnything.mockReset()
+    mockGetRecentItems.mockReturnValue([])
   })
 
   describe('initialization', () => {
@@ -105,8 +111,8 @@ describe('useGotoAnythingResults', () => {
       const { result } = renderHook(() => useGotoAnythingResults(createMockOptions()))
 
       expect(result.current.dedupedResults).toHaveLength(2)
-      expect(result.current.dedupedResults[0].id).toBe('1')
-      expect(result.current.dedupedResults[1].id).toBe('2')
+      expect(result.current.dedupedResults[0]!.id).toBe('1')
+      expect(result.current.dedupedResults[1]!.id).toBe('2')
     })
 
     it('should keep first occurrence when duplicates exist', () => {
@@ -123,7 +129,7 @@ describe('useGotoAnythingResults', () => {
       const { result } = renderHook(() => useGotoAnythingResults(createMockOptions()))
 
       expect(result.current.dedupedResults).toHaveLength(1)
-      expect(result.current.dedupedResults[0].title).toBe('First')
+      expect(result.current.dedupedResults[0]!.title).toBe('First')
     })
 
     it('should handle different types with same id', () => {
@@ -294,6 +300,59 @@ describe('useGotoAnythingResults', () => {
       const { result } = renderHook(() => useGotoAnythingResults(createMockOptions()))
 
       expect(result.current.searchResults).toEqual([])
+    })
+  })
+
+  describe('recent results', () => {
+    it('surfaces recent items when the search query is empty', () => {
+      mockGetRecentItems.mockReturnValue([
+        { id: 'app-1', title: 'My App', description: 'Desc', path: '/app/app-1', originalType: 'app' },
+        { id: 'kb-1', title: 'My KB', path: '/datasets/kb-1', originalType: 'knowledge' },
+      ])
+
+      const { result } = renderHook(() => useGotoAnythingResults(createMockOptions({
+        searchQueryDebouncedValue: '',
+      })))
+
+      expect(result.current.dedupedResults).toHaveLength(2)
+      expect(result.current.dedupedResults[0]).toMatchObject({
+        id: 'recent-app-1',
+        type: 'recent',
+        originalType: 'app',
+        path: '/app/app-1',
+        data: { path: '/app/app-1' },
+      })
+      expect(result.current.groupedResults.recent).toHaveLength(2)
+    })
+
+    it('does not surface recent items when a query is active', () => {
+      mockGetRecentItems.mockReturnValue([
+        { id: 'app-1', title: 'My App', path: '/app/app-1', originalType: 'app' },
+      ])
+      mockQueryResult = {
+        data: [{ id: 's1', type: 'app', title: 'Searched' }],
+        isLoading: false,
+        isError: false,
+        error: null,
+      }
+
+      const { result } = renderHook(() => useGotoAnythingResults(createMockOptions({
+        searchQueryDebouncedValue: 'foo',
+      })))
+
+      expect(result.current.dedupedResults.map(r => r.id)).toEqual(['s1'])
+    })
+
+    it('does not surface recent items in commands mode', () => {
+      mockGetRecentItems.mockReturnValue([
+        { id: 'app-1', title: 'My App', path: '/app/app-1', originalType: 'app' },
+      ])
+
+      const { result } = renderHook(() => useGotoAnythingResults(createMockOptions({
+        isCommandsMode: true,
+      })))
+
+      expect(result.current.dedupedResults).toEqual([])
     })
   })
 

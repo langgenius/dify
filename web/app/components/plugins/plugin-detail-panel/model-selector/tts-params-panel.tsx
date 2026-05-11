@@ -1,7 +1,7 @@
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/base/ui/select'
 import { languages } from '@/i18n-config/language'
 
 type Props = {
@@ -37,7 +37,7 @@ const TTSParamsPanel = ({
   return (
     <>
       <div className="mb-3">
-        <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
+        <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
           {t('voice.voiceSettings.language', { ns: 'appDebug' })}
         </div>
         <Select
@@ -58,14 +58,15 @@ const TTSParamsPanel = ({
           <SelectContent popupClassName="w-[354px]">
             {supportedLanguages.map(item => (
               <SelectItem key={item.value} value={item.value}>
-                {item.name}
+                <SelectItemText>{item.name}</SelectItemText>
+                <SelectItemIndicator />
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
       <div className="mb-3">
-        <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
+        <div className="mb-1 flex items-center py-1 system-sm-semibold text-text-secondary">
           {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
         </div>
         <Select
@@ -86,7 +87,8 @@ const TTSParamsPanel = ({
           <SelectContent popupClassName="w-[354px]">
             {voiceList.map(item => (
               <SelectItem key={item.value} value={item.value}>
-                {item.label}
+                <SelectItemText>{item.label}</SelectItemText>
+                <SelectItemIndicator />
               </SelectItem>
             ))}
           </SelectContent>

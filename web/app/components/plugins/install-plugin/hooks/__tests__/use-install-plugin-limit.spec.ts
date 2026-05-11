@@ -1,19 +1,7 @@
-import { renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
 import { InstallationScope } from '@/types/feature'
 import { pluginInstallLimit } from '../use-install-plugin-limit'
-
-const mockSystemFeatures = {
-  plugin_installation_permission: {
-    restrict_to_marketplace_only: false,
-    plugin_installation_scope: InstallationScope.ALL,
-  },
-}
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector: (state: { systemFeatures: typeof mockSystemFeatures }) => unknown) =>
-    selector({ systemFeatures: mockSystemFeatures }),
-}))
 
 const basePlugin = {
   from: 'marketplace' as const,

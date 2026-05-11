@@ -1,11 +1,11 @@
 import time
 
 import click
+from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from sqlalchemy import func, select
 
 import app
 from configs import dify_config
-from core.rag.datasource.vdb.tidb_on_qdrant.tidb_service import TidbService
 from extensions.ext_database import db
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
@@ -57,6 +57,7 @@ def create_clusters(batch_size):
                 cluster_name=new_cluster["cluster_name"],
                 account=new_cluster["account"],
                 password=new_cluster["password"],
+                qdrant_endpoint=new_cluster.get("qdrant_endpoint"),
                 active=False,
                 status=TidbAuthBindingStatus.CREATING,
             )

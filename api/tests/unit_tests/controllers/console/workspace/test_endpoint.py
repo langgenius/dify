@@ -1,15 +1,19 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
+from controllers.console import console_ns
 from controllers.console.workspace.endpoint import (
-    EndpointCreateApi,
-    EndpointDeleteApi,
+    DeprecatedEndpointCreateApi,
+    DeprecatedEndpointDeleteApi,
+    DeprecatedEndpointUpdateApi,
+    EndpointCollectionApi,
     EndpointDisableApi,
     EndpointEnableApi,
+    EndpointItemApi,
     EndpointListApi,
     EndpointListForSinglePluginApi,
-    EndpointUpdateApi,
 )
 from core.plugin.impl.exc import PluginPermissionDeniedError
 
@@ -35,9 +39,9 @@ def patch_current_account(user_and_tenant):
 
 
 @pytest.mark.usefixtures("patch_current_account")
-class TestEndpointCreateApi:
-    def test_create_success(self, app):
-        api = EndpointCreateApi()
+class TestEndpointCollectionApi:
+    def test_create_success(self, app: Flask):
+        api = EndpointCollectionApi()
         method = unwrap(api.post)
 
         payload = {
@@ -54,8 +58,8 @@ class TestEndpointCreateApi:
 
         assert result["success"] is True
 
-    def test_create_permission_denied(self, app):
-        api = EndpointCreateApi()
+    def test_create_permission_denied(self, app: Flask):
+        api = EndpointCollectionApi()
         method = unwrap(api.post)
 
         payload = {
@@ -74,8 +78,8 @@ class TestEndpointCreateApi:
             with pytest.raises(ValueError):
                 method(api)
 
-    def test_create_validation_error(self, app):
-        api = EndpointCreateApi()
+    def test_create_validation_error(self, app: Flask):
+        api = EndpointCollectionApi()
         method = unwrap(api.post)
 
         payload = {
@@ -92,8 +96,29 @@ class TestEndpointCreateApi:
 
 
 @pytest.mark.usefixtures("patch_current_account")
+class TestDeprecatedEndpointCreateApi:
+    def test_create_success(self, app: Flask):
+        api = DeprecatedEndpointCreateApi()
+        method = unwrap(api.post)
+
+        payload = {
+            "plugin_unique_identifier": "plugin-1",
+            "name": "endpoint",
+            "settings": {"a": 1},
+        }
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch("controllers.console.workspace.endpoint.EndpointService.create_endpoint", return_value=True),
+        ):
+            result = method(api)
+
+        assert result["success"] is True
+
+
+@pytest.mark.usefixtures("patch_current_account")
 class TestEndpointListApi:
-    def test_list_success(self, app):
+    def test_list_success(self, app: Flask):
         api = EndpointListApi()
         method = unwrap(api.get)
 
@@ -106,7 +131,7 @@ class TestEndpointListApi:
         assert "endpoints" in result
         assert len(result["endpoints"]) == 1
 
-    def test_list_invalid_query(self, app):
+    def test_list_invalid_query(self, app: Flask):
         api = EndpointListApi()
         method = unwrap(api.get)
 
@@ -119,7 +144,7 @@ class TestEndpointListApi:
 
 @pytest.mark.usefixtures("patch_current_account")
 class TestEndpointListForSinglePluginApi:
-    def test_list_for_plugin_success(self, app):
+    def test_list_for_plugin_success(self, app: Flask):
         api = EndpointListForSinglePluginApi()
         method = unwrap(api.get)
 
@@ -134,7 +159,7 @@ class TestEndpointListForSinglePluginApi:
 
         assert "endpoints" in result
 
-    def test_list_for_plugin_missing_param(self, app):
+    def test_list_for_plugin_missing_param(self, app: Flask):
         api = EndpointListForSinglePluginApi()
         method = unwrap(api.get)
 
@@ -146,9 +171,96 @@ class TestEndpointListForSinglePluginApi:
 
 
 @pytest.mark.usefixtures("patch_current_account")
-class TestEndpointDeleteApi:
-    def test_delete_success(self, app):
-        api = EndpointDeleteApi()
+class TestEndpointItemApi:
+    def test_delete_success(self, app: Flask):
+        api = EndpointItemApi()
+        method = unwrap(api.delete)
+
+        with (
+            app.test_request_context("/", method="DELETE"),
+            patch(
+                "controllers.console.workspace.endpoint.EndpointService.delete_endpoint",
+                return_value=True,
+            ) as mock_delete,
+        ):
+            result = method(api, "e1")
+
+        assert result["success"] is True
+        mock_delete.assert_called_once_with(tenant_id="t1", user_id="u1", endpoint_id="e1")
+
+    def test_delete_service_failure(self, app: Flask):
+        api = EndpointItemApi()
+        method = unwrap(api.delete)
+
+        with (
+            app.test_request_context("/", method="DELETE"),
+            patch("controllers.console.workspace.endpoint.EndpointService.delete_endpoint", return_value=False),
+        ):
+            result = method(api, "e1")
+
+        assert result["success"] is False
+
+    def test_update_success(self, app: Flask):
+        api = EndpointItemApi()
+        method = unwrap(api.patch)
+
+        payload = {
+            "name": "new-name",
+            "settings": {"x": 1},
+        }
+
+        with (
+            app.test_request_context("/", method="PATCH", json=payload),
+            patch(
+                "controllers.console.workspace.endpoint.EndpointService.update_endpoint",
+                return_value=True,
+            ) as mock_update,
+        ):
+            result = method(api, "e1")
+
+        assert result["success"] is True
+        mock_update.assert_called_once_with(
+            tenant_id="t1",
+            user_id="u1",
+            endpoint_id="e1",
+            name="new-name",
+            settings={"x": 1},
+        )
+
+    def test_update_validation_error(self, app: Flask):
+        api = EndpointItemApi()
+        method = unwrap(api.patch)
+
+        payload = {"settings": {}}
+
+        with (
+            app.test_request_context("/", method="PATCH", json=payload),
+        ):
+            with pytest.raises(ValueError):
+                method(api, "e1")
+
+    def test_update_service_failure(self, app: Flask):
+        api = EndpointItemApi()
+        method = unwrap(api.patch)
+
+        payload = {
+            "name": "n",
+            "settings": {},
+        }
+
+        with (
+            app.test_request_context("/", method="PATCH", json=payload),
+            patch("controllers.console.workspace.endpoint.EndpointService.update_endpoint", return_value=False),
+        ):
+            result = method(api, "e1")
+
+        assert result["success"] is False
+
+
+@pytest.mark.usefixtures("patch_current_account")
+class TestDeprecatedEndpointDeleteApi:
+    def test_delete_success(self, app: Flask):
+        api = DeprecatedEndpointDeleteApi()
         method = unwrap(api.post)
 
         payload = {"endpoint_id": "e1"}
@@ -161,8 +273,8 @@ class TestEndpointDeleteApi:
 
         assert result["success"] is True
 
-    def test_delete_invalid_payload(self, app):
-        api = EndpointDeleteApi()
+    def test_delete_invalid_payload(self, app: Flask):
+        api = DeprecatedEndpointDeleteApi()
         method = unwrap(api.post)
 
         with (
@@ -171,8 +283,8 @@ class TestEndpointDeleteApi:
             with pytest.raises(ValueError):
                 method(api)
 
-    def test_delete_service_failure(self, app):
-        api = EndpointDeleteApi()
+    def test_delete_service_failure(self, app: Flask):
+        api = DeprecatedEndpointDeleteApi()
         method = unwrap(api.post)
 
         payload = {"endpoint_id": "e1"}
@@ -187,9 +299,9 @@ class TestEndpointDeleteApi:
 
 
 @pytest.mark.usefixtures("patch_current_account")
-class TestEndpointUpdateApi:
-    def test_update_success(self, app):
-        api = EndpointUpdateApi()
+class TestDeprecatedEndpointUpdateApi:
+    def test_update_success(self, app: Flask):
+        api = DeprecatedEndpointUpdateApi()
         method = unwrap(api.post)
 
         payload = {
@@ -206,8 +318,8 @@ class TestEndpointUpdateApi:
 
         assert result["success"] is True
 
-    def test_update_validation_error(self, app):
-        api = EndpointUpdateApi()
+    def test_update_validation_error(self, app: Flask):
+        api = DeprecatedEndpointUpdateApi()
         method = unwrap(api.post)
 
         payload = {"endpoint_id": "e1", "settings": {}}
@@ -218,8 +330,8 @@ class TestEndpointUpdateApi:
             with pytest.raises(ValueError):
                 method(api)
 
-    def test_update_service_failure(self, app):
-        api = EndpointUpdateApi()
+    def test_update_service_failure(self, app: Flask):
+        api = DeprecatedEndpointUpdateApi()
         method = unwrap(api.post)
 
         payload = {
@@ -237,9 +349,39 @@ class TestEndpointUpdateApi:
         assert result["success"] is False
 
 
+class TestEndpointRouteMetadata:
+    def test_legacy_write_routes_are_marked_deprecated(self):
+        assert DeprecatedEndpointCreateApi.post.__apidoc__["deprecated"] is True
+        assert DeprecatedEndpointDeleteApi.post.__apidoc__["deprecated"] is True
+        assert DeprecatedEndpointUpdateApi.post.__apidoc__["deprecated"] is True
+        assert EndpointCollectionApi.post.__apidoc__.get("deprecated") is not True
+        assert EndpointItemApi.delete.__apidoc__.get("deprecated") is not True
+        assert EndpointItemApi.patch.__apidoc__.get("deprecated") is not True
+
+    def test_canonical_and_legacy_write_routes_are_registered(self):
+        route_map = {
+            resource.__name__: urls
+            for resource, urls, _route_doc, _kwargs in console_ns.resources
+            if resource.__name__
+            in {
+                "EndpointCollectionApi",
+                "EndpointItemApi",
+                "DeprecatedEndpointCreateApi",
+                "DeprecatedEndpointDeleteApi",
+                "DeprecatedEndpointUpdateApi",
+            }
+        }
+
+        assert route_map["EndpointCollectionApi"] == ("/workspaces/current/endpoints",)
+        assert route_map["EndpointItemApi"] == ("/workspaces/current/endpoints/<string:id>",)
+        assert route_map["DeprecatedEndpointCreateApi"] == ("/workspaces/current/endpoints/create",)
+        assert route_map["DeprecatedEndpointDeleteApi"] == ("/workspaces/current/endpoints/delete",)
+        assert route_map["DeprecatedEndpointUpdateApi"] == ("/workspaces/current/endpoints/update",)
+
+
 @pytest.mark.usefixtures("patch_current_account")
 class TestEndpointEnableApi:
-    def test_enable_success(self, app):
+    def test_enable_success(self, app: Flask):
         api = EndpointEnableApi()
         method = unwrap(api.post)
 
@@ -253,7 +395,7 @@ class TestEndpointEnableApi:
 
         assert result["success"] is True
 
-    def test_enable_invalid_payload(self, app):
+    def test_enable_invalid_payload(self, app: Flask):
         api = EndpointEnableApi()
         method = unwrap(api.post)
 
@@ -263,7 +405,7 @@ class TestEndpointEnableApi:
             with pytest.raises(ValueError):
                 method(api)
 
-    def test_enable_service_failure(self, app):
+    def test_enable_service_failure(self, app: Flask):
         api = EndpointEnableApi()
         method = unwrap(api.post)
 
@@ -280,7 +422,7 @@ class TestEndpointEnableApi:
 
 @pytest.mark.usefixtures("patch_current_account")
 class TestEndpointDisableApi:
-    def test_disable_success(self, app):
+    def test_disable_success(self, app: Flask):
         api = EndpointDisableApi()
         method = unwrap(api.post)
 
@@ -294,7 +436,7 @@ class TestEndpointDisableApi:
 
         assert result["success"] is True
 
-    def test_disable_invalid_payload(self, app):
+    def test_disable_invalid_payload(self, app: Flask):
         api = EndpointDisableApi()
         method = unwrap(api.post)
 

@@ -1,5 +1,5 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import ConfigParamModal from '../config-param-modal'
 
 let mockHooksReturn: {

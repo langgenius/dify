@@ -9,6 +9,7 @@ import { executeCommand } from './command-bus'
 import { communityCommand } from './community'
 import { docsCommand } from './docs'
 import { forumCommand } from './forum'
+import { goCommand } from './go'
 import { languageCommand } from './language'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
@@ -48,6 +49,7 @@ const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(zenCommand, {})
+  slashCommandRegistry.register(goCommand, {})
 }
 
 const unregisterSlashCommands = () => {
@@ -59,6 +61,7 @@ const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('zen')
+  slashCommandRegistry.unregister('go')
 }
 
 export const SlashCommandProvider = () => {

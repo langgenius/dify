@@ -1,11 +1,11 @@
 'use client'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import { toast } from '@/app/components/base/ui/toast'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
@@ -64,9 +64,9 @@ export default function CheckCode() {
       <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
         <RiLockPasswordLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
-      <div className="pb-4 pt-2">
+      <div className="pt-2 pb-4">
         <h2 className="title-4xl-semi-bold text-text-primary">{t('resetPassword', { ns: 'login' })}</h2>
-        <p className="body-md-regular mt-2 text-text-secondary">
+        <p className="mt-2 body-md-regular text-text-secondary">
           {t('resetPasswordDesc', { ns: 'login' })}
         </p>
       </div>
@@ -74,7 +74,7 @@ export default function CheckCode() {
       <form onSubmit={noop}>
         <input type="text" className="hidden" />
         <div className="mb-2">
-          <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('email', { ns: 'login' })}</label>
+          <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">{t('email', { ns: 'login' })}</label>
           <div className="mt-1">
             <Input id="email" type="email" disabled={loading} value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
           </div>
@@ -90,7 +90,7 @@ export default function CheckCode() {
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="system-xs-regular ml-2">{t('backToLogin', { ns: 'login' })}</span>
+        <span className="ml-2 system-xs-regular">{t('backToLogin', { ns: 'login' })}</span>
       </Link>
     </div>
   )

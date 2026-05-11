@@ -1,5 +1,15 @@
 import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
 import { useStore } from '@tanstack/react-form'
 import {
   isValidElement,
@@ -10,14 +20,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import CheckboxList from '@/app/components/base/checkbox-list'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
-import PureSelect from '@/app/components/base/select/pure'
-import Tooltip from '@/app/components/base/tooltip'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
-import { cn } from '@/utils/classnames'
 
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
@@ -41,6 +49,19 @@ const getTranslatedContent = ({ content, render }: {
     return render(content as TypeWithI18N<string>)
 
   return ''
+}
+
+type SelectOption = {
+  label: string
+  value: string
+}
+
+const getSingleSelectValue = (value: unknown, options: SelectOption[]) => {
+  return options.find(option => option.value === value)?.value ?? null
+}
+
+const getSingleSelectLabel = (value: unknown, options: SelectOption[], placeholder: string | undefined) => {
+  return options.find(option => option.value === value)?.label ?? placeholder
 }
 
 const VALIDATE_STATUS_STYLE_MAP: Record<FormItemValidateStatusEnum, { componentClassName: string, textClassName: string, infoFieldName: string }> = {
@@ -74,7 +95,7 @@ export type BaseFieldProps = {
   formSchema: FormSchema
   field: AnyFieldApi
   disabled?: boolean
-  onChange?: (field: string, value: any) => void
+  onChange?: (field: string, value: unknown) => void
   fieldState?: FieldState
 }
 
@@ -121,7 +142,7 @@ const BaseField = ({
     if (!results[1])
       results[1] = t('placeholder.input', { ns: 'common' })
     return results
-  }, [label, placeholder, tooltip, description, help, renderI18nObject])
+  }, [label, placeholder, tooltip, description, help, renderI18nObject, t])
 
   const watchedVariables = useMemo(() => {
     const variables = new Set<string>()
@@ -135,7 +156,7 @@ const BaseField = ({
   }, [options])
 
   const watchedValues = useStore(field.form.store, (s) => {
-    const result: Record<string, any> = {}
+    const result: Record<string, unknown> = {}
     for (const variable of watchedVariables)
       result[variable] = s.values[variable]
 
@@ -180,10 +201,17 @@ const BaseField = ({
     }))
   }, [dynamicOptionsData, renderI18nObject])
 
-  const handleChange = useCallback((value: any) => {
+  const handleChange = useCallback((value: unknown) => {
     field.handleChange(value)
     onChange?.(field.name, value)
   }, [field, onChange])
+  const dynamicPlaceholder = isDynamicOptionsLoading
+    ? t('dynamicSelect.loading', { ns: 'common' })
+    : translatedPlaceholder
+  const dynamicNoticeTitle = dynamicOptionsError
+    ? t('dynamicSelect.error', { ns: 'common' })
+    : (!dynamicOptions.length ? t('dynamicSelect.noData', { ns: 'common' }) : null)
+  const dynamicNoticeClassName = dynamicOptionsError ? 'text-text-destructive-secondary' : undefined
 
   return (
     <>
@@ -195,12 +223,10 @@ const BaseField = ({
               <span className="ml-1 text-text-destructive-secondary">*</span>
             )
           }
-          {tooltip && (
-            <Tooltip
-              triggerTestId="base-field-tooltip-trigger"
-              popupContent={<div className="w-[200px]">{translatedTooltip}</div>}
-              triggerClassName="ml-0.5 w-4 h-4"
-            />
+          {translatedTooltip && (
+            <Infotip aria-label={translatedTooltip} className="ml-0.5" popupClassName="w-[200px]">
+              {translatedTooltip}
+            </Infotip>
           )}
         </div>
         <div className={cn(inputContainerClassName)}>
@@ -223,19 +249,58 @@ const BaseField = ({
             )
           }
           {
-            formItemType === FormTypeEnum.select && !multiple && (
-              <PureSelect
-                value={value}
-                onChange={v => handleChange(v)}
-                disabled={disabled}
-                placeholder={translatedPlaceholder}
-                options={memorizedOptions}
-                triggerPopupSameWidth
-                popupProps={{
-                  className: 'max-h-[320px] overflow-y-auto',
-                }}
-              />
-            )
+            formItemType === FormTypeEnum.select && (multiple
+              ? (
+                  <Select
+                    multiple
+                    items={memorizedOptions}
+                    value={Array.isArray(value) ? value : []}
+                    disabled={disabled}
+                    onValueChange={handleChange}
+                  >
+                    <SelectTrigger id={field.name} aria-label={translatedLabel || field.name} className="px-2">
+                      <SelectValue placeholder={translatedPlaceholder}>
+                        {(selectedValue: string[]) => selectedValue.length
+                          ? t('dynamicSelect.selected', { ns: 'common', count: selectedValue.length })
+                          : translatedPlaceholder}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent popupClassName="max-h-[320px] bg-components-panel-bg-blur">
+                      {memorizedOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <SelectItemText>{option.label}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )
+              : (
+                  <Select
+                    items={memorizedOptions}
+                    value={getSingleSelectValue(value, memorizedOptions)}
+                    disabled={disabled}
+                    onValueChange={(next) => {
+                      if (next == null)
+                        return
+                      handleChange(next)
+                    }}
+                  >
+                    <SelectTrigger id={field.name} aria-label={translatedLabel || field.name} className="px-2">
+                      <SelectValue placeholder={translatedPlaceholder}>
+                        {nextValue => getSingleSelectLabel(nextValue, memorizedOptions, translatedPlaceholder)}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent popupClassName="max-h-[320px] bg-components-panel-bg-blur">
+                      {memorizedOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <SelectItemText>{option.label}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ))
           }
           {
             formItemType === FormTypeEnum.checkbox /* && multiple */ && (
@@ -249,24 +314,76 @@ const BaseField = ({
             )
           }
           {
-            formItemType === FormTypeEnum.dynamicSelect && (
-              <PureSelect
-                options={dynamicOptions}
-                value={value}
-                onChange={field.handleChange}
-                disabled={disabled || isDynamicOptionsLoading}
-                placeholder={
-                  isDynamicOptionsLoading
-                    ? t('dynamicSelect.loading', { ns: 'common' })
-                    : translatedPlaceholder
-                }
-                {...(dynamicOptionsError
-                  ? { popupProps: { title: t('dynamicSelect.error', { ns: 'common' }), titleClassName: 'text-text-destructive-secondary' } }
-                  : (!dynamicOptions.length ? { popupProps: { title: t('dynamicSelect.noData', { ns: 'common' }) } } : {}))}
-                triggerPopupSameWidth
-                multiple={multiple}
-              />
-            )
+            formItemType === FormTypeEnum.dynamicSelect && (multiple
+              ? (
+                  <Select
+                    multiple
+                    items={dynamicOptions}
+                    value={Array.isArray(value) ? value : []}
+                    disabled={disabled || isDynamicOptionsLoading}
+                    onValueChange={field.handleChange}
+                  >
+                    <SelectTrigger id={field.name} aria-label={translatedLabel || field.name} className="px-2">
+                      <SelectValue placeholder={dynamicPlaceholder}>
+                        {(selectedValue: string[]) => selectedValue.length
+                          ? t('dynamicSelect.selected', { ns: 'common', count: selectedValue.length })
+                          : dynamicPlaceholder}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent popupClassName="bg-components-panel-bg-blur">
+                      {dynamicNoticeTitle && (
+                        <div className={cn(
+                          'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
+                          dynamicNoticeClassName,
+                        )}
+                        >
+                          {dynamicNoticeTitle}
+                        </div>
+                      )}
+                      {dynamicOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <SelectItemText>{option.label}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )
+              : (
+                  <Select
+                    items={dynamicOptions}
+                    value={getSingleSelectValue(value, dynamicOptions)}
+                    disabled={disabled || isDynamicOptionsLoading}
+                    onValueChange={(next) => {
+                      if (next == null)
+                        return
+                      field.handleChange(next)
+                    }}
+                  >
+                    <SelectTrigger id={field.name} aria-label={translatedLabel || field.name} className="px-2">
+                      <SelectValue placeholder={dynamicPlaceholder}>
+                        {nextValue => getSingleSelectLabel(nextValue, dynamicOptions, dynamicPlaceholder)}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent popupClassName="bg-components-panel-bg-blur">
+                      {dynamicNoticeTitle && (
+                        <div className={cn(
+                          'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
+                          dynamicNoticeClassName,
+                        )}
+                        >
+                          {dynamicNoticeTitle}
+                        </div>
+                      )}
+                      {dynamicOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <SelectItemText>{option.label}</SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ))
           }
           {
             formItemType === FormTypeEnum.radio && (
@@ -281,7 +398,7 @@ const BaseField = ({
                     <div
                       key={option.value}
                       className={cn(
-                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-1 grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 text-text-secondary system-sm-regular',
+                        'hover:bg-components-option-card-option-hover-bg hover:border-components-option-card-option-hover-border flex h-8 flex-1 grow cursor-pointer items-center justify-center gap-2 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg p-2 system-sm-regular text-text-secondary',
                         value === option.value && 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs',
                         disabled && 'cursor-not-allowed opacity-50',
                         inputClassName,
@@ -327,21 +444,21 @@ const BaseField = ({
         </div>
       </div>
       {description && (
-        <div className="mt-4 text-text-tertiary system-xs-regular">
+        <div className="mt-4 system-xs-regular text-text-tertiary">
           {translatedDescription}
         </div>
       )}
       {
         url && (
           <a
-            className="mt-4 flex items-center text-text-accent system-xs-regular"
+            className="mt-4 flex items-center system-xs-regular text-text-accent"
             href={url}
             target="_blank"
           >
             <span className="break-all">
               {translatedHelp}
             </span>
-            <div className="i-ri-external-link-line ml-1 h-3 w-3 shrink-0" />
+            <div className="ml-1 i-ri-external-link-line h-3 w-3 shrink-0" />
           </a>
         )
       }

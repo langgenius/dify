@@ -118,13 +118,13 @@ describe('SearchMethodOption', () => {
 
     render(<SearchMethodOption {...props} />)
 
-    expect(screen.getByText('Semantic title')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.rerankModel.key')).toBeInTheDocument()
-    expect(screen.getByText('plugin.detailPanel.configureModel')).toBeInTheDocument()
+    expect(screen.getByText('Semantic title'))!.toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
+    expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
     expect(screen.getAllByRole('switch')).toHaveLength(2)
 
     fireEvent.click(screen.getByText('Semantic title'))
-    fireEvent.click(screen.getAllByRole('switch')[0])
+    fireEvent.click(screen.getAllByRole('switch')[0]!)
 
     expect(props.onRetrievalSearchMethodChange).toHaveBeenCalledWith(RetrievalSearchMethodEnum.semantic)
     expect(props.onRerankingModelEnabledChange).toHaveBeenCalledWith(true)
@@ -145,8 +145,8 @@ describe('SearchMethodOption', () => {
       />,
     )
 
-    expect(screen.getByText('Full-text title')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.rerankModel.key')).toBeInTheDocument()
+    expect(screen.getByText('Full-text title'))!.toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Full-text title'))
 
@@ -170,10 +170,10 @@ describe('SearchMethodOption', () => {
       />,
     )
 
-    expect(screen.getByText('Weighted mode')).toBeInTheDocument()
-    expect(screen.getByText('Rerank mode')).toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.semantic')).toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.keyword')).toBeInTheDocument()
+    expect(screen.getByText('Weighted mode'))!.toBeInTheDocument()
+    expect(screen.getByText('Rerank mode'))!.toBeInTheDocument()
+    expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
+    expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()
     expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
     expect(screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip')).not.toBeInTheDocument()
 
@@ -199,10 +199,10 @@ describe('SearchMethodOption', () => {
       />,
     )
 
-    expect(screen.getByText('plugin.detailPanel.configureModel')).toBeInTheDocument()
+    expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
     expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
     expect(screen.queryByText('dataset.weightedScore.semantic')).not.toBeInTheDocument()
-    expect(screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip')).toBeInTheDocument()
+    expect(screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'))!.toBeInTheDocument()
   })
 
   it('should hide the score-threshold control for keyword search', () => {

@@ -1,6 +1,6 @@
 import type { UserProfileResponse } from '@/models/common'
+import { ToastHost } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { ToastHost } from '@/app/components/base/ui/toast'
 import { languages } from '@/i18n-config/language'
 import { updateUserProfile } from '@/service/common'
 import { timezones } from '@/utils/timezone'
@@ -11,53 +11,56 @@ const mockMutateUserProfile = vi.fn()
 let mockLocale: string | undefined = 'en-US'
 let mockUserProfile: UserProfileResponse
 
-vi.mock('@/app/components/base/select', async () => {
+vi.mock('@langgenius/dify-ui/select', async () => {
   const React = await import('react')
+  const SelectContext = React.createContext<{
+    disabled?: boolean
+    onValueChange?: (value: string) => void
+  }>({})
 
   return {
-    SimpleSelect: ({
-      items = [],
-      defaultValue,
-      onSelect,
+    Select: ({
+      children,
       disabled,
+      onValueChange,
     }: {
-      items?: Array<{ value: string | number, name: string }>
-      defaultValue?: string | number
-      onSelect: (item: { value: string | number, name: string }) => void
+      children: React.ReactNode
       disabled?: boolean
+      onValueChange?: (value: string) => void
     }) => {
-      const [open, setOpen] = React.useState(false)
-      const [selectedValue, setSelectedValue] = React.useState<string | number | undefined>(defaultValue)
-      const selected = items.find(item => item.value === selectedValue)
-        ?? items.find(item => item.value === defaultValue)
-        ?? null
-
+      return (
+        <SelectContext.Provider value={{ disabled, onValueChange }}>
+          <div>{children}</div>
+        </SelectContext.Provider>
+      )
+    },
+    SelectTrigger: ({ children }: { children: React.ReactNode }) => {
+      const context = React.useContext(SelectContext)
       return (
         <div>
-          <button type="button" disabled={disabled} onClick={() => setOpen(prev => !prev)}>
-            {selected?.name ?? ''}
+          <button type="button" disabled={context.disabled}>
+            {children}
           </button>
-          {open && (
-            <div>
-              {items.map(item => (
-                <button
-                  key={item.value}
-                  type="button"
-                  role="option"
-                  onClick={() => {
-                    setSelectedValue(item.value)
-                    onSelect(item)
-                    setOpen(false)
-                  }}
-                >
-                  {item.name}
-                </button>
-              ))}
-            </div>
-          )}
+          <button data-testid="select-empty" type="button" onClick={() => context.onValueChange?.('')}>
+            empty value
+          </button>
+          <button data-testid="select-invalid" type="button" onClick={() => context.onValueChange?.('__missing__')}>
+            invalid value
+          </button>
         </div>
       )
     },
+    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+      const context = React.useContext(SelectContext)
+      return (
+        <button type="button" role="option" onClick={() => context.onValueChange?.(value)}>
+          {children}
+        </button>
+      )
+    },
+    SelectItemText: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    SelectItemIndicator: () => null,
   }
 })
 
@@ -118,7 +121,7 @@ const getSectionByLabel = (sectionLabel: string) => {
 const selectOption = async (sectionLabel: string, optionName: string) => {
   const section = getSectionByLabel(sectionLabel)
   await act(async () => {
-    fireEvent.click(within(section).getByRole('button'))
+    fireEvent.click(within(section).getAllByRole('button')[0]!)
   })
   await act(async () => {
     fireEvent.click(await within(section).findByRole('option', { name: optionName }))
@@ -164,6 +167,18 @@ describe('LanguagePage - Rendering', () => {
     expect(screen.getByRole('button', { name: english.name })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: niueTimezone.name })).toBeInTheDocument()
   })
+
+  it('should render placeholders when the current locale or timezone is unsupported', () => {
+    mockLocale = 'unsupported-locale'
+    mockUserProfile = createUserProfile({
+      interface_language: 'unsupported-locale',
+      timezone: 'Unsupported/Timezone',
+    })
+
+    renderPage()
+
+    expect(screen.getAllByRole('button', { name: 'common.placeholder.select' })).toHaveLength(2)
+  })
 })
 
 // Interactions
@@ -206,7 +221,12 @@ describe('LanguagePage - Interactions', () => {
     await selectOption('common.language.timezone', midwayTimezone.name)
 
     expect(await screen.findByText('common.actionMsg.modifiedSuccessfully')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: midwayTimezone.name })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(updateUserProfileMock).toHaveBeenCalledWith({
+        url: '/account/timezone',
+        body: { timezone: midwayTimezone.value },
+      })
+    })
   }, 15000)
 
   it('should show error toast when timezone update fails', async () => {
@@ -219,4 +239,30 @@ describe('LanguagePage - Interactions', () => {
 
     expect(await screen.findByText('Timezone failed')).toBeInTheDocument()
   }, 15000)
+
+  it('should ignore empty and unknown language selections', async () => {
+    renderPage()
+
+    const section = getSectionByLabel('common.language.displayLanguage')
+
+    await act(async () => {
+      fireEvent.click(within(section).getByTestId('select-empty'))
+      fireEvent.click(within(section).getByTestId('select-invalid'))
+    })
+
+    expect(updateUserProfileMock).not.toHaveBeenCalled()
+  })
+
+  it('should ignore empty and unknown timezone selections', async () => {
+    renderPage()
+
+    const section = getSectionByLabel('common.language.timezone')
+
+    await act(async () => {
+      fireEvent.click(within(section).getByTestId('select-empty'))
+      fireEvent.click(within(section).getByTestId('select-invalid'))
+    })
+
+    expect(updateUserProfileMock).not.toHaveBeenCalled()
+  })
 })

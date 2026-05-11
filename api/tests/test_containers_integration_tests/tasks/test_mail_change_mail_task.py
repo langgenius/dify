@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from faker import Faker
+from sqlalchemy.orm import Session
 
 from libs.email_i18n import EmailType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -29,7 +30,7 @@ class TestMailChangeMailTask:
                 "get_email_i18n_service": mock_get_email_i18n_service,
             }
 
-    def _create_test_account(self, db_session_with_containers):
+    def _create_test_account(self, db_session_with_containers: Session):
         """
         Helper method to create a test account for testing.
 
@@ -72,7 +73,7 @@ class TestMailChangeMailTask:
         return account
 
     def test_send_change_mail_task_success_old_email_phase(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful change email task execution for old_email phase.
@@ -103,7 +104,7 @@ class TestMailChangeMailTask:
         )
 
     def test_send_change_mail_task_success_new_email_phase(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful change email task execution for new_email phase.
@@ -134,7 +135,7 @@ class TestMailChangeMailTask:
         )
 
     def test_send_change_mail_task_mail_not_initialized(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test change email task when mail service is not initialized.
@@ -159,7 +160,7 @@ class TestMailChangeMailTask:
         mock_external_service_dependencies["email_i18n_service"].send_change_email.assert_not_called()
 
     def test_send_change_mail_task_email_service_exception(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test change email task when email service raises an exception.
@@ -191,7 +192,7 @@ class TestMailChangeMailTask:
         )
 
     def test_send_change_mail_completed_notification_task_success(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test successful change email completed notification task execution.
@@ -224,7 +225,7 @@ class TestMailChangeMailTask:
         )
 
     def test_send_change_mail_completed_notification_task_mail_not_initialized(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test change email completed notification task when mail service is not initialized.
@@ -247,7 +248,7 @@ class TestMailChangeMailTask:
         mock_external_service_dependencies["email_i18n_service"].send_email.assert_not_called()
 
     def test_send_change_mail_completed_notification_task_email_service_exception(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
         Test change email completed notification task when email service raises an exception.

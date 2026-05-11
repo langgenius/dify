@@ -2,12 +2,12 @@
 
 import type { ChangeEvent, FC } from 'react'
 import type { Area, CropperProps } from 'react-easy-crop'
+import { cn } from '@langgenius/dify-ui/cn'
 import { createRef, useEffect, useState } from 'react'
 import Cropper from 'react-easy-crop'
 import { useTranslation } from 'react-i18next'
-import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
-import { cn } from '@/utils/classnames'
+import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
 import { checkIsAnimatedImage } from './utils'
@@ -73,7 +73,7 @@ const ImageInput: FC<UploaderProps> = ({
   const handleShowImage = () => {
     if (isAnimatedImage) {
       return (
-        // eslint-disable-next-line next/no-img-element
+
         <img src={inputImage?.url} alt="" data-testid="animated-image" />
       )
     }
@@ -95,7 +95,7 @@ const ImageInput: FC<UploaderProps> = ({
   return (
     <div className={cn(className, 'w-full px-3 py-1.5')}>
       <div
-        className={cn(isDragActive && 'border-primary-600', 'relative flex aspect-square flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed text-gray-500')}
+        className={cn('relative flex aspect-square flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed border-components-input-border-hover text-gray-500', isDragActive && 'border-primary-600')}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

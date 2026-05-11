@@ -369,7 +369,7 @@ def _create_app_with_containers() -> Flask:
 
     # Create and configure the Flask application
     logger.info("Initializing Flask application...")
-    app = create_app()
+    sio_app, app = create_app()
     logger.info("Flask application created successfully")
 
     # Initialize database schema
@@ -433,7 +433,7 @@ def flask_app_with_containers(set_up_containers_and_env) -> Flask:
 
 
 @pytest.fixture
-def flask_req_ctx_with_containers(flask_app_with_containers) -> Generator[None, None, None]:
+def flask_req_ctx_with_containers(flask_app_with_containers: Flask) -> Generator[None, None, None]:
     """
     Request context fixture for containerized Flask application.
 
@@ -454,7 +454,7 @@ def flask_req_ctx_with_containers(flask_app_with_containers) -> Generator[None, 
 
 
 @pytest.fixture
-def test_client_with_containers(flask_app_with_containers) -> Generator[FlaskClient, None, None]:
+def test_client_with_containers(flask_app_with_containers: Flask) -> Generator[FlaskClient, None, None]:
     """
     Test client fixture for containerized Flask application.
 
@@ -475,7 +475,7 @@ def test_client_with_containers(flask_app_with_containers) -> Generator[FlaskCli
 
 
 @pytest.fixture
-def db_session_with_containers(flask_app_with_containers) -> Generator[Session, None, None]:
+def db_session_with_containers(flask_app_with_containers: Flask) -> Generator[Session, None, None]:
     """
     Database session fixture for containerized testing.
 

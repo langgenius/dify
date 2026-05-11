@@ -89,7 +89,7 @@ describe('AppInfo', () => {
 
   it('should render trigger when not onlyShowDetail', () => {
     render(<AppInfo expand />)
-    expect(screen.getByTestId('trigger')).toBeInTheDocument()
+    expect(screen.getByTestId('trigger'))!.toBeInTheDocument()
   })
 
   it('should not render trigger when onlyShowDetail is true', () => {
@@ -99,11 +99,11 @@ describe('AppInfo', () => {
 
   it('should pass expand prop to trigger', () => {
     render(<AppInfo expand />)
-    expect(screen.getByTestId('trigger')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('trigger'))!.toHaveAttribute('data-expand', 'true')
 
     const { unmount } = render(<AppInfo expand={false} />)
     const triggers = screen.getAllByTestId('trigger')
-    expect(triggers[triggers.length - 1]).toHaveAttribute('data-expand', 'false')
+    expect(triggers[triggers.length - 1])!.toHaveAttribute('data-expand', 'false')
     unmount()
   })
 
@@ -114,7 +114,7 @@ describe('AppInfo', () => {
     await user.click(screen.getByTestId('trigger'))
 
     expect(mockSetPanelOpen).toHaveBeenCalled()
-    const updater = mockSetPanelOpen.mock.calls[0][0] as (v: boolean) => boolean
+    const updater = mockSetPanelOpen.mock.calls[0]![0] as (v: boolean) => boolean
     expect(updater(false)).toBe(true)
     expect(updater(true)).toBe(false)
   })
@@ -132,12 +132,12 @@ describe('AppInfo', () => {
   it('should show detail panel based on panelOpen when not onlyShowDetail', () => {
     mockUseAppInfoActions.panelOpen = true
     render(<AppInfo expand />)
-    expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-panel'))!.toBeInTheDocument()
   })
 
   it('should show detail panel based on openState when onlyShowDetail', () => {
     render(<AppInfo expand onlyShowDetail openState />)
-    expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-panel'))!.toBeInTheDocument()
   })
 
   it('should hide detail panel when openState is false and onlyShowDetail', () => {

@@ -15,12 +15,6 @@ vi.mock('@/app/components/base/radio/ui', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (
-    <div data-testid="tooltip" title={popupContent}>{children}</div>
-  ),
-}))
-
 vi.mock('../file-icon', () => ({
   default: () => <span data-testid="file-icon" />,
 }))

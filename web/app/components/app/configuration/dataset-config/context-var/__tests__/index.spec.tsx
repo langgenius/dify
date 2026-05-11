@@ -1,7 +1,7 @@
+import type * as React from 'react'
 import type { Props } from '../var-picker'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import ContextVar from '../index'
 
 // Mock external dependencies only
@@ -10,54 +10,69 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/test',
 }))
 
-type PortalToFollowElemProps = {
-  children: React.ReactNode
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-}
-type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode, asChild?: boolean }
-type PortalToFollowElemContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
+vi.mock('@langgenius/dify-ui/popover', async () => {
+  const React = await import('react')
+  const PopoverContext = React.createContext({
+    open: false,
+    setOpen: (_open: boolean) => {},
+  })
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => {
-  const PortalContext = React.createContext({ open: false })
+  const Popover = ({
+    children,
+    open: controlledOpen,
+    onOpenChange,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => {
+    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? !!controlledOpen : uncontrolledOpen
+    const setOpen = (nextOpen: boolean) => {
+      if (!isControlled)
+        setUncontrolledOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    }
 
-  const PortalToFollowElem = ({ children, open }: PortalToFollowElemProps) => {
     return (
-      <PortalContext.Provider value={{ open: !!open }}>
-        <div data-testid="portal">{children}</div>
-      </PortalContext.Provider>
+      <PopoverContext.Provider value={{ open, setOpen }}>
+        {children}
+      </PopoverContext.Provider>
     )
   }
 
-  const PortalToFollowElemContent = ({ children, ...props }: PortalToFollowElemContentProps) => {
-    const { open } = React.useContext(PortalContext)
-    if (!open)
-      return null
+  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
+    const { open, setOpen } = React.useContext(PopoverContext)
     return (
-      <div data-testid="portal-content" {...props}>
-        {children}
+      <div
+        data-testid="popover-trigger"
+        onClick={() => setOpen(!open)}
+      >
+        {render}
       </div>
     )
   }
 
-  const PortalToFollowElemTrigger = ({ children, asChild, ...props }: PortalToFollowElemTriggerProps) => {
-    if (asChild && React.isValidElement(children)) {
-      return React.cloneElement(children, {
-        ...props,
-        'data-testid': 'portal-trigger',
-      } as React.HTMLAttributes<HTMLElement>)
-    }
+  const PopoverContent = ({
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => {
+    const { open } = React.useContext(PopoverContext)
+    if (!open)
+      return null
+
     return (
-      <div data-testid="portal-trigger" {...props}>
+      <div data-testid="popover-content" {...props}>
         {children}
       </div>
     )
   }
 
   return {
-    PortalToFollowElem,
-    PortalToFollowElemContent,
-    PortalToFollowElemTrigger,
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
   }
 })
 
@@ -87,7 +102,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
     })
 
     it('should show selected variable with proper formatting when value is provided', () => {
@@ -98,9 +114,10 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('var1')).toBeInTheDocument()
-      expect(screen.getByText('{{')).toBeInTheDocument()
-      expect(screen.getByText('}}')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('var1'))!.toBeInTheDocument()
+      expect(screen.getByText('{{'))!.toBeInTheDocument()
+      expect(screen.getByText('}}'))!.toBeInTheDocument()
     })
   })
 
@@ -114,7 +131,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert - Should display the selected value
-      expect(screen.getByText('var2')).toBeInTheDocument()
+      // Assert - Should display the selected value
+      expect(screen.getByText('var2'))!.toBeInTheDocument()
     })
 
     it('should show placeholder text when no value is selected', () => {
@@ -128,8 +146,39 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
+      // Assert - Should show placeholder instead of variable
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
     it('should display custom tip message when notSelectedVarTip is provided', () => {
@@ -144,7 +193,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('Select a variable')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Select a variable'))!.toBeInTheDocument()
     })
 
     it('should apply custom className to VarPicker when provided', () => {
@@ -158,7 +208,8 @@ describe('ContextVar', () => {
       const { container } = render(<ContextVar {...props} />)
 
       // Assert
-      expect(container.querySelector('.custom-class')).toBeInTheDocument()
+      // Assert
+      expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
     })
   })
 
@@ -173,20 +224,17 @@ describe('ContextVar', () => {
       // Act
       render(<ContextVar {...props} />)
 
-      const triggers = screen.getAllByTestId('portal-trigger')
-      const varPickerTrigger = triggers[triggers.length - 1]
+      const varPickerTrigger = screen.getAllByTestId('popover-trigger').at(-1)!
 
-      await user.click(varPickerTrigger)
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      await user.click(varPickerTrigger!)
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
 
       // Select a different option
-      const options = screen.getAllByText('var2')
-      expect(options.length).toBeGreaterThan(0)
-      await user.click(options[0])
+      await user.click(screen.getByText('var2'))
 
       // Assert
       expect(onChange).toHaveBeenCalledWith('var2')
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
 
     it('should toggle dropdown when clicking the trigger button', async () => {
@@ -197,16 +245,15 @@ describe('ContextVar', () => {
       // Act
       render(<ContextVar {...props} />)
 
-      const triggers = screen.getAllByTestId('portal-trigger')
-      const varPickerTrigger = triggers[triggers.length - 1]
+      const varPickerTrigger = screen.getAllByTestId('popover-trigger').at(-1)!
 
       // Open dropdown
-      await user.click(varPickerTrigger)
-      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
+      await user.click(varPickerTrigger!)
+      expect(screen.getByTestId('popover-content'))!.toBeInTheDocument()
 
       // Close dropdown
-      await user.click(varPickerTrigger)
-      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
+      await user.click(varPickerTrigger!)
+      expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
     })
   })
 
@@ -223,8 +270,9 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
     })
 
@@ -240,8 +288,9 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
     it('should handle null value without crashing', () => {
@@ -255,8 +304,9 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
     })
 
     it('should handle options with different data types', () => {
@@ -275,9 +325,10 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('strVar')).toBeInTheDocument()
-      expect(screen.getByText('{{')).toBeInTheDocument()
-      expect(screen.getByText('}}')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('strVar'))!.toBeInTheDocument()
+      expect(screen.getByText('{{'))!.toBeInTheDocument()
+      expect(screen.getByText('}}'))!.toBeInTheDocument()
     })
 
     it('should render variable names with special characters safely', () => {
@@ -294,7 +345,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText('specialVar')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('specialVar'))!.toBeInTheDocument()
     })
   })
 })

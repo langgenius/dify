@@ -6,14 +6,14 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import FormInput, UserAction
-from graphon.nodes.human_input.enums import FormInputType
 
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow_run as workflow_run_module
 from controllers.web.error import NotFoundError
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.enums import WorkflowExecutionStatus
+from graphon.nodes.human_input.entities import FormInput, UserAction
+from graphon.nodes.human_input.enums import FormInputType
 from libs import login as login_lib
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.workflow import WorkflowRun
@@ -112,3 +112,24 @@ def test_pause_details_tenant_isolation(app: Flask, monkeypatch: pytest.MonkeyPa
     with pytest.raises(NotFoundError):
         with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
             response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")
+
+
+def test_pause_details_returns_empty_response_for_non_paused_run(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    account = _make_account()
+    _patch_console_guards(monkeypatch, account)
+
+    workflow_run = Mock(spec=WorkflowRun)
+    workflow_run.tenant_id = "tenant-123"
+    workflow_run.status = WorkflowExecutionStatus.RUNNING
+    fake_db = SimpleNamespace(engine=Mock(), session=SimpleNamespace(get=lambda *_: workflow_run))
+    monkeypatch.setattr(workflow_run_module, "db", fake_db)
+
+    with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
+        response, status = workflow_run_module.ConsoleWorkflowPauseDetailsApi().get(workflow_run_id="run-1")
+
+    assert status == 200
+    assert response == {"paused_at": None, "paused_nodes": []}
+
+
+def test_pause_details_response_schema_is_registered() -> None:
+    assert workflow_run_module.WorkflowPauseDetailsResponse.__name__ in workflow_run_module.console_ns.models

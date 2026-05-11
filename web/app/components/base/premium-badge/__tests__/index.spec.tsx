@@ -30,7 +30,7 @@ describe('PremiumBadge', () => {
     )
     const badge = screen.getByText('Premium')
     expect(badge).toBeInTheDocument()
-    expect(badge).toHaveClass('allowHover')
+    expect(badge).toHaveClass('pb-allow-hover')
   })
 
   it('applies custom styles', () => {

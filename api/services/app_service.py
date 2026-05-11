@@ -4,8 +4,6 @@ from typing import Any, TypedDict, cast
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from sqlalchemy import select
 
 from configs import dify_config
@@ -17,6 +15,8 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created, app_was_deleted, app_was_updated
 from extensions.ext_database import db
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class AppService:
-    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
+    def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict[str, Any]) -> Pagination | None:
         """
         Get app list with pagination
         :param user_id: user id
@@ -78,7 +78,7 @@ class AppService:
 
         return app_models
 
-    def create_app(self, tenant_id: str, args: dict, account: Account) -> App:
+    def create_app(self, tenant_id: str, args: dict[str, Any], account: Account) -> App:
         """
         Create app
         :param tenant_id: tenant id
@@ -303,17 +303,22 @@ class AppService:
 
         return app
 
-    def update_app_icon(self, app: App, icon: str, icon_background: str) -> App:
+    def update_app_icon(
+        self, app: App, icon: str, icon_background: str, icon_type: IconType | str | None = None
+    ) -> App:
         """
         Update app icon
         :param app: App instance
         :param icon: new icon
         :param icon_background: new icon_background
+        :param icon_type: new icon type
         :return: App instance
         """
         assert current_user is not None
         app.icon = icon
         app.icon_background = icon_background
+        if icon_type is not None:
+            app.icon_type = icon_type if isinstance(icon_type, IconType) else IconType(icon_type)
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
@@ -389,7 +394,7 @@ class AppService:
         """
         app_mode = AppMode.value_of(app_model.mode)
 
-        meta: dict = {"tool_icons": {}}
+        meta: dict[str, Any] = {"tool_icons": {}}
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow

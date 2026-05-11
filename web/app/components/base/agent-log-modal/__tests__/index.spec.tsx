@@ -21,7 +21,7 @@ vi.mock('@/service/log', () => ({
   fetchAgentLogDetail: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: mockToast,
 }))
 
@@ -124,7 +124,7 @@ describe('AgentLogModal', () => {
 
     render(<AgentLogModal {...mockProps} />)
 
-    const closeBtn = screen.getByRole('heading', { name: /appLog.runDetail.workflowTitle/i }).nextElementSibling!
+    const closeBtn = screen.getByRole('button', { name: 'common.operation.close' })
     fireEvent.click(closeBtn)
 
     expect(mockProps.onCancel).toHaveBeenCalledTimes(1)

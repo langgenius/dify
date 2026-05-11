@@ -21,7 +21,7 @@ describe('useWorkflowNodeHumanInputFormFilled', () => {
     const state = store.getState().workflowRunningData!
     expect(state.humanInputFormDataList).toHaveLength(0)
     expect(state.humanInputFilledFormDataList).toHaveLength(1)
-    expect(state.humanInputFilledFormDataList![0].node_id).toBe('n1')
+    expect(state.humanInputFilledFormDataList![0]!.node_id).toBe('n1')
   })
 
   it('creates humanInputFilledFormDataList when it does not exist', () => {

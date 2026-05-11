@@ -164,7 +164,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('page')).toBe('2')
       expect(update.options.history).toBe('push')
     })
@@ -177,7 +177,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('status')).toBe('error')
     })
 
@@ -189,7 +189,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('status')).toBe(false)
     })
 
@@ -201,7 +201,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('sort')).toBe('hit_count')
     })
 
@@ -213,7 +213,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('sort')).toBe(false)
     })
 
@@ -225,7 +225,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('keyword')).toBe('test query')
       expect(update.options.history).toBe('replace')
     })
@@ -238,7 +238,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('keyword')).toBe('hello')
       expect(update.searchParams.has('page')).toBe(false)
       expect(update.options.history).toBe('replace')
@@ -252,7 +252,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('keyword')).toBe(false)
       expect(update.options.history).toBe('replace')
     })
@@ -265,7 +265,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('keyword')).toBe(false)
       expect(result.current.query.keyword).toBe('')
     })
@@ -278,7 +278,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('keyword')).toBe('%2F')
       expect(result.current.query.keyword).toBe('%2F')
     })
@@ -302,7 +302,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('status')).toBe(false)
     })
 
@@ -314,7 +314,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('sort')).toBe(false)
     })
 
@@ -326,7 +326,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('page')).toBe(false)
     })
 
@@ -338,7 +338,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('page')).toBe('2')
     })
 
@@ -350,7 +350,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('limit')).toBe('25')
     })
 
@@ -362,7 +362,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('page')).toBe(false)
       expect(result.current.query.page).toBe(1)
     })
@@ -375,7 +375,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('limit')).toBe(false)
       expect(result.current.query.limit).toBe(10)
     })
@@ -406,7 +406,7 @@ describe('useDocumentListQueryState', () => {
       })
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('page')).toBe(false)
       expect(update.searchParams.has('status')).toBe(false)
     })

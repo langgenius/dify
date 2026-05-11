@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { SortField, SortOrder } from '../hooks'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 type SortHeaderProps = {
   field: Exclude<SortField, null>
@@ -30,7 +30,7 @@ const SortHeader: FC<SortHeaderProps> = React.memo(({
       {label}
       <span
         className={cn(
-          'i-ri-arrow-down-line ml-0.5 h-3 w-3 transition-all',
+          'ml-0.5 i-ri-arrow-down-line h-3 w-3 transition-all',
           isActive ? 'text-text-tertiary' : 'text-text-disabled',
           isActive && !isDesc ? 'rotate-180' : '',
         )}

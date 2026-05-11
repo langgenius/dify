@@ -1,6 +1,6 @@
+import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { toast, ToastHost } from '@/app/components/base/ui/toast'
 
 import NewChildSegmentModal from '../new-child-segment'
 
@@ -110,54 +110,50 @@ describe('NewChildSegmentModal', () => {
     it('should render without crashing', () => {
       const { container } = render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should render add child chunk title', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByText(/segment\.addChildChunk/i)).toBeInTheDocument()
+      expect(screen.getByText(/segment\.addChildChunk/i))!.toBeInTheDocument()
     })
 
     it('should render chunk content component', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('chunk-content')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-content'))!.toBeInTheDocument()
     })
 
     it('should render segment index tag with new child chunk label', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('segment-index-tag')).toBeInTheDocument()
+      expect(screen.getByTestId('segment-index-tag'))!.toBeInTheDocument()
     })
 
     it('should render add another checkbox', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('add-another')).toBeInTheDocument()
+      expect(screen.getByTestId('add-another'))!.toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
     it('should call onCancel when close button is clicked', () => {
       const mockOnCancel = vi.fn()
-      const { container } = render(
+      render(
         <NewChildSegmentModal {...defaultProps} onCancel={mockOnCancel} />,
       )
 
-      const closeButtons = container.querySelectorAll('.cursor-pointer')
-      if (closeButtons.length > 1)
-        fireEvent.click(closeButtons[1])
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(mockOnCancel).toHaveBeenCalled()
     })
 
     it('should call toggleFullScreen when expand button is clicked', () => {
-      const { container } = render(<NewChildSegmentModal {...defaultProps} />)
+      render(<NewChildSegmentModal {...defaultProps} />)
 
-      const expandButtons = container.querySelectorAll('.cursor-pointer')
-      if (expandButtons.length > 0)
-        fireEvent.click(expandButtons[0])
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.zoomIn' }))
 
       expect(mockToggleFullScreen).toHaveBeenCalled()
     })
@@ -169,7 +165,7 @@ describe('NewChildSegmentModal', () => {
         target: { value: 'New content' },
       })
 
-      expect(screen.getByTestId('content-input')).toHaveValue('New content')
+      expect(screen.getByTestId('content-input'))!.toHaveValue('New content')
     })
 
     it('should toggle add another checkbox', () => {
@@ -178,7 +174,7 @@ describe('NewChildSegmentModal', () => {
 
       fireEvent.click(checkbox)
 
-      expect(checkbox).toBeInTheDocument()
+      expect(checkbox)!.toBeInTheDocument()
     })
   })
 
@@ -253,7 +249,7 @@ describe('NewChildSegmentModal', () => {
 
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('action-buttons')).toBeInTheDocument()
+      expect(screen.getByTestId('action-buttons'))!.toBeInTheDocument()
     })
 
     it('should show add another in header when fullScreen', () => {
@@ -261,7 +257,7 @@ describe('NewChildSegmentModal', () => {
 
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('add-another')).toBeInTheDocument()
+      expect(screen.getByTestId('add-another'))!.toBeInTheDocument()
     })
   })
 
@@ -270,19 +266,19 @@ describe('NewChildSegmentModal', () => {
     it('should pass actionType add to ActionButtons', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('action-type')).toHaveTextContent('add')
+      expect(screen.getByTestId('action-type'))!.toHaveTextContent('add')
     })
 
     it('should pass isChildChunk true to ActionButtons', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('is-child-chunk')).toHaveTextContent('true')
+      expect(screen.getByTestId('is-child-chunk'))!.toHaveTextContent('true')
     })
 
     it('should pass isEditMode true to ChunkContent', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
-      expect(screen.getByTestId('edit-mode')).toHaveTextContent('editing')
+      expect(screen.getByTestId('edit-mode'))!.toHaveTextContent('editing')
     })
   })
 
@@ -292,7 +288,7 @@ describe('NewChildSegmentModal', () => {
 
       const { container } = render(<NewChildSegmentModal {...props} />)
 
-      expect(container.firstChild).toBeInTheDocument()
+      expect(container.firstChild)!.toBeInTheDocument()
     })
 
     it('should maintain structure when rerendered', () => {
@@ -300,7 +296,7 @@ describe('NewChildSegmentModal', () => {
 
       rerender(<NewChildSegmentModal {...defaultProps} chunkId="chunk-2" />)
 
-      expect(screen.getByTestId('chunk-content')).toBeInTheDocument()
+      expect(screen.getByTestId('chunk-content'))!.toBeInTheDocument()
     })
   })
 
@@ -351,7 +347,7 @@ describe('NewChildSegmentModal', () => {
 
       // Assert - modal should not close, only content cleared
       await waitFor(() => {
-        expect(screen.getByTestId('content-input')).toHaveValue('')
+        expect(screen.getByTestId('content-input'))!.toHaveValue('')
       })
     })
   })

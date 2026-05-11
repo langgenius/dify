@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiLoader2Line, RiStopCircleFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import Tooltip from '@/app/components/base/tooltip'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useStore } from '../store'
@@ -64,7 +64,7 @@ const VariableInspectTrigger: FC = () => {
     <div className={cn('flex items-center gap-1')}>
       {!isRunning && !currentVars.length && (
         <div
-          className={cn('system-2xs-semibold-uppercase flex h-5 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-background-default-hover', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
+          className={cn('flex h-5 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-2xs-semibold-uppercase text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-background-default-hover', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
           onClick={() => {
             if (getNodesReadOnly())
               return
@@ -77,7 +77,7 @@ const VariableInspectTrigger: FC = () => {
       {!isRunning && currentVars.length > 0 && (
         <>
           <div
-            className={cn('system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
+            className={cn('flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
             onClick={() => {
               if (getNodesReadOnly())
                 return
@@ -87,7 +87,7 @@ const VariableInspectTrigger: FC = () => {
             {t('debug.variableInspect.trigger.cached', { ns: 'workflow' })}
           </div>
           <div
-            className={cn('system-xs-medium flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent hover:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
+            className={cn('flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 system-xs-medium text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent hover:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
             onClick={() => {
               if (getNodesReadOnly())
                 return
@@ -101,22 +101,27 @@ const VariableInspectTrigger: FC = () => {
       {isRunning && (
         <>
           <div
-            className="system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
+            className="flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
             onClick={() => setShowVariableInspectPanel(true)}
           >
             <RiLoader2Line className="h-4 w-4 animate-spin" />
             <span className="text-text-accent">{t('debug.variableInspect.trigger.running', { ns: 'workflow' })}</span>
           </div>
           {isPreviewRunning && (
-            <Tooltip
-              popupContent={t('debug.variableInspect.trigger.stop', { ns: 'workflow' })}
-            >
-              <div
-                className="flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
-                onClick={handleStop}
-              >
-                <RiStopCircleFill className="h-4 w-4 text-text-accent" />
-              </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <div
+                    className="flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
+                    onClick={handleStop}
+                  >
+                    <RiStopCircleFill className="h-4 w-4 text-text-accent" />
+                  </div>
+                )}
+              />
+              <TooltipContent>
+                {t('debug.variableInspect.trigger.stop', { ns: 'workflow' })}
+              </TooltipContent>
             </Tooltip>
           )}
         </>

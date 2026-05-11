@@ -9,7 +9,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from controllers.console.error import AccountNotFound, NotAllowedCreateWorkspace
-from models import AccountStatus, TenantAccountJoin
+from models import AccountStatus, TenantAccountJoin, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService, TokenPair
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -2851,7 +2851,7 @@ class TestRegisterService:
             interface_language="en-US",
             password=existing_pending_member_password,
         )
-        existing_account.status = "pending"
+        existing_account.status = AccountStatus.PENDING
 
         db_session_with_containers.commit()
 
@@ -2941,7 +2941,7 @@ class TestRegisterService:
             interface_language="en-US",
             password=already_in_tenant_password,
         )
-        existing_account.status = "active"
+        existing_account.status = AccountStatus.ACTIVE
 
         db_session_with_containers.commit()
 
@@ -3331,7 +3331,7 @@ class TestRegisterService:
         TenantService.create_tenant_member(tenant, account, role="normal")
 
         # Change tenant status to non-normal
-        tenant.status = "archive"
+        tenant.status = TenantStatus.ARCHIVE
 
         db_session_with_containers.commit()
 

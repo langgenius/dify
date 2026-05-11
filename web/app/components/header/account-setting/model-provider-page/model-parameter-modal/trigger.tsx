@@ -4,10 +4,10 @@ import type {
   ModelItem,
   ModelProvider,
 } from '../declarations'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
@@ -54,7 +54,7 @@ const Trigger: FC<TriggerProps> = ({
           'relative flex h-8 min-w-[296px] cursor-pointer items-center rounded-lg px-2',
           isInWorkflow
             ? 'border border-text-warning bg-state-warning-hover pr-[30px]'
-            : 'border border-text-warning bg-state-warning-hover ring-inset ring-text-warning hover:ring-[0.5px]',
+            : 'border border-text-warning bg-state-warning-hover ring-text-warning ring-inset hover:ring-[0.5px]',
         )}
       >
         <div className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center">
@@ -65,7 +65,7 @@ const Trigger: FC<TriggerProps> = ({
         <div className="mr-1 flex-1 truncate text-[13px] font-normal text-text-secondary">
           {t('workflow:errorMsg.configureModel')}
         </div>
-        <span className={cn('i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary', isInWorkflow && 'absolute right-2 top-[9px] h-3.5 w-3.5')} />
+        <span className={cn('i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary', isInWorkflow && 'absolute top-[9px] right-2 h-3.5 w-3.5')} />
       </div>
     )
   }
@@ -99,7 +99,7 @@ const Trigger: FC<TriggerProps> = ({
                       <div className="flex shrink-0 items-center pr-0.5">
                         <div className="flex min-w-[20px] shrink-0 items-center justify-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
                           <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
-                          <span className="whitespace-nowrap text-text-warning system-xs-medium">
+                          <span className="system-xs-medium whitespace-nowrap text-text-warning">
                             {badgeLabel}
                           </span>
                         </div>
@@ -115,7 +115,7 @@ const Trigger: FC<TriggerProps> = ({
                 <div className="flex shrink-0 items-center pr-0.5">
                   <div className="flex min-w-[20px] shrink-0 items-center justify-center gap-[3px] rounded-md border border-text-warning bg-components-badge-bg-dimm px-[5px] py-0.5">
                     <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
-                    <span className="whitespace-nowrap text-text-warning system-xs-medium">
+                    <span className="system-xs-medium whitespace-nowrap text-text-warning">
                       {badgeLabel}
                     </span>
                   </div>

@@ -7,15 +7,16 @@ improving performance by offloading storage operations to background workers.
 
 import json
 import logging
+from typing import Any
 
 from celery import shared_task
+from sqlalchemy import select
+
+from core.db.session_factory import session_factory
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from sqlalchemy import select
-
-from core.db.session_factory import session_factory
 from models import CreatorUserRole, WorkflowNodeExecutionModel
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 @shared_task(queue="workflow_storage", bind=True, max_retries=3, default_retry_delay=60)
 def save_workflow_node_execution_task(
     self,
-    execution_data: dict,
+    execution_data: dict[str, Any],
     tenant_id: str,
     app_id: str,
     triggered_from: str,

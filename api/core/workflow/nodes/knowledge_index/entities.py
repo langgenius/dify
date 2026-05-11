@@ -1,22 +1,13 @@
 from typing import Union
 
-from graphon.entities.base_node_data import BaseNodeData
-from graphon.enums import NodeType
 from pydantic import BaseModel
 
-from core.rag.entities.retrieval_settings import WeightedScoreConfig
+from core.rag.entities import RerankingModelConfig, WeightedScoreConfig
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
-
-
-class RerankingModelConfig(BaseModel):
-    """
-    Reranking Model Config.
-    """
-
-    reranking_provider_name: str
-    reranking_model_name: str
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import NodeType
 
 
 class RetrievalSetting(BaseModel):

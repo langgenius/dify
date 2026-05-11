@@ -1,11 +1,11 @@
 import type { Props as FormProps } from '../form'
 import type { BeforeRunFormProps } from '../index'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import BeforeRunForm from '../index'
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
   },

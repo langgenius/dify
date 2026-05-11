@@ -1,10 +1,10 @@
 import type { ComponentProps, FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { ChunkingMode } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 
 type IContentProps = ComponentProps<'textarea'>
 
@@ -125,7 +125,7 @@ const QATextArea: FC<IQATextAreaProps> = React.memo(({
         containerRef={containerRef}
         labelRef={labelRef}
       />
-      <div className="mb-1 mt-6 text-xs font-medium text-text-tertiary">ANSWER</div>
+      <div className="mt-6 mb-1 text-xs font-medium text-text-tertiary">ANSWER</div>
       <AutoResizeTextArea
         className="text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
         value={answer}
@@ -185,7 +185,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
 
   return (
     <Textarea
-      className="body-md-regular h-full w-full pb-6 tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
+      className="h-full w-full pb-6 body-md-regular tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
       value={question}
       placeholder={t('segment.contentPlaceholder', { ns: 'datasetDocuments' }) || ''}
       onChange={e => onQuestionChange(e.target.value)}

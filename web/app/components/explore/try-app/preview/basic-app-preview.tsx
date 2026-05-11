@@ -238,7 +238,7 @@ const BasicAppPreview: FC<Props> = ({
         },
         enabled: !!(modelConfig.file_upload?.enabled || modelConfig.file_upload?.image?.enabled),
         allowed_file_types: modelConfig.file_upload?.allowed_file_types || [],
-        allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || [...FILE_EXTS[SupportUploadFileTypes.image], ...FILE_EXTS[SupportUploadFileTypes.video]].map(ext => `.${ext}`),
+        allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || [...(FILE_EXTS[SupportUploadFileTypes.image] ?? []), ...(FILE_EXTS[SupportUploadFileTypes.video] ?? [])].map(ext => `.${ext}`),
         allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods || modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         number_limits: modelConfig.file_upload?.number_limits || modelConfig.file_upload?.image?.number_limits || 3,
         fileUploadConfig: {},
@@ -341,8 +341,8 @@ const BasicAppPreview: FC<Props> = ({
               <Config />
             </div>
             {!isMobile && (
-              <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-                <div className="flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg ">
+              <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+                <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                   <Debug
                     isAPIKeySet
                     onSetting={noop}

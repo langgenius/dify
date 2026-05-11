@@ -8,19 +8,6 @@ from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
-from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from graphon.enums import (
-    BuiltinNodeTypes,
-    NodeType,
-    WorkflowExecutionStatus,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
-from graphon.file import File
-from graphon.file.constants import maybe_file_object
-from graphon.variables import utils as variable_utils
-from graphon.variables.variables import FloatVariable, IntegerVariable, RAGPipelineVariable, StringVariable
 from sqlalchemy import (
     DateTime,
     Index,
@@ -37,35 +24,54 @@ from sqlalchemy.orm import Mapped, mapped_column
 from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
-from core.workflow.human_input_compat import normalize_node_config_for_graph
+from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
+from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
+from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.enums import (
+    BuiltinNodeTypes,
+    NodeType,
+    WorkflowExecutionStatus,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
+from graphon.file import File
+from graphon.file.constants import maybe_file_object
+from graphon.variables import utils as variable_utils
+from graphon.variables.variables import FloatVariable, IntegerVariable, RAGPipelineVariable, StringVariable
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
-    from .model import AppMode, UploadFile
+    from .model import AppMode
 
-
-from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from factories import variable_factory
+from graphon.variables import SecretVariable, Segment, SegmentType, VariableBase
 from libs import helper
 
 from .account import Account
 from .base import Base, DefaultFieldsDCMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
+
+# UploadFile uses TypeBase while workflow execution offload models use Base, so relationships
+# must target the class object directly instead of relying on string lookup across registries.
+from .model import UploadFile
 from .types import EnumText, LongText, StringUUID
-from .utils.file_input_compat import build_file_from_stored_mapping
+from .utils.file_input_compat import (
+    build_file_from_mapping_without_lookup,
+    build_file_from_stored_mapping,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -295,7 +301,7 @@ class Workflow(TypeBase):
             node_config: dict[str, Any] = next(filter(lambda node: node["id"] == node_id, nodes))
         except StopIteration:
             raise NodeNotFoundError(node_id)
-        return NodeConfigDictAdapter.validate_python(normalize_node_config_for_graph(node_config))
+        return NodeConfigDictAdapter.validate_python(adapt_node_config_for_graph(node_config))
 
     @staticmethod
     def get_node_type_from_node_config(node_config: NodeConfigDict) -> NodeType:
@@ -494,7 +500,7 @@ class Workflow(TypeBase):
 
         :return: hash
         """
-        entity = {"graph": self.graph_dict, "features": self.features_dict}
+        entity = {"graph": self.graph_dict}
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
@@ -675,7 +681,30 @@ class Workflow(TypeBase):
         return str(d)
 
 
-class WorkflowRun(TypeBase):
+class WorkflowRunDict(TypedDict):
+    id: str
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    type: WorkflowType
+    triggered_from: WorkflowRunTriggeredFrom
+    version: str
+    graph: Mapping[str, Any]
+    inputs: Mapping[str, Any]
+    status: WorkflowExecutionStatus
+    outputs: Mapping[str, Any]
+    error: str | None
+    elapsed_time: float
+    total_tokens: int
+    total_steps: int
+    created_by_role: CreatorUserRole
+    created_by: str
+    created_at: datetime
+    finished_at: datetime | None
+    exceptions_count: int
+
+
+class WorkflowRun(Base):
     """
     Workflow Run
 
@@ -794,29 +823,29 @@ class WorkflowRun(TypeBase):
     def workflow(self):
         return db.session.scalar(select(Workflow).where(Workflow.id == self.workflow_id))
 
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "tenant_id": self.tenant_id,
-            "app_id": self.app_id,
-            "workflow_id": self.workflow_id,
-            "type": self.type,
-            "triggered_from": self.triggered_from,
-            "version": self.version,
-            "graph": self.graph_dict,
-            "inputs": self.inputs_dict,
-            "status": self.status,
-            "outputs": self.outputs_dict,
-            "error": self.error,
-            "elapsed_time": self.elapsed_time,
-            "total_tokens": self.total_tokens,
-            "total_steps": self.total_steps,
-            "created_by_role": self.created_by_role,
-            "created_by": self.created_by,
-            "created_at": self.created_at,
-            "finished_at": self.finished_at,
-            "exceptions_count": self.exceptions_count,
-        }
+    def to_dict(self) -> WorkflowRunDict:
+        return WorkflowRunDict(
+            id=self.id,
+            tenant_id=self.tenant_id,
+            app_id=self.app_id,
+            workflow_id=self.workflow_id,
+            type=self.type,
+            triggered_from=self.triggered_from,
+            version=self.version,
+            graph=self.graph_dict,
+            inputs=self.inputs_dict,
+            status=self.status,
+            outputs=self.outputs_dict,
+            error=self.error,
+            elapsed_time=self.elapsed_time,
+            total_tokens=self.total_tokens,
+            total_steps=self.total_steps,
+            created_by_role=self.created_by_role,
+            created_by=self.created_by,
+            created_at=self.created_at,
+            finished_at=self.finished_at,
+            exceptions_count=self.exceptions_count,
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "WorkflowRun":
@@ -1077,8 +1106,6 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
 
     @staticmethod
     def _load_full_content(session: orm.Session, file_id: str, storage: Storage):
-        from .model import UploadFile
-
         stmt = sa.select(UploadFile).where(UploadFile.id == file_id)
         file = session.scalars(stmt).first()
         assert file is not None, f"UploadFile with id {file_id} should exist but not"
@@ -1173,11 +1200,11 @@ class WorkflowNodeExecutionOffload(TypeBase):
     )
 
     file: Mapped[Optional["UploadFile"]] = orm.relationship(
+        UploadFile,
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowNodeExecutionOffload.file_id == UploadFile.id",
-        init=False,
+        primaryjoin=lambda: orm.foreign(WorkflowNodeExecutionOffload.file_id) == UploadFile.id,
     )
 
 
@@ -1550,13 +1577,14 @@ class WorkflowDraftVariable(Base):
         init=False,
     )
 
-    # Relationship to WorkflowDraftVariableFile
+    # WorkflowDraftVariableFile uses TypeBase while WorkflowDraftVariable uses Base, so the relationship
+    # must resolve the class object lazily instead of relying on string lookup across registries.
     variable_file: Mapped[Optional["WorkflowDraftVariableFile"]] = orm.relationship(
+        lambda: WorkflowDraftVariableFile,
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowDraftVariableFile.id == WorkflowDraftVariable.file_id",
-        init=False,
+        primaryjoin=lambda: orm.foreign(WorkflowDraftVariable.file_id) == WorkflowDraftVariableFile.id,
     )
 
     # Cache for deserialized value
@@ -1677,7 +1705,7 @@ class WorkflowDraftVariable(Base):
                 return cast(Any, value)
             normalized_file = dict(value)
             normalized_file.pop("tenant_id", None)
-            return File.model_validate(normalized_file)
+            return build_file_from_mapping_without_lookup(file_mapping=normalized_file)
         elif isinstance(value, list) and value:
             value_list = cast(list[Any], value)
             first: Any = value_list[0]
@@ -1687,7 +1715,7 @@ class WorkflowDraftVariable(Base):
             for item in value_list:
                 normalized_file = dict(cast(dict[str, Any], item))
                 normalized_file.pop("tenant_id", None)
-                file_list.append(File.model_validate(normalized_file))
+                file_list.append(build_file_from_mapping_without_lookup(file_mapping=normalized_file))
             return cast(Any, file_list)
         else:
             return cast(Any, value)
@@ -1889,18 +1917,7 @@ class WorkflowDraftVariableFile(TypeBase):
     __tablename__ = "workflow_draft_variable_files"
 
     # Primary key
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        primary_key=True,
-        default=lambda: str(uuidv7()),
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        default=naive_utc_now,
-        server_default=func.current_timestamp(),
-    )
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
     tenant_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -1959,13 +1976,21 @@ class WorkflowDraftVariableFile(TypeBase):
         init=False,
     )
 
-    # Relationship to UploadFile
+    # Rows are created with `upload_file_id`; callers should load this relationship explicitly when needed.
     upload_file: Mapped["UploadFile"] = orm.relationship(
+        UploadFile,
         foreign_keys=[upload_file_id],
         lazy="raise",
-        uselist=False,
-        primaryjoin="WorkflowDraftVariableFile.upload_file_id == UploadFile.id",
         init=False,
+        uselist=False,
+        primaryjoin=lambda: orm.foreign(WorkflowDraftVariableFile.upload_file_id) == UploadFile.id,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default_factory=naive_utc_now,
+        server_default=func.current_timestamp(),
     )
 
 

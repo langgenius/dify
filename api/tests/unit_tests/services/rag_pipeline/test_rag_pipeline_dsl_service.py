@@ -1,13 +1,13 @@
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 from unittest.mock import MagicMock, Mock
 
 import pytest
 import yaml
-from graphon.enums import BuiltinNodeTypes
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
+from graphon.enums import BuiltinNodeTypes
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline.rag_pipeline_dsl_service import (
     ImportStatus,
@@ -558,7 +558,7 @@ def test_append_workflow_export_data_filters_credentials(mocker) -> None:
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.generate_dependencies",
         return_value=[],
     )
-    export_data: dict = {}
+    export_data: dict[str, Any] = {}
     pipeline = Mock(id="p1", tenant_id="t1")
 
     service._append_workflow_export_data(export_data=export_data, pipeline=pipeline, include_secret=False)
@@ -641,7 +641,7 @@ def test_append_workflow_export_data_encrypts_knowledge_retrieval_dataset_ids(mo
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.generate_dependencies",
         return_value=[],
     )
-    export_data: dict = {}
+    export_data: dict[str, Any] = {}
     pipeline = Mock(id="p1", tenant_id="t1")
 
     service._append_workflow_export_data(export_data=export_data, pipeline=pipeline, include_secret=False)

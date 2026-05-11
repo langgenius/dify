@@ -14,7 +14,7 @@ const jsonResponse = (body: unknown, init: ResponseInit = {}): Response =>
     ...init,
     headers: {
       "content-type": "application/json",
-      ...(init.headers ?? {}),
+      ...init.headers,
     },
   });
 
@@ -99,7 +99,7 @@ describe("File uploads", () => {
         super();
       }
 
-      _read() {}
+      override _read() {}
 
       append() {}
 

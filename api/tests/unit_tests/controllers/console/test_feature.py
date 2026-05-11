@@ -1,3 +1,4 @@
+from pytest_mock import MockerFixture
 from werkzeug.exceptions import Unauthorized
 
 
@@ -11,7 +12,7 @@ def unwrap(func):
 
 
 class TestFeatureApi:
-    def test_get_tenant_features_success(self, mocker):
+    def test_get_tenant_features_success(self, mocker: MockerFixture):
         from controllers.console.feature import FeatureApi
 
         mocker.patch(
@@ -32,7 +33,7 @@ class TestFeatureApi:
 
 
 class TestSystemFeatureApi:
-    def test_get_system_features_authenticated(self, mocker):
+    def test_get_system_features_authenticated(self, mocker: MockerFixture):
         """
         current_user.is_authenticated == True
         """
@@ -56,7 +57,7 @@ class TestSystemFeatureApi:
 
         assert result == {"features": {"sys_feature": True}}
 
-    def test_get_system_features_unauthenticated(self, mocker):
+    def test_get_system_features_unauthenticated(self, mocker: MockerFixture):
         """
         current_user.is_authenticated raises Unauthorized
         """

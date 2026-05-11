@@ -1,16 +1,13 @@
 import type { FC } from 'react'
 import type { RoleName } from './index'
+import type { EventEmitterValue } from '@/context/event-emitter'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   RiMoreFill,
 } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_HISTORY_EVENT_EMITTER } from '../../constants'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
@@ -33,15 +30,18 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   const { eventEmitter } = useEventEmitterContextContext()
   const [localRoleName, setLocalRoleName] = useState<RoleName>(roleName)
 
-  eventEmitter?.useSubscription((v: any) => {
-    if (v?.type === UPDATE_HISTORY_EVENT_EMITTER)
-      setLocalRoleName(v.payload)
+  eventEmitter?.useSubscription((event?: EventEmitterValue) => {
+    if (typeof event === 'string')
+      return
+
+    if (event?.type === UPDATE_HISTORY_EVENT_EMITTER && event.payload && typeof event.payload === 'object')
+      setLocalRoleName(event.payload as RoleName)
   })
 
   return (
     <div
       className={`
-      group inline-flex h-6 items-center rounded-[5px] border border-transparent pl-1 pr-0.5 text-[#DD2590] hover:bg-[#FCE7F6]
+      group inline-flex h-6 items-center rounded-[5px] border border-transparent pr-0.5 pl-1 text-[#DD2590] hover:bg-[#FCE7F6]
       ${open ? 'bg-[#FCE7F6]' : 'bg-[#FDF2FA]'}
       ${isSelected && 'border-[#F670C7]!'}
     `}
@@ -49,25 +49,31 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
     >
       <MessageClockCircle className="mr-1 h-[14px] w-[14px]" />
       <div className="mr-1 text-xs font-medium">{t('promptEditor.history.item.title', { ns: 'common' })}</div>
-      <PortalToFollowElem
+      <Popover
         open={open}
         onOpenChange={setOpen}
-        placement="top-end"
-        offset={{
-          mainAxis: 4,
-          alignmentAxis: -148,
-        }}
       >
-        <PortalToFollowElemTrigger ref={triggerRef}>
-          <div className={`
+        <PopoverTrigger
+          nativeButton={false}
+          render={(
+            <div
+              className={`
             flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded
             ${open ? 'bg-[#DD2590] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'}
           `}
-          >
-            <RiMoreFill className="h-3 w-3" />
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent style={{ zIndex: 100 }}>
+              ref={triggerRef}
+              onClick={e => e.preventDefault()}
+            >
+              <RiMoreFill className="h-3 w-3" />
+            </div>
+          )}
+        />
+        <PopoverContent
+          placement="top-end"
+          sideOffset={4}
+          alignOffset={-148}
+          popupClassName="border-none bg-transparent shadow-none"
+        >
           <div className="w-[360px] rounded-xl bg-white shadow-lg">
             <div className="p-4">
               <div className="mb-2 text-xs font-medium text-gray-500">{t('promptEditor.history.modal.title', { ns: 'common' })}</div>
@@ -87,8 +93,8 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
               {t('promptEditor.history.modal.edit', { ns: 'common' })}
             </div>
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }

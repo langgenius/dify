@@ -1,6 +1,12 @@
 import type { FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { Node } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
 import {
   RiCloseLine,
   RiPlayLargeLine,
@@ -20,7 +26,7 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import Tooltip from '@/app/components/base/tooltip'
+import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
@@ -33,6 +39,8 @@ import {
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import {
   useAvailableBlocks,
   useNodeDataUpdate,
@@ -45,6 +53,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
@@ -56,18 +65,17 @@ import {
   hasRetryNode,
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
+import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
-import { cn } from '@/utils/classnames'
 import { useResizePanel } from '../../hooks/use-resize-panel'
 import BeforeRunForm from '../before-run-form'
 import PanelWrap from '../before-run-form/panel-wrap'
 import ErrorHandleOnPanel from '../error-handle/error-handle-on-panel'
 import HelpLink from '../help-link'
 import NextStep from '../next-step'
-import PanelOperator from '../panel-operator'
 import RetryOnPanel from '../retry/retry-on-panel'
 import { DescriptionInput, TitleInput } from '../title-description-input'
 import {
@@ -97,10 +105,50 @@ const BasePanel: FC<BasePanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
+  const appId = useStore(s => s.appId)
+  const { userProfile } = useAppContext()
+  const { isConnected, nodePanelPresence } = useCollaboration(appId as string)
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,
   })))
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
+
+  const currentUserPresence = useMemo(() => {
+    const userId = userProfile?.id || ''
+    const username = userProfile?.name || userProfile?.email || 'User'
+    const avatar = userProfile?.avatar_url || userProfile?.avatar || null
+
+    return {
+      userId,
+      username,
+      avatar,
+    }
+  }, [userProfile?.avatar, userProfile?.avatar_url, userProfile?.email, userProfile?.id, userProfile?.name])
+
+  useEffect(() => {
+    if (!isConnected || !currentUserPresence.userId)
+      return
+
+    collaborationManager.emitNodePanelPresence(id, true, currentUserPresence)
+
+    return () => {
+      collaborationManager.emitNodePanelPresence(id, false, currentUserPresence)
+    }
+  }, [id, isConnected, currentUserPresence])
+
+  const viewingUsers = useMemo(() => {
+    const presence = nodePanelPresence?.[id]
+    if (!presence)
+      return []
+
+    return Object.values(presence)
+      .filter(viewer => viewer.userId && viewer.userId !== currentUserPresence.userId)
+      .map(viewer => ({
+        id: viewer.userId,
+        name: viewer.username,
+        avatar_url: viewer.avatar || null,
+      }))
+  }, [currentUserPresence.userId, id, nodePanelPresence])
 
   const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
@@ -278,7 +326,7 @@ const BasePanel: FC<BasePanelProps> = ({
   useEffect(() => {
     if (currentTriggerPlugin) {
       setDetail({
-        name: currentTriggerPlugin.label[language],
+        name: currentTriggerPlugin.label[language]!,
         plugin_id: currentTriggerPlugin.plugin_id || '',
         plugin_unique_identifier: currentTriggerPlugin.plugin_unique_identifier || '',
         id: currentTriggerPlugin.id,
@@ -352,7 +400,7 @@ const BasePanel: FC<BasePanelProps> = ({
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
-        'relative mr-1  h-full',
+        'relative mr-1 h-full',
       )}
       >
         <div
@@ -392,7 +440,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
     return (
       <div className={cn(
-        'relative mr-1  h-full',
+        'relative mr-1 h-full',
       )}
       >
         <div
@@ -425,6 +473,11 @@ const BasePanel: FC<BasePanelProps> = ({
     )
   }
 
+  const runThisStepLabel = t('panel.runThisStep', { ns: 'workflow' })
+  const singleRunActionLabel = isSingleRunning
+    ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' })
+    : runThisStepLabel
+
   return (
     <div
       className={cn(
@@ -437,7 +490,7 @@ const BasePanel: FC<BasePanelProps> = ({
     >
       <div
         ref={triggerRef}
-        className="absolute -left-1 top-0 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
+        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize resize-x items-center justify-center"
       >
         <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </div>
@@ -449,7 +502,7 @@ const BasePanel: FC<BasePanelProps> = ({
         }}
       >
         <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
-          <div className="flex items-center px-4 pb-1 pt-4">
+          <div className="flex items-center px-4 pt-4 pb-1">
             <BlockIcon
               className="mr-1 shrink-0"
               type={data.type}
@@ -460,34 +513,48 @@ const BasePanel: FC<BasePanelProps> = ({
               value={data.title || ''}
               onBlur={handleTitleBlur}
             />
+            {viewingUsers.length > 0 && (
+              <div className="ml-3 shrink-0">
+                <UserAvatarList
+                  users={viewingUsers}
+                  maxVisible={3}
+                  size="sm"
+                />
+              </div>
+            )}
             <div className="flex shrink-0 items-center text-text-tertiary">
               {
                 isSupportSingleRun && !nodesReadOnly && (
-                  <Tooltip
-                    popupContent={t('panel.runThisStep', { ns: 'workflow' })}
-                    popupClassName="mr-1"
-                    disabled={isSingleRunning}
-                  >
-                    <div
-                      className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover"
-                      onClick={() => {
-                        if (isSingleRunning)
-                          handleStop()
-                        else
-                          handleSingleRun()
-                      }}
-                    >
-                      {
-                        isSingleRunning
-                          ? <Stop className="h-4 w-4 text-text-tertiary" />
-                          : <RiPlayLargeLine className="h-4 w-4 text-text-tertiary" />
-                      }
-                    </div>
+                  <Tooltip disabled={isSingleRunning}>
+                    <TooltipTrigger
+                      render={(
+                        <button
+                          type="button"
+                          aria-label={singleRunActionLabel}
+                          className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+                          onClick={() => {
+                            if (isSingleRunning)
+                              handleStop()
+                            else
+                              handleSingleRun()
+                          }}
+                        >
+                          {
+                            isSingleRunning
+                              ? <Stop aria-hidden className="h-4 w-4 text-text-tertiary" />
+                              : <RiPlayLargeLine aria-hidden className="h-4 w-4 text-text-tertiary" />
+                          }
+                        </button>
+                      )}
+                    />
+                    <TooltipContent className="mr-1">
+                      {runThisStepLabel}
+                    </TooltipContent>
                   </Tooltip>
                 )
               }
               <HelpLink nodeType={data.type} />
-              <PanelOperator id={id} data={data} showHelpLink={false} />
+              <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <div
                 className="flex h-6 w-6 cursor-pointer items-center justify-center"
@@ -514,7 +581,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   detail: currToolCollection as any,
                 }}
               >
-                <div className="flex items-center justify-between pl-4 pr-3">
+                <div className="flex items-center justify-between pr-3 pl-4">
                   <Tab
                     value={tabType}
                     onChange={setTabType}
@@ -539,7 +606,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 onJumpToDataSourcePage={handleJumpToDataSourcePage}
                 isAuthorized={currentDataSource.is_authorized}
               >
-                <div className="flex items-center justify-between pl-4 pr-3">
+                <div className="flex items-center justify-between pr-3 pl-4">
                   <Tab
                     value={tabType}
                     onChange={setTabType}
@@ -567,7 +634,7 @@ const BasePanel: FC<BasePanelProps> = ({
           }
           {
             !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
-              <div className="flex items-center justify-between pl-4 pr-3">
+              <div className="flex items-center justify-between pr-3 pl-4">
                 <Tab
                   value={tabType}
                   onChange={setTabType}
@@ -613,10 +680,10 @@ const BasePanel: FC<BasePanelProps> = ({
             {
               !!availableNextBlocks.length && (
                 <div className="border-t-[0.5px] border-divider-regular p-4">
-                  <div className="system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary">
+                  <div className="mb-1 flex items-center system-sm-semibold-uppercase text-text-secondary">
                     {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
                   </div>
-                  <div className="system-xs-regular mb-2 text-text-tertiary">
+                  <div className="mb-2 system-xs-regular text-text-tertiary">
                     {t('panel.addNextStep', { ns: 'workflow' })}
                   </div>
                   <NextStep selectedNode={selectedNode} />

@@ -56,7 +56,7 @@ const ParamItemPlayground = () => {
     setState(prev => ({
       ...prev,
       [id]: {
-        ...prev[id],
+        ...prev[id]!,
         value: Number.parseFloat(value.toFixed(3)),
       },
     }))
@@ -66,7 +66,7 @@ const ParamItemPlayground = () => {
     setState(prev => ({
       ...prev,
       [id]: {
-        ...prev[id],
+        ...prev[id]!,
         enabled,
       },
     }))
@@ -74,7 +74,7 @@ const ParamItemPlayground = () => {
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-5 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-text-tertiary">
+      <div className="flex items-center justify-between text-xs tracking-[0.18em] text-text-tertiary uppercase">
         <span>Generation parameters</span>
         <code className="rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-[11px] text-text-tertiary">
           {JSON.stringify(state, null, 0)}
@@ -87,8 +87,8 @@ const ParamItemPlayground = () => {
           id={param.id}
           name={param.name}
           tip={param.tip}
-          value={state[param.id].value}
-          enable={state[param.id].enabled}
+          value={state[param.id]!.value}
+          enable={state[param.id]!.enabled}
           min={param.min}
           max={param.max}
           step={param.step}

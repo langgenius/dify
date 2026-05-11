@@ -3,13 +3,13 @@ import type { Callback, ChatConfig, ChatItem, Feedback } from '../types'
 import type { InstalledApp } from '@/models/explore'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useLocalStorageState } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import { toast } from '@/app/components/base/ui/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
@@ -452,7 +452,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       setOriginConversationList(produce((draft) => {
         const index = originConversationList.findIndex(item => item.id === conversationId)
-        const item = draft[index]
+        const item = draft[index]!
         draft[index] = {
           ...item,
           name: newName,

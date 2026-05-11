@@ -15,7 +15,7 @@ describe('TypeSwitch', () => {
       <TypeSwitch isVariable={false} onIsVariableChange={onIsVariableChange} />,
     )
 
-    const trigger = screen.getByText('workflow.nodes.humanInput.insertInputField.useVarInstead')
+    const trigger = screen.getByRole('button', { name: 'workflow.nodes.humanInput.insertInputField.useVarInstead' })
     await user.click(trigger)
 
     expect(onIsVariableChange).toHaveBeenCalledWith(true)
@@ -29,7 +29,7 @@ describe('TypeSwitch', () => {
       <TypeSwitch isVariable onIsVariableChange={onIsVariableChange} />,
     )
 
-    const trigger = screen.getByText('workflow.nodes.humanInput.insertInputField.useConstantInstead')
+    const trigger = screen.getByRole('button', { name: 'workflow.nodes.humanInput.insertInputField.useConstantInstead' })
     await user.click(trigger)
 
     expect(onIsVariableChange).toHaveBeenCalledWith(false)

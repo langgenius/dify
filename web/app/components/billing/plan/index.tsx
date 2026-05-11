@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiBook2Line,
   RiFileEditLine,
@@ -10,7 +11,6 @@ import { useUnmountedRef } from 'ahooks'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
@@ -23,6 +23,7 @@ import { useEducationVerify } from '@/service/use-education'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import { Loading } from '../../base/icons/src/public/thought'
 import { NUM_INFINITE } from '../config'
+import { useEducationDiscount } from '../hooks/use-education-discount'
 import { Plan, SelfHostedPlan } from '../type'
 import UpgradeBtn from '../upgrade-btn'
 import AppsInfo from '../usage-info/apps-info'
@@ -39,12 +40,13 @@ const PlanComp: FC<Props> = ({
   const { t } = useTranslation()
   const router = useRouter()
   const path = usePathname()
-  const { userProfile } = useAppContext()
+  const { userProfile, isCurrentWorkspaceManager } = useAppContext()
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } = useProviderContext()
   const isAboutToExpire = allowRefreshEducationVerify
   const {
     type,
   } = plan
+  const isEnterprisePlan = String(type) === SelfHostedPlan.enterprise
 
   const {
     usage,
@@ -65,6 +67,7 @@ const PlanComp: FC<Props> = ({
   })()
 
   const [showModal, setShowModal] = React.useState(false)
+  const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const unmountedRef = useUnmountedRef()
@@ -97,7 +100,7 @@ const PlanComp: FC<Props> = ({
         {plan.type === Plan.team && (
           <Team />
         )}
-        {(plan.type as any) === SelfHostedPlan.enterprise && (
+        {isEnterprisePlan && (
           <Enterprise />
         )}
         <div className="mt-1 flex items-center">
@@ -115,7 +118,14 @@ const PlanComp: FC<Props> = ({
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
-            {(plan.type as any) !== SelfHostedPlan.enterprise && (
+            {enableEducationPlan && isEducationAccount && type === Plan.sandbox && isCurrentWorkspaceManager && (
+              <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
+                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                {t('useEducationDiscount', { ns: 'education' })}
+                {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
+              </Button>
+            )}
+            {!isEnterprisePlan && (
               <UpgradeBtn
                 className="shrink-0"
                 isPlain={type === Plan.team}

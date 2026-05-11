@@ -1,4 +1,12 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { RiExportLine, RiMoreFill } from '@remixicon/react'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import {
@@ -12,13 +20,7 @@ import { getNodesBounds, useReactFlow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useStore } from '@/app/components/workflow/store'
-import { cn } from '@/utils/classnames'
 import { downloadUrl } from '@/utils/download'
 import { useNodesReadOnly } from '../hooks'
 import TipPopup from './tip-popup'
@@ -37,6 +39,7 @@ const MoreActions: FC = () => {
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
   })))
+  const isReadOnly = getNodesReadOnly()
 
   const crossAxisOffset = useMemo(() => {
     if (maximizeCanvas)
@@ -161,93 +164,67 @@ const MoreActions: FC = () => {
     }
   }, [getNodesReadOnly, appName, reactFlow, knowledgeName])
 
-  const handleTrigger = useCallback(() => {
-    if (getNodesReadOnly())
-      return
-
-    setOpen(v => !v)
-  }, [getNodesReadOnly])
-
   return (
     <>
-      <PortalToFollowElem
+      <DropdownMenu
         open={open}
-        onOpenChange={setOpen}
-        placement="bottom-end"
-        offset={{
-          mainAxis: -200,
-          crossAxis: crossAxisOffset,
+        onOpenChange={(nextOpen) => {
+          if (isReadOnly) {
+            setOpen(false)
+            return
+          }
+          setOpen(nextOpen)
         }}
       >
-        <PortalToFollowElemTrigger>
+        <DropdownMenuTrigger
+          className={cn(
+            'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
+            isReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+          )}
+        >
           <TipPopup title={t('common.moreActions', { ns: 'workflow' })}>
-            <div
-              className={cn(
-                'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-                `${getNodesReadOnly() && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-              )}
-              onClick={handleTrigger}
-            >
-              <RiMoreFill className="h-4 w-4" />
-            </div>
+            <RiMoreFill className="h-4 w-4" />
           </TipPopup>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-10">
-          <div className="min-w-[180px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg">
-            <div className="p-1">
-              <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
-                <RiExportLine className="h-3 w-3" />
-                {t('common.exportImage', { ns: 'workflow' })}
-              </div>
-              <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
-                {t('common.currentView', { ns: 'workflow' })}
-              </div>
-              <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
-                onClick={() => handleExportImage('png')}
-              >
-                {t('common.exportPNG', { ns: 'workflow' })}
-              </div>
-              <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
-                onClick={() => handleExportImage('jpeg')}
-              >
-                {t('common.exportJPEG', { ns: 'workflow' })}
-              </div>
-              <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
-                onClick={() => handleExportImage('svg')}
-              >
-                {t('common.exportSVG', { ns: 'workflow' })}
-              </div>
-
-              <div className="border-border-divider mx-2 my-1 border-t" />
-
-              <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
-                {t('common.currentWorkflow', { ns: 'workflow' })}
-              </div>
-              <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
-                onClick={() => handleExportImage('png', true)}
-              >
-                {t('common.exportPNG', { ns: 'workflow' })}
-              </div>
-              <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
-                onClick={() => handleExportImage('jpeg', true)}
-              >
-                {t('common.exportJPEG', { ns: 'workflow' })}
-              </div>
-              <div
-                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
-                onClick={() => handleExportImage('svg', true)}
-              >
-                {t('common.exportSVG', { ns: 'workflow' })}
-              </div>
-            </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-end"
+          sideOffset={-200}
+          alignOffset={crossAxisOffset}
+          popupClassName="min-w-[180px]"
+        >
+          <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
+            <RiExportLine className="h-3 w-3" />
+            {t('common.exportImage', { ns: 'workflow' })}
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+          <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
+            {t('common.currentView', { ns: 'workflow' })}
+          </div>
+          <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('png')}>
+            {t('common.exportPNG', { ns: 'workflow' })}
+          </DropdownMenuItem>
+          <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('jpeg')}>
+            {t('common.exportJPEG', { ns: 'workflow' })}
+          </DropdownMenuItem>
+          <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('svg')}>
+            {t('common.exportSVG', { ns: 'workflow' })}
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator className="mx-2" />
+
+          <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
+            {t('common.currentWorkflow', { ns: 'workflow' })}
+          </div>
+          <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('png', true)}>
+            {t('common.exportPNG', { ns: 'workflow' })}
+          </DropdownMenuItem>
+          <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('jpeg', true)}>
+            {t('common.exportJPEG', { ns: 'workflow' })}
+          </DropdownMenuItem>
+          <DropdownMenuItem className="system-md-regular" onClick={() => handleExportImage('svg', true)}>
+            {t('common.exportSVG', { ns: 'workflow' })}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {previewUrl && (
         <ImagePreview

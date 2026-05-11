@@ -1,4 +1,4 @@
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useFieldContext } from '../..'
 import Checkbox from '../../../checkbox'
 
@@ -19,6 +19,7 @@ const CheckboxField = ({
         <Checkbox
           id={field.name}
           checked={field.state.value}
+          ariaLabel={label}
           onCheck={() => {
             field.handleChange(!field.state.value)
           }}
@@ -27,7 +28,7 @@ const CheckboxField = ({
       <label
         htmlFor={field.name}
         className={cn(
-          'system-sm-medium grow cursor-pointer pt-1 text-text-secondary',
+          'grow cursor-pointer pt-1 system-sm-medium text-text-secondary',
           labelClassName,
         )}
         onClick={() => {

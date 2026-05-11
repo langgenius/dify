@@ -1,13 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSourceInfo, DocumentDisplayStatus, FileItem, FullDocumentDetail, LegacyDataSourceInfo } from '@/models/datasets'
+import type { SegmentImportStatus } from '@/types/dataset'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
-import { toast } from '@/app/components/base/ui/toast'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -16,7 +18,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
-import { cn } from '@/utils/classnames'
+import { segmentImportStatus } from '@/types/dataset'
 import Operations from '../components/operations'
 import StatusItem from '../status-item'
 import BatchModal from './batch-modal'
@@ -24,7 +26,7 @@ import Completed from './completed'
 import { DocumentContext } from './context'
 import { DocumentTitle } from './document-title'
 import Embedding from './embedding'
-import SegmentAdd, { ProcessStatus } from './segment-add'
+import { SegmentAdd } from './segment-add'
 import style from './style.module.css'
 
 type DocumentDetailProps = {
@@ -53,20 +55,20 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const [showMetadata, setShowMetadata] = useState(!isMobile)
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
   const [batchModalVisible, setBatchModalVisible] = useState(false)
-  const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
+  const [importStatus, setImportStatus] = useState<SegmentImportStatus>()
   const showNewSegmentModal = () => setNewSegmentModalVisible(true)
   const showBatchModal = () => setBatchModalVisible(true)
   const hideBatchModal = () => setBatchModalVisible(false)
-  const resetProcessStatus = () => setImportStatus('')
+  const resetImportStatus = () => setImportStatus(undefined)
 
   const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
   const checkProcess = async (jobID: string) => {
     await checkSegmentBatchImportProgress({ jobID }, {
       onSuccess: (res) => {
         setImportStatus(res.job_status)
-        if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
+        if (res.job_status === segmentImportStatus.waiting || res.job_status === segmentImportStatus.processing)
           setTimeout(() => checkProcess(res.job_id), 2500)
-        if (res.job_status === ProcessStatus.ERROR)
+        if (res.job_status === segmentImportStatus.error)
           toast.error(`${t('list.batchModal.runError', { ns: 'datasetDocuments' })}`)
       },
       onError: (e) => {
@@ -195,14 +197,13 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   return (
     <DocumentContext.Provider value={contextValue}>
       <div className="flex h-full flex-col bg-background-default">
-        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pl-3 pr-4">
+        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pr-4 pl-3">
           <button
             type="button"
-            data-testid="document-detail-back-button"
             aria-label={backButtonLabel}
             title={backButtonLabel}
             onClick={backToPrev}
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg"
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 hover:bg-components-button-tertiary-bg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           >
             <span
               aria-hidden="true"
@@ -222,7 +223,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               <>
                 <SegmentAdd
                   importStatus={importStatus}
-                  clearProcessStatus={resetProcessStatus}
+                  clearImportStatus={resetImportStatus}
                   showNewSegmentModal={showNewSegmentModal}
                   showBatchModal={showBatchModal}
                   embedding={embedding}
@@ -270,7 +271,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type="app" />
             : (
-                <div className={cn('flex h-full min-w-0 grow flex-col', !embedding && isFullDocMode && 'relative pl-11 pr-11 pt-4', !embedding && !isFullDocMode && 'relative pl-5 pr-11 pt-3')}>
+                <div className={cn('flex h-full min-w-0 grow flex-col', !embedding && isFullDocMode && 'relative pt-4 pr-11 pl-11', !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5')}>
                   {embedding
                     ? (
                         <Embedding
@@ -290,9 +291,9 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                       )}
                 </div>
               )}
-          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName="justify-start!" footer={null}>
+          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName="justify-start!">
             <Metadata
-              className="mr-2 mt-3"
+              className="mt-3 mr-2"
               datasetId={datasetId}
               documentId={documentId}
               docDetail={docDetail}

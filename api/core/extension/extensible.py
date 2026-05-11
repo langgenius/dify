@@ -21,8 +21,8 @@ class ExtensionModule(StrEnum):
 class ModuleExtension(BaseModel):
     extension_class: Any | None = None
     name: str
-    label: dict | None = None
-    form_schema: list | None = None
+    label: dict[str, Any] | None = None
+    form_schema: list[dict[str, Any]] | None = None
     builtin: bool = True
     position: int | None = None
 

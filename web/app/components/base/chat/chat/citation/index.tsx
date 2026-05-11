@@ -32,7 +32,7 @@ const Citation: FC<CitationProps> = ({
     const documentIndex = prev.findIndex(i => i.documentId === documentId)
 
     if (documentIndex > -1) {
-      prev[documentIndex].sources.push(next)
+      prev[documentIndex]!.sources.push(next)
     }
     else {
       prev.push({
@@ -51,10 +51,10 @@ const Citation: FC<CitationProps> = ({
     let totalWidth = 0
     let limit = 0
     for (let i = 0; i < resources.length; i++) {
-      totalWidth += elesRef.current[i].clientWidth
+      totalWidth += elesRef.current[i]!.clientWidth
 
       if (totalWidth + i * 4 > containerWidth) {
-        totalWidth -= elesRef.current[i].clientWidth
+        totalWidth -= elesRef.current[i]!.clientWidth
 
         if (totalWidth + 34 > containerWidth)
           limit = i - 1
@@ -74,8 +74,8 @@ const Citation: FC<CitationProps> = ({
   const resourcesLength = resources.length
 
   return (
-    <div className="-mb-1 mt-3">
-      <div data-testid="citation-title" className="mb-2 flex items-center text-text-tertiary system-xs-medium">
+    <div className="mt-3 -mb-1">
+      <div data-testid="citation-title" className="mb-2 flex items-center system-xs-medium text-text-tertiary">
         {t('chat.citation.title', { ns: 'common' })}
         <div className="ml-2 h-px grow bg-divider-regular" />
       </div>
@@ -85,7 +85,7 @@ const Citation: FC<CitationProps> = ({
             <div
               key={res.documentId}
               data-testid="citation-measurement-item"
-              className="absolute left-0 top-0 -z-10 mb-1 mr-1 h-7 w-auto max-w-[240px] whitespace-nowrap pl-7 pr-2 text-xs opacity-0"
+              className="absolute top-0 left-0 -z-10 mr-1 mb-1 h-7 w-auto max-w-[240px] pr-2 pl-7 text-xs whitespace-nowrap opacity-0"
               ref={(ele: HTMLDivElement | null) => { elesRef.current[index] = ele! }}
             >
               {res.documentName}
@@ -94,7 +94,7 @@ const Citation: FC<CitationProps> = ({
         }
         {
           resources.slice(0, showMore ? resourcesLength : limitNumberInOneLine).map(res => (
-            <div key={res.documentId} className="mb-1 mr-1 cursor-pointer">
+            <div key={res.documentId} className="mr-1 mb-1 cursor-pointer">
               <Popup
                 data={res}
                 showHitInfo={showHitInfo}
@@ -106,7 +106,7 @@ const Citation: FC<CitationProps> = ({
           limitNumberInOneLine < resourcesLength && (
             <div
               data-testid="citation-more-toggle"
-              className="flex h-7 cursor-pointer items-center rounded-lg bg-components-panel-bg px-2 text-text-tertiary system-xs-medium"
+              className="flex h-7 cursor-pointer items-center rounded-lg bg-components-panel-bg px-2 system-xs-medium text-text-tertiary"
               onClick={() => setShowMore(v => !v)}
             >
               {

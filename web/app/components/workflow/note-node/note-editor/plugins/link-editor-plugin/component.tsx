@@ -5,6 +5,8 @@ import {
   shift,
   useFloating,
 } from '@floating-ui/react'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEditLine,
   RiExternalLinkLine,
@@ -14,12 +16,12 @@ import { useClickAway } from 'ahooks'
 import { escape } from 'es-toolkit/string'
 import {
   memo,
+  useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
 import { useStore } from '../../store'
 import { useLink } from './hooks'
 
@@ -40,6 +42,7 @@ const LinkEditorComponent = ({
   const setLinkAnchorElement = useStore(s => s.setLinkAnchorElement)
   const setLinkOperatorShow = useStore(s => s.setLinkOperatorShow)
   const [url, setUrl] = useState(selectedLinkUrl)
+  const floatingRef = useRef<HTMLDivElement | null>(null)
   const { refs, floatingStyles, elements } = useFloating({
     placement: 'top',
     middleware: [
@@ -49,9 +52,19 @@ const LinkEditorComponent = ({
     ],
   })
 
-  useClickAway(() => {
+  const handleCancelLinkEdit = useCallback(() => {
+    if (!linkOperatorShow && !selectedLinkUrl) {
+      handleUnlink()
+      return
+    }
+
     setLinkAnchorElement()
-  }, linkAnchorElement)
+    setLinkOperatorShow(false)
+  }, [handleUnlink, linkOperatorShow, selectedLinkUrl, setLinkAnchorElement, setLinkOperatorShow])
+
+  useClickAway(() => {
+    handleCancelLinkEdit()
+  }, [floatingRef, linkAnchorElement])
 
   useEffect(() => {
     setUrl(selectedLinkUrl)
@@ -71,10 +84,13 @@ const LinkEditorComponent = ({
               className={cn(
                 'nodrag nopan z-10 inline-flex w-max items-center rounded-md border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg',
                 !linkOperatorShow && 'p-1 shadow-md',
-                linkOperatorShow && 'system-xs-medium p-0.5 text-text-tertiary shadow-sm',
+                linkOperatorShow && 'p-0.5 system-xs-medium text-text-tertiary shadow-sm',
               )}
               style={floatingStyles}
-              ref={refs.setFloating}
+              ref={(node) => {
+                refs.setFloating(node)
+                floatingRef.current = node
+              }}
             >
               {
                 !linkOperatorShow && (
@@ -83,6 +99,21 @@ const LinkEditorComponent = ({
                       className="mr-0.5 h-6 w-[196px] appearance-none rounded-xs bg-transparent p-1 text-[13px] text-components-input-text-filled outline-hidden"
                       value={url}
                       onChange={e => setUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          if (url)
+                            handleSaveLink(url)
+                          return
+                        }
+
+                        if (e.key === 'Escape') {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleCancelLinkEdit()
+                        }
+                      }}
                       placeholder={t('nodes.note.editor.enterUrl', { ns: 'workflow' }) || ''}
                       autoFocus
                     />
@@ -104,7 +135,7 @@ const LinkEditorComponent = ({
                       className="flex h-6 items-center rounded-md px-2 hover:bg-state-base-hover"
                       href={escape(url)}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                     >
                       <RiExternalLinkLine className="mr-1 h-3 w-3" />
                       <div className="mr-1">

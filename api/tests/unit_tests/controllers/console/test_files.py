@@ -82,7 +82,7 @@ def mock_file_service(mock_db):
 
 
 class TestFileApiGet:
-    def test_get_upload_config(self, app):
+    def test_get_upload_config(self, app: Flask):
         api = FileApi()
         get_method = unwrap(api.get)
 
@@ -290,7 +290,7 @@ class TestFilePreviewApi:
 
 
 class TestFileSupportTypeApi:
-    def test_get_supported_types(self, app):
+    def test_get_supported_types(self, app: Flask):
         api = FileSupportTypeApi()
         get_method = unwrap(api.get)
 

@@ -1,9 +1,11 @@
+from typing import Any
+
 from core.app.app_config.entities import TextToSpeechEntity
 
 
 class TextToSpeechConfigManager:
     @classmethod
-    def convert(cls, config: dict):
+    def convert(cls, config: dict[str, Any]):
         """
         Convert model config to model config
 
@@ -22,7 +24,7 @@ class TextToSpeechConfigManager:
         return text_to_speech
 
     @classmethod
-    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for text to speech feature
 

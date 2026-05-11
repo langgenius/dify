@@ -1,9 +1,9 @@
 import type { InputVar } from '@/app/components/workflow/types'
 import type { App, AppSSO } from '@/types/app'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { useStore } from '@/app/components/app/store'
-import { toast } from '@/app/components/base/ui/toast'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 import ConfigModal from '../index'
@@ -44,9 +44,9 @@ describe('ConfigModal', () => {
     )
 
     const textboxes = screen.getAllByRole('textbox')
-    fireEvent.blur(textboxes[0], { target: { value: 'question' } })
+    fireEvent.blur(textboxes[0]!, { target: { value: 'question' } })
 
-    expect(textboxes[1]).toHaveValue('question')
+    expect(textboxes[1])!.toHaveValue('question')
   })
 
   it('should submit the edited payload when the form is valid', () => {

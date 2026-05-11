@@ -1,16 +1,17 @@
-import { t } from 'i18next'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { toast } from '@/app/components/base/ui/toast'
+import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
 
 type AudioPlayerProps = {
   src?: string // Keep backward compatibility
   srcs?: string[] // Support multiple sources
 }
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
+  const { t } = useTranslation()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -22,6 +23,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const [hoverTime, setHoverTime] = useState(0)
   const [isAudioAvailable, setIsAudioAvailable] = useState(true)
   const { theme } = useTheme()
+  const playPauseLabel = t(isPlaying ? 'operation.pause' : 'operation.play', { ns: 'common' })
   useEffect(() => {
     const audio = audioRef.current
     /* v8 ignore next 2 - @preserve */
@@ -95,7 +97,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
       for (let i = 0; i < samples; i++) {
         let sum = 0
         for (let j = 0; j < blockSize; j++)
-          sum += Math.abs(channelData[i * blockSize + j])
+          sum += Math.abs(channelData[i * blockSize + j]!)
         // Apply nonlinear scaling to enhance small amplitudes
         waveformData.push((sum / blockSize) * 5)
       }
@@ -145,7 +147,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     e.preventDefault()
     const getClientX = (event: React.MouseEvent | React.TouchEvent): number => {
       if ('touches' in event)
-        return event.touches[0].clientX
+        return event.touches[0]!.clientX
       return event.clientX
     }
     const updateProgress = (clientX: number) => {
@@ -240,25 +242,25 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
     }
   }, [duration])
   return (
-    <div className="flex h-9 min-w-[240px] max-w-[420px] items-center gap-2 radius-lg border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
+    <div className="flex h-9 max-w-[420px] min-w-[240px] items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-xs">
       <audio ref={audioRef} src={src} preload="auto" data-testid="audio-player">
         {/* If srcs array is provided, render multiple source elements */}
         {srcs && srcs.map((srcUrl, index) => (<source key={index} src={srcUrl} />))}
       </audio>
-      <button type="button" data-testid="play-pause-btn" className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
+      <button type="button" aria-label={playPauseLabel} className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
-          ? (<div className="i-ri-pause-circle-fill h-5 w-5" />)
-          : (<div className="i-ri-play-large-fill h-5 w-5" />)}
+          ? (<div className="i-ri-pause-circle-fill h-5 w-5" aria-hidden="true" />)
+          : (<div className="i-ri-play-large-fill h-5 w-5" aria-hidden="true" />)}
       </button>
       <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>
         <div className="flex h-8 items-center justify-center">
           <canvas ref={canvasRef} data-testid="waveform-canvas" className="relative flex h-6 w-full grow cursor-pointer items-center justify-center" onClick={handleCanvasInteraction} onMouseMove={handleMouseMove} onMouseDown={handleCanvasInteraction} onTouchMove={handleMouseMove} onTouchStart={handleCanvasInteraction} />
-          <div className="inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary system-xs-medium">
-            <span className="radius-lg px-0.5 py-1">{formatTime(duration)}</span>
+          <div className="inline-flex min-w-[50px] items-center justify-center system-xs-medium text-text-accent-secondary">
+            <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>
           </div>
         </div>
       </div>
-      <div className="absolute left-0 top-0 flex h-full w-full items-center justify-center text-text-quaternary" hidden={isAudioAvailable}>{t('operation.audioSourceUnavailable', { ns: 'common' })}</div>
+      <div className="absolute top-0 left-0 flex h-full w-full items-center justify-center text-text-quaternary" hidden={isAudioAvailable}>{t('operation.audioSourceUnavailable', { ns: 'common' })}</div>
     </div>
   )
 }
