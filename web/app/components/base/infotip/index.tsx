@@ -42,7 +42,6 @@ type InfotipProps = {
   'iconClassName'?: string
   /** Extra classes on the popup body (width / padding / whitespace overrides). */
   'popupClassName'?: string
-  'data-testid'?: string
   /** Hover open delay in ms. Defaults to 300 to match the app-wide Tooltip delay. */
   'delay'?: number
   /** Hover close delay in ms. Defaults to 200 to match the app-wide Tooltip delay. */
@@ -56,7 +55,6 @@ export function Infotip({
   className,
   iconClassName,
   popupClassName,
-  'data-testid': dataTestId,
   delay = 300,
   closeDelay = 200,
 }: InfotipProps) {
@@ -71,7 +69,6 @@ export function Infotip({
         delay={delay}
         closeDelay={closeDelay}
         aria-label={ariaLabel}
-        data-testid={dataTestId}
         onClick={handleClick}
         className={cn(
           'inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',

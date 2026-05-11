@@ -119,7 +119,6 @@ const OpeningSettingModal = ({
             </div>
             <Infotip
               aria-label={t('openingStatement.openingQuestionDescription', { ns: 'appDebug' })}
-              data-testid="opening-questions-tooltip"
               className="h-3.5 w-3.5"
               popupClassName="max-w-[220px] system-sm-regular text-text-secondary"
               delay={0}

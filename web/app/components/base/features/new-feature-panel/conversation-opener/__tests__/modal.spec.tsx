@@ -369,7 +369,7 @@ describe('OpeningSettingModal', () => {
     expect(screen.getByTestId('opener-input-section')).toBeInTheDocument()
     expect(screen.getByTestId('opener-questions-section')).toBeInTheDocument()
     expect(screen.getByText(/openingStatement\.editorTitle/)).toBeInTheDocument()
-    expect(screen.getByTestId('opening-questions-tooltip')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /openingStatement\.openingQuestionDescription/ })).toBeInTheDocument()
     expect(screen.queryByText(/openingStatement\.openingQuestionDescription/)).not.toBeInTheDocument()
   })
 
@@ -383,7 +383,7 @@ describe('OpeningSettingModal', () => {
     )
 
     act(() => {
-      fireEvent.mouseEnter(screen.getByTestId('opening-questions-tooltip'))
+      fireEvent.mouseEnter(screen.getByRole('button', { name: /openingStatement\.openingQuestionDescription/ }))
     })
 
     expect(screen.getByText(/openingStatement\.openingQuestionDescription/)).toBeInTheDocument()
