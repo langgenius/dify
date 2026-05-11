@@ -1741,11 +1741,6 @@
       "count": 4
     }
   },
-  "web/app/components/billing/upgrade-btn/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/datasets/common/image-previewer/index.tsx": {
     "no-irregular-whitespace": {
       "count": 1
