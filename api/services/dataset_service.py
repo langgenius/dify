@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from typing import Annotated, Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -119,29 +119,20 @@ class AutoDisableLogsDict(TypedDict):
 
 
 class _EstimatePreProcessingRule(BaseModel):
-    id: str
+    id: str = Field(min_length=1)
     enabled: bool
 
     @field_validator("id")
     @classmethod
     def _validate_id(cls, v: str) -> str:
-        if not v:
-            raise ValueError("Process rule pre_processing_rules id is required")
         if v not in DatasetProcessRule.PRE_PROCESSING_RULES:
             raise ValueError("Process rule pre_processing_rules id is invalid")
         return v
 
 
 class _EstimateSegmentation(BaseModel):
-    separator: str
+    separator: str = Field(min_length=1)
     max_tokens: int = Field(gt=0)
-
-    @field_validator("separator")
-    @classmethod
-    def _validate_separator(cls, v: str) -> str:
-        if not v:
-            raise ValueError("Process rule segmentation separator is required")
-        return v
 
 
 class _EstimateRules(BaseModel):
@@ -157,19 +148,20 @@ class _EstimateRules(BaseModel):
         return list(seen.values())
 
 
-class _SummaryIndexSetting(BaseModel):
-    enable: bool = False
-    model_name: str | None = None
-    model_provider_name: str | None = None
+class _SummaryIndexSettingDisabled(BaseModel):
+    enable: Literal[False] = False
 
-    @model_validator(mode="after")
-    def _validate_when_enabled(self) -> "_SummaryIndexSetting":
-        if self.enable:
-            if not self.model_name:
-                raise ValueError("Summary index model name is required")
-            if not self.model_provider_name:
-                raise ValueError("Summary index model provider name is required")
-        return self
+
+class _SummaryIndexSettingEnabled(BaseModel):
+    enable: Literal[True]
+    model_name: str
+    model_provider_name: str
+
+
+_SummaryIndexSetting = Annotated[
+    _SummaryIndexSettingDisabled | _SummaryIndexSettingEnabled,
+    Field(discriminator="enable"),
+]
 
 
 class _AutomaticProcessRule(BaseModel):
