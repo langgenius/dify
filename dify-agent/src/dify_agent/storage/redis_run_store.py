@@ -1,10 +1,12 @@
 """Redis-backed run records and per-run event streams.
 
-The store writes run records as JSON strings and events as Redis streams. HTTP
-event cursors are Redis stream ids; ``0-0`` means replay from the beginning for
-polling and SSE. Records and streams share one retention window that is refreshed
-when status or event data is written. Execution is scheduled in-process by
-``dify_agent.runtime.run_scheduler``; Redis is not a job queue.
+The store writes status-only run records as JSON strings and events as Redis
+streams. HTTP event cursors are Redis stream ids; ``0-0`` means replay from the
+beginning for polling and SSE. Records and streams share one retention window
+that is refreshed when status or event data is written. Execution is scheduled
+in-process by ``dify_agent.runtime.run_scheduler``; Redis is not a job queue, and
+create-run payloads are never persisted because layer config may include model
+credentials.
 """
 
 from collections.abc import AsyncIterator
@@ -12,14 +14,7 @@ from typing import cast
 
 from redis.asyncio import Redis
 
-from dify_agent.protocol.schemas import (
-    CreateRunRequest,
-    RUN_EVENT_ADAPTER,
-    RunEvent,
-    RunEventsResponse,
-    RunStatus,
-    utc_now,
-)
+from dify_agent.protocol.schemas import RUN_EVENT_ADAPTER, RunEvent, RunEventsResponse, RunStatus, utc_now
 from dify_agent.runtime.event_sink import RunEventSink
 from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_RETENTION_SECONDS
@@ -55,10 +50,10 @@ class RedisRunStore(RunEventSink):
         self.prefix = prefix
         self.run_retention_seconds = run_retention_seconds
 
-    async def create_run(self, request: CreateRunRequest) -> RunRecord:
-        """Persist a running run record without enqueueing external work."""
+    async def create_run(self) -> RunRecord:
+        """Persist a running run record without storing the create request."""
         run_id = new_run_id()
-        record = RunRecord(run_id=run_id, status="running", request=request)
+        record = RunRecord(run_id=run_id, status="running")
         await self.redis.set(
             run_record_key(self.prefix, run_id),
             record.model_dump_json(),

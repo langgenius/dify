@@ -23,14 +23,13 @@ def new_run_id() -> str:
 class RunRecord(BaseModel):
     """Internal representation persisted for status reads.
 
-    The embedded request and status use protocol types so persisted records stay
-    JSON-compatible with the public API, but callers must import those DTOs from
-    ``dify_agent.protocol.schemas`` rather than this server-only module.
+    Only status metadata is persisted. Create-run requests can contain model
+    credentials in layer config and must remain in scheduler memory rather than
+    being written to Redis.
     """
 
     run_id: str
     status: _protocol_schemas.RunStatus
-    request: _protocol_schemas.CreateRunRequest
     created_at: datetime = Field(default_factory=_protocol_schemas.utc_now)
     updated_at: datetime = Field(default_factory=_protocol_schemas.utc_now)
     error: str | None = None

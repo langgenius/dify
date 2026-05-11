@@ -34,8 +34,7 @@ def _create_run_payload() -> dict[str, object]:
         "compositor": {
             "schema_version": 1,
             "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
-        },
-        "agent_profile": {"provider": "test", "output_text": "done"},
+        }
     }
 
 
@@ -80,7 +79,7 @@ def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:
             compositor = cast(dict[str, object], payload["compositor"])
             layers = cast(list[dict[str, object]], compositor["layers"])
             assert layers[0]["config"] == {"user": "hello"}
-            assert payload["agent_profile"] == {"provider": "test", "output_text": "done"}
+            assert "agent_profile" not in payload
             return httpx.Response(202, json={"run_id": "run-1", "status": "running"})
         if request.method == "GET" and request.url.path == "/runs/run-1":
             return httpx.Response(200, json=_run_status_json("running"))

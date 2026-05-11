@@ -40,6 +40,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self,
         *,
         user_id: str | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> DifyPluginDaemonProvider:
         return DifyPluginDaemonProvider(
             tenant_id="tenant-1",
@@ -48,6 +49,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             plugin_daemon_url="http://plugin-daemon",
             plugin_daemon_api_key="daemon-secret",
             user_id=user_id,
+            http_client=http_client,
         )
 
     @asynccontextmanager
@@ -171,6 +173,17 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.usage.output_tokens, 7)
         self.assertEqual(response.parts[0].part_kind, "text")
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
+
+    async def test_provider_does_not_close_external_http_client(self) -> None:
+        http_client = httpx.AsyncClient()
+        provider = self.make_provider(http_client=http_client)
+
+        self.assertIs(provider.client.http_client, http_client)
+        async with provider:
+            pass
+
+        self.assertFalse(http_client.is_closed)
+        await http_client.aclose()
 
     async def test_request_returns_a_response(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:

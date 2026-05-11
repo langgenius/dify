@@ -8,14 +8,16 @@ Redis stream ids (or in-memory equivalents in tests) are the public cursors used
 by polling and SSE replay. Event envelopes keep the public
 ``id``/``run_id``/``type``/``data``/``created_at`` shape, while each ``type`` has
 a typed ``data`` model so OpenAPI, Redis replay, and clients parse the same
-payload contract. Successful runs publish the final JSON-safe agent output and
-the resumable Agenton session snapshot together on the terminal
+payload contract. Model/provider selection is part of the submitted Agenton
+layer graph, not a top-level run field; the runtime reads the model layer named
+by ``DIFY_AGENT_MODEL_LAYER_ID``. Successful runs publish the final JSON-safe
+agent output and the resumable Agenton session snapshot together on the terminal
 ``run_succeeded`` event so consumers can treat terminal events as complete run
 summaries.
 """
 
 from datetime import datetime, timezone
-from typing import Annotated, ClassVar, Literal, TypeAlias
+from typing import Annotated, ClassVar, Final, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 from pydantic_ai.messages import AgentStreamEvent
@@ -23,6 +25,7 @@ from pydantic_ai.messages import AgentStreamEvent
 from agenton.compositor import CompositorConfig, CompositorSessionSnapshot
 
 
+DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
 RunStatus = Literal["running", "succeeded", "failed"]
 RunEventType = Literal[
     "run_started",
@@ -37,25 +40,15 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class AgentProfileConfig(BaseModel):
-    """Minimal model profile for the MVP runner.
-
-    ``test`` uses pydantic-ai's ``TestModel`` and is credential-free. Other
-    profiles can be added behind this schema without changing run/event storage.
-    """
-
-    provider: Literal["test"] = "test"
-    output_text: str = "Hello from the Dify Agent test model."
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
 class CreateRunRequest(BaseModel):
-    """Request body for creating one async agent run."""
+    """Request body for creating one async agent run.
+
+    Model/provider configuration must be supplied through the compositor layer
+    named by ``DIFY_AGENT_MODEL_LAYER_ID``.
+    """
 
     compositor: CompositorConfig
     session_snapshot: CompositorSessionSnapshot | None = None
-    agent_profile: AgentProfileConfig = Field(default_factory=AgentProfileConfig)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -164,10 +157,10 @@ class RunEventsResponse(BaseModel):
 
 
 __all__ = [
-    "AgentProfileConfig",
     "BaseRunEvent",
     "CreateRunRequest",
     "CreateRunResponse",
+    "DIFY_AGENT_MODEL_LAYER_ID",
     "EmptyRunEventData",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",

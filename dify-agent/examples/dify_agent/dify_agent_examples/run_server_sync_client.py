@@ -8,10 +8,20 @@ a new run explicitly rather than assuming the original request was not accepted.
 from agenton.compositor import CompositorConfig, LayerNodeConfig
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
-from dify_agent.protocol import AgentProfileConfig, CreateRunRequest
+from dify_agent.layers.dify_plugin import (
+    DifyPluginCredentialValue,
+    DifyPluginLLMLayerConfig,
+    DifyPluginLayerConfig,
+)
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest
 
 
 API_BASE_URL = "http://localhost:8000"
+TENANT_ID = "replace-with-tenant-id"
+PLUGIN_ID = "langgenius/openai"
+PLUGIN_PROVIDER = "openai"
+MODEL_NAME = "gpt-4o-mini"
+MODEL_CREDENTIALS: dict[str, DifyPluginCredentialValue] = {"api_key": "replace-with-provider-key"}
 
 
 def main() -> None:
@@ -27,10 +37,24 @@ def main() -> None:
                                 prefix="You are a concise assistant.",
                                 user="Say hello from the synchronous Dify Agent client example.",
                             ),
-                        )
+                        ),
+                        LayerNodeConfig(
+                            name="plugin",
+                            type="dify.plugin",
+                            config=DifyPluginLayerConfig(tenant_id=TENANT_ID, plugin_id=PLUGIN_ID),
+                        ),
+                        LayerNodeConfig(
+                            name=DIFY_AGENT_MODEL_LAYER_ID,
+                            type="dify.plugin.llm",
+                            deps={"plugin": "plugin"},
+                            config=DifyPluginLLMLayerConfig(
+                                provider=PLUGIN_PROVIDER,
+                                model=MODEL_NAME,
+                                credentials=MODEL_CREDENTIALS,
+                            ),
+                        ),
                     ],
                 ),
-                agent_profile=AgentProfileConfig(output_text="Hello from the sync TestModel."),
             )
         )
         print("created run", run)

@@ -13,17 +13,23 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
+from agenton.compositor import LayerRegistry
 from dify_agent.protocol.schemas import CreateRunRequest, CreateRunResponse, RunEventsResponse, RunStatusResponse
-from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor
+from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_registry
 from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 from dify_agent.server.sse import sse_event_stream
 from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
 
 
-def create_runs_router(get_store: Callable[[], RedisRunStore], get_scheduler: Callable[[], RunScheduler]) -> APIRouter:
+def create_runs_router(
+    get_store: Callable[[], RedisRunStore],
+    get_scheduler: Callable[[], RunScheduler],
+    get_layer_registry: Callable[[], LayerRegistry] | None = None,
+) -> APIRouter:
     """Create routes bound to the application's store dependency provider."""
     router = APIRouter(prefix="/runs", tags=["runs"])
+    resolved_get_layer_registry = get_layer_registry or create_default_layer_registry
 
     async def store_dep() -> RedisRunStore:
         return get_store()
@@ -37,7 +43,10 @@ def create_runs_router(get_store: Callable[[], RedisRunStore], get_scheduler: Ca
         scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
     ) -> CreateRunResponse:
         try:
-            compositor = build_pydantic_ai_compositor(request.compositor)
+            compositor = build_pydantic_ai_compositor(
+                request.compositor,
+                registry=resolved_get_layer_registry(),
+            )
         except Exception as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         if not has_non_blank_user_prompt(compositor.user_prompts):

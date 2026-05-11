@@ -12,11 +12,11 @@ server-only and should not be used by API consumers.
 ## Input model
 
 Create-run requests accept a `CompositorConfig` and an optional
-`CompositorSessionSnapshot`. There is **no top-level `user_prompt` field**.
-User input must be supplied by Agenton layers. In the MVP server, the safe
-config-constructible layer registry includes `plain.prompt`; its `config.user`
-field becomes `Compositor.user_prompts` and is passed to Pydantic AI as the run
-input.
+`CompositorSessionSnapshot`. There is **no top-level `user_prompt` or model
+profile field**. User input and model/provider selection are supplied by Agenton
+layers. In the MVP server, the safe config-constructible layer registry includes
+`plain.prompt`, `dify.plugin`, and `dify.plugin.llm`. The runtime reads the LLM
+model layer named by `DIFY_AGENT_MODEL_LAYER_ID`, whose public value is `"llm"`.
 
 Blank user input is rejected. A request with no user prompt, an empty string, or
 only whitespace strings such as `"user": ["", "   "]` returns `422` before a run
@@ -46,14 +46,35 @@ Request:
           "prefix": "You are a concise assistant.",
           "user": "Say hello from the Dify Agent API."
         }
+      },
+      {
+        "name": "plugin",
+        "type": "dify.plugin",
+        "config": {
+          "tenant_id": "replace-with-tenant-id",
+          "plugin_id": "langgenius/openai"
+        }
+      },
+      {
+        "name": "llm",
+        "type": "dify.plugin.llm",
+        "deps": {
+          "plugin": "plugin"
+        },
+        "config": {
+          "provider": "openai",
+          "model": "gpt-4o-mini",
+          "credentials": {
+            "api_key": "replace-with-provider-key"
+          },
+          "model_settings": {
+            "temperature": 0.2
+          }
+        }
       }
     ]
   },
-  "session_snapshot": null,
-  "agent_profile": {
-    "provider": "test",
-    "output_text": "Hello from the TestModel."
-  }
+  "session_snapshot": null
 }
 ```
 
@@ -71,7 +92,9 @@ same FastAPI process. Redis is not used as a job queue. Run records and per-run
 event streams expire after `DIFY_AGENT_RUN_RETENTION_SECONDS`, which defaults to
 `259200` seconds (3 days).
 
-`agent_profile.provider` currently supports the credential-free `test` profile.
+`dify.plugin` receives tenant/plugin identity only; daemon URL, API key, and
+timeout are server settings. `dify.plugin.llm.credentials` accepts scalar values
+only (`string`, `number`, `boolean`, or `null`).
 
 Validation error example (`422`):
 
@@ -167,13 +190,31 @@ normal names; sync methods add `_sync`.
 from agenton.compositor import CompositorConfig, LayerNodeConfig
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
-from dify_agent.protocol import CreateRunRequest
+from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginLayerConfig
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest
 
 
 async def main() -> None:
     request = CreateRunRequest(
         compositor=CompositorConfig(
-            layers=[LayerNodeConfig(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello"))]
+            layers=[
+                LayerNodeConfig(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+                LayerNodeConfig(
+                    name="plugin",
+                    type="dify.plugin",
+                    config=DifyPluginLayerConfig(tenant_id="tenant-id", plugin_id="langgenius/openai"),
+                ),
+                LayerNodeConfig(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="dify.plugin.llm",
+                    deps={"plugin": "plugin"},
+                    config=DifyPluginLLMLayerConfig(
+                        provider="openai",
+                        model="gpt-4o-mini",
+                        credentials={"api_key": "provider-key"},
+                    ),
+                ),
+            ]
         )
     )
     async with Client(base_url="http://localhost:8000") as client:
@@ -186,12 +227,30 @@ async def main() -> None:
 from agenton.compositor import CompositorConfig, LayerNodeConfig
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
-from dify_agent.protocol import CreateRunRequest
+from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginLayerConfig
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest
 
 
 request = CreateRunRequest(
     compositor=CompositorConfig(
-        layers=[LayerNodeConfig(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello"))]
+        layers=[
+            LayerNodeConfig(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+            LayerNodeConfig(
+                name="plugin",
+                type="dify.plugin",
+                config=DifyPluginLayerConfig(tenant_id="tenant-id", plugin_id="langgenius/openai"),
+            ),
+            LayerNodeConfig(
+                name=DIFY_AGENT_MODEL_LAYER_ID,
+                type="dify.plugin.llm",
+                deps={"plugin": "plugin"},
+                config=DifyPluginLLMLayerConfig(
+                    provider="openai",
+                    model="gpt-4o-mini",
+                    credentials={"api_key": "provider-key"},
+                ),
+            ),
+        ]
     )
 )
 

@@ -91,6 +91,42 @@ def test_layer_node_config_accepts_config_dto_and_serializes_fields() -> None:
     assert [prompt.value for prompt in compositor.user_prompts] == ["ask politely"]
 
 
+def test_registry_factory_constructs_layer_with_injected_dependencies() -> None:
+    registry = LayerRegistry()
+    registry.register_layer(
+        PromptLayer,
+        factory=lambda config: PromptLayer(prefix=PromptLayerConfig.model_validate(config).prefix),
+    )
+
+    compositor = CompositorBuilder(registry).add_config(
+        {"layers": [{"name": "prompt", "type": "plain.prompt", "config": {"prefix": "factory"}}]}
+    ).build()
+
+    assert [prompt.value for prompt in compositor.prompts] == ["factory"]
+
+
+def test_compositor_get_layer_returns_named_layer_and_validates_type() -> None:
+    layer = ObjectLayer("value")
+    compositor: Compositor[PlainPromptType, PlainToolType] = Compositor(layers=OrderedDict([("obj", layer)]))
+
+    assert compositor.get_layer("obj") is layer
+    assert compositor.get_layer("obj", ObjectLayer) is layer
+
+    try:
+        compositor.get_layer("missing")
+    except KeyError as e:
+        assert str(e) == '"Layer \'missing\' is not defined in this compositor."'
+    else:
+        raise AssertionError("Expected KeyError.")
+
+    try:
+        compositor.get_layer("obj", PromptLayer)
+    except TypeError as e:
+        assert str(e) == "Layer 'obj' must be PromptLayer, got ObjectLayer."
+    else:
+        raise AssertionError("Expected TypeError.")
+
+
 class ObjectConsumerDeps(LayerDeps):
     obj: ObjectLayer[str]  # pyright: ignore[reportUninitializedInstanceVariable]
 

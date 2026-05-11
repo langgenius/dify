@@ -12,8 +12,9 @@ import logging
 from collections.abc import Callable
 from typing import Protocol
 
+from agenton.compositor import LayerRegistry
 from dify_agent.protocol.schemas import CreateRunRequest
-from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor
+from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_registry
 from dify_agent.runtime.event_sink import RunEventSink, emit_run_failed
 from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
@@ -29,7 +30,7 @@ class SchedulerStoppingError(RuntimeError):
 class RunStore(RunEventSink, Protocol):
     """Persistence boundary needed by the scheduler."""
 
-    async def create_run(self, request: CreateRunRequest) -> RunRecord:
+    async def create_run(self) -> RunRecord:
         """Persist a new run record and return it with status ``running``."""
         ...
 
@@ -42,7 +43,7 @@ class RunnableRun(Protocol):
         ...
 
 
-type RunRunnerFactory = Callable[[RunRecord], RunnableRun]
+type RunRunnerFactory = Callable[[RunRecord, CreateRunRequest], RunnableRun]
 
 
 class RunScheduler:
@@ -61,6 +62,7 @@ class RunScheduler:
     active_tasks: dict[str, asyncio.Task[None]]
     stopping: bool
     runner_factory: RunRunnerFactory
+    layer_registry: LayerRegistry
     _lifecycle_lock: asyncio.Lock
 
     def __init__(
@@ -68,12 +70,14 @@ class RunScheduler:
         *,
         store: RunStore,
         shutdown_grace_seconds: float = 30,
+        layer_registry: LayerRegistry | None = None,
         runner_factory: RunRunnerFactory | None = None,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.active_tasks = {}
         self.stopping = False
+        self.layer_registry = layer_registry or create_default_layer_registry()
         self.runner_factory = runner_factory or self._default_runner_factory
         self._lifecycle_lock = asyncio.Lock()
 
@@ -83,15 +87,15 @@ class RunScheduler:
         The returned record is already ``running``. The background task is removed
         from ``active_tasks`` when it finishes, regardless of success or failure.
         """
-        compositor = build_pydantic_ai_compositor(request.compositor)
+        compositor = build_pydantic_ai_compositor(request.compositor, registry=self.layer_registry)
         if not has_non_blank_user_prompt(compositor.user_prompts):
             raise ValueError(EMPTY_USER_PROMPTS_ERROR)
 
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
-            record = await self.store.create_run(request)
-            task = asyncio.create_task(self._run_record(record), name=f"dify-agent-run-{record.run_id}")
+            record = await self.store.create_run()
+            task = asyncio.create_task(self._run_record(record, request), name=f"dify-agent-run-{record.run_id}")
             self.active_tasks[record.run_id] = task
             task.add_done_callback(lambda _task, run_id=record.run_id: self.active_tasks.pop(run_id, None))
             return record
@@ -115,18 +119,23 @@ class RunScheduler:
         for run_id in pending_run_ids:
             await self._mark_cancelled_run_failed(run_id)
 
-    async def _run_record(self, record: RunRecord) -> None:
+    async def _run_record(self, record: RunRecord, request: CreateRunRequest) -> None:
         """Execute a stored run and log failures already reflected in events."""
         try:
-            await self.runner_factory(record).run()
+            await self.runner_factory(record, request).run()
         except asyncio.CancelledError:
             raise
         except Exception:
             logger.exception("scheduled run failed", extra={"run_id": record.run_id})
 
-    def _default_runner_factory(self, record: RunRecord) -> RunnableRun:
+    def _default_runner_factory(self, record: RunRecord, request: CreateRunRequest) -> RunnableRun:
         """Create the production runner for a stored run record."""
-        return AgentRunRunner(sink=self.store, request=record.request, run_id=record.run_id)
+        return AgentRunRunner(
+            sink=self.store,
+            request=request,
+            run_id=record.run_id,
+            layer_registry=self.layer_registry,
+        )
 
     async def _mark_cancelled_run_failed(self, run_id: str) -> None:
         """Best-effort failure event/status for shutdown-cancelled runs."""

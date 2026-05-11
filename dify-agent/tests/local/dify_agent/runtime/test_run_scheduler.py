@@ -31,9 +31,9 @@ class FakeStore:
         self.statuses = {}
         self.errors = {}
 
-    async def create_run(self, request: CreateRunRequest) -> RunRecord:
+    async def create_run(self) -> RunRecord:
         run_id = f"run-{len(self.records) + 1}"
-        record = RunRecord(run_id=run_id, status="running", request=request)
+        record = RunRecord(run_id=run_id, status="running")
         self.records[run_id] = record
         self.statuses[run_id] = "running"
         return record
@@ -57,10 +57,10 @@ class SlowCreateStore(FakeStore):
         self.create_started = create_started
         self.release_create = release_create
 
-    async def create_run(self, request: CreateRunRequest) -> RunRecord:
+    async def create_run(self) -> RunRecord:
         _ = self.create_started.set()
         await self.release_create.wait()
-        return await super().create_run(request)
+        return await super().create_run()
 
 
 class ControlledRunner:
@@ -83,7 +83,7 @@ def test_create_run_starts_background_task_and_returns_running() -> None:
         release = asyncio.Event()
         scheduler = RunScheduler(
             store=store,
-            runner_factory=lambda _record: ControlledRunner(started=started, release=release),
+            runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
         )
 
         record = await scheduler.create_run(_request())
@@ -106,7 +106,7 @@ def test_shutdown_marks_unfinished_runs_failed_and_appends_event() -> None:
         scheduler = RunScheduler(
             store=store,
             shutdown_grace_seconds=0,
-            runner_factory=lambda _record: ControlledRunner(started=started, release=asyncio.Event()),
+            runner_factory=lambda _record, _request: ControlledRunner(started=started, release=asyncio.Event()),
         )
         record = await scheduler.create_run(_request())
         await asyncio.wait_for(started.wait(), timeout=1)
@@ -155,7 +155,7 @@ def test_shutdown_waits_for_in_flight_create_to_register_before_cancelling() -> 
         scheduler = RunScheduler(
             store=store,
             shutdown_grace_seconds=0,
-            runner_factory=lambda _record: ControlledRunner(started=runner_started, release=asyncio.Event()),
+            runner_factory=lambda _record, _request: ControlledRunner(started=runner_started, release=asyncio.Event()),
         )
 
         create_task = asyncio.create_task(scheduler.create_run(_request()))

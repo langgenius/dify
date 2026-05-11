@@ -5,7 +5,7 @@ example:
 
     uv run --project dify-agent uvicorn dify_agent.server.app:app --reload
 
-The default request uses the credential-free pydantic-ai TestModel profile. This
+The request carries Dify plugin model configuration in Agenton layers. This
 script prints the created run and every event observed through cursor polling.
 ``Client.create_run`` performs one POST attempt only; use polling or SSE replay to
 recover after client-side uncertainty.
@@ -16,10 +16,20 @@ import asyncio
 from agenton.compositor import CompositorConfig, LayerNodeConfig
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
-from dify_agent.protocol import AgentProfileConfig, CreateRunRequest
+from dify_agent.layers.dify_plugin import (
+    DifyPluginCredentialValue,
+    DifyPluginLLMLayerConfig,
+    DifyPluginLayerConfig,
+)
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest
 
 
 API_BASE_URL = "http://localhost:8000"
+TENANT_ID = "replace-with-tenant-id"
+PLUGIN_ID = "langgenius/openai"
+PLUGIN_PROVIDER = "openai"
+MODEL_NAME = "gpt-4o-mini"
+MODEL_CREDENTIALS: dict[str, DifyPluginCredentialValue] = {"api_key": "replace-with-provider-key"}
 
 
 async def main() -> None:
@@ -35,10 +45,24 @@ async def main() -> None:
                                 prefix="You are a concise assistant.",
                                 user="Say hello from the Dify Agent API server example.",
                             ),
-                        )
+                        ),
+                        LayerNodeConfig(
+                            name="plugin",
+                            type="dify.plugin",
+                            config=DifyPluginLayerConfig(tenant_id=TENANT_ID, plugin_id=PLUGIN_ID),
+                        ),
+                        LayerNodeConfig(
+                            name=DIFY_AGENT_MODEL_LAYER_ID,
+                            type="dify.plugin.llm",
+                            deps={"plugin": "plugin"},
+                            config=DifyPluginLLMLayerConfig(
+                                provider=PLUGIN_PROVIDER,
+                                model=MODEL_NAME,
+                                credentials=MODEL_CREDENTIALS,
+                            ),
+                        ),
                     ],
                 ),
-                agent_profile=AgentProfileConfig(output_text="Hello from the example TestModel."),
             )
         )
         print("created run", run)

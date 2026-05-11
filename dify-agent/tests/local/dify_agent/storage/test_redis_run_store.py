@@ -4,18 +4,10 @@ from typing import cast
 
 from pydantic import JsonValue
 
-from agenton.compositor import CompositorConfig, CompositorSessionSnapshot, LayerNodeConfig, LayerSessionSnapshot
+from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
 from agenton.layers import LifecycleState
-from dify_agent.protocol.schemas import CreateRunRequest, RunStartedEvent, RunSucceededEvent, RunSucceededEventData
+from dify_agent.protocol.schemas import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
 from dify_agent.storage.redis_run_store import DEFAULT_RUN_RETENTION_SECONDS, RedisRunStore
-
-
-def _request() -> CreateRunRequest:
-    return CreateRunRequest(
-        compositor=CompositorConfig(
-            layers=[LayerNodeConfig(name="prompt", type="plain.prompt", config={"user": "hello"})]
-        )
-    )
 
 
 class FakeRedis:
@@ -74,18 +66,19 @@ def test_create_run_writes_running_record_without_job_queue_and_with_retention()
     redis = FakeRedis()
     store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
 
-    record = asyncio.run(store.create_run(_request()))
+    record = asyncio.run(store.create_run())
 
     assert record.status == "running"
     assert [command[0] for command in redis.commands] == ["set"]
     assert redis.commands[0][1] == f"test:runs:{record.run_id}:record"
     assert redis.commands[0][3] == DEFAULT_RUN_RETENTION_SECONDS
+    assert "request" not in str(redis.commands[0][2])
 
 
 def test_update_status_refreshes_record_retention() -> None:
     redis = FakeRedis()
     store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
-    record = asyncio.run(store.create_run(_request()))
+    record = asyncio.run(store.create_run())
     redis.commands.clear()
 
     asyncio.run(store.update_status(record.run_id, "succeeded"))
@@ -128,7 +121,7 @@ def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> N
     )
 
     async def scenario() -> tuple[str, RunSucceededEvent]:
-        record = await store.create_run(_request())
+        record = await store.create_run()
         event_id = await store.append_event(
             RunSucceededEvent(
                 id="local-only",

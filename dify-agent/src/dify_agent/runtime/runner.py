@@ -3,9 +3,10 @@
 The runner is storage-agnostic: it builds an Agenton compositor, enters or
 resumes its session, runs pydantic-ai with ``compositor.user_prompts`` as the user
 input, emits stream events, suspends the session on exit, snapshots it, and then
-publishes a terminal success or failure event. Successful terminal events contain
-both the JSON-safe final output and session snapshot; there are no separate output
-or snapshot events to correlate.
+publishes a terminal success or failure event. The Pydantic AI model is resolved
+from the active Agenton layer named by ``DIFY_AGENT_MODEL_LAYER_ID``. Successful
+terminal events contain both the JSON-safe final output and session snapshot;
+there are no separate output or snapshot events to correlate.
 """
 
 from collections.abc import AsyncIterable
@@ -14,10 +15,11 @@ from typing import cast
 from pydantic import JsonValue, TypeAdapter
 from pydantic_ai.messages import AgentStreamEvent
 
-from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.protocol.schemas import CreateRunRequest
+from agenton.compositor import CompositorSessionSnapshot, LayerRegistry
+from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
+from dify_agent.protocol.schemas import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
-from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor
+from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_registry
 from dify_agent.runtime.event_sink import (
     RunEventSink,
     emit_pydantic_ai_event,
@@ -42,11 +44,20 @@ class AgentRunRunner:
 
     request: CreateRunRequest
     run_id: str
+    layer_registry: LayerRegistry
 
-    def __init__(self, *, sink: RunEventSink, request: CreateRunRequest, run_id: str) -> None:
+    def __init__(
+        self,
+        *,
+        sink: RunEventSink,
+        request: CreateRunRequest,
+        run_id: str,
+        layer_registry: LayerRegistry | None = None,
+    ) -> None:
         self.sink = sink
         self.request = request
         self.run_id = run_id
+        self.layer_registry = layer_registry or create_default_layer_registry()
 
     async def run(self) -> None:
         """Execute the run and emit the documented event sequence."""
@@ -71,7 +82,7 @@ class AgentRunRunner:
 
     async def _run_agent(self) -> tuple[JsonValue, CompositorSessionSnapshot]:
         """Run pydantic-ai inside an entered Agenton session."""
-        compositor = build_pydantic_ai_compositor(self.request.compositor)
+        compositor = build_pydantic_ai_compositor(self.request.compositor, registry=self.layer_registry)
         session = (
             compositor.session_from_snapshot(self.request.session_snapshot)
             if self.request.session_snapshot is not None
@@ -87,11 +98,12 @@ class AgentRunRunner:
                 async for event in events:
                     _ = await emit_pydantic_ai_event(self.sink, run_id=self.run_id, data=event)
 
-            agent = create_agent(
-                self.request.agent_profile,
-                system_prompts=compositor.prompts,
-                tools=compositor.tools,
-            )
+            try:
+                model = compositor.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer).get_model()
+            except (KeyError, TypeError, RuntimeError) as exc:
+                raise AgentRunValidationError(str(exc)) from exc
+
+            agent = create_agent(model, system_prompts=compositor.prompts, tools=compositor.tools)
             result = await agent.run(normalize_user_input(user_prompts), event_stream_handler=handle_events)
 
         return _serialize_agent_output(result.output), compositor.snapshot_session(session)

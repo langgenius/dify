@@ -22,7 +22,8 @@ Serializable graph config uses registry type ids rather than import paths.
 instances; JSON serialization preserves concrete DTO fields before the builder
 validates them with the registered layer schema. ``CompositorBuilder`` resolves
 config nodes through ``LayerRegistry`` and can mix those nodes with live layer
-instances for Python objects and callables.
+instances for Python objects and callables. Registries may also supply factories
+for layers that require server-side dependencies in addition to client DTOs.
 
 ``Compositor.enter`` enters layers in compositor order and exits them in reverse
 order through ``AsyncExitStack``. It accepts an optional ``CompositorSession``
@@ -41,7 +42,7 @@ from collections import OrderedDict
 from collections.abc import AsyncIterator, Callable, Iterable, Mapping as MappingABC, Sequence
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Any, Generic, Mapping, TypedDict, cast
+from typing import Any, Generic, Mapping, TypedDict, cast, overload
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from typing_extensions import Self, TypeVar
@@ -55,6 +56,7 @@ LayerPromptT = TypeVar("LayerPromptT", default=AllPromptTypes)
 LayerToolT = TypeVar("LayerToolT", default=AllToolTypes)
 UserPromptT = TypeVar("UserPromptT", default=AllUserPromptTypes)
 LayerUserPromptT = TypeVar("LayerUserPromptT", default=AllUserPromptTypes)
+LayerT = TypeVar("LayerT", bound=Layer[Any, Any, Any, Any, Any, Any, Any])
 
 
 type CompositorTransformer[InputT, OutputT] = Callable[[Sequence[InputT]], Sequence[OutputT]]
@@ -76,6 +78,7 @@ class CompositorTransformerKwargs[
 
 
 type _ConfigModelValue[ModelT: BaseModel] = ModelT | JsonValue | str | bytes
+type LayerFactory = Callable[[LayerConfig], Layer[Any, Any, Any, Any, Any, Any, Any]]
 
 
 def _validate_config_model_input[ModelT: BaseModel](
@@ -132,6 +135,7 @@ class LayerDescriptor:
     config_type: type[LayerConfig]
     runtime_state_type: type[BaseModel]
     runtime_handles_type: type[BaseModel]
+    factory: LayerFactory | None = None
 
 
 class LayerRegistry:
@@ -139,7 +143,8 @@ class LayerRegistry:
 
     Registration infers config and runtime schemas from layer class attributes.
     A registered layer must have a type id, either declared as ``type_id`` on the
-    class or supplied to ``register_layer``.
+    class or supplied to ``register_layer``. Optional factories let server code
+    inject dependencies that do not belong in public layer DTOs.
     """
 
     __slots__ = ("_descriptors",)
@@ -154,8 +159,14 @@ class LayerRegistry:
         layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
         *,
         type_id: str | None = None,
+        factory: LayerFactory | None = None,
     ) -> None:
-        """Register ``layer_type`` under its inferred or explicit type id."""
+        """Register ``layer_type`` under its inferred or explicit type id.
+
+        ``factory`` receives validated layer config and constructs the layer. It
+        is intended for server-only dependencies such as clients or secrets; omit
+        it for normal ``Layer.from_config`` construction.
+        """
         resolved_type_id = type_id or layer_type.type_id
         if resolved_type_id is not None and not isinstance(resolved_type_id, str):
             raise TypeError(f"Layer type id for '{layer_type.__qualname__}' must be a string.")
@@ -169,6 +180,7 @@ class LayerRegistry:
             config_type=layer_type.config_type,
             runtime_state_type=layer_type.runtime_state_type,
             runtime_handles_type=layer_type.runtime_handles_type,
+            factory=factory,
         )
 
     def resolve(self, type_id: str) -> LayerDescriptor:
@@ -289,7 +301,10 @@ class CompositorBuilder:
         descriptor = self._registry.resolve(type)
         raw_config = {} if config is None else config
         validated_config = descriptor.config_type.model_validate(raw_config)
-        layer = descriptor.layer_type.from_config(cast(Any, validated_config))
+        if descriptor.factory is not None:
+            layer = descriptor.factory(validated_config)
+        else:
+            layer = descriptor.layer_type.from_config(cast(Any, validated_config))
         self.add_instance(name=name, layer=layer, deps=deps)
         return self
 
@@ -405,6 +420,29 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
                 ) from e
             layer.bind_deps({**self.layers, **deps})
         self._deps_bound = True
+
+    @overload
+    def get_layer(self, layer_id: str) -> Layer[Any, Any, Any, Any, Any, Any, Any]: ...
+
+    @overload
+    def get_layer(self, layer_id: str, layer_type: type[LayerT]) -> LayerT: ...
+
+    def get_layer(
+        self,
+        layer_id: str,
+        layer_type: type[LayerT] | None = None,
+    ) -> Layer[Any, Any, Any, Any, Any, Any, Any] | LayerT:
+        """Return a layer by compositor name and optionally validate its type."""
+        try:
+            layer = self.layers[layer_id]
+        except KeyError as e:
+            raise KeyError(f"Layer '{layer_id}' is not defined in this compositor.") from e
+
+        if layer_type is not None and not isinstance(layer, layer_type):
+            raise TypeError(
+                f"Layer '{layer_id}' must be {layer_type.__name__}, got {type(layer).__name__}."
+            )
+        return layer
 
     def new_session(self) -> CompositorSession:
         """Create a fresh lifecycle session matching this compositor's layer order."""
@@ -566,6 +604,7 @@ __all__ = [
     "CompositorTransformer",
     "CompositorTransformerKwargs",
     "LayerDescriptor",
+    "LayerFactory",
     "LayerNodeConfig",
     "LayerRegistry",
     "LayerSessionSnapshot",

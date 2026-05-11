@@ -1,41 +1,36 @@
-"""Pydantic AI agent construction for runtime profiles.
+"""Pydantic AI agent construction for models supplied by Agenton layers.
 
-The initial server exposes only a credential-free ``test`` profile. The factory
-keeps model selection out of ``AgentRunRunner`` so production model profiles can
-be added without changing storage or HTTP contracts. Agents are returned through
-an ``object`` output boundary because the runner serializes final output to the
-public JSON-safe event payload instead of assuming text-only results.
+The run request carries model/provider selection in the layer graph. This helper
+keeps Agent construction details out of ``AgentRunRunner`` while accepting an
+already resolved Pydantic AI model from the configured model layer.
 """
 
 from collections.abc import Sequence
-from typing import Callable, cast
+from typing import Any, Callable, cast
 
 from pydantic_ai import Agent
 from pydantic_ai.messages import UserContent
-from pydantic_ai.models.test import TestModel
+from pydantic_ai.models import Model
 
 from agenton.layers.types import PydanticAIPrompt, PydanticAITool
-from dify_agent.protocol.schemas import AgentProfileConfig
 
 
 def create_agent(
-    profile: AgentProfileConfig,
+    model: Model[Any],
     *,
     system_prompts: Sequence[PydanticAIPrompt[object]],
     tools: Sequence[PydanticAITool[object]],
 ) -> Agent[None, object]:
     """Create the pydantic-ai agent for one run."""
-    if profile.provider == "test":
-        return cast(
-            Agent[None, object],
-            Agent[None, str](
-                TestModel(custom_output_text=profile.output_text),
-                output_type=str,
-                system_prompt=materialize_static_system_prompts(system_prompts),
-                tools=tools,
-            ),
-        )
-    raise ValueError(f"Unsupported agent profile provider: {profile.provider}")
+    return cast(
+        Agent[None, object],
+        Agent[None, str](
+            model,
+            output_type=str,
+            system_prompt=materialize_static_system_prompts(system_prompts),
+            tools=tools,
+        ),
+    )
 
 
 def materialize_static_system_prompts(system_prompts: Sequence[PydanticAIPrompt[object]]) -> list[str]:

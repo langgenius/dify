@@ -128,7 +128,12 @@ class DifyPluginDaemonLLMClient:
 
 @dataclass(slots=True, kw_only=True)
 class DifyPluginDaemonProvider(Provider[DifyPluginDaemonLLMClient]):
-    """Pydantic AI provider for Dify plugin-daemon dispatch requests."""
+    """Pydantic AI provider for Dify plugin-daemon dispatch requests.
+
+    When ``http_client`` is omitted the provider owns an ``AsyncClient`` and the
+    Pydantic AI provider context manager closes it. When an external client is
+    supplied, ownership stays with the caller and provider exit leaves it open.
+    """
 
     tenant_id: str
     plugin_id: str
@@ -137,15 +142,21 @@ class DifyPluginDaemonProvider(Provider[DifyPluginDaemonLLMClient]):
     plugin_daemon_api_key: str = field(repr=False)
     user_id: str | None = None
     timeout: float | httpx.Timeout | None = _DEFAULT_DAEMON_TIMEOUT
+    http_client: httpx.AsyncClient | None = field(default=None, repr=False)
     _client: DifyPluginDaemonLLMClient = field(init=False, repr=False)
     _own_http_client: httpx.AsyncClient | None = field(init=False, default=None, repr=False)
     _http_client_factory: Callable[[], httpx.AsyncClient] | None = field(init=False, default=None, repr=False)
 
     def __post_init__(self) -> None:
         self.plugin_daemon_url = self.plugin_daemon_url.rstrip("/")
-        self._http_client_factory = self._make_http_client
-        http_client = self._make_http_client()
-        self._own_http_client = http_client
+        if self.http_client is None:
+            self._http_client_factory = self._make_http_client
+            http_client = self._make_http_client()
+            self._own_http_client = http_client
+        else:
+            http_client = self.http_client
+            self._own_http_client = None
+            self._http_client_factory = None
         self._client = DifyPluginDaemonLLMClient(
             plugin_daemon_url=self.plugin_daemon_url,
             plugin_daemon_api_key=self.plugin_daemon_api_key,

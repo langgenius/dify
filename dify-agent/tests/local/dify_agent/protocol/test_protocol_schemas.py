@@ -3,8 +3,10 @@ from pydantic import ValidationError
 from pydantic_ai.messages import FinalResultEvent
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID
 from dify_agent.protocol.schemas import (
     RUN_EVENT_ADAPTER,
+    CreateRunRequest,
     PydanticAIStreamRunEvent,
     RunFailedEvent,
     RunFailedEventData,
@@ -47,6 +49,17 @@ def test_pydantic_ai_event_data_uses_agent_stream_event_model() -> None:
 
     assert isinstance(event, PydanticAIStreamRunEvent)
     assert isinstance(event.data, FinalResultEvent)
+
+
+def test_create_run_request_rejects_agent_profile_and_model_layer_id_is_public() -> None:
+    assert DIFY_AGENT_MODEL_LAYER_ID == "llm"
+    with pytest.raises(ValidationError):
+        _ = CreateRunRequest.model_validate(
+            {
+                "compositor": {"layers": []},
+                "agent_profile": {"provider": "test", "output_text": "done"},
+            }
+        )
 
 
 @pytest.mark.parametrize("event_type", ["agent_output", "session_snapshot"])
