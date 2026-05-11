@@ -1,13 +1,13 @@
 import type { ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
 import type { CardVariant, CredentialPanelState } from '../use-credential-panel-state'
-import { memo, useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/app/components/base/ui/popover'
+} from '@langgenius/dify-ui/popover'
+import { memo, useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import DropdownContent from './dropdown-content'
 
 type ModelAuthDropdownProps = {
@@ -62,7 +62,7 @@ function ModelAuthDropdown({
             variant={buttonConfig.variant}
             title={buttonConfig.text}
           >
-            <span className="i-ri-equalizer-2-line mr-1 h-3.5 w-3.5 shrink-0" />
+            <span className="mr-1 i-ri-equalizer-2-line h-3.5 w-3.5 shrink-0" />
             <span className="w-0 grow truncate text-left">
               {buttonConfig.text}
             </span>

@@ -4,6 +4,12 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, TypedDict, cast
 
+from core.app.app_config.entities import PromptTemplateEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.memory.token_buffer_memory import TokenBufferMemory
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.prompt.prompt_transform import PromptTransform
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from graphon.file import file_manager
 from graphon.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
@@ -13,13 +19,6 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-
-from core.app.app_config.entities import PromptTemplateEntity
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.memory.token_buffer_memory import TokenBufferMemory
-from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.prompt.prompt_transform import PromptTransform
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.model import AppMode
 
 if TYPE_CHECKING:
@@ -96,11 +95,11 @@ class SimplePromptTransform(PromptTransform):
         app_mode: AppMode,
         model_config: ModelConfigWithCredentialsEntity,
         pre_prompt: str,
-        inputs: dict,
+        inputs: dict[str, Any],
         query: str | None = None,
         context: str | None = None,
         histories: str | None = None,
-    ) -> tuple[str, dict]:
+    ) -> tuple[str, dict[str, Any]]:
         # get prompt template
         prompt_template_config = self.get_prompt_template(
             app_mode=app_mode,
@@ -187,7 +186,7 @@ class SimplePromptTransform(PromptTransform):
         self,
         app_mode: AppMode,
         pre_prompt: str,
-        inputs: dict,
+        inputs: dict[str, Any],
         query: str,
         context: str | None,
         files: Sequence["File"],
@@ -234,7 +233,7 @@ class SimplePromptTransform(PromptTransform):
         self,
         app_mode: AppMode,
         pre_prompt: str,
-        inputs: dict,
+        inputs: dict[str, Any],
         query: str,
         context: str | None,
         files: Sequence["File"],
@@ -313,7 +312,7 @@ class SimplePromptTransform(PromptTransform):
 
         return prompt_message
 
-    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str):
+    def _get_prompt_rule(self, app_mode: AppMode, provider: str, model: str) -> dict[str, Any]:
         """
         Get simple prompt rule.
         :param app_mode: app mode
@@ -325,7 +324,7 @@ class SimplePromptTransform(PromptTransform):
 
         # Check if the prompt file is already loaded
         if prompt_file_name in prompt_file_contents:
-            return cast(dict, prompt_file_contents[prompt_file_name])
+            return cast(dict[str, Any], prompt_file_contents[prompt_file_name])
 
         # Get the absolute path of the subdirectory
         prompt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "prompt_templates")
@@ -338,7 +337,7 @@ class SimplePromptTransform(PromptTransform):
             # Store the content of the prompt file
             prompt_file_contents[prompt_file_name] = content
 
-            return cast(dict, content)
+            return cast(dict[str, Any], content)
 
     def _prompt_file_name(self, app_mode: AppMode, provider: str, model: str) -> str:
         # baichuan

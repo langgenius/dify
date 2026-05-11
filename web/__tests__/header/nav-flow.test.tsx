@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Nav from '@/app/components/header/nav'
@@ -11,83 +12,6 @@ const mockOnLoadMore = vi.fn()
 
 let mockSelectedSegment = 'app'
 let mockIsCurrentWorkspaceEditor = true
-
-vi.mock('@headlessui/react', () => {
-  type MenuContextValue = {
-    open: boolean
-    setOpen: React.Dispatch<React.SetStateAction<boolean>>
-  }
-  const MenuContext = React.createContext<MenuContextValue | null>(null)
-
-  const Menu = ({
-    children,
-  }: {
-    children: React.ReactNode | ((props: { open: boolean }) => React.ReactNode)
-  }) => {
-    const [open, setOpen] = React.useState(false)
-    const value = React.useMemo(() => ({ open, setOpen }), [open])
-
-    return (
-      <MenuContext.Provider value={value}>
-        {typeof children === 'function' ? children({ open }) : children}
-      </MenuContext.Provider>
-    )
-  }
-
-  const MenuButton = ({
-    children,
-    onClick,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => {
-    const context = React.useContext(MenuContext)
-
-    return (
-      <button
-        type="button"
-        aria-expanded={context?.open ?? false}
-        onClick={(event) => {
-          context?.setOpen(v => !v)
-          onClick?.(event)
-        }}
-        {...props}
-      >
-        {children}
-      </button>
-    )
-  }
-
-  const MenuItems = ({
-    as: Component = 'div',
-    children,
-    ...props
-  }: {
-    as?: React.ElementType
-    children: React.ReactNode
-  } & Record<string, unknown>) => {
-    const context = React.useContext(MenuContext)
-    if (!context?.open)
-      return null
-
-    return <Component {...props}>{children}</Component>
-  }
-
-  const MenuItem = ({
-    as: Component = 'div',
-    children,
-    ...props
-  }: {
-    as?: React.ElementType
-    children: React.ReactNode
-  } & Record<string, unknown>) => <Component {...props}>{children}</Component>
-
-  return {
-    Menu,
-    MenuButton,
-    MenuItems,
-    MenuItem,
-    Transition: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  }
-})
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -192,17 +116,23 @@ describe('Header Nav Flow', () => {
   })
 
   it('opens the nested create menu and emits all app creation branches', async () => {
-    renderNav()
+    const user = userEvent.setup()
+    const clickCreateBranch = async (optionName: string) => {
+      const { unmount } = renderNav()
+      await user.click(screen.getByRole('button', { name: /Alpha/i }))
+      await user.hover(await screen.findByRole('menuitem', { name: /menus\.newApp/i }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: optionName }))
+      unmount()
+    }
 
-    fireEvent.click(screen.getByRole('button', { name: /Alpha/i }))
-    fireEvent.click(await screen.findByText('menus.newApp'))
-    fireEvent.click(await screen.findByText('newApp.startFromBlank'))
-    fireEvent.click(await screen.findByText('newApp.startFromTemplate'))
-    fireEvent.click(await screen.findByText('importDSL'))
+    await clickCreateBranch('newApp.startFromBlank')
+    await clickCreateBranch('newApp.startFromTemplate')
+    await clickCreateBranch('importDSL')
 
     expect(mockOnCreate).toHaveBeenNthCalledWith(1, 'blank')
     expect(mockOnCreate).toHaveBeenNthCalledWith(2, 'template')
     expect(mockOnCreate).toHaveBeenNthCalledWith(3, 'dsl')
+    expect(mockOnCreate).toHaveBeenCalledTimes(3)
   })
 
   it('keeps the current nav label in sync with prop updates', async () => {

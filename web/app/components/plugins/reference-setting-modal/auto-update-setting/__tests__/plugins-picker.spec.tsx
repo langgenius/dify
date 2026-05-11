@@ -5,8 +5,8 @@ import { AUTO_UPDATE_MODE } from '../types'
 
 const mockToolPicker = vi.fn()
 
-vi.mock('@/app/components/base/button', () => ({
-  default: ({
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({
     children,
   }: {
     children: React.ReactNode
@@ -60,7 +60,7 @@ describe('PluginsPicker', () => {
     expect(screen.getByText('plugin.autoUpdate.excludeUpdate:{"num":2}')).toBeInTheDocument()
     expect(screen.getByTestId('plugins-selected')).toHaveTextContent('dify/plugin-1,dify/plugin-2')
 
-    fireEvent.click(screen.getByText('plugin.autoUpdate.operation.clearAll'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.operation.clearAll' }))
 
     expect(onChange).toHaveBeenCalledWith([])
   })

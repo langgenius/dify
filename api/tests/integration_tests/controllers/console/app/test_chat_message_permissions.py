@@ -13,7 +13,7 @@ from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import ConversationFromSource
+from models.enums import AppStatus, ConversationFromSource
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 
@@ -28,7 +28,7 @@ class TestChatMessageApiPermissions:
         app.id = str(uuid.uuid4())
         app.mode = AppMode.CHAT
         app.tenant_id = str(uuid.uuid4())
-        app.status = "normal"
+        app.status = AppStatus.NORMAL
         return app
 
     @pytest.fixture
@@ -78,7 +78,7 @@ class TestChatMessageApiPermissions:
         self,
         test_client: FlaskClient,
         auth_header,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         mock_app_model,
         mock_account,
         role: TenantAccountRole,
@@ -130,7 +130,7 @@ class TestChatMessageApiPermissions:
         self,
         test_client: FlaskClient,
         auth_header,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
         mock_app_model,
         mock_account,
         role: TenantAccountRole,
@@ -171,35 +171,13 @@ class TestChatMessageApiPermissions:
             parent_message_id=None,
         )
 
-        class MockQuery:
-            def __init__(self, model):
-                self.model = model
-
-            def where(self, *args, **kwargs):
-                return self
-
-            def first(self):
-                if getattr(self.model, "__name__", "") == "Conversation":
-                    return mock_conversation
-                return None
-
-            def order_by(self, *args, **kwargs):
-                return self
-
-            def limit(self, *_):
-                return self
-
-            def all(self):
-                if getattr(self.model, "__name__", "") == "Message":
-                    return [mock_message]
-                return []
-
         mock_session = mock.Mock()
-        mock_session.query.side_effect = MockQuery
-        mock_session.scalar.return_value = False
+        mock_session.scalar.return_value = mock_conversation
+        mock_session.scalars.return_value.all.return_value = [mock_message]
 
         monkeypatch.setattr(message_api, "db", SimpleNamespace(session=mock_session))
         monkeypatch.setattr(message_api, "current_user", mock_account)
+        monkeypatch.setattr(message_api, "attach_message_extra_contents", mock.Mock())
 
         class DummyPagination:
             def __init__(self, data, limit, has_more):

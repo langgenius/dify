@@ -90,7 +90,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/ui/avatar', () => ({
+vi.mock('@langgenius/dify-ui/avatar', () => ({
   Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
 }))
 

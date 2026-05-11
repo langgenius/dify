@@ -10,6 +10,28 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
+
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
+    HumanInputFormRepository,
+)
+from core.workflow.human_input_adapter import (
+    DeliveryMethodType,
+    EmailDeliveryConfig,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    EmailRecipientType,
+    ExternalRecipient,
+    MemberRecipient,
+    WebAppDeliveryMethod,
+    _WebAppDeliveryConfig,
+)
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.system_variables import build_system_variables
 from graphon.entities import GraphInitParams
 from graphon.node_events import PauseRequestedEvent
 from graphon.node_events.node import StreamCompletedEvent
@@ -28,28 +50,6 @@ from graphon.nodes.human_input.enums import (
 )
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.runtime import GraphRuntimeState, VariablePool
-from pydantic import ValidationError
-
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-from core.repositories.human_input_repository import (
-    FormCreateParams,
-    HumanInputFormEntity,
-    HumanInputFormRecipientEntity,
-    HumanInputFormRepository,
-)
-from core.workflow.human_input_compat import (
-    DeliveryMethodType,
-    EmailDeliveryConfig,
-    EmailDeliveryMethod,
-    EmailRecipients,
-    EmailRecipientType,
-    ExternalRecipient,
-    MemberRecipient,
-    WebAppDeliveryMethod,
-    _WebAppDeliveryConfig,
-)
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
-from core.workflow.system_variables import build_system_variables
 from libs.datetime_utils import naive_utc_now
 
 
@@ -134,6 +134,26 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         entity.data = form_data or {}
         entity.is_submitted = True
         entity.status_value = HumanInputFormStatus.SUBMITTED
+
+
+def _build_human_input_node(
+    *,
+    node_id: str,
+    node_data: HumanInputNodeData | Mapping[str, Any],
+    graph_init_params: GraphInitParams,
+    graph_runtime_state: GraphRuntimeState,
+    runtime: DifyHumanInputNodeRuntime,
+) -> HumanInputNode:
+    typed_node_data = (
+        node_data if isinstance(node_data, HumanInputNodeData) else HumanInputNodeData.model_validate(node_data)
+    )
+    return HumanInputNode(
+        node_id=node_id,
+        data=typed_node_data,
+        graph_init_params=graph_init_params,
+        graph_runtime_state=graph_runtime_state,
+        runtime=runtime,
+    )
 
 
 class TestDeliveryMethod:
@@ -221,16 +241,16 @@ class TestUserAction:
 
     def test_user_action_length_boundaries(self):
         """Test user action id and title length boundaries."""
-        action = UserAction(id="a" * 20, title="b" * 20)
+        action = UserAction(id="a" * 20, title="b" * 100)
 
         assert action.id == "a" * 20
-        assert action.title == "b" * 20
+        assert action.title == "b" * 100
 
     @pytest.mark.parametrize(
         ("field_name", "value"),
         [
             ("id", "a" * 21),
-            ("title", "b" * 21),
+            ("title", "b" * 101),
         ],
     )
     def test_user_action_length_limits(self, field_name: str, value: str):
@@ -239,7 +259,7 @@ class TestUserAction:
         data[field_name] = value
 
         with pytest.raises(ValidationError) as exc_info:
-            UserAction(**data)
+            UserAction.model_validate(data)
 
         errors = exc_info.value.errors()
         assert any(error["loc"] == (field_name,) and error["type"] == "string_too_long" for error in errors)
@@ -407,7 +427,7 @@ class TestHumanInputNodeVariableResolution:
     """Tests for resolving variable-based defaults in HumanInputNode."""
 
     def test_resolves_variable_defaults(self):
-        variable_pool = VariablePool(
+        variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
@@ -465,9 +485,9 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
         runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             runtime=runtime,
@@ -484,7 +504,7 @@ class TestHumanInputNodeVariableResolution:
         assert params.resolved_default_values == expected_values
 
     def test_debugger_falls_back_to_recipient_token_when_webapp_disabled(self):
-        variable_pool = VariablePool(
+        variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
@@ -530,9 +550,9 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
         runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             runtime=runtime,
@@ -545,7 +565,7 @@ class TestHumanInputNodeVariableResolution:
         assert not hasattr(pause_event.reason, "form_token")
 
     def test_webapp_runtime_keeps_form_visible_in_ui_when_webapp_delivery_is_enabled(self):
-        variable_pool = VariablePool(
+        variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
@@ -595,9 +615,9 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
         runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             runtime=runtime,
@@ -611,7 +631,7 @@ class TestHumanInputNodeVariableResolution:
         assert params.display_in_ui is True
 
     def test_debugger_debug_mode_overrides_email_recipients(self):
-        variable_pool = VariablePool(
+        variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user-123",
                 app_id="app",
@@ -671,9 +691,9 @@ class TestHumanInputNodeVariableResolution:
 
         runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
         runtime._build_form_repository = MagicMock(return_value=mock_repo)  # type: ignore[attr-defined]
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             runtime=runtime,
@@ -728,7 +748,7 @@ class TestHumanInputNodeRenderedContent:
     """Tests for rendering submitted content."""
 
     def test_replaces_outputs_placeholders_after_submission(self):
-        variable_pool = VariablePool(
+        variable_pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(
                 user_id="user",
                 app_id="app",
@@ -770,9 +790,9 @@ class TestHumanInputNodeRenderedContent:
         form_repository = InMemoryHumanInputFormRepository()
         runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
         runtime._build_form_repository = MagicMock(return_value=form_repository)  # type: ignore[attr-defined]
-        node = HumanInputNode(
-            id=config["id"],
-            config=config,
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
             graph_init_params=graph_init_params,
             graph_runtime_state=runtime_state,
             runtime=runtime,

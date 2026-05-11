@@ -1,10 +1,11 @@
 import { useCallback } from 'react'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import { useReactFlow } from 'reactflow'
 import { useWorkflowStore } from '../store'
 import {
   getLayoutByELK,
   getLayoutForChildNodes,
 } from '../utils/elk-layout'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
@@ -17,7 +18,7 @@ import {
 
 export const useWorkflowOrganize = () => {
   const workflowStore = useWorkflowStore()
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const reactflow = useReactFlow()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { saveStateToHistory } = useWorkflowHistory()
@@ -29,11 +30,10 @@ export const useWorkflowOrganize = () => {
 
     workflowStore.setState({ nodeAnimation: true })
     const {
-      getNodes,
+      nodes,
       edges,
       setNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    } = collaborativeWorkflow.getState()
     const parentNodes = getLayoutContainerNodes(nodes)
 
     const childLayoutEntries = await Promise.all(
@@ -63,7 +63,7 @@ export const useWorkflowOrganize = () => {
     setTimeout(() => {
       handleSyncWorkflowDraft()
     })
-  }, [getNodesReadOnly, handleSyncWorkflowDraft, reactflow, saveStateToHistory, store, workflowStore])
+  }, [getNodesReadOnly, handleSyncWorkflowDraft, reactflow, saveStateToHistory, collaborativeWorkflow, workflowStore])
 
   return {
     handleLayout,

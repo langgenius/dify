@@ -1,21 +1,24 @@
 import logging
+from datetime import datetime
 from typing import Any
 
 from flask import request
-from flask_restx import Resource, fields, marshal_with
-from pydantic import BaseModel, Field
+from flask_restx import Resource
+from pydantic import BaseModel, Field, computed_field, field_validator
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
-from controllers.common.schema import get_or_create_model
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
-from fields.installed_app_fields import app_fields, installed_app_fields, installed_app_list_fields
+from fields.base import ResponseModel
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import App, InstalledApp, RecommendedApp
+from models.model import IconType
 from services.account_service import TenantService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
@@ -36,22 +39,97 @@ class InstalledAppsListQuery(BaseModel):
 logger = logging.getLogger(__name__)
 
 
-app_model = get_or_create_model("InstalledAppInfo", app_fields)
+def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str | None:
+    if icon is None or icon_type is None:
+        return None
+    icon_type_value = icon_type.value if isinstance(icon_type, IconType) else str(icon_type)
+    if icon_type_value.lower() != IconType.IMAGE:
+        return None
+    return file_helpers.get_signed_file_url(icon)
 
-installed_app_fields_copy = installed_app_fields.copy()
-installed_app_fields_copy["app"] = fields.Nested(app_model)
-installed_app_model = get_or_create_model("InstalledApp", installed_app_fields_copy)
 
-installed_app_list_fields_copy = installed_app_list_fields.copy()
-installed_app_list_fields_copy["installed_apps"] = fields.List(fields.Nested(installed_app_model))
-installed_app_list_model = get_or_create_model("InstalledAppList", installed_app_list_fields_copy)
+def _safe_primitive(value: Any) -> Any:
+    if value is None or isinstance(value, (str, int, float, bool, datetime)):
+        return value
+    return None
+
+
+class InstalledAppInfoResponse(ResponseModel):
+    id: str
+    name: str | None = None
+    mode: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    use_icon_as_answer_icon: bool | None = None
+
+    @field_validator("mode", "icon_type", mode="before")
+    @classmethod
+    def _normalize_enum_like(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(getattr(value, "value", value))
+
+    @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
+    @property
+    def icon_url(self) -> str | None:
+        return _build_icon_url(self.icon_type, self.icon)
+
+
+class InstalledAppResponse(ResponseModel):
+    id: str
+    app: InstalledAppInfoResponse
+    app_owner_tenant_id: str
+    is_pinned: bool
+    last_used_at: int | None = None
+    editable: bool
+    uninstallable: bool
+
+    @field_validator("app", mode="before")
+    @classmethod
+    def _normalize_app(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return value
+        return {
+            "id": _safe_primitive(getattr(value, "id", "")) or "",
+            "name": _safe_primitive(getattr(value, "name", None)),
+            "mode": _safe_primitive(getattr(value, "mode", None)),
+            "icon_type": _safe_primitive(getattr(value, "icon_type", None)),
+            "icon": _safe_primitive(getattr(value, "icon", None)),
+            "icon_background": _safe_primitive(getattr(value, "icon_background", None)),
+            "use_icon_as_answer_icon": _safe_primitive(getattr(value, "use_icon_as_answer_icon", None)),
+        }
+
+    @field_validator("last_used_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return int(value.timestamp())
+        return value
+
+
+class InstalledAppListResponse(ResponseModel):
+    installed_apps: list[InstalledAppResponse]
+
+
+register_schema_models(
+    console_ns,
+    InstalledAppCreatePayload,
+    InstalledAppUpdatePayload,
+    InstalledAppsListQuery,
+    InstalledAppInfoResponse,
+    InstalledAppResponse,
+    InstalledAppListResponse,
+)
 
 
 @console_ns.route("/installed-apps")
 class InstalledAppsListApi(Resource):
     @login_required
     @account_initialization_required
-    @marshal_with(installed_app_list_model)
+    @console_ns.response(200, "Success", console_ns.models[InstalledAppListResponse.__name__])
     def get(self):
         query = InstalledAppsListQuery.model_validate(request.args.to_dict())
         current_user, current_tenant_id = current_account_with_tenant()
@@ -125,7 +203,9 @@ class InstalledAppsListApi(Resource):
             )
         )
 
-        return {"installed_apps": installed_app_list}
+        return InstalledAppListResponse.model_validate(
+            {"installed_apps": installed_app_list}, from_attributes=True
+        ).model_dump(mode="json")
 
     @login_required
     @account_initialization_required

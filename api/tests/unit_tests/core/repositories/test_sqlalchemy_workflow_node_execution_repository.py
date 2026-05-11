@@ -10,12 +10,6 @@ from unittest.mock import MagicMock, Mock
 
 import psycopg2.errors
 import pytest
-from graphon.entities import WorkflowNodeExecution
-from graphon.enums import (
-    BuiltinNodeTypes,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -28,6 +22,12 @@ from core.repositories.sqlalchemy_workflow_node_execution_repository import (
     _filter_by_offload_type,
     _find_first,
     _replace_or_append_offload,
+)
+from graphon.entities import WorkflowNodeExecution
+from graphon.enums import (
+    BuiltinNodeTypes,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
 )
 from models import Account, EndUser
 from models.enums import ExecutionOffLoadType

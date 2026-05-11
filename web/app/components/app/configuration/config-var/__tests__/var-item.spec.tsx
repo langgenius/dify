@@ -39,7 +39,7 @@ describe('VarItem', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('var-item-delete-btn'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
     expect(onRemove).toHaveBeenCalledTimes(1)
   })

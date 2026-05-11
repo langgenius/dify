@@ -1,3 +1,4 @@
+import type { Field, StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
 import { checkKeys } from '@/utils/var'
@@ -73,7 +74,52 @@ export const getValueSelector = ({
 }
 
 const getVisibleChildren = (vars: Var[]) => {
-  return vars.filter(variable => checkKeys([variable.variable], false).isValid || isSpecialVar(variable.variable.split('.')[0]))
+  return vars.filter(variable => checkKeys([variable.variable], false).isValid || isSpecialVar(variable.variable.split('.')[0]!))
+}
+
+const includesSearchText = (value: string | undefined, searchTextLower: string) => {
+  if (!value)
+    return false
+
+  return value.toLowerCase().includes(searchTextLower)
+}
+
+const isStructuredOutputChildren = (children: Var['children']): children is StructuredOutput => {
+  return !!children && !Array.isArray(children) && 'schema' in children
+}
+
+const matchesStructuredField = (fieldName: string, field: Field, searchTextLower: string): boolean => {
+  if (includesSearchText(fieldName, searchTextLower))
+    return true
+
+  if (field.properties)
+    return Object.entries(field.properties).some(([childName, childField]) => matchesStructuredField(childName, childField, searchTextLower))
+
+  if (field.items)
+    return matchesStructuredField(field.items.type, field.items, searchTextLower)
+
+  return false
+}
+
+const matchesVariableSearch = (variable: Var, searchTextLower: string): boolean => {
+  if (
+    includesSearchText(variable.variable, searchTextLower)
+    || includesSearchText(variable.des, searchTextLower)
+    || includesSearchText(variable.schemaType, searchTextLower)
+  ) {
+    return true
+  }
+
+  if (!variable.children)
+    return false
+
+  if (Array.isArray(variable.children))
+    return getVisibleChildren(variable.children).some(child => matchesVariableSearch(child, searchTextLower))
+
+  if (isStructuredOutputChildren(variable.children))
+    return Object.entries(variable.children.schema.properties).some(([fieldName, field]) => matchesStructuredField(fieldName, field, searchTextLower))
+
+  return false
 }
 
 export const filterReferenceVars = (vars: NodeOutPutVar[], searchText: string) => {
@@ -85,7 +131,7 @@ export const filterReferenceVars = (vars: NodeOutPutVar[], searchText: string) =
     .filter((node) => {
       if (!searchText)
         return true
-      return node.vars.some(variable => variable.variable.toLowerCase().includes(searchTextLower))
+      return node.vars.some(variable => matchesVariableSearch(variable, searchTextLower))
         || node.title.toLowerCase().includes(searchTextLower)
     })
     .map((node) => {
@@ -94,7 +140,7 @@ export const filterReferenceVars = (vars: NodeOutPutVar[], searchText: string) =
 
       return {
         ...node,
-        vars: node.vars.filter(variable => variable.variable.toLowerCase().includes(searchTextLower)),
+        vars: node.vars.filter(variable => matchesVariableSearch(variable, searchTextLower)),
       }
     })
 }

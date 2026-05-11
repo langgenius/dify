@@ -56,8 +56,6 @@ vi.mock('@/context/app-context', () => ({
 // Mock useDatasetCardState hook
 vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
   useDatasetCardState: () => ({
-    tags: [],
-    setTags: vi.fn(),
     modalState: {
       showRenameModal: false,
       showConfirmDelete: false,
@@ -75,6 +73,14 @@ vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
 // Mock RenameDatasetModal
 vi.mock('../../rename-modal', () => ({
   default: () => null,
+}))
+
+vi.mock('../dataset-card', () => ({
+  default: ({ dataset }: { dataset: DataSet }) => (
+    <article data-testid={`dataset-card-${dataset.id}`}>
+      {dataset.name}
+    </article>
+  ),
 }))
 
 function createMockDataset(overrides: Partial<DataSet> = {}): DataSet {

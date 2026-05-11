@@ -118,8 +118,8 @@ const finishWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTrac
     const currentIndex = draft.tracing.findIndex(trace => matchParallelTrace(trace, data))
     if (currentIndex > -1) {
       draft.tracing[currentIndex] = {
-        ...(draft.tracing[currentIndex].extras
-          ? { extras: draft.tracing[currentIndex].extras }
+        ...(draft.tracing[currentIndex]!.extras
+          ? { extras: draft.tracing[currentIndex]!.extras }
           : {}),
         ...data,
         expand: !!data.error,
@@ -195,7 +195,7 @@ const updateHumanInputRequired = (
 
     const currentIndex = draft.tracing.findIndex(item => item.node_id === data.node_id)
     if (currentIndex > -1)
-      draft.tracing[currentIndex].status = NodeRunningStatus.Paused
+      draft.tracing[currentIndex]!.status = NodeRunningStatus.Paused
   })
 }
 
@@ -227,7 +227,7 @@ const updateHumanInputTimeout = (
 
     const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
     if (currentFormIndex > -1)
-      draft.humanInputFormDataList[currentFormIndex].expiration_time = data.expiration_time
+      draft.humanInputFormDataList[currentFormIndex]!.expiration_time = data.expiration_time
   })
 }
 
@@ -354,10 +354,10 @@ export const createWorkflowStreamHandlers = ({
       setCompletionRes(serializedOutputs)
       if (data.outputs) {
         const outputKeys = Object.keys(data.outputs)
-        const isStringOutput = outputKeys.length === 1 && typeof data.outputs[outputKeys[0]] === 'string'
+        const isStringOutput = outputKeys.length === 1 && typeof data.outputs[outputKeys[0]!] === 'string'
         if (isStringOutput) {
           setWorkflowProcessData(updateWorkflowProcess(getWorkflowProcessData(), (draft) => {
-            draft.resultText = data.outputs[outputKeys[0]]
+            draft.resultText = data.outputs[outputKeys[0]!]
           }))
         }
       }

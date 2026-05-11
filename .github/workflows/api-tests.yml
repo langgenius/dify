@@ -16,7 +16,7 @@ concurrency:
 jobs:
   api-unit:
     name: API Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     env:
       COVERAGE_FILE: coverage-unit
     defaults:
@@ -35,7 +35,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -62,7 +62,7 @@ jobs:
 
   api-integration:
     name: API Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     env:
       COVERAGE_FILE: coverage-integration
       STORAGE_TYPE: opendal
@@ -84,7 +84,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -99,13 +99,13 @@ jobs:
       - name: Set up dotenvs
         run: |
           cp docker/.env.example docker/.env
-          cp docker/middleware.env.example docker/middleware.env
+          cp docker/envs/middleware.env.example docker/middleware.env
 
       - name: Expose Service Ports
         run: sh .github/workflows/expose_service_ports.sh
 
       - name: Set up Sandbox
-        uses: hoverkraft-tech/compose-action@4894d2492015c1774ee5a13a95b1072093087ec3 # v2.5.0
+        uses: hoverkraft-tech/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
@@ -137,7 +137,7 @@ jobs:
 
   api-coverage:
     name: API Coverage
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     needs:
       - api-unit
       - api-integration
@@ -156,7 +156,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
           python-version: "3.12"

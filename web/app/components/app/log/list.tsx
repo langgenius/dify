@@ -8,6 +8,17 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
 } from '@heroicons/react/24/outline'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
+import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -25,11 +36,8 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton from '@/app/components/base/action-button'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
-import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
 import MessageLogModal from '@/app/components/base/message-log-modal'
-import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -38,7 +46,6 @@ import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbac
 import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import PromptLogModal from '../../base/prompt-log-modal'
 import Indicator from '../../header/indicator'
 import {
@@ -404,27 +411,32 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   return (
     <div ref={ref} className="flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border">
       {/* Panel Header */}
-      <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pb-2 pl-4 pr-3 pt-3">
+      <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="shrink-0">
-          <div className="mb-0.5 text-text-primary system-xs-semibold-uppercase">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
+          <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
           {isChatMode && (
-            <div className="flex items-center text-text-secondary system-2xs-regular-uppercase">
-              <Tooltip
-                popupContent={detail.id}
-              >
-                <div className="truncate">{detail.id}</div>
+            <div className="flex items-center system-2xs-regular-uppercase text-text-secondary">
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <div className="truncate">{detail.id}</div>
+                  )}
+                />
+                <TooltipContent>
+                  {detail.id}
+                </TooltipContent>
               </Tooltip>
               <CopyIcon content={detail.id} />
             </div>
           )}
           {!isChatMode && (
-            <div className="text-text-secondary system-2xs-regular-uppercase">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
+            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
           )}
         </div>
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
           {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
         </div>
-        <ActionButton size="l" onClick={onClose}>
+        <ActionButton size="l" aria-label={t('operation.close', { ns: 'common' })} onClick={onClose}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </ActionButton>
       </div>
@@ -444,7 +456,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           ? (
               <div className="px-6 py-4">
                 <div className="flex h-[18px] items-center space-x-3">
-                  <div className="text-text-tertiary system-xs-semibold-uppercase">{t('table.header.output', { ns: 'appLog' })}</div>
+                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t('table.header.output', { ns: 'appLog' })}</div>
                   <div
                     className="h-px grow"
                     style={{
@@ -536,7 +548,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               </div>
               {hasMore && (
                 <div className="py-3 text-center">
-                  <div className="text-text-tertiary system-xs-regular">
+                  <div className="system-xs-regular text-text-tertiary">
                     {t('detail.loading', { ns: 'appLog' })}
                     ...
                   </div>
@@ -769,18 +781,20 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
     return (
-      <Tooltip
-        popupContent={(
+      <Tooltip>
+        <TooltipTrigger
+          render={(
+            <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'overflow-hidden system-sm-regular text-ellipsis whitespace-nowrap')}>
+              {value || '-'}
+            </div>
+          )}
+        />
+        <TooltipContent className={(isHighlight && !isChatMode) ? '' : 'hidden!'}>
           <span className="inline-flex items-center text-xs text-text-tertiary">
             <RiEditFill className="mr-1 h-3 w-3" />
             {`${t('detail.annotationTip', { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
-        )}
-        popupClassName={(isHighlight && !isChatMode) ? '' : 'hidden!'}
-      >
-        <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'overflow-hidden text-ellipsis whitespace-nowrap system-sm-regular')}>
-          {value || '-'}
-        </div>
+        </TooltipContent>
       </Tooltip>
     )
   }
@@ -791,20 +805,20 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   return (
     <div className="relative mt-2 grow overflow-x-auto">
       <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
-        <thead className="text-text-tertiary system-xs-medium-uppercase">
+        <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
-            <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1"></td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.summary', { ns: 'appLog' }) : t('table.header.input', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.endUser', { ns: 'appLog' })}</td>
-            {isChatflow && <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.status', { ns: 'appLog' })}</td>}
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.messageCount', { ns: 'appLog' }) : t('table.header.output', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.userRate', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.adminRate', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.updatedTime', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.time', { ns: 'appLog' })}</td>
+            <td className="w-5 rounded-l-lg bg-background-section-burn pr-1 pl-2 whitespace-nowrap"></td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{isChatMode ? t('table.header.summary', { ns: 'appLog' }) : t('table.header.input', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.endUser', { ns: 'appLog' })}</td>
+            {isChatflow && <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.status', { ns: 'appLog' })}</td>}
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{isChatMode ? t('table.header.messageCount', { ns: 'appLog' }) : t('table.header.output', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.userRate', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.adminRate', { ns: 'appLog' })}</td>
+            <td className="bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.updatedTime', { ns: 'appLog' })}</td>
+            <td className="rounded-r-lg bg-background-section-burn py-1.5 pl-3 whitespace-nowrap">{t('table.header.time', { ns: 'appLog' })}</td>
           </tr>
         </thead>
-        <tbody className="text-text-secondary system-sm-regular">
+        <tbody className="system-sm-regular text-text-secondary">
           {logs.data.map((log: any) => {
             const { endUser, isLeftEmpty, isRightEmpty, leftValue, rightValue } = getConversationRowValues({
               isChatMode,
@@ -865,21 +879,32 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         </tbody>
       </table>
       <Drawer
-        isOpen={showDrawer}
-        onClose={onCloseDrawer}
-        mask={isMobile}
-        footer={null}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-4 p-0! max-w-[640px]! rounded-xl bg-components-panel-bg"
-      >
-        <DrawerContext.Provider value={{
-          onClose: onCloseDrawer,
-          appDetail,
+        open={showDrawer}
+        modal
+        swipeDirection="right"
+        onOpenChange={(open) => {
+          if (!open)
+            onCloseDrawer()
         }}
-        >
-          {isChatMode
-            ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
-            : <CompletionConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />}
-        </DrawerContext.Provider>
+      >
+        <DrawerPortal>
+          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+          <DrawerViewport>
+            <DrawerPopup className="bg-components-panel-bg p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-4 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                <DrawerContext.Provider value={{
+                  onClose: onCloseDrawer,
+                  appDetail,
+                }}
+                >
+                  {isChatMode
+                    ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
+                    : <CompletionConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />}
+                </DrawerContext.Provider>
+              </DrawerContent>
+            </DrawerPopup>
+          </DrawerViewport>
+        </DrawerPortal>
       </Drawer>
     </div>
   )

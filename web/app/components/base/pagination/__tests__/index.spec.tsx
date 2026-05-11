@@ -16,14 +16,16 @@ describe('CustomizedPagination', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       const { container } = render(<CustomizedPagination {...defaultProps} />)
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should display current page and total pages', () => {
       render(<CustomizedPagination {...defaultProps} current={0} total={100} limit={10} />)
       // current + 1 = 1, totalPages = 10
       // The page info display shows "1 / 10" and page buttons also show numbers
-      expect(screen.getByText('/')).toBeInTheDocument()
+      // current + 1 = 1, totalPages = 10
+      // The page info display shows "1 / 10" and page buttons also show numbers
+      expect(screen.getByText('/'))!.toBeInTheDocument()
       expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(1)
     })
 
@@ -36,13 +38,14 @@ describe('CustomizedPagination', () => {
     it('should render page number buttons', () => {
       render(<CustomizedPagination {...defaultProps} total={50} limit={10} />)
       // 5 pages total, should see page numbers
-      expect(screen.getByText('2')).toBeInTheDocument()
-      expect(screen.getByText('3')).toBeInTheDocument()
+      // 5 pages total, should see page numbers
+      expect(screen.getByText('2'))!.toBeInTheDocument()
+      expect(screen.getByText('3'))!.toBeInTheDocument()
     })
 
     it('should display slash separator between current page and total', () => {
       render(<CustomizedPagination {...defaultProps} />)
-      expect(screen.getByText('/')).toBeInTheDocument()
+      expect(screen.getByText('/'))!.toBeInTheDocument()
     })
   })
 
@@ -50,7 +53,7 @@ describe('CustomizedPagination', () => {
     it('should apply custom className', () => {
       const { container } = render(<CustomizedPagination {...defaultProps} className="my-custom" />)
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('my-custom')
+      expect(wrapper)!.toHaveClass('my-custom')
     })
 
     it('should default limit to 10', () => {
@@ -69,14 +72,16 @@ describe('CustomizedPagination', () => {
       render(<CustomizedPagination {...defaultProps} current={0} />)
       const buttons = screen.getAllByRole('button')
       // First button is prev
-      expect(buttons[0]).toBeDisabled()
+      // First button is prev
+      expect(buttons[0])!.toBeDisabled()
     })
 
     it('should disable next button on last page', () => {
       render(<CustomizedPagination {...defaultProps} current={9} total={100} limit={10} />)
       const buttons = screen.getAllByRole('button')
       // Last button is next
-      expect(buttons[buttons.length - 1]).toBeDisabled()
+      // Last button is next
+      expect(buttons[buttons.length - 1])!.toBeDisabled()
     })
 
     it('should not render limit selector when onLimitChange is not provided', () => {
@@ -88,8 +93,9 @@ describe('CustomizedPagination', () => {
       const onLimitChange = vi.fn()
       render(<CustomizedPagination {...defaultProps} onLimitChange={onLimitChange} />)
       // Should show limit options 10, 25, 50
-      expect(screen.getByText('25')).toBeInTheDocument()
-      expect(screen.getByText('50')).toBeInTheDocument()
+      // Should show limit options 10, 25, 50
+      expect(screen.getByText('25'))!.toBeInTheDocument()
+      expect(screen.getByText('50'))!.toBeInTheDocument()
     })
   })
 
@@ -99,7 +105,7 @@ describe('CustomizedPagination', () => {
       render(<CustomizedPagination {...defaultProps} current={0} onChange={onChange} />)
       const buttons = screen.getAllByRole('button')
       const nextButton = buttons[buttons.length - 1]
-      fireEvent.click(nextButton)
+      fireEvent.click(nextButton!)
       expect(onChange).toHaveBeenCalledWith(1)
     })
 
@@ -107,7 +113,7 @@ describe('CustomizedPagination', () => {
       const onChange = vi.fn()
       render(<CustomizedPagination {...defaultProps} current={5} onChange={onChange} />)
       const buttons = screen.getAllByRole('button')
-      fireEvent.click(buttons[0])
+      fireEvent.click(buttons[0]!)
       expect(onChange).toHaveBeenCalledWith(4)
     })
 
@@ -116,7 +122,8 @@ describe('CustomizedPagination', () => {
       // Click the current page display (the div containing "1 / 10")
       fireEvent.click(screen.getByText('/'))
       // Input should appear
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      // Input should appear
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should navigate to entered page on Enter key', () => {
@@ -139,8 +146,39 @@ describe('CustomizedPagination', () => {
       const input = screen.getByRole('textbox')
       fireEvent.keyDown(input, { key: 'Escape' })
       // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
+      // Input should be hidden and page display should return
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-      expect(screen.getByText('/')).toBeInTheDocument()
+      expect(screen.getByText('/'))!.toBeInTheDocument()
     })
 
     it('should confirm input on blur-sm', () => {
@@ -191,10 +229,10 @@ describe('CustomizedPagination', () => {
       const input = screen.getByRole('textbox')
 
       fireEvent.change(input, { target: { value: 'abc' } })
-      expect(input).toHaveValue('')
+      expect(input)!.toHaveValue('')
 
       fireEvent.change(input, { target: { value: '' } })
-      expect(input).toHaveValue('')
+      expect(input)!.toHaveValue('')
     })
 
     it('should show per page tip on hover and hide on leave', () => {
@@ -205,7 +243,8 @@ describe('CustomizedPagination', () => {
 
       fireEvent.mouseEnter(container)
       // I18n mock returns ns.key
-      expect(screen.getByText('common.pagination.perPage')).toBeInTheDocument()
+      // I18n mock returns ns.key
+      expect(screen.getByText('common.pagination.perPage'))!.toBeInTheDocument()
 
       fireEvent.mouseLeave(container)
       expect(screen.queryByText('common.pagination.perPage')).not.toBeInTheDocument()
@@ -247,19 +286,19 @@ describe('CustomizedPagination', () => {
       // Test limit 25
       const { container: containerA } = render(<CustomizedPagination current={0} total={100} limit={25} onChange={vi.fn()} onLimitChange={vi.fn()} />)
       const wrapper25 = Array.from(containerA.querySelectorAll('div.system-sm-medium')).find(el => el.textContent === '25')!
-      expect(wrapper25).toHaveClass('bg-components-segmented-control-item-active-bg')
+      expect(wrapper25)!.toHaveClass('bg-components-segmented-control-item-active-bg')
 
       // Test limit 50
       const { container: containerB } = render(<CustomizedPagination current={0} total={100} limit={50} onChange={vi.fn()} onLimitChange={vi.fn()} />)
       const wrapper50 = Array.from(containerB.querySelectorAll('div.system-sm-medium')).find(el => el.textContent === '50')!
-      expect(wrapper50).toHaveClass('bg-components-segmented-control-item-active-bg')
+      expect(wrapper50)!.toHaveClass('bg-components-segmented-control-item-active-bg')
     })
   })
 
   describe('Edge Cases', () => {
     it('should handle total of 0', () => {
       const { container } = render(<CustomizedPagination {...defaultProps} total={0} />)
-      expect(container).toBeInTheDocument()
+      expect(container)!.toBeInTheDocument()
     })
 
     it('should handle confirm when input value is unchanged (covers false branch of empty string check)', () => {
@@ -287,7 +326,7 @@ describe('CustomizedPagination', () => {
       const input = screen.getByRole('textbox')
 
       fireEvent.keyDown(input, { key: 'a' })
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should trigger handleInputConfirm with empty string specifically on keydown Enter', async () => {
@@ -303,6 +342,37 @@ describe('CustomizedPagination', () => {
       // Wait for debounce 500ms
       await new Promise(r => setTimeout(r, 600))
 
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
+      // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
       // Validates `inputValue === ''` path under `handleInputConfirm` triggered by Enter
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
@@ -326,8 +396,8 @@ describe('CustomizedPagination', () => {
       render(<CustomizedPagination {...defaultProps} total={5} limit={10} />)
       // totalPages = 1, both buttons should be disabled
       const buttons = screen.getAllByRole('button')
-      expect(buttons[0]).toBeDisabled()
-      expect(buttons[buttons.length - 1]).toBeDisabled()
+      expect(buttons[0])!.toBeDisabled()
+      expect(buttons[buttons.length - 1])!.toBeDisabled()
     })
 
     it('should restore input value when blurred with empty value', () => {
@@ -336,6 +406,37 @@ describe('CustomizedPagination', () => {
       const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: '' } })
       fireEvent.blur(input)
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
+      // Should close input without calling onChange, restoring to current + 1
       // Should close input without calling onChange, restoring to current + 1
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })

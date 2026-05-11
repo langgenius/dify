@@ -33,7 +33,7 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: () => vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: vi.fn() },
   toast: {
     success: vi.fn(),

@@ -1,7 +1,3 @@
-import { memo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   NumberField,
   NumberFieldControls,
@@ -9,7 +5,11 @@ import {
   NumberFieldGroup,
   NumberFieldIncrement,
   NumberFieldInput,
-} from '@/app/components/base/ui/number-field'
+} from '@langgenius/dify-ui/number-field'
+import { Switch } from '@langgenius/dify-ui/switch'
+import { memo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { env } from '@/env'
 
 export type TopKAndScoreThresholdProps = {
@@ -57,12 +57,15 @@ const TopKAndScoreThreshold = ({
   return (
     <div className="grid grid-cols-2 gap-4">
       <div>
-        <div className="mb-0.5 flex h-6 items-center text-text-secondary system-xs-medium">
+        <div className="mb-0.5 flex h-6 items-center system-xs-medium text-text-secondary">
           {t('datasetConfig.top_k', { ns: 'appDebug' })}
-          <Tooltip
-            triggerClassName="ml-0.5 shrink-0 w-3.5 h-3.5"
-            popupContent={t('datasetConfig.top_kTip', { ns: 'appDebug' })}
-          />
+          <Infotip
+            aria-label={t('datasetConfig.top_kTip', { ns: 'appDebug' })}
+            className="ml-0.5 h-3.5 w-3.5"
+            iconClassName="h-3.5 w-3.5"
+          >
+            {t('datasetConfig.top_kTip', { ns: 'appDebug' })}
+          </Infotip>
         </div>
         <NumberField
           disabled={readonly}
@@ -72,11 +75,11 @@ const TopKAndScoreThreshold = ({
           value={topK}
           onValueChange={value => handleTopKChange(value ?? 0)}
         >
-          <NumberFieldGroup size="regular">
-            <NumberFieldInput size="regular" />
+          <NumberFieldGroup>
+            <NumberFieldInput />
             <NumberFieldControls>
-              <NumberFieldIncrement size="regular" />
-              <NumberFieldDecrement size="regular" />
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
             </NumberFieldControls>
           </NumberFieldGroup>
         </NumberField>
@@ -87,17 +90,20 @@ const TopKAndScoreThreshold = ({
             <div className="mb-0.5 flex h-6 items-center">
               <Switch
                 className="mr-2"
-                value={isScoreThresholdEnabled ?? false}
-                onChange={onScoreThresholdEnabledChange}
+                checked={isScoreThresholdEnabled ?? false}
+                onCheckedChange={onScoreThresholdEnabledChange}
                 disabled={readonly}
               />
-              <div className="grow truncate text-text-secondary system-sm-medium">
+              <div className="grow truncate system-sm-medium text-text-secondary">
                 {t('datasetConfig.score_threshold', { ns: 'appDebug' })}
               </div>
-              <Tooltip
-                triggerClassName="shrink-0 ml-0.5 w-3.5 h-3.5"
-                popupContent={t('datasetConfig.score_thresholdTip', { ns: 'appDebug' })}
-              />
+              <Infotip
+                aria-label={t('datasetConfig.score_thresholdTip', { ns: 'appDebug' })}
+                className="ml-0.5 h-3.5 w-3.5"
+                iconClassName="h-3.5 w-3.5"
+              >
+                {t('datasetConfig.score_thresholdTip', { ns: 'appDebug' })}
+              </Infotip>
             </div>
             <NumberField
               disabled={readonly || !isScoreThresholdEnabled}
@@ -107,11 +113,11 @@ const TopKAndScoreThreshold = ({
               value={scoreThreshold ?? null}
               onValueChange={value => handleScoreThresholdChange(value ?? 0)}
             >
-              <NumberFieldGroup size="regular">
-                <NumberFieldInput size="regular" />
+              <NumberFieldGroup>
+                <NumberFieldInput />
                 <NumberFieldControls>
-                  <NumberFieldIncrement size="regular" />
-                  <NumberFieldDecrement size="regular" />
+                  <NumberFieldIncrement />
+                  <NumberFieldDecrement />
                 </NumberFieldControls>
               </NumberFieldGroup>
             </NumberField>

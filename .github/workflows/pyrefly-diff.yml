@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   pyrefly-diff:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
       contents: read
       issues: write
@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Python & UV
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
 
@@ -103,9 +103,26 @@ jobs:
                 ].join('\n')
               : '### Pyrefly Diff\nNo changes detected.';
 
-            await github.rest.issues.createComment({
+            const marker = '### Pyrefly Diff';
+            const { data: comments } = await github.rest.issues.listComments({
               issue_number: prNumber,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body,
             });
+            const existing = comments.find((comment) => comment.body.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                comment_id: existing.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: prNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            }

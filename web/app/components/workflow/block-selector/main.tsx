@@ -5,6 +5,7 @@ import type {
 import type {
   FC,
   MouseEventHandler,
+  MouseEvent as ReactMouseEvent,
 } from 'react'
 import type {
   CommonNodeType,
@@ -12,6 +13,13 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import * as React from 'react'
 import {
   memo,
   useCallback,
@@ -23,11 +31,6 @@ import {
   Plus02,
 } from '@/app/components/base/icons/src/vender/line/general'
 import Input from '@/app/components/base/input'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, isTriggerNode } from '../types'
@@ -121,6 +124,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   const canSelectUserInput = allowUserInputSelection ?? defaultAllowUserInputSelection
   const open = openFromProps === undefined ? localOpen : openFromProps
   const handleOpenChange = useCallback((newOpen: boolean) => {
+    if (disabled)
+      return
+
     setLocalOpen(newOpen)
 
     if (!newOpen)
@@ -128,13 +134,10 @@ const NodeSelector: FC<NodeSelectorProps> = ({
 
     if (onOpenChange)
       onOpenChange(newOpen)
-  }, [onOpenChange])
-  const handleTrigger = useCallback<MouseEventHandler<HTMLDivElement>>((e) => {
-    if (disabled)
-      return
+  }, [disabled, onOpenChange])
+  const handleTrigger = useCallback<MouseEventHandler<HTMLElement>>((e) => {
     e.stopPropagation()
-    handleOpenChange(!open)
-  }, [handleOpenChange, open, disabled])
+  }, [])
 
   const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     handleOpenChange(false)
@@ -174,36 +177,65 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     return ''
   }, [activeTab, t])
 
+  const defaultTriggerElement = (
+    <PopoverTrigger
+      aria-label={t('common.addBlock', { ns: 'workflow' })}
+      className={cn(
+        'z-10 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border-0 bg-components-button-primary-bg p-0 text-text-primary-on-surface hover:bg-components-button-primary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+        triggerClassName?.(open),
+      )}
+      style={triggerStyle}
+      onClick={handleTrigger}
+    >
+      <Plus02 aria-hidden className="h-2.5 w-2.5" />
+    </PopoverTrigger>
+  )
+  const triggerElement = trigger?.(open)
+  const shouldRenderTriggerElementAsRoot = React.isValidElement(triggerElement)
+    && (asChild || triggerElement.type === 'button')
+  const triggerElementProps = React.isValidElement(triggerElement)
+    ? (triggerElement.props as {
+        onClick?: MouseEventHandler<HTMLElement>
+      })
+    : null
+  const resolvedTriggerElement = shouldRenderTriggerElementAsRoot
+    ? React.cloneElement(
+        triggerElement as React.ReactElement<{
+          onClick?: MouseEventHandler<HTMLElement>
+        }>,
+        {
+          onClick: (e: ReactMouseEvent<HTMLElement>) => {
+            handleTrigger(e)
+            if (typeof triggerElementProps?.onClick === 'function')
+              triggerElementProps.onClick(e)
+          },
+        },
+      )
+    : (
+        <div className={triggerInnerClassName} onClick={handleTrigger}>
+          {triggerElement}
+        </div>
+      )
+  const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
+  const sideOffset = typeof offset === 'number' ? offset : (resolvedOffset?.mainAxis ?? 0)
+  const alignOffset = typeof offset === 'number' ? 0 : (resolvedOffset?.crossAxis ?? 0)
+  const nativeButton = shouldRenderTriggerElementAsRoot
+    && (typeof triggerElement.type !== 'string' || triggerElement.type === 'button')
+
   return (
-    <PortalToFollowElem
-      placement={placement}
-      offset={offset}
+    <Popover
       open={open}
       onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger
-        asChild={asChild}
-        onClick={handleTrigger}
-        className={triggerInnerClassName}
+      {trigger
+        ? <PopoverTrigger nativeButton={nativeButton} render={resolvedTriggerElement as React.ReactElement} />
+        : defaultTriggerElement}
+      <PopoverContent
+        placement={placement}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+        popupClassName="border-none bg-transparent shadow-none"
       >
-        {
-          trigger
-            ? trigger(open)
-            : (
-                <div
-                  className={`
-                  z-10 flex h-4
-                  w-4 cursor-pointer items-center justify-center rounded-full bg-components-button-primary-bg text-text-primary-on-surface hover:bg-components-button-primary-bg-hover
-                  ${triggerClassName?.(open)}
-                `}
-                  style={triggerStyle}
-                >
-                  <Plus02 className="h-2.5 w-2.5" />
-                </div>
-              )
-        }
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-1002">
         <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
           <Tabs
             tabs={tabs}
@@ -270,8 +302,8 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             forceShowStartContent={forceShowStartContent}
           />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 

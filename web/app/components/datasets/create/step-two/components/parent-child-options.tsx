@@ -3,9 +3,9 @@
 import type { FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type { ParentMode, PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { Button } from '@langgenius/dify-ui/button'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
@@ -25,7 +25,7 @@ type TextLabelProps = {
 }
 
 const TextLabel: FC<TextLabelProps> = ({ children }) => {
-  return <label className="text-text-secondary system-sm-semibold">{children}</label>
+  return <label className="system-sm-semibold text-text-secondary">{children}</label>
 }
 
 type ParentChildOptionsProps = {
@@ -185,7 +185,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 onClick={() => onRuleToggle(rule.id)}
               >
                 <Checkbox checked={rule.enabled} />
-                <label className="ml-2 cursor-pointer text-text-secondary system-sm-regular">
+                <label className="ml-2 cursor-pointer system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
                 </label>
               </div>

@@ -35,7 +35,7 @@ vi.mock('@/service/base', () => ({
   handleStream: mockHandleStream,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },

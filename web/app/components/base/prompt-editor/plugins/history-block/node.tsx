@@ -9,11 +9,11 @@ export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
   __roleName: RoleName
   __onEditRole: () => void
 
-  static getType(): string {
+  static override getType(): string {
     return 'history-block'
   }
 
-  static clone(node: HistoryBlockNode): HistoryBlockNode {
+  static override clone(node: HistoryBlockNode): HistoryBlockNode {
     return new HistoryBlockNode(node.__roleName, node.__onEditRole, node.__key)
   }
 
@@ -24,21 +24,21 @@ export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
     this.__onEditRole = onEditRole
   }
 
-  isInline(): boolean {
+  override isInline(): boolean {
     return true
   }
 
-  createDOM(): HTMLElement {
+  override createDOM(): HTMLElement {
     const div = document.createElement('div')
     div.classList.add('inline-flex', 'items-center', 'align-middle')
     return div
   }
 
-  updateDOM(): false {
+  override updateDOM(): false {
     return false
   }
 
-  decorate(): React.JSX.Element {
+  override decorate(): React.JSX.Element {
     return (
       <HistoryBlockComponent
         nodeKey={this.getKey()}
@@ -60,13 +60,13 @@ export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
     return self.__onEditRole
   }
 
-  static importJSON(serializedNode: SerializedNode): HistoryBlockNode {
+  static override importJSON(serializedNode: SerializedNode): HistoryBlockNode {
     const node = $createHistoryBlockNode(serializedNode.roleName, serializedNode.onEditRole)
 
     return node
   }
 
-  exportJSON(): SerializedNode {
+  override exportJSON(): SerializedNode {
     return {
       type: 'history-block',
       version: 1,
@@ -75,7 +75,7 @@ export class HistoryBlockNode extends DecoratorNode<React.JSX.Element> {
     }
   }
 
-  getTextContent(): string {
+  override getTextContent(): string {
     return '{{#histories#}}'
   }
 }

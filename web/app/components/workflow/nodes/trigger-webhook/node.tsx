@@ -8,7 +8,7 @@ const Node: FC<NodeProps<WebhookTriggerNodeType>> = ({
 }) => {
   return (
     <div className="mb-1 px-3 py-1">
-      <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-text-tertiary">
+      <div className="mb-1 text-[10px] font-medium tracking-wide text-text-tertiary uppercase">
         URL
       </div>
       <div className="flex h-[26px] items-center rounded-md bg-workflow-block-parma-bg px-2 text-xs text-text-secondary">

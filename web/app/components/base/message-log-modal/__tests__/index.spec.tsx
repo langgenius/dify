@@ -60,8 +60,8 @@ describe('MessageLogModal', () => {
 
     it('renders modal with correct title and Run component', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
-      expect(screen.getByText(/title/i)).toBeInTheDocument()
-      expect(screen.getByTestId('workflow-run')).toBeInTheDocument()
+      expect(screen.getByText(/title/i))!.toBeInTheDocument()
+      expect(screen.getByTestId('workflow-run'))!.toBeInTheDocument()
     })
   })
 
@@ -91,8 +91,8 @@ describe('MessageLogModal', () => {
   describe('Interaction', () => {
     it('calls onCancel when close icon is clicked', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
-      const closeButton = screen.getByTestId('close-button')
-      expect(closeButton).toBeInTheDocument()
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
+      expect(closeButton)!.toBeInTheDocument()
       fireEvent.click(closeButton)
       expect(onCancel).toHaveBeenCalledTimes(1)
     })
@@ -107,7 +107,7 @@ describe('MessageLogModal', () => {
     it('does not call onCancel when clicked away if not mounted', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
       expect(clickAwayHandlers.length).toBeGreaterThan(0)
-      clickAwayHandlers[0]() // This is the closure from the initial render, where mounted is false
+      clickAwayHandlers[0]!() // This is the closure from the initial render, where mounted is false
       expect(onCancel).not.toHaveBeenCalled()
     })
   })

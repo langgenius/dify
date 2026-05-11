@@ -53,7 +53,6 @@ from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.errors.error import ProviderTokenNotInitError
@@ -64,6 +63,7 @@ from core.indexing_runner import (
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
+from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
@@ -1484,11 +1484,8 @@ class TestIndexingRunnerProcessChunk:
 
         mock_dependencies["redis"].get.return_value = None
 
-        # Mock database query for segment updates
-        mock_query = MagicMock()
-        mock_dependencies["db"].session.query.return_value = mock_query
-        mock_query.where.return_value = mock_query
-        mock_query.update.return_value = None
+        # Mock database update for segment status
+        mock_dependencies["db"].session.execute.return_value = None
 
         # Create a proper context manager mock
         mock_context = MagicMock()

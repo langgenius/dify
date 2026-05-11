@@ -1,20 +1,19 @@
 'use client'
 
 import type { AppIconSelection } from '../../base/app-icon-picker'
-import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
+import { Button } from '@langgenius/dify-ui/button'
 
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
+import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { toast } from '@/app/components/base/ui/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -24,16 +23,21 @@ import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
-import { cn } from '@/utils/classnames'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
 import ShortcutsName from '../../workflow/shortcuts-name'
+import { CreateAppDialogShell } from '../create-app-dialog-shell'
 
 type CreateAppProps = {
   onSuccess: () => void
   onClose: () => void
   onCreateFromTemplate?: () => void
   defaultAppMode?: AppModeEnum
+}
+
+const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
+  return appMode === AppModeEnum.CHAT || appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.COMPLETION
 }
 
 function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
@@ -45,18 +49,13 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(false)
+  const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(() => shouldExpandBeginnerAppTypes(defaultAppMode))
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
   const { isCurrentWorkspaceEditor } = useAppContext()
 
   const isCreatingRef = useRef(false)
-
-  useEffect(() => {
-    if (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.COMPLETION)
-      setIsAppTypeExpanded(true)
-  }, [appMode])
 
   const onCreate = useCallback(async () => {
     if (!appMode) {
@@ -80,11 +79,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         mode: appMode,
       })
 
-      // Track app creation success
-      trackEvent('create_app', {
-        app_mode: appMode,
-        description,
-      })
+      trackCreateApp({ appMode: app.mode })
 
       toast.success(t('newApp.appCreated', { ns: 'app' }))
       onSuccess()
@@ -92,8 +87,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceEditor, app, push)
     }
-    catch (e: any) {
-      toast.error(e.message || t('newApp.appCreateFailed', { ns: 'app' }))
+    catch (error) {
+      toast.error(error instanceof Error ? error.message : t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
   }, [name, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
@@ -106,15 +101,15 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
   })
   return (
     <>
-      <div className="flex h-full justify-center overflow-y-auto overflow-x-hidden">
+      <div className="flex h-full justify-center overflow-x-hidden overflow-y-auto">
         <div className="flex flex-1 shrink-0 justify-end">
           <div className="px-10">
             <div className="h-6 w-full 2xl:h-[139px]" />
-            <div className="pb-6 pt-1">
-              <span className="text-text-primary title-2xl-semi-bold">{t('newApp.startFromBlank', { ns: 'app' })}</span>
+            <div className="pt-1 pb-6">
+              <span className="title-2xl-semi-bold text-text-primary">{t('newApp.startFromBlank', { ns: 'app' })}</span>
             </div>
             <div className="mb-2 leading-6">
-              <span className="text-text-secondary system-sm-semibold">{t('newApp.chooseAppType', { ns: 'app' })}</span>
+              <span className="system-sm-semibold text-text-secondary">{t('newApp.chooseAppType', { ns: 'app' })}</span>
             </div>
             <div className="flex w-[660px] flex-col gap-4">
               <div>
@@ -151,11 +146,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                 <div className="mb-2 flex items-center">
                   <button
                     type="button"
-                    className="flex cursor-pointer items-center border-0 bg-transparent p-0"
+                    className="flex cursor-pointer items-center border-0 bg-transparent p-0 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
-                    <span className="text-text-tertiary system-2xs-medium-uppercase">{t('newApp.forBeginners', { ns: 'app' })}</span>
-                    <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} />
+                    <span className="system-2xs-medium-uppercase text-text-tertiary">{t('newApp.forBeginners', { ns: 'app' })}</span>
+                    <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} aria-hidden="true" />
                   </button>
                 </div>
                 {isAppTypeExpanded && (
@@ -206,7 +201,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <div className="mb-1 flex h-6 items-center">
-                    <label className="text-text-secondary system-sm-semibold">{t('newApp.captionName', { ns: 'app' })}</label>
+                    <label className="system-sm-semibold text-text-secondary">{t('newApp.captionName', { ns: 'app' })}</label>
                   </div>
                   <Input
                     value={name}
@@ -237,8 +232,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               </div>
               <div>
                 <div className="mb-1 flex h-6 items-center">
-                  <label className="text-text-secondary system-sm-semibold">{t('newApp.captionDescription', { ns: 'app' })}</label>
-                  <span className="ml-1 text-text-tertiary system-xs-regular">
+                  <label className="system-sm-semibold text-text-secondary">{t('newApp.captionDescription', { ns: 'app' })}</label>
+                  <span className="ml-1 system-xs-regular text-text-tertiary">
                     (
                     {t('newApp.optional', { ns: 'app' })}
                     )
@@ -253,13 +248,17 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               </div>
             </div>
             {isAppsFull && <AppsFull className="mt-4" loc="app-create" />}
-            <div className="flex items-center justify-between pb-10 pt-5">
-              <div className="flex cursor-pointer items-center gap-1 text-text-tertiary system-xs-regular" onClick={onCreateFromTemplate}>
+            <div className="flex items-center justify-between pt-5 pb-10">
+              <button
+                type="button"
+                className="flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-left system-xs-regular text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={onCreateFromTemplate}
+              >
                 <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
                 <div className="p-px">
-                  <RiArrowRightLine className="h-3.5 w-3.5" />
+                  <RiArrowRightLine className="h-3.5 w-3.5" aria-hidden="true" />
                 </div>
-              </div>
+              </button>
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
                 <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
@@ -271,11 +270,11 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
           </div>
         </div>
         <div className="relative flex h-full flex-1 shrink justify-start overflow-hidden">
-          <div className="absolute left-0 right-0 top-0 h-6 border-b border-b-divider-subtle 2xl:h-[139px]"></div>
+          <div className="absolute top-0 right-0 left-0 h-6 border-b border-b-divider-subtle 2xl:h-[139px]"></div>
           <div className="max-w-[760px] border-x border-x-divider-subtle">
             <div className="h-6 2xl:h-[139px]" />
             <AppPreview mode={appMode} />
-            <div className="absolute left-0 right-0 border-b border-b-divider-subtle"></div>
+            <div className="absolute right-0 left-0 border-b border-b-divider-subtle"></div>
             <div className="flex h-[448px] w-[664px] items-center justify-center" style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px,transparent 3px, transparent 6px)' }}>
               <AppScreenShot show={appMode === AppModeEnum.CHAT} mode={AppModeEnum.CHAT} />
               <AppScreenShot show={appMode === AppModeEnum.ADVANCED_CHAT} mode={AppModeEnum.ADVANCED_CHAT} />
@@ -283,7 +282,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               <AppScreenShot show={appMode === AppModeEnum.COMPLETION} mode={AppModeEnum.COMPLETION} />
               <AppScreenShot show={appMode === AppModeEnum.WORKFLOW} mode={AppModeEnum.WORKFLOW} />
             </div>
-            <div className="absolute left-0 right-0 border-b border-b-divider-subtle"></div>
+            <div className="absolute right-0 left-0 border-b border-b-divider-subtle"></div>
           </div>
         </div>
       </div>
@@ -294,15 +293,17 @@ type CreateAppDialogProps = CreateAppProps & {
   show: boolean
 }
 const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate, defaultAppMode }: CreateAppDialogProps) => {
+  const { t } = useTranslation()
+
   return (
-    <FullScreenModal
-      overflowVisible
-      closable
-      open={show}
+    <CreateAppDialogShell
+      show={show}
+      title={t('newApp.startFromBlank', { ns: 'app' })}
+      contentClassName="overflow-visible"
       onClose={onClose}
     >
       <CreateApp onClose={onClose} onSuccess={onSuccess} onCreateFromTemplate={onCreateFromTemplate} defaultAppMode={defaultAppMode} />
-    </FullScreenModal>
+    </CreateAppDialogShell>
   )
 }
 
@@ -322,14 +323,14 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
         cn(`relative box-content h-[84px] w-[191px] cursor-pointer rounded-xl
       border-[0.5px] border-components-option-card-option-border
       bg-components-panel-on-panel-item-bg p-3 shadow-xs hover:shadow-md`, active
-          ? 'shadow-md outline-solid outline-[1.5px] outline-components-option-card-option-selected-border'
+          ? 'shadow-md outline-[1.5px] outline-components-option-card-option-selected-border outline-solid'
           : '')
       }
       onClick={onClick}
     >
       {icon}
-      <div className="mb-0.5 mt-2 text-text-secondary system-sm-semibold">{title}</div>
-      <div className="line-clamp-2 text-text-tertiary system-xs-regular" title={description}>{description}</div>
+      <div className="mt-2 mb-0.5 system-sm-semibold text-text-secondary">{title}</div>
+      <div className="line-clamp-2 system-xs-regular text-text-tertiary" title={description}>{description}</div>
     </div>
   )
 }
@@ -361,8 +362,8 @@ function AppPreview({ mode }: { mode: AppModeEnum }) {
   const previewInfo = modeToPreviewInfoMap[mode]
   return (
     <div className="px-8 py-4">
-      <h4 className="text-text-secondary system-sm-semibold-uppercase">{previewInfo.title}</h4>
-      <div className="mt-1 min-h-8 max-w-96 text-text-tertiary system-xs-regular">
+      <h4 className="system-sm-semibold-uppercase text-text-secondary">{previewInfo.title}</h4>
+      <div className="mt-1 min-h-8 max-w-96 system-xs-regular text-text-tertiary">
         <span>{previewInfo.description}</span>
       </div>
     </div>

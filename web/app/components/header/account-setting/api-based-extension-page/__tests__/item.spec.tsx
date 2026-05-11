@@ -39,8 +39,9 @@ describe('Item Component', () => {
       render(<Item data={mockData} onUpdate={mockOnUpdate} />)
 
       // Assert
-      expect(screen.getByText('Test Extension')).toBeInTheDocument()
-      expect(screen.getByText('https://api.example.com')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('Test Extension'))!.toBeInTheDocument()
+      expect(screen.getByText('https://api.example.com'))!.toBeInTheDocument()
     })
 
     it('should render with minimal extension data', () => {
@@ -51,8 +52,9 @@ describe('Item Component', () => {
       render(<Item data={minimalData} onUpdate={mockOnUpdate} />)
 
       // Assert
-      expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('common.operation.edit'))!.toBeInTheDocument()
+      expect(screen.getByText('common.operation.delete'))!.toBeInTheDocument()
     })
   })
 
@@ -66,7 +68,7 @@ describe('Item Component', () => {
       expect(mockSetShowApiBasedExtensionModal).toHaveBeenCalledWith(expect.objectContaining({
         payload: mockData,
       }))
-      const lastCall = mockSetShowApiBasedExtensionModal.mock.calls[0][0]
+      const lastCall = mockSetShowApiBasedExtensionModal.mock.calls[0]![0]
       if (typeof lastCall === 'object' && lastCall !== null && 'onSaveCallback' in lastCall)
         expect(lastCall.onSaveCallback).toBeInstanceOf(Function)
     })
@@ -77,7 +79,7 @@ describe('Item Component', () => {
       fireEvent.click(screen.getByText('common.operation.edit'))
 
       // Assert
-      const modalCallArg = mockSetShowApiBasedExtensionModal.mock.calls[0][0]
+      const modalCallArg = mockSetShowApiBasedExtensionModal.mock.calls[0]![0]
       if (typeof modalCallArg === 'object' && modalCallArg !== null && 'onSaveCallback' in modalCallArg) {
         const onSaveCallback = modalCallArg.onSaveCallback
         if (onSaveCallback) {
@@ -95,7 +97,8 @@ describe('Item Component', () => {
       fireEvent.click(screen.getByText('common.operation.delete'))
 
       // Assert
-      expect(screen.getByText(/common\.operation\.delete.*Test Extension.*\?/i)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/common\.operation\.delete.*Test Extension.*\?/i))!.toBeInTheDocument()
     })
 
     it('should call delete API and triggers onUpdate when confirming deletion', async () => {
@@ -105,8 +108,10 @@ describe('Item Component', () => {
 
       // Act
       fireEvent.click(screen.getByText('common.operation.delete'))
-      const dialog = screen.getByTestId('confirm-overlay')
-      const confirmButton = within(dialog).getByText('common.operation.delete')
+      const dialog = screen.getByRole('alertdialog', {
+        name: /common\.operation\.delete.*Test Extension.*\?/i,
+      })
+      const confirmButton = within(dialog).getByRole('button', { name: 'common.operation.delete' })
       fireEvent.click(confirmButton)
 
       // Assert
@@ -123,8 +128,10 @@ describe('Item Component', () => {
 
       // Act
       fireEvent.click(screen.getByText('common.operation.delete'))
-      const dialog = screen.getByTestId('confirm-overlay')
-      const confirmButton = within(dialog).getByText('common.operation.delete')
+      const dialog = screen.getByRole('alertdialog', {
+        name: /common\.operation\.delete.*Test Extension.*\?/i,
+      })
+      const confirmButton = within(dialog).getByRole('button', { name: 'common.operation.delete' })
       fireEvent.click(confirmButton)
 
       // Assert
@@ -133,14 +140,16 @@ describe('Item Component', () => {
       })
     })
 
-    it('should close delete confirmation when clicking cancel button', () => {
+    it('should close delete confirmation when clicking cancel button', async () => {
       // Act
       render(<Item data={mockData} onUpdate={mockOnUpdate} />)
       fireEvent.click(screen.getByText('common.operation.delete'))
       fireEvent.click(screen.getByText('common.operation.cancel'))
 
       // Assert
-      expect(screen.queryByText(/common\.operation\.delete.*Test Extension.*\?/i)).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByText(/common\.operation\.delete.*Test Extension.*\?/i)).not.toBeInTheDocument()
+      })
     })
 
     it('should not call delete API when canceling deletion', () => {
@@ -182,7 +191,8 @@ describe('Item Component', () => {
         fireEvent.click(deleteBtn)
 
       // Assert
-      expect(screen.getByText(/.*Test Extension.*\?/i)).toBeInTheDocument()
+      // Assert
+      expect(screen.getByText(/.*Test Extension.*\?/i))!.toBeInTheDocument()
 
       useTranslationSpy.mockRestore()
     })

@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 import type useConfig from '../hooks/use-config'
 import type { HumanInputNodeType } from '../types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import { toast } from '@/app/components/base/ui/toast'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import Panel from '../panel'
 import { DeliveryMethodType, UserActionButtonType } from '../types'
@@ -24,15 +24,10 @@ vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
   },
-}))
-
-vi.mock('@/app/components/base/tooltip', () => ({
-  __esModule: true,
-  default: () => <div>tooltip</div>,
 }))
 
 vi.mock('@/app/components/base/action-button', () => ({
@@ -311,13 +306,14 @@ describe('human-input/panel', () => {
     const config = createConfigResult()
     mockUseConfig.mockReturnValue(config)
 
-    const { container } = renderPanel()
+    renderPanel()
 
     expect(screen.getByRole('button', { name: 'delivery-method:editable' })).toBeInTheDocument()
     expect(screen.getByText('form-content:collapsed')).toBeInTheDocument()
     expect(screen.getByText('approve:editable')).toBeInTheDocument()
     expect(screen.getByText('review_result:string:Form input value')).toBeInTheDocument()
     expect(screen.getByText('__action_id:string:Action ID user triggered')).toBeInTheDocument()
+    expect(screen.getByText('__action_value:string:Selected action value')).toBeInTheDocument()
     expect(screen.getByText('__rendered_content:string:Rendered content')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'delivery-method:editable' }))
@@ -333,9 +329,8 @@ describe('human-input/panel', () => {
     await user.click(screen.getByRole('button', { name: 'toggle-output-vars' }))
     await user.click(screen.getByRole('button', { name: 'close-preview' }))
 
-    const iconContainers = container.querySelectorAll('div.flex.size-6.cursor-pointer')
-    await user.click(iconContainers[0] as HTMLElement)
-    await user.click(iconContainers[1] as HTMLElement)
+    await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
+    await user.click(screen.getByRole('button', { name: 'share.chat.expand' }))
 
     expect(config.handleDeliveryMethodChange).toHaveBeenCalledWith([{
       id: 'dm-email',

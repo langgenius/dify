@@ -1,9 +1,9 @@
 'use client'
 import type { InitValidateStatusResponse } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { toast } from '@/app/components/base/ui/toast'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { fetchInitValidateStatus, initValidate } from '@/service/common'
@@ -64,7 +64,7 @@ const InitPasswordPopup = () => {
                       type="password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
-                      className="block w-full appearance-none rounded-md border border-divider-regular px-3 py-2 shadow-sm placeholder:text-text-quaternary focus:border-indigo-500 focus:outline-hidden focus:ring-indigo-500 sm:text-sm"
+                      className="block w-full appearance-none rounded-md border border-divider-regular px-3 py-2 shadow-sm placeholder:text-text-quaternary focus:border-indigo-500 focus:ring-indigo-500 focus:outline-hidden sm:text-sm"
                     />
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { ChatItem } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { cn } from '@/utils/classnames'
 import { useChatContext } from '../context'
 
 type SuggestedQuestionsProps = {
@@ -26,7 +26,7 @@ const SuggestedQuestions: FC<SuggestedQuestionsProps> = ({
         <div
           key={index}
           className={cn(
-            'mr-1 mt-1 inline-flex max-w-full shrink-0 cursor-pointer flex-wrap rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 py-2 text-components-button-secondary-accent-text shadow-xs system-sm-medium last:mr-0 hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
+            'mt-1 mr-1 inline-flex max-w-full shrink-0 cursor-pointer flex-wrap rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 py-2 system-sm-medium text-components-button-secondary-accent-text shadow-xs last:mr-0 hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
             readonly && 'pointer-events-none opacity-50',
           )}
           onClick={() => !readonly && onSend?.(question)}

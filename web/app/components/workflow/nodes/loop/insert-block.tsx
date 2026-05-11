@@ -2,12 +2,12 @@ import type {
   BlockEnum,
   OnSelectBlock,
 } from '../../types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import { cn } from '@/utils/classnames'
 import BlockSelector from '../../block-selector'
 import { useNodesInteractions } from '../../hooks'
 
@@ -42,7 +42,7 @@ const InsertBlock = ({
     <div
       className={cn(
         'nopan nodrag',
-        'absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 group-hover/insert:block',
+        'absolute top-1/2 left-1/2 hidden -translate-x-1/2 -translate-y-1/2 group-hover/insert:block',
         open && 'block!',
       )}
     >

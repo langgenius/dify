@@ -10,7 +10,7 @@ from core.rag.datasource.keyword.keyword_type import KeyWordType
 from core.rag.models.document import Document
 
 
-def test_get_keyword_factory_returns_jieba_factory(monkeypatch):
+def test_get_keyword_factory_returns_jieba_factory(monkeypatch: pytest.MonkeyPatch):
     fake_module = types.ModuleType("core.rag.datasource.keyword.jieba.jieba")
 
     class FakeJieba:
@@ -27,7 +27,7 @@ def test_get_keyword_factory_raises_for_unsupported_type():
         Keyword.get_keyword_factory("unsupported")
 
 
-def test_keyword_initialization_uses_configured_factory(monkeypatch):
+def test_keyword_initialization_uses_configured_factory(monkeypatch: pytest.MonkeyPatch):
     dataset = SimpleNamespace(id="dataset-1")
     fake_processor = MagicMock()
 

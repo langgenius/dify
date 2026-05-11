@@ -112,18 +112,6 @@ vi.mock('@/app/components/billing/vector-space-full', () => ({
   default: () => <div data-testid="vector-space-full">Vector Space Full</div>,
 }))
 
-vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
-  default: ({ show, onClose }: { show: boolean, onClose: () => void }) => (
-    show
-      ? (
-          <div data-testid="plan-upgrade-modal">
-            <button data-testid="close-modal" onClick={onClose}>Close</button>
-          </div>
-        )
-      : null
-  ),
-}))
-
 vi.mock('@/app/components/datasets/create/step-one/upgrade-card', () => ({
   default: () => <div data-testid="upgrade-card">Upgrade Card</div>,
 }))
@@ -569,7 +557,7 @@ describe('StepOneContent', () => {
 
   it('should render VectorSpaceFull when isShowVectorSpaceFull is true', () => {
     render(<StepOneContent {...defaultProps} isShowVectorSpaceFull={true} />)
-    expect(screen.getByTestId('vector-space-full')).toBeInTheDocument()
+    expect(screen.getByTestId('vector-space-full'))!.toBeInTheDocument()
   })
 
   it('should not render VectorSpaceFull when isShowVectorSpaceFull is false', () => {
@@ -587,7 +575,7 @@ describe('StepOneContent', () => {
         localFileListLength={2}
       />,
     )
-    expect(screen.getByTestId('upgrade-card')).toBeInTheDocument()
+    expect(screen.getByTestId('upgrade-card'))!.toBeInTheDocument()
   })
 
   it('should not render UpgradeCard when supportBatchUpload is true', () => {
@@ -618,7 +606,7 @@ describe('StepOneContent', () => {
     render(<StepOneContent {...defaultProps} nextBtnDisabled={true} />)
 
     const nextButton = screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })
-    expect(nextButton).toBeDisabled()
+    expect(nextButton)!.toBeDisabled()
   })
 })
 
@@ -664,17 +652,17 @@ describe('StepTwoContent', () => {
 
   it('should render ProcessDocuments component', () => {
     render(<StepTwoContent {...defaultProps} />)
-    expect(screen.getByTestId('process-documents')).toBeInTheDocument()
+    expect(screen.getByTestId('process-documents'))!.toBeInTheDocument()
   })
 
   it('should pass dataSourceNodeId to ProcessDocuments', () => {
     render(<StepTwoContent {...defaultProps} dataSourceNodeId="custom-node" />)
-    expect(screen.getByTestId('datasource-node-id')).toHaveTextContent('custom-node')
+    expect(screen.getByTestId('datasource-node-id'))!.toHaveTextContent('custom-node')
   })
 
   it('should pass isRunning to ProcessDocuments', () => {
     render(<StepTwoContent {...defaultProps} isRunning={true} />)
-    expect(screen.getByTestId('is-running')).toHaveTextContent('true')
+    expect(screen.getByTestId('is-running'))!.toHaveTextContent('true')
   })
 
   it('should call onProcess when process button is clicked', () => {
@@ -709,18 +697,18 @@ describe('StepThreeContent', () => {
 
   it('should render Processing component', () => {
     render(<StepThreeContent batchId="batch-123" documents={[]} />)
-    expect(screen.getByTestId('processing')).toBeInTheDocument()
+    expect(screen.getByTestId('processing'))!.toBeInTheDocument()
   })
 
   it('should pass batchId to Processing', () => {
     render(<StepThreeContent batchId="batch-123" documents={[]} />)
-    expect(screen.getByTestId('batch-id')).toHaveTextContent('batch-123')
+    expect(screen.getByTestId('batch-id'))!.toHaveTextContent('batch-123')
   })
 
   it('should pass documents count to Processing', () => {
     const documents = [{ id: '1' }, { id: '2' }]
     render(<StepThreeContent batchId="batch-123" documents={documents as InitialDocumentDetail[]} />)
-    expect(screen.getByTestId('documents-count')).toHaveTextContent('2')
+    expect(screen.getByTestId('documents-count'))!.toHaveTextContent('2')
   })
 })
 
@@ -787,8 +775,8 @@ describe('StepOnePreview', () => {
         currentLocalFile={createMockFile()}
       />,
     )
-    expect(screen.getByTestId('file-preview')).toBeInTheDocument()
-    expect(screen.getByTestId('file-name')).toHaveTextContent('test.txt')
+    expect(screen.getByTestId('file-preview'))!.toBeInTheDocument()
+    expect(screen.getByTestId('file-name'))!.toHaveTextContent('test.txt')
   })
 
   it('should render OnlineDocumentPreview when currentDocument is set', () => {
@@ -799,7 +787,7 @@ describe('StepOnePreview', () => {
         currentDocument={createMockNotionPage()}
       />,
     )
-    expect(screen.getByTestId('online-document-preview')).toBeInTheDocument()
+    expect(screen.getByTestId('online-document-preview'))!.toBeInTheDocument()
   })
 
   it('should render WebsitePreview when currentWebsite is set', () => {
@@ -809,7 +797,7 @@ describe('StepOnePreview', () => {
         currentWebsite={createMockCrawlResult()}
       />,
     )
-    expect(screen.getByTestId('web-preview')).toBeInTheDocument()
+    expect(screen.getByTestId('web-preview'))!.toBeInTheDocument()
   })
 
   it('should call hidePreviewLocalFile when hide button is clicked', () => {
@@ -868,22 +856,22 @@ describe('StepTwoPreview', () => {
 
   it('should render ChunkPreview component', () => {
     render(<StepTwoPreview {...defaultProps} />)
-    expect(screen.getByTestId('chunk-preview')).toBeInTheDocument()
+    expect(screen.getByTestId('chunk-preview'))!.toBeInTheDocument()
   })
 
   it('should pass datasourceType to ChunkPreview', () => {
     render(<StepTwoPreview {...defaultProps} datasourceType={DatasourceType.onlineDocument} />)
-    expect(screen.getByTestId('datasource-type')).toHaveTextContent(DatasourceType.onlineDocument)
+    expect(screen.getByTestId('datasource-type'))!.toHaveTextContent(DatasourceType.onlineDocument)
   })
 
   it('should pass isIdle to ChunkPreview', () => {
     render(<StepTwoPreview {...defaultProps} isIdle={false} />)
-    expect(screen.getByTestId('is-idle')).toHaveTextContent('false')
+    expect(screen.getByTestId('is-idle'))!.toHaveTextContent('false')
   })
 
   it('should pass isPendingPreview to ChunkPreview', () => {
     render(<StepTwoPreview {...defaultProps} isPendingPreview={true} />)
-    expect(screen.getByTestId('is-pending')).toHaveTextContent('true')
+    expect(screen.getByTestId('is-pending'))!.toHaveTextContent('true')
   })
 
   it('should call onPreview when preview button is clicked', () => {
@@ -1092,7 +1080,7 @@ describe('Store Hooks', () => {
       mockStoreState.selectedFileIds = ['file-1']
       const { result } = renderHook(() => useOnlineDrive())
       expect(result.current.selectedOnlineDriveFileList).toHaveLength(1)
-      expect(result.current.selectedOnlineDriveFileList[0].id).toBe('file-1')
+      expect(result.current.selectedOnlineDriveFileList[0]!.id).toBe('file-1')
     })
   })
 })
@@ -1166,8 +1154,8 @@ describe('useDatasourceOptions', () => {
 
     const { result } = renderHook(() => useDatasourceOptions(mockNodes))
     expect(result.current).toHaveLength(1)
-    expect(result.current[0].label).toBe('Local File Source')
-    expect(result.current[0].value).toBe('node-1')
+    expect(result.current[0]!.label).toBe('Local File Source')
+    expect(result.current[0]!.value).toBe('node-1')
   })
 
   it('should return multiple options for multiple data source nodes', () => {
@@ -1616,7 +1604,7 @@ describe('StepOneContent - All Datasource Types', () => {
         datasourceType={DatasourceType.onlineDocument}
       />,
     )
-    expect(screen.getByTestId('online-documents-component')).toBeInTheDocument()
+    expect(screen.getByTestId('online-documents-component'))!.toBeInTheDocument()
   })
 
   it('should render WebsiteCrawl when datasourceType is websiteCrawl', () => {
@@ -1632,7 +1620,7 @@ describe('StepOneContent - All Datasource Types', () => {
         datasourceType={DatasourceType.websiteCrawl}
       />,
     )
-    expect(screen.getByTestId('website-crawl-component')).toBeInTheDocument()
+    expect(screen.getByTestId('website-crawl-component'))!.toBeInTheDocument()
   })
 
   it('should render OnlineDrive when datasourceType is onlineDrive', () => {
@@ -1648,7 +1636,7 @@ describe('StepOneContent - All Datasource Types', () => {
         datasourceType={DatasourceType.onlineDrive}
       />,
     )
-    expect(screen.getByTestId('online-drive-component')).toBeInTheDocument()
+    expect(screen.getByTestId('online-drive-component'))!.toBeInTheDocument()
   })
 
   it('should render LocalFile when datasourceType is localFile', () => {
@@ -1659,7 +1647,7 @@ describe('StepOneContent - All Datasource Types', () => {
         datasourceType={DatasourceType.localFile}
       />,
     )
-    expect(screen.getByTestId('local-file-component')).toBeInTheDocument()
+    expect(screen.getByTestId('local-file-component'))!.toBeInTheDocument()
   })
 })
 
@@ -1690,7 +1678,8 @@ describe('StepTwoPreview - File List Mapping', () => {
     )
 
     // ChunkPreview should be rendered
-    expect(screen.getByTestId('chunk-preview')).toBeInTheDocument()
+    // ChunkPreview should be rendered
+    expect(screen.getByTestId('chunk-preview'))!.toBeInTheDocument()
   })
 })
 

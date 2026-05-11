@@ -1,8 +1,6 @@
-import type { FC } from 'react'
 import type { SchemaRoot } from '../../types'
-import * as React from 'react'
-import Modal from '../../../../../base/modal'
-import JsonSchemaConfig from './json-schema-config'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { JsonSchemaConfig } from './json-schema-config'
 
 type JsonSchemaConfigModalProps = {
   isShow: boolean
@@ -11,25 +9,28 @@ type JsonSchemaConfigModalProps = {
   onClose: () => void
 }
 
-const JsonSchemaConfigModal: FC<JsonSchemaConfigModalProps> = ({
+export function JsonSchemaConfigModal({
   isShow,
   defaultSchema,
   onSave,
   onClose,
-}) => {
+}: JsonSchemaConfigModalProps) {
   return (
-    <Modal
-      isShow={isShow}
-      onClose={onClose}
-      className="h-[800px] max-w-[960px] p-0"
+    <Dialog
+      open={isShow}
+      onOpenChange={(open) => {
+        if (!open)
+          onClose()
+      }}
     >
-      <JsonSchemaConfig
-        defaultSchema={defaultSchema}
-        onSave={onSave}
-        onClose={onClose}
-      />
-    </Modal>
+      <DialogContent className="h-[calc(100dvh-32px)] max-h-[800px] w-full max-w-[960px] overflow-hidden! border-none p-0 text-left align-middle">
+
+        <JsonSchemaConfig
+          defaultSchema={defaultSchema}
+          onSave={onSave}
+          onClose={onClose}
+        />
+      </DialogContent>
+    </Dialog>
   )
 }
-
-export default JsonSchemaConfigModal

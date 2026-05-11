@@ -3,10 +3,10 @@ import type { AppDetailResponse } from '@/models/app'
 import type { AppTrigger } from '@/service/use-tools'
 import type { AppSSO } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
+import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
-import Switch from '@/app/components/base/switch'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -34,12 +34,12 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
   const getStatusDot = () => {
     if (status === 'enabled') {
       return (
-        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-xs border border-black/15 bg-green-500" />
+        <div className="absolute -top-0.5 -left-0.5 h-1.5 w-1.5 rounded-xs border border-black/15 bg-green-500" />
       )
     }
     else {
       return (
-        <div className="absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg shadow-status-indicator-gray-shadow" />
+        <div className="absolute -top-0.5 -left-0.5 h-1.5 w-1.5 rounded-xs border border-components-badge-status-light-disabled-border-inner bg-components-badge-status-light-disabled-bg shadow-status-indicator-gray-shadow" />
       )
     }
   }
@@ -141,7 +141,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight">
+      <div className="w-full max-w-full rounded-xl border-t border-l-[0.5px] border-effects-highlight">
         <div className="rounded-xl bg-background-default">
           <div className="flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3">
             <div className="h-6 w-full animate-pulse rounded-sm bg-components-input-bg-normal"></div>
@@ -152,7 +152,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   }
 
   return (
-    <div className="w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight">
+    <div className="w-full max-w-full rounded-xl border-t border-l-[0.5px] border-effects-highlight">
       <div className="rounded-xl bg-background-default">
         <div className="flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3">
           <div className="flex w-full items-center gap-3 self-stretch">
@@ -161,7 +161,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 <TriggerAll className="h-4 w-4 text-text-primary-on-surface" />
               </div>
               <div className="group w-full">
-                <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
+                <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">
                   {triggerCount > 0
                     ? t('overview.triggerInfo.triggersAdded', { ns: 'appOverview', count: triggerCount })
                     : t('overview.triggerInfo.noTriggerAdded', { ns: 'appOverview' })}
@@ -179,7 +179,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                   <div className="shrink-0">
                     {getTriggerIcon(trigger, triggerPlugins || [])}
                   </div>
-                  <div className="system-sm-medium min-w-0 flex-1 truncate text-text-secondary">
+                  <div className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
                     {trigger.title}
                   </div>
                 </div>
@@ -192,8 +192,8 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 </div>
                 <div className="shrink-0">
                   <Switch
-                    value={trigger.status === 'enabled'}
-                    onChange={enabled => onToggleTrigger(trigger, enabled)}
+                    checked={trigger.status === 'enabled'}
+                    onCheckedChange={enabled => onToggleTrigger(trigger, enabled)}
                     disabled={!isCurrentWorkspaceEditor}
                   />
                 </div>

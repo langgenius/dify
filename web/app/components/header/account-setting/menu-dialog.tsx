@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useCallback } from 'react'
-import { Dialog, DialogContent } from '@/app/components/base/ui/dialog'
-import { cn } from '@/utils/classnames'
 
 type DialogProps = {
   className?: string
@@ -27,13 +27,13 @@ const MenuDialog = ({
       }}
     >
       <DialogContent
-        overlayClassName="bg-transparent"
+        backdropClassName="bg-transparent"
         className={cn(
-          'left-0 top-0 h-full max-h-none w-full max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-none bg-background-sidenav-bg p-0 shadow-none backdrop-blur-md',
+          'top-0 left-0 h-full max-h-none w-full max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-none bg-background-sidenav-bg p-0 shadow-none backdrop-blur-md',
           className,
         )}
       >
-        <div className="absolute right-0 top-0 h-full w-1/2 bg-components-panel-bg" />
+        <div className="absolute top-0 right-0 h-full w-1/2 bg-components-panel-bg" />
         {children}
       </DialogContent>
     </Dialog>

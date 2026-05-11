@@ -122,7 +122,7 @@ export const ModalContextProvider = ({
 
   const setShowAccountSettingModal = useCallback((next: SetStateAction<ModalState<AccountSettingTab> | null>) => {
     const currentState = accountSettingTab
-      ? { payload: accountSettingTab, ...(accountSettingCallbacksRef.current ?? {}) }
+      ? { payload: accountSettingTab, ...accountSettingCallbacksRef.current }
       : null
     const resolvedState = typeof next === 'function' ? next(currentState) : next
     if (!resolvedState) {
@@ -169,13 +169,13 @@ export const ModalContextProvider = ({
       showModelModal.onCancelCallback()
   }, [showModelModal])
 
-  const handleSaveModelModal = useCallback((formValues?: Record<string, any>) => {
+  const handleSaveModelModal = useCallback((formValues?: Record<string, unknown>) => {
     if (showModelModal?.onSaveCallback)
       showModelModal.onSaveCallback(showModelModal.payload, formValues)
     setShowModelModal(null)
   }, [showModelModal])
 
-  const handleRemoveModelModal = useCallback((formValues?: Record<string, any>) => {
+  const handleRemoveModelModal = useCallback((formValues?: Record<string, unknown>) => {
     if (showModelModal?.onRemoveCallback)
       showModelModal.onRemoveCallback(showModelModal.payload, formValues)
     setShowModelModal(null)
@@ -369,7 +369,7 @@ export const ModalContextProvider = ({
               }}
               onSave={() => {
                 setShowUpdatePluginModal(null)
-                showUpdatePluginModal.onSaveCallback?.({} as any)
+                showUpdatePluginModal.onSaveCallback?.()
               }}
             />
           )

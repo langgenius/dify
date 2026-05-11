@@ -1,3 +1,5 @@
+from typing import Any
+
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
@@ -40,7 +42,7 @@ class ActivatePayload(BaseModel):
 
 class ActivationCheckResponse(BaseModel):
     is_valid: bool = Field(description="Whether token is valid")
-    data: dict | None = Field(default=None, description="Activation data if valid")
+    data: dict[str, Any] | None = Field(default=None, description="Activation data if valid")
 
 
 class ActivationResponse(BaseModel):
@@ -61,7 +63,7 @@ class ActivateCheckApi(Resource):
         console_ns.models[ActivationCheckResponse.__name__],
     )
     def get(self):
-        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))
 
         workspaceId = args.workspace_id
         token = args.token

@@ -2,6 +2,20 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
@@ -11,17 +25,10 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'
 import { variableTransformer } from '@/app/components/workflow/utils'
-import { cn } from '@/utils/classnames'
 import VariableTag from '../../_base/components/variable-tag'
 import { VarType as NumberVarType } from '../../tool/types'
 
@@ -63,58 +70,61 @@ const ConditionNumberInput = ({
 
   return (
     <div className="flex cursor-pointer items-center">
-      <PortalToFollowElem
+      <DropdownMenu
         open={numberVarTypeVisible}
         onOpenChange={setNumberVarTypeVisible}
-        placement="bottom-start"
-        offset={{ mainAxis: 2, crossAxis: 0 }}
       >
-        <PortalToFollowElemTrigger onClick={() => setNumberVarTypeVisible(v => !v)}>
-          <Button
-            className="shrink-0"
-            variant="ghost"
-            size="small"
+        <DropdownMenuTrigger
+          render={(
+            <Button
+              className="shrink-0"
+              variant="ghost"
+              size="small"
+            />
+          )}
+        >
+          {capitalize(numberVarType)}
+          <RiArrowDownSLine className="ml-px h-3.5 w-3.5" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          placement="bottom-start"
+          sideOffset={2}
+          popupClassName="w-[112px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+        >
+          <DropdownMenuRadioGroup
+            value={numberVarType}
+            onValueChange={onNumberVarTypeChange}
           >
-            {capitalize(numberVarType)}
-            <RiArrowDownSLine className="ml-px h-3.5 w-3.5" />
-          </Button>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-1000">
-          <div className="w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
             {
               options.map(option => (
-                <div
+                <DropdownMenuRadioItem
                   key={option}
+                  value={option}
+                  closeOnClick
                   className={cn(
-                    'flex h-7 cursor-pointer items-center rounded-md px-3 hover:bg-state-base-hover',
+                    'h-7 rounded-md px-3',
                     'text-[13px] font-medium text-text-secondary',
                     numberVarType === option && 'bg-state-base-hover',
                   )}
-                  onClick={() => {
-                    onNumberVarTypeChange(option)
-                    setNumberVarTypeVisible(false)
-                  }}
                 >
                   {capitalize(option)}
-                </div>
+                </DropdownMenuRadioItem>
               ))
             }
-          </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <div className="mx-1 h-4 w-px bg-divider-regular"></div>
       <div className="ml-0.5 w-0 grow">
         {
           numberVarType === NumberVarType.variable && (
-            <PortalToFollowElem
+            <Popover
               open={variableSelectorVisible}
               onOpenChange={setVariableSelectorVisible}
-              placement="bottom-start"
-              offset={{ mainAxis: 2, crossAxis: 0 }}
             >
-              <PortalToFollowElemTrigger
-                className="w-full"
-                onClick={() => setVariableSelectorVisible(v => !v)}
+              <PopoverTrigger
+                nativeButton={false}
+                render={<div className="w-full" />}
               >
                 {
                   value && (
@@ -133,21 +143,25 @@ const ConditionNumberInput = ({
                     </div>
                   )
                 }
-              </PortalToFollowElemTrigger>
-              <PortalToFollowElemContent className="z-1000">
+              </PopoverTrigger>
+              <PopoverContent
+                placement="bottom-start"
+                sideOffset={2}
+                popupClassName="border-none bg-transparent shadow-none"
+              >
                 <div className={cn('w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pt-1 shadow-lg', isShort && 'w-[200px]')}>
                   <VarReferenceVars
                     vars={variables}
                     onChange={handleSelectVariable}
                   />
                 </div>
-              </PortalToFollowElemContent>
-            </PortalToFollowElem>
+              </PopoverContent>
+            </Popover>
           )
         }
         {
           numberVarType === NumberVarType.constant && (
-            <div className=" relative">
+            <div className="relative">
               <input
                 className={cn('block w-full appearance-none bg-transparent px-2 text-[13px] text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder', unit && 'pr-6')}
                 type="number"
@@ -157,7 +171,7 @@ const ConditionNumberInput = ({
                 onFocus={setFocus}
                 onBlur={setBlur}
               />
-              {!isFocus && unit && <div className="system-sm-regular absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary">{unit}</div>}
+              {!isFocus && unit && <div className="absolute top-[50%] right-2 translate-y-[-50%] system-sm-regular text-text-tertiary">{unit}</div>}
             </div>
           )
         }

@@ -1,6 +1,6 @@
+import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import type { DifyWorld } from '../../support/world'
 
 When('I open the account menu', async function (this: DifyWorld) {
   const page = this.getPage()

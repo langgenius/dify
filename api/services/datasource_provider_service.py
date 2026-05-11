@@ -3,7 +3,6 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from graphon.model_runtime.entities.provider_entities import FormType
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -18,6 +17,7 @@ from core.plugin.impl.oauth import OAuthHandler
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.provider_entities import FormType
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
 from services.plugin.plugin_service import PluginService
@@ -318,7 +318,7 @@ class DatasourceProviderService:
         self,
         tenant_id: str,
         datasource_provider_id: DatasourceProviderID,
-        client_params: dict | None,
+        client_params: dict[str, Any] | None,
         enabled: bool | None,
     ):
         """
@@ -352,7 +352,7 @@ class DatasourceProviderService:
                 original_params = (
                     encrypter.decrypt(tenant_oauth_client_params.client_params) if tenant_oauth_client_params else {}
                 )
-                new_params: dict = {
+                new_params: dict[str, Any] = {
                     key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
                     for key, value in client_params.items()
                 }
@@ -500,7 +500,7 @@ class DatasourceProviderService:
         provider_id: DatasourceProviderID,
         avatar_url: str | None,
         expire_at: int,
-        credentials: dict,
+        credentials: dict[str, Any],
         credential_id: str,
     ) -> None:
         """
@@ -566,7 +566,7 @@ class DatasourceProviderService:
         provider_id: DatasourceProviderID,
         avatar_url: str | None,
         expire_at: int,
-        credentials: dict,
+        credentials: dict[str, Any],
     ) -> None:
         """
         add datasource oauth provider
@@ -634,7 +634,7 @@ class DatasourceProviderService:
         name: str | None,
         tenant_id: str,
         provider_id: DatasourceProviderID,
-        credentials: dict,
+        credentials: dict[str, Any],
     ) -> None:
         """
         validate datasource provider credentials.
@@ -947,7 +947,13 @@ class DatasourceProviderService:
         return copy_credentials_list
 
     def update_datasource_credentials(
-        self, tenant_id: str, auth_id: str, provider: str, plugin_id: str, credentials: dict | None, name: str | None
+        self,
+        tenant_id: str,
+        auth_id: str,
+        provider: str,
+        plugin_id: str,
+        credentials: dict[str, Any] | None,
+        name: str | None,
     ) -> None:
         """
         update datasource credentials.

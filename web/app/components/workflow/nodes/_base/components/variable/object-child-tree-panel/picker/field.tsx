@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import type { Field as FieldType } from '../../../../../llm/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiMoreFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 import { Type } from '../../../../../llm/types'
 import { getFieldType } from '../../../../../llm/utils'
 import TreeIndentLine from '../tree-indent-line'
@@ -38,24 +38,32 @@ const Field: FC<Props> = ({
     return null
   return (
     <div>
-      <Tooltip popupContent={t('structOutput.moreFillTip', { ns: 'app' })} disabled={depth !== MAX_DEPTH + 1}>
-        <div
-          className={cn('flex items-center justify-between rounded-md pr-2', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
-          onMouseDown={() => !readonly && onSelect?.([...valueSelector, name])}
-        >
-          <div className="flex grow items-stretch">
-            <TreeIndentLine depth={depth} />
-            {depth === MAX_DEPTH + 1
-              ? (
-                  <RiMoreFill className="h-3 w-3 text-text-tertiary" />
-                )
-              : (<div className={cn('system-sm-medium h-6 w-0 grow truncate leading-6 text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
+      <Tooltip>
+        <TooltipTrigger
+          disabled={depth !== MAX_DEPTH + 1}
+          render={(
+            <div
+              className={cn('flex items-center justify-between rounded-md pr-2 outline-hidden focus:outline-hidden focus-visible:outline-hidden', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
+              onMouseDown={() => !readonly && onSelect?.([...valueSelector, name])}
+            >
+              <div className="flex grow items-stretch">
+                <TreeIndentLine depth={depth} />
+                {depth === MAX_DEPTH + 1
+                  ? (
+                      <RiMoreFill className="h-3 w-3 text-text-tertiary" />
+                    )
+                  : (<div className={cn('h-6 w-0 grow truncate system-sm-medium leading-6 text-text-secondary', isHighlight && 'text-text-accent')}>{name}</div>)}
 
-          </div>
-          {depth < MAX_DEPTH + 1 && (
-            <div className="system-xs-regular ml-2 shrink-0 text-text-tertiary">{getFieldType(payload)}</div>
+              </div>
+              {depth < MAX_DEPTH + 1 && (
+                <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary">{getFieldType(payload)}</div>
+              )}
+            </div>
           )}
-        </div>
+        />
+        <TooltipContent>
+          {t('structOutput.moreFillTip', { ns: 'app' })}
+        </TooltipContent>
       </Tooltip>
 
       {depth <= MAX_DEPTH && payload.type === Type.object && payload.properties && (

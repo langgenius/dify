@@ -1,4 +1,5 @@
 import type { Node } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
@@ -7,7 +8,6 @@ import {
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type RetryOnNodeProps = Pick<Node, 'id' | 'data'>
 const RetryOnNode = ({
@@ -40,7 +40,7 @@ const RetryOnNode = ({
   return (
     <div className="mb-1 px-3">
       <div className={cn(
-        'system-xs-medium-uppercase flex items-center justify-between rounded-md border-[0.5px] border-transparent bg-workflow-block-parma-bg px-[5px] py-1 text-text-tertiary',
+        'flex items-center justify-between rounded-md border-[0.5px] border-transparent bg-workflow-block-parma-bg px-[5px] py-1 system-xs-medium-uppercase text-text-tertiary',
         isRunning && 'border-state-accent-active bg-state-accent-hover text-text-accent',
         isSuccessful && 'border-state-success-active bg-state-success-hover text-text-success',
         (isException || isFailed) && 'border-state-warning-active bg-state-warning-hover text-text-warning',

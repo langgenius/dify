@@ -1,7 +1,7 @@
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { EventEmitterValue } from '@/context/event-emitter'
+import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
 import { EventEmitterContext } from '@/context/event-emitter'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from '../update-dsl-modal'
@@ -17,8 +17,9 @@ class MockFileReader {
 
 vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
 const mockEmit = vi.fn()
+const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
     info: vi.fn(),
@@ -37,6 +38,12 @@ vi.mock('@/service/apps', () => ({
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (path: string) => mockFetchWorkflowDraft(path),
+}))
+
+vi.mock('../collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    emitWorkflowUpdate: mockEmitWorkflowUpdate,
+  },
 }))
 
 const mockHandleCheckPluginDependencies = vi.fn()
@@ -119,6 +126,24 @@ describe('UpdateDSLModal', () => {
     expect(defaultProps.onBackup).toHaveBeenCalledTimes(1)
   })
 
+  it('should call cancel handler when the import dialog requests close', () => {
+    const onCancel = vi.fn()
+    renderModal({ ...defaultProps, onCancel })
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('should call cancel handler when the close button is clicked', () => {
+    const onCancel = vi.fn()
+    renderModal({ ...defaultProps, onCancel })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
   it('should import a valid file and emit workflow update payload', async () => {
     renderModal()
 
@@ -138,6 +163,7 @@ describe('UpdateDSLModal', () => {
     expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
       type: 'WORKFLOW_DATA_UPDATE',
     }))
+    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
   })
@@ -187,6 +213,7 @@ describe('UpdateDSLModal', () => {
     await waitFor(() => {
       expect(mockImportDSLConfirm).toHaveBeenCalledWith({ import_id: 'import-2' })
     })
+    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
   })
 
   it('should open the pending modal after the timeout and allow dismissing it', async () => {
@@ -219,9 +246,35 @@ describe('UpdateDSLModal', () => {
     })
   })
 
+  it('should close the pending modal when dialog requests close', async () => {
+    mockImportDSL.mockResolvedValue({
+      id: 'import-8',
+      status: DSLImportStatus.PENDING,
+      imported_dsl_version: '1.0.0',
+      current_dsl_version: '2.0.0',
+    })
+
+    renderModal()
+
+    fireEvent.change(screen.getByTestId('dsl-file-input'), {
+      target: { files: [new File(['workflow'], 'workflow.yml', { type: 'text/yaml' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'app.newApp.Confirm' })).toBeInTheDocument()
+    })
+
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'app.newApp.Confirm' })).not.toBeInTheDocument()
+    })
+  })
+
   it('should show an error when the selected file content is invalid for the current app mode', async () => {
     class InvalidDSLFileReader extends MockFileReader {
-      readAsText(_file: Blob) {
+      override readAsText(_file: Blob) {
         const event = { target: { result: 'workflow:\n  graph:\n    nodes:\n      - data:\n          type: answer\n' } } as unknown as ProgressEvent<FileReader>
         this.onload?.call(this as unknown as FileReader, event)
       }

@@ -3,11 +3,11 @@ from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
-from graphon.model_runtime.errors.invoke import InvokeError
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -27,6 +27,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
@@ -37,7 +38,6 @@ from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class BaseMessagePayload(BaseModel):
@@ -65,13 +65,7 @@ class ChatMessagePayload(BaseMessagePayload):
         return uuid_value(value)
 
 
-console_ns.schema_model(
-    CompletionMessagePayload.__name__,
-    CompletionMessagePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    ChatMessagePayload.__name__, ChatMessagePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
 
 
 # define completion message api for user

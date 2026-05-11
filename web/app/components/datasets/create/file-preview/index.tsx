@@ -1,12 +1,12 @@
 'use client'
 import type { CustomFile as File } from '@/models/datasets'
 import { XMarkIcon } from '@heroicons/react/20/solid'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { fetchFilePreview } from '@/service/common'
-import { cn } from '@/utils/classnames'
 import s from './index.module.css'
 
 type IProps = {
@@ -50,9 +50,14 @@ const FilePreview = ({
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title, 'title-md-semi-bold')}>
           <span>{t('stepOne.filePreview', { ns: 'datasetCreation' })}</span>
-          <div className="flex h-6 w-6 cursor-pointer items-center justify-center" onClick={hidePreview}>
-            <XMarkIcon className="h-4 w-4"></XMarkIcon>
-          </div>
+          <button
+            type="button"
+            className="flex h-6 w-6 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={hidePreview}
+          >
+            <XMarkIcon className="h-4 w-4" aria-hidden="true"></XMarkIcon>
+          </button>
         </div>
         <div className={cn(s.fileName, 'system-xs-medium')}>
           <span>{getFileName(file)}</span>

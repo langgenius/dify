@@ -494,6 +494,7 @@
   "operation.downloadSuccess": "Descărcarea a fost finalizată.",
   "operation.duplicate": "Duplică",
   "operation.edit": "Editează",
+  "operation.exporting": "Se exportă",
   "operation.format": "Format",
   "operation.getForFree": "Obține gratuit",
   "operation.imageCopied": "Imagine copiată",

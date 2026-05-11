@@ -494,6 +494,7 @@
   "operation.downloadSuccess": "Tải xuống đã hoàn thành.",
   "operation.duplicate": "Nhân bản",
   "operation.edit": "Chỉnh sửa",
+  "operation.exporting": "Đang xuất",
   "operation.format": "Định dạng",
   "operation.getForFree": "Nhận miễn phí",
   "operation.imageCopied": "Hình ảnh sao chép",

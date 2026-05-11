@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from graphon.model_runtime.errors.invoke import InvokeError
+from flask import Flask
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import controllers.console.explore.trial as module
@@ -26,6 +26,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from graphon.model_runtime.errors.invoke import InvokeError
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode
@@ -88,13 +89,13 @@ def valid_parameters():
 
 
 class TestTrialAppWorkflowRunApi:
-    def test_not_workflow_app(self, app):
+    def test_not_workflow_app(self, app: Flask):
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with app.test_request_context("/"):
             with pytest.raises(NotWorkflowAppError):
-                method(MagicMock(mode=AppMode.CHAT))
+                method(api, MagicMock(mode=AppMode.CHAT))
 
     def test_success(self, app, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
@@ -106,7 +107,7 @@ class TestTrialAppWorkflowRunApi:
             patch.object(module.AppGenerateService, "generate", return_value=MagicMock()),
             patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
-            result = method(trial_app_workflow)
+            result = method(api, trial_app_workflow)
 
         assert result is not None
 
@@ -124,7 +125,7 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(trial_app_workflow)
+                method(api, trial_app_workflow)
 
     def test_workflow_quota_exceeded(self, app, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
@@ -140,7 +141,7 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(trial_app_workflow)
+                method(api, trial_app_workflow)
 
     def test_workflow_model_not_support(self, app, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
@@ -156,7 +157,7 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(trial_app_workflow)
+                method(api, trial_app_workflow)
 
     def test_workflow_invoke_error(self, app, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
@@ -172,7 +173,7 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(CompletionRequestError):
-                method(trial_app_workflow)
+                method(api, trial_app_workflow)
 
     def test_workflow_rate_limit_error(self, app, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
@@ -188,7 +189,7 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(trial_app_workflow)
+                method(api, trial_app_workflow)
 
     def test_workflow_value_error(self, app, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
@@ -204,7 +205,7 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(ValueError):
-                method(trial_app_workflow)
+                method(api, trial_app_workflow)
 
     def test_workflow_generic_exception(self, app, trial_app_workflow, account):
         api = module.TrialAppWorkflowRunApi()
@@ -220,11 +221,11 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(trial_app_workflow)
+                method(api, trial_app_workflow)
 
 
 class TestTrialChatApi:
-    def test_not_chat_app(self, app):
+    def test_not_chat_app(self, app: Flask):
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -408,7 +409,7 @@ class TestTrialChatApi:
 
 
 class TestTrialCompletionApi:
-    def test_not_completion_app(self, app):
+    def test_not_completion_app(self, app: Flask):
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -560,13 +561,13 @@ class TestTrialCompletionApi:
 
 
 class TestTrialMessageSuggestedQuestionApi:
-    def test_not_chat_app(self, app):
+    def test_not_chat_app(self, app: Flask):
         api = module.TrialMessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
             with pytest.raises(NotChatAppError):
-                method(api, MagicMock(mode="completion"), str(uuid4()))
+                method(MagicMock(mode="completion"), str(uuid4()))
 
     def test_success(self, app, trial_app_chat, account):
         api = module.TrialMessageSuggestedQuestionApi()
@@ -581,7 +582,7 @@ class TestTrialMessageSuggestedQuestionApi:
                 return_value=["q1", "q2"],
             ),
         ):
-            result = method(api, trial_app_chat, str(uuid4()))
+            result = method(trial_app_chat, str(uuid4()))
 
         assert result == {"data": ["q1", "q2"]}
 
@@ -599,7 +600,7 @@ class TestTrialMessageSuggestedQuestionApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, trial_app_chat, str(uuid4()))
+                method(trial_app_chat, str(uuid4()))
 
 
 class TestTrialAppParameterApi:
@@ -931,7 +932,7 @@ class TestTrialAppWorkflowTaskStopApi:
 
         with app.test_request_context("/"):
             with pytest.raises(NotWorkflowAppError):
-                method(trial_app_chat, str(uuid4()))
+                method(api, trial_app_chat, str(uuid4()))
 
     def test_success(self, app, trial_app_workflow, account):
         api = module.TrialAppWorkflowTaskStopApi()
@@ -944,7 +945,7 @@ class TestTrialAppWorkflowTaskStopApi:
             patch.object(module.AppQueueManager, "set_stop_flag_no_user_check") as mock_set_flag,
             patch.object(module.GraphEngineManager, "send_stop_command") as mock_send_cmd,
         ):
-            result = method(trial_app_workflow, task_id)
+            result = method(api, trial_app_workflow, task_id)
 
         assert result == {"result": "success"}
         mock_set_flag.assert_called_once_with(task_id)
@@ -952,7 +953,7 @@ class TestTrialAppWorkflowTaskStopApi:
 
 
 class TestTrialSitApi:
-    def test_no_site(self, app):
+    def test_no_site(self, app: Flask):
         api = module.TrialSitApi()
         method = unwrap(api.get)
         app_model = MagicMock()
@@ -963,7 +964,7 @@ class TestTrialSitApi:
             with pytest.raises(Forbidden):
                 method(api, app_model)
 
-    def test_archived_tenant(self, app):
+    def test_archived_tenant(self, app: Flask):
         api = module.TrialSitApi()
         method = unwrap(api.get)
 
@@ -978,7 +979,7 @@ class TestTrialSitApi:
             with pytest.raises(Forbidden):
                 method(api, app_model)
 
-    def test_success(self, app):
+    def test_success(self, app: Flask):
         api = module.TrialSitApi()
         method = unwrap(api.get)
 
