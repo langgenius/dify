@@ -15,7 +15,9 @@ Pydantic models because they are not accepted as graph input.
 
 ``Layer.bind_deps`` is the mutation point for dependency state. Layer
 implementations should treat ``self.deps`` as unavailable until a compositor or
-caller has resolved and bound dependencies.
+caller has resolved and bound dependencies. When a layer needs a dependency's
+session-local state or handles, use the current ``LayerControl.control_for`` API
+instead of storing dependency controls on layer instances.
 
 Layer async entry uses a caller-provided ``LayerControl`` as an explicit state
 machine and per-session runtime owner. A fresh control starts in
@@ -42,7 +44,20 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from enum import StrEnum
 from types import UnionType
-from typing import Any, ClassVar, Generic, Mapping, Sequence, Union, cast, get_args, get_origin, get_type_hints
+from typing import (
+    Any,
+    ClassVar,
+    Generic,
+    Mapping,
+    Protocol,
+    Sequence,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+    get_type_hints,
+    overload,
+)
 
 from pydantic import BaseModel, ConfigDict, JsonValue, SerializeAsAny
 from typing_extensions import Self, TypeVar
@@ -72,6 +87,19 @@ type LayerConfigValue = JsonValue | SerializeAsAny[LayerConfig]
 _ConfigT = TypeVar("_ConfigT", bound=LayerConfig, default="EmptyLayerConfig")
 _RuntimeStateT = TypeVar("_RuntimeStateT", bound=BaseModel, default="EmptyRuntimeState")
 _RuntimeHandlesT = TypeVar("_RuntimeHandlesT", bound=BaseModel, default="EmptyRuntimeHandles")
+_DepRuntimeStateT = TypeVar("_DepRuntimeStateT", bound=BaseModel)
+_DepRuntimeHandlesT = TypeVar("_DepRuntimeHandlesT", bound=BaseModel)
+
+
+class _LayerControlOwnerSession(Protocol):
+    """Private structural API used by controls to resolve dependency controls."""
+
+    def _control_for_dependency(
+        self,
+        owner_layer_id: str,
+        dep_name: str | None,
+        dep_layer: "Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT]",
+    ) -> "LayerControl[_DepRuntimeStateT, _DepRuntimeHandlesT]": ...
 
 
 class LayerDeps:
@@ -171,13 +199,17 @@ class LayerControl(Generic[_RuntimeStateT, _RuntimeHandlesT]):
     callers may inspect closed-session diagnostics after exit. Reuse is still
     governed by ``state``: a closed control cannot be entered again. Runtime
     handles are not serialized in snapshots and should be rehydrated from
-    runtime state in resume hooks.
+    runtime state in resume hooks. A compositor also binds private owner metadata
+    so ``control_for`` can find controls for this layer's dependencies in the
+    same session; those links are runtime-only and not part of snapshots.
     """
 
     state: LifecycleState = LifecycleState.NEW
     exit_intent: ExitIntent = ExitIntent.DELETE
     runtime_state: _RuntimeStateT = field(default_factory=lambda: cast(_RuntimeStateT, EmptyRuntimeState()))
     runtime_handles: _RuntimeHandlesT = field(default_factory=lambda: cast(_RuntimeHandlesT, EmptyRuntimeHandles()))
+    _owner_session: _LayerControlOwnerSession | None = field(default=None, init=False, repr=False, compare=False)
+    _owner_layer_id: str | None = field(default=None, init=False, repr=False, compare=False)
 
     def suspend_on_exit(self) -> None:
         """Request suspend behavior when the current layer entry exits."""
@@ -186,6 +218,57 @@ class LayerControl(Generic[_RuntimeStateT, _RuntimeHandlesT]):
     def delete_on_exit(self) -> None:
         """Request delete behavior when the current layer entry exits."""
         self.exit_intent = ExitIntent.DELETE
+
+    @overload
+    def control_for(
+        self,
+        dep_layer: "Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT]",
+        /,
+    ) -> "LayerControl[_DepRuntimeStateT, _DepRuntimeHandlesT]": ...
+
+    @overload
+    def control_for(
+        self,
+        dep_name: str,
+        dep_layer: "Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT]",
+        /,
+    ) -> "LayerControl[_DepRuntimeStateT, _DepRuntimeHandlesT]": ...
+
+    def control_for(
+        self,
+        dep_name_or_layer: "str | Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT]",
+        dep_layer: "Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT] | None" = None,
+        /,
+    ) -> "LayerControl[_DepRuntimeStateT, _DepRuntimeHandlesT]":
+        """Return the current session control for one resolved dependency.
+
+        ``control_for(dep_layer)`` is for the common case where exactly one
+        resolved dependency target of this control's owner layer is ``dep_layer``.
+        Use ``control_for(dep_name, dep_layer)`` when multiple dependency fields
+        can point at the same layer instance or when the name makes the lookup
+        clearer. Optional dependencies that resolved to ``None`` have no control
+        and raise ``KeyError`` when requested.
+        """
+        if isinstance(dep_name_or_layer, str):
+            if dep_layer is None:
+                raise TypeError("LayerControl.control_for(dep_name, dep_layer) requires dep_layer.")
+            dep_name = dep_name_or_layer
+            resolved_dep_layer = dep_layer
+        else:
+            if dep_layer is not None:
+                raise TypeError("LayerControl.control_for accepts either (dep_layer) or (dep_name, dep_layer).")
+            dep_name = None
+            resolved_dep_layer = dep_name_or_layer
+
+        if self._owner_session is None or self._owner_layer_id is None:
+            raise RuntimeError("LayerControl is not attached to a compositor session.")
+
+        return self._owner_session._control_for_dependency(self._owner_layer_id, dep_name, resolved_dep_layer)
+
+    def _bind_owner(self, session: _LayerControlOwnerSession, layer_id: str) -> None:
+        """Attach runtime owner metadata used by ``control_for``."""
+        self._owner_session = session
+        self._owner_layer_id = layer_id
 
 
 @dataclass(frozen=True, slots=True)

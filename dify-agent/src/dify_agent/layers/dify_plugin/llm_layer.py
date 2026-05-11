@@ -1,15 +1,16 @@
 """Dify plugin LLM model layer.
 
 This layer owns model capability resolution for Dify plugin-backed LLMs. It
-depends on ``DifyPluginLayer`` for active daemon access and returns a Pydantic AI
-model adapter configured from the public LLM layer DTO.
+depends on ``DifyPluginLayer`` for daemon access, resolves that dependency's
+control from its own ``LayerControl``, and returns a Pydantic AI model adapter
+configured from the public LLM layer DTO.
 """
 
 from dataclasses import dataclass
 
 from typing_extensions import Self, override
 
-from agenton.layers import LayerDeps, PlainLayer
+from agenton.layers import EmptyRuntimeHandles, EmptyRuntimeState, LayerControl, LayerDeps, PlainLayer
 from dify_agent.adapters.llm import DifyLLMAdapterModel
 from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig
 from dify_agent.layers.dify_plugin.plugin_layer import DifyPluginLayer
@@ -35,9 +36,10 @@ class DifyPluginLLMLayer(PlainLayer[DifyPluginLLMDeps, DifyPluginLLMLayerConfig]
         """Create the LLM layer from validated public config."""
         return cls(config=config)
 
-    def get_model(self) -> DifyLLMAdapterModel:
-        """Return the configured model using the active plugin daemon provider."""
-        provider = self.deps.plugin.get_provider(plugin_provider=self.config.provider)
+    def get_model(self, control: LayerControl[EmptyRuntimeState, EmptyRuntimeHandles]) -> DifyLLMAdapterModel:
+        """Return the configured model using the current session's plugin control."""
+        plugin_control = control.control_for(self.deps.plugin)
+        provider = self.deps.plugin.get_provider(plugin_control, plugin_provider=self.config.provider)
         return DifyLLMAdapterModel(
             model=self.config.model,
             daemon_provider=provider,

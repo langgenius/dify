@@ -67,9 +67,14 @@ Methods:
 
 - `suspend_on_exit() -> None`
 - `delete_on_exit() -> None`
+- `control_for(dep_layer) -> LayerControl`: resolve the unique dependency control
+  whose resolved target is `dep_layer` in the same session.
+- `control_for(dep_name, dep_layer) -> LayerControl`: resolve a named dependency
+  control when multiple dependency fields could point at the same layer instance.
 
 `runtime_state` is serialized in session snapshots. `runtime_handles` is never
-serialized and should be rehydrated from runtime state in resume hooks.
+serialized and should be rehydrated from runtime state in resume hooks. Private
+owner links used by `control_for` are runtime-only and are not snapshotted.
 
 ### Schema defaults and lifecycle enums
 
@@ -107,12 +112,12 @@ JSON objects. Use live instances for Python objects and callables.
 
 `LayerRegistry` manually registers config-backed layer classes.
 
-- `register_layer(layer_type, type_id=None) -> None`
+- `register_layer(layer_type, type_id=None, factory=None) -> None`
 - `resolve(type_id) -> LayerDescriptor`
 - `descriptors() -> Mapping[str, LayerDescriptor]`
 
 `LayerDescriptor` exposes `type_id`, `layer_type`, `config_type`,
-`runtime_state_type`, and `runtime_handles_type`.
+`runtime_state_type`, `runtime_handles_type`, and optional `factory`.
 
 ### Builder
 
@@ -127,6 +132,11 @@ JSON objects. Use live instances for Python objects and callables.
 
 `Compositor[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT]`
 owns the ordered layer graph.
+
+Dependency binding uses explicit `deps={dep_name: target_layer_name}` mappings
+first, then implicit same-name layer binding. Optional dependencies without a
+target are recorded as absent so `LayerControl.control_for(...)` raises `KeyError`
+rather than returning a control.
 
 Construction:
 

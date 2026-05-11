@@ -99,7 +99,9 @@ class AgentRunRunner:
                     _ = await emit_pydantic_ai_event(self.sink, run_id=self.run_id, data=event)
 
             try:
-                model = compositor.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer).get_model()
+                llm_layer = compositor.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer)
+                llm_control = active_session.layer(DIFY_AGENT_MODEL_LAYER_ID)
+                model = llm_layer.get_model(llm_control)
             except (KeyError, TypeError, RuntimeError) as exc:
                 raise AgentRunValidationError(str(exc)) from exc
 

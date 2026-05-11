@@ -10,6 +10,10 @@ Layer instances are shared graph/capability definitions owned by the compositor.
 Per-session runtime state belongs to each session's ``LayerControl`` objects,
 not to the shared layer instances, so different sessions can enter the same
 compositor without leaking generated ids or handles through ``self``.
+Controls know their owning session and layer id privately so code running inside a
+layer can use ``LayerControl.control_for`` to resolve dependency controls from the
+same session. These owner links are runtime metadata and are never serialized in
+session snapshots.
 
 Dependency mappings use layer-local dependency names as keys and compositor
 layer names as values. System prompt aggregation depends on insertion order:
@@ -57,6 +61,8 @@ LayerToolT = TypeVar("LayerToolT", default=AllToolTypes)
 UserPromptT = TypeVar("UserPromptT", default=AllUserPromptTypes)
 LayerUserPromptT = TypeVar("LayerUserPromptT", default=AllUserPromptTypes)
 LayerT = TypeVar("LayerT", bound=Layer[Any, Any, Any, Any, Any, Any, Any])
+DepRuntimeStateT = TypeVar("DepRuntimeStateT", bound=BaseModel)
+DepRuntimeHandlesT = TypeVar("DepRuntimeHandlesT", bound=BaseModel)
 
 
 type CompositorTransformer[InputT, OutputT] = Callable[[Sequence[InputT]], Sequence[OutputT]]
@@ -205,14 +211,18 @@ class CompositorSession:
     setting every layer's per-entry exit intent; ``layer`` allows explicit
     per-layer control when callers need partial suspend/delete behavior. A mixed
     session with any closed layer cannot be entered again because compositor
-    entry is all-or-none.
+    entry is all-or-none. The session also carries private owner metadata so its
+    controls can resolve dependency controls; snapshots include only public
+    lifecycle/runtime state.
     """
 
-    __slots__ = ("layer_controls",)
+    __slots__ = ("layer_controls", "_owner_compositor")
 
     layer_controls: OrderedDict[str, LayerControl]
+    _owner_compositor: "Compositor[Any, Any, Any, Any, Any, Any] | None"
 
     def __init__(self, layer_names: Iterable[str] | Mapping[str, LayerControl]) -> None:
+        self._owner_compositor = None
         if isinstance(layer_names, MappingABC):
             self.layer_controls = OrderedDict(layer_names.items())
             return
@@ -230,7 +240,87 @@ class CompositorSession:
 
     def layer(self, name: str) -> LayerControl:
         """Return the layer control for ``name`` or raise ``KeyError``."""
-        return self.layer_controls[name]
+        try:
+            return self.layer_controls[name]
+        except KeyError as e:
+            raise KeyError(f"CompositorSession has no layer control named '{name}'.") from e
+
+    def _bind_owner(self, compositor: "Compositor[Any, Any, Any, Any, Any, Any]") -> None:
+        """Bind runtime owner links on this session and all child controls."""
+        self._owner_compositor = compositor
+        for layer_id, control in self.layer_controls.items():
+            control._bind_owner(self, layer_id)
+
+    def _control_for_dependency(
+        self,
+        owner_layer_id: str,
+        dep_name: str | None,
+        dep_layer: Layer[Any, Any, Any, Any, Any, DepRuntimeStateT, DepRuntimeHandlesT],
+    ) -> LayerControl[DepRuntimeStateT, DepRuntimeHandlesT]:
+        """Resolve a dependency control from the owner's resolved dependency targets."""
+        if self._owner_compositor is None:
+            raise RuntimeError("CompositorSession is not attached to a compositor.")
+        if dep_name is None:
+            return self._control_for_unique_dependency(owner_layer_id, dep_layer)
+        return self._control_for_named_dependency(owner_layer_id, dep_name, dep_layer)
+
+    def _control_for_unique_dependency(
+        self,
+        owner_layer_id: str,
+        dep_layer: Layer[Any, Any, Any, Any, Any, DepRuntimeStateT, DepRuntimeHandlesT],
+    ) -> LayerControl[DepRuntimeStateT, DepRuntimeHandlesT]:
+        compositor = self._require_owner_compositor()
+        dep_targets = self._dependency_targets_for(owner_layer_id)
+        matches = [
+            (name, target_id)
+            for name, target_id in dep_targets.items()
+            if target_id is not None and compositor.layers[target_id] is dep_layer
+        ]
+        if not matches:
+            raise KeyError(
+                f"Layer '{owner_layer_id}' has no dependency target bound to the provided "
+                f"{type(dep_layer).__name__} instance."
+            )
+        if len(matches) > 1:
+            names = ", ".join(name for name, _target_id in matches)
+            raise ValueError(
+                f"Layer '{owner_layer_id}' has multiple dependency fields bound to the provided "
+                f"{type(dep_layer).__name__} instance: {names}. Pass dep_name explicitly."
+            )
+        _name, target_id = matches[0]
+        return cast(LayerControl[DepRuntimeStateT, DepRuntimeHandlesT], self.layer(target_id))
+
+    def _control_for_named_dependency(
+        self,
+        owner_layer_id: str,
+        dep_name: str,
+        dep_layer: Layer[Any, Any, Any, Any, Any, DepRuntimeStateT, DepRuntimeHandlesT],
+    ) -> LayerControl[DepRuntimeStateT, DepRuntimeHandlesT]:
+        compositor = self._require_owner_compositor()
+        dep_targets = self._dependency_targets_for(owner_layer_id)
+        if dep_name not in dep_targets:
+            raise KeyError(f"Layer '{owner_layer_id}' has no resolved dependency named '{dep_name}'.")
+        target_id = dep_targets[dep_name]
+        if target_id is None:
+            raise KeyError(f"Layer '{owner_layer_id}' dependency '{dep_name}' is not bound to a target layer.")
+        if compositor.layers[target_id] is not dep_layer:
+            raise TypeError(
+                f"Layer '{owner_layer_id}' dependency '{dep_name}' resolves to layer '{target_id}', "
+                f"not the provided {type(dep_layer).__name__} instance."
+            )
+        return cast(LayerControl[DepRuntimeStateT, DepRuntimeHandlesT], self.layer(target_id))
+
+    def _require_owner_compositor(self) -> "Compositor[Any, Any, Any, Any, Any, Any]":
+        if self._owner_compositor is None:
+            raise RuntimeError("CompositorSession is not attached to a compositor.")
+        return self._owner_compositor
+
+    def _dependency_targets_for(self, owner_layer_id: str) -> Mapping[str, str | None]:
+        compositor = self._require_owner_compositor()
+        try:
+            return compositor._resolved_dep_targets[owner_layer_id]
+        except KeyError as e:
+            raise KeyError(f"Layer '{owner_layer_id}' is not defined in this compositor.") from e
 
 
 class LayerSessionSnapshot(BaseModel):
@@ -375,6 +465,7 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
     user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] | None = None
     tool_transformer: CompositorTransformer[LayerToolT, ToolT] | None = None
     _deps_bound: bool = field(default=False, init=False)
+    _resolved_dep_targets: dict[str, dict[str, str | None]] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         self._bind_deps(self.deps_name_mapping)
@@ -401,24 +492,36 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
 
         The outer mapping key is the layer being bound. The inner mapping key is
         the dependency field declared by that layer's deps type, and the value is
-        the target layer name in this compositor.
+        the target layer name in this compositor. Explicit mappings win over
+        implicit same-name layer binding. Optional dependencies with no target are
+        recorded as ``None`` so ``LayerControl.control_for`` can distinguish
+        "declared but absent" from unknown dependency names.
         """
         if self._deps_bound:
             raise RuntimeError("Compositor deps are already bound.")
 
+        self._resolved_dep_targets = {}
         for layer_name, layer in self.layers.items():
             layer_deps = deps_name_mapping.get(layer_name, {})
-            try:
-                deps = {
-                    dep_name: self.layers[target_layer_name]
-                    for dep_name, target_layer_name in layer_deps.items()
-                }
-            except KeyError as e:
-                raise ValueError(
-                    f"Layer '{layer_name}' has a dependency on layer '{e.args[0]}', "
-                    "which is not defined in the builder."
-                ) from e
-            layer.bind_deps({**self.layers, **deps})
+            for target_layer_name in layer_deps.values():
+                if target_layer_name not in self.layers:
+                    raise ValueError(
+                        f"Layer '{layer_name}' has a dependency on layer '{target_layer_name}', "
+                        "which is not defined in the builder."
+                    )
+
+            resolved_target_ids: dict[str, str | None] = {}
+            resolved_deps: dict[str, Layer[Any, Any, Any, Any, Any, Any, Any]] = {}
+            for dep_name in layer.dependency_names():
+                target_layer_name = layer_deps.get(dep_name)
+                if target_layer_name is None and dep_name in self.layers:
+                    target_layer_name = dep_name
+                resolved_target_ids[dep_name] = target_layer_name
+                if target_layer_name is not None:
+                    resolved_deps[dep_name] = self.layers[target_layer_name]
+
+            layer.bind_deps(resolved_deps)
+            self._resolved_dep_targets[layer_name] = resolved_target_ids
         self._deps_bound = True
 
     @overload
@@ -446,9 +549,11 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
 
     def new_session(self) -> CompositorSession:
         """Create a fresh lifecycle session matching this compositor's layer order."""
-        return CompositorSession(
+        session = CompositorSession(
             OrderedDict((layer_name, layer.new_control()) for layer_name, layer in self.layers.items())
         )
+        session._bind_owner(self)
+        return session
 
     def snapshot_session(self, session: CompositorSession) -> CompositorSessionSnapshot:
         """Serialize non-active session lifecycle state and runtime state.
@@ -499,7 +604,9 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
             )
             for layer_snapshot in snapshot.layers
         )
-        return CompositorSession(controls)
+        session = CompositorSession(controls)
+        session._bind_owner(self)
+        return session
 
     @asynccontextmanager
     async def enter(
@@ -514,6 +621,7 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
             session = self.new_session()
         self._validate_session(session)
         self._ensure_session_can_enter(session)
+        session._bind_owner(self)
 
         async with AsyncExitStack() as stack:
             for layer_name, layer in self.layers.items():

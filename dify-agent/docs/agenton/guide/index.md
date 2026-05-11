@@ -82,6 +82,29 @@ compositor = (
 Use `.add_instance()` for layers that require Python objects or callables, such
 as `ObjectLayer`, `ToolsLayer`, and dynamic tool layers.
 
+## Dependency controls
+
+Layer dependencies bind layer instances on `self.deps`. When a layer method also
+needs the dependency's per-session state or handles, pass the current layer's
+`LayerControl` into that method and resolve the dependency control from the same
+session:
+
+```python {test="skip" lint="skip"}
+class ModelDeps(LayerDeps):
+    plugin: PluginLayer
+
+
+@dataclass
+class ModelLayer(PlainLayer[ModelDeps]):
+    def make_model(self, control: LayerControl) -> Model:
+        plugin_control = control.control_for(self.deps.plugin)
+        return self.deps.plugin.make_provider(plugin_control)
+```
+
+Use `control.control_for(dep_name, dep_layer)` when more than one dependency
+field can point at the same layer instance. Optional dependencies that were not
+bound have no control and raise `KeyError` if requested.
+
 ## System prompts and user prompts
 
 Layers expose three prompt surfaces:

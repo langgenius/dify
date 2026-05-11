@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID
 from dify_agent.runtime.run_scheduler import SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
@@ -57,6 +58,52 @@ def test_create_run_returns_running_from_scheduler() -> None:
             "compositor": {
                 "schema_version": 1,
                 "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+            }
+        },
+    )
+
+    assert response.status_code == 202
+    assert response.json() == {"run_id": "run-1", "status": "running"}
+
+
+def test_create_run_accepts_valid_full_plugin_graph() -> None:
+    from fastapi import FastAPI
+
+    class CapturingScheduler:
+        async def create_run(self, request: object) -> RunRecord:
+            del request
+            return RunRecord(run_id="run-1", status="running")
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: CapturingScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/runs",
+        json={
+            "compositor": {
+                "schema_version": 1,
+                "layers": [
+                    {"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}},
+                    {
+                        "name": "plugin-renamed",
+                        "type": "dify.plugin",
+                        "config": {"tenant_id": "tenant-1", "plugin_id": "langgenius/openai"},
+                    },
+                    {
+                        "name": DIFY_AGENT_MODEL_LAYER_ID,
+                        "type": "dify.plugin.llm",
+                        "deps": {"plugin": "plugin-renamed"},
+                        "config": {
+                            "provider": "openai",
+                            "model": "gpt-4o-mini",
+                            "credentials": {"api_key": "secret"},
+                            "model_settings": {"temperature": 0.2},
+                        },
+                    },
+                ],
             }
         },
     )
