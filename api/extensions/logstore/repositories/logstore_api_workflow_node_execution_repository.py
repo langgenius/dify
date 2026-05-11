@@ -53,9 +53,7 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
 
     created_by_role_val = data.get("created_by_role")
     try:
-        created_by_role = (
-            CreatorUserRole(str(created_by_role_val)) if created_by_role_val else CreatorUserRole.ACCOUNT
-        )
+        created_by_role = CreatorUserRole(str(created_by_role_val)) if created_by_role_val else CreatorUserRole.ACCOUNT
     except ValueError:
         logger.warning("Invalid created_by_role value: %s, falling back to ACCOUNT", created_by_role_val)
         created_by_role = CreatorUserRole.ACCOUNT
@@ -90,25 +88,25 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         app_id=data.get("app_id") or "",
         workflow_id=data.get("workflow_id") or "",
         # Optional fields
-        workflow_run_id = data.get("workflow_run_id")
-        ,predecessor_node_id = data.get("predecessor_node_id")
-        ,node_execution_id = data.get("node_execution_id")
-        ,inputs = data.get("inputs")
-        ,process_data = data.get("process_data")
-        ,outputs = data.get("outputs")
-        ,error = data.get("error")
-        ,execution_metadata = data.get("execution_metadata")
-        ,node_id = data.get("node_id") or ""
-        ,node_type = data.get("node_type") or ""
-        ,status = WorkflowNodeExecutionStatus(data.get("status") or "running")
-        ,title = data.get("title") or ""
-        ,index = safe_int(data.get("index", 0))
-        ,elapsed_time = safe_float(data.get("elapsed_time", 0))
-        ,created_by = data.get("created_by") or ""
-        ,triggered_from=triggered_from
-        ,created_by_role=created_by_role
-        ,created_at=created_at
-        ,finished_at=finished_at
+        workflow_run_id=data.get("workflow_run_id"),
+        predecessor_node_id=data.get("predecessor_node_id"),
+        node_execution_id=data.get("node_execution_id"),
+        inputs=data.get("inputs"),
+        process_data=data.get("process_data"),
+        outputs=data.get("outputs"),
+        error=data.get("error"),
+        execution_metadata=data.get("execution_metadata"),
+        node_id=data.get("node_id") or "",
+        node_type=data.get("node_type") or "",
+        status=WorkflowNodeExecutionStatus(data.get("status") or "running"),
+        title=data.get("title") or "",
+        index=safe_int(data.get("index", 0)),
+        elapsed_time=safe_float(data.get("elapsed_time", 0)),
+        created_by=data.get("created_by") or "",
+        triggered_from=triggered_from,
+        created_by_role=created_by_role,
+        created_at=created_at,
+        finished_at=finished_at,
     )
 
     return model
