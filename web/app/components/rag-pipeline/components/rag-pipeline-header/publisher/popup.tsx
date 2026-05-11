@@ -246,8 +246,8 @@ const Popup = ({
               {t('common.publishAs', { ns: 'pipeline' })}
             </span>
             {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
-              <PremiumBadge className="shrink-0 cursor-pointer select-none" size="s" color="indigo">
-                <SparklesSoft className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
+              <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
+                <SparklesSoft aria-hidden="true" className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
                 <span className="p-0.5 system-2xs-medium">
                   {t('upgradeBtn.encourageShort', { ns: 'billing' })}
                 </span>
