@@ -45,8 +45,9 @@ class TestWorkflowNodeExecutionModel:
 
     def test_process_data_truncated_property_false_when_no_offload_data(self):
         """Test process_data_truncated returns False when no offload_data."""
-        execution = WorkflowNodeExecutionModel()
-        execution.offload_data = []
+        execution = WorkflowNodeExecutionModel(
+            offload_data = []
+        )
 
         assert execution.process_data_truncated is False
 
@@ -71,21 +72,24 @@ class TestWorkflowNodeExecutionModel:
         """Test process_data_truncated returns True when process_data file exists."""
         from models.enums import ExecutionOffLoadType
 
-        execution = WorkflowNodeExecutionModel()
-
         # Create a real offload instance for process_data
         process_data_offload = WorkflowNodeExecutionOffload()
         process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
         process_data_offload.file_id = "process-data-file-id"
-        execution.offload_data = [process_data_offload]
+        execution = WorkflowNodeExecutionModel(
+            offload_data = [process_data_offload]
+
+        )
+
 
         assert execution.process_data_truncated is True
 
     def test_load_full_process_data_with_no_offload_data(self):
         """Test load_full_process_data when no offload data exists."""
-        execution = WorkflowNodeExecutionModel()
-        execution.offload_data = []
-        execution.process_data = '{"test": "data"}'
+        execution = WorkflowNodeExecutionModel(
+            offload_data = []
+            ,process_data = '{"test": "data"}'
+        )
 
         # Mock session and storage
         mock_session = Mock()
@@ -118,15 +122,16 @@ class TestWorkflowNodeExecutionModel:
         """Test load_full_process_data when process_data file exists."""
         from models.enums import ExecutionOffLoadType
 
-        execution = WorkflowNodeExecutionModel()
-
         # Create process_data offload
         process_data_offload = WorkflowNodeExecutionOffload()
         process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
         process_data_offload.file_id = "file-id"
 
-        execution.offload_data = [process_data_offload]
-        execution.process_data = '{"truncated": "data"}'
+        execution = WorkflowNodeExecutionModel(
+            offload_data = [process_data_offload],
+            process_data = '{"truncated": "data"}'
+        )
+
 
         # Mock session and storage
         mock_session = Mock()
@@ -153,8 +158,6 @@ class TestWorkflowNodeExecutionModel:
         """Test that process_data truncation behaves consistently with inputs/outputs."""
         from models.enums import ExecutionOffLoadType
 
-        execution = WorkflowNodeExecutionModel()
-
         # Create offload data for all three types
         inputs_offload = WorkflowNodeExecutionOffload()
         inputs_offload.type_ = ExecutionOffLoadType.INPUTS
@@ -168,7 +171,10 @@ class TestWorkflowNodeExecutionModel:
         process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
         process_data_offload.file_id = "process-data-file"
 
-        execution.offload_data = [inputs_offload, outputs_offload, process_data_offload]
+
+        execution = WorkflowNodeExecutionModel(
+            offload_data = [inputs_offload, outputs_offload, process_data_offload]
+        )
 
         # All three should be truncated
         assert execution.inputs_truncated is True
@@ -179,14 +185,15 @@ class TestWorkflowNodeExecutionModel:
         """Test mixed states of truncation."""
         from models.enums import ExecutionOffLoadType
 
-        execution = WorkflowNodeExecutionModel()
-
         # Only process_data is truncated
         process_data_offload = WorkflowNodeExecutionOffload()
         process_data_offload.type_ = ExecutionOffLoadType.PROCESS_DATA
         process_data_offload.file_id = "process-data-file"
 
-        execution.offload_data = [process_data_offload]
+        execution = WorkflowNodeExecutionModel(
+            offload_data = [process_data_offload]
+        )
+
 
         assert execution.inputs_truncated is False
         assert execution.outputs_truncated is False
