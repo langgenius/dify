@@ -1,5 +1,6 @@
 """Workflow comment models."""
 
+from models.base import TypeBase
 from datetime import datetime
 from typing import Optional
 
@@ -13,7 +14,7 @@ from .engine import db
 from .types import StringUUID
 
 
-class WorkflowComment(Base):
+class WorkflowComment(TypeBase):
     """Workflow comment model for canvas commenting functionality.
 
     Comments are associated with apps rather than specific workflow versions,
@@ -42,27 +43,26 @@ class WorkflowComment(Base):
         Index("workflow_comments_created_at_idx", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=gen_uuidv7_string)
+    id: Mapped[str] = mapped_column(StringUUID, default_factory=gen_uuidv7_string, init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position_x: Mapped[float] = mapped_column(sa.Float)
     position_y: Mapped[float] = mapped_column(sa.Float)
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
-    resolved: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    resolved_at: Mapped[datetime | None] = mapped_column(sa.DateTime)
-    resolved_by: Mapped[str | None] = mapped_column(StringUUID)
+    resolved_at: Mapped[datetime | None] = mapped_column(sa.DateTime, default=None)
+    resolved_by: Mapped[str | None] = mapped_column(StringUUID, default=None)
 
+    resolved: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
     # Relationships
-    replies: Mapped[list["WorkflowCommentReply"]] = relationship(
-        "WorkflowCommentReply", back_populates="comment", cascade="all, delete-orphan"
-    )
-    mentions: Mapped[list["WorkflowCommentMention"]] = relationship(
-        "WorkflowCommentMention", back_populates="comment", cascade="all, delete-orphan"
+    replies: Mapped[list[WorkflowCommentReply]] = relationship(
+        lambda: WorkflowCommentReply, back_populates="comment", cascade="all, delete-orphan",init=False    )
+    mentions: Mapped[list[WorkflowCommentMention]] = relationship(
+        lambda: WorkflowCommentMention, back_populates="comment", cascade="all, delete-orphan",init=False 
     )
 
     @property
