@@ -14,10 +14,10 @@ from services.app_generate_service import AppGenerateService
 def normalize_legacy_system_file_args_for_service_api(
     *,
     app_model: App,
-    args: Mapping[str, Any],
+    args: dict[str, Any],
     raw_payload: Mapping[str, Any] | None,
     workflow_id: str | None = None,
-) -> tuple[Mapping[str, Any], LegacySysFilesCompatVariable | None]:
+) -> tuple[dict[str, Any], LegacySysFilesCompatVariable | None]:
     # TODO: Remove this hidden Service API compatibility path after all persisted workflows are migrated.
     args_with_hidden_system = _copy_hidden_system_files_arg(args=args, raw_payload=raw_payload)
     if not _has_legacy_file_arg(args_with_hidden_system):
@@ -37,9 +37,9 @@ def attach_legacy_system_file_warning_for_service_api(
 
 def _copy_hidden_system_files_arg(
     *,
-    args: Mapping[str, Any],
+    args: dict[str, Any],
     raw_payload: Mapping[str, Any] | None,
-) -> Mapping[str, Any]:
+) -> dict[str, Any]:
     system = raw_payload.get("system") if isinstance(raw_payload, Mapping) else None
     if not isinstance(system, Mapping) or "files" not in system or system["files"] is None:
         return args

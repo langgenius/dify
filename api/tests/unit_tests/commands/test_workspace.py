@@ -31,3 +31,19 @@ def test_reset_encrypt_key_pair_rotates_keys_and_removes_custom_provider_data(mo
     assert session.execute.call_count == 2
     captured = capsys.readouterr()
     assert "tenant-1 has been reset" in captured.out
+
+
+def test_reset_encrypt_key_pair_stops_when_workspace_record_is_missing(monkeypatch, capsys):
+    monkeypatch.setattr(workspace_commands.dify_config, "EDITION", "SELF_HOSTED")
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = [None]
+    session_manager = MagicMock()
+    session_manager.begin.return_value.__enter__.return_value = session
+    monkeypatch.setattr(workspace_commands, "sessionmaker", lambda *args, **kwargs: session_manager)
+    monkeypatch.setattr(workspace_commands, "db", MagicMock(engine=object()))
+
+    reset_encrypt_key_pair.callback()
+
+    session.execute.assert_not_called()
+    captured = capsys.readouterr()
+    assert "No workspaces found" in captured.out

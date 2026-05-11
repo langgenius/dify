@@ -114,7 +114,7 @@ def normalize_legacy_sys_files_args(
     *,
     graph: Mapping[str, Any],
     args: Mapping[str, Any],
-) -> tuple[Mapping[str, Any], LegacySysFilesCompatVariable | None]:
+) -> tuple[dict[str, Any], LegacySysFilesCompatVariable | None]:
     """Map legacy Service/Web API file arguments onto the generated Start-node variable.
 
     The top-level `files` argument is the existing API surface for system files.
@@ -125,7 +125,7 @@ def normalize_legacy_sys_files_args(
     compat_variable = resolve_legacy_sys_files_compat_variable(graph)
     files, legacy_files_used = _extract_legacy_files(args)
     if compat_variable is None or not legacy_files_used:
-        return args, None
+        return dict(args), None
 
     normalized_args = dict(args)
     if "files" not in normalized_args:

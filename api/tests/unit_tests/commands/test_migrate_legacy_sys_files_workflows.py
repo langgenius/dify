@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import click
@@ -136,3 +137,99 @@ def test_migrate_legacy_sys_files_workflow_batch_commits_and_counts_failures(cap
     assert "Failed to migrate legacy" in caplog.text
     session.commit.assert_called_once()
     session.rollback.assert_not_called()
+
+
+def test_run_legacy_sys_files_workflow_migration_uses_keyset_batches(mocker):
+    session_maker = MagicMock()
+    sessions = [MagicMock(), MagicMock()]
+    session_maker.side_effect = sessions
+    mocker.patch.object(workflow_migration_commands, "sessionmaker", return_value=session_maker)
+    mocker.patch.object(workflow_migration_commands, "db", SimpleNamespace(engine=object()))
+    migrate_batch = mocker.patch.object(
+        workflow_migration_commands,
+        "_migrate_legacy_sys_files_workflow_batch",
+        side_effect=[
+            workflow_migration_commands.LegacySysFilesWorkflowMigrationStats(
+                scanned=2,
+                migrated=1,
+                failed=0,
+                last_id="workflow-2",
+            ),
+            workflow_migration_commands.LegacySysFilesWorkflowMigrationStats(
+                scanned=1,
+                migrated=1,
+                failed=0,
+                last_id="workflow-3",
+            ),
+        ],
+    )
+
+    stats = workflow_migration_commands.run_legacy_sys_files_workflow_migration(
+        batch_size=2,
+        limit=3,
+        start_after_id="workflow-0",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        dry_run=True,
+    )
+
+    assert stats.scanned == 3
+    assert stats.migrated == 2
+    assert stats.batches == 2
+    assert stats.last_id == "workflow-3"
+    assert migrate_batch.call_args_list[0].kwargs["start_after_id"] == "workflow-0"
+    assert migrate_batch.call_args_list[0].kwargs["batch_size"] == 2
+    assert migrate_batch.call_args_list[1].kwargs["start_after_id"] == "workflow-2"
+    assert migrate_batch.call_args_list[1].kwargs["batch_size"] == 1
+
+
+def test_run_legacy_sys_files_workflow_migration_stops_on_empty_batch(mocker):
+    session_maker = MagicMock(return_value=MagicMock())
+    mocker.patch.object(workflow_migration_commands, "sessionmaker", return_value=session_maker)
+    mocker.patch.object(workflow_migration_commands, "db", SimpleNamespace(engine=object()))
+    mocker.patch.object(
+        workflow_migration_commands,
+        "_migrate_legacy_sys_files_workflow_batch",
+        return_value=workflow_migration_commands.LegacySysFilesWorkflowMigrationStats(scanned=0),
+    )
+
+    stats = workflow_migration_commands.run_legacy_sys_files_workflow_migration(
+        batch_size=2,
+        limit=None,
+        start_after_id=None,
+        tenant_id=None,
+        app_id=None,
+        dry_run=False,
+    )
+
+    assert stats.scanned == 0
+    assert stats.batches == 0
+
+
+def test_run_legacy_sys_files_workflow_migration_stops_on_short_batch(mocker):
+    session_maker = MagicMock(return_value=MagicMock())
+    mocker.patch.object(workflow_migration_commands, "sessionmaker", return_value=session_maker)
+    mocker.patch.object(workflow_migration_commands, "db", SimpleNamespace(engine=object()))
+    migrate_batch = mocker.patch.object(
+        workflow_migration_commands,
+        "_migrate_legacy_sys_files_workflow_batch",
+        return_value=workflow_migration_commands.LegacySysFilesWorkflowMigrationStats(
+            scanned=1,
+            migrated=1,
+            failed=0,
+            last_id="workflow-1",
+        ),
+    )
+
+    stats = workflow_migration_commands.run_legacy_sys_files_workflow_migration(
+        batch_size=2,
+        limit=None,
+        start_after_id=None,
+        tenant_id=None,
+        app_id=None,
+        dry_run=False,
+    )
+
+    assert stats.scanned == 1
+    assert stats.batches == 1
+    migrate_batch.assert_called_once()
