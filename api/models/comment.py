@@ -1,13 +1,14 @@
 """Workflow comment models."""
+
 from __future__ import annotations
 
-from models.base import TypeBase
 from datetime import datetime
-from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy import Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from models.base import TypeBase
 
 from .account import Account
 from .base import Base, gen_uuidv7_string
@@ -51,9 +52,15 @@ class WorkflowComment(TypeBase):
     position_y: Mapped[float] = mapped_column(sa.Float)
     content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
     resolved_at: Mapped[datetime | None] = mapped_column(sa.DateTime, default=None)
     resolved_by: Mapped[str | None] = mapped_column(StringUUID, default=None)
@@ -61,9 +68,10 @@ class WorkflowComment(TypeBase):
     resolved: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
     # Relationships
     replies: Mapped[list[WorkflowCommentReply]] = relationship(
-        lambda: WorkflowCommentReply, back_populates="comment", cascade="all, delete-orphan",init=False    )
+        lambda: WorkflowCommentReply, back_populates="comment", cascade="all, delete-orphan", init=False
+    )
     mentions: Mapped[list[WorkflowCommentMention]] = relationship(
-        lambda: WorkflowCommentMention, back_populates="comment", cascade="all, delete-orphan",init=False 
+        lambda: WorkflowCommentMention, back_populates="comment", cascade="all, delete-orphan", init=False
     )
 
     @property
@@ -161,7 +169,7 @@ class WorkflowCommentReply(Base):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
     # Relationships
-    comment: Mapped["WorkflowComment"] = relationship("WorkflowComment", back_populates="replies")
+    comment: Mapped[WorkflowComment] = relationship("WorkflowComment", back_populates="replies")
 
     @property
     def created_by_account(self):
@@ -205,8 +213,8 @@ class WorkflowCommentMention(Base):
     mentioned_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     # Relationships
-    comment: Mapped["WorkflowComment"] = relationship("WorkflowComment", back_populates="mentions")
-    reply: Mapped[Optional["WorkflowCommentReply"]] = relationship("WorkflowCommentReply")
+    comment: Mapped[WorkflowComment] = relationship("WorkflowComment", back_populates="mentions")
+    reply: Mapped[WorkflowCommentReply | None] = relationship("WorkflowCommentReply")
 
     @property
     def mentioned_user_account(self):
