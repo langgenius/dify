@@ -1,5 +1,7 @@
 .DEFAULT_GOAL := help
 
+PROJECT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+
 .PHONY: help check fix typecheck test update-examples docs docs-serve
 
 help:
@@ -13,23 +15,23 @@ help:
 	@echo "  make docs-serve      - Serve MkDocs documentation locally"
 
 check:
-	@uv run --project . python -m ruff check .
+	@uv --directory "$(PROJECT_DIR)" run --project . python -m ruff check .
 
 fix:
-	@uv run --project . python -m ruff format .
-	@uv run --project . python -m ruff check --fix .
+	@uv --directory "$(PROJECT_DIR)" run --project . python -m ruff format .
+	@uv --directory "$(PROJECT_DIR)" run --project . python -m ruff check --fix .
 
 typecheck:
-	@uv run --project . python -m basedpyright --level error src examples tests
+	@uv --directory "$(PROJECT_DIR)" run --project . basedpyright --level error src examples tests
 
 test:
-	@uv run --project . python -m pytest tests
+	@uv --directory "$(PROJECT_DIR)" run --project . python -m pytest tests
 
 update-examples:
-	@uv run --project . python -m pytest --update-examples tests/docs/test_examples.py
+	@uv --directory "$(PROJECT_DIR)" run --project . python -m pytest --update-examples tests/docs/test_examples.py
 
 docs:
-	@uv run --project . --group docs python -m mkdocs build --no-strict
+	@uv --directory "$(PROJECT_DIR)" run --project . --group docs python -m mkdocs build --no-strict
 
 docs-serve:
-	@uv run --project . --group docs python -m mkdocs serve --no-strict
+	@uv --directory "$(PROJECT_DIR)" run --project . --group docs python -m mkdocs serve --no-strict
