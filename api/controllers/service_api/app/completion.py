@@ -19,6 +19,10 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.service_api.app.legacy_system_files import (
+    attach_legacy_system_file_warning_for_service_api,
+    normalize_legacy_system_file_args_for_service_api,
+)
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -205,11 +209,20 @@ class ChatApi(Resource):
             args["external_trace_id"] = external_trace_id
 
         streaming = payload.response_mode == "streaming"
+        legacy_system_file_compat = None
+        if app_mode == AppMode.ADVANCED_CHAT:
+            args, legacy_system_file_compat = normalize_legacy_system_file_args_for_service_api(
+                app_model=app_model,
+                args=args,
+                raw_payload=service_api_ns.payload,
+                workflow_id=args.get("workflow_id"),
+            )
 
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
+            response = attach_legacy_system_file_warning_for_service_api(response, legacy_system_file_compat)
 
             return helper.compact_generate_response(response)
         except WorkflowNotFoundError as ex:

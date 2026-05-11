@@ -3,10 +3,11 @@ import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-i
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Node, PromptItem } from '@/app/components/workflow/types'
 import { describe, expect, it } from 'vitest'
+import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import { BlockEnum, EditionType, PromptRole } from '@/app/components/workflow/types'
+import { BlockEnum, EditionType, InputVarType, PromptRole, VarType } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
-import { getNodeUsedVars, updateNodeVars } from '../utils'
+import { getNodeOutputVars, getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
 
 const createNode = <T>(data: Node<T>['data']): Node<T> => ({
   id: 'node-1',
@@ -86,6 +87,54 @@ describe('variable utils', () => {
           ['env', 'API_KEY'],
         ]),
       )
+    })
+  })
+
+  describe('node output variables', () => {
+    it('should expose sys.query but not deprecated system file output for start nodes in chat mode', () => {
+      const deprecatedSystemFileVariable = ['sys', 'files'].join('.')
+      const startNode = createStartNode({
+        id: 'start',
+        data: {
+          type: BlockEnum.Start,
+          variables: [{
+            label: 'Files',
+            variable: 'files',
+            type: InputVarType.multiFiles,
+            required: false,
+          }],
+        },
+      })
+
+      expect(getNodeOutputVars(startNode, true)).toEqual([
+        ['start', 'files'],
+        ['start', 'sys', 'query'],
+      ])
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [startNode],
+        isChatMode: true,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          nodeId: 'start',
+          vars: expect.arrayContaining([
+            expect.objectContaining({ variable: 'files', type: VarType.arrayFile }),
+            expect.objectContaining({ variable: 'sys.query', type: VarType.string }),
+          ]),
+        }),
+      ]))
+      expect(availableVars).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          nodeId: 'start',
+          vars: expect.arrayContaining([
+            expect.objectContaining({ variable: deprecatedSystemFileVariable }),
+          ]),
+        }),
+      ]))
     })
   })
 

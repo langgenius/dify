@@ -18,6 +18,7 @@ from core.app.features.rate_limiting import RateLimit
 from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
+from core.workflow.legacy_system_files import normalize_legacy_sys_files_args
 from enums.quota_type import QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
@@ -118,6 +119,7 @@ class AppGenerateService:
         try:
             request_id = rate_limit.enter(request_id)
             quota_charge.commit()
+
             effective_mode = (
                 AppMode.AGENT_CHAT if app_model.is_agent and app_model.mode != AppMode.AGENT_CHAT else app_model.mode
             )
@@ -152,6 +154,11 @@ class AppGenerateService:
                 case AppMode.ADVANCED_CHAT:
                     workflow_id = args.get("workflow_id")
                     workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+                    # TODO: Remove this compatibility normalization after all persisted workflows are migrated.
+                    args, _ = normalize_legacy_sys_files_args(
+                        graph=workflow.graph_dict,
+                        args=args,
+                    )
 
                     if streaming:
                         # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
@@ -173,7 +180,7 @@ class AppGenerateService:
 
                         on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                         generator = AdvancedChatAppGenerator()
-                        return rate_limit.generate(
+                        response = rate_limit.generate(
                             generator.convert_to_event_stream(
                                 generator.retrieve_events(
                                     AppMode.ADVANCED_CHAT,
@@ -183,6 +190,7 @@ class AppGenerateService:
                             ),
                             request_id=request_id,
                         )
+                        return response
                     else:
                         # Blocking mode: run synchronously and return JSON instead of SSE
                         # Keep behaviour consistent with WORKFLOW blocking branch.
@@ -191,7 +199,7 @@ class AppGenerateService:
                             state_owner_user_id=workflow.created_by,
                         )
                         advanced_generator = AdvancedChatAppGenerator()
-                        return rate_limit.generate(
+                        response = rate_limit.generate(
                             advanced_generator.convert_to_event_stream(
                                 advanced_generator.generate(
                                     app_model=app_model,
@@ -206,9 +214,15 @@ class AppGenerateService:
                             ),
                             request_id=request_id,
                         )
+                        return response
                 case AppMode.WORKFLOW:
                     workflow_id = args.get("workflow_id")
                     workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+                    # TODO: Remove this compatibility normalization after all persisted workflows are migrated.
+                    args, _ = normalize_legacy_sys_files_args(
+                        graph=workflow.graph_dict,
+                        args=args,
+                    )
                     if streaming:
                         with rate_limit_context(rate_limit, request_id):
                             payload = AppExecutionParams.new(
@@ -228,7 +242,7 @@ class AppGenerateService:
                             workflow_based_app_execution_task.delay(payload_json)
 
                         on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
-                        return rate_limit.generate(
+                        response = rate_limit.generate(
                             WorkflowAppGenerator.convert_to_event_stream(
                                 MessageBasedAppGenerator.retrieve_events(
                                     AppMode.WORKFLOW,
@@ -238,12 +252,13 @@ class AppGenerateService:
                             ),
                             request_id,
                         )
+                        return response
 
                     pause_config = PauseStateLayerConfig(
                         session_factory=session_factory.get_session_maker(),
                         state_owner_user_id=workflow.created_by,
                     )
-                    return rate_limit.generate(
+                    response = rate_limit.generate(
                         WorkflowAppGenerator.convert_to_event_stream(
                             WorkflowAppGenerator().generate(
                                 app_model=app_model,
@@ -259,6 +274,7 @@ class AppGenerateService:
                         ),
                         request_id,
                     )
+                    return response
                 case _:
                     raise ValueError(f"Invalid app mode {app_model.mode}")
         except Exception:

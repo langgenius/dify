@@ -33,6 +33,8 @@ from services.workflow_draft_variable_service import (
     WorkflowDraftVariableService,
 )
 
+_SYSTEM_FILE_OUTPUT_KEY = ".".join((SYSTEM_VARIABLE_NODE_ID, "files"))
+
 
 @pytest.fixture
 def mock_engine() -> Engine:
@@ -132,7 +134,7 @@ class TestDraftVariableSaver:
             assert node_id == c.expected_node_id, fail_msg
             assert name == c.expected_name, fail_msg
 
-    def test_build_variables_from_start_mapping_rebuilds_system_files(self):
+    def test_build_variables_from_start_mapping_rebuilds_system_file_variable(self):
         mock_session = MagicMock(spec=Session)
         mock_user = MagicMock(spec=Account)
         mock_user.id = str(uuid.uuid4())
@@ -167,7 +169,7 @@ class TestDraftVariableSaver:
                 return_value=rebuilt_file,
             ) as rebuild_file,
         ):
-            draft_vars = saver._build_variables_from_start_mapping({"sys.files": [raw_file]})
+            draft_vars = saver._build_variables_from_start_mapping({_SYSTEM_FILE_OUTPUT_KEY: [raw_file]})
 
         sys_var = draft_vars[0]
         assert sys_var.get_value().value[0] == rebuilt_file
@@ -248,7 +250,7 @@ class TestDraftVariableSaver:
 
     @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
     def test_start_node_save_persists_sys_timestamp_and_workflow_run_id(self, mock_batch_upsert):
-        """Start node should persist common `sys.*` variables, not only `sys.files`."""
+        """Start node should persist common system variables."""
         mock_session = MagicMock(spec=Session)
         mock_user = MagicMock(spec=Account)
         mock_user.id = "test-user-id"
@@ -524,7 +526,7 @@ class TestWorkflowDraftVariableService:
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
-        mock_execution.load_full_outputs.return_value = {"sys.files": "[]"}
+        mock_execution.load_full_outputs.return_value = {_SYSTEM_FILE_OUTPUT_KEY: "[]"}
 
         # Mock the repository to return the execution record
         service._api_node_execution_repo = Mock()

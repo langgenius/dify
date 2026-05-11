@@ -25,6 +25,7 @@ from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.legacy_system_files import migrate_legacy_sys_files_graph_with_result
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
@@ -274,7 +275,42 @@ class Workflow(Base):  # bug
         # Currently, the following functions / methods would mutate the returned dict:
         #
         # - `_get_graph_and_variable_pool_for_single_node_run`.
-        return json.loads(self.graph) if self.graph else {}
+        if not self.graph:
+            return {}
+
+        graph = json.loads(self.graph)
+        if not self._supports_legacy_sys_files_compatibility():
+            return graph
+
+        # TODO: Remove this load-time compatibility rewrite after all persisted workflows are migrated.
+        migration_result = migrate_legacy_sys_files_graph_with_result(
+            graph,
+            features=self.normalized_features_dict,
+        )
+        if migration_result.changed:
+            self.graph = json.dumps(migration_result.graph)
+        return migration_result.graph
+
+    def migrate_legacy_sys_files_graph_in_place(self) -> bool:
+        if not self.graph or not self._supports_legacy_sys_files_compatibility():
+            return False
+
+        # TODO: Remove this in-place compatibility rewrite after all persisted workflows are migrated.
+        migration_result = migrate_legacy_sys_files_graph_with_result(
+            json.loads(self.graph),
+            features=self.normalized_features_dict,
+        )
+        if migration_result.changed:
+            self.graph = json.dumps(migration_result.graph)
+        return migration_result.changed
+
+    def _supports_legacy_sys_files_compatibility(self) -> bool:
+        return self.type in {
+            WorkflowType.WORKFLOW,
+            WorkflowType.CHAT,
+            WorkflowType.WORKFLOW.value,
+            WorkflowType.CHAT.value,
+        }
 
     def get_node_config_by_id(self, node_id: str) -> NodeConfigDict:
         """Extract a node configuration from the workflow graph by node ID.
@@ -436,7 +472,7 @@ class Workflow(Base):  # bug
             "memory":
               {
                 "window": { "enabled": false, "size": 10 },
-                "query_prompt_template": "{{#sys.query#}}\n\n{{#sys.files#}}",
+                "query_prompt_template": "{{#sys.query#}}",
                 "role_prefix": { "user": "", "assistant": "" },
               },
             "selected": false,
@@ -1426,7 +1462,7 @@ class ConversationVariable(TypeBase):
         return variable_factory.build_conversation_variable_from_mapping(mapping)
 
 
-# Only `sys.query` and `sys.files` could be modified.
+# TODO: Remove file-system-variable editability after all persisted workflows are migrated.
 _EDITABLE_SYSTEM_VARIABLE = frozenset(("query", "files"))
 
 

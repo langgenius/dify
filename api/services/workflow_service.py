@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -91,6 +91,8 @@ from .human_input_delivery_test_service import (
 from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
 from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
+logger = logging.getLogger(__name__)
+
 _file_access_controller = DatabaseFileAccessController()
 
 
@@ -154,7 +156,7 @@ class WorkflowService:
         )
 
         # return draft workflow
-        return workflow
+        return self._persist_legacy_sys_files_migration_on_load(workflow)
 
     def get_published_workflow_by_id(
         self, app_model: App, workflow_id: str, session: Session | None = None
@@ -183,6 +185,7 @@ class WorkflowService:
                 f"Cannot use draft workflow version. Workflow ID: {workflow_id}. "
                 f"Please use a published workflow version or leave workflow_id empty."
             )
+        self._persist_legacy_sys_files_migration_on_load(workflow, persist_in_separate_session=session is None)
         return workflow
 
     def get_published_workflow(self, app_model: App, session: Session | None = None) -> Workflow | None:
@@ -207,6 +210,40 @@ class WorkflowService:
             )
             .limit(1)
         )
+
+        return self._persist_legacy_sys_files_migration_on_load(workflow, persist_in_separate_session=session is None)
+
+    @staticmethod
+    def _persist_legacy_sys_files_migration_on_load(
+        workflow: Workflow | None,
+        *,
+        persist_in_separate_session: bool = True,
+    ) -> Workflow | None:
+        if workflow is None:
+            return None
+        if not isinstance(workflow, Workflow):
+            return workflow
+
+        # TODO: Remove this load-time persistence path after the historical workflow migration is complete.
+        original_graph = workflow.graph
+        if not workflow.migrate_legacy_sys_files_graph_in_place():
+            return workflow
+
+        if not persist_in_separate_session:
+            return workflow
+
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+            result = session.execute(
+                update(Workflow)
+                .where(Workflow.id == workflow.id, Workflow.graph == original_graph)
+                .values(graph=workflow.graph)
+            )
+            if getattr(result, "rowcount", None) == 0:
+                logger.warning(
+                    "Skipped persisting legacy sys.files workflow migration because the workflow changed concurrently, "
+                    "workflow_id=%s",
+                    workflow.id,
+                )
 
         return workflow
 

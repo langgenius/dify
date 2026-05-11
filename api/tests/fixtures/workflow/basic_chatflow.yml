@@ -58,10 +58,7 @@ workflow:
           variable_selector: []
         desc: ''
         memory:
-          query_prompt_template: '{{#sys.query#}}
-
-
-            {{#sys.files#}}'
+          query_prompt_template: '{{#sys.query#}}'
           window:
             enabled: false
             size: 10

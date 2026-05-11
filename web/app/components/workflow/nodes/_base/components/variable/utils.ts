@@ -373,10 +373,6 @@ const formatItem = (
           type: VarType.string,
         })
       }
-      res.vars.push({
-        variable: 'sys.files',
-        type: VarType.arrayFile,
-      })
       break
     }
 
@@ -2106,7 +2102,6 @@ export const getNodeOutputVars = (
 
       if (isChatMode) {
         res.push([id, 'sys', 'query'])
-        res.push([id, 'sys', 'files'])
       }
       break
     }

@@ -6,7 +6,6 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { Resolution } from '@/types/app'
-import { useIsChatMode } from './use-workflow'
 
 type Payload = {
   enabled: boolean
@@ -32,8 +31,6 @@ const useConfigVision = (model: ModelConfig, {
     },
   )
 
-  const isChatMode = useIsChatMode()
-
   const getIsVisionModel = useCallback(() => {
     return !!currModel?.features?.includes(ModelFeatureEnum.vision)
   }, [currModel])
@@ -43,10 +40,10 @@ const useConfigVision = (model: ModelConfig, {
   const handleVisionResolutionEnabledChange = useCallback((enabled: boolean) => {
     const newPayload = produce(payload, (draft) => {
       draft.enabled = enabled
-      if (enabled && isChatMode) {
+      if (enabled) {
         draft.configs = {
           detail: Resolution.high,
-          variable_selector: ['sys', 'files'],
+          variable_selector: [],
         }
       }
       else if (!enabled) {
@@ -54,7 +51,7 @@ const useConfigVision = (model: ModelConfig, {
       }
     })
     onChange(newPayload)
-  }, [isChatMode, onChange, payload])
+  }, [onChange, payload])
 
   const handleVisionResolutionChange = useCallback((config: VisionSetting) => {
     const newPayload = produce(payload, (draft) => {

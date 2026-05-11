@@ -36,6 +36,7 @@ from core.helper.trace_id_helper import extract_external_trace_id_from_args, ext
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.workflow.legacy_system_files import normalize_legacy_sys_files_args
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.graph_engine.layers import GraphEngineLayer
@@ -133,6 +134,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
+            # TODO: Remove this compatibility normalization after all persisted workflows are migrated.
+            args, _ = normalize_legacy_sys_files_args(graph=workflow.graph_dict, args=args)
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
             # parse files

@@ -177,7 +177,7 @@ class TestWorkflowAppGeneratorGenerate:
 
         result = generator.generate(
             app_model=SimpleNamespace(id="app", tenant_id="tenant"),
-            workflow=SimpleNamespace(features_dict={}),
+            workflow=SimpleNamespace(features_dict={}, graph_dict={"nodes": []}),
             user=SimpleNamespace(id="user", session_id="session"),
             args={"inputs": {}, SKIP_PREPARE_USER_INPUTS_KEY: True},
             invoke_from=InvokeFrom.WEB_APP,

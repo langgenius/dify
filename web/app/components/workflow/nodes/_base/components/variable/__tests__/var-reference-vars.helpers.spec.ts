@@ -9,7 +9,6 @@ import {
 
 describe('var-reference-vars helpers', () => {
   it('should derive display names for flat and mapped variables', () => {
-    expect(getVariableDisplayName('sys.files', false)).toBe('files')
     expect(getVariableDisplayName('current', true, true)).toBe('current_code')
     expect(getVariableDisplayName('foo', true, false)).toBe('foo')
   })

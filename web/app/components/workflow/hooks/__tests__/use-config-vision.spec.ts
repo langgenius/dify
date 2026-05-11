@@ -5,15 +5,10 @@ import { Resolution } from '@/types/app'
 import useConfigVision from '../use-config-vision'
 
 const mockUseTextGenerationCurrentProviderAndModelAndModelList = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: (...args: unknown[]) =>
     mockUseTextGenerationCurrentProviderAndModelAndModelList(...args),
-}))
-
-vi.mock('../use-workflow', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
 }))
 
 const createModel = (overrides: Partial<ModelConfig> = {}): ModelConfig => ({
@@ -32,7 +27,6 @@ const createVisionPayload = (overrides: Partial<{ enabled: boolean, configs?: Vi
 describe('useConfigVision', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseIsChatMode.mockReturnValue(false)
     mockUseTextGenerationCurrentProviderAndModelAndModelList.mockReturnValue({
       currentModel: {
         features: [],
@@ -40,9 +34,8 @@ describe('useConfigVision', () => {
     })
   })
 
-  it('should expose vision capability and enable default chat configs for vision models', () => {
+  it('should expose vision capability and require an explicit file variable for vision models', () => {
     const onChange = vi.fn()
-    mockUseIsChatMode.mockReturnValue(true)
     mockUseTextGenerationCurrentProviderAndModelAndModelList.mockReturnValue({
       currentModel: {
         features: [ModelFeatureEnum.vision],
@@ -64,7 +57,7 @@ describe('useConfigVision', () => {
       enabled: true,
       configs: {
         detail: Resolution.high,
-        variable_selector: ['sys', 'files'],
+        variable_selector: [],
       },
     })
   })

@@ -37,8 +37,9 @@ describe('start/use-single-run-form-params', () => {
     })
   })
 
-  it('should include sys.query and sys.files dependencies for chat mode', () => {
+  it('should include sys.query but not deprecated system file dependencies for chat mode', () => {
     mockUseIsChatMode.mockReturnValue(true)
+    const deprecatedSystemFileVariable = `#${['sys', 'files'].join('.')}#`
 
     const { result } = renderHook(() => useSingleRunFormParams({
       id: 'start-node',
@@ -55,7 +56,9 @@ describe('start/use-single-run-form-params', () => {
     expect(result.current.forms[0]!.inputs).toEqual(expect.arrayContaining([
       expect.objectContaining({ variable: 'query' }),
       expect.objectContaining({ variable: '#sys.query#', required: true }),
-      expect.objectContaining({ variable: '#sys.files#', required: false }),
+    ]))
+    expect(result.current.forms[0]!.inputs).toEqual(expect.not.arrayContaining([
+      expect.objectContaining({ variable: deprecatedSystemFileVariable }),
     ]))
 
     result.current.forms[0]!.onChange({ query: 'updated' })
@@ -63,7 +66,6 @@ describe('start/use-single-run-form-params', () => {
     expect(setRunInputData).toHaveBeenCalledWith({ query: 'updated' })
     expect(result.current.getDependentVars()).toEqual([
       ['start-node', 'query'],
-      ['sys', 'files'],
       ['sys', 'query'],
     ])
     expect(result.current.getDependentVar('query')).toEqual(['start-node', 'query'])
@@ -87,7 +89,6 @@ describe('start/use-single-run-form-params', () => {
     ]))
     expect(result.current.getDependentVars()).toEqual([
       ['start-node', 'query'],
-      ['sys', 'files'],
     ])
   })
 })

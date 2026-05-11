@@ -30,7 +30,7 @@ export const useWorkflowTemplate = () => {
         ...llmDefault.defaultValue,
         memory: {
           window: { enabled: false, size: 10 },
-          query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
+          query_prompt_template: '{{#sys.query#}}',
         },
         selected: true,
         type: llmDefault.metaData.type,
@@ -40,7 +40,7 @@ export const useWorkflowTemplate = () => {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET,
         y: START_INITIAL_POSITION.y,
       },
-    } as any)
+    } as Parameters<typeof generateNewNode>[0])
 
     const { newNode: answerNode } = generateNewNode({
       id: 'answer',
@@ -54,7 +54,7 @@ export const useWorkflowTemplate = () => {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET * 2,
         y: START_INITIAL_POSITION.y,
       },
-    } as any)
+    } as Parameters<typeof generateNewNode>[0])
 
     const startToLlmEdge = {
       id: `${startNode.id}-${llmNode.id}`,

@@ -85,6 +85,32 @@ def _make_workflow(*, workflow_id: str = "workflow-id", created_by: str = "owner
     return workflow
 
 
+_LEGACY_FILE_TEMPLATE = "{{#" + ".".join(("sys", "files")) + "#}}"
+
+
+def _legacy_system_file_graph() -> dict:
+    return {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "title": "Start",
+                    "variables": [],
+                },
+            },
+            {
+                "id": "answer",
+                "data": {
+                    "type": "answer",
+                    "answer": _LEGACY_FILE_TEMPLATE,
+                },
+            },
+        ],
+        "edges": [],
+    }
+
+
 @contextmanager
 def _noop_rate_limit_context(rate_limit, request_id):
     """Drop-in replacement for rate_limit_context that doesn't touch Redis."""
@@ -390,6 +416,60 @@ class TestGenerate:
         assert call_kwargs.get("pause_state_config") is not None
         assert call_kwargs["pause_state_config"].state_owner_user_id == "owner-id"
 
+    def test_workflow_service_api_maps_system_files_to_compat_start_input(self, mocker: MockerFixture):
+        workflow = _make_workflow()
+        workflow.graph_dict = _legacy_system_file_graph()
+        mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        gen_spy = mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.generate",
+            return_value={"result": "workflow-blocking"},
+        )
+        mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.convert_to_event_stream",
+            side_effect=lambda x: x,
+        )
+        files = [{"transfer_method": "remote_url", "url": "https://example.com/a.png"}]
+
+        result = AppGenerateService.generate(
+            app_model=_make_app(AppMode.WORKFLOW),
+            user=_make_user(),
+            args={"inputs": {}, "system": {"files": files}},
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=False,
+        )
+
+        assert result == {"result": "workflow-blocking"}
+        forwarded_args = gen_spy.call_args.kwargs["args"]
+        assert forwarded_args["files"] == files
+        assert forwarded_args["inputs"]["sys_files"] == files
+
+    def test_advanced_chat_service_api_maps_files_to_compat_start_input(self, mocker: MockerFixture):
+        workflow = _make_workflow()
+        workflow.graph_dict = _legacy_system_file_graph()
+        mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        gen_spy = mocker.patch(
+            "services.app_generate_service.AdvancedChatAppGenerator.generate",
+            return_value={"result": "advanced-blocking"},
+        )
+        mocker.patch(
+            "services.app_generate_service.AdvancedChatAppGenerator.convert_to_event_stream",
+            side_effect=lambda x: x,
+        )
+        files = [{"transfer_method": "remote_url", "url": "https://example.com/a.png"}]
+
+        result = AppGenerateService.generate(
+            app_model=_make_app(AppMode.ADVANCED_CHAT),
+            user=_make_user(),
+            args={"workflow_id": None, "query": "hi", "inputs": {}, "files": files},
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=False,
+        )
+
+        assert result == {"result": "advanced-blocking"}
+        forwarded_args = gen_spy.call_args.kwargs["args"]
+        assert forwarded_args["files"] == files
+        assert forwarded_args["inputs"]["sys_files"] == files
+
     # -- WORKFLOW streaming -------------------------------------------------
     def test_workflow_streaming(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         workflow = _make_workflow()
@@ -421,6 +501,41 @@ class TestGenerate:
         retrieve_spy.assert_called_once()
         # The inner on_subscribe closure was invoked by _build_streaming_task_on_subscribe
         delay_spy.assert_called_once()
+
+    def test_workflow_streaming_service_api_maps_legacy_system_files(
+        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    ):
+        workflow = _make_workflow()
+        workflow.graph_dict = _legacy_system_file_graph()
+        mocker.patch.object(AppGenerateService, "_get_workflow", return_value=workflow)
+        params_spy = mocker.patch(
+            "services.app_generate_service.AppExecutionParams.new",
+            return_value=MagicMock(workflow_run_id="wfr-legacy", model_dump_json=MagicMock(return_value="{}")),
+        )
+        mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
+        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
+        mocker.patch(
+            "services.app_generate_service.MessageBasedAppGenerator.retrieve_events",
+            return_value=iter(["data: {\"event\": \"done\"}\n\n"]),
+        )
+        mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.convert_to_event_stream",
+            side_effect=lambda x: x,
+        )
+        files = [{"transfer_method": "remote_url", "url": "https://example.com/a.png"}]
+
+        result = AppGenerateService.generate(
+            app_model=_make_app(AppMode.WORKFLOW),
+            user=_make_user(),
+            args={"inputs": {}, "system": {"files": files}},
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=True,
+        )
+
+        assert next(iter(result)) == "data: {\"event\": \"done\"}\n\n"
+        forwarded_args = params_spy.call_args.kwargs["args"]
+        assert forwarded_args["files"] == files
+        assert forwarded_args["inputs"]["sys_files"] == files
 
     # -- Invalid mode -------------------------------------------------------
     def test_invalid_mode_raises(self, mocker: MockerFixture):

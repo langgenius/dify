@@ -43,6 +43,8 @@ from services.workflow_service import (
     _setup_variable_pool,
 )
 
+_LEGACY_FILE_TEMPLATE = "{{#" + ".".join(("sys", "files")) + "#}}"
+
 
 class TestWorkflowAssociatedDataFactory:
     """
@@ -345,6 +347,47 @@ class TestWorkflowService:
         result = workflow_service.get_draft_workflow(app)
 
         assert result == mock_workflow
+
+    def test_get_draft_workflow_persists_legacy_sys_files_migration(
+        self, workflow_service, mock_db_session, mocker
+    ):
+        app = TestWorkflowAssociatedDataFactory.create_app_mock()
+        workflow = Workflow(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {"id": "start", "data": {"type": "start", "variables": []}},
+                        {"id": "answer", "data": {"type": "answer", "answer": _LEGACY_FILE_TEMPLATE}},
+                    ],
+                    "edges": [],
+                }
+            ),
+            features="{}",
+            created_by="account-id",
+            environment_variables=[],
+            conversation_variables=[],
+        )
+        workflow.id = "workflow-id"
+        original_graph = workflow.graph
+        mock_db_session.session.scalar.return_value = workflow
+        migration_session = MagicMock()
+        session_factory = MagicMock()
+        session_factory.begin.return_value.__enter__.return_value = migration_session
+        mocker.patch("services.workflow_service.sessionmaker", return_value=session_factory)
+
+        result = workflow_service.get_draft_workflow(app)
+
+        assert result == workflow
+        assert _LEGACY_FILE_TEMPLATE not in workflow.graph
+        assert "{{#start.sys_files#}}" in workflow.graph
+        migration_session.execute.assert_called_once()
+        update_stmt = migration_session.execute.call_args.args[0]
+        assert str(workflow.id) in str(update_stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert original_graph != workflow.graph
 
     def test_get_draft_workflow_returns_none(self, workflow_service, mock_db_session):
         """Test get_draft_workflow returns None when no draft exists."""
