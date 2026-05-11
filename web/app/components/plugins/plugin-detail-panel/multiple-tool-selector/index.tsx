@@ -110,14 +110,16 @@ const MultipleToolSelector = ({
         >
           <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">{label}</div>
           {required && <div className="text-red-500">*</div>}
-          {tooltip && (
-            <Infotip
-              aria-label={typeof tooltip === 'string' ? tooltip : label}
-              className="h-3.5 w-3.5"
-            >
-              {tooltip}
-            </Infotip>
-          )}
+          {tooltip
+            ? (
+                <Infotip
+                  aria-label={typeof tooltip === 'string' ? tooltip : label}
+                  className="h-3.5 w-3.5"
+                >
+                  {tooltip}
+                </Infotip>
+              )
+            : null}
           {supportCollapse && (
             <ArrowDownRoundFill
               className={cn(
