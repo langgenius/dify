@@ -9,6 +9,7 @@ from typing import cast, override
 import httpx
 import pytest
 
+from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.client import (
     Client,
     DifyAgentHTTPError,
@@ -19,12 +20,12 @@ from dify_agent.client import (
 )
 from dify_agent.protocol.schemas import (
     CreateRunRequest,
-    EmptyRunEventData,
     RUN_EVENT_ADAPTER,
     RunEvent,
     RunEventsResponse,
     RunStartedEvent,
     RunSucceededEvent,
+    RunSucceededEventData,
 )
 
 
@@ -47,6 +48,14 @@ def _event_frame(event: RunEvent, *, event_id: str | None = None, exclude_id: bo
     return "\n".join(lines) + "\n\n"
 
 
+def _run_succeeded_event(*, event_id: str = "2-0", run_id: str = "run-1") -> RunSucceededEvent:
+    return RunSucceededEvent(
+        id=event_id,
+        run_id=run_id,
+        data=RunSucceededEventData(output="done", session_snapshot=CompositorSessionSnapshot(layers=[])),
+    )
+
+
 def _run_status_json(status: str) -> dict[str, object]:
     now = datetime(2026, 5, 11, tzinfo=UTC).isoformat()
     return {"run_id": "run-1", "status": status, "created_at": now, "updated_at": now, "error": None}
@@ -64,7 +73,7 @@ class DisconnectingSyncStream(httpx.SyncByteStream):
         raise httpx.ReadError("stream disconnected")
 
 
-def test_sync_methods_parse_protocol_dtos_and_validate_create_dict() -> None:
+def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST" and request.url.path == "/runs":
             payload = cast(dict[str, object], json.loads(request.content))
@@ -83,7 +92,7 @@ def test_sync_methods_parse_protocol_dtos_and_validate_create_dict() -> None:
                 200,
                 json={
                     "run_id": "run-1",
-                        "events": [cast(object, json.loads(RUN_EVENT_ADAPTER.dump_json(event)))],
+                    "events": [cast(object, json.loads(RUN_EVENT_ADAPTER.dump_json(event)))],
                     "next_cursor": "1-0",
                 },
             )
@@ -92,7 +101,7 @@ def test_sync_methods_parse_protocol_dtos_and_validate_create_dict() -> None:
     http_client = httpx.Client(transport=httpx.MockTransport(handler))
     client = Client(base_url="http://testserver", sync_http_client=http_client)
 
-    created = client.create_run_sync(_create_run_payload())
+    created = client.create_run_sync(CreateRunRequest.model_validate(_create_run_payload()))
     status = client.get_run_sync(created.run_id)
     events = client.get_events_sync(created.run_id, after="0-0", limit=10)
 
@@ -162,7 +171,7 @@ def test_error_mapping_and_create_run_input_validation() -> None:
     assert server_error.value.status_code == 500
 
     with pytest.raises(DifyAgentValidationError):
-        _ = client.create_run_sync({"unknown": "field"})
+        _ = client.create_run_sync({"unknown": "field"})  # pyright: ignore[reportArgumentType]
 
 
 def test_http_timeout_maps_to_client_timeout_error() -> None:
@@ -192,7 +201,7 @@ def test_create_run_is_not_retried_after_timeout() -> None:
     )
 
     with pytest.raises(DifyAgentTimeoutError):
-        _ = client.create_run_sync(_create_run_payload())
+        _ = client.create_run_sync(CreateRunRequest.model_validate(_create_run_payload()))
     assert attempts == 1
 
 
@@ -221,7 +230,7 @@ def test_stream_events_stops_after_terminal_event() -> None:
     body = "".join(
         [
             _event_frame(RunStartedEvent(id="1-0", run_id="run-1")),
-            _event_frame(RunSucceededEvent(id="2-0", run_id="run-1", data=EmptyRunEventData())),
+            _event_frame(_run_succeeded_event()),
         ]
     )
 
@@ -251,7 +260,7 @@ def test_stream_events_reconnects_from_latest_event_id() -> None:
                 200,
                 stream=DisconnectingSyncStream(_event_frame(RunStartedEvent(id="1-0", run_id="run-1"))),
             )
-        return httpx.Response(200, content=_event_frame(RunSucceededEvent(id="2-0", run_id="run-1")))
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
 
     client = Client(
         base_url="http://testserver",
@@ -271,7 +280,7 @@ def test_stream_events_reconnects_after_http_5xx_response() -> None:
         seen_after.append(request.url.params["after"])
         if len(seen_after) == 1:
             return httpx.Response(503, json={"detail": "temporarily unavailable"})
-        return httpx.Response(200, content=_event_frame(RunSucceededEvent(id="2-0", run_id="run-1")))
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
 
     client = Client(
         base_url="http://testserver",
@@ -321,7 +330,7 @@ def test_malformed_sse_frame_does_not_reconnect() -> None:
 
 
 def test_async_stream_events_yields_terminal_event() -> None:
-    body = _event_frame(RunSucceededEvent(id="2-0", run_id="run-1"))
+    body = _event_frame(_run_succeeded_event())
 
     def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=body)
@@ -345,7 +354,7 @@ def test_async_stream_events_reconnects_after_http_5xx_response() -> None:
         seen_after.append(request.url.params["after"])
         if len(seen_after) == 1:
             return httpx.Response(502, json={"detail": "bad gateway"})
-        return httpx.Response(200, content=_event_frame(RunSucceededEvent(id="2-0", run_id="run-1")))
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -368,7 +377,7 @@ def test_stream_timeout_can_reconnect_until_terminal() -> None:
         calls += 1
         if calls == 1:
             raise httpx.ReadTimeout("stream stalled", request=request)
-        return httpx.Response(200, content=_event_frame(RunSucceededEvent(id="2-0", run_id="run-1")))
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event()))
 
     client = Client(
         base_url="http://testserver",

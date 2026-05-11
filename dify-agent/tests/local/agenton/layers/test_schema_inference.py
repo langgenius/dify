@@ -3,10 +3,18 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict
 
 from agenton.compositor import LayerRegistry
-from agenton.layers import EmptyLayerConfig, EmptyRuntimeHandles, EmptyRuntimeState, LayerControl, NoLayerDeps, PlainLayer
+from agenton.layers import (
+    EmptyLayerConfig,
+    EmptyRuntimeHandles,
+    EmptyRuntimeState,
+    LayerConfig,
+    LayerControl,
+    NoLayerDeps,
+    PlainLayer,
+)
 
 
-class InferredConfig(BaseModel):
+class InferredConfig(LayerConfig):
     value: str = "configured"
 
     model_config = ConfigDict(extra="forbid")
@@ -68,7 +76,7 @@ def test_invalid_declared_schema_type_is_rejected_clearly() -> None:
             config_type = dict  # pyright: ignore[reportAssignmentType]
 
     except TypeError as e:
-        assert str(e) == "InvalidSchemaLayer.config_type must be a Pydantic BaseModel subclass."
+        assert str(e) == "InvalidSchemaLayer.config_type must be a LayerConfig subclass."
     else:
         raise AssertionError("Expected TypeError.")
 
@@ -78,7 +86,7 @@ def test_invalid_declared_schema_type_is_rejected_clearly() -> None:
             pass
 
     except TypeError as e:
-        assert str(e) == "InvalidGenericSchemaLayer.config_type must be a Pydantic BaseModel subclass."
+        assert str(e) == "InvalidGenericSchemaLayer.config_type must be a LayerConfig subclass."
     else:
         raise AssertionError("Expected TypeError.")
 

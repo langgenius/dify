@@ -6,7 +6,8 @@ contracts, such as ordinary strings with plain callable tools or pydantic-ai
 prompt/tool shapes. The families keep the trailing schema generic slots open so
 concrete layers can have ``config_type``, ``runtime_state_type``, and
 ``runtime_handles_type`` inferred from type arguments instead of repeated class
-attributes.
+attributes. Config schemas use ``LayerConfig`` so they can also be embedded as
+typed DTOs in serializable compositor config.
 Tagged aggregate aliases cover code paths that can accept any supported
 prompt/tool family without changing the plain and pydantic-ai layer contracts.
 Pydantic-ai names are imported for static analysis only, so ``agenton`` can be
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
 
 from pydantic import BaseModel
 
-from agenton.layers.base import EmptyLayerConfig, EmptyRuntimeHandles, EmptyRuntimeState, Layer, LayerDeps
+from agenton.layers.base import EmptyLayerConfig, EmptyRuntimeHandles, EmptyRuntimeState, Layer, LayerConfig, LayerDeps
 
 type PlainPrompt = str
 type PlainUserPrompt = str
@@ -95,7 +96,7 @@ type AllToolTypes = PlainToolType | PydanticAIToolType[Any]
 
 
 _DepsT = TypeVar("_DepsT", bound=LayerDeps)
-_ConfigT = TypeVar("_ConfigT", bound=BaseModel, default=EmptyLayerConfig)
+_ConfigT = TypeVar("_ConfigT", bound=LayerConfig, default=EmptyLayerConfig)
 _RuntimeStateT = TypeVar("_RuntimeStateT", bound=BaseModel, default=EmptyRuntimeState)
 _RuntimeHandlesT = TypeVar("_RuntimeHandlesT", bound=BaseModel, default=EmptyRuntimeHandles)
 _AgentDepsT = TypeVar("_AgentDepsT")

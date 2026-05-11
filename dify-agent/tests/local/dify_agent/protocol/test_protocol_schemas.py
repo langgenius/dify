@@ -1,13 +1,16 @@
+import pytest
+from pydantic import ValidationError
 from pydantic_ai.messages import FinalResultEvent
 
+from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol.schemas import (
     RUN_EVENT_ADAPTER,
-    AgentOutputRunEvent,
-    AgentOutputRunEventData,
     PydanticAIStreamRunEvent,
     RunFailedEvent,
     RunFailedEventData,
     RunStartedEvent,
+    RunSucceededEvent,
+    RunSucceededEventData,
 )
 
 
@@ -15,7 +18,13 @@ def test_run_event_adapter_round_trips_typed_variants() -> None:
     events = [
         RunStartedEvent(run_id="run-1"),
         PydanticAIStreamRunEvent(run_id="run-1", data=FinalResultEvent(tool_name=None, tool_call_id=None)),
-        AgentOutputRunEvent(run_id="run-1", data=AgentOutputRunEventData(output="done")),
+        RunSucceededEvent(
+            run_id="run-1",
+            data=RunSucceededEventData(
+                output={"answer": ["done"]},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        ),
         RunFailedEvent(run_id="run-1", data=RunFailedEventData(error="boom", reason="shutdown")),
     ]
 
@@ -38,3 +47,9 @@ def test_pydantic_ai_event_data_uses_agent_stream_event_model() -> None:
 
     assert isinstance(event, PydanticAIStreamRunEvent)
     assert isinstance(event.data, FinalResultEvent)
+
+
+@pytest.mark.parametrize("event_type", ["agent_output", "session_snapshot"])
+def test_removed_non_terminal_payload_events_are_rejected(event_type: str) -> None:
+    with pytest.raises(ValidationError):
+        _ = RUN_EVENT_ADAPTER.validate_python({"run_id": "run-1", "type": event_type, "data": {}})

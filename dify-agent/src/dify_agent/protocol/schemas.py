@@ -8,13 +8,16 @@ Redis stream ids (or in-memory equivalents in tests) are the public cursors used
 by polling and SSE replay. Event envelopes keep the public
 ``id``/``run_id``/``type``/``data``/``created_at`` shape, while each ``type`` has
 a typed ``data`` model so OpenAPI, Redis replay, and clients parse the same
-payload contract.
+payload contract. Successful runs publish the final JSON-safe agent output and
+the resumable Agenton session snapshot together on the terminal
+``run_succeeded`` event so consumers can treat terminal events as complete run
+summaries.
 """
 
 from datetime import datetime, timezone
 from typing import Annotated, ClassVar, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorConfig, CompositorSessionSnapshot
@@ -24,8 +27,6 @@ RunStatus = Literal["running", "succeeded", "failed"]
 RunEventType = Literal[
     "run_started",
     "pydantic_ai_event",
-    "agent_output",
-    "session_snapshot",
     "run_succeeded",
     "run_failed",
 ]
@@ -86,10 +87,11 @@ class EmptyRunEventData(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class AgentOutputRunEventData(BaseModel):
-    """Final agent output payload emitted before the session snapshot."""
+class RunSucceededEventData(BaseModel):
+    """Terminal success payload for final output and resumable session state."""
 
-    output: str
+    output: JsonValue
+    session_snapshot: CompositorSessionSnapshot
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -127,25 +129,11 @@ class PydanticAIStreamRunEvent(BaseRunEvent):
     data: AgentStreamEvent
 
 
-class AgentOutputRunEvent(BaseRunEvent):
-    """Run event carrying the final agent output string."""
-
-    type: Literal["agent_output"] = "agent_output"
-    data: AgentOutputRunEventData
-
-
-class SessionSnapshotRunEvent(BaseRunEvent):
-    """Run event carrying the resumable Agenton session snapshot."""
-
-    type: Literal["session_snapshot"] = "session_snapshot"
-    data: CompositorSessionSnapshot
-
-
 class RunSucceededEvent(BaseRunEvent):
-    """Terminal success event emitted after output and session snapshot."""
+    """Terminal success event carrying the complete successful run result."""
 
     type: Literal["run_succeeded"] = "run_succeeded"
-    data: EmptyRunEventData = Field(default_factory=EmptyRunEventData)
+    data: RunSucceededEventData
 
 
 class RunFailedEvent(BaseRunEvent):
@@ -158,8 +146,6 @@ class RunFailedEvent(BaseRunEvent):
 RunEvent: TypeAlias = Annotated[
     RunStartedEvent
     | PydanticAIStreamRunEvent
-    | AgentOutputRunEvent
-    | SessionSnapshotRunEvent
     | RunSucceededEvent
     | RunFailedEvent,
     Field(discriminator="type"),
@@ -179,8 +165,6 @@ class RunEventsResponse(BaseModel):
 
 __all__ = [
     "AgentProfileConfig",
-    "AgentOutputRunEvent",
-    "AgentOutputRunEventData",
     "BaseRunEvent",
     "CreateRunRequest",
     "CreateRunResponse",
@@ -196,6 +180,6 @@ __all__ = [
     "RunStatus",
     "RunStatusResponse",
     "RunSucceededEvent",
-    "SessionSnapshotRunEvent",
+    "RunSucceededEventData",
     "utc_now",
 ]

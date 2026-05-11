@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict, ValidationError
 from typing_extensions import override
 
-from agenton.compositor import Compositor, CompositorBuilder, CompositorSession, LayerRegistry
+from agenton.compositor import Compositor, CompositorBuilder, CompositorSession, LayerNodeConfig, LayerRegistry
 from agenton.layers import EmptyLayerConfig, LayerControl, LayerDeps, NoLayerDeps, PlainLayer, PlainPromptType, PlainToolType
-from agenton_collections.layers.plain import ObjectLayer, PromptLayer
+from agenton_collections.layers.plain import ObjectLayer, PromptLayer, PromptLayerConfig
 
 
 def test_registry_infers_descriptor_and_rejects_duplicate_or_missing_type_id() -> None:
@@ -72,6 +72,23 @@ def test_builder_creates_config_layers_with_typed_validation() -> None:
         pass
     else:
         raise AssertionError("Expected ValidationError.")
+
+
+def test_layer_node_config_accepts_config_dto_and_serializes_fields() -> None:
+    registry = LayerRegistry()
+    registry.register_layer(PromptLayer)
+    node = LayerNodeConfig(
+        name="prompt",
+        type="plain.prompt",
+        config=PromptLayerConfig(prefix="hello", user="ask politely"),
+    )
+
+    dumped = node.model_dump(mode="json")
+    compositor = CompositorBuilder(registry).add_config({"layers": [dumped]}).build()
+
+    assert dumped["config"] == {"prefix": "hello", "user": "ask politely", "suffix": []}
+    assert [prompt.value for prompt in compositor.prompts] == ["hello"]
+    assert [prompt.value for prompt in compositor.user_prompts] == ["ask politely"]
 
 
 class ObjectConsumerDeps(LayerDeps):

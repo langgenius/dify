@@ -10,13 +10,14 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
+from typing_extensions import Self, override
 
-from agenton.layers.base import NoLayerDeps
+from agenton.layers.base import LayerConfig, NoLayerDeps
 from agenton.layers.types import PlainLayer
 
 
-class PromptLayerConfig(BaseModel):
+class PromptLayerConfig(LayerConfig):
     """Serializable config schema for ``PromptLayer``."""
 
     prefix: list[str] | str = Field(default_factory=list)
@@ -48,7 +49,8 @@ class PromptLayer(PlainLayer[NoLayerDeps, PromptLayerConfig]):
     suffix: list[str] | str = field(default_factory=list)
 
     @classmethod
-    def from_config(cls, config: BaseModel):
+    @override
+    def from_config(cls, config: PromptLayerConfig) -> Self:
         """Create a prompt layer from validated prompt config."""
         validated_config = PromptLayerConfig.model_validate(config)
         return cls(prefix=validated_config.prefix, user=validated_config.user, suffix=validated_config.suffix)

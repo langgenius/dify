@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from agenton.compositor import CompositorConfig, LayerNodeConfig
-from dify_agent.protocol.schemas import AgentProfileConfig, CreateRunRequest
+from dify_agent.protocol.schemas import AgentProfileConfig, CreateRunRequest, RunSucceededEvent
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError
 
@@ -28,7 +28,13 @@ def test_runner_emits_terminal_success_and_snapshot() -> None:
     event_types = [event.type for event in sink.events["run-1"]]
     assert event_types[0] == "run_started"
     assert "pydantic_ai_event" in event_types
-    assert event_types[-3:] == ["agent_output", "session_snapshot", "run_succeeded"]
+    assert "agent_output" not in event_types
+    assert "session_snapshot" not in event_types
+    assert event_types[-1:] == ["run_succeeded"]
+    terminal = sink.events["run-1"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    assert terminal.data.output == "done"
+    assert [layer.name for layer in terminal.data.session_snapshot.layers] == ["prompt"]
     assert sink.statuses["run-1"] == "succeeded"
 
 

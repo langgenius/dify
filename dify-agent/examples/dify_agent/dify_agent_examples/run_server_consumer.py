@@ -13,7 +13,10 @@ recover after client-side uncertainty.
 
 import asyncio
 
+from agenton.compositor import CompositorConfig, LayerNodeConfig
+from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
+from dify_agent.protocol import AgentProfileConfig, CreateRunRequest
 
 
 API_BASE_URL = "http://localhost:8000"
@@ -22,22 +25,21 @@ API_BASE_URL = "http://localhost:8000"
 async def main() -> None:
     async with Client(base_url=API_BASE_URL) as client:
         run = await client.create_run(
-            {
-                "compositor": {
-                    "schema_version": 1,
-                    "layers": [
-                        {
-                            "name": "prompt",
-                            "type": "plain.prompt",
-                            "config": {
-                                "prefix": "You are a concise assistant.",
-                                "user": "Say hello from the Dify Agent API server example.",
-                            },
-                        }
+            CreateRunRequest(
+                compositor=CompositorConfig(
+                    layers=[
+                        LayerNodeConfig(
+                            name="prompt",
+                            type="plain.prompt",
+                            config=PromptLayerConfig(
+                                prefix="You are a concise assistant.",
+                                user="Say hello from the Dify Agent API server example.",
+                            ),
+                        )
                     ],
-                },
-                "agent_profile": {"provider": "test", "output_text": "Hello from the example TestModel."},
-            }
+                ),
+                agent_profile=AgentProfileConfig(output_text="Hello from the example TestModel."),
+            )
         )
         print("created run", run)
 

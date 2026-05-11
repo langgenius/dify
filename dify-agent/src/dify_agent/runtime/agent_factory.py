@@ -2,7 +2,9 @@
 
 The initial server exposes only a credential-free ``test`` profile. The factory
 keeps model selection out of ``AgentRunRunner`` so production model profiles can
-be added without changing storage or HTTP contracts.
+be added without changing storage or HTTP contracts. Agents are returned through
+an ``object`` output boundary because the runner serializes final output to the
+public JSON-safe event payload instead of assuming text-only results.
 """
 
 from collections.abc import Sequence
@@ -21,14 +23,17 @@ def create_agent(
     *,
     system_prompts: Sequence[PydanticAIPrompt[object]],
     tools: Sequence[PydanticAITool[object]],
-) -> Agent[None, str]:
+) -> Agent[None, object]:
     """Create the pydantic-ai agent for one run."""
     if profile.provider == "test":
-        return Agent[None, str](
-            TestModel(custom_output_text=profile.output_text),
-            output_type=str,
-            system_prompt=materialize_static_system_prompts(system_prompts),
-            tools=tools,
+        return cast(
+            Agent[None, object],
+            Agent[None, str](
+                TestModel(custom_output_text=profile.output_text),
+                output_type=str,
+                system_prompt=materialize_static_system_prompts(system_prompts),
+                tools=tools,
+            ),
         )
     raise ValueError(f"Unsupported agent profile provider: {profile.provider}")
 

@@ -9,6 +9,10 @@ serializable runtime state, and live runtime handles. The base class infers
 while still allowing subclasses to set them explicitly for unusual inheritance
 patterns.
 
+``LayerConfig`` is the DTO base for config schemas that can be embedded directly
+in serializable compositor config. Runtime state and handle schemas remain plain
+Pydantic models because they are not accepted as graph input.
+
 ``Layer.bind_deps`` is the mutation point for dependency state. Layer
 implementations should treat ``self.deps`` as unavailable until a compositor or
 caller has resolved and bound dependencies.
@@ -40,7 +44,7 @@ from enum import StrEnum
 from types import UnionType
 from typing import Any, ClassVar, Generic, Mapping, Sequence, Union, cast, get_args, get_origin, get_type_hints
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, JsonValue, SerializeAsAny
 from typing_extensions import Self, TypeVar
 
 
@@ -48,7 +52,24 @@ _DepsT = TypeVar("_DepsT", bound="LayerDeps")
 _PromptT = TypeVar("_PromptT")
 _UserPromptT = TypeVar("_UserPromptT")
 _ToolT = TypeVar("_ToolT")
-_ConfigT = TypeVar("_ConfigT", bound=BaseModel, default="EmptyLayerConfig")
+
+
+class LayerConfig(BaseModel):
+    """Base DTO for serializable layer configuration.
+
+    Subclasses are safe to place in ``LayerNodeConfig.config``. The compositor
+    still accepts plain JSON values for wire input, but typed Python call sites can
+    use concrete ``LayerConfig`` subclasses and preserve their fields during JSON
+    serialization.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+
+type LayerConfigValue = JsonValue | SerializeAsAny[LayerConfig]
+
+
+_ConfigT = TypeVar("_ConfigT", bound=LayerConfig, default="EmptyLayerConfig")
 _RuntimeStateT = TypeVar("_RuntimeStateT", bound=BaseModel, default="EmptyRuntimeState")
 _RuntimeHandlesT = TypeVar("_RuntimeHandlesT", bound=BaseModel, default="EmptyRuntimeHandles")
 
@@ -93,7 +114,7 @@ class NoLayerDeps(LayerDeps):
     """Dependency container for layers that do not require other layers."""
 
 
-class EmptyLayerConfig(BaseModel):
+class EmptyLayerConfig(LayerConfig):
     """Default serializable config schema for layers without config."""
 
     model_config = ConfigDict(extra="forbid")
@@ -194,7 +215,7 @@ class Layer(
     deps_type: type[_DepsT]
     deps: _DepsT
     type_id: ClassVar[str | None] = None
-    config_type: ClassVar[type[BaseModel]] = EmptyLayerConfig
+    config_type: ClassVar[type[LayerConfig]] = EmptyLayerConfig
     runtime_state_type: ClassVar[type[BaseModel]] = EmptyRuntimeState
     runtime_handles_type: ClassVar[type[BaseModel]] = EmptyRuntimeHandles
 
@@ -213,7 +234,7 @@ class Layer(
         if not isinstance(deps_type, type) or not issubclass(deps_type, LayerDeps):
             raise TypeError(f"{cls.__name__}.deps_type must be a LayerDeps subclass.")
         _get_dep_specs(deps_type)
-        _init_schema_type(cls, "config_type", _infer_schema_type(cls, 4, "config_type"), EmptyLayerConfig)
+        _init_config_type(cls, _infer_config_type(cls))
         _init_schema_type(
             cls,
             "runtime_state_type",
@@ -421,6 +442,16 @@ def _infer_schema_type(
     return schema_type
 
 
+def _infer_config_type(layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]]) -> type[LayerConfig] | None:
+    inferred = _infer_schema_generic_arg(layer_type, "config_type", {}) or _infer_layer_generic_arg(layer_type, 4, {})
+    if inferred is None:
+        return None
+    config_type = _as_config_type(inferred)
+    if config_type is None:
+        raise TypeError(f"{layer_type.__name__}.config_type must be a LayerConfig subclass.")
+    return config_type
+
+
 def _infer_schema_generic_arg(
     layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
     attr_name: str,
@@ -494,6 +525,18 @@ def _init_schema_type(
         raise TypeError(f"{layer_type.__name__}.{attr_name} must be a Pydantic BaseModel subclass.")
 
 
+def _init_config_type(
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
+    inferred_config_type: type[LayerConfig] | None,
+) -> None:
+    config_type = layer_type.__dict__.get("config_type")
+    if config_type is None:
+        config_type = inferred_config_type or getattr(layer_type, "config_type", EmptyLayerConfig)
+        setattr(layer_type, "config_type", config_type)
+    if not isinstance(config_type, type) or not issubclass(config_type, LayerConfig):
+        raise TypeError(f"{layer_type.__name__}.config_type must be a LayerConfig subclass.")
+
+
 def _substitute_type(value: object, substitutions: Mapping[object, object]) -> object:
     if value in substitutions:
         return substitutions[value]
@@ -538,6 +581,13 @@ def _as_deps_type(value: object) -> type[LayerDeps] | None:
 def _as_model_type(value: object) -> type[BaseModel] | None:
     runtime_type = get_origin(value) or value
     if isinstance(runtime_type, type) and issubclass(runtime_type, BaseModel):
+        return runtime_type
+    return None
+
+
+def _as_config_type(value: object) -> type[LayerConfig] | None:
+    runtime_type = get_origin(value) or value
+    if isinstance(runtime_type, type) and issubclass(runtime_type, LayerConfig):
         return runtime_type
     return None
 

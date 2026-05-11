@@ -12,7 +12,7 @@ Framework-neutral base class for prompt/tool layers.
 Class attributes:
 
 - `type_id: str | None`: registry id for config-backed plugin layers.
-- `config_type: type[BaseModel]`: Pydantic schema for serialized layer config.
+- `config_type: type[LayerConfig]`: Pydantic schema for serialized layer config.
 - `runtime_state_type: type[BaseModel]`: Pydantic schema for snapshot-safe
   per-session state.
 - `runtime_handles_type: type[BaseModel]`: Pydantic schema for live runtime
@@ -74,6 +74,8 @@ serialized and should be rehydrated from runtime state in resume hooks.
 ### Schema defaults and lifecycle enums
 
 - `EmptyLayerConfig`
+- `LayerConfig`: base DTO for serializable layer config schemas
+- `LayerConfigValue`: JSON value or concrete `LayerConfig` DTO
 - `EmptyRuntimeState`
 - `EmptyRuntimeHandles`
 - `LifecycleState`: `NEW`, `ACTIVE`, `SUSPENDED`, `CLOSED`
@@ -97,8 +99,9 @@ Tagged aggregate item types:
 - `LayerNodeConfig`: `name`, `type`, `config`, `deps`, `metadata`
 - `CompositorConfig`: `schema_version`, `layers`
 
-Config nodes are pure serializable graph input. Use live instances for Python
-objects and callables.
+Config nodes are pure serializable graph input. `LayerNodeConfig.config` accepts
+plain JSON values or concrete `LayerConfig` DTO instances and serializes DTOs as
+JSON objects. Use live instances for Python objects and callables.
 
 ### Registry
 

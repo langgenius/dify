@@ -2,8 +2,6 @@
 
 from .schemas import (
     RUN_EVENT_ADAPTER,
-    AgentOutputRunEvent,
-    AgentOutputRunEventData,
     AgentProfileConfig,
     BaseRunEvent,
     CreateRunRequest,
@@ -19,14 +17,12 @@ from .schemas import (
     RunStatus,
     RunStatusResponse,
     RunSucceededEvent,
-    SessionSnapshotRunEvent,
+    RunSucceededEventData,
     utc_now,
 )
 
 __all__ = [
     "AgentProfileConfig",
-    "AgentOutputRunEvent",
-    "AgentOutputRunEventData",
     "BaseRunEvent",
     "CreateRunRequest",
     "CreateRunResponse",
@@ -42,6 +38,6 @@ __all__ = [
     "RunStatus",
     "RunStatusResponse",
     "RunSucceededEvent",
-    "SessionSnapshotRunEvent",
+    "RunSucceededEventData",
     "utc_now",
 ]

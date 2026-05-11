@@ -164,36 +164,39 @@ Use `dify_agent.client.Client` for both async and sync code. Async methods use
 normal names; sync methods add `_sync`.
 
 ```python {test="skip" lint="skip"}
+from agenton.compositor import CompositorConfig, LayerNodeConfig
+from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
+from dify_agent.protocol import CreateRunRequest
 
 
 async def main() -> None:
-    async with Client(base_url="http://localhost:8000") as client:
-        run = await client.create_run(
-            {
-                "compositor": {
-                    "schema_version": 1,
-                    "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
-                }
-            }
+    request = CreateRunRequest(
+        compositor=CompositorConfig(
+            layers=[LayerNodeConfig(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello"))]
         )
+    )
+    async with Client(base_url="http://localhost:8000") as client:
+        run = await client.create_run(request)
         async for event in client.stream_events(run.run_id):
             print(event)
 ```
 
 ```python {test="skip" lint="skip"}
+from agenton.compositor import CompositorConfig, LayerNodeConfig
+from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
+from dify_agent.protocol import CreateRunRequest
 
+
+request = CreateRunRequest(
+    compositor=CompositorConfig(
+        layers=[LayerNodeConfig(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello"))]
+    )
+)
 
 with Client(base_url="http://localhost:8000") as client:
-    run = client.create_run_sync(
-        {
-            "compositor": {
-                "schema_version": 1,
-                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
-            }
-        }
-    )
+    run = client.create_run_sync(request)
     terminal = client.wait_run_sync(run.run_id)
 ```
 
@@ -201,8 +204,9 @@ with Client(base_url="http://localhost:8000") as client:
 They reconnect by default from the latest yielded event id and stop after
 `run_succeeded` or `run_failed`. They do not reconnect for HTTP 4xx responses,
 DTO validation failures, or malformed SSE frames. `create_run` and
-`create_run_sync` never retry `POST /runs`; if a timeout occurs, the caller must
-decide whether to inspect existing runs or submit a new run.
+`create_run_sync` require a `CreateRunRequest` DTO and never retry `POST /runs`;
+if a timeout occurs, the caller must decide whether to inspect existing runs or
+submit a new run.
 
 ## Event types and order
 
@@ -210,9 +214,7 @@ A normal successful run emits:
 
 1. `run_started`
 2. zero or more `pydantic_ai_event`
-3. `agent_output`
-4. `session_snapshot`
-5. `run_succeeded`
+3. `run_succeeded`
 
 A failed run emits:
 
@@ -220,13 +222,13 @@ A failed run emits:
 2. zero or more `pydantic_ai_event`
 3. `run_failed`
 
-Each event keeps the same envelope shape and has typed `data`: `run_started` and
-`run_succeeded` use `{}`, `pydantic_ai_event` uses Pydantic AI's
-`AgentStreamEvent` union, `agent_output` uses `{ "output": string }`,
-`session_snapshot` uses `CompositorSessionSnapshot`, and `run_failed` uses
-`{ "error": string, "reason": string | null }`. The session snapshot can be sent
-as `session_snapshot` in a later create-run request with the same compositor layer
-names and order.
+Each event keeps the same envelope shape and has typed `data`: `run_started` uses
+`{}`, `pydantic_ai_event` uses Pydantic AI's `AgentStreamEvent` union,
+`run_succeeded` uses `{ "output": JsonValue, "session_snapshot":
+CompositorSessionSnapshot }`, and `run_failed` uses `{ "error": string,
+"reason": string | null }`. The session snapshot from `run_succeeded.data` can
+be sent as `session_snapshot` in a later create-run request with the same
+compositor layer names and order.
 
 ## Consumer examples
 

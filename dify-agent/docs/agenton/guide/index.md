@@ -8,8 +8,8 @@ on the `LayerControl` created for that layer in a `CompositorSession`.
 ## Config, runtime state, and runtime handles
 
 - **Config** is serializable graph input. Config-constructible layers declare a
-  `type_id` and a Pydantic `config_type`; builders validate node config before
-  calling `Layer.from_config(validated_config)`.
+  `type_id` and a Pydantic `LayerConfig` schema; builders validate node config
+  before calling `Layer.from_config(validated_config)`.
 - **Runtime state** is serializable per-layer/per-session state. Layers declare a
   Pydantic `runtime_state_type`; session snapshots persist this model with
   `model_dump(mode="json")`.
@@ -20,11 +20,11 @@ on the `LayerControl` created for that layer in a `CompositorSession`.
 
 ## Define a config-backed layer
 
-Use a Pydantic model for config and pass it through the typed layer family so
+Use a `LayerConfig` model for config and pass it through the typed layer family so
 `Layer.__init_subclass__` can infer the schema:
 
 ```python {test="skip" lint="skip"}
-class GreetingConfig(BaseModel):
+class GreetingConfig(LayerConfig):
     prefix: str
 
     model_config = ConfigDict(extra="forbid")

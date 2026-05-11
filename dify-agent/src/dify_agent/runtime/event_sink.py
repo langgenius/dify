@@ -2,18 +2,20 @@
 
 The runner only needs append-only event writes and status transitions, so tests
 can use ``InMemoryRunEventSink`` without Redis. Production storage implements the
-same protocol with Redis streams in ``dify_agent.storage.redis_run_store``.
+same protocol with Redis streams in ``dify_agent.storage.redis_run_store``. The
+terminal success helper writes the final JSON-safe output and session snapshot in
+one event so event consumers can stop at ``run_succeeded`` without correlating
+separate payload events.
 """
 
 from collections import defaultdict
 from typing import Protocol
 
+from pydantic import JsonValue
 from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol.schemas import (
-    AgentOutputRunEvent,
-    AgentOutputRunEventData,
     EmptyRunEventData,
     PydanticAIStreamRunEvent,
     RunEvent,
@@ -22,7 +24,7 @@ from dify_agent.protocol.schemas import (
     RunStartedEvent,
     RunStatus,
     RunSucceededEvent,
-    SessionSnapshotRunEvent,
+    RunSucceededEventData,
     utc_now,
 )
 
@@ -89,31 +91,21 @@ async def emit_pydantic_ai_event(sink: RunEventSink, *, run_id: str, data: Agent
     )
 
 
-async def emit_agent_output(sink: RunEventSink, *, run_id: str, output: str) -> str:
-    """Emit the final output text produced by the agent."""
+async def emit_run_succeeded(
+    sink: RunEventSink,
+    *,
+    run_id: str,
+    output: JsonValue,
+    session_snapshot: CompositorSessionSnapshot,
+) -> str:
+    """Emit the terminal success event with output and resumable state."""
     return await emit_run_event(
         sink,
-        event=AgentOutputRunEvent(
+        event=RunSucceededEvent(
             run_id=run_id,
-            data=AgentOutputRunEventData(output=output),
+            data=RunSucceededEventData(output=output, session_snapshot=session_snapshot),
             created_at=utc_now(),
         ),
-    )
-
-
-async def emit_session_snapshot(sink: RunEventSink, *, run_id: str, data: CompositorSessionSnapshot) -> str:
-    """Emit the typed Agenton session snapshot for later resumption."""
-    return await emit_run_event(
-        sink,
-        event=SessionSnapshotRunEvent(run_id=run_id, data=data, created_at=utc_now()),
-    )
-
-
-async def emit_run_succeeded(sink: RunEventSink, *, run_id: str) -> str:
-    """Emit the terminal success lifecycle event."""
-    return await emit_run_event(
-        sink,
-        event=RunSucceededEvent(run_id=run_id, data=EmptyRunEventData(), created_at=utc_now()),
     )
 
 
@@ -134,11 +126,9 @@ async def emit_run_failed(
 __all__ = [
     "InMemoryRunEventSink",
     "RunEventSink",
-    "emit_agent_output",
     "emit_pydantic_ai_event",
     "emit_run_event",
     "emit_run_failed",
     "emit_run_started",
     "emit_run_succeeded",
-    "emit_session_snapshot",
 ]

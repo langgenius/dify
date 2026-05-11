@@ -5,7 +5,10 @@ does not retry ``POST /runs``; if a timeout occurs, inspect server state or crea
 a new run explicitly rather than assuming the original request was not accepted.
 """
 
+from agenton.compositor import CompositorConfig, LayerNodeConfig
+from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
+from dify_agent.protocol import AgentProfileConfig, CreateRunRequest
 
 
 API_BASE_URL = "http://localhost:8000"
@@ -14,22 +17,21 @@ API_BASE_URL = "http://localhost:8000"
 def main() -> None:
     with Client(base_url=API_BASE_URL) as client:
         run = client.create_run_sync(
-            {
-                "compositor": {
-                    "schema_version": 1,
-                    "layers": [
-                        {
-                            "name": "prompt",
-                            "type": "plain.prompt",
-                            "config": {
-                                "prefix": "You are a concise assistant.",
-                                "user": "Say hello from the synchronous Dify Agent client example.",
-                            },
-                        }
+            CreateRunRequest(
+                compositor=CompositorConfig(
+                    layers=[
+                        LayerNodeConfig(
+                            name="prompt",
+                            type="plain.prompt",
+                            config=PromptLayerConfig(
+                                prefix="You are a concise assistant.",
+                                user="Say hello from the synchronous Dify Agent client example.",
+                            ),
+                        )
                     ],
-                },
-                "agent_profile": {"provider": "test", "output_text": "Hello from the sync TestModel."},
-            }
+                ),
+                agent_profile=AgentProfileConfig(output_text="Hello from the sync TestModel."),
+            )
         )
         print("created run", run)
         terminal = client.wait_run_sync(run.run_id, poll_interval_seconds=0.5)

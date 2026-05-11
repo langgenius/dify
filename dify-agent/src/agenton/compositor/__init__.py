@@ -18,8 +18,11 @@ collected in reverse. User prompts are collected from first to last layer so the
 composed user message preserves graph order.
 
 Serializable graph config uses registry type ids rather than import paths.
-``CompositorBuilder`` resolves config nodes through ``LayerRegistry`` and can
-mix those nodes with live layer instances for Python objects and callables.
+``LayerNodeConfig.config`` accepts plain JSON values and ``LayerConfig`` DTO
+instances; JSON serialization preserves concrete DTO fields before the builder
+validates them with the registered layer schema. ``CompositorBuilder`` resolves
+config nodes through ``LayerRegistry`` and can mix those nodes with live layer
+instances for Python objects and callables.
 
 ``Compositor.enter`` enters layers in compositor order and exits them in reverse
 order through ``AsyncExitStack``. It accepts an optional ``CompositorSession``
@@ -43,7 +46,7 @@ from typing import Any, Generic, Mapping, TypedDict, cast
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from typing_extensions import Self, TypeVar
 
-from agenton.layers.base import Layer, LayerControl, LifecycleState
+from agenton.layers.base import Layer, LayerConfig, LayerConfigValue, LayerControl, LifecycleState
 from agenton.layers.types import AllPromptTypes, AllToolTypes, AllUserPromptTypes
 
 PromptT = TypeVar("PromptT", default=AllPromptTypes)
@@ -92,7 +95,7 @@ class LayerNodeConfig(BaseModel):
 
     name: str
     type: str
-    config: JsonValue = Field(default_factory=dict)
+    config: LayerConfigValue = Field(default_factory=dict)
     deps: Mapping[str, str] = Field(default_factory=dict)
     metadata: Mapping[str, JsonValue] = Field(default_factory=dict)
 
@@ -126,7 +129,7 @@ class LayerDescriptor:
 
     type_id: str
     layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]]
-    config_type: type[BaseModel]
+    config_type: type[LayerConfig]
     runtime_state_type: type[BaseModel]
     runtime_handles_type: type[BaseModel]
 
@@ -279,7 +282,7 @@ class CompositorBuilder:
         *,
         name: str,
         type: str,
-        config: object | None = None,
+        config: LayerConfigValue | None = None,
         deps: Mapping[str, str] | None = None,
     ) -> Self:
         """Resolve, validate, and add one registry-backed layer config node."""

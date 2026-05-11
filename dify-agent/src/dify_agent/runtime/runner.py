@@ -3,11 +3,15 @@
 The runner is storage-agnostic: it builds an Agenton compositor, enters or
 resumes its session, runs pydantic-ai with ``compositor.user_prompts`` as the user
 input, emits stream events, suspends the session on exit, snapshots it, and then
-publishes a terminal success or failure event.
+publishes a terminal success or failure event. Successful terminal events contain
+both the JSON-safe final output and session snapshot; there are no separate output
+or snapshot events to correlate.
 """
 
 from collections.abc import AsyncIterable
+from typing import cast
 
+from pydantic import JsonValue, TypeAdapter
 from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorSessionSnapshot
@@ -16,14 +20,15 @@ from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor
 from dify_agent.runtime.event_sink import (
     RunEventSink,
-    emit_agent_output,
     emit_pydantic_ai_event,
     emit_run_failed,
     emit_run_started,
     emit_run_succeeded,
-    emit_session_snapshot,
 )
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
+
+
+_AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
 
 
 class AgentRunValidationError(ValueError):
@@ -56,12 +61,15 @@ class AgentRunRunner:
             await self.sink.update_status(self.run_id, "failed", message)
             raise
 
-        _ = await emit_agent_output(self.sink, run_id=self.run_id, output=output)
-        _ = await emit_session_snapshot(self.sink, run_id=self.run_id, data=session_snapshot)
-        _ = await emit_run_succeeded(self.sink, run_id=self.run_id)
+        _ = await emit_run_succeeded(
+            self.sink,
+            run_id=self.run_id,
+            output=output,
+            session_snapshot=session_snapshot,
+        )
         await self.sink.update_status(self.run_id, "succeeded")
 
-    async def _run_agent(self) -> tuple[str, CompositorSessionSnapshot]:
+    async def _run_agent(self) -> tuple[JsonValue, CompositorSessionSnapshot]:
         """Run pydantic-ai inside an entered Agenton session."""
         compositor = build_pydantic_ai_compositor(self.request.compositor)
         session = (
@@ -86,7 +94,12 @@ class AgentRunRunner:
             )
             result = await agent.run(normalize_user_input(user_prompts), event_stream_handler=handle_events)
 
-        return result.output, compositor.snapshot_session(session)
+        return _serialize_agent_output(result.output), compositor.snapshot_session(session)
+
+
+def _serialize_agent_output(output: object) -> JsonValue:
+    """Convert arbitrary pydantic-ai output into the public JSON-safe payload type."""
+    return cast(JsonValue, _AGENT_OUTPUT_ADAPTER.dump_python(output, mode="json"))
 
 
 __all__ = ["AgentRunRunner", "AgentRunValidationError"]

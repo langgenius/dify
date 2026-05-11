@@ -91,8 +91,8 @@ effective prompts are rejected during create-run validation before the run is
 persisted or scheduled.
 
 There is no Pydantic AI history layer. To resume Agenton layer state, pass the
-`session_snapshot` emitted by a previous run together with a compositor that has
-the same layer names and order.
+`session_snapshot` from a previous `run_succeeded.data` payload together with a
+compositor that has the same layer names and order.
 
 ## Observing runs
 
@@ -107,12 +107,12 @@ progress:
   `id` is the event Redis Stream ID. `after` query cursors take precedence over
   `Last-Event-ID` headers.
 
-Successful runs emit `run_started`, zero or more `pydantic_ai_event`,
-`agent_output`, `session_snapshot`, and `run_succeeded`. Failed runs end with
-`run_failed`. Event envelopes retain `id`, `run_id`, `type`, `data`, and
-`created_at`; `data` is typed per event type, including Pydantic AI's
-`AgentStreamEvent` payload for `pydantic_ai_event` and `CompositorSessionSnapshot`
-for `session_snapshot`.
+Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
+`run_succeeded`. Failed runs end with `run_failed`. Event envelopes retain `id`,
+`run_id`, `type`, `data`, and `created_at`; `data` is typed per event type,
+including Pydantic AI's `AgentStreamEvent` payload for `pydantic_ai_event` and a
+terminal `run_succeeded.data` object containing JSON-safe `output` plus a
+`CompositorSessionSnapshot` for resumption.
 
 ## Examples
 

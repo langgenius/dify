@@ -2,11 +2,12 @@
 
 The client uses the public DTOs from ``dify_agent.protocol.schemas`` for all
 normal request and response parsing. It intentionally does not retry
-``POST /runs`` because create-run is not idempotent. SSE streams are the only
-operation with reconnect logic: transient stream/connect/read failures, stream
-timeouts, and HTTP 5xx stream responses reconnect with the latest observed event
-id, while HTTP 4xx responses, DTO validation failures, and malformed SSE frames
-fail immediately.
+``POST /runs`` because create-run is not idempotent, and create helpers require a
+``CreateRunRequest`` instance rather than accepting raw payload dicts. SSE
+streams are the only operation with reconnect logic: transient stream, connect,
+or read failures, stream timeouts, and HTTP 5xx stream responses reconnect with
+the latest observed event id, while HTTP 4xx responses, DTO validation failures,
+and malformed SSE frames fail immediately.
 """
 
 from __future__ import annotations
@@ -241,12 +242,12 @@ class Client:
         if self._owns_sync_http_client and self._sync_http_client is not None:
             self.close_sync()
 
-    async def create_run(self, request: CreateRunRequest | dict[str, object]) -> CreateRunResponse:
+    async def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
         """Create one run and return its accepted status response.
 
-        Dict inputs are validated as ``CreateRunRequest`` before the request is
-        sent. This method performs exactly one ``POST /runs`` attempt and maps
-        HTTPX timeouts to ``DifyAgentTimeoutError``.
+        ``request`` must already be a public ``CreateRunRequest`` DTO. This
+        method performs exactly one ``POST /runs`` attempt and maps HTTPX
+        timeouts to ``DifyAgentTimeoutError``.
         """
         request_model = _validate_create_run_request(request)
         try:
@@ -262,7 +263,7 @@ class Client:
             raise DifyAgentClientError(f"create_run request failed: {exc}") from exc
         return _parse_model_response(response, CreateRunResponse)
 
-    def create_run_sync(self, request: CreateRunRequest | dict[str, object]) -> CreateRunResponse:
+    def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
         """Synchronous variant of ``create_run`` with the same no-retry contract."""
         request_model = _validate_create_run_request(request)
         try:
@@ -549,14 +550,11 @@ class Client:
         return headers
 
 
-def _validate_create_run_request(request: CreateRunRequest | dict[str, object]) -> CreateRunRequest:
-    """Validate user input before creating a run."""
+def _validate_create_run_request(request: CreateRunRequest) -> CreateRunRequest:
+    """Reject raw payloads so create-run uses the public request DTO boundary."""
     if isinstance(request, CreateRunRequest):
         return request
-    try:
-        return CreateRunRequest.model_validate(request)
-    except ValidationError as exc:
-        raise DifyAgentValidationError(detail=exc.errors(include_url=False)) from exc
+    raise DifyAgentValidationError(detail="request must be a CreateRunRequest")
 
 
 def _parse_model_response(response: httpx.Response, model_type: type[_ResponseModelT]) -> _ResponseModelT:
