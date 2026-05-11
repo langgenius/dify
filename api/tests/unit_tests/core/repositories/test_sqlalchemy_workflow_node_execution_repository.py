@@ -386,9 +386,7 @@ def test_to_domain_model_loads_offloaded_files(monkeypatch: pytest.MonkeyPatch) 
     off_out.file = SimpleNamespace(key="k-out")
     off_proc.file = SimpleNamespace(key="k-proc")
     db_model = WorkflowNodeExecutionModel(
-
-,id = "id"
-,node_execution_id = "node-exec"
+node_execution_id = "node-exec"
 ,workflow_id = "wf"
 ,workflow_run_id = "run"
 ,index = 1
@@ -407,6 +405,7 @@ def test_to_domain_model_loads_offloaded_files(monkeypatch: pytest.MonkeyPatch) 
 ,finished_at = None
 ,offload_data = [off_out, off_in, off_proc]
     )
+    db_model.id = "id"
 
 
     def fake_load(key: str) -> bytes:
