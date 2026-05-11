@@ -64,7 +64,7 @@ dev = [
     "ruff>=0.15.11",
 ]
 docs = [
-    "mkdocs>=1.6.1",
+    "mkdocs>=1.6.1,<2",
     "mkdocs-glightbox>=0.4.0",
     "mkdocs-material>=9.7.0",
     "mkdocstrings-python>=2.0.0",
