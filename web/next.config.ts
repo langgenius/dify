@@ -28,8 +28,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/',
-        destination: '/apps',
+        source: '/explore/apps',
+        destination: '/',
         permanent: false,
       },
     ]

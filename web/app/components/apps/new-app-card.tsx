@@ -131,7 +131,7 @@ const CreateAppCard = ({
             setShowCreateFromDSLModal(false)
 
             if (dslUrl)
-              replace('/')
+              replace('/apps')
           }}
           activeTab={activeTab}
           dslUrl={dslUrl}

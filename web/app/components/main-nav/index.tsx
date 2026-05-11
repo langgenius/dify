@@ -30,9 +30,9 @@ const MainNav = ({
     ...(!isCurrentWorkspaceDatasetOperator
       ? [
           {
-            href: '/explore/apps',
+            href: '/',
             label: t('mainNav.home', { ns: 'common' }),
-            active: (path: string) => path.startsWith('/explore'),
+            active: (path: string) => path === '/' || path.startsWith('/explore'),
             icon: 'i-custom-vender-main-nav-home',
             activeIcon: 'i-custom-vender-main-nav-home-active',
           },
@@ -78,7 +78,7 @@ const MainNav = ({
 
   const renderLogo = () => (
     <h1 className="min-w-0">
-      <Link href={isCurrentWorkspaceDatasetOperator ? '/datasets' : '/apps'} className="flex h-8 shrink-0 items-center overflow-hidden px-2 indent-[-9999px] whitespace-nowrap">
+      <Link href="/" className="flex h-8 shrink-0 items-center overflow-hidden px-2 indent-[-9999px] whitespace-nowrap">
         {systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
         {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
           ? (

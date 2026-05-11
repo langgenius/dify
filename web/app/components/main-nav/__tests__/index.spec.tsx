@@ -211,7 +211,7 @@ describe('MainNav', () => {
 
     expect(screen.getAllByText(Plan.team)).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(Plan.team)
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/explore/apps')
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/tools?section=provider')
@@ -314,7 +314,7 @@ describe('MainNav', () => {
   })
 
   it('applies the Figma glass active state to the Home route', () => {
-    mockPathname = '/explore/apps'
+    mockPathname = '/'
 
     renderMainNav()
 
