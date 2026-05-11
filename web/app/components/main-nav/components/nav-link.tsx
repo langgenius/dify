@@ -7,7 +7,7 @@ import Link from '@/next/link'
 const navItemClassName = 'group relative flex h-9 items-center gap-2 rounded-xl p-2 transition-colors'
 
 const activeNavItemClassName = cn(
-  'overflow-hidden border border-transparent',
+  'overflow-hidden',
   'bg-[linear-gradient(98.077deg,rgba(0,51,255,0.08)_0%,rgba(0,51,255,0.12)_17.98%,rgba(0,51,255,0.1)_58.75%,rgba(0,51,255,0.08)_101.09%)]',
   'system-md-semibold text-saas-dify-blue-inverted backdrop-blur-[5px]',
   'shadow-[0px_4px_8px_0px_rgba(255,255,255,0),0px_12px_16px_-4px_rgba(9,9,11,0.08),0px_4px_6px_-2px_rgba(9,9,11,0.03),0px_10px_16px_-4px_rgba(0,51,255,0.06)]',

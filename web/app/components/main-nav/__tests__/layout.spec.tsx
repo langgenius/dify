@@ -58,14 +58,14 @@ describe('MainNavLayout', () => {
     expect(screen.getByText('content')).toBeInTheDocument()
   })
 
-  it('keeps the current header on mobile', () => {
+  it('uses the main nav on mobile too', () => {
     mockMediaType = MediaType.mobile
 
     render(<MainNavLayout><div>content</div></MainNavLayout>)
 
-    expect(screen.getByTestId('header-wrapper')).toBeInTheDocument()
-    expect(screen.getByTestId('desktop-header')).toBeInTheDocument()
-    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+    expect(screen.queryByTestId('header-wrapper')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('desktop-header')).not.toBeInTheDocument()
   })
 
   it('hides the desktop main nav on fullscreen workflow canvases', () => {

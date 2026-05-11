@@ -60,18 +60,16 @@ const WorkspaceCard = () => {
   const credits = getRemainingCredits(currentWorkspace.trial_credits, currentWorkspace.trial_credits_used)
   const formattedCredits = formatCredits(credits)
   const workspacePlan = (workspaces.find(workspace => workspace.current)?.plan || currentWorkspace.plan || plan.type) as Plan
-  const isFreePlan = plan.type === Plan.sandbox
+  const isFreePlan = workspacePlan === Plan.sandbox
   const showCloudBilling = IS_CLOUD_EDITION && enableBilling
-  const showUpgradeAction = showCloudBilling && isFreePlan
+  const showPlanAction = showCloudBilling
+  const planActionLabel = t(isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain', { ns: 'billing' })
   const showWorkspaceSettings = !isCurrentWorkspaceDatasetOperator
   const showInviteMembers = showWorkspaceSettings && isCurrentWorkspaceManager
   const renderWorkspaceStatus = () => enableBilling ? <WorkspacePlanBadge plan={workspacePlan} /> : <LicenseNav />
 
   const handlePlanClick = () => {
-    if (isFreePlan)
-      setShowPricingModal()
-    else
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
+    setShowPricingModal()
   }
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
@@ -135,17 +133,17 @@ const WorkspaceCard = () => {
               <span className="truncate system-xs-medium" title={formattedCredits}>{formattedCredits}</span>
               <span className="shrink-0 system-xs-regular">{t('mainNav.workspace.creditsUnit', { ns: 'common' })}</span>
             </button>
-            {showUpgradeAction && (
+            {showPlanAction && (
               <button
                 type="button"
                 className="max-w-[120px] shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover"
-                title={t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                title={planActionLabel}
                 onClick={(e) => {
                   e.stopPropagation()
                   handlePlanClick()
                 }}
               >
-                {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                {planActionLabel}
               </button>
             )}
           </div>

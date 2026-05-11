@@ -154,9 +154,9 @@ const appContextValue: AppContextValue = {
   isValidatingCurrentWorkspace: false,
 }
 
-const renderMainNav = () => renderWithSystemFeatures(<MainNav />, {
-  systemFeatures: { branding: { enabled: false } },
-})
+const renderMainNav = (
+  systemFeatures = { branding: { enabled: false } },
+) => renderWithSystemFeatures(<MainNav />, { systemFeatures })
 
 describe('MainNav', () => {
   beforeEach(() => {
@@ -321,7 +321,6 @@ describe('MainNav', () => {
     const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
 
     expect(homeLink).toHaveClass(
-      'border-transparent',
       'backdrop-blur-[5px]',
       'text-saas-dify-blue-inverted',
       activeEdgeClassName,
@@ -357,13 +356,19 @@ describe('MainNav', () => {
     expect(mockPush).not.toHaveBeenCalled()
   })
 
-  it('opens workspace settings, members, provider credits, upgrade, and workspace switching actions', async () => {
+  it('hides the help menu when branding is enabled', () => {
+    renderMainNav({ branding: { enabled: true } })
+
+    expect(screen.queryByRole('button', { name: 'common.mainNav.help.openMenu' })).not.toBeInTheDocument()
+  })
+
+  it('opens workspace settings, members, provider credits, plan, and workspace switching actions', async () => {
     renderMainNav()
 
     fireEvent.click(screen.getByRole('button', { name: /common\.mainNav\.workspace\.credits|7,500 credits/ }))
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
 
-    fireEvent.click(screen.getByText('billing.upgradeBtn.encourageShort'))
+    fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
     expect(mockSetShowPricingModal).toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
@@ -381,7 +386,20 @@ describe('MainNav', () => {
     })
   })
 
-  it('hides the upgrade shortcut for paid plans', () => {
+  it('shows the upgrade shortcut for sandbox workspaces', () => {
+    ;(useWorkspacesContext as Mock).mockReturnValue({
+      workspaces: [
+        { id: 'workspace-1', name: 'Solar Studio', plan: Plan.sandbox, status: 'normal', created_at: 0, current: true },
+      ],
+    })
+
+    renderMainNav()
+
+    expect(screen.getByText('billing.upgradeBtn.encourageShort')).toBeInTheDocument()
+    expect(screen.queryByText('billing.upgradeBtn.plain')).not.toBeInTheDocument()
+  })
+
+  it('shows the view plan shortcut for paid workspaces', () => {
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
@@ -393,6 +411,9 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('billing.upgradeBtn.plain'))
+    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
   })
 
   it('limits workspace settings and invite actions by role', async () => {
