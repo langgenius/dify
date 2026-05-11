@@ -371,7 +371,8 @@ class TestUtilityFunctions:
 
         result = extract_answer_from_response(app, mock_generator)
 
-        assert result == "thinking...more thinking"
+        # fallback returns the last agent_thought when no answer events are present
+        assert result == "more thinking"
 
     def test_extract_answer_prefers_agent_message_over_thought(self):
         """Test that agent_message and message events take priority over agent_thought fallback"""
