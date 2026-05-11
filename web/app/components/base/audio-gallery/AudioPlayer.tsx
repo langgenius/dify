@@ -1,8 +1,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
@@ -11,6 +11,7 @@ type AudioPlayerProps = {
   srcs?: string[] // Support multiple sources
 }
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
+  const { t } = useTranslation()
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -22,6 +23,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const [hoverTime, setHoverTime] = useState(0)
   const [isAudioAvailable, setIsAudioAvailable] = useState(true)
   const { theme } = useTheme()
+  const playPauseLabel = t(isPlaying ? 'operation.pause' : 'operation.play', { ns: 'common' })
   useEffect(() => {
     const audio = audioRef.current
     /* v8 ignore next 2 - @preserve */
@@ -245,10 +247,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
         {/* If srcs array is provided, render multiple source elements */}
         {srcs && srcs.map((srcUrl, index) => (<source key={index} src={srcUrl} />))}
       </audio>
-      <button type="button" data-testid="play-pause-btn" className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
+      <button type="button" aria-label={playPauseLabel} className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
-          ? (<div className="i-ri-pause-circle-fill h-5 w-5" />)
-          : (<div className="i-ri-play-large-fill h-5 w-5" />)}
+          ? (<div className="i-ri-pause-circle-fill h-5 w-5" aria-hidden="true" />)
+          : (<div className="i-ri-play-large-fill h-5 w-5" aria-hidden="true" />)}
       </button>
       <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>
         <div className="flex h-8 items-center justify-center">

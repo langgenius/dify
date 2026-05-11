@@ -88,10 +88,11 @@ const AudioBtn = ({
                   ? ActionButtonState.Active
                   : ActionButtonState.Default
               }
+              aria-label={tooltipContent}
               onClick={handleToggle}
               disabled={audioState === 'loading'}
             >
-              <RiVolumeUpLine className="h-4 w-4" />
+              <RiVolumeUpLine className="h-4 w-4" aria-hidden="true" />
             </ActionButton>
           </span>
         )}

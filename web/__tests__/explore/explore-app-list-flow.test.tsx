@@ -127,7 +127,7 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   copyright: overrides.copyright ?? '',
   privacy_policy: overrides.privacy_policy ?? null,
   custom_disclaimer: overrides.custom_disclaimer ?? null,
-  category: overrides.category ?? 'Writing',
+  categories: overrides.categories ?? ['Writing'],
   position: overrides.position ?? 1,
   is_listed: overrides.is_listed ?? true,
   install_count: overrides.install_count ?? 0,
@@ -165,9 +165,9 @@ describe('Explore App List Flow', () => {
     mockExploreData = {
       categories: ['Writing', 'Translate', 'Programming'],
       allList: [
-        createApp({ app_id: 'app-1', app: { ...createApp().app, name: 'Writer Bot' }, category: 'Writing' }),
-        createApp({ app_id: 'app-2', app: { ...createApp().app, id: 'app-id-2', name: 'Translator' }, category: 'Translate' }),
-        createApp({ app_id: 'app-3', app: { ...createApp().app, id: 'app-id-3', name: 'Code Helper' }, category: 'Programming' }),
+        createApp({ app_id: 'app-1', app: { ...createApp().app, name: 'Writer Bot' }, categories: ['Writing'] }),
+        createApp({ app_id: 'app-2', app: { ...createApp().app, id: 'app-id-2', name: 'Translator' }, categories: ['Translate'] }),
+        createApp({ app_id: 'app-3', app: { ...createApp().app, id: 'app-id-3', name: 'Code Helper' }, categories: ['Programming'] }),
       ],
     }
   })
@@ -188,6 +188,30 @@ describe('Explore App List Flow', () => {
       expect(screen.getByText('Writer Bot'))!.toBeInTheDocument()
       expect(screen.queryByText('Translator')).not.toBeInTheDocument()
       expect(screen.queryByText('Code Helper')).not.toBeInTheDocument()
+    })
+
+    it('should only use categories when filtering by selected category', () => {
+      mockTabValue = 'Writing'
+      mockExploreData = {
+        categories: ['Writing', 'Translate'],
+        allList: [
+          createApp({
+            app_id: 'app-1',
+            app: { ...createApp().app, name: 'Active Writer' },
+            categories: ['Writing'],
+          }),
+          createApp({
+            app_id: 'app-2',
+            app: { ...createApp().app, id: 'app-id-2', name: 'Legacy Writer' },
+            categories: [],
+          }),
+        ],
+      }
+
+      renderAppList()
+
+      expect(screen.getByText('Active Writer')).toBeInTheDocument()
+      expect(screen.queryByText('Legacy Writer')).not.toBeInTheDocument()
     })
 
     it('should filter apps by search keyword', async () => {

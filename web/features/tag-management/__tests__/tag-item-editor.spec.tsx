@@ -23,22 +23,32 @@ const tagMocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('../hooks/use-tag-mutations', () => ({
-  useUpdateTagMutation: () => ({
-    mutate: ({ params, body }: { params: { tagId: string }, body: { name: string } }, options?: { onSuccess?: () => void, onError?: () => void }) => {
-      Promise.resolve(tagMocks.updateTag(params.tagId, body.name))
-        .then(() => options?.onSuccess?.())
-        .catch(() => options?.onError?.())
-    },
-  }),
-  useDeleteTagMutation: () => ({
+vi.mock('@tanstack/react-query', () => ({
+  useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
     isPending: false,
-    mutate: ({ params }: { params: { tagId: string } }, options?: { onSuccess?: () => void, onError?: () => void }) => {
-      Promise.resolve(tagMocks.deleteTag(params.tagId))
+    mutate: (input: unknown, options?: { onSuccess?: () => void, onError?: () => void }) => {
+      Promise.resolve(mutationOptions.mutationFn(input))
         .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
     },
   }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    tags: {
+      update: {
+        mutationOptions: () => ({
+          mutationFn: ({ params, body }: { params: { tagId: string }, body: { name: string } }) => tagMocks.updateTag(params.tagId, body.name),
+        }),
+      },
+      delete: {
+        mutationOptions: () => ({
+          mutationFn: ({ params }: { params: { tagId: string } }) => tagMocks.deleteTag(params.tagId),
+        }),
+      },
+    },
+  },
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -69,6 +79,12 @@ const baseTag: Tag = {
   binding_count: 3,
 }
 
+const i18n = {
+  editTag: 'common.operation.edit Frontend',
+  removeTag: 'common.operation.remove Frontend',
+  renameTag: 'common.operation.rename Frontend',
+}
+
 describe('TagItemEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -92,19 +108,19 @@ describe('TagItemEditor', () => {
       const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
 
-      const editButton = screen.getByTestId('tag-item-editor-edit-button')
+      const editButton = screen.getByRole('button', { name: i18n.editTag })
       expect(editButton).toBeInTheDocument()
-      await user.click(editButton as HTMLElement)
+      await user.click(editButton)
 
-      expect(screen.getByRole('textbox')).toHaveValue('Frontend')
+      expect(screen.getByRole('textbox', { name: i18n.renameTag })).toHaveValue('Frontend')
     })
 
     it('should update tag and notify success when submitting a new name', async () => {
       const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
 
-      const editButton = screen.getByTestId('tag-item-editor-edit-button')
-      await user.click(editButton as HTMLElement)
+      const editButton = screen.getByRole('button', { name: i18n.editTag })
+      await user.click(editButton)
 
       const input = screen.getByRole('textbox')
       await user.clear(input)
@@ -125,7 +141,7 @@ describe('TagItemEditor', () => {
       const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
 
-      await user.click(screen.getByTestId('tag-item-editor-edit-button') as HTMLElement)
+      await user.click(screen.getByRole('button', { name: i18n.editTag }))
       await user.keyboard('{Enter}')
 
       expect(tagMocks.updateTag).not.toHaveBeenCalled()
@@ -136,8 +152,8 @@ describe('TagItemEditor', () => {
       const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
 
-      const editButton = screen.getByTestId('tag-item-editor-edit-button')
-      await user.click(editButton as HTMLElement)
+      const editButton = screen.getByRole('button', { name: i18n.editTag })
+      await user.click(editButton)
 
       const input = screen.getByRole('textbox')
       await user.clear(input)
@@ -159,8 +175,8 @@ describe('TagItemEditor', () => {
       vi.mocked(tagMocks.updateTag).mockRejectedValueOnce(new Error('update failed'))
       render(<TagItemEditor tag={baseTag} />)
 
-      const editButton = screen.getByTestId('tag-item-editor-edit-button')
-      await user.click(editButton as HTMLElement)
+      const editButton = screen.getByRole('button', { name: i18n.editTag })
+      await user.click(editButton)
 
       const input = screen.getByRole('textbox')
       await user.clear(input)
@@ -184,9 +200,9 @@ describe('TagItemEditor', () => {
       const removableTag: Tag = { ...baseTag, binding_count: 0 }
       render(<TagItemEditor tag={removableTag} />)
 
-      const removeButton = screen.getByTestId('tag-item-editor-remove-button')
+      const removeButton = screen.getByRole('button', { name: i18n.removeTag })
       expect(removeButton).toBeInTheDocument()
-      await user.click(removeButton as HTMLElement)
+      await user.click(removeButton)
 
       await waitFor(() => {
         expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')
@@ -201,8 +217,8 @@ describe('TagItemEditor', () => {
       const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
 
-      const removeButton = screen.getByTestId('tag-item-editor-remove-button')
-      await user.click(removeButton as HTMLElement)
+      const removeButton = screen.getByRole('button', { name: i18n.removeTag })
+      await user.click(removeButton)
 
       expect(screen.getByText('common.tag.delete "Frontend"')).toBeInTheDocument()
       await user.click(screen.getByText('common.operation.confirm'))
@@ -219,8 +235,8 @@ describe('TagItemEditor', () => {
       const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
 
-      const removeButton = screen.getByTestId('tag-item-editor-remove-button')
-      await user.click(removeButton as HTMLElement)
+      const removeButton = screen.getByRole('button', { name: i18n.removeTag })
+      await user.click(removeButton)
 
       expect(screen.getByText('common.tag.delete "Frontend"')).toBeInTheDocument()
       await user.click(screen.getByText('common.operation.cancel'))
@@ -237,8 +253,8 @@ describe('TagItemEditor', () => {
       const removableTag: Tag = { ...baseTag, binding_count: 0 }
       render(<TagItemEditor tag={removableTag} />)
 
-      const removeButton = screen.getByTestId('tag-item-editor-remove-button')
-      await user.click(removeButton as HTMLElement)
+      const removeButton = screen.getByRole('button', { name: i18n.removeTag })
+      await user.click(removeButton)
 
       await waitFor(() => {
         expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')

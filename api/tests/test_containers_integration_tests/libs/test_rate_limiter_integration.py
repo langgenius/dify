@@ -11,7 +11,7 @@ from libs import helper as helper_module
 
 
 @pytest.mark.usefixtures("flask_app_with_containers")
-def test_rate_limiter_counts_multiple_attempts_in_same_second(monkeypatch):
+def test_rate_limiter_counts_multiple_attempts_in_same_second(monkeypatch: pytest.MonkeyPatch):
     prefix = f"test_rate_limit:{uuid.uuid4().hex}"
     limiter = helper_module.RateLimiter(prefix=prefix, max_attempts=2, time_window=60)
     key = limiter._get_key("203.0.113.10")

@@ -55,6 +55,12 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   default: ({ defaultModel }: any) => <div>{defaultModel.provider}:{defaultModel.model}</div>,
 }))
 
+vi.mock('@langgenius/dify-ui/tooltip', () => ({
+  Tooltip: ({ children }: any) => <div>{children}</div>,
+  TooltipTrigger: ({ children }: any) => <>{children}</>,
+  TooltipContent: ({ children }: any) => <div>{children}</div>,
+}))
+
 vi.mock('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var', () => ({
   default: ({ value }: any) => <div>{value}</div>,
 }))
@@ -344,8 +350,8 @@ describe('question-classifier path', () => {
       )
 
       expect(screen.getByText(`${longName.slice(0, 50)}...`)).toBeInTheDocument()
-      await user.hover(screen.getByText(`${longName.slice(0, 50)}...`))
-      expect(screen.getByText(longName)).toBeInTheDocument()
+      await user.hover(screen.getByRole('button', { name: longName }))
+      expect(await screen.findByText(longName)).toBeInTheDocument()
 
       rerender(
         <Node

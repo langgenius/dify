@@ -98,7 +98,6 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
         </DialogTitle>
         <DialogCloseButton
           className="top-5 right-5 h-8 w-8 rounded-lg [&>span]:h-5 [&>span]:w-5"
-          data-testid="modal-close"
           onClick={onClose}
         />
       </div>

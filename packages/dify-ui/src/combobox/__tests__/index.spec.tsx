@@ -231,7 +231,7 @@ describe('Combobox wrappers', () => {
 
       await expect.element(screen.getByRole('group', { name: 'combobox positioner' })).toHaveAttribute('data-side', 'bottom')
       await expect.element(screen.getByRole('group', { name: 'combobox positioner' })).toHaveAttribute('data-align', 'start')
-      await expect.element(screen.getByRole('group', { name: 'combobox positioner' })).toHaveClass('z-1002')
+      await expect.element(screen.getByRole('group', { name: 'combobox positioner' })).toHaveClass('z-50')
       await expect.element(screen.getByRole('dialog', { name: 'combobox popup' })).toHaveClass('rounded-xl')
       await expect.element(screen.getByRole('dialog', { name: 'combobox popup' })).toHaveClass('w-(--anchor-width)')
       await expect.element(screen.getByRole('listbox', { name: 'combobox list' })).toHaveClass('scroll-py-1')

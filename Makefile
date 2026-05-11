@@ -71,13 +71,13 @@ type-check:
 	@echo "📝 Running type checks (basedpyright + pyrefly + mypy)..."
 	@./dev/basedpyright-check $(PATH_TO_CHECK)
 	@./dev/pyrefly-check-local
-	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --exclude 'dev/generate_swagger_specs.py' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Type checks complete"
 
 type-check-core:
 	@echo "📝 Running core type checks (basedpyright + mypy)..."
 	@./dev/basedpyright-check $(PATH_TO_CHECK)
-	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --exclude 'dev/generate_swagger_specs.py'  --exclude 'dev/generate_fastopenapi_specs.py' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Core type checks complete"
 
 test:

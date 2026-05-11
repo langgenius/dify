@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "ภาพ",
   "variableConfig.file.supportFileTypes": "ประเภทไฟล์ที่รองรับ",
   "variableConfig.file.video.name": "วีดิทัศน์",
+  "variableConfig.hidden": "ซ่อนและกรอกล่วงหน้า",
+  "variableConfig.hiddenDescription": "ซ่อนช่องนี้จากผู้ใช้ปลายทางและป้อนค่าด้วยตนเอง ไม่สามารถใช้ร่วมกับ จำเป็น ได้ <docLink>เรียนรู้เพิ่มเติม</docLink>",
   "variableConfig.hide": "ซ่อน",
   "variableConfig.inputPlaceholder": "กรุณาป้อน",
   "variableConfig.json": "รหัส JSON",

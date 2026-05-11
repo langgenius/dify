@@ -8,7 +8,6 @@ import CreateContent from './create-content'
 type Props = {
   open: boolean
   setOpen: (open: boolean) => void
-  onSave: (data: any) => void
   trigger: React.ReactNode
   popupLeft?: number
 } & CreateContentProps

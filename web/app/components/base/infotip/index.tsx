@@ -1,7 +1,7 @@
 'use client'
 
 import type { Placement } from '@langgenius/dify-ui/popover'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 
@@ -58,6 +58,10 @@ export function Infotip({
   delay = 300,
   closeDelay = 200,
 }: InfotipProps) {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }
+
   return (
     <Popover>
       <PopoverTrigger
@@ -65,6 +69,7 @@ export function Infotip({
         delay={delay}
         closeDelay={closeDelay}
         aria-label={ariaLabel}
+        onClick={handleClick}
         className={cn(
           'inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
           className,

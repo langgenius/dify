@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
   RiArrowRightUpLine,
   RiBugLine,
@@ -13,7 +14,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -124,12 +124,18 @@ const PluginItem: FC<Props> = ({
               <Title title={title} />
               {verified && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
               {!isDifyVersionCompatible && (
-                <Tooltip popupContent={
-                  t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })
-                }
-                >
-                  <RiErrorWarningLine color="red" className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" />
-                </Tooltip>
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    aria-label={t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
+                    className="ml-0.5 inline-flex h-4 w-4 shrink-0 border-0 bg-transparent p-0"
+                  >
+                    <RiErrorWarningLine color="red" className="h-4 w-4 text-text-accent" />
+                  </PopoverTrigger>
+                  <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                    {t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })}
+                  </PopoverContent>
+                </Popover>
               )}
               <Badge
                 className="ml-1 shrink-0"

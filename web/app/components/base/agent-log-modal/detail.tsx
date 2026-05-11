@@ -67,12 +67,22 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
     <div className="relative flex grow flex-col">
       {/* tab */}
       <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-regular px-4">
-        <div className={cn('mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary', currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-text-secondary')} data-active={currentTab === 'DETAIL'} onClick={() => switchTab('DETAIL')}>
+        <button
+          type="button"
+          className={cn('mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-[18px] font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-text-secondary')}
+          data-active={currentTab === 'DETAIL'}
+          onClick={() => switchTab('DETAIL')}
+        >
           {t('detail', { ns: 'runLog' })}
-        </div>
-        <div className={cn('mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] leading-[18px] font-semibold text-text-tertiary', currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-text-secondary')} data-active={currentTab === 'TRACING'} onClick={() => switchTab('TRACING')}>
+        </button>
+        <button
+          type="button"
+          className={cn('mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-[18px] font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-text-secondary')}
+          data-active={currentTab === 'TRACING'}
+          onClick={() => switchTab('TRACING')}
+        >
           {t('tracing', { ns: 'runLog' })}
-        </div>
+        </button>
       </div>
       {/* panel detail */}
       <div className={cn('h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg', currentTab !== 'DETAIL' && '!bg-background-section')}>

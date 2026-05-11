@@ -114,7 +114,7 @@ class SQLAlchemyEngineOptionsDict(TypedDict):
     pool_pre_ping: bool
     connect_args: dict[str, str]
     pool_use_lifo: bool
-    pool_reset_on_return: None
+    pool_reset_on_return: Literal["commit", "rollback", None]
     pool_timeout: int
 
 
@@ -223,6 +223,11 @@ class DatabaseConfig(BaseSettings):
         default=30,
     )
 
+    SQLALCHEMY_POOL_RESET_ON_RETURN: Literal["commit", "rollback", None] = Field(
+        description="Connection pool reset behavior on return. Options: 'commit', 'rollback', or None",
+        default="rollback",
+    )
+
     RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
         description="Number of processes for the retrieval service, default to CPU cores.",
         default=os.cpu_count() or 1,
@@ -252,7 +257,7 @@ class DatabaseConfig(BaseSettings):
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
             "connect_args": connect_args,
             "pool_use_lifo": self.SQLALCHEMY_POOL_USE_LIFO,
-            "pool_reset_on_return": None,
+            "pool_reset_on_return": self.SQLALCHEMY_POOL_RESET_ON_RETURN,
             "pool_timeout": self.SQLALCHEMY_POOL_TIMEOUT,
         }
         return result

@@ -1,7 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Slider } from '@langgenius/dify-ui/slider'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiQuestionLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -11,6 +9,7 @@ import {
   Economic,
   HighQuality,
 } from '@/app/components/base/icons/src/vender/knowledge'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import {
@@ -97,14 +96,12 @@ const IndexMethod = ({
                   <div className="truncate system-xs-medium text-text-secondary">
                     {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
                   </div>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={<RiQuestionLine className="ml-0.5 h-3.5 w-3.5 text-text-quaternary" />}
-                    />
-                    <TooltipContent>
-                      number of keywords
-                    </TooltipContent>
-                  </Tooltip>
+                  <Infotip
+                    aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+                    className="ml-0.5 h-3.5 w-3.5"
+                  >
+                    {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+                  </Infotip>
                 </div>
                 <Slider
                   disabled={readonly}

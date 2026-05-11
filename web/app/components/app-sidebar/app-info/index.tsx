@@ -1,3 +1,4 @@
+import type { AppInfoActions } from './use-app-info-actions'
 import * as React from 'react'
 import { useAppContext } from '@/context/app-context'
 import AppInfoDetailPanel from './app-info-detail-panel'
@@ -12,13 +13,22 @@ type IAppInfoProps = {
   onDetailExpand?: (expand: boolean) => void
 }
 
-const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailExpand }: IAppInfoProps) => {
-  const { isCurrentWorkspaceEditor } = useAppContext()
+type AppInfoViewProps = Omit<IAppInfoProps, 'onDetailExpand'> & {
+  actions: AppInfoActions
+  renderDetail?: boolean
+}
 
+type AppInfoDetailLayerProps = {
+  actions: AppInfoActions
+  open?: boolean
+}
+
+export const AppInfoDetailLayer = ({
+  actions,
+  open = actions.panelOpen,
+}: AppInfoDetailLayerProps) => {
   const {
     appDetail,
-    panelOpen,
-    setPanelOpen,
     closePanel,
     activeModal,
     openModal,
@@ -31,26 +41,16 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
-  } = useAppInfoActions({ onDetailExpand })
+  } = actions
 
   if (!appDetail)
     return null
 
   return (
-    <div>
-      {!onlyShowDetail && (
-        <AppInfoTrigger
-          appDetail={appDetail}
-          expand={expand}
-          onClick={() => {
-            if (isCurrentWorkspaceEditor)
-              setPanelOpen(v => !v)
-          }}
-        />
-      )}
+    <>
       <AppInfoDetailPanel
         appDetail={appDetail}
-        show={onlyShowDetail ? openState : panelOpen}
+        show={open}
         onClose={closePanel}
         openModal={openModal}
         exportCheck={exportCheck}
@@ -68,7 +68,57 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         handleConfirmExport={handleConfirmExport}
         onConfirmDelete={onConfirmDelete}
       />
+    </>
+  )
+}
+
+export const AppInfoView = ({
+  expand,
+  onlyShowDetail = false,
+  openState = false,
+  actions,
+  renderDetail = true,
+}: AppInfoViewProps) => {
+  const { isCurrentWorkspaceEditor } = useAppContext()
+  const {
+    appDetail,
+    panelOpen,
+    setPanelOpen,
+  } = actions
+
+  if (!appDetail)
+    return null
+
+  return (
+    <div>
+      {!onlyShowDetail && (
+        <AppInfoTrigger
+          appDetail={appDetail}
+          expand={expand}
+          onClick={() => {
+            if (isCurrentWorkspaceEditor)
+              setPanelOpen(v => !v)
+          }}
+        />
+      )}
+      {renderDetail && (
+        <AppInfoDetailLayer
+          actions={actions}
+          open={onlyShowDetail ? openState : panelOpen}
+        />
+      )}
     </div>
+  )
+}
+
+const AppInfo = ({ onDetailExpand, ...props }: IAppInfoProps) => {
+  const actions = useAppInfoActions({ onDetailExpand })
+
+  return (
+    <AppInfoView
+      {...props}
+      actions={actions}
+    />
   )
 }
 

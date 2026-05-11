@@ -62,18 +62,15 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/test',
 }))
 
-// Mock Modal to avoid Headless UI issues in tests
-vi.mock('@/app/components/base/modal', () => ({
-  default: ({ children, isShow, title }: { children: React.ReactNode, isShow: boolean, title: React.ReactNode }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="modal">
-        {!!title && <div data-testid="modal-title">{title}</div>}
-        {children}
-      </div>
-    )
-  },
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) =>
+    open === false ? null : <>{children}</>,
+  DialogContent: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="modal">{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="modal-title">{children}</div>
+  ),
 }))
 
 describe('Sidebar Index', () => {

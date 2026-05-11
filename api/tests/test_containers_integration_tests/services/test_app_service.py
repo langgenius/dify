@@ -1076,14 +1076,13 @@ class TestAppService:
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Create a site for the app
-        site = Site(
-            app_id=app.id,
-            code=fake.postalcode(),
-            title=fake.company(),
-            status=AppStatus.NORMAL,
-            default_language="en-US",
-            customize_token_strategy=CustomizeTokenStrategy.UUID,
-        )
+        site = Site()
+        site.app_id = app.id
+        site.code = fake.postalcode()
+        site.title = fake.company()
+        site.status = AppStatus.NORMAL
+        site.default_language = "en-US"
+        site.customize_token_strategy = CustomizeTokenStrategy.UUID
 
         db_session_with_containers.add(site)
         db_session_with_containers.commit()

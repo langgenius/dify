@@ -12,7 +12,7 @@ type AppBasicInfo = {
   use_icon_as_answer_icon: boolean
 }
 
-export type AppCategory = 'Writing' | 'Translate' | 'HR' | 'Programming' | 'Assistant' | 'Agent' | 'Recommended' | 'Workflow'
+export type AppCategory = string
 
 export type App = {
   app: AppBasicInfo
@@ -21,7 +21,7 @@ export type App = {
   copyright: string
   privacy_policy: string | null
   custom_disclaimer: string | null
-  category: AppCategory
+  categories: AppCategory[]
   position: number
   is_listed: boolean
   install_count: number

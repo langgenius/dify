@@ -13,29 +13,20 @@ type CurrChildChunkType = {
 }
 
 type UseModalStateReturn = {
-  // Segment detail modal
   currSegment: CurrSegmentType
   onClickCard: (detail: SegmentDetailModel, isEditMode?: boolean) => void
   onCloseSegmentDetail: () => void
-  // Child segment detail modal
   currChildChunk: CurrChildChunkType
   currChunkId: string
   onClickSlice: (detail: ChildChunkDetail) => void
   onCloseChildSegmentDetail: () => void
-  // New segment modal
   onCloseNewSegmentModal: () => void
-  // New child segment modal
   showNewChildSegmentModal: boolean
   handleAddNewChildChunk: (parentChunkId: string) => void
   onCloseNewChildChunkModal: () => void
-  // Regeneration modal
-  isRegenerationModalOpen: boolean
-  setIsRegenerationModalOpen: (open: boolean) => void
-  // Full screen
   fullScreen: boolean
   toggleFullScreen: () => void
   setFullScreen: (fullScreen: boolean) => void
-  // Collapsed state
   isCollapsed: boolean
   toggleCollapsed: () => void
 }
@@ -47,25 +38,15 @@ type UseModalStateOptions = {
 export const useModalState = (options: UseModalStateOptions): UseModalStateReturn => {
   const { onNewSegmentModalChange } = options
 
-  // Segment detail modal state
   const [currSegment, setCurrSegment] = useState<CurrSegmentType>({ showModal: false })
-
-  // Child segment detail modal state
   const [currChildChunk, setCurrChildChunk] = useState<CurrChildChunkType>({ showModal: false })
   const [currChunkId, setCurrChunkId] = useState('')
-
-  // New child segment modal state
   const [showNewChildSegmentModal, setShowNewChildSegmentModal] = useState(false)
-
-  // Regeneration modal state
-  const [isRegenerationModalOpen, setIsRegenerationModalOpen] = useState(false)
-
-  // Display state
   const [fullScreen, setFullScreen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(true)
 
-  // Segment detail handlers
   const onClickCard = useCallback((detail: SegmentDetailModel, isEditMode = false) => {
+    setCurrChildChunk({ showModal: false })
     setCurrSegment({ segInfo: detail, showModal: true, isEditMode })
   }, [])
 
@@ -74,8 +55,8 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
     setFullScreen(false)
   }, [])
 
-  // Child segment detail handlers
   const onClickSlice = useCallback((detail: ChildChunkDetail) => {
+    setCurrSegment({ showModal: false })
     setCurrChildChunk({ childChunkInfo: detail, showModal: true })
     setCurrChunkId(detail.segment_id)
   }, [])
@@ -85,13 +66,11 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
     setFullScreen(false)
   }, [])
 
-  // New segment modal handlers
   const onCloseNewSegmentModal = useCallback(() => {
     onNewSegmentModalChange(false)
     setFullScreen(false)
   }, [onNewSegmentModalChange])
 
-  // New child segment modal handlers
   const handleAddNewChildChunk = useCallback((parentChunkId: string) => {
     setShowNewChildSegmentModal(true)
     setCurrChunkId(parentChunkId)
@@ -102,7 +81,6 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
     setFullScreen(false)
   }, [])
 
-  // Display handlers - handles both direct calls and click events
   const toggleFullScreen = useCallback(() => {
     setFullScreen(prev => !prev)
   }, [])
@@ -112,29 +90,20 @@ export const useModalState = (options: UseModalStateOptions): UseModalStateRetur
   }, [])
 
   return {
-    // Segment detail modal
     currSegment,
     onClickCard,
     onCloseSegmentDetail,
-    // Child segment detail modal
     currChildChunk,
     currChunkId,
     onClickSlice,
     onCloseChildSegmentDetail,
-    // New segment modal
     onCloseNewSegmentModal,
-    // New child segment modal
     showNewChildSegmentModal,
     handleAddNewChildChunk,
     onCloseNewChildChunkModal,
-    // Regeneration modal
-    isRegenerationModalOpen,
-    setIsRegenerationModalOpen,
-    // Full screen
     fullScreen,
     toggleFullScreen,
     setFullScreen,
-    // Collapsed state
     isCollapsed,
     toggleCollapsed,
   }

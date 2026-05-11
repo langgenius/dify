@@ -73,7 +73,7 @@ def payload_patch():
 
 
 class TestTagListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = TagListApi()
         method = unwrap(api.get)
 
@@ -124,7 +124,7 @@ class TestTagListApi:
         assert result["name"] == "test-tag"
         assert result["binding_count"] == "0"
 
-    def test_post_forbidden(self, app, readonly_user, payload_patch):
+    def test_post_forbidden(self, app: Flask, readonly_user, payload_patch):
         api = TagListApi()
         method = unwrap(api.post)
 
@@ -170,7 +170,7 @@ class TestTagUpdateDeleteApi:
         assert status == 200
         assert result["binding_count"] == "3"
 
-    def test_patch_forbidden(self, app, readonly_user, payload_patch):
+    def test_patch_forbidden(self, app: Flask, readonly_user, payload_patch):
         api = TagUpdateDeleteApi()
         method = unwrap(api.patch)
 
@@ -231,7 +231,7 @@ class TestTagBindingCollectionApi:
         assert status == 200
         assert result["result"] == "success"
 
-    def test_create_forbidden(self, app, readonly_user, payload_patch):
+    def test_create_forbidden(self, app: Flask, readonly_user, payload_patch):
         api = TagBindingCollectionApi()
         method = unwrap(api.post)
 
@@ -275,7 +275,7 @@ class TestTagBindingRemoveApi:
         assert status == 200
         assert result["result"] == "success"
 
-    def test_remove_forbidden(self, app, readonly_user, payload_patch):
+    def test_remove_forbidden(self, app: Flask, readonly_user, payload_patch):
         api = TagBindingRemoveApi()
         method = unwrap(api.post)
 

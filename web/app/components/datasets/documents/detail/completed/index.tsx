@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type { ProcessStatus } from '../segment-add'
 import type { SegmentListContextValue } from './segment-list-context'
+import type { SegmentImportStatus } from '@/types/dataset'
 import { useCallback, useMemo, useState } from 'react'
 import Divider from '@/app/components/base/divider'
 import Pagination from '@/app/components/base/pagination'
@@ -13,7 +13,9 @@ import {
 import { useInvalid } from '@/service/use-base'
 import { useDocumentContext } from '../context'
 import BatchAction from './common/batch-action'
-import { DrawerGroup, FullDocModeContent, GeneralModeContent, MenuBar } from './components'
+import { DrawerGroup } from './components/drawer-group'
+import MenuBar from './components/menu-bar'
+import { FullDocModeContent, GeneralModeContent } from './components/segment-list-content'
 import {
   useChildSegmentData,
   useModalState,
@@ -32,7 +34,7 @@ type ICompletedProps = {
   embeddingAvailable: boolean
   showNewSegmentModal: boolean
   onNewSegmentModalChange: (state: boolean) => void
-  importStatus: ProcessStatus | string | undefined
+  importStatus: SegmentImportStatus | undefined
   archived?: boolean
 }
 
@@ -225,8 +227,6 @@ const Completed: FC<ICompletedProps> = ({
           currSegment={modalState.currSegment}
           onCloseSegmentDetail={modalState.onCloseSegmentDetail}
           onUpdateSegment={segmentListDataHook.handleUpdateSegment}
-          isRegenerationModalOpen={modalState.isRegenerationModalOpen}
-          setIsRegenerationModalOpen={modalState.setIsRegenerationModalOpen}
           showNewSegmentModal={showNewSegmentModal}
           onCloseNewSegmentModal={modalState.onCloseNewSegmentModal}
           onSaveNewSegment={segmentListDataHook.resetList}

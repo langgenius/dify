@@ -158,8 +158,9 @@ describe('InputCopy', () => {
     it('should have cursor-pointer on clickable area', async () => {
       await renderAndFlush(<InputCopy value="test" />)
       const valueText = screen.getByText('test')
-      const clickableArea = valueText.closest('div[class*="cursor-pointer"]')
+      const clickableArea = valueText.closest('button')
       expect(clickableArea).toBeInTheDocument()
+      expect(clickableArea?.className).toContain('cursor-pointer')
     })
   })
 
@@ -188,8 +189,9 @@ describe('InputCopy', () => {
     it('should have truncate class for long values', async () => {
       await renderAndFlush(<InputCopy value="very-long-api-key-value-that-might-overflow" />)
       const valueText = screen.getByText('very-long-api-key-value-that-might-overflow')
-      const container = valueText.closest('div[class*="truncate"]')
+      const container = valueText.closest('button')
       expect(container).toBeInTheDocument()
+      expect(container?.className).toContain('truncate')
     })
 
     it('should have text-secondary color on value', async () => {
@@ -201,8 +203,9 @@ describe('InputCopy', () => {
     it('should have absolute positioning for overlay', async () => {
       await renderAndFlush(<InputCopy value="test" />)
       const valueText = screen.getByText('test')
-      const container = valueText.closest('div[class*="absolute"]')
+      const container = valueText.closest('button')
       expect(container).toBeInTheDocument()
+      expect(container?.className).toContain('absolute')
     })
   })
 

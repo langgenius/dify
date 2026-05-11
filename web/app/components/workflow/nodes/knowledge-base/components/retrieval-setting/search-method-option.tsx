@@ -17,7 +17,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 import {
   HybridSearchModeEnum,
@@ -174,10 +174,13 @@ const SearchMethodOption = ({
                       disabled={readonly}
                     />
                     {t('modelProvider.rerankModel.key', { ns: 'common' })}
-                    <Tooltip
-                      triggerClassName="ml-0.5 shrink-0 w-3.5 h-3.5"
-                      popupContent={t('modelProvider.rerankModel.tip', { ns: 'common' })}
-                    />
+                    <Infotip
+                      aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                      className="ml-0.5 h-3.5 w-3.5 shrink-0"
+                      iconClassName="h-3.5 w-3.5"
+                    >
+                      {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                    </Infotip>
                   </div>
                 )
               }

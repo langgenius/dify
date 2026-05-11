@@ -39,8 +39,6 @@ from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
 
 class BaseConversationQuery(BaseModel):
     keyword: str | None = Field(default=None, description="Search keyword")
@@ -70,15 +68,6 @@ class ChatConversationQuery(BaseConversationQuery):
     )
 
 
-console_ns.schema_model(
-    CompletionConversationQuery.__name__,
-    CompletionConversationQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    ChatConversationQuery.__name__,
-    ChatConversationQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
 register_schema_models(
     console_ns,
     CompletionConversationQuery,
@@ -89,6 +78,8 @@ register_schema_models(
     ConversationWithSummaryPaginationResponse,
     ConversationDetailResponse,
     ResultResponse,
+    CompletionConversationQuery,
+    ChatConversationQuery,
 )
 
 
@@ -107,7 +98,7 @@ class CompletionConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))
 
         query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
@@ -221,7 +212,7 @@ class ChatConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))
 
         subquery = (
             sa.select(Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id"))
