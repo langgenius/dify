@@ -97,33 +97,30 @@ def _create_node_execution_from_domain(
     # Serialize complex data as JSON
     json_converter = WorkflowRuntimeTypeConverter()
     node_execution = WorkflowNodeExecutionModel(
-
-   id = execution.id
-   ,tenant_id = tenant_id
-   ,app_id = app_id
-   ,workflow_id = execution.workflow_id
-   ,triggered_from = triggered_from
-   ,workflow_run_id = execution.workflow_execution_id
-   ,index = execution.index
-   ,predecessor_node_id = execution.predecessor_node_id
-   ,node_id = execution.node_id
-   ,node_type = execution.node_type
-   ,title = execution.title
-   ,node_execution_id = execution.node_execution_id
-    ,inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
-    ,process_data = (
-        json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
-    )
-    ,outputs = (
-        json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
-    )
-  ,status = execution.status
-  ,error = execution.error
-  ,elapsed_time = execution.elapsed_time
-  ,created_by_role = creator_user_role
-  ,created_by = creator_user_id
-  ,created_at = execution.created_at
-  ,finished_at = execution.finished_at
+        id=execution.id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_id=execution.workflow_id,
+        triggered_from=triggered_from,
+        workflow_run_id=execution.workflow_execution_id,
+        index=execution.index,
+        predecessor_node_id=execution.predecessor_node_id,
+        node_id=execution.node_id,
+        node_type=execution.node_type,
+        title=execution.title,
+        node_execution_id=execution.node_execution_id,
+        inputs=json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}",
+        process_data=(
+            json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
+        ),
+        outputs=(json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"),
+        status=execution.status,
+        error=execution.error,
+        elapsed_time=execution.elapsed_time,
+        created_by_role=creator_user_role,
+        created_by=creator_user_id,
+        created_at=execution.created_at,
+        finished_at=execution.finished_at,
     )
 
     # Convert metadata enum keys to strings for JSON serialization

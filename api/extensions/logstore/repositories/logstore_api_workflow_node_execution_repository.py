@@ -48,18 +48,18 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         app_id=data.get("app_id") or "",
         workflow_id=data.get("workflow_id") or "",
         # Optional fields
-        workflow_run_id = data.get("workflow_run_id")
-        ,predecessor_node_id = data.get("predecessor_node_id")
-        ,node_execution_id = data.get("node_execution_id")
-        ,inputs = data.get("inputs")
-        ,process_data = data.get("process_data")
-        ,outputs = data.get("outputs")
-        ,error = data.get("error")
-        ,execution_metadata = data.get("execution_metadata")
-        ,node_id = data.get("node_id") or ""
-        ,node_type = data.get("node_type") or ""
-        ,status = WorkflowNodeExecutionStatus(data.get("status") or "running")
-        ,title = data.get("title") or ""
+        workflow_run_id=data.get("workflow_run_id"),
+        predecessor_node_id=data.get("predecessor_node_id"),
+        node_execution_id=data.get("node_execution_id"),
+        inputs=data.get("inputs"),
+        process_data=data.get("process_data"),
+        outputs=data.get("outputs"),
+        error=data.get("error"),
+        execution_metadata=data.get("execution_metadata"),
+        node_id=data.get("node_id") or "",
+        node_type=data.get("node_type") or "",
+        status=WorkflowNodeExecutionStatus(data.get("status") or "running"),
+        title=data.get("title") or "",
     )
     triggered_from_val = data.get("triggered_from")
 
@@ -84,7 +84,6 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
 
     model.index = safe_int(data.get("index", 0))
     model.elapsed_time = safe_float(data.get("elapsed_time", 0))
-
 
     # Handle datetime fields
     created_at = data.get("created_at")
