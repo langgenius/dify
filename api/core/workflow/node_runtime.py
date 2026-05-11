@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.file_access import DatabaseFileAccessController
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelInstance
@@ -358,6 +359,7 @@ class _WorkflowToolRuntimeBinding:
 
     tool: Tool
     conversation_id: str | None = None
+    parent_trace_context: ParentTraceContext | None = None
 
 
 class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
@@ -398,7 +400,25 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         conversation_id = (
             None if variable_pool is None else get_system_text(variable_pool, SystemVariableKey.CONVERSATION_ID)
         )
-        return ToolRuntimeHandle(raw=_WorkflowToolRuntimeBinding(tool=tool_runtime, conversation_id=conversation_id))
+        parent_trace_context: ParentTraceContext | None = None
+        if self._is_workflow_tool_provider(node_data):
+            outer_workflow_run_id = (
+                None
+                if variable_pool is None
+                else get_system_text(variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
+            )
+            if isinstance(outer_workflow_run_id, str) and isinstance(node_execution_id, str):
+                parent_trace_context = ParentTraceContext(
+                    parent_workflow_run_id=outer_workflow_run_id,
+                    parent_node_execution_id=node_execution_id,
+                )
+        return ToolRuntimeHandle(
+            raw=_WorkflowToolRuntimeBinding(
+                tool=tool_runtime,
+                conversation_id=conversation_id,
+                parent_trace_context=parent_trace_context,
+            )
+        )
 
     def get_runtime_parameters(
         self,
@@ -422,6 +442,13 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         runtime_binding = self._binding_from_handle(tool_runtime)
         tool = runtime_binding.tool
         callback = DifyWorkflowCallbackHandler()
+        if runtime_binding.parent_trace_context and hasattr(tool, "set_parent_trace_context"):
+            tool.set_parent_trace_context(
+                parent_workflow_run_id=runtime_binding.parent_trace_context.parent_workflow_run_id,
+                parent_node_execution_id=runtime_binding.parent_trace_context.parent_node_execution_id,
+            )
+        elif hasattr(tool, "clear_parent_trace_context"):
+            tool.clear_parent_trace_context()
 
         try:
             messages = ToolEngine.generic_invoke(
@@ -513,6 +540,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             tool_configurations=tool_configurations,
             credential_id=node_data.credential_id,
         )
+
+    @staticmethod
+    def _is_workflow_tool_provider(node_data: ToolNodeData) -> bool:
+        return node_data.provider_type.value == CoreToolProviderType.WORKFLOW.value
 
     def _adapt_messages(
         self,

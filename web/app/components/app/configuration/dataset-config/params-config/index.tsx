@@ -131,7 +131,7 @@ const ParamsConfig = ({
               }
             }}
           >
-            <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none text-left align-middle sm:min-w-[528px]">
+            <DialogContent className="w-full max-w-[480px] border-none text-left align-middle sm:min-w-[528px]">
 
               <ConfigContent
                 datasetConfigs={tempDataSetConfigs}

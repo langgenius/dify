@@ -122,7 +122,7 @@ const Authorization: FC<Props> = ({
           onHide()
       }}
     >
-      <DialogContent className="overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="border-none text-left align-middle">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(`${i18nPrefix}.authorization`, { ns: 'workflow' })}
         </DialogTitle>
