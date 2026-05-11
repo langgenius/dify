@@ -11,7 +11,7 @@ import time
 from collections.abc import Sequence
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, TypedDict, cast
+from typing import Any, ClassVar, TypedDict, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -441,23 +441,27 @@ class Dataset(Base):
         return f"{dify_config.VECTOR_INDEX_NAME_PREFIX}_{normalized_dataset_id}_Node"
 
 
-class DatasetProcessRule(Base):  # bug
+class DatasetProcessRule(TypeBase):
     __tablename__ = "dataset_process_rules"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_process_rule_pkey"),
         sa.Index("dataset_process_rule_dataset_id_idx", "dataset_id"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    mode = mapped_column(EnumText(ProcessRuleMode, length=255), nullable=False, server_default=sa.text("'automatic'"))
-    rules = mapped_column(LongText, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default_factory=lambda: str(uuid4()), init=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    mode: Mapped[ProcessRuleMode] = mapped_column(
+        EnumText(ProcessRuleMode, length=255), nullable=False, server_default=sa.text("'automatic'")
+    )
+    rules: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     MODES = ["automatic", "custom", "hierarchical"]
     PRE_PROCESSING_RULES = ["remove_stopwords", "remove_extra_spaces", "remove_urls_emails"]
-    AUTOMATIC_RULES: AutomaticRulesConfig = {
+    AUTOMATIC_RULES: ClassVar[AutomaticRulesConfig] = {
         "pre_processing_rules": [
             {"id": "remove_extra_spaces", "enabled": True},
             {"id": "remove_urls_emails", "enabled": False},
