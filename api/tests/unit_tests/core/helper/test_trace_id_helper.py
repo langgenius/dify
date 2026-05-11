@@ -1,6 +1,7 @@
 import pytest
 
 from core.helper.trace_id_helper import (
+    ParentTraceContext,
     extract_external_trace_id_from_args,
     extract_parent_trace_context_from_args,
     get_external_trace_id,
@@ -101,10 +102,10 @@ class TestTraceIdHelper:
                     }
                 },
                 {
-                    "parent_trace_context": {
-                        "parent_workflow_run_id": "workflow-run-1",
-                        "parent_node_execution_id": "node-execution-1",
-                    }
+                    "parent_trace_context": ParentTraceContext(
+                        parent_workflow_run_id="workflow-run-1",
+                        parent_node_execution_id="node-execution-1",
+                    )
                 },
             ),
             (
@@ -147,3 +148,21 @@ class TestTraceIdHelper:
     def test_extract_parent_trace_context_from_args(self, args, expected):
         """Test extraction of parent_trace_context from args mapping"""
         assert extract_parent_trace_context_from_args(args) == expected
+
+    def test_extract_parent_trace_context_returns_typed_context(self):
+        """Parent trace context is parsed into a Pydantic value object."""
+        result = extract_parent_trace_context_from_args(
+            {
+                "parent_trace_context": {
+                    "parent_workflow_run_id": "workflow-run-1",
+                    "parent_node_execution_id": "node-execution-1",
+                }
+            }
+        )
+
+        assert result == {
+            "parent_trace_context": ParentTraceContext(
+                parent_workflow_run_id="workflow-run-1",
+                parent_node_execution_id="node-execution-1",
+            )
+        }

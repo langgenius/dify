@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
-from core.helper.trace_id_helper import extract_parent_trace_context_from_args
+from core.helper.trace_id_helper import ParentTraceContext, extract_parent_trace_context_from_args
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
@@ -37,7 +37,7 @@ class WorkflowTool(Tool):
     Workflow tool.
     """
 
-    _parent_trace_context: dict[str, str] | None
+    _parent_trace_context: ParentTraceContext | None
 
     def __init__(
         self,
@@ -214,7 +214,7 @@ class WorkflowTool(Tool):
             version=self.version,
             label=self.label,
         )
-        forked._parent_trace_context = self._parent_trace_context.copy() if self._parent_trace_context else None
+        forked._parent_trace_context = self._parent_trace_context.model_copy() if self._parent_trace_context else None
         return forked
 
     def set_parent_trace_context(
@@ -224,10 +224,10 @@ class WorkflowTool(Tool):
         parent_node_execution_id: str,
     ) -> None:
         """Attach outer workflow trace context without exposing it as tool input."""
-        self._parent_trace_context = {
-            "parent_workflow_run_id": parent_workflow_run_id,
-            "parent_node_execution_id": parent_node_execution_id,
-        }
+        self._parent_trace_context = ParentTraceContext(
+            parent_workflow_run_id=parent_workflow_run_id,
+            parent_node_execution_id=parent_node_execution_id,
+        )
 
     def clear_parent_trace_context(self) -> None:
         """Remove parent trace context before invoking this tool outside a nested workflow."""

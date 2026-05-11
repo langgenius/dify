@@ -168,7 +168,7 @@ def test_workflow_tool_passes_parent_trace_context_from_runtime(monkeypatch: pyt
     list(tool.invoke("test_user", {}))
 
     call_kwargs = generate_mock.call_args.kwargs
-    assert call_kwargs["args"]["parent_trace_context"] == {
+    assert call_kwargs["args"]["parent_trace_context"].model_dump() == {
         "parent_workflow_run_id": "outer-workflow-run-1",
         "parent_node_execution_id": "outer-node-execution-1",
     }
@@ -219,7 +219,7 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(monkeypat
     call_kwargs = generate_mock.call_args.kwargs
     assert call_kwargs["args"]["inputs"]["outer_workflow_run_id"] == "user-workflow-input"
     assert call_kwargs["args"]["inputs"]["outer_node_execution_id"] == "user-node-input"
-    assert call_kwargs["args"]["parent_trace_context"] == {
+    assert call_kwargs["args"]["parent_trace_context"].model_dump() == {
         "parent_workflow_run_id": "outer-workflow-run-1",
         "parent_node_execution_id": "outer-node-execution-1",
     }

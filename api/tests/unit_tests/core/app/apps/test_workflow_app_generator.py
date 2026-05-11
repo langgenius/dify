@@ -87,12 +87,11 @@ def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
     )
 
     assert result == {"data": {}}
-    assert captured["workflow_app_generate_entity_kwargs"]["extras"] == {
-        "external_trace_id": "trace-1",
-        "parent_trace_context": {
-            "parent_workflow_run_id": "outer-workflow-run-1",
-            "parent_node_execution_id": "outer-node-execution-1",
-        },
+    extras = captured["workflow_app_generate_entity_kwargs"]["extras"]
+    assert extras["external_trace_id"] == "trace-1"
+    assert extras["parent_trace_context"].model_dump() == {
+        "parent_workflow_run_id": "outer-workflow-run-1",
+        "parent_node_execution_id": "outer-node-execution-1",
     }
 
 

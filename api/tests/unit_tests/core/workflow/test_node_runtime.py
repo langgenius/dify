@@ -351,7 +351,7 @@ def test_dify_tool_node_runtime_injects_outer_workflow_run_id_for_workflow_tools
     )
 
     assert handle.raw.tool is runtime_tool
-    assert handle.raw.parent_trace_context == {
+    assert handle.raw.parent_trace_context.model_dump() == {
         "parent_workflow_run_id": "outer-workflow-run-id",
         "parent_node_execution_id": "node-execution-id",
     }

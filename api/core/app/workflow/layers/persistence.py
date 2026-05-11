@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
@@ -408,6 +409,8 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             extras = self._application_generate_entity.extras
             external_trace_id = extras.get("external_trace_id")
             parent_trace_context = extras.get("parent_trace_context")
+            if isinstance(parent_trace_context, ParentTraceContext):
+                parent_trace_context = parent_trace_context.model_dump()
 
         trace_task = TraceTask(
             TraceTaskName.WORKFLOW_TRACE,

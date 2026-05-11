@@ -180,7 +180,7 @@ def test_get_runtime_stores_parent_trace_context_for_workflow_tools(
             node_execution_id="node-execution-id",
         )
 
-    assert tool_runtime.raw.parent_trace_context == {
+    assert tool_runtime.raw.parent_trace_context.model_dump() == {
         "parent_workflow_run_id": "workflow-run-id",
         "parent_node_execution_id": "node-execution-id",
     }
