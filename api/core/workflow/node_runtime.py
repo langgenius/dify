@@ -378,6 +378,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         node_id: str,
         node_data: ToolNodeData,
         variable_pool,
+        node_execution_id: str | None = None,
     ) -> ToolRuntimeHandle:
         try:
             tool_runtime = ToolManager.get_workflow_tool_runtime(

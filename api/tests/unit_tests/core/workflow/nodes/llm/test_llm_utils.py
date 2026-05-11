@@ -613,7 +613,7 @@ def test_combine_message_content_with_role_handles_all_supported_roles():
         SystemPromptMessage(content=contents)
     )
 
-    with pytest.raises(NotImplementedError, match="Role custom is not supported"):
+    with pytest.raises(AssertionError, match="Expected code to be unreachable"):
         llm_utils.combine_message_content_with_role(contents=contents, role="custom")  # type: ignore[arg-type]
 
 
