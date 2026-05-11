@@ -6,9 +6,9 @@ module so worker and beat processes share the same runtime assumptions as the
 API server.
 """
 
-from bootstrap.gevent_compat import apply_gevent_third_party_patches
-from bootstrap.gevent_compat import is_celery_gevent_worker_process
-from bootstrap.gevent_compat import require_gevent_monkey_patched
+from _dify_gevent_boostrap.gevent_compat import apply_gevent_third_party_patches
+from _dify_gevent_boostrap.gevent_compat import is_celery_gevent_worker_process
+from _dify_gevent_boostrap.gevent_compat import require_gevent_monkey_patched
 
 if is_celery_gevent_worker_process():
     require_gevent_monkey_patched("Celery gevent worker")

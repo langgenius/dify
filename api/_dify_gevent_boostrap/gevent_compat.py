@@ -12,15 +12,15 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
-_patches_applied = False
+_third_party_modules_patched = False
 _required_patched_modules = ("socket", "threading", "queue")
 
 
 def apply_gevent_third_party_patches() -> None:
     """Apply idempotent third-party patches required by the gevent runtime."""
-    global _patches_applied  # pylint: disable=global-statement
+    global _third_party_modules_patched  # pylint: disable=global-statement
 
-    if _patches_applied:
+    if _third_party_modules_patched:
         return
 
     import psycogreen.gevent as pscycogreen_gevent  # type: ignore
@@ -31,7 +31,7 @@ def apply_gevent_third_party_patches() -> None:
     pscycogreen_gevent.patch_psycopg()
     print("psycopg2 patched with gevent.", flush=True)  # noqa: T201
 
-    _patches_applied = True
+    _third_party_modules_patched = True
 
 
 def require_gevent_monkey_patched(entrypoint: str) -> None:
@@ -49,7 +49,7 @@ def require_gevent_monkey_patched(entrypoint: str) -> None:
         file=sys.stderr,
         flush=True,
     )
-    raise SystemExit(1)
+    sys.exit(1)
 
 
 def is_celery_gevent_worker_process(argv: Sequence[str] | None = None) -> bool:
