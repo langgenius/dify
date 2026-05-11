@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '../../../billing/type'
-import PlanBadge from '../index'
+import { PlanBadge } from '../index'
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),

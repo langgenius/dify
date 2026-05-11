@@ -41,7 +41,7 @@ function PlanBadgeShell({
   )
 }
 
-function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick }: PlanBadgeProps) {
+export function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick }: PlanBadgeProps) {
   const { isFetchedPlan, isEducationWorkspace } = useProviderContext()
   const { t } = useTranslation()
 
@@ -95,5 +95,3 @@ function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick }: Plan
   }
   return null
 }
-
-export default PlanBadge
