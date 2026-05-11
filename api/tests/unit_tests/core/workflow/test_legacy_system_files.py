@@ -78,9 +78,7 @@ def test_resolve_legacy_sys_files_compat_variable_returns_userinput_files_target
         variable_name=_LEGACY_VARIABLE_NAME,
     )
     assert (
-        resolve_legacy_sys_files_compat_variable(
-            {"nodes": [{"data": {"value": _LEGACY_ALIAS_SELECTOR}}]}
-        )
+        resolve_legacy_sys_files_compat_variable({"nodes": [{"data": {"value": _LEGACY_ALIAS_SELECTOR}}]})
         == compat_variable
     )
 

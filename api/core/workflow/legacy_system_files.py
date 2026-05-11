@@ -76,11 +76,11 @@ def resolve_legacy_sys_files_compat_variable(graph: Mapping[str, Any]) -> Legacy
     nodes = graph.get("nodes")
     if not isinstance(nodes, list):
         return None
-    has_legacy_reference = (
-        _may_contain_legacy_sys_files_reference(nodes) and _contains_legacy_sys_files_reference(nodes)
+    has_legacy_reference = _may_contain_legacy_sys_files_reference(nodes) and _contains_legacy_sys_files_reference(
+        nodes
     )
-    has_userinput_reference = (
-        _may_contain_userinput_files_reference(nodes) and _contains_userinput_files_reference(nodes)
+    has_userinput_reference = _may_contain_userinput_files_reference(nodes) and _contains_userinput_files_reference(
+        nodes
     )
     if not (has_legacy_reference or has_userinput_reference):
         return None
