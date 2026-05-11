@@ -21,10 +21,27 @@ import { useInvitationCheck } from '@/service/use-common'
 import { timezones } from '@/utils/timezone'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
-type SelectOption = {
+type LanguageSelectOption = {
+  value: Locale
+  name: string
+}
+
+type TimezoneSelectOption = {
   value: string
   name: string
 }
+
+const LANGUAGE_OPTIONS: LanguageSelectOption[] = languages
+  .filter(item => item.supported)
+  .map(item => ({
+    value: item.value,
+    name: item.name,
+  }))
+
+const TIMEZONE_OPTIONS: TimezoneSelectOption[] = timezones.map(item => ({
+  value: String(item.value),
+  name: item.name,
+}))
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
@@ -35,9 +52,20 @@ export default function InviteSettingsPage() {
   const [name, setName] = useState('')
   const [language, setLanguage] = useState(LanguagesSupported[0])
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
-  const languageOptions: SelectOption[] = languages.filter(item => item.supported)
-  const selectedLanguage = languageOptions.find(item => item.value === language)
-  const selectedTimezone = timezones.find(item => item.value === timezone)
+  const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
+  const selectedTimezone = TIMEZONE_OPTIONS.find(item => item.value === timezone)
+
+  const handleLanguageChange = (nextValue: string | null) => {
+    const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
+    if (nextLanguage)
+      setLanguage(nextLanguage.value)
+  }
+
+  const handleTimezoneChange = (nextValue: string | null) => {
+    const nextTimezone = TIMEZONE_OPTIONS.find(item => item.value === nextValue)
+    if (nextTimezone)
+      setTimezone(nextTimezone.value)
+  }
 
   const checkParams = {
     url: '/activate/check',
@@ -123,23 +151,19 @@ export default function InviteSettingsPage() {
           </div>
         </div>
         <div className="mb-5">
-          <label htmlFor="name" className="my-2 system-md-semibold text-text-secondary">
+          <label htmlFor="interface_language" className="my-2 system-md-semibold text-text-secondary">
             {t('interfaceLanguage', { ns: 'login' })}
           </label>
           <div className="mt-1">
             <Select
               value={selectedLanguage?.value ?? null}
-              onValueChange={(nextValue) => {
-                if (!nextValue)
-                  return
-                setLanguage(nextValue as Locale)
-              }}
+              onValueChange={handleLanguageChange}
             >
-              <SelectTrigger size="large">
+              <SelectTrigger id="interface_language" size="large">
                 {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
               </SelectTrigger>
               <SelectContent>
-                {languageOptions.map(item => (
+                {LANGUAGE_OPTIONS.map(item => (
                   <SelectItem key={item.value} value={item.value}>
                     <SelectItemText>{item.name}</SelectItemText>
                     <SelectItemIndicator />
@@ -156,19 +180,15 @@ export default function InviteSettingsPage() {
           </label>
           <div className="mt-1">
             <Select
-              value={selectedTimezone ? String(selectedTimezone.value) : null}
-              onValueChange={(nextValue) => {
-                if (!nextValue)
-                  return
-                setTimezone(nextValue as string)
-              }}
+              value={selectedTimezone?.value ?? null}
+              onValueChange={handleTimezoneChange}
             >
-              <SelectTrigger size="large">
+              <SelectTrigger id="timezone" size="large">
                 {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
               </SelectTrigger>
               <SelectContent>
-                {timezones.map(item => (
-                  <SelectItem key={item.value} value={String(item.value)}>
+                {TIMEZONE_OPTIONS.map(item => (
+                  <SelectItem key={item.value} value={item.value}>
                     <SelectItemText>{item.name}</SelectItemText>
                     <SelectItemIndicator />
                   </SelectItem>

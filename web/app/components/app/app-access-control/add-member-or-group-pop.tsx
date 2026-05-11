@@ -119,14 +119,40 @@ function SelectedGroupsBreadCrumb() {
   const handleReset = useCallback(() => {
     setSelectedGroupsForBreadcrumb([])
   }, [setSelectedGroupsForBreadcrumb])
+  const hasBreadcrumb = selectedGroupsForBreadcrumb.length > 0
+
   return (
     <div className="flex h-7 items-center gap-x-0.5 px-2 py-0.5">
-      <span className={cn('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'cursor-pointer text-text-accent')} onClick={handleReset}>{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
+      {hasBreadcrumb
+        ? (
+            <button
+              type="button"
+              className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              onClick={handleReset}
+            >
+              {t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}
+            </button>
+          )
+        : (
+            <span className="system-xs-regular text-text-tertiary">{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
+          )}
       {selectedGroupsForBreadcrumb.map((group, index) => {
+        const isLastGroup = index === selectedGroupsForBreadcrumb.length - 1
+
         return (
           <div key={index} className="flex items-center gap-x-0.5 system-xs-regular text-text-tertiary">
             <span>/</span>
-            <span className={index === selectedGroupsForBreadcrumb.length - 1 ? '' : 'cursor-pointer text-text-accent'} onClick={() => handleBreadCrumbClick(index)}>{group.name}</span>
+            {isLastGroup
+              ? <span>{group.name}</span>
+              : (
+                  <button
+                    type="button"
+                    className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                    onClick={() => handleBreadCrumbClick(index)}
+                  >
+                    {group.name}
+                  </button>
+                )}
           </div>
         )
       })}

@@ -10,13 +10,13 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
 import ImageList from '@/app/components/datasets/common/image-list'
 import { ChunkingMode } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
@@ -182,35 +182,41 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                     >
                       {!archived && (
                         <>
-                          <Tooltip
-                            popupContent="Edit"
-                            popupClassName="text-text-secondary system-xs-medium"
-                          >
-                            <div
-                              data-testid="segment-edit-button"
-                              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onClickEdit?.()
-                              }}
-                            >
-                              <RiEditLine className="h-4 w-4 text-text-tertiary" />
-                            </div>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={(
+                                <button
+                                  type="button"
+                                  aria-label={t('operation.edit', { ns: 'common' })}
+                                  className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onClickEdit?.()
+                                  }}
+                                >
+                                  <RiEditLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                                </button>
+                              )}
+                            />
+                            <TooltipContent className="system-xs-medium text-text-secondary">Edit</TooltipContent>
                           </Tooltip>
-                          <Tooltip
-                            popupContent="Delete"
-                            popupClassName="text-text-secondary system-xs-medium"
-                          >
-                            <div
-                              data-testid="segment-delete-button"
-                              className="group/delete flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-state-destructive-hover"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowModal(true)
-                              }}
-                            >
-                              <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover/delete:text-text-destructive" />
-                            </div>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={(
+                                <button
+                                  type="button"
+                                  aria-label={t('operation.delete', { ns: 'common' })}
+                                  className="group/delete flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-destructive-hover"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setShowModal(true)
+                                  }}
+                                >
+                                  <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover/delete:text-text-destructive" aria-hidden="true" />
+                                </button>
+                              )}
+                            />
+                            <TooltipContent className="system-xs-medium text-text-secondary">Delete</TooltipContent>
                           </Tooltip>
                           <Divider type="vertical" className="h-3.5 bg-divider-regular" />
                         </>
@@ -261,7 +267,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
           ? (
               <button
                 type="button"
-                className="mt-0.5 mb-2 system-xs-semibold-uppercase text-text-accent"
+                className="mt-0.5 mb-2 border-none bg-transparent p-0 text-left system-xs-semibold-uppercase text-text-accent"
                 onClick={() => onClick?.()}
               >
                 {t('operation.viewMore', { ns: 'common' })}

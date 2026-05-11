@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { MetadataItemWithValue } from '../types'
+import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
@@ -29,7 +29,7 @@ type Props = {
   onChange?: (item: MetadataItemWithValue) => void
   onDelete?: (item: MetadataItemWithValue) => void
   onSelect?: (item: MetadataItemWithValue) => void
-  onAdd?: (item: MetadataItemWithValue) => void
+  onAdd?: (item: BuiltInMetadataItem) => void
 }
 
 const InfoGroup: FC<Props> = ({
@@ -99,9 +99,14 @@ const InfoGroup: FC<Props> = ({
                       value={item.value}
                       onChange={value => onChange?.({ ...item, value })}
                     />
-                    <div className="shrink-0 cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
-                      <RiDeleteBinLine className="size-4" onClick={() => onDelete?.(item)} />
-                    </div>
+                    <button
+                      type="button"
+                      aria-label={t('operation.remove', { ns: 'common' })}
+                      className="shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                      onClick={() => onDelete?.(item)}
+                    >
+                      <RiDeleteBinLine className="size-4" aria-hidden="true" />
+                    </button>
                   </div>
                 )
               : (<div className="py-1 system-xs-regular text-text-secondary">{(item.value && item.type === DataType.time) ? formatTimestamp((item.value as number), t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : item.value}</div>)}

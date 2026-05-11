@@ -45,9 +45,10 @@ const SelectMetadata: FC<Props> = ({
         {list.map((item) => {
           const Icon = getIcon(item.type)
           return (
-            <div
+            <button
+              type="button"
               key={item.id}
-              className="mx-1 flex h-6 cursor-pointer items-center justify-between rounded-md px-3 hover:bg-state-base-hover"
+              className="mx-1 flex h-6 cursor-pointer items-center justify-between rounded-md border-none bg-transparent px-3 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={() => onSelect({
                 id: item.id,
                 name: item.name,
@@ -55,27 +56,35 @@ const SelectMetadata: FC<Props> = ({
               })}
             >
               <div className="flex h-full w-0 grow items-center text-text-secondary">
-                <Icon className="mr-[5px] size-3.5 shrink-0" />
+                <Icon className="mr-[5px] size-3.5 shrink-0" aria-hidden="true" />
                 <div className="w-0 grow truncate system-sm-medium">{item.name}</div>
               </div>
               <div className="ml-1 shrink-0 system-xs-regular text-text-tertiary">
                 {item.type}
               </div>
-            </div>
+            </button>
           )
         })}
       </div>
       <div className="mt-1 flex justify-between border-t border-divider-subtle p-1">
-        <div className="flex h-6 cursor-pointer items-center space-x-1 rounded-md px-3 text-text-secondary hover:bg-state-base-hover" onClick={onNew}>
-          <RiAddLine className="size-3.5" />
+        <button
+          type="button"
+          className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-none bg-transparent px-3 text-left text-text-secondary hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={onNew}
+        >
+          <RiAddLine className="size-3.5" aria-hidden="true" />
           <div className="system-sm-medium">{t(`${i18nPrefix}.newAction`, { ns: 'dataset' })}</div>
-        </div>
+        </button>
         <div className="flex h-6 items-center text-text-secondary">
           <div className="mr-[3px] h-3 w-px bg-divider-regular"></div>
-          <div className="flex h-full cursor-pointer items-center rounded-md px-1.5 hover:bg-state-base-hover" onClick={onManage}>
+          <button
+            type="button"
+            className="flex h-full cursor-pointer items-center rounded-md border-none bg-transparent px-1.5 text-left text-text-secondary hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={onManage}
+          >
             <div className="mr-1 system-sm-medium">{t(`${i18nPrefix}.manageAction`, { ns: 'dataset' })}</div>
-            <RiArrowRightUpLine className="size-3.5" />
-          </div>
+            <RiArrowRightUpLine className="size-3.5" aria-hidden="true" />
+          </button>
         </div>
       </div>
     </div>

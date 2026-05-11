@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource
 from models.model import App, Conversation, EndUser, Message, MessageAnnotation
@@ -22,7 +23,7 @@ from services.message_service import MessageService
 
 class ConversationServiceIntegrationTestDataFactory:
     @staticmethod
-    def create_app_and_account(db_session_with_containers):
+    def create_app_and_account(db_session_with_containers: Session):
         tenant = Tenant(name=f"Tenant {uuid4()}")
         db_session_with_containers.add(tenant)
         db_session_with_containers.flush()
@@ -41,7 +42,7 @@ class ConversationServiceIntegrationTestDataFactory:
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role="owner",
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db_session_with_containers.add(tenant_join)
@@ -155,7 +156,7 @@ class ConversationServiceIntegrationTestDataFactory:
             total_price=Decimal(0),
             currency="USD",
             status="normal",
-            invoke_from=InvokeFrom.WEB_APP.value,
+            invoke_from=InvokeFrom.WEB_APP,
             from_source=ConversationFromSource.API if isinstance(user, EndUser) else ConversationFromSource.CONSOLE,
             from_end_user_id=user.id if isinstance(user, EndUser) else None,
             from_account_id=user.id if isinstance(user, Account) else None,

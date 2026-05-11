@@ -376,15 +376,15 @@ describe('ToolPicker', () => {
 
     renderToolPicker({ onShowChange })
 
-    await user.click(screen.getByRole('button', { name: 'open-picker' }))
-    expect(onShowChange).toHaveBeenCalledWith(true)
+    await user.click(screen.getByText('open-picker').closest('[role="button"]')!)
+    expect(onShowChange.mock.calls[0]?.[0]).toBe(true)
 
     renderToolPicker({
       disabled: true,
       onShowChange: disabledOnShowChange,
     })
 
-    await user.click(screen.getAllByRole('button', { name: 'open-picker' })[1]!)
+    await user.click(screen.getAllByText('open-picker')[1]!.closest('[role="button"]')!)
     expect(disabledOnShowChange).not.toHaveBeenCalled()
   })
 

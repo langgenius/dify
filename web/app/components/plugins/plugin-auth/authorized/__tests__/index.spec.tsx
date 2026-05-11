@@ -1427,7 +1427,7 @@ describe('Authorized Component', () => {
       expect(document.querySelector('.custom-popup-class'))!.toBeInTheDocument()
     })
 
-    it('should pass placement to PortalToFollowElem', () => {
+    it('should pass placement to Popover', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
 

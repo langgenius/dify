@@ -153,7 +153,7 @@ describe('EmbeddedChatbot Header', () => {
     it('should render reset button when allowResetChat is true and conversation exists', () => {
       render(<Header title="Test Chatbot" allowResetChat={true} />)
 
-      expect(screen.getByTestId('reset-chat-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'share.chat.resetChat' })).toBeInTheDocument()
     })
 
     it('should call onCreateNewChat when reset button is clicked', async () => {
@@ -161,7 +161,7 @@ describe('EmbeddedChatbot Header', () => {
       const onCreateNewChat = vi.fn()
       render(<Header title="Test Chatbot" allowResetChat={true} onCreateNewChat={onCreateNewChat} />)
 
-      await user.click(screen.getByTestId('reset-chat-button'))
+      await user.click(screen.getByRole('button', { name: 'share.chat.resetChat' }))
       expect(onCreateNewChat).toHaveBeenCalled()
     })
 
@@ -218,7 +218,7 @@ describe('EmbeddedChatbot Header', () => {
     it('should render mobile reset button when allowed', () => {
       render(<Header title="Mobile Chatbot" isMobile allowResetChat />)
 
-      expect(screen.getByTestId('mobile-reset-chat-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'share.chat.resetChat' })).toBeInTheDocument()
     })
 
     it('should NOT render mobile reset button when currentConversationId is missing', () => {
@@ -228,7 +228,7 @@ describe('EmbeddedChatbot Header', () => {
       } as EmbeddedChatbotContextValue)
       render(<Header title="Mobile Chatbot" isMobile allowResetChat />)
 
-      expect(screen.queryByTestId('mobile-reset-chat-button')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'share.chat.resetChat' })).not.toBeInTheDocument()
     })
 
     it('should render ViewFormDropdown in mobile when conditions are met', () => {
@@ -247,7 +247,7 @@ describe('EmbeddedChatbot Header', () => {
 
       await dispatchChatbotConfigMessage('https://parent.com', { isToggledByButton: true, isDraggable: false })
 
-      const expandBtn = await screen.findByTestId('mobile-expand-button')
+      const expandBtn = await screen.findByRole('button', { name: 'share.chat.expand' })
       expect(expandBtn).toBeInTheDocument()
 
       await user.click(expandBtn)
@@ -276,7 +276,7 @@ describe('EmbeddedChatbot Header', () => {
 
       await dispatchChatbotConfigMessage('https://parent.com', { isToggledByButton: true, isDraggable: false })
 
-      const expandBtn = await screen.findByTestId('expand-button')
+      const expandBtn = await screen.findByRole('button', { name: 'share.chat.expand' })
       expect(expandBtn).toBeInTheDocument()
 
       await user.click(expandBtn)
@@ -295,7 +295,7 @@ describe('EmbeddedChatbot Header', () => {
       await dispatchChatbotConfigMessage('https://parent.com', { isToggledByButton: true, isDraggable: true })
 
       await waitFor(() => {
-        expect(screen.queryByTestId('expand-button')).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'share.chat.expand' })).not.toBeInTheDocument()
       })
     })
 
@@ -305,12 +305,12 @@ describe('EmbeddedChatbot Header', () => {
 
       await dispatchChatbotConfigMessage('https://secure.com', { isToggledByButton: true, isDraggable: false })
 
-      await screen.findByTestId('expand-button')
+      await screen.findByRole('button', { name: 'share.chat.expand' })
 
       await dispatchChatbotConfigMessage('https://malicious.com', { isToggledByButton: false, isDraggable: false })
 
       // Should still be visible (not hidden by the malicious message)
-      expect(screen.getByTestId('expand-button')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'share.chat.expand' })).toBeInTheDocument()
     })
 
     it('should ignore non-config messages for origin locking', async () => {
@@ -327,7 +327,7 @@ describe('EmbeddedChatbot Header', () => {
       await dispatchChatbotConfigMessage('https://second.com', { isToggledByButton: true, isDraggable: false })
 
       // Should lock to second.com
-      const expandBtn = await screen.findByTestId('expand-button')
+      const expandBtn = await screen.findByRole('button', { name: 'share.chat.expand' })
       expect(expandBtn).toBeInTheDocument()
     })
 

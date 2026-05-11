@@ -40,7 +40,7 @@ Then('the shared app page should be accessible', async function (this: DifyWorld
 
 When('I run the shared workflow app', async function (this: DifyWorld) {
   const page = this.getPage()
-  const runButton = page.getByTestId('run-button')
+  const runButton = page.getByRole('button', { name: 'Execute' })
 
   await expect(runButton).toBeEnabled({ timeout: 15_000 })
   await runButton.click()

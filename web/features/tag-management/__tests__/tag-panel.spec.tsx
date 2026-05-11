@@ -135,8 +135,9 @@ describe('TagPanel', () => {
 
     await user.type(screen.getByRole('combobox', { name: i18n.selectorPlaceholder }), 'BrandNewTag')
 
-    expect(screen.getByTestId('create-tag-option')).toHaveTextContent(i18n.create)
-    expect(screen.getByTestId('create-tag-option')).toHaveTextContent('BrandNewTag')
+    const createOption = screen.getByRole('option', { name: /BrandNewTag/i })
+    expect(createOption).toHaveTextContent(i18n.create)
+    expect(createOption).toHaveTextContent('BrandNewTag')
   })
 
   it('does not show a create option for an exact existing tag name', async () => {
@@ -145,7 +146,7 @@ describe('TagPanel', () => {
 
     await user.type(screen.getByRole('combobox', { name: i18n.selectorPlaceholder }), 'Frontend')
 
-    expect(screen.queryByTestId('create-tag-option')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /common\.tag\.create/i })).not.toBeInTheDocument()
   })
 
   it('updates only the combobox draft value when selecting and deselecting options', async () => {
@@ -165,7 +166,7 @@ describe('TagPanel', () => {
 
     const input = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
     await user.type(input, 'BrandNewTag')
-    await user.click(screen.getByTestId('create-tag-option'))
+    await user.click(screen.getByRole('option', { name: /BrandNewTag/i }))
 
     expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining([
       expect.objectContaining({

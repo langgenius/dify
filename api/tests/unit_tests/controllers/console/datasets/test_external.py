@@ -57,7 +57,7 @@ def mock_auth(monkeypatch, current_user):
 
 
 class TestExternalApiTemplateListApi:
-    def test_get_success(self, app):
+    def test_get_success(self, app: Flask):
         api = ExternalApiTemplateListApi()
         method = unwrap(api.get)
 
@@ -78,7 +78,7 @@ class TestExternalApiTemplateListApi:
         assert resp["total"] == 1
         assert resp["data"][0]["id"] == "1"
 
-    def test_post_forbidden(self, app, current_user):
+    def test_post_forbidden(self, app: Flask, current_user):
         current_user.is_dataset_editor = False
         api = ExternalApiTemplateListApi()
         method = unwrap(api.post)
@@ -93,7 +93,7 @@ class TestExternalApiTemplateListApi:
             with pytest.raises(Forbidden):
                 method(api)
 
-    def test_post_duplicate_name(self, app):
+    def test_post_duplicate_name(self, app: Flask):
         api = ExternalApiTemplateListApi()
         method = unwrap(api.post)
 
@@ -114,7 +114,7 @@ class TestExternalApiTemplateListApi:
 
 
 class TestExternalApiTemplateApi:
-    def test_get_not_found(self, app):
+    def test_get_not_found(self, app: Flask):
         api = ExternalApiTemplateApi()
         method = unwrap(api.get)
 
@@ -129,7 +129,7 @@ class TestExternalApiTemplateApi:
             with pytest.raises(NotFound):
                 method(api, "api-id")
 
-    def test_delete_forbidden(self, app, current_user):
+    def test_delete_forbidden(self, app: Flask, current_user):
         current_user.has_edit_permission = False
         current_user.is_dataset_operator = False
 
@@ -142,7 +142,7 @@ class TestExternalApiTemplateApi:
 
 
 class TestExternalApiUseCheckApi:
-    def test_get_scopes_usage_check_to_current_tenant(self, app):
+    def test_get_scopes_usage_check_to_current_tenant(self, app: Flask):
         api = ExternalApiUseCheckApi()
         method = unwrap(api.get)
 
@@ -162,7 +162,7 @@ class TestExternalApiUseCheckApi:
 
 
 class TestExternalDatasetCreateApi:
-    def test_create_success(self, app):
+    def test_create_success(self, app: Flask):
         api = ExternalDatasetCreateApi()
         method = unwrap(api.post)
 
@@ -206,7 +206,7 @@ class TestExternalDatasetCreateApi:
 
         assert status == 201
 
-    def test_create_forbidden(self, app, current_user):
+    def test_create_forbidden(self, app: Flask, current_user):
         current_user.is_dataset_editor = False
         api = ExternalDatasetCreateApi()
         method = unwrap(api.post)
@@ -226,7 +226,7 @@ class TestExternalDatasetCreateApi:
 
 
 class TestExternalKnowledgeHitTestingApi:
-    def test_hit_testing_dataset_not_found(self, app):
+    def test_hit_testing_dataset_not_found(self, app: Flask):
         api = ExternalKnowledgeHitTestingApi()
         method = unwrap(api.post)
 
@@ -241,7 +241,7 @@ class TestExternalKnowledgeHitTestingApi:
             with pytest.raises(NotFound):
                 method(api, "dataset-id")
 
-    def test_hit_testing_success(self, app):
+    def test_hit_testing_success(self, app: Flask):
         api = ExternalKnowledgeHitTestingApi()
         method = unwrap(api.post)
 
@@ -266,7 +266,7 @@ class TestExternalKnowledgeHitTestingApi:
 
 
 class TestBedrockRetrievalApi:
-    def test_bedrock_retrieval(self, app):
+    def test_bedrock_retrieval(self, app: Flask):
         api = BedrockRetrievalApi()
         method = unwrap(api.post)
 

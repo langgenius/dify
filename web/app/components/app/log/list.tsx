@@ -9,6 +9,14 @@ import {
   HandThumbUpIcon,
 } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
@@ -28,7 +36,6 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton from '@/app/components/base/action-button'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
-import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
@@ -429,7 +436,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
           {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
         </div>
-        <ActionButton size="l" onClick={onClose}>
+        <ActionButton size="l" aria-label={t('operation.close', { ns: 'common' })} onClick={onClose}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </ActionButton>
       </div>
@@ -872,21 +879,32 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         </tbody>
       </table>
       <Drawer
-        isOpen={showDrawer}
-        onClose={onCloseDrawer}
-        mask={isMobile}
-        footer={null}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-4 p-0! max-w-[640px]! rounded-xl bg-components-panel-bg"
-      >
-        <DrawerContext.Provider value={{
-          onClose: onCloseDrawer,
-          appDetail,
+        open={showDrawer}
+        modal
+        swipeDirection="right"
+        onOpenChange={(open) => {
+          if (!open)
+            onCloseDrawer()
         }}
-        >
-          {isChatMode
-            ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
-            : <CompletionConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />}
-        </DrawerContext.Provider>
+      >
+        <DrawerPortal>
+          <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+          <DrawerViewport>
+            <DrawerPopup className="bg-components-panel-bg p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-4 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                <DrawerContext.Provider value={{
+                  onClose: onCloseDrawer,
+                  appDetail,
+                }}
+                >
+                  {isChatMode
+                    ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
+                    : <CompletionConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />}
+                </DrawerContext.Provider>
+              </DrawerContent>
+            </DrawerPopup>
+          </DrawerViewport>
+        </DrawerPortal>
       </Drawer>
     </div>
   )

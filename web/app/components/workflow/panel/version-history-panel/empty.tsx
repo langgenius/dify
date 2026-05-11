@@ -22,7 +22,7 @@ const Empty: FC<EmptyProps> = ({
         {t('versionHistory.filter.empty', { ns: 'workflow' })}
       </div>
       <div className="flex justify-center">
-        <Button size="small" onClick={onResetFilter}>
+        <Button nativeButton={false} size="small" onClick={onResetFilter}>
           {t('versionHistory.filter.reset', { ns: 'workflow' })}
         </Button>
       </div>

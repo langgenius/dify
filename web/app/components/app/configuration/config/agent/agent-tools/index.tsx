@@ -96,6 +96,7 @@ const AgentTools: FC = () => {
   }
 
   const [isDeleting, setIsDeleting] = useState<number>(-1)
+  const getDeleteToolLabel = (tool: AgentTool) => `${t('operation.delete', { ns: 'common' })} ${tool.tool_label || tool.tool_name}`
   const getToolValue = (tool: ToolDefaultValue) => {
     const currToolInCollections = collectionList.find(c => c.id === tool.provider_id)
     const currToolWithConfigs = currToolInCollections?.tools.find(t => t.name === tool.tool_name)
@@ -249,7 +250,7 @@ const AgentTools: FC = () => {
                           <div className="mb-1.5 text-text-tertiary">{t('toolNameUsageTip', { ns: 'tools' })}</div>
                           <button
                             type="button"
-                            className="cursor-pointer rounded-sm text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                            className="cursor-pointer rounded-sm border-none bg-transparent p-0 text-left text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                             onClick={() => copy(item.tool_name)}
                           >
                             {t('copyToolName', { ns: 'tools' })}
@@ -280,8 +281,10 @@ const AgentTools: FC = () => {
                         {t('toolRemoved', { ns: 'tools' })}
                       </PopoverContent>
                     </Popover>
-                    <div
-                      className="cursor-pointer rounded-md p-1 text-text-tertiary hover:text-text-destructive"
+                    <button
+                      type="button"
+                      aria-label={getDeleteToolLabel(item)}
+                      className="cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary outline-hidden hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                       onClick={() => {
                         const newModelConfig = produce(modelConfig, (draft) => {
                           draft.agentConfig.tools.splice(index, 1)
@@ -292,8 +295,8 @@ const AgentTools: FC = () => {
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
                     >
-                      <RiDeleteBinLine className="h-4 w-4" />
-                    </div>
+                      <RiDeleteBinLine className="h-4 w-4" aria-hidden="true" />
+                    </button>
                   </div>
                 )}
                 {!item.isDeleted && !readonly && (
@@ -320,8 +323,10 @@ const AgentTools: FC = () => {
                         </TooltipContent>
                       </Tooltip>
                     )}
-                    <div
-                      className="cursor-pointer rounded-md p-1 text-text-tertiary hover:text-text-destructive"
+                    <button
+                      type="button"
+                      aria-label={getDeleteToolLabel(item)}
+                      className="cursor-pointer rounded-md border-none bg-transparent p-1 text-text-tertiary outline-hidden hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                       onClick={() => {
                         const newModelConfig = produce(modelConfig, (draft) => {
                           draft.agentConfig.tools.splice(index, 1)
@@ -331,10 +336,9 @@ const AgentTools: FC = () => {
                       }}
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
-                      data-testid="delete-removed-tool"
                     >
-                      <RiDeleteBinLine className="h-4 w-4" />
-                    </div>
+                      <RiDeleteBinLine className="h-4 w-4" aria-hidden="true" />
+                    </button>
                   </div>
                 )}
                 <div className={cn(item.isDeleted && 'opacity-50')}>

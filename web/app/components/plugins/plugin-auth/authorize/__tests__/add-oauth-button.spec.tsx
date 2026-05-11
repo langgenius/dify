@@ -104,7 +104,7 @@ describe('AddOAuthButton', () => {
   it('should open OAuth settings modal when settings icon clicked', () => {
     render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
-    fireEvent.click(screen.getByTestId('oauth-settings-button'))
+    fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
 
     expect(screen.getByTestId('oauth-settings-modal')).toBeInTheDocument()
     expect(mockOAuthClientSettingsProps.at(-1)?.open).toBe(true)
@@ -113,7 +113,7 @@ describe('AddOAuthButton', () => {
   it('should close OAuth settings modal', () => {
     render(<AddOAuthButton pluginPayload={basePayload} buttonText="Use OAuth" />)
 
-    fireEvent.click(screen.getByTestId('oauth-settings-button'))
+    fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
     fireEvent.click(screen.getByTestId('oauth-settings-close'))
 
     expect(screen.queryByTestId('oauth-settings-modal')).not.toBeInTheDocument()
@@ -223,7 +223,7 @@ describe('AddOAuthButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('oauth-settings-button'))
+    fireEvent.click(screen.getByRole('button', { name: /plugin\.auth\.oauthClientSettings/i }))
 
     const settingsProps = mockOAuthClientSettingsProps.at(-1)
     expect(settingsProps?.editValues).toMatchObject({

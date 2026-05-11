@@ -56,19 +56,19 @@ describe('InputsFormNode', () => {
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     expect(screen.getByText(/chat.chatSettingsTitle/i)).toBeInTheDocument()
     expect(screen.getByTestId('mock-inputs-form-content')).toBeInTheDocument()
-    expect(screen.getByTestId('inputs-form-start-chat-button')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'share.chat.startChat' })).toBeInTheDocument()
   })
 
   it('should render collapsed state correctly', () => {
     render(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
     expect(screen.getByText(/chat.chatSettingsTitle/i)).toBeInTheDocument()
     expect(screen.queryByTestId('mock-inputs-form-content')).not.toBeInTheDocument()
-    expect(screen.getByTestId('inputs-form-edit-button')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
   })
 
   it('should handle edit button click', async () => {
     render(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
-    await user.click(screen.getByTestId('inputs-form-edit-button'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
     expect(setCollapsed).toHaveBeenCalledWith(false)
   })
 
@@ -78,7 +78,7 @@ describe('InputsFormNode', () => {
       currentConversationId: 'conv-123',
     } as unknown as any)
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    await user.click(screen.getByTestId('inputs-form-close-button'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(setCollapsed).toHaveBeenCalledWith(true)
   })
 
@@ -90,7 +90,7 @@ describe('InputsFormNode', () => {
       handleStartChat,
     } as unknown as any)
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    await user.click(screen.getByTestId('inputs-form-start-chat-button'))
+    await user.click(screen.getByRole('button', { name: 'share.chat.startChat' }))
     expect(handleStartChat).toHaveBeenCalled()
     expect(setCollapsed).toHaveBeenCalledWith(true)
   })
@@ -105,7 +105,7 @@ describe('InputsFormNode', () => {
       },
     } as unknown as any)
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
-    const button = screen.getByTestId('inputs-form-start-chat-button')
+    const button = screen.getByRole('button', { name: 'share.chat.startChat' })
     expect(button).toHaveStyle({ backgroundColor: '#ff0000' })
   })
 
@@ -138,7 +138,7 @@ describe('InputsFormNode', () => {
     expect(screen.getByTestId('mock-inputs-form-content').parentElement).toHaveClass('p-4')
 
     // Start chat button container
-    expect(screen.getByTestId('inputs-form-start-chat-button').parentElement).toHaveClass('p-4')
+    expect(screen.getByRole('button', { name: 'share.chat.startChat' }).parentElement).toHaveClass('p-4')
 
     // Collapsed state mobile styles
     rerender(<InputsFormNode collapsed={true} setCollapsed={setCollapsed} />)
