@@ -50,12 +50,6 @@ const Apps = ({
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
 
-  const hasFilterCondition = !!keywords
-  const handleResetFilter = useCallback(() => {
-    setKeywords('')
-    setSearchKeywords('')
-  }, [])
-
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
   }, { wait: 500 })
@@ -68,6 +62,11 @@ const Apps = ({
   const [currCategory, setCurrCategory] = useQueryState('category', {
     defaultValue: allCategoriesEn,
   })
+  const handleResetFilter = useCallback(() => {
+    setKeywords('')
+    setSearchKeywords('')
+    setCurrCategory(allCategoriesEn)
+  }, [allCategoriesEn, setCurrCategory])
 
   const {
     data,
@@ -167,6 +166,11 @@ const Apps = ({
       },
     })
   }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
+
+  const hasFilterCondition = !!keywords
+    || !!searchKeywords
+    || currCategory !== allCategoriesEn
+    || searchFilteredList.length !== filteredList.length
 
   if (isLoading) {
     return (

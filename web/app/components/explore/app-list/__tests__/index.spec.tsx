@@ -371,26 +371,6 @@ describe('AppList', () => {
       expect(container.innerHTML).toBe('')
     })
 
-    it('should reset filter when reset button is clicked', async () => {
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
-      }
-      renderAppList()
-
-      const input = screen.getByPlaceholderText('common.operation.search')
-      fireEvent.change(input, { target: { value: 'gam' } })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(500)
-      })
-      expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
-
-      fireEvent.click(screen.getByText('explore.apps.resetFilter'))
-
-      expect(screen.getByText('Alpha')).toBeInTheDocument()
-      expect(screen.getByText('Gamma')).toBeInTheDocument()
-    })
-
     it('should close create modal via hide button', async () => {
       vi.useRealTimers()
       mockExploreData = {

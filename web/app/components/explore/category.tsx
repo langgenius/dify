@@ -28,8 +28,8 @@ const Category: FC<ICategoryProps> = ({
   const isAllCategories = !list.includes(value as AppCategory) || value === allCategoriesEn
 
   const itemClassName = (isSelected: boolean) => cn(
-    'flex h-7 cursor-pointer items-center justify-center gap-0.5 rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium text-text-secondary hover:bg-state-base-hover-alt',
-    isSelected && 'border-components-main-nav-nav-button-border bg-background-default text-text-accent-light-mode-only shadow-xs hover:bg-background-default',
+    'relative flex h-7 shrink-0 cursor-pointer items-center justify-center gap-0.5 overflow-hidden rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium whitespace-nowrap text-text-secondary',
+    isSelected && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-xs shadow-shadow-shadow-3',
   )
 
   const renderCategoryName = (name: AppCategory) => {
@@ -38,7 +38,7 @@ const Category: FC<ICategoryProps> = ({
   }
 
   return (
-    <div className={cn(className, 'inline-flex max-w-full flex-wrap items-center gap-px rounded-[10px] bg-components-input-bg-normal p-0.5 text-[13px]')}>
+    <div className={cn(className, 'inline-flex max-w-full items-center gap-px overflow-x-auto rounded-[10px] bg-components-segmented-control-bg-normal p-0.5 text-[13px]')}>
       {[
         { name: allCategoriesEn, label: t('apps.allCategories', { ns: 'explore' }), isAll: true },
         ...list.filter(name => name !== allCategoriesEn).map(name => ({
@@ -59,8 +59,14 @@ const Category: FC<ICategoryProps> = ({
               className={itemClassName(isSelected)}
               onClick={() => onChange(item.name)}
             >
-              {item.isAll && <span className="i-custom-vender-line-alertsAndFeedback-thumbs-up h-4 w-4" />}
-              {item.label}
+              {item.isAll && (
+                <span className="flex size-5 shrink-0 items-center justify-center">
+                  <span className="i-custom-vender-line-alertsAndFeedback-thumbs-up h-4 w-4" />
+                </span>
+              )}
+              <span className="flex shrink-0 items-center justify-center gap-1 p-0.5">
+                {item.label}
+              </span>
             </div>
             {!isSelected && !isNextSelected && index < items.length - 1 && (
               <div className="absolute top-1/2 right-[-1px] h-3.5 w-px -translate-y-1/2 bg-divider-regular" />

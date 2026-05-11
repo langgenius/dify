@@ -58,7 +58,7 @@ describe('Category', () => {
       renderComponent({ value: 'Unknown' })
 
       const allCategoriesItem = screen.getByText('explore.apps.allCategories')
-      expect(allCategoriesItem.className).toContain('bg-background-default')
+      expect(allCategoriesItem.parentElement?.className).toContain('bg-components-segmented-control-item-active-bg')
     })
 
     it('should render raw category name when i18n key does not exist', () => {
