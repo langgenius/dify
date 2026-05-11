@@ -1,7 +1,7 @@
 """Validation for effective user prompts produced by Agenton compositors.
 
-Validation happens after safe compositor construction so API and worker paths use
-the same semantics as the actual pydantic-ai input. Blank string fragments do not
+Validation happens after safe compositor construction so scheduler and runner
+paths use the same semantics as the actual pydantic-ai input. Blank string fragments do not
 count as meaningful input; non-string ``UserContent`` is treated as intentional
 content because rich media/message parts do not have a universal whitespace
 representation.

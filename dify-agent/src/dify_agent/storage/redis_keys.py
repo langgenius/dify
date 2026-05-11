@@ -1,8 +1,4 @@
-"""Redis key helpers for the run server.
-
-Keys are centralized so workers, projectors, and HTTP routes can share the same
-stream/hash layout without duplicating string formats.
-"""
+"""Redis key helpers for run records and per-run event streams."""
 
 
 def run_record_key(prefix: str, run_id: str) -> str:
@@ -15,9 +11,4 @@ def run_events_key(prefix: str, run_id: str) -> str:
     return f"{prefix}:runs:{run_id}:events"
 
 
-def run_jobs_key(prefix: str) -> str:
-    """Return the Redis stream key holding queued run jobs."""
-    return f"{prefix}:runs:jobs"
-
-
-__all__ = ["run_events_key", "run_jobs_key", "run_record_key"]
+__all__ = ["run_events_key", "run_record_key"]

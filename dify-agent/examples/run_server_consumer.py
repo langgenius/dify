@@ -1,7 +1,7 @@
 """Example consumer for the Dify Agent run server.
 
-Requires Redis and a running API server. The server starts its Redis Streams
-worker in the same process by default, for example:
+Requires Redis and a running API server. The server schedules runs in-process, for
+example:
 
     uv run --project dify-agent uvicorn dify_agent.server.app:app --reload
 

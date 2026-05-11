@@ -1,9 +1,9 @@
-"""Redis Streams-backed run persistence.
+"""Redis-backed run records and per-run event streams.
 
-The store writes run records as JSON strings and events/jobs as Redis streams.
-HTTP event cursors are Redis stream ids; ``0-0`` means replay from the beginning
-for polling and SSE. The worker uses the jobs stream directly and updates the run
-record through the same status/event sink protocol as tests.
+The store writes run records as JSON strings and events as Redis streams. HTTP
+event cursors are Redis stream ids; ``0-0`` means replay from the beginning for
+polling and SSE. Execution is scheduled in-process by
+``dify_agent.runtime.run_scheduler``; Redis is not a job queue.
 """
 
 from collections.abc import AsyncIterator
@@ -19,11 +19,10 @@ from dify_agent.server.schemas import (
     RunEventsResponse,
     RunRecord,
     RunStatus,
-    RunnerJob,
     new_run_id,
     utc_now,
 )
-from dify_agent.storage.redis_keys import run_events_key, run_jobs_key, run_record_key
+from dify_agent.storage.redis_keys import run_events_key, run_record_key
 
 
 class RunNotFoundError(LookupError):
@@ -31,7 +30,7 @@ class RunNotFoundError(LookupError):
 
 
 class RedisRunStore(RunEventSink):
-    """Async Redis implementation for run records, jobs, and events."""
+    """Async Redis implementation for run records and event logs."""
 
     redis: Redis
     prefix: str
@@ -41,19 +40,10 @@ class RedisRunStore(RunEventSink):
         self.prefix = prefix
 
     async def create_run(self, request: CreateRunRequest) -> RunRecord:
-        """Persist a queued run and enqueue its worker job atomically.
-
-        The run record and jobs stream entry are one durability boundary: either
-        both are committed by Redis ``MULTI/EXEC`` or neither is visible. This
-        prevents permanently queued records with no corresponding worker job.
-        """
+        """Persist a running run record without enqueueing external work."""
         run_id = new_run_id()
-        record = RunRecord(run_id=run_id, status="queued", request=request)
-        job = RunnerJob(run_id=run_id, request=request)
-        async with self.redis.pipeline(transaction=True) as pipe:
-            pipe.set(run_record_key(self.prefix, run_id), record.model_dump_json())
-            pipe.xadd(run_jobs_key(self.prefix), {"payload": job.model_dump_json()})
-            await pipe.execute()
+        record = RunRecord(run_id=run_id, status="running", request=request)
+        await self.redis.set(run_record_key(self.prefix, run_id), record.model_dump_json())
         return record
 
     async def get_run(self, run_id: str) -> RunRecord:

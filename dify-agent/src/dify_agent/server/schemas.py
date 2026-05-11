@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 from agenton.compositor import CompositorConfig, CompositorSessionSnapshot
 
 
-RunStatus = Literal["queued", "running", "succeeded", "failed"]
+RunStatus = Literal["running", "succeeded", "failed"]
 RunEventType = Literal[
     "run_started",
     "pydantic_ai_event",
@@ -60,7 +60,7 @@ class CreateRunRequest(BaseModel):
 
 
 class CreateRunResponse(BaseModel):
-    """Response returned after a run job has been durably queued."""
+    """Response returned after a run has been persisted and scheduled locally."""
 
     run_id: str
     status: RunStatus
@@ -102,15 +102,6 @@ class RunEventsResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class RunnerJob(BaseModel):
-    """Durable worker payload stored in Redis streams."""
-
-    run_id: str
-    request: CreateRunRequest
-
-    model_config = ConfigDict(extra="forbid")
-
-
 class RunRecord(BaseModel):
     """Internal representation persisted for status reads."""
 
@@ -141,7 +132,6 @@ __all__ = [
     "RunRecord",
     "RunStatus",
     "RunStatusResponse",
-    "RunnerJob",
     "new_run_id",
     "utc_now",
 ]

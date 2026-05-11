@@ -1,8 +1,10 @@
 """FastAPI routes for asynchronous agent runs.
 
-Controllers translate storage/validation errors into HTTP status codes and keep
-worker execution out of the request path. A created run is only queued; clients
-observe progress through polling or SSE replay.
+Controllers translate known validation and shutdown errors into HTTP status codes.
+Unexpected scheduler or storage failures are intentionally left for FastAPI's
+server-error handling so infrastructure problems are not reported as client input
+errors. Created runs are scheduled in the current process and observed through
+status polling or SSE replay backed by Redis event streams.
 """
 
 from collections.abc import Callable
@@ -12,23 +14,27 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor
+from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 from dify_agent.server.schemas import CreateRunRequest, CreateRunResponse, RunEventsResponse, RunStatusResponse
 from dify_agent.server.sse import sse_event_stream
 from dify_agent.storage.redis_run_store import RedisRunStore, RunNotFoundError
 
 
-def create_runs_router(get_store: Callable[[], RedisRunStore]) -> APIRouter:
+def create_runs_router(get_store: Callable[[], RedisRunStore], get_scheduler: Callable[[], RunScheduler]) -> APIRouter:
     """Create routes bound to the application's store dependency provider."""
     router = APIRouter(prefix="/runs", tags=["runs"])
 
     async def store_dep() -> RedisRunStore:
         return get_store()
 
+    async def scheduler_dep() -> RunScheduler:
+        return get_scheduler()
+
     @router.post("", response_model=CreateRunResponse, status_code=202)
     async def create_run(
         request: CreateRunRequest,
-        store: Annotated[RedisRunStore, Depends(store_dep)],
+        scheduler: Annotated[RunScheduler, Depends(scheduler_dep)],
     ) -> CreateRunResponse:
         try:
             compositor = build_pydantic_ai_compositor(request.compositor)
@@ -36,7 +42,11 @@ def create_runs_router(get_store: Callable[[], RedisRunStore]) -> APIRouter:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         if not has_non_blank_user_prompt(compositor.user_prompts):
             raise HTTPException(status_code=422, detail=EMPTY_USER_PROMPTS_ERROR)
-        record = await store.create_run(request)
+
+        try:
+            record = await scheduler.create_run(request)
+        except SchedulerStoppingError as exc:
+            raise HTTPException(status_code=503, detail="run scheduler is shutting down") from exc
         return CreateRunResponse(run_id=record.run_id, status=record.status)
 
     @router.get("/{run_id}", response_model=RunStatusResponse)

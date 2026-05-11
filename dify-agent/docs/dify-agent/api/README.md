@@ -1,8 +1,9 @@
 # Dify Agent Run API
 
 The Dify Agent API exposes asynchronous agent runs backed by Agenton compositor
-configuration, Pydantic AI runtime execution, and Redis Streams event logs. The
-FastAPI application lives at `dify-agent/src/dify_agent/server/app.py`.
+configuration, Pydantic AI runtime execution, Redis run records, and per-run Redis
+Streams event logs. The FastAPI application lives at
+`dify-agent/src/dify_agent/server/app.py`.
 
 ## Input model
 
@@ -14,8 +15,8 @@ field becomes `Compositor.user_prompts` and is passed to Pydantic AI as the run
 input.
 
 Blank user input is rejected. A request with no user prompt, an empty string, or
-only whitespace strings such as `"user": ["", "   "]` returns `422` from the API
-or a runner validation error if it reaches worker execution.
+only whitespace strings such as `"user": ["", "   "]` returns `422` before a run
+record is created.
 
 The server does not implement a Pydantic AI history layer. Resumable Agenton
 state is represented only by `session_snapshot`.
@@ -57,9 +58,12 @@ Response (`202 Accepted`):
 ```json
 {
   "run_id": "4a7f9a98-5c55-48d0-8f3e-87ef2cf81234",
-  "status": "queued"
+  "status": "running"
 }
 ```
+
+The server persists the run record and schedules execution immediately in the
+same FastAPI process. Redis is not used as a job queue.
 
 `agent_profile.provider` currently supports the credential-free `test` profile.
 
@@ -91,7 +95,6 @@ Response:
 
 Status values are:
 
-- `queued`
 - `running`
 - `succeeded`
 - `failed`

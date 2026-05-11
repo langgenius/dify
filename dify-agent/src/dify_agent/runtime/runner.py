@@ -1,4 +1,4 @@
-"""Runtime execution for one queued Dify Agent run.
+"""Runtime execution for one scheduled Dify Agent run.
 
 The runner is storage-agnostic: it builds an Agenton compositor, enters or
 resumes its session, runs pydantic-ai with ``compositor.user_prompts`` as the user
