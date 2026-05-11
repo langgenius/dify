@@ -1,14 +1,13 @@
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.schema import register_schema_models
 from libs.login import current_account_with_tenant, login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
 from .. import console_ns
 from ..auth.error import ApiKeyAuthFailedError
 from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ApiKeyAuthBindingPayload(BaseModel):
@@ -17,10 +16,7 @@ class ApiKeyAuthBindingPayload(BaseModel):
     credentials: dict = Field(...)
 
 
-console_ns.schema_model(
-    ApiKeyAuthBindingPayload.__name__,
-    ApiKeyAuthBindingPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_schema_models(console_ns, ApiKeyAuthBindingPayload)
 
 
 @console_ns.route("/api-key-auth/data-source")

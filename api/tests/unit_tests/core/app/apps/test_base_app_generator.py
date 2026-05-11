@@ -369,7 +369,7 @@ def test_validate_inputs_optional_file_with_empty_string_ignores_default():
 
 
 class TestBaseAppGeneratorExtras:
-    def test_prepare_user_inputs_converts_files_and_lists(self, monkeypatch):
+    def test_prepare_user_inputs_converts_files_and_lists(self, monkeypatch: pytest.MonkeyPatch):
         base_app_generator = BaseAppGenerator()
 
         variables = [

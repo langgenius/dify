@@ -47,7 +47,7 @@ class TestForgotPasswordSendEmailApi:
         mock_send_email,
         mock_get_account,
         mock_is_ip_limit,
-        app,
+        app: Flask,
         mock_account,
     ):
         # Arrange
@@ -105,7 +105,7 @@ class TestForgotPasswordSendEmailApi:
         mock_send_email,
         mock_get_account,
         mock_is_ip_limit,
-        app,
+        app: Flask,
         mock_account,
         language_input,
         expected_language,
@@ -154,7 +154,7 @@ class TestForgotPasswordCheckApi:
         mock_revoke_token,
         mock_get_data,
         mock_is_rate_limit,
-        app,
+        app: Flask,
     ):
         """
         Test successful verification code validation.
@@ -201,7 +201,7 @@ class TestForgotPasswordCheckApi:
         mock_revoke_token,
         mock_get_data,
         mock_is_rate_limit,
-        app,
+        app: Flask,
     ):
         mock_is_rate_limit.return_value = False
         mock_get_data.return_value = {"email": "User@Example.com", "code": "999888"}
@@ -345,7 +345,7 @@ class TestForgotPasswordResetApi:
         mock_get_account,
         mock_revoke_token,
         mock_get_data,
-        app,
+        app: Flask,
         mock_account,
     ):
         """

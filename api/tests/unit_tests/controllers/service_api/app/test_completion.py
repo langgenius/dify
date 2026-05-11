@@ -16,6 +16,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -295,7 +296,7 @@ class TestCompletionControllerLogic:
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     @patch("controllers.service_api.app.completion.AppGenerateService")
-    def test_completion_api_post_success(self, mock_generate_service, mock_service_api_ns, app):
+    def test_completion_api_post_success(self, mock_generate_service, mock_service_api_ns, app: Flask):
         """Test CompletionApi.post success path."""
         from controllers.service_api.app.completion import CompletionApi
 
@@ -320,7 +321,7 @@ class TestCompletionControllerLogic:
                 mock_generate_service.generate.assert_called_once()
 
     @patch("controllers.service_api.app.completion.service_api_ns")
-    def test_completion_api_post_wrong_app_mode(self, mock_service_api_ns, app):
+    def test_completion_api_post_wrong_app_mode(self, mock_service_api_ns, app: Flask):
         """Test CompletionApi.post with wrong app mode."""
         from controllers.service_api.app.completion import CompletionApi
 
@@ -334,7 +335,7 @@ class TestCompletionControllerLogic:
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     @patch("controllers.service_api.app.completion.AppGenerateService")
-    def test_chat_api_post_success(self, mock_generate_service, mock_service_api_ns, app):
+    def test_chat_api_post_success(self, mock_generate_service, mock_service_api_ns, app: Flask):
         """Test ChatApi.post success path."""
         from controllers.service_api.app.completion import ChatApi
 
@@ -355,7 +356,7 @@ class TestCompletionControllerLogic:
                 assert response == {"text": "compacted"}
 
     @patch("controllers.service_api.app.completion.service_api_ns")
-    def test_chat_api_post_wrong_app_mode(self, mock_service_api_ns, app):
+    def test_chat_api_post_wrong_app_mode(self, mock_service_api_ns, app: Flask):
         """Test ChatApi.post with wrong app mode."""
         from controllers.service_api.app.completion import ChatApi
 
@@ -368,7 +369,7 @@ class TestCompletionControllerLogic:
                 ChatApi().post.__wrapped__(ChatApi(), mock_app_model, mock_end_user)
 
     @patch("controllers.service_api.app.completion.AppTaskService")
-    def test_completion_stop_api_success(self, mock_task_service, app):
+    def test_completion_stop_api_success(self, mock_task_service, app: Flask):
         """Test CompletionStopApi.post success."""
         from controllers.service_api.app.completion import CompletionStopApi
 
@@ -385,7 +386,7 @@ class TestCompletionControllerLogic:
             mock_task_service.stop_task.assert_called_once()
 
     @patch("controllers.service_api.app.completion.AppTaskService")
-    def test_chat_stop_api_success(self, mock_task_service, app):
+    def test_chat_stop_api_success(self, mock_task_service, app: Flask):
         """Test ChatStopApi.post success."""
         from controllers.service_api.app.completion import ChatStopApi
 

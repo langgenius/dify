@@ -15,6 +15,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import GridMask from '@/app/components/base/grid-mask'
+import { Infotip } from '@/app/components/base/infotip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
@@ -152,18 +153,14 @@ const ModelLoadBalancingConfigs = ({
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
               {t('modelProvider.loadBalancing', { ns: 'common' })}
-              <Tooltip>
-                <TooltipTrigger
-                  render={(
-                    <span className="flex h-3 w-3 shrink-0 p-px">
-                      <span aria-hidden className="i-ri-question-line h-full w-full text-text-quaternary hover:text-text-tertiary" />
-                    </span>
-                  )}
-                />
-                <TooltipContent className="max-w-[300px]">
-                  {t('modelProvider.loadBalancingInfo', { ns: 'common' })}
-                </TooltipContent>
-              </Tooltip>
+              <Infotip
+                aria-label={t('modelProvider.loadBalancingInfo', { ns: 'common' })}
+                className="h-3 w-3"
+                iconClassName="h-full w-full"
+                popupClassName="max-w-[300px]"
+              >
+                {t('modelProvider.loadBalancingInfo', { ns: 'common' })}
+              </Infotip>
             </div>
             <div className="text-xs text-text-tertiary">{t('modelProvider.loadBalancingDescription', { ns: 'common' })}</div>
           </div>

@@ -3,7 +3,7 @@
 import datetime
 import uuid
 from types import SimpleNamespace
-from unittest.mock import Mock, sentinel
+from unittest.mock import Mock, patch, sentinel
 
 import pytest
 
@@ -13,6 +13,8 @@ from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import TENANT_SCOPE_SCHEMA_CACHE_USER_ID, PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
@@ -146,7 +148,31 @@ class TestPluginModelRuntime:
 
     def test_invoke_llm_resolves_plugin_fields(self) -> None:
         client = Mock(spec=PluginModelClient)
-        client.invoke_llm.return_value = sentinel.result
+        usage = LLMUsage.empty_usage()
+        client.invoke_llm.return_value = iter(
+            [
+                LLMResultChunk(
+                    model="gpt-4o-mini",
+                    prompt_messages=[],
+                    system_fingerprint="fp-plugin",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content="plugin "),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="gpt-4o-mini",
+                    prompt_messages=[],
+                    system_fingerprint="fp-plugin",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(content="response"),
+                        usage=usage,
+                        finish_reason="stop",
+                    ),
+                ),
+            ]
+        )
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
 
         result = runtime.invoke_llm(
@@ -160,7 +186,11 @@ class TestPluginModelRuntime:
             stream=False,
         )
 
-        assert result is sentinel.result
+        assert result.model == "gpt-4o-mini"
+        assert result.prompt_messages == []
+        assert result.message.content == "plugin response"
+        assert result.usage == usage
+        assert result.system_fingerprint == "fp-plugin"
         client.invoke_llm.assert_called_once_with(
             tenant_id="tenant",
             user_id="user",
@@ -173,6 +203,38 @@ class TestPluginModelRuntime:
             tools=None,
             stop=None,
             stream=False,
+        )
+
+    def test_invoke_llm_returns_plugin_stream_directly(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        stream_result = iter([])
+        client.invoke_llm.return_value = stream_result
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
+
+        result = runtime.invoke_llm(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=("END",),
+            stream=True,
+        )
+
+        assert result is stream_result
+        client.invoke_llm.assert_called_once_with(
+            tenant_id="tenant",
+            user_id="user",
+            plugin_id="langgenius/openai",
+            provider="openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=["END"],
+            stream=True,
         )
 
     def test_invoke_llm_rejects_per_call_user_override(self) -> None:
@@ -265,6 +327,129 @@ def test_get_model_schema_uses_cached_schema_without_hitting_client(monkeypatch:
 
     assert result == schema
     client.get_model_schema.assert_not_called()
+
+
+def test_structured_output_adapter_invokes_bound_runtime_streaming() -> None:
+    runtime = Mock()
+    runtime.invoke_llm.return_value = sentinel.stream_result
+    adapter = model_runtime_module._PluginStructuredOutputModelInstance(
+        runtime=runtime,
+        provider="langgenius/openai/openai",
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+    )
+    tool = Mock()
+
+    result = adapter.invoke_llm(
+        prompt_messages=[],
+        model_parameters=None,
+        tools=[tool],
+        stop=["END"],
+        stream=True,
+        callbacks=sentinel.callbacks,
+    )
+
+    assert result is sentinel.stream_result
+    runtime.invoke_llm.assert_called_once_with(
+        provider="langgenius/openai/openai",
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+        model_parameters={},
+        prompt_messages=[],
+        tools=[tool],
+        stop=["END"],
+        stream=True,
+    )
+
+
+def test_structured_output_adapter_invokes_bound_runtime_non_streaming() -> None:
+    runtime = Mock()
+    runtime.invoke_llm.return_value = sentinel.result
+    adapter = model_runtime_module._PluginStructuredOutputModelInstance(
+        runtime=runtime,
+        provider="langgenius/openai/openai",
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+    )
+
+    result = adapter.invoke_llm(
+        prompt_messages=[],
+        model_parameters={"temperature": 0},
+        tools=None,
+        stop=None,
+        stream=False,
+    )
+
+    assert result is sentinel.result
+    runtime.invoke_llm.assert_called_once_with(
+        provider="langgenius/openai/openai",
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+        model_parameters={"temperature": 0},
+        prompt_messages=[],
+        tools=None,
+        stop=None,
+        stream=False,
+    )
+
+
+def test_invoke_llm_with_structured_output_delegates_with_bound_adapter() -> None:
+    client = Mock(spec=PluginModelClient)
+    runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
+    schema = _build_model_schema()
+    runtime.get_model_schema = Mock(return_value=schema)  # type: ignore[method-assign]
+
+    with patch.object(
+        model_runtime_module,
+        "invoke_llm_with_structured_output_helper",
+        return_value=sentinel.structured_result,
+    ) as mock_helper:
+        result = runtime.invoke_llm_with_structured_output(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            json_schema={"type": "object"},
+            model_parameters={"temperature": 0},
+            prompt_messages=[],
+            stop=("END",),
+            stream=False,
+        )
+
+    assert result is sentinel.structured_result
+    runtime.get_model_schema.assert_called_once_with(
+        provider="langgenius/openai/openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o-mini",
+        credentials={"api_key": "secret"},
+    )
+    helper_kwargs = mock_helper.call_args.kwargs
+    assert helper_kwargs["provider"] == "langgenius/openai/openai"
+    assert helper_kwargs["model_schema"] == schema
+    assert helper_kwargs["json_schema"] == {"type": "object"}
+    assert helper_kwargs["model_parameters"] == {"temperature": 0}
+    assert helper_kwargs["prompt_messages"] == []
+    assert helper_kwargs["tools"] is None
+    assert helper_kwargs["stop"] == ["END"]
+    assert helper_kwargs["stream"] is False
+    assert isinstance(helper_kwargs["model_instance"], model_runtime_module._PluginStructuredOutputModelInstance)
+
+
+def test_invoke_llm_with_structured_output_raises_when_model_schema_is_missing() -> None:
+    client = Mock(spec=PluginModelClient)
+    runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client)
+    runtime.get_model_schema = Mock(return_value=None)  # type: ignore[method-assign]
+
+    with pytest.raises(ValueError, match="Model schema not found for gpt-4o-mini"):
+        runtime.invoke_llm_with_structured_output(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            json_schema={"type": "object"},
+            model_parameters={},
+            prompt_messages=[],
+            stop=None,
+            stream=False,
+        )
 
 
 def test_get_model_schema_deletes_invalid_cache_and_refetches(monkeypatch: pytest.MonkeyPatch) -> None:

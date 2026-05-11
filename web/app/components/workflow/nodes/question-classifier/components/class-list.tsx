@@ -14,8 +14,10 @@ import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid
 import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
+import { getDefaultClassLabel, isDefaultClassLabel } from './class-label-utils'
 
 const i18nPrefix = 'nodes.questionClassifiers'
+const INLINE_LABEL_HINT_STORAGE_KEY = 'question-classifier-inline-label-hint-dismissed'
 
 type Props = {
   nodeId: string
@@ -40,6 +42,17 @@ const ClassList: FC<Props> = ({
   const [shouldScrollToEnd, setShouldScrollToEnd] = useState(false)
   const prevListLength = useRef(list.length)
   const [collapsed, setCollapsed] = useState(false)
+  const [isRenameHintDismissed, setIsRenameHintDismissed] = useState(() => {
+    if (typeof window === 'undefined')
+      return true
+
+    try {
+      return window.localStorage.getItem(INLINE_LABEL_HINT_STORAGE_KEY) === 'true'
+    }
+    catch {
+      return false
+    }
+  })
 
   const handleClassChange = useCallback((index: number) => {
     return (value: Topic) => {
@@ -52,13 +65,17 @@ const ClassList: FC<Props> = ({
 
   const handleAddClass = useCallback(() => {
     const newList = produce(list, (draft) => {
-      draft.push({ id: `${Date.now()}`, name: '' })
+      draft.push({
+        id: `${Date.now()}`,
+        name: '',
+        label: getDefaultClassLabel(t, draft.length + 1),
+      })
     })
     onChange(newList)
     setShouldScrollToEnd(true)
     if (collapsed)
       setCollapsed(false)
-  }, [list, onChange, collapsed])
+  }, [collapsed, list, onChange, t])
 
   const handleRemoveClass = useCallback((index: number) => {
     return () => {
@@ -72,7 +89,6 @@ const ClassList: FC<Props> = ({
 
   const topicCount = list.length
 
-  // Scroll to the newly added item after the list updates
   useEffect(() => {
     if (shouldScrollToEnd && list.length > prevListLength.current)
       setShouldScrollToEnd(false)
@@ -83,10 +99,30 @@ const ClassList: FC<Props> = ({
     setCollapsed(!collapsed)
   }, [collapsed])
 
+  const dismissRenameHint = useCallback(() => {
+    if (isRenameHintDismissed)
+      return
+
+    setIsRenameHintDismissed(true)
+    try {
+      window.localStorage.setItem(INLINE_LABEL_HINT_STORAGE_KEY, 'true')
+    }
+    catch {
+    }
+  }, [isRenameHintDismissed])
+
+  const shouldShowRenameHint = !readonly && !isRenameHintDismissed && list.some((item, index) => {
+    return isDefaultClassLabel(item.label, index + 1, t)
+  })
+
   return (
     <>
-      <div className="mb-2 flex items-center justify-between" onClick={handleCollapse}>
-        <div className="flex cursor-pointer items-center text-xs font-semibold text-text-secondary uppercase">
+      <div className="mb-2 flex items-center justify-between">
+        <button
+          type="button"
+          className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left text-xs font-semibold text-text-secondary uppercase focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={handleCollapse}
+        >
           {t(`${i18nPrefix}.class`, { ns: 'workflow' })}
           {' '}
           <span className="text-text-destructive">*</span>
@@ -96,10 +132,16 @@ const ClassList: FC<Props> = ({
                 'h-4 w-4 text-text-quaternary transition-transform duration-200',
                 collapsed && '-rotate-90',
               )}
+              aria-hidden="true"
             />
           )}
-        </div>
+        </button>
       </div>
+      {shouldShowRenameHint && (
+        <div className="mb-2 rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-xs text-text-tertiary">
+          {t(`${i18nPrefix}.renameHint`, { ns: 'workflow' })}
+        </div>
+      )}
 
       {!collapsed && (
         <div
@@ -117,12 +159,7 @@ const ClassList: FC<Props> = ({
           >
             {
               list.map((item, index) => {
-                const canDrag = (() => {
-                  if (readonly)
-                    return false
-
-                  return topicCount >= 2
-                })()
+                const canDrag = !readonly && topicCount >= 2
                 return (
                   <div
                     key={item.id}
@@ -153,6 +190,7 @@ const ClassList: FC<Props> = ({
                         index={index + 1}
                         readonly={readonly}
                         filterVar={filterVar}
+                        onLabelEditStart={dismissRenameHint}
                       />
                     </div>
                   </div>

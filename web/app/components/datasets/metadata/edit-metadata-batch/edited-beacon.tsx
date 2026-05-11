@@ -25,9 +25,14 @@ const EditedBeacon: FC<Props> = ({
             <Tooltip>
               <TooltipTrigger
                 render={(
-                  <div className="flex size-4 items-center justify-center rounded-full bg-text-accent-secondary" onClick={onReset}>
-                    <RiResetLeftLine className="size-[10px] text-text-primary-on-surface" />
-                  </div>
+                  <button
+                    type="button"
+                    aria-label={t('operation.reset', { ns: 'common' })}
+                    className="flex size-4 items-center justify-center rounded-full border-none bg-text-accent-secondary p-0"
+                    onClick={onReset}
+                  >
+                    <RiResetLeftLine className="size-[10px] text-text-primary-on-surface" aria-hidden="true" />
+                  </button>
                 )}
               />
               <TooltipContent>

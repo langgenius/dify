@@ -53,7 +53,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         <DialogDescription className="mt-2 body-md-regular text-text-secondary">
           {t(`${prefixCustomize}.explanation`, { ns: 'appOverview' })}
         </DialogDescription>
-        <DialogCloseButton data-testid="modal-close-button" />
+        <DialogCloseButton />
         <div className="mt-4 w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
           <Tag bordered={true} hideBg={true} className="border-text-accent-secondary text-text-accent-secondary uppercase">
             {t(`${prefixCustomize}.way`, { ns: 'appOverview' })}

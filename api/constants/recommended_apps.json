@@ -19,7 +19,7 @@
                         "name": "Website Generator"
                     },
                     "app_id": "b53545b1-79ea-4da3-b31a-c39391c6f041",
-                    "category": "Programming",
+                    "categories": ["Programming"],
                     "copyright": null,
                     "description": null,
                     "is_listed": true,
@@ -35,7 +35,7 @@
                         "name": "Investment Analysis Report Copilot"
                     },
                     "app_id": "a23b57fa-85da-49c0-a571-3aff375976c1",
-                    "category": "Agent",
+                    "categories": ["Agent"],
                     "copyright": "Dify.AI",
                     "description": "Welcome to your personalized Investment Analysis Copilot service, where we delve into the depths of stock analysis to provide you with comprehensive insights. \n",
                     "is_listed": true,
@@ -51,7 +51,7 @@
                         "name": "Workflow Planning Assistant "
                     },
                     "app_id": "f3303a7d-a81c-404e-b401-1f8711c998c1",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "An assistant that helps you plan and select the right node for a workflow (V0.6.0).  ",
                     "is_listed": true,
@@ -67,7 +67,7 @@
                         "name": "Automated Email Reply  "
                     },
                     "app_id": "e9d92058-7d20-4904-892f-75d90bef7587",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "Reply emails using Gmail API. It will automatically retrieve email in your inbox and create a response in Gmail. \nConfigure your Gmail API in Google Cloud Console. ",
                     "is_listed": true,
@@ -83,7 +83,7 @@
                         "name": "Book Translation "
                     },
                     "app_id": "98b87f88-bd22-4d86-8b74-86beba5e0ed4",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "A workflow designed to translate a full book up to 15000 tokens per run. Uses Code node to separate text into chunks and Iteration to translate each chunk. ",
                     "is_listed": true,
@@ -99,7 +99,7 @@
                         "name": "Python bug fixer"
                     },
                     "app_id": "cae337e6-aec5-4c7b-beca-d6f1a808bd5e",
-                    "category": "Programming",
+                    "categories": ["Programming"],
                     "copyright": null,
                     "description": null,
                     "is_listed": true,
@@ -115,7 +115,7 @@
                         "name": "Code Interpreter"
                     },
                     "app_id": "d077d587-b072-4f2c-b631-69ed1e7cdc0f",
-                    "category": "Programming",
+                    "categories": ["Programming"],
                     "copyright": "Copyright 2023 Dify",
                     "description": "Code interpreter, clarifying the syntax and semantics of the code.",
                     "is_listed": true,
@@ -131,7 +131,7 @@
                         "name": "SVG Logo Design "
                     },
                     "app_id": "73fbb5f1-c15d-4d74-9cc8-46d9db9b2cca",
-                    "category": "Agent",
+                    "categories": ["Agent"],
                     "copyright": "Dify.AI",
                     "description": "Hello, I am your creative partner in bringing ideas to vivid life! I can assist you in creating stunning designs by leveraging abilities of DALL·E 3.  ",
                     "is_listed": true,
@@ -147,7 +147,7 @@
                         "name": "Long Story Generator (Iteration) "
                     },
                     "app_id": "5efb98d7-176b-419c-b6ef-50767391ab62",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "A workflow demonstrating how to use Iteration node to generate long article that is longer than the context length of LLMs. ",
                     "is_listed": true,
@@ -163,7 +163,7 @@
                         "name": "Text Summarization Workflow"
                     },
                     "app_id": "f00c4531-6551-45ee-808f-1d7903099515",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "Based on users' choice, retrieve external knowledge to more accurately summarize articles.",
                     "is_listed": true,
@@ -179,7 +179,7 @@
                         "name": "YouTube Channel Data Analysis"
                     },
                     "app_id": "be591209-2ca8-410f-8f3b-ca0e530dd638",
-                    "category": "Agent",
+                    "categories": ["Agent"],
                     "copyright": "Dify.AI",
                     "description": "I am a YouTube Channel Data Analysis Copilot, I am here to provide expert data analysis tailored to your needs. ",
                     "is_listed": true,
@@ -195,7 +195,7 @@
                         "name": "Article Grading Bot"
                     },
                     "app_id": "a747f7b4-c48b-40d6-b313-5e628232c05f",
-                    "category": "Writing",
+                    "categories": ["Writing"],
                     "copyright": null,
                     "description": "Assess the quality of articles and text based on user defined criteria. ",
                     "is_listed": true,
@@ -211,7 +211,7 @@
                         "name": "SEO Blog Generator"
                     },
                     "app_id": "18f3bd03-524d-4d7a-8374-b30dbe7c69d5",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "Workflow for retrieving information from the internet, followed by segmented generation of SEO blogs.",
                     "is_listed": true,
@@ -227,7 +227,7 @@
                         "name": "SQL Creator"
                     },
                     "app_id": "050ef42e-3e0c-40c1-a6b6-a64f2c49d744",
-                    "category": "Programming",
+                    "categories": ["Programming"],
                     "copyright": "Copyright 2023 Dify",
                     "description": "Write SQL from natural language by pasting in your schema with the request.Please describe your query requirements in natural language and select the target database type.",
                     "is_listed": true,
@@ -243,7 +243,7 @@
                         "name": "Sentiment Analysis "
                     },
                     "app_id": "f06bf86b-d50c-4895-a942-35112dbe4189",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "Batch sentiment analysis of text, followed by JSON output of sentiment classification along with scores.",
                     "is_listed": true,
@@ -259,7 +259,7 @@
                         "name": "Strategic Consulting Expert"
                     },
                     "app_id": "7e8ca1ae-02f2-4b5f-979e-62d19133bee2",
-                    "category": "Assistant",
+                    "categories": ["Assistant"],
                     "copyright": "Copyright 2023 Dify",
                     "description": "I can answer your questions related to strategic marketing.",
                     "is_listed": true,
@@ -275,7 +275,7 @@
                         "name": "Code Converter"
                     },
                     "app_id": "4006c4b2-0735-4f37-8dbb-fb1a8c5bd87a",
-                    "category": "Programming",
+                    "categories": ["Programming"],
                     "copyright": "Copyright 2023 Dify",
                     "description": "This is an application that provides the ability to convert code snippets in multiple programming languages. You can input the code you wish to convert, select the target programming language, and get the desired output.",
                     "is_listed": true,
@@ -291,7 +291,7 @@
                         "name": "Question Classifier + Knowledge + Chatbot "
                     },
                     "app_id": "d9f6b733-e35d-4a40-9f38-ca7bbfa009f7",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "Basic Workflow Template, a chatbot capable of identifying intents alongside with a knowledge base.",
                     "is_listed": true,
@@ -307,7 +307,7 @@
                         "name": "AI Front-end interviewer"
                     },
                     "app_id": "127efead-8944-4e20-ba9d-12402eb345e0",
-                    "category": "HR",
+                    "categories": ["HR"],
                     "copyright": "Copyright 2023 Dify",
                     "description": "A simulated front-end interviewer that tests the skill level of front-end development through questioning.",
                     "is_listed": true,
@@ -323,7 +323,7 @@
                         "name": "Knowledge Retrieval + Chatbot "
                     },
                     "app_id": "e9870913-dd01-4710-9f06-15d4180ca1ce",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "Basic Workflow Template, A chatbot with a knowledge base. ",
                     "is_listed": true,
@@ -339,7 +339,7 @@
                         "name": "Email Assistant Workflow "
                     },
                     "app_id": "dd5b6353-ae9b-4bce-be6a-a681a12cf709",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "A multifunctional email assistant capable of summarizing, replying, composing, proofreading, and checking grammar.",
                     "is_listed": true,
@@ -355,7 +355,7 @@
                         "name": "Customer Review Analysis Workflow "
                     },
                     "app_id": "9c0cd31f-4b62-4005-adf5-e3888d08654a",
-                    "category": "Workflow",
+                    "categories": ["Workflow"],
                     "copyright": null,
                     "description": "Utilize LLM (Large Language Models) to classify customer reviews and forward them to the internal system.",
                     "is_listed": true,

@@ -91,7 +91,7 @@ describe('MessageLogModal', () => {
   describe('Interaction', () => {
     it('calls onCancel when close icon is clicked', () => {
       render(<MessageLogModal width={800} onCancel={onCancel} currentLogItem={mockLog} />)
-      const closeButton = screen.getByTestId('close-button')
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
       expect(closeButton)!.toBeInTheDocument()
       fireEvent.click(closeButton)
       expect(onCancel).toHaveBeenCalledTimes(1)

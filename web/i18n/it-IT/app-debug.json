@@ -337,6 +337,8 @@
   "variableConfig.file.image.name": "Immagine",
   "variableConfig.file.supportFileTypes": "Tipi di file di supporto",
   "variableConfig.file.video.name": "Video",
+  "variableConfig.hidden": "Nascosto e precompilato",
+  "variableConfig.hiddenDescription": "Nascondi questo campo agli utenti finali e fornisci il valore tu stesso. Incompatibile con Obbligatorio. <docLink>Per saperne di più</docLink>",
   "variableConfig.hide": "Nascondi",
   "variableConfig.inputPlaceholder": "Per favore inserisci",
   "variableConfig.json": "Codice JSON",

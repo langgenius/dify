@@ -55,9 +55,11 @@ export type ConfigParams = {
 
 const prefixSettings = 'overview.appInfo.settings'
 type SelectOption = {
-  value: string
+  value: Language
   name: string
 }
+
+const LANGUAGE_OPTIONS: SelectOption[] = languages.filter(item => item.supported)
 
 const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
   const {
@@ -139,8 +141,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const isFreePlan = plan.type === 'sandbox'
-  const languageOptions: SelectOption[] = languages.filter(item => item.supported)
-  const selectedLanguage = languageOptions.find(item => item.value === language)
+  const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
+
+  const handleLanguageChange = (nextValue: string | null) => {
+    const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
+    if (nextLanguage)
+      setLanguage(nextLanguage.value)
+  }
   const handlePlanClick = useCallback(() => {
     if (isFreePlan)
       setShowPricingModal()
@@ -308,17 +315,17 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               <div className={cn('grow py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.language`, { ns: 'appOverview' })}</div>
               <Select
                 value={selectedLanguage?.value ?? null}
-                onValueChange={(nextValue) => {
-                  if (!nextValue)
-                    return
-                  setLanguage(nextValue as Language)
-                }}
+                onValueChange={handleLanguageChange}
               >
-                <SelectTrigger size="large" className="w-[200px]">
+                <SelectTrigger
+                  aria-label={t(`${prefixSettings}.language`, { ns: 'appOverview' })}
+                  size="large"
+                  className="w-[200px]"
+                >
                   {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
                 </SelectTrigger>
                 <SelectContent>
-                  {languageOptions.map(item => (
+                  {LANGUAGE_OPTIONS.map(item => (
                     <SelectItem key={item.value} value={item.value}>
                       <SelectItemText>{item.name}</SelectItemText>
                       <SelectItemIndicator />

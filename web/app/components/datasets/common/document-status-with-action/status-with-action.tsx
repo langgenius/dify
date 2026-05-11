@@ -58,10 +58,17 @@ const StatusAction: FC<Props> = ({
       <div className="relative z-10 flex h-full items-center space-x-2">
         <Icon className={cn('h-4 w-4', color)} />
         <div className="text-[13px] font-normal text-text-secondary">{description}</div>
-        {onAction && (
+        {onAction && actionText && (
           <>
             <Divider type="vertical" className="h-4!" />
-            <div onClick={onAction} className={cn('cursor-pointer text-[13px] font-semibold text-text-accent', disabled && 'cursor-not-allowed text-text-disabled')}>{actionText}</div>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={onAction}
+              className={cn('cursor-pointer border-none bg-transparent p-0 text-left text-[13px] font-semibold text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', disabled && 'cursor-not-allowed text-text-disabled')}
+            >
+              {actionText}
+            </button>
           </>
         )}
       </div>

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from constants.model_template import default_app_templates
 from models import Account
+from models.enums import AppStatus, CustomizeTokenStrategy
 from models.model import App, IconType, Site
 from services.account_service import AccountService, TenantService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
@@ -1079,9 +1080,9 @@ class TestAppService:
         site.app_id = app.id
         site.code = fake.postalcode()
         site.title = fake.company()
-        site.status = "normal"
+        site.status = AppStatus.NORMAL
         site.default_language = "en-US"
-        site.customize_token_strategy = "uuid"
+        site.customize_token_strategy = CustomizeTokenStrategy.UUID
 
         db_session_with_containers.add(site)
         db_session_with_containers.commit()

@@ -54,7 +54,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
   const { t } = useTranslation()
 
   return (
-    <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop} footer={null}>
+    <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop}>
       <PreviewContainer
         header={(
           <PreviewHeader title={t('stepTwo.preview', { ns: 'datasetCreation' })}>

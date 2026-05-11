@@ -414,8 +414,8 @@ def test_parse_event_message_should_parse_only_json_object(
 
 def test_is_terminal_event_should_recognize_finished_and_optional_paused_events() -> None:
     # Arrange
-    finished_event = {"event": StreamEvent.WORKFLOW_FINISHED.value}
-    paused_event = {"event": StreamEvent.WORKFLOW_PAUSED.value}
+    finished_event = {"event": StreamEvent.WORKFLOW_FINISHED}
+    paused_event = {"event": StreamEvent.WORKFLOW_PAUSED}
 
     # Act
     is_finished = service_module._is_terminal_event(finished_event, close_on_pause=False)
@@ -426,7 +426,7 @@ def test_is_terminal_event_should_recognize_finished_and_optional_paused_events(
     assert is_finished is True
     assert paused_without_flag is False
     assert paused_with_flag is True
-    assert service_module._is_terminal_event(StreamEvent.PING.value, close_on_pause=True) is False
+    assert service_module._is_terminal_event(StreamEvent.PING, close_on_pause=True) is False
 
 
 def test_apply_message_context_should_update_payload_when_context_exists() -> None:
@@ -569,7 +569,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
     monkeypatch.setattr(
         service_module,
         "_build_snapshot_events",
-        MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED.value, "task_id": "task-1"}]),
+        MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED, "task_id": "task-1"}]),
     )
 
     # Act
@@ -584,9 +584,9 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
     )
 
     # Assert
-    assert events[0] == StreamEvent.PING.value
+    assert events[0] == StreamEvent.PING
     finished_event = cast(Mapping[str, Any], events[1])
-    assert finished_event["event"] == StreamEvent.WORKFLOW_FINISHED.value
+    assert finished_event["event"] == StreamEvent.WORKFLOW_FINISHED
     assert buffer_state.stop_event.is_set() is True
     node_repo.get_execution_snapshots_by_workflow_run.assert_called_once()
     called_kwargs = node_repo.get_execution_snapshots_by_workflow_run.call_args.kwargs
@@ -643,7 +643,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
     )
 
     # Assert
-    assert events == [StreamEvent.PING.value, StreamEvent.PING.value]
+    assert events == [StreamEvent.PING, StreamEvent.PING]
     assert buffer_state.stop_event.is_set() is True
 
 
@@ -686,7 +686,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
     )
 
     # Assert
-    assert events == [StreamEvent.PING.value]
+    assert events == [StreamEvent.PING]
     assert buffer_state.stop_event.is_set() is True
 
 
@@ -706,7 +706,7 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
     monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
     monkeypatch.setattr(service_module, "_resolve_task_id", MagicMock(return_value="task-1"))
-    snapshot_builder = MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED.value}])
+    snapshot_builder = MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED}])
     monkeypatch.setattr(service_module, "_build_snapshot_events", snapshot_builder)
     buffer_state = BufferState(
         queue=queue.Queue(),
@@ -729,7 +729,7 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
     )
 
     # Assert
-    assert events[0] == StreamEvent.PING.value
+    assert events[0] == StreamEvent.PING
     assert snapshot_builder.call_args.kwargs["pause_entity"] is None
 
 
@@ -779,7 +779,7 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
         session_maker=cast(sessionmaker[Session], session_maker),
     )
 
-    assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED.value
+    assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
     assert events[-2]["data"]["form_token"] == "wtok"
     assert events[-2]["data"]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
     pause_data = events[-1]["data"]
@@ -837,6 +837,6 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
     )
 
     pause_event = cast(Mapping[str, Any], events[-1])
-    assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED.value
+    assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED
     assert pause_event["data"]["reasons"][0]["form_token"] == "wtok"
     assert pause_event["data"]["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())

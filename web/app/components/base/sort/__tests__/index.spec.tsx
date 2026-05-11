@@ -11,10 +11,10 @@ const mockItems = [
 ]
 
 describe('Sort component — real portal integration', () => {
-  const setup = (props = {}) => {
+  const setup = (props: Partial<React.ComponentProps<typeof Sort>> = {}) => {
     const onSelect = vi.fn()
     const user = userEvent.setup()
-    const { container, rerender } = render(
+    const { rerender } = render(
       <Sort value="created_at" items={mockItems} onSelect={onSelect} order="" {...props} />,
     )
 
@@ -28,10 +28,9 @@ describe('Sort component — real portal integration', () => {
 
     // helper: returns right-side sort button element
     const getSortButton = (): HTMLElement => {
-      const btn = container.querySelector('.rounded-r-lg')
-      if (!btn)
-        throw new Error('Sort button (rounded-r-lg) not found in rendered container')
-      return btn as HTMLElement
+      return screen.getByRole('button', {
+        name: props.order ? 'appLog.filter.ascending' : 'appLog.filter.descending',
+      })
     }
 
     return { user, onSelect, rerender, getTriggerWrapper, getSortButton }
