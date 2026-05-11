@@ -254,7 +254,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             created_by_role=self._creator_user_role,
             created_by=self._creator_user_id,
             finished_at=domain_model.finished_at,
-            app_id=self._app_id
+            app_id=self._app_id,
         )
         db_model.id = domain_model.id
 
