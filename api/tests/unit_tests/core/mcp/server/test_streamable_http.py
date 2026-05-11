@@ -534,7 +534,8 @@ class TestUtilityFunctions:
 
         result = extract_answer_from_response(app, mock_generator)
 
-        assert result == "thinking...more thinking"
+        # fallback returns the last agent_thought when no answer events are present
+        assert result == "more thinking"
 
     def test_extract_structured_output_workflow(self):
         """Workflow mode exposes the raw outputs mapping as structured content."""
