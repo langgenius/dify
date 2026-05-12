@@ -1,5 +1,7 @@
 """Container-backed integration tests for DatasetService.delete_dataset real SQL paths."""
 
+from models import AccountStatus
+from models import TenantStatus
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -22,14 +24,14 @@ class DatasetDeleteIntegrationDataFactory:
             email=f"owner-{uuid4()}@example.com",
             name="Owner",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=f"tenant-{uuid4()}",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -81,7 +83,7 @@ class DatasetDeleteIntegrationDataFactory:
         tenant_id: str,
         dataset_id: str,
         created_by: str,
-        doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
+        doc_form: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
     ) -> Document:
         """Persist a document so dataset.doc_form resolves through the real document path."""
         document = Document(
