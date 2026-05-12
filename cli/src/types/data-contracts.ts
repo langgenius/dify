@@ -328,8 +328,7 @@ export type PermittedExternalAppsListQuery = {
    * @default 20
    */
   limit?: number
-  /** Mode */
-  mode?: string
+  mode?: AppMode
   /** Name */
   name?: string
   /**

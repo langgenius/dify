@@ -57,7 +57,7 @@ class PermittedExternalAppsListApi(Resource):
     )
     def get(self):
         try:
-            query = PermittedExternalAppsListQuery.model_validate(request.args.to_dict(flat=True))
+            query: PermittedExternalAppsListQuery = PermittedExternalAppsListQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
             raise UnprocessableEntity(exc.json())
 
@@ -104,7 +104,6 @@ class PermittedExternalAppsListApi(Resource):
                     workspace_name=tenant.name if tenant else None,
                 )
             )
-
         # total/has_more reflect the EE-side allow-list; len(items) may be < limit when local rows are dropped.
         env = PermittedExternalAppsListResponse(
             page=query.page,

@@ -187,7 +187,7 @@ class AppListApi(Resource):
         ctx: AuthContext = g.auth_ctx
 
         try:
-            query = AppListQuery.model_validate(request.args.to_dict(flat=True))
+            query: AppListQuery = AppListQuery.model_validate(request.args.to_dict(flat=True))
         except ValidationError as exc:
             raise UnprocessableEntity(exc.json())
 

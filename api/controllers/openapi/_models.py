@@ -318,5 +318,5 @@ class PermittedExternalAppsListQuery(BaseModel):
 
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: str | None = None
+    mode: AppMode | None = None
     name: str | None = Field(None, max_length=200)
