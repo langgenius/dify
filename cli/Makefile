@@ -55,24 +55,21 @@ release: ## Multi-platform tarballs. Reads channel/version from cli/package.json
 clean: ## Remove build artifacts.
 	@rm -rf dist oclif.manifest.json node_modules/.cache
 
-sync-models: ## Regenerate TS models from API swagger spec.
+sync-models: ## Regenerate TS types from API swagger spec.
 	@echo "→ Generating openapi swagger spec…"
 	cd ../api && uv run --project . dev/generate_swagger_specs.py
-	@echo "→ Converting Swagger 2.0 → OpenAPI 3.x…"
-	npx swagger2openapi ../api/openapi/openapi-swagger.json -o /tmp/openapi-oas3.json --patch
-	@echo "→ Generating Zod schemas + TS types…"
-	npx openapi-zod-client /tmp/openapi-oas3.json -o src/types/openapi-schemas.ts -t scripts/schemas-only.hbs --export-schemas
-	sed -i.bak 's/z\.record(z\.string())/z.record(z.string(), z.string())/g' src/types/openapi-schemas.ts
-	sed -i.bak 's/\.passthrough()/.loose()/g' src/types/openapi-schemas.ts
-	sed -i.bak 's/z\.object({})\.partial()/z.record(z.string(), z.any())/g' src/types/openapi-schemas.ts
-	sed -i.bak 's/z\.unknown()/z.null()/g' src/types/openapi-schemas.ts
-	sed -i.bak 's/\.loose()//g' src/types/openapi-schemas.ts
-	sed -i.bak 's/\.partial()//g' src/types/openapi-schemas.ts
-	@rm -f src/types/openapi-schemas.ts.bak
-	@echo "→ Fixing lint style…"
-	@$(PNPM) lint:fix src/types/openapi-schemas.ts
-	@rm -f /tmp/openapi-oas3.json
+	@echo "→ Generating TypeScript types…"
+	@npx swagger-typescript-api generate \
+		--path ../api/openapi/openapi-swagger.json \
+		--output src/types \
+		--modular \
+		--no-client
+	@echo "→ Fixing generated style…"
+	sed -i.bak '/\/\/ @ts-nocheck/d' src/types/data-contracts.ts
+	sed -i.bak '1s|^/\* eslint-disable \*/|/* eslint-disable erasable-syntax-only/enums, ts/no-explicit-any */|' src/types/data-contracts.ts
+	@rm -f src/types/data-contracts.ts.bak
+	@$(PNPM) lint:fix src/types/data-contracts.ts
 	@rm -f ../api/openapi/*-swagger.json
-	@echo "✓ src/types/openapi-schemas.ts updated"
+	@echo "✓ src/types/ updated"
 
 .DEFAULT_GOAL := help

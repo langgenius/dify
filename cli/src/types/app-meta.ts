@@ -1,4 +1,4 @@
-import type { AppDescribeInfoType, AppDescribeResponseType } from './openapi-schemas.js'
+import type { AppDescribeInfo, AppDescribeResponse } from './data-contracts.js'
 
 export const FieldInfo = 'info'
 export const FieldParameters = 'parameters'
@@ -7,7 +7,7 @@ export const FieldInputSchema = 'input_schema'
 export type AppMetaFieldKey = typeof FieldInfo | typeof FieldParameters | typeof FieldInputSchema
 
 export type AppMeta = {
-  info: AppDescribeInfoType | null
+  info: AppDescribeInfo | null
   parameters: unknown
   inputSchema: unknown
   coveredFields: ReadonlySet<AppMetaFieldKey>
@@ -18,7 +18,7 @@ export type AppMetaCacheRecord = {
   fetchedAt: string
 }
 
-export function fromDescribe(resp: AppDescribeResponseType, requested: readonly AppMetaFieldKey[]): AppMeta {
+export function fromDescribe(resp: AppDescribeResponse, requested: readonly AppMetaFieldKey[]): AppMeta {
   const covered = new Set<AppMetaFieldKey>()
   if (requested.length === 0) {
     covered.add(FieldInfo)

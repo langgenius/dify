@@ -1,7 +1,7 @@
 import type { KyInstance } from 'ky'
 import type { HostsBundle } from '../../../auth/hosts.js'
 import type { IOStreams } from '../../../io/streams.js'
-import type { AppDescribeResponseType, AppListResponseType } from '../../../types/openapi-schemas.js'
+import type { AppDescribeResponse, AppListResponse, AppMode } from '../../../types/data-contracts.js'
 import { AppsClient } from '../../../api/apps.js'
 import { WorkspacesClient } from '../../../api/workspaces.js'
 import { runWithSpinner } from '../../../io/spinner.js'
@@ -48,7 +48,7 @@ export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<
 
   const envelope = await runWithSpinner(
     { io, label },
-    async (): Promise<AppListResponseType> => {
+    async (): Promise<AppListResponse> => {
       if (opts.allWorkspaces === true) {
         const ws = wsFactory(deps.http)
         return runAllWorkspaces(apps, ws, opts, page, pageSize)
@@ -84,7 +84,7 @@ function resolveLimit(raw: string | undefined, env: (k: string) => string | unde
   return LIMIT_DEFAULT
 }
 
-function describeToEnvelope(desc: AppDescribeResponseType, wsId: string, wsName: string): AppListResponseType {
+function describeToEnvelope(desc: AppDescribeResponse, wsId: string, wsName: string): AppListResponse {
   if (desc.info === null || desc.info === undefined) {
     return { page: 1, limit: 1, total: 0, has_more: false, data: [] }
   }
@@ -97,12 +97,12 @@ function describeToEnvelope(desc: AppDescribeResponseType, wsId: string, wsName:
       id: desc.info.id,
       name: desc.info.name,
       description: desc.info.description,
-      mode: desc.info.mode,
+      mode: desc.info.mode as AppMode,
       tags: desc.info.tags,
       updated_at: desc.info.updated_at,
-      created_by_name: desc.info.author === '' ? null : desc.info.author,
+      created_by_name: desc.info.author === '' ? undefined : desc.info.author,
       workspace_id: wsId,
-      workspace_name: wsName === '' ? null : wsName,
+      workspace_name: wsName === '' ? undefined : wsName,
     }],
   }
 }
@@ -125,12 +125,12 @@ async function runAllWorkspaces(
   opts: GetAppOptions,
   page: number,
   limit: number,
-): Promise<AppListResponseType> {
+): Promise<AppListResponse> {
   const wsResp = await ws.list()
   if (wsResp.workspaces.length === 0)
     return { page: 1, limit, total: 0, has_more: false, data: [] }
 
-  const merged: AppListResponseType = { page: 1, limit, total: 0, has_more: false, data: [] }
+  const merged: AppListResponse = { page: 1, limit, total: 0, has_more: false, data: [] }
   const queue = [...wsResp.workspaces]
   const workers: Promise<void>[] = []
 

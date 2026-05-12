@@ -1,11 +1,11 @@
 import type { TextHandler } from '../../../printers/format-text.js'
 import type { AppMeta } from '../../../types/app-meta.js'
-import type { AppDescribeInfoType, TagItemType } from '../../../types/openapi-schemas.js'
+import type { AppDescribeInfo, TagItem } from '../../../types/data-contracts.js'
 
 export const APP_DESCRIBE_MODE_KEY = 'app-describe'
 
 export type AppDescribePayload = {
-  info: AppDescribeInfoType | null
+  info: AppDescribeInfo | null
   parameters: unknown
   input_schema: unknown
 }
@@ -40,7 +40,7 @@ export const appDescribeTextHandler: TextHandler = {
         ['Author', info.author ?? ''],
         ['Updated', info.updated_at ?? ''],
         ['Service API', info.service_api_enabled ? 'true' : 'false'],
-        ['Tags', joinTags(info.tags)],
+        ['Tags', joinTags(info.tags ?? [])],
       ]
       if (info.description !== '' && info.description !== undefined)
         rows.push(['Description', info.description ?? ''])
@@ -60,7 +60,7 @@ export const appDescribeTextHandler: TextHandler = {
   },
 }
 
-function joinTags(tags: readonly TagItemType[]): string {
+function joinTags(tags: readonly TagItem[]): string {
   if (tags.length === 0)
     return '<none>'
   return tags.map(t => t.name).join(',')

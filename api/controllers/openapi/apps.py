@@ -210,7 +210,7 @@ class AppListApi(Resource):
             parsed_uuid = None
 
         if parsed_uuid is not None:
-            app = db.session.get(App, str(parsed_uuid))
+            app: App = db.session.get(App, str(parsed_uuid))
             if not app or app.status != "normal" or str(app.tenant_id) != workspace_id or not is_openapi_visible(app):
                 return empty
             tenant_name = db.session.execute(

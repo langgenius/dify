@@ -1,6 +1,5 @@
 import type { KyInstance } from 'ky'
-import type { WorkspaceListResponseType } from '../types/openapi-schemas.js'
-import { WorkspaceListResponse } from '../types/openapi-schemas.js'
+import type { WorkspaceListResponse } from '../types/data-contracts.js'
 
 export class WorkspacesClient {
   private readonly http: KyInstance
@@ -9,8 +8,7 @@ export class WorkspacesClient {
     this.http = http
   }
 
-  async list(): Promise<WorkspaceListResponseType> {
-    const raw = await this.http.get('workspaces').json()
-    return WorkspaceListResponse.parse(raw)
+  async list(): Promise<WorkspaceListResponse> {
+    return this.http.get('workspaces').json<WorkspaceListResponse>()
   }
 }

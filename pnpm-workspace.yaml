@@ -207,7 +207,6 @@ catalog:
   nuqs: 2.8.9
   oclif: 4.15.5
   open: 10.1.0
-  openapi-zod-client: 1.18.3
   ora: 8.1.0
   picocolors: 1.1.0
   pinyin-pro: 3.28.1

@@ -1,8 +1,8 @@
-import type { AppDescribeResponseType } from './openapi-schemas.js'
+import type { AppDescribeResponse } from './data-contracts.js'
 import { describe, expect, it } from 'vitest'
 import { covers, FieldInfo, FieldInputSchema, FieldParameters, fromDescribe, mergeMeta } from './app-meta.js'
 
-function describeResp(): AppDescribeResponseType {
+function describeResp(): AppDescribeResponse {
   return {
     info: {
       id: 'app-1',
@@ -11,12 +11,12 @@ function describeResp(): AppDescribeResponseType {
       mode: 'chat',
       author: 'tester',
       tags: [],
-      updated_at: null,
+      updated_at: undefined,
       service_api_enabled: false,
       is_agent: false,
     },
     parameters: { opening_statement: 'hi' },
-    input_schema: null,
+    input_schema: undefined,
   }
 }
 
