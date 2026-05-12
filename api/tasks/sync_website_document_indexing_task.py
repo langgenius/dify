@@ -13,7 +13,7 @@ from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DocumentSegment
-from models.enums import IndexingStatus
+from models.enums import DataSourceType, IndexingStatus
 from services.dataset_ref_service import DatasetRefService
 from services.feature_service import FeatureService
 
@@ -42,7 +42,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
         if document is None:
             logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
             return
-        if document.data_source_type != "website_crawl":
+        if document.data_source_type != DataSourceType.WEBSITE_CRAWL:
             raise ValueError("Document is not a website document")
 
         sync_indexing_cache_key = f"document_{document_id}_is_sync"

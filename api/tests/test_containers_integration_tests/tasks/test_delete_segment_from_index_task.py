@@ -150,7 +150,16 @@ class TestDeleteSegmentFromIndexTask:
             Document: Created test document instance
         """
         fake = fake or Faker()
-        document = Document()
+        document = Document(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            position=kwargs.get("position", 1),
+            data_source_type=kwargs.get("data_source_type", "upload_file"),
+            batch=kwargs.get("batch", fake.uuid4()),
+            name=kwargs.get("name", f"Test Document {fake.word()}"),
+            created_from=kwargs.get("created_from", DocumentCreatedFrom.API),
+            created_by=account.id,
+        )
         document.id = fake.uuid4()
         document.tenant_id = dataset.tenant_id
         document.dataset_id = dataset.id

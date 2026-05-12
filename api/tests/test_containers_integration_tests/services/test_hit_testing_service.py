@@ -15,7 +15,7 @@ from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, SegmentStatus
 from services.hit_testing_service import HitTestingService
 
 
@@ -105,12 +105,12 @@ def _create_dataset_document(
         tenant_id=tenant_id,
         dataset_id=dataset.id,
         position=1,
-        data_source_type=data_source_type,
+        data_source_type=DataSourceType(data_source_type),
         batch=f"batch-{uuid4()}",
         name=name,
         created_from=DocumentCreatedFrom.WEB,
         created_by=created_by,
-        doc_type=doc_type,
+        doc_type=DocumentDocType(doc_type) if doc_type else None,
         doc_metadata=doc_metadata,
     )
     db_session.add(document)
