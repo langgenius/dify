@@ -69,6 +69,7 @@ class IndexingRunner:
     def run(self, dataset_documents: list[DatasetDocument]):
         """Run the indexing process."""
         for dataset_document in dataset_documents:
+            
             document_id = dataset_document.id
             try:
                 # Re-query the document to ensure it's bound to the current session
@@ -76,7 +77,7 @@ class IndexingRunner:
                 if not requeried_document:
                     logger.warning("Document not found, skipping document id: %s", document_id)
                     continue
-
+                
                 # get dataset
                 dataset = db.session.get(Dataset, requeried_document.dataset_id)
 
@@ -99,6 +100,7 @@ class IndexingRunner:
                 if not current_user:
                     raise ValueError("no current user found")
                 current_user.set_tenant_id(dataset.tenant_id)
+                assert requeried_document.doc_language
                 documents = self._transform(
                     index_processor,
                     dataset,
@@ -172,6 +174,7 @@ class IndexingRunner:
             if not current_user:
                 raise ValueError("no current user found")
             current_user.set_tenant_id(dataset.tenant_id)
+            assert requeried_document.doc_language
             documents = self._transform(
                 index_processor,
                 dataset,
