@@ -1,4 +1,3 @@
-from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict
 import base64
 import enum
 import hashlib

@@ -171,7 +171,8 @@ class RagPipelineTransformService:
         node: dict[str, Any],
     ):
         knowledge_configuration_dict = node.get("data", {})
-        assert dataset.embedding_model and dataset.embedding_model_provider
+        assert dataset.embedding_model
+        assert dataset.embedding_model_provider
         if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
