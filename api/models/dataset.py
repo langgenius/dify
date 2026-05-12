@@ -1,3 +1,4 @@
+from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict
 import base64
 import enum
 import hashlib
@@ -194,8 +195,8 @@ class Dataset(TypeBase):
     embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     keyword_number: Mapped[str | None] = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
     collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    retrieval_model: Mapped[str | None] = mapped_column(AdjustedJSON, nullable=True)
-    summary_index_setting: Mapped[str | None] = mapped_column(AdjustedJSON, nullable=True)
+    retrieval_model: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON, nullable=True)
+    summary_index_setting: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON, nullable=True)
     built_in_field_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     icon_info: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON, nullable=True)
     runtime_mode: Mapped[DatasetRuntimeMode | None] = mapped_column(
