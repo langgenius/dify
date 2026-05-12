@@ -17,14 +17,14 @@ from typing_extensions import Self, override
 
 from agenton.layers import EmptyRuntimeState, NoLayerDeps, PlainLayer
 from dify_agent.adapters.llm import DifyPluginDaemonProvider
-from dify_agent.layers.dify_plugin.configs import DifyPluginLayerConfig
+from dify_agent.layers.dify_plugin.configs import DIFY_PLUGIN_LAYER_TYPE_ID, DifyPluginLayerConfig
 
 
 @dataclass(slots=True)
 class DifyPluginLayer(PlainLayer[NoLayerDeps, DifyPluginLayerConfig, EmptyRuntimeState]):
     """Layer that carries plugin daemon identity without owning live resources."""
 
-    type_id = "dify.plugin"
+    type_id = DIFY_PLUGIN_LAYER_TYPE_ID
 
     config: DifyPluginLayerConfig
     daemon_url: str

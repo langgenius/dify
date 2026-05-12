@@ -1,6 +1,8 @@
 """Async Python client example for the Dify Agent run server.
 
-Requires Redis and a running API server. The server schedules runs in-process, for
+Requires Redis and a running API server. Before starting the server, sync the
+server runtime dependencies with `uv sync --project dify-agent --extra server`
+or install `dify-agent[server]`. The server schedules runs in-process, for
 example:
 
     uv run --project dify-agent uvicorn dify_agent.server.app:app --reload
@@ -13,9 +15,11 @@ recover after client-side uncertainty.
 
 import asyncio
 
-from agenton_collections.layers.plain import PromptLayerConfig
+from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from dify_agent.client import Client
 from dify_agent.layers.dify_plugin import (
+    DIFY_PLUGIN_LAYER_TYPE_ID,
+    DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
     DifyPluginLayerConfig,
@@ -39,7 +43,7 @@ async def main() -> None:
                     layers=[
                         RunLayerSpec(
                             name="prompt",
-                            type="plain.prompt",
+                            type=PLAIN_PROMPT_LAYER_TYPE_ID,
                             config=PromptLayerConfig(
                                 prefix="You are a concise assistant.",
                                 user="Say hello from the Dify Agent API server example.",
@@ -47,12 +51,12 @@ async def main() -> None:
                         ),
                         RunLayerSpec(
                             name="plugin",
-                            type="dify.plugin",
+                            type=DIFY_PLUGIN_LAYER_TYPE_ID,
                             config=DifyPluginLayerConfig(tenant_id=TENANT_ID, plugin_id=PLUGIN_ID),
                         ),
                         RunLayerSpec(
                             name=DIFY_AGENT_MODEL_LAYER_ID,
-                            type="dify.plugin.llm",
+                            type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
                             deps={"plugin": "plugin"},
                             config=DifyPluginLLMLayerConfig(
                                 model_provider=PLUGIN_PROVIDER,

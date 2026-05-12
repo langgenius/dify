@@ -4,8 +4,9 @@ from pydantic_ai.messages import FinalResultEvent
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.layers import ExitIntent
-from agenton_collections.layers.plain import PromptLayerConfig
+from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 import dify_agent.protocol as protocol_exports
+from dify_agent.layers.dify_plugin import DIFY_PLUGIN_LAYER_TYPE_ID, DIFY_PLUGIN_LLM_LAYER_TYPE_ID
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID
 from dify_agent.protocol.schemas import (
     RUN_EVENT_ADAPTER,
@@ -80,11 +81,11 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
     request = CreateRunRequest(
         composition=RunComposition(
             layers=[
-                RunLayerSpec(name="prompt", type="plain.prompt", config=prompt_config),
-                RunLayerSpec(name="plugin", type="dify.plugin", config=plugin_config),
+                RunLayerSpec(name="prompt", type=PLAIN_PROMPT_LAYER_TYPE_ID, config=prompt_config),
+                RunLayerSpec(name="plugin", type=DIFY_PLUGIN_LAYER_TYPE_ID, config=plugin_config),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
-                    type="dify.plugin.llm",
+                    type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
                     deps={"plugin": "plugin"},
                     config=llm_config,
                 ),
@@ -97,11 +98,11 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
 
     assert payload["composition"]["layers"][0]["config"] == {"prefix": "system", "user": "hello", "suffix": []}
     assert [layer.model_dump(mode="json") for layer in graph_config.layers] == [
-        {"name": "prompt", "type": "plain.prompt", "deps": {}, "metadata": {}},
-        {"name": "plugin", "type": "dify.plugin", "deps": {}, "metadata": {}},
+        {"name": "prompt", "type": PLAIN_PROMPT_LAYER_TYPE_ID, "deps": {}, "metadata": {}},
+        {"name": "plugin", "type": DIFY_PLUGIN_LAYER_TYPE_ID, "deps": {}, "metadata": {}},
         {
             "name": DIFY_AGENT_MODEL_LAYER_ID,
-            "type": "dify.plugin.llm",
+            "type": DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
             "deps": {"plugin": "plugin"},
             "metadata": {},
         },

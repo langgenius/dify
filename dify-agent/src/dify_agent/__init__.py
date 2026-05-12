@@ -1,5 +1,10 @@
-"""Adapters for using Dify components inside the local agent package."""
+"""Client-safe top-level exports for the Dify Agent package.
 
-from .adapters.llm import DifyLLMAdapterModel, DifyPluginDaemonProvider
+Default installs must be able to import ``dify_agent`` without pulling in server
+runtime adapters or their optional dependencies. Server-only adapter entry points
+remain under ``dify_agent.adapters.llm``.
+"""
 
-__all__ = ["DifyLLMAdapterModel", "DifyPluginDaemonProvider"]
+from dify_agent.client import Client
+
+__all__ = ["Client"]

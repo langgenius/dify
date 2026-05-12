@@ -5,7 +5,12 @@ import pytest
 
 from agenton.compositor import Compositor, LayerNode, LayerProvider
 from dify_agent.adapters.llm import DifyLLMAdapterModel
-from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig, DifyPluginLayerConfig
+from dify_agent.layers.dify_plugin.configs import (
+    DIFY_PLUGIN_LAYER_TYPE_ID,
+    DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
+    DifyPluginLLMLayerConfig,
+    DifyPluginLayerConfig,
+)
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.plugin_layer import DifyPluginLayer
 
@@ -40,6 +45,11 @@ def _plugin_provider() -> LayerProvider[DifyPluginLayer]:
             daemon_api_key="daemon-secret",
         ),
     )
+
+
+def test_dify_plugin_type_id_constants_match_implementation_classes() -> None:
+    assert DIFY_PLUGIN_LAYER_TYPE_ID == DifyPluginLayer.type_id
+    assert DIFY_PLUGIN_LLM_LAYER_TYPE_ID == DifyPluginLLMLayer.type_id
 
 
 def test_dify_plugin_layer_creates_daemon_provider_from_shared_http_client() -> None:

@@ -5,28 +5,28 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "anyio>=4.13.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.13.3",
+    "pydantic-ai-slim>=1.85.1",
+    "typing-extensions>=4.12.2",
+]
+
+[project.optional-dependencies]
+server = [
     "fastapi>=0.136.0",
     "graphon~=0.2.2",
-    "httpx>=0.28.1",
-    "logfire>=4.32.1",
-    "pydantic>=2.13.3",
     "pydantic-ai-slim[anthropic,google,openai]>=1.85.1",
     "pydantic-settings>=2.12.0",
     "redis>=5",
-    "sqlmodel>=0.0.38",
     "uvicorn[standard]>=0.38.0",
-    "uvloop>=0.22.1",
 ]
 
 [tool.setuptools.packages.find]
-where = ["src", "examples/agenton", "examples/dify_agent"]
+where = ["src"]
 include = [
     "agenton*",
     "agenton_collections*",
-    "agenton_examples*",
     "dify_agent*",
-    "dify_agent_examples*",
 ]
 
 [tool.pyright]

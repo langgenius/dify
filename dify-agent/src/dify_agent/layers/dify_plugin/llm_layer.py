@@ -16,7 +16,7 @@ from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PlainLayer
 from dify_agent.adapters.llm import DifyLLMAdapterModel
-from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig
+from dify_agent.layers.dify_plugin.configs import DIFY_PLUGIN_LLM_LAYER_TYPE_ID, DifyPluginLLMLayerConfig
 from dify_agent.layers.dify_plugin.plugin_layer import DifyPluginLayer
 
 
@@ -30,7 +30,7 @@ class DifyPluginLLMDeps(LayerDeps):
 class DifyPluginLLMLayer(PlainLayer[DifyPluginLLMDeps, DifyPluginLLMLayerConfig]):
     """Layer that creates the Dify plugin-daemon Pydantic AI model."""
 
-    type_id = "dify.plugin.llm"
+    type_id = DIFY_PLUGIN_LLM_LAYER_TYPE_ID
 
     config: DifyPluginLLMLayerConfig
 

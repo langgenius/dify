@@ -1,11 +1,8 @@
-"""Reusable compositor transformers for collection integrations."""
+"""Transformer package marker for collection integrations.
 
-from agenton_collections.transformers.pydantic_ai import (
-    PYDANTIC_AI_TRANSFORMERS,
-    PydanticAICompositorTransformerKwargs,
-)
+Import pydantic-ai transformer presets from
+``agenton_collections.transformers.pydantic_ai`` explicitly so default imports do
+not pull runtime bridge implementations into client-safe environments.
+"""
 
-__all__ = [
-    "PYDANTIC_AI_TRANSFORMERS",
-    "PydanticAICompositorTransformerKwargs",
-]
+__all__: list[str] = []

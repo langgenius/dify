@@ -1,12 +1,13 @@
 """Client-safe DTOs for Dify plugin-backed Agenton layers.
 
 This module intentionally contains only public config schemas and scalar type
-aliases. Runtime objects such as HTTP clients, server settings, and adapter
-implementations live in sibling implementation modules so clients can build run
-requests without importing server-only dependencies.
+aliases plus stable layer type identifiers. Runtime objects such as HTTP
+clients, server settings, and adapter implementations live in sibling
+implementation modules so clients can build run requests without importing
+server-only dependencies.
 """
 
-from typing import ClassVar, TypeAlias
+from typing import ClassVar, Final, TypeAlias
 
 from pydantic import ConfigDict, Field
 from pydantic_ai.settings import ModelSettings
@@ -15,6 +16,8 @@ from agenton.layers import LayerConfig
 
 
 DifyPluginCredentialValue: TypeAlias = str | int | float | bool | None
+DIFY_PLUGIN_LAYER_TYPE_ID: Final[str] = "dify.plugin"
+DIFY_PLUGIN_LLM_LAYER_TYPE_ID: Final[str] = "dify.plugin.llm"
 
 
 class DifyPluginLayerConfig(LayerConfig):
@@ -39,6 +42,8 @@ class DifyPluginLLMLayerConfig(LayerConfig):
 
 
 __all__ = [
+    "DIFY_PLUGIN_LAYER_TYPE_ID",
+    "DIFY_PLUGIN_LLM_LAYER_TYPE_ID",
     "DifyPluginCredentialValue",
     "DifyPluginLLMLayerConfig",
     "DifyPluginLayerConfig",

@@ -1,13 +1,18 @@
 """Synchronous Python client example for the Dify Agent run server.
 
-Requires the same running FastAPI server as the async examples. ``create_run_sync``
-does not retry ``POST /runs``; if a timeout occurs, inspect server state or create
-a new run explicitly rather than assuming the original request was not accepted.
+Requires the same running FastAPI server as the async examples. Before starting
+that server, sync the server runtime dependencies with
+`uv sync --project dify-agent --extra server` or install
+`dify-agent[server]`. ``create_run_sync`` does not retry ``POST /runs``; if a
+timeout occurs, inspect server state or create a new run explicitly rather than
+assuming the original request was not accepted.
 """
 
-from agenton_collections.layers.plain import PromptLayerConfig
+from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from dify_agent.client import Client
 from dify_agent.layers.dify_plugin import (
+    DIFY_PLUGIN_LAYER_TYPE_ID,
+    DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
     DifyPluginLayerConfig,
@@ -31,7 +36,7 @@ def main() -> None:
                     layers=[
                         RunLayerSpec(
                             name="prompt",
-                            type="plain.prompt",
+                            type=PLAIN_PROMPT_LAYER_TYPE_ID,
                             config=PromptLayerConfig(
                                 prefix="You are a concise assistant.",
                                 user="Say hello from the synchronous Dify Agent client example.",
@@ -39,12 +44,12 @@ def main() -> None:
                         ),
                         RunLayerSpec(
                             name="plugin",
-                            type="dify.plugin",
+                            type=DIFY_PLUGIN_LAYER_TYPE_ID,
                             config=DifyPluginLayerConfig(tenant_id=TENANT_ID, plugin_id=PLUGIN_ID),
                         ),
                         RunLayerSpec(
                             name=DIFY_AGENT_MODEL_LAYER_ID,
-                            type="dify.plugin.llm",
+                            type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
                             deps={"plugin": "plugin"},
                             config=DifyPluginLLMLayerConfig(
                                 model_provider=PLUGIN_PROVIDER,

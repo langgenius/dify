@@ -10,6 +10,7 @@ import httpx
 import pytest
 
 from agenton.compositor import CompositorSessionSnapshot
+from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID
 from dify_agent.client import (
     Client,
     DifyAgentHTTPError,
@@ -33,7 +34,7 @@ def _create_run_payload() -> dict[str, object]:
     return {
         "composition": {
             "schema_version": 1,
-            "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+            "layers": [{"name": "prompt", "type": PLAIN_PROMPT_LAYER_TYPE_ID, "config": {"user": "hello"}}],
         }
     }
 

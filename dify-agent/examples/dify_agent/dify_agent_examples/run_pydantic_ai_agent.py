@@ -1,11 +1,16 @@
 """Run a Pydantic AI agent through the Dify plugin-daemon adapter.
 
 Prerequisites:
+- Sync the server runtime dependencies first: `uv sync --project dify-agent --extra server`.
 - Start the plugin daemon from `dify-aio/dify/docker/docker-compose.middleware.yaml`.
 - Run the Dify API with `dify-aio/dify/api/.env` so the daemon can resolve tenants/plugins.
 - Fill `dify-agent/.env` with a real tenant, plugin, provider, model, and provider credentials.
 
-Example:
+This example is meant to be run from a source checkout because
+`dify_agent_examples` is not part of the published package.
+
+Example from the repository root:
+    PYTHONPATH=dify-agent/src:dify-agent/examples/dify_agent \
     uv run --project dify-agent python -m dify_agent_examples.run_pydantic_ai_agent
 """
 
@@ -19,7 +24,7 @@ from typing import Any
 
 from pydantic_ai import Agent
 
-from dify_agent import DifyLLMAdapterModel, DifyPluginDaemonProvider
+from dify_agent.adapters.llm import DifyLLMAdapterModel, DifyPluginDaemonProvider
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]

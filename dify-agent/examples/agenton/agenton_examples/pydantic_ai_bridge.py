@@ -1,4 +1,11 @@
-"""Run with: uv run --project dify-agent python -m agenton_examples.pydantic_ai_bridge."""
+"""Pydantic AI bridge example for use from a source checkout.
+
+`agenton_examples` is not part of the published package, so run this module from
+the repository root with:
+
+    PYTHONPATH=dify-agent/src:dify-agent/examples/agenton \
+    uv run --project dify-agent python -m agenton_examples.pydantic_ai_bridge
+"""
 
 from __future__ import annotations
 
@@ -13,10 +20,9 @@ from pydantic_ai.models.openai import OpenAIChatModel  # pyright: ignore[reportD
 from pydantic_ai.models.test import TestModel
 
 from agenton.compositor import Compositor, LayerNode, LayerProvider
-from agenton_collections.layers.plain import ObjectLayer, PromptLayer, ToolsLayer
-from agenton_collections.layers.plain.basic import PromptLayerConfig
+from agenton_collections.layers.plain import ObjectLayer, PromptLayer, PromptLayerConfig, ToolsLayer
 from agenton_collections.layers.pydantic_ai import PydanticAIBridgeLayer
-from agenton_collections.transformers import PYDANTIC_AI_TRANSFORMERS
+from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMERS
 
 
 @dataclass(frozen=True, slots=True)

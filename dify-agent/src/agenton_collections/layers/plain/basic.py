@@ -8,13 +8,16 @@ dynamic layers.
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Final
 
 from pydantic import ConfigDict, Field
 from typing_extensions import Self, override
 
 from agenton.layers.base import LayerConfig, NoLayerDeps
 from agenton.layers.types import PlainLayer
+
+
+PLAIN_PROMPT_LAYER_TYPE_ID: Final[str] = "plain.prompt"
 
 
 class PromptLayerConfig(LayerConfig):
@@ -43,7 +46,7 @@ class ObjectLayer[ObjectT](PlainLayer[NoLayerDeps]):
 class PromptLayer(PlainLayer[NoLayerDeps, PromptLayerConfig]):
     """Layer that contributes configured system and user prompt fragments."""
 
-    type_id = "plain.prompt"
+    type_id = PLAIN_PROMPT_LAYER_TYPE_ID
 
     prefix: list[str] | str = field(default_factory=list)
     user: list[str] | str = field(default_factory=list)
@@ -93,6 +96,7 @@ class ToolsLayer(PlainLayer[NoLayerDeps]):
 
 __all__ = [
     "ObjectLayer",
+    "PLAIN_PROMPT_LAYER_TYPE_ID",
     "PromptLayerConfig",
     "PromptLayer",
     "ToolsLayer",
