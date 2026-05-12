@@ -4699,9 +4699,6 @@
     },
     "ts/no-explicit-any": {
       "count": 3
-    },
-    "ts/no-non-null-asserted-optional-chain": {
-      "count": 1
     }
   },
   "web/service/use-tools.ts": {
