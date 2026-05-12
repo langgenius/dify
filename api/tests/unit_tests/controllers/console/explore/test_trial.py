@@ -88,6 +88,11 @@ def valid_parameters():
     }
 
 
+def test_trial_workflow_uses_trial_scoped_simple_account_model():
+    assert module.simple_account_model.name == "TrialSimpleAccount"
+    assert hasattr(module.simple_account_model, "items")
+
+
 class TestTrialAppWorkflowRunApi:
     def test_not_workflow_app(self, app: Flask):
         api = module.TrialAppWorkflowRunApi()
