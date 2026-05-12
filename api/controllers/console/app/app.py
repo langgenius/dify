@@ -39,7 +39,7 @@ from libs.login import current_account_with_tenant, login_required
 from models import App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
-from services.app_service import AppService
+from services.app_service import AppListParams, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -478,11 +478,18 @@ class AppListApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
 
         args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
-        args_dict = args.model_dump()
+        params = AppListParams(
+            page=args.page,
+            limit=args.limit,
+            mode=args.mode,
+            name=args.name,
+            tag_ids=args.tag_ids,
+            is_created_by_me=args.is_created_by_me,
+        )
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, args_dict)
+        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, params)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
@@ -546,9 +553,17 @@ class AppListApi(Resource):
         """Create app"""
         current_user, current_tenant_id = current_account_with_tenant()
         args = CreateAppPayload.model_validate(console_ns.payload)
+        params = CreateAppParams(
+            name=args.name,
+            description=args.description,
+            mode=args.mode,
+            icon_type=args.icon_type,
+            icon=args.icon,
+            icon_background=args.icon_background,
+        )
 
         app_service = AppService()
-        app = app_service.create_app(current_tenant_id, args.model_dump(), current_user)
+        app = app_service.create_app(current_tenant_id, params, current_user)
         app_detail = AppDetail.model_validate(app, from_attributes=True)
         return app_detail.model_dump(mode="json"), 201
 

@@ -61,7 +61,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({ data, onCance
   }
   return (
     <Dialog open>
-      <DialogContent className="w-[640px]! max-w-none! overflow-hidden! border-none p-8! pb-6! text-left align-middle">
+      <DialogContent className="w-[640px]! max-w-none! border-none p-8! pb-6! text-left align-middle">
 
         <div className="mb-2 text-xl font-semibold text-text-primary">
           {data.name

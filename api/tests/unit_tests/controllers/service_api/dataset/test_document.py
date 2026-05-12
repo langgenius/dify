@@ -1057,8 +1057,8 @@ class TestDocumentAddByTextApi:
         """Test error when both dataset and payload lack indexing_technique.
 
         When ``indexing_technique`` is ``None`` in the payload, ``model_dump(exclude_none=True)``
-        omits the key.  The production code accesses ``args["indexing_technique"]`` which raises
-        ``KeyError`` before the ``ValueError`` guard can fire.
+        omits the key.  The service API should still raise the same validation error as other
+        document creation paths instead of leaking a ``KeyError`` from the dumped payload dict.
         """
         # Arrange — neutralise billing decorators
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
@@ -1074,7 +1074,7 @@ class TestDocumentAddByTextApi:
             headers={"Authorization": "Bearer test_token"},
         ):
             api = DocumentAddByTextApi()
-            with pytest.raises(KeyError):
+            with pytest.raises(ValueError, match="indexing_technique is required."):
                 api.post(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id)
 
 

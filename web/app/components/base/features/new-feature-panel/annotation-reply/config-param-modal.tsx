@@ -65,7 +65,7 @@ const ConfigParamModal: FC<Props> = ({ isShow, onHide: doHide, onSave, isInit, a
           onHide()
       }}
     >
-      <DialogContent className="!mt-14 !w-[640px] !max-w-none overflow-hidden! border-none !p-6 text-left align-middle">
+      <DialogContent className="!mt-14 !w-[640px] !max-w-none border-none !p-6 text-left align-middle">
 
         <div className="mb-2 title-2xl-semi-bold text-text-primary">
           {t(`initSetup.${isInit ? 'title' : 'configTitle'}`, { ns: 'appAnnotation' })}

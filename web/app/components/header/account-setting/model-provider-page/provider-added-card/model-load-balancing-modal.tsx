@@ -187,7 +187,7 @@ const ModelLoadBalancingModal = ({ provider, configurateMethod, currentCustomCon
             onClose?.()
         }}
       >
-        <DialogContent className="w-[640px] max-w-none overflow-hidden! border-none px-8 pt-8 text-left align-middle">
+        <DialogContent className="w-[640px] max-w-none border-none px-8 pt-8 text-left align-middle">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             <div className="pb-3 font-semibold">
               <div className="h-[30px]">

@@ -1,3 +1,4 @@
+import contextlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -22,6 +23,76 @@ def test_should_prepare_user_inputs_keeps_validation_when_flag_false():
     args = {"inputs": {}, SKIP_PREPARE_USER_INPUTS_KEY: False}
 
     assert WorkflowAppGenerator()._should_prepare_user_inputs(args)
+
+
+def test_generate_includes_parent_trace_context_in_extras(monkeypatch):
+    generator = WorkflowAppGenerator()
+
+    monkeypatch.setattr(
+        "core.app.apps.workflow.app_generator.WorkflowAppGenerator._bind_file_access_scope",
+        lambda *args, **kwargs: contextlib.nullcontext(),
+    )
+    monkeypatch.setattr(
+        "core.app.apps.workflow.app_generator.WorkflowAppConfigManager.get_app_config",
+        lambda *args, **kwargs: SimpleNamespace(
+            app_id="app-1", tenant_id="tenant-1", workflow_id="workflow-1", variables=[]
+        ),
+    )
+    monkeypatch.setattr(
+        "core.app.apps.workflow.app_generator.file_factory.build_from_mappings", lambda *args, **kwargs: []
+    )
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.TraceQueueManager", MagicMock())
+    monkeypatch.setattr(
+        "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
+        MagicMock(return_value=MagicMock()),
+    )
+    monkeypatch.setattr(
+        "core.app.apps.workflow.app_generator.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
+        MagicMock(return_value=MagicMock()),
+    )
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.db", SimpleNamespace(engine=MagicMock()))
+    monkeypatch.setattr(generator, "_prepare_user_inputs", lambda *, user_inputs, **kwargs: user_inputs)
+
+    captured = {}
+
+    def fake_workflow_app_generate_entity(**kwargs):
+        captured["workflow_app_generate_entity_kwargs"] = kwargs
+        return SimpleNamespace(**kwargs)
+
+    def fake_generate(**kwargs):
+        captured["application_generate_entity"] = kwargs["application_generate_entity"]
+        return {"data": {}}
+
+    monkeypatch.setattr(
+        "core.app.apps.workflow.app_generator.WorkflowAppGenerateEntity", fake_workflow_app_generate_entity
+    )
+    monkeypatch.setattr(generator, "_generate", fake_generate)
+
+    result = generator.generate(
+        app_model=SimpleNamespace(tenant_id="tenant-1", id="app-1"),
+        workflow=SimpleNamespace(features_dict={}),
+        user=SimpleNamespace(id="user-1", session_id="session-1"),
+        args={
+            "inputs": {"query": "hello"},
+            "files": [],
+            "external_trace_id": "trace-1",
+            "parent_trace_context": {
+                "parent_workflow_run_id": "outer-workflow-run-1",
+                "parent_node_execution_id": "outer-node-execution-1",
+            },
+        },
+        invoke_from="service-api",
+        streaming=False,
+        call_depth=0,
+    )
+
+    assert result == {"data": {}}
+    extras = captured["workflow_app_generate_entity_kwargs"]["extras"]
+    assert extras["external_trace_id"] == "trace-1"
+    assert extras["parent_trace_context"].model_dump() == {
+        "parent_workflow_run_id": "outer-workflow-run-1",
+        "parent_node_execution_id": "outer-node-execution-1",
+    }
 
 
 def test_resume_delegates_to_generate(mocker: MockerFixture):
