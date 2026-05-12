@@ -74,7 +74,7 @@ class PermittedExternalAppsListApi(Resource):
             )
             return env.model_dump(mode="json"), 200
 
-        apps_by_id = {
+        apps_by_id: dict[str, App] = {
             str(a.id): a
             for a in db.session.execute(apply_openapi_gate(sa.select(App).where(App.id.in_(page_result.app_ids))))
             .scalars()

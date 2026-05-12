@@ -48,7 +48,7 @@ class AppListRow(BaseModel):
     id: str
     name: str
     description: str | None = None
-    mode: str
+    mode: AppMode
     tags: list[TagItem] = []
     updated_at: str | None = None
     created_by_name: str | None = None
