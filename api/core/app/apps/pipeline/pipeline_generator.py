@@ -1,3 +1,4 @@
+from core.rag.index_processor.constant.index_type import IndexStructureType
 import contextvars
 import datetime
 import json
@@ -701,7 +702,7 @@ class PipelineGenerator(BaseAppGenerator):
         position: int,
         account: Account | EndUser,
         batch: str,
-        document_form: str,
+        document_form: IndexStructureType,
     ):
         match datasource_type:
             case DatasourceProviderType.LOCAL_FILE:
