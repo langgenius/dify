@@ -2571,11 +2571,11 @@ class DocumentService:
     def build_document(
         dataset: Dataset,
         process_rule_id: str | None,
-        data_source_type: str,
-        document_form: str,
+        data_source_type: DataSourceType,
+        document_form: IndexStructureType,
         document_language: str,
         data_source_info: dict[str, Any],
-        created_from: str,
+        created_from: DocumentCreatedFrom,
         position: int,
         account: Account,
         name: str,
@@ -2637,7 +2637,7 @@ class DocumentService:
         document_data: KnowledgeConfig,
         account: Account,
         dataset_process_rule: DatasetProcessRule | None = None,
-        created_from: str = DocumentCreatedFrom.WEB,
+        created_from: DocumentCreatedFrom = DocumentCreatedFrom.WEB,
     ):
         assert isinstance(current_user, Account)
 
