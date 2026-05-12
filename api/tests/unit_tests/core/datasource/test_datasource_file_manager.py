@@ -35,20 +35,6 @@ class TestDatasourceFileManager:
         assert "sign=" in signed_url
 
     @patch("core.datasource.datasource_file_manager.time.time")
-    @patch("core.datasource.datasource_file_manager.os.urandom")
-    @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_sign_file_empty_secret(self, mock_config, mock_urandom, mock_time):
-        # Setup
-        mock_config.FILES_URL = "http://localhost:5001"
-        mock_config.SECRET_KEY = None  # Empty secret
-        mock_time.return_value = 1700000000
-        mock_urandom.return_value = b"1234567890abcdef"
-
-        # Execute
-        signed_url = DatasourceFileManager.sign_file("file_id", ".png")
-        assert "sign=" in signed_url
-
-    @patch("core.datasource.datasource_file_manager.time.time")
     @patch("core.datasource.datasource_file_manager.dify_config")
     def test_verify_file(self, mock_config, mock_time):
         # Setup
@@ -75,25 +61,6 @@ class TestDatasourceFileManager:
         # Verify Failure - Timeout
         mock_time.return_value = 1700000500  # 700 seconds after timestamp (300 is timeout)
         assert DatasourceFileManager.verify_file(datasource_file_id, timestamp, nonce, encoded_sign) is False
-
-    @patch("core.datasource.datasource_file_manager.time.time")
-    @patch("core.datasource.datasource_file_manager.dify_config")
-    def test_verify_file_empty_secret(self, mock_config, mock_time):
-        # Setup
-        mock_config.SECRET_KEY = ""  # Empty string secret
-        mock_config.FILES_ACCESS_TIMEOUT = 300
-        mock_time.return_value = 1700000000
-
-        datasource_file_id = "file_id_123"
-        timestamp = "1699999800"
-        nonce = "some_nonce"
-
-        # Calculate with empty secret
-        data_to_sign = f"file-preview|{datasource_file_id}|{timestamp}|{nonce}"
-        sign = hmac.new(b"", data_to_sign.encode(), hashlib.sha256).digest()
-        encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-        assert DatasourceFileManager.verify_file(datasource_file_id, timestamp, nonce, encoded_sign) is True
 
     @patch("core.datasource.datasource_file_manager.db")
     @patch("core.datasource.datasource_file_manager.storage")

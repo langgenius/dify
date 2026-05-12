@@ -106,7 +106,7 @@ app_detail_fields_with_site_copy["tags"] = fields.List(fields.Nested(tag_model))
 app_detail_fields_with_site_copy["site"] = fields.Nested(site_model)
 app_detail_with_site_model = get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
 
-simple_account_model = get_or_create_model("SimpleAccount", simple_account_fields)
+simple_account_model = get_or_create_model("TrialSimpleAccount", simple_account_fields)
 conversation_variable_model = get_or_create_model("TrialConversationVariable", conversation_variable_fields)
 pipeline_variable_model = get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
 

@@ -23,9 +23,9 @@ class SecurityConfig(BaseSettings):
     """
 
     SECRET_KEY: str = Field(
-        description="Secret key for secure session cookie signing."
-        "Make sure you are changing this key for your deployment with a strong key."
-        "Generate a strong key using `openssl rand -base64 42` or set via the `SECRET_KEY` environment variable.",
+        description="Secret key for secure session cookie signing. "
+        "Leave empty to let Dify generate a persistent key in the storage directory, "
+        "or set a strong value via the `SECRET_KEY` environment variable.",
         default="",
     )
 
