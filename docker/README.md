@@ -5,7 +5,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 ### What's Updated
 
 - **Certbot Container**: `docker-compose.yaml` now contains `certbot` for managing SSL certificates. This container automatically renews certificates and ensures secure HTTPS connections.\
-  For more information, refer `docker/certbot/README.md`.
+  For more information, refer to `docker/certbot/README.md`.
 
 - **Persistent Environment Variables**: Essential startup defaults are provided in `.env.example`, while local values are stored in `.env`, ensuring that your configurations persist across deployments.
 
@@ -33,7 +33,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
    ```
 
 1. **SSL Certificate Setup**:
-   - Refer `docker/certbot/README.md` to set up SSL certificates using Certbot.
+   - Refer to `docker/certbot/README.md` to set up SSL certificates using Certbot.
 1. **OpenTelemetry Collector Setup**:
    - Change `ENABLE_OTEL` to `true` in `.env`.
    - Configure `OTLP_BASE_ENDPOINT` properly.
