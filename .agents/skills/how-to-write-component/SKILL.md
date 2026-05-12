@@ -55,9 +55,17 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 - Avoid unnecessary DOM hierarchy. Do not add wrapper elements unless they provide layout, semantics, accessibility, state ownership, or integration with a library API; prefer fragments or styling an existing element when possible.
 - Avoid shallow wrappers and prop renaming unless the wrapper adds validation, orchestration, error handling, state ownership, or a real semantic boundary.
 
-## Navigation, Effects, And Performance
+## You Might Not Need An Effect
+
+- Use Effects only to synchronize with external systems such as browser APIs, non-React widgets, subscriptions, timers, analytics that must run because the component was shown, or imperative DOM integration.
+- Do not use Effects to transform props or state for rendering. Calculate derived values during render, and use `useMemo` only when the calculation is actually expensive.
+- Do not use Effects to handle user actions. Put action-specific logic in the event handler where the cause is known.
+- Do not use Effects to copy one state value into another state value representing the same concept. Pick one source of truth and derive the rest during render.
+- Do not reset or adjust state from props with an Effect. Prefer a `key` reset, storing a stable ID and deriving the selected object, or guarded same-component render-time adjustment when truly necessary.
+- Prefer framework data APIs or TanStack Query for data fetching instead of writing request Effects in components.
+- If an Effect still seems necessary, first name the external system it synchronizes with. If there is no external system, remove the Effect and restructure the state or event flow.
+
+## Navigation And Performance
 
 - Prefer `Link` for normal navigation. Use router APIs only for command-flow side effects such as mutation success, guarded redirects, or form submission.
-- Treat `useEffect` as a last resort. First try deriving values during render, moving event-driven work into handlers, or using existing hooks/APIs for persistence, subscriptions, media queries, timers, and DOM sync.
-- Do not use `useEffect` directly in components. If unavoidable, encapsulate it in a purpose-built hook so the component consumes a declarative API.
 - Avoid `memo`, `useMemo`, and `useCallback` unless there is a clear performance reason.

@@ -18,7 +18,7 @@ import DatasetNav from './dataset-nav'
 import EnvNav from './env-nav'
 import ExploreNav from './explore-nav'
 import LicenseNav from './license-env'
-import PlanBadge from './plan-badge'
+import { PlanBadge } from './plan-badge'
 import PluginsNav from './plugins-nav'
 import ToolsNav from './tools-nav'
 

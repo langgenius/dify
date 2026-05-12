@@ -136,7 +136,7 @@ def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[
     if not dataset:
         raise ValueError("Dataset does not exist.")
 
-    if not dataset.indexing_technique and not args["indexing_technique"]:
+    if not dataset.indexing_technique and not args.get("indexing_technique"):
         raise ValueError("indexing_technique is required.")
 
     embedding_model_provider = payload.embedding_model_provider

@@ -285,7 +285,7 @@ const MCPModal: FC<DuplicateAppModalProps> = ({
 
   return (
     <Dialog open={show}>
-      <DialogContent className="w-full max-w-[520px]! overflow-hidden! border-none p-6 text-left align-middle">
+      <DialogContent className="w-full max-w-[520px]! border-none p-6 text-left align-middle">
         <MCPModalContent
           key={formKey}
           data={data}

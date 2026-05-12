@@ -62,7 +62,7 @@ export default function AppSelector() {
                 {userProfile.name}
                 {isEducationAccount && (
                   <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
-                    <span className="mr-1 i-ri-graduation-cap-fill h-3 w-3" />
+                    <span aria-hidden="true" className="mr-1 i-ri-graduation-cap-fill h-3 w-3" />
                     <span className="system-2xs-medium">EDU</span>
                   </PremiumBadge>
                 )}

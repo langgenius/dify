@@ -78,11 +78,11 @@ export const TagFilter = ({
             !!value.length && 'pr-6 shadow-xs',
           )}
         >
-          <span className="flex min-w-0 items-center gap-1">
+          <span className="flex w-full min-w-0 items-center gap-1">
             <span className="p-px">
               <Tag01Icon className="h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />
             </span>
-            <span className="min-w-0 truncate text-[13px] leading-4.5 text-text-secondary">
+            <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-secondary">
               {!value.length && t('tag.placeholder', { ns: 'common' })}
               {!!value.length && currentTagName}
             </span>
