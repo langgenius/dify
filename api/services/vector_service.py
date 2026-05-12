@@ -111,6 +111,7 @@ class VectorService:
                 "dataset_id": segment.dataset_id,
             },
         )
+        assert segment.index_node_id
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
             vector = Vector(dataset=dataset)
@@ -138,6 +139,7 @@ class VectorService:
         regenerate: bool = False,
     ):
         index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
+        assert segment.index_node_id
         if regenerate:
             # delete child chunks
             index_processor.clean(dataset, [segment.index_node_id], with_keywords=True, delete_child_chunks=True)

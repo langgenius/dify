@@ -226,7 +226,6 @@ class TestDeleteSegmentFromIndexTask:
                 enabled=True,
                 status=SegmentStatus.COMPLETED,
                 created_by=account.id,
-                created_at=created_at,
                 updated_by=account.id,
                 updated_at=created_at,
             )
