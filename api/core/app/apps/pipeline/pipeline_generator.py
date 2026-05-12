@@ -1,3 +1,5 @@
+from models.enums import DataSourceType
+from models.enums import DocumentCreatedFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
 import contextvars
 import datetime
@@ -698,7 +700,7 @@ class PipelineGenerator(BaseAppGenerator):
         built_in_field_enabled: bool,
         datasource_type: DatasourceProviderType,
         datasource_info: Mapping[str, Any],
-        created_from: str,
+        created_from: DocumentCreatedFrom,
         position: int,
         account: Account | EndUser,
         batch: str,
@@ -719,7 +721,7 @@ class PipelineGenerator(BaseAppGenerator):
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             position=position,
-            data_source_type=datasource_type,
+            data_source_type=DataSourceType(datasource_type),
             data_source_info=json.dumps(datasource_info),
             batch=batch,
             name=name,
