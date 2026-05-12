@@ -3,12 +3,12 @@ set -e
 
 printf '%s\n' "Docker entrypoint script is running"
 
-printf '%s\n' "\nChecking specific environment variables:"
+printf '\n%s\n' "Checking specific environment variables:"
 printf '%s\n' "CERTBOT_EMAIL: ${CERTBOT_EMAIL:-Not set}"
 printf '%s\n' "CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-Not set}"
 printf '%s\n' "CERTBOT_OPTIONS: ${CERTBOT_OPTIONS:-Not set}"
 
-printf '%s\n' "\nChecking mounted directories:"
+printf '\n%s\n' "Checking mounted directories:"
 for dir in "/etc/letsencrypt" "/var/www/html" "/var/log/letsencrypt"; do
     if [ -d "$dir" ]; then
         printf '%s\n' "$dir exists. Contents:"
@@ -18,7 +18,7 @@ for dir in "/etc/letsencrypt" "/var/www/html" "/var/log/letsencrypt"; do
     fi
 done
 
-printf '%s\n' "\nGenerating update-cert.sh from template"
+printf '\n%s\n' "Generating update-cert.sh from template"
 sed -e "s|\${CERTBOT_EMAIL}|$CERTBOT_EMAIL|g" \
     -e "s|\${CERTBOT_DOMAIN}|$CERTBOT_DOMAIN|g" \
     -e "s|\${CERTBOT_OPTIONS}|$CERTBOT_OPTIONS|g" \
@@ -26,5 +26,6 @@ sed -e "s|\${CERTBOT_EMAIL}|$CERTBOT_EMAIL|g" \
 
 chmod +x /update-cert.sh
 
-printf '%s\n' "\nExecuting command:" "$@"
+printf '\n%s\n' "Executing command:"
+printf '%s\n' "$@"
 exec "$@"
