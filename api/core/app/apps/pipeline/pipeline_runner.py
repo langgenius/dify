@@ -28,6 +28,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Pipeline
+from models.enums import IndexingStatus
 from models.model import EndUser
 from models.workflow import Workflow
 from services.dataset_ref_service import DatasetRefService, DocumentRef
@@ -331,6 +332,6 @@ class PipelineRunner(WorkflowBasedAppRunner):
         with create_session() as session, session.begin():
             document = DatasetRefService.get_document_by_ref(document_ref, session=session)
             if document:
-                document.indexing_status = "error"
+                document.indexing_status = IndexingStatus.ERROR
                 document.error = event.error or "Unknown error"
                 session.add(document)
