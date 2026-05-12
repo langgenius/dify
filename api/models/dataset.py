@@ -543,24 +543,24 @@ class Document(TypeBase):
 
     # initial fields
     id: Mapped[str] = mapped_column(StringUUID, nullable=False, default_factory=lambda: str(uuid4()), init=False)
-    tenant_id : Mapped[str]= mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     data_source_type: Mapped[str] = mapped_column(EnumText(DataSourceType, length=255), nullable=False)
-    data_source_info: Mapped[str|None] = mapped_column(LongText, nullable=True)
-    dataset_process_rule_id: Mapped[str|None] = mapped_column(StringUUID, nullable=True)
+    data_source_info: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    dataset_process_rule_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     batch: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_from: Mapped[str] = mapped_column(EnumText(DocumentCreatedFrom, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_api_request_id: Mapped[str|None] = mapped_column(StringUUID, nullable=True)
+    created_api_request_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     # start processing
     processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # parsing
-    file_id: Mapped[str|None] = mapped_column(LongText, nullable=True)
+    file_id: Mapped[str | None] = mapped_column(LongText, nullable=True)
     word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)  # TODO: make this not nullable
     parsing_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -577,33 +577,33 @@ class Document(TypeBase):
 
     # pause
     is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
-    paused_by: Mapped[str|None] = mapped_column(StringUUID, nullable=True)
+    paused_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # error
-    error: Mapped[str|None] = mapped_column(LongText, nullable=True)
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True)
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # basic fields
-    indexing_status:Mapped[IndexingStatus] = mapped_column(
+    indexing_status: Mapped[IndexingStatus] = mapped_column(
         EnumText(IndexingStatus, length=255), nullable=False, server_default=sa.text("'waiting'")
     )
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled_by: Mapped[str|None] = mapped_column(StringUUID, nullable=True)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    archived_reason: Mapped[str|None] = mapped_column(String(255), nullable=True)
-    archived_by: Mapped[str|None] = mapped_column(StringUUID, nullable=True)
+    archived_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-    doc_type:Mapped[DocumentDocType|None] = mapped_column(EnumText(DocumentDocType, length=40), nullable=True)
-    doc_metadata: Mapped[dict[str,Any]|None] = mapped_column(AdjustedJSON, nullable=True)
+    doc_type: Mapped[DocumentDocType | None] = mapped_column(EnumText(DocumentDocType, length=40), nullable=True)
+    doc_metadata: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON, nullable=True)
     doc_form: Mapped[IndexStructureType] = mapped_column(
         EnumText(IndexStructureType, length=255), nullable=False, server_default=sa.text("'text_model'")
     )
-    doc_language: Mapped[str|None] = mapped_column(String(255), nullable=True)
+    doc_language: Mapped[str | None] = mapped_column(String(255), nullable=True)
     need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
