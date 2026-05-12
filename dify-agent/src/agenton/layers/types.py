@@ -4,10 +4,11 @@
 that bind its system prompt, user prompt, and tool generic slots to concrete
 contracts, such as ordinary strings with plain callable tools or pydantic-ai
 prompt/tool shapes. The families keep the trailing schema generic slots open so
-concrete layers can have ``config_type``, ``runtime_state_type``, and
-``runtime_handles_type`` inferred from type arguments instead of repeated class
-attributes. Config schemas use ``LayerConfig`` so they can also be embedded as
-typed DTOs in serializable compositor config.
+concrete layers can have ``config_type`` and ``runtime_state_type`` inferred from
+type arguments instead of repeated class attributes. Config schemas use
+``LayerConfig`` so they can also be embedded as
+typed DTOs in serializable compositor config. Agenton core is state-only:
+typed layer families do not expose runtime handle schemas or resource ownership.
 Tagged aggregate aliases cover code paths that can accept any supported
 prompt/tool family without changing the plain and pydantic-ai layer contracts.
 Pydantic-ai names are imported for static analysis only, so ``agenton`` can be
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
 
 from pydantic import BaseModel
 
-from agenton.layers.base import EmptyLayerConfig, EmptyRuntimeHandles, EmptyRuntimeState, Layer, LayerConfig, LayerDeps
+from agenton.layers.base import EmptyLayerConfig, EmptyRuntimeState, Layer, LayerConfig, LayerDeps
 
 type PlainPrompt = str
 type PlainUserPrompt = str
@@ -98,12 +99,11 @@ type AllToolTypes = PlainToolType | PydanticAIToolType[Any]
 _DepsT = TypeVar("_DepsT", bound=LayerDeps)
 _ConfigT = TypeVar("_ConfigT", bound=LayerConfig, default=EmptyLayerConfig)
 _RuntimeStateT = TypeVar("_RuntimeStateT", bound=BaseModel, default=EmptyRuntimeState)
-_RuntimeHandlesT = TypeVar("_RuntimeHandlesT", bound=BaseModel, default=EmptyRuntimeHandles)
 _AgentDepsT = TypeVar("_AgentDepsT")
 
 
 class PlainLayer(
-    Generic[_DepsT, _ConfigT, _RuntimeStateT, _RuntimeHandlesT],
+    Generic[_DepsT, _ConfigT, _RuntimeStateT],
     Layer[
         _DepsT,
         PlainPrompt,
@@ -111,7 +111,6 @@ class PlainLayer(
         PlainTool,
         _ConfigT,
         _RuntimeStateT,
-        _RuntimeHandlesT,
     ],
 ):
     """Layer base for ordinary string prompts and plain-callable tools."""
@@ -133,7 +132,7 @@ class PlainLayer(
 
 
 class PydanticAILayer(
-    Generic[_DepsT, _AgentDepsT, _ConfigT, _RuntimeStateT, _RuntimeHandlesT],
+    Generic[_DepsT, _AgentDepsT, _ConfigT, _RuntimeStateT],
     Layer[
         _DepsT,
         PydanticAIPrompt[_AgentDepsT],
@@ -141,7 +140,6 @@ class PydanticAILayer(
         PydanticAITool[_AgentDepsT],
         _ConfigT,
         _RuntimeStateT,
-        _RuntimeHandlesT,
     ],
 ):
     """Layer base for pydantic-ai prompt and tool adapters."""

@@ -1,11 +1,11 @@
-from collections import OrderedDict
+import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from inspect import Parameter, signature
 
 from typing_extensions import override
 
-from agenton.compositor import Compositor, CompositorTransformerKwargs
+from agenton.compositor import Compositor, CompositorTransformerKwargs, LayerNode, LayerProvider
 from agenton.layers import NoLayerDeps, PlainLayer, PlainPromptType, PlainToolType, PlainUserPromptType
 
 type ToolCallable = Callable[..., object]
@@ -61,6 +61,24 @@ def describe_tools(tools: Sequence[PlainToolType]) -> list[str]:
     return [tool.value.__name__ for tool in tools]
 
 
+def prompt_tool_provider(
+    *,
+    prefix: list[str] | None = None,
+    user: list[str] | None = None,
+    suffix: list[str] | None = None,
+    tool_entries: list[ToolCallable] | None = None,
+) -> LayerProvider[PromptAndToolLayer]:
+    return LayerProvider.from_factory(
+        layer_type=PromptAndToolLayer,
+        create=lambda config: PromptAndToolLayer(
+            prefix=list(prefix or []),
+            user=list(user or []),
+            suffix=list(suffix or []),
+            tool_entries=list(tool_entries or []),
+        ),
+    )
+
+
 def test_compositor_transformer_kwargs_keys_match_constructor_parameters() -> None:
     transformer_kwargs = set(CompositorTransformerKwargs.__required_keys__)
     parameters = signature(Compositor).parameters
@@ -84,53 +102,36 @@ def test_compositor_transformer_kwargs_keys_match_from_config_parameters() -> No
 
 def test_compositor_transforms_prompts_to_another_type_after_layer_ordering() -> None:
     compositor: Compositor[WrappedPrompt, PlainToolType, PlainPromptType, PlainToolType] = Compositor(
-        layers=OrderedDict(
-            [
-                (
-                    "first",
-                    PromptAndToolLayer(
-                        prefix=["first-prefix"],
-                        user=[],
-                        suffix=["first-suffix"],
-                        tool_entries=[],
-                    ),
-                ),
-                (
-                    "second",
-                    PromptAndToolLayer(
-                        prefix=["second-prefix"],
-                        user=[],
-                        suffix=["second-suffix"],
-                        tool_entries=[],
-                    ),
-                ),
-            ]
-        ),
+        [
+            LayerNode("first", prompt_tool_provider(prefix=["first-prefix"], suffix=["first-suffix"])),
+            LayerNode("second", prompt_tool_provider(prefix=["second-prefix"], suffix=["second-suffix"])),
+        ],
         prompt_transformer=wrap_prompts,
     )
 
-    assert compositor.prompts == [
-        ("wrapped", "first-prefix"),
-        ("wrapped", "second-prefix"),
-        ("wrapped", "second-suffix"),
-        ("wrapped", "first-suffix"),
-    ]
+    async def run() -> None:
+        async with compositor.enter() as active_run:
+            assert active_run.prompts == [
+                ("wrapped", "first-prefix"),
+                ("wrapped", "second-prefix"),
+                ("wrapped", "second-suffix"),
+                ("wrapped", "first-suffix"),
+            ]
+
+    asyncio.run(run())
 
 
 def test_compositor_transforms_tools_to_another_type_after_layer_aggregation() -> None:
     compositor: Compositor[PlainPromptType, str, PlainPromptType, PlainToolType] = Compositor(
-        layers=OrderedDict(
-            [
-                (
-                    "tools",
-                    PromptAndToolLayer(prefix=[], user=[], suffix=[], tool_entries=[base_tool, wrapped_tool]),
-                )
-            ]
-        ),
+        [LayerNode("tools", prompt_tool_provider(tool_entries=[base_tool, wrapped_tool]))],
         tool_transformer=describe_tools,
     )
 
-    assert compositor.tools == ["base_tool", "wrapped_tool"]
+    async def run() -> None:
+        async with compositor.enter() as active_run:
+            assert active_run.tools == ["base_tool", "wrapped_tool"]
+
+    asyncio.run(run())
 
 
 def test_compositor_transforms_user_prompts_after_layer_ordering() -> None:
@@ -142,22 +143,18 @@ def test_compositor_transforms_user_prompts_after_layer_ordering() -> None:
         WrappedUserPrompt,
         PlainUserPromptType,
     ] = Compositor(
-        layers=OrderedDict(
-            [
-                (
-                    "first",
-                    PromptAndToolLayer(prefix=[], user=["first-user"], suffix=[], tool_entries=[]),
-                ),
-                (
-                    "second",
-                    PromptAndToolLayer(prefix=[], user=["second-user"], suffix=[], tool_entries=[]),
-                ),
-            ]
-        ),
+        [
+            LayerNode("first", prompt_tool_provider(user=["first-user"])),
+            LayerNode("second", prompt_tool_provider(user=["second-user"])),
+        ],
         user_prompt_transformer=wrap_user_prompts,
     )
 
-    assert compositor.user_prompts == [
-        ("wrapped-user", "first-user"),
-        ("wrapped-user", "second-user"),
-    ]
+    async def run() -> None:
+        async with compositor.enter() as active_run:
+            assert active_run.user_prompts == [
+                ("wrapped-user", "first-user"),
+                ("wrapped-user", "second-user"),
+            ]
+
+    asyncio.run(run())

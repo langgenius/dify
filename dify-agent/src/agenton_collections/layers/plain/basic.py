@@ -32,7 +32,8 @@ class ObjectLayer[ObjectT](PlainLayer[NoLayerDeps]):
     """Layer that stores one typed object for downstream dependencies.
 
     Object layers are instance-only because arbitrary Python objects are not
-    serializable graph config. Add them with ``CompositorBuilder.add_instance``.
+    serializable graph config. Add them with a custom ``LayerProvider`` factory
+    that creates a fresh object layer for each compositor run.
     """
 
     value: ObjectT
@@ -79,7 +80,8 @@ class ToolsLayer(PlainLayer[NoLayerDeps]):
     """Layer that contributes configured plain-callable tools.
 
     Tool layers are instance-only because Python callables are live objects. Add
-    them with ``CompositorBuilder.add_instance``.
+    them with a custom ``LayerProvider`` factory that returns a fresh layer for
+    each compositor run.
     """
 
     tool_entries: Sequence[Callable[..., Any]] = ()

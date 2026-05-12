@@ -1,43 +1,15 @@
 import asyncio
-from collections import OrderedDict
 from dataclasses import dataclass
 
+import pytest
 from pydantic import BaseModel, ConfigDict, ValidationError
 from typing_extensions import override
 
-from agenton.compositor import Compositor, CompositorBuilder, CompositorSession, LayerNodeConfig, LayerRegistry
-from agenton.layers import EmptyLayerConfig, LayerControl, LayerDeps, NoLayerDeps, PlainLayer, PlainPromptType, PlainToolType
+import agenton.compositor as compositor_module
+import agenton.layers as layers_module
+from agenton.compositor import Compositor, LayerNode, LayerNodeConfig, LayerProvider
+from agenton.layers import EmptyLayerConfig, Layer, LayerDeps, NoLayerDeps, PlainLayer
 from agenton_collections.layers.plain import ObjectLayer, PromptLayer, PromptLayerConfig
-
-
-def test_registry_infers_descriptor_and_rejects_duplicate_or_missing_type_id() -> None:
-    registry = LayerRegistry()
-    registry.register_layer(PromptLayer)
-
-    descriptor = registry.resolve("plain.prompt")
-    assert descriptor.layer_type is PromptLayer
-    assert descriptor.config_type is PromptLayer.config_type
-
-    try:
-        registry.register_layer(PromptLayer)
-    except ValueError as e:
-        assert str(e) == "Layer type id 'plain.prompt' is already registered."
-    else:
-        raise AssertionError("Expected ValueError.")
-
-    try:
-        registry.register_layer(InstanceOnlyLayer)
-    except ValueError as e:
-        assert "must declare a type_id" in str(e)
-    else:
-        raise AssertionError("Expected ValueError.")
-
-    try:
-        registry.register_layer(InstanceOnlyLayer, type_id=123)  # pyright: ignore[reportArgumentType]
-    except TypeError as e:
-        assert str(e) == "Layer type id for 'InstanceOnlyLayer' must be a string."
-    else:
-        raise AssertionError("Expected TypeError.")
 
 
 @dataclass(slots=True)
@@ -45,86 +17,122 @@ class InstanceOnlyLayer(PlainLayer[NoLayerDeps]):
     pass
 
 
-def test_builder_creates_config_layers_with_typed_validation() -> None:
-    registry = LayerRegistry()
-    registry.register_layer(PromptLayer)
+@dataclass(slots=True)
+class RequiredConstructorLayer(PlainLayer[NoLayerDeps]):
+    value: str
 
-    compositor = (
-        CompositorBuilder(registry)
-        .add_config_layer(
-            name="prompt",
-            type="plain.prompt",
-            config={"prefix": "hello", "user": "ask politely", "suffix": ["bye"]},
-        )
-        .build()
+
+def test_layer_provider_from_layer_type_uses_declared_schema_and_type_id() -> None:
+    provider = LayerProvider.from_layer_type(PromptLayer)
+
+    assert provider.type_id == "plain.prompt"
+    assert provider.layer_type is PromptLayer
+
+    layer = provider.create_layer(PromptLayerConfig(prefix="hello", user="ask politely"))
+
+    assert isinstance(layer, PromptLayer)
+    assert layer.config == PromptLayerConfig(prefix="hello", user="ask politely")
+    assert layer.prefix_prompts == ["hello"]
+
+    with pytest.raises(TypeError, match="cannot be created from empty config"):
+        LayerProvider.from_layer_type(RequiredConstructorLayer).create_layer()
+
+
+def test_compositor_from_config_uses_providers_and_enter_configs_by_node_name() -> None:
+    compositor = Compositor.from_config(
+        {"layers": [{"name": "prompt", "type": "plain.prompt"}]},
+        providers=[PromptLayer],
     )
 
-    assert [prompt.value for prompt in compositor.prompts] == ["hello", "bye"]
-    assert [prompt.value for prompt in compositor.user_prompts] == ["ask politely"]
+    async def run() -> None:
+        async with compositor.enter(
+            configs={"prompt": {"prefix": "hello", "user": "ask politely", "suffix": ["bye"]}}
+        ) as active_run:
+            assert [prompt.value for prompt in active_run.prompts] == ["hello", "bye"]
+            assert [prompt.value for prompt in active_run.user_prompts] == ["ask politely"]
 
-    try:
-        CompositorBuilder(registry).add_config_layer(
-            name="bad",
-            type="plain.prompt",
-            config={"unknown": "field"},
-        )
-    except ValidationError:
-        pass
-    else:
-        raise AssertionError("Expected ValidationError.")
+    asyncio.run(run())
+
+    with pytest.raises(ValidationError):
+        asyncio.run(_enter_once(compositor, configs={"prompt": {"unknown": "field"}}))
 
 
-def test_layer_node_config_accepts_config_dto_and_serializes_fields() -> None:
-    registry = LayerRegistry()
-    registry.register_layer(PromptLayer)
+def test_layer_node_config_has_no_runtime_state_or_layer_config() -> None:
     node = LayerNodeConfig(
         name="prompt",
         type="plain.prompt",
-        config=PromptLayerConfig(prefix="hello", user="ask politely"),
+        deps={"source": "other"},
+        metadata={"label": "Prompt"},
     )
 
-    dumped = node.model_dump(mode="json")
-    compositor = CompositorBuilder(registry).add_config({"layers": [dumped]}).build()
+    assert node.model_dump(mode="json") == {
+        "name": "prompt",
+        "type": "plain.prompt",
+        "deps": {"source": "other"},
+        "metadata": {"label": "Prompt"},
+    }
+    assert "runtime_state" not in LayerNodeConfig.model_fields
+    assert "config" not in LayerNodeConfig.model_fields
 
-    assert dumped["config"] == {"prefix": "hello", "user": "ask politely", "suffix": []}
-    assert [prompt.value for prompt in compositor.prompts] == ["hello"]
-    assert [prompt.value for prompt in compositor.user_prompts] == ["ask politely"]
 
-
-def test_registry_factory_constructs_layer_with_injected_dependencies() -> None:
-    registry = LayerRegistry()
-    registry.register_layer(
-        PromptLayer,
-        factory=lambda config: PromptLayer(prefix=PromptLayerConfig.model_validate(config).prefix),
+def test_node_providers_override_type_id_providers_for_serializable_graphs() -> None:
+    override_provider = LayerProvider.from_factory(
+        layer_type=PromptLayer,
+        create=lambda config: PromptLayer(prefix="override"),
+    )
+    compositor = Compositor.from_config(
+        {"layers": [{"name": "prompt", "type": "plain.prompt"}]},
+        providers=[PromptLayer],
+        node_providers={"prompt": override_provider},
     )
 
-    compositor = CompositorBuilder(registry).add_config(
-        {"layers": [{"name": "prompt", "type": "plain.prompt", "config": {"prefix": "factory"}}]}
-    ).build()
+    async def run() -> None:
+        async with compositor.enter(configs={"prompt": {"prefix": "ignored"}}) as active_run:
+            assert [prompt.value for prompt in active_run.prompts] == ["override"]
 
-    assert [prompt.value for prompt in compositor.prompts] == ["factory"]
+    asyncio.run(run())
 
 
-def test_compositor_get_layer_returns_named_layer_and_validates_type() -> None:
-    layer = ObjectLayer("value")
-    compositor: Compositor[PlainPromptType, PlainToolType] = Compositor(layers=OrderedDict([("obj", layer)]))
+def test_from_config_rejects_missing_duplicate_and_unknown_providers() -> None:
+    with pytest.raises(KeyError, match="Layer type id 'missing' is not registered"):
+        Compositor.from_config({"layers": [{"name": "node", "type": "missing"}]}, providers=[])
 
-    assert compositor.get_layer("obj") is layer
-    assert compositor.get_layer("obj", ObjectLayer) is layer
+    with pytest.raises(ValueError, match="already registered"):
+        Compositor.from_config(
+            {"layers": [{"name": "prompt", "type": "plain.prompt"}]},
+            providers=[PromptLayer, PromptLayer],
+        )
 
-    try:
-        compositor.get_layer("missing")
-    except KeyError as e:
-        assert str(e) == '"Layer \'missing\' is not defined in this compositor."'
-    else:
-        raise AssertionError("Expected KeyError.")
+    with pytest.raises(ValueError, match="must declare a type_id"):
+        Compositor.from_config(
+            {"layers": [{"name": "node", "type": "instance.only"}]},
+            providers=[InstanceOnlyLayer],
+        )
 
-    try:
-        compositor.get_layer("obj", PromptLayer)
-    except TypeError as e:
-        assert str(e) == "Layer 'obj' must be PromptLayer, got ObjectLayer."
-    else:
-        raise AssertionError("Expected TypeError.")
+    with pytest.raises(ValueError, match="unknown layer node names: other"):
+        Compositor.from_config(
+            {"layers": [{"name": "prompt", "type": "plain.prompt"}]},
+            providers=[PromptLayer],
+            node_providers={"other": PromptLayer},
+        )
+
+
+def test_compositor_run_get_layer_returns_named_layer_and_validates_type() -> None:
+    compositor = Compositor([LayerNode("obj", _object_provider("value"))])
+
+    async def run() -> None:
+        async with compositor.enter() as active_run:
+            layer = active_run.get_layer("obj", ObjectLayer)
+            assert active_run.get_layer("obj") is layer
+            assert layer.value == "value"
+
+            with pytest.raises(KeyError, match="Layer 'missing' is not defined"):
+                active_run.get_layer("missing")
+
+            with pytest.raises(TypeError, match="Layer 'obj' must be PromptLayer, got ObjectLayer"):
+                active_run.get_layer("obj", PromptLayer)
+
+    asyncio.run(run())
 
 
 class ObjectConsumerDeps(LayerDeps):
@@ -139,176 +147,137 @@ class ObjectConsumerLayer(PlainLayer[ObjectConsumerDeps]):
         return [self.deps.obj.value]
 
 
-def test_builder_mixes_config_and_instances_and_rejects_invalid_deps() -> None:
-    registry = LayerRegistry()
-    registry.register_layer(PromptLayer)
-
-    compositor = (
-        CompositorBuilder(registry)
-        .add_config({"layers": [{"name": "prompt", "type": "plain.prompt", "config": {"prefix": "cfg"}}]})
-        .add_instance(name="obj", layer=ObjectLayer("instance"))
-        .add_instance(name="consumer", layer=ObjectConsumerLayer(), deps={"obj": "obj"})
-        .build()
+def test_python_native_construction_mixes_layer_classes_and_providers() -> None:
+    compositor = Compositor(
+        [
+            LayerNode("prompt", PromptLayer),
+            LayerNode("obj", _object_provider("instance")),
+            LayerNode("consumer", ObjectConsumerLayer, deps={"obj": "obj"}),
+        ]
     )
 
-    assert [prompt.value for prompt in compositor.prompts] == ["cfg", "instance"]
+    async def run() -> None:
+        async with compositor.enter(configs={"prompt": {"prefix": "cfg"}}) as active_run:
+            assert [prompt.value for prompt in active_run.prompts] == ["cfg", "instance"]
 
-    try:
-        CompositorBuilder(registry).add_instance(
-            name="consumer",
-            layer=ObjectConsumerLayer(),
-            deps={"missing_dep_key": "obj"},
-        ).build()
-    except ValueError as e:
-        assert str(e) == "Layer 'consumer' declares unknown dependency keys: missing_dep_key."
-    else:
-        raise AssertionError("Expected ValueError.")
-
-    try:
-        CompositorBuilder(registry).add_instance(
-            name="consumer",
-            layer=ObjectConsumerLayer(),
-            deps={"obj": "missing_target"},
-        ).build()
-    except ValueError as e:
-        assert str(e) == "Layer 'consumer' depends on undefined layer names: missing_target."
-    else:
-        raise AssertionError("Expected ValueError.")
+    asyncio.run(run())
 
 
-class HandleState(BaseModel):
+class SerializableState(BaseModel):
     resource_id: str = ""
+    created: bool = False
+    resumed: bool = False
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 
-class HandleBox:
-    def __init__(self, value: str) -> None:
-        self.value = value
-
-
-class HandleModels(BaseModel):
-    handle: HandleBox | None = None
-
-    model_config = ConfigDict(extra="forbid", validate_assignment=True, arbitrary_types_allowed=True)
-
-
 @dataclass(slots=True)
-class HandleLayer(PlainLayer[NoLayerDeps, EmptyLayerConfig, HandleState, HandleModels]):
-    created: int = 0
-    resumed: int = 0
+class StateLayer(PlainLayer[NoLayerDeps, EmptyLayerConfig, SerializableState]):
+    created_hooks: int = 0
+    resumed_hooks: int = 0
 
     @override
-    async def on_context_create(self, control: LayerControl[HandleState, HandleModels]) -> None:
-        self.created += 1
-        control.runtime_handles.handle = HandleBox(control.runtime_state.resource_id)
+    async def on_context_create(self) -> None:
+        self.created_hooks += 1
+        self.runtime_state.created = True
 
     @override
-    async def on_context_resume(self, control: LayerControl[HandleState, HandleModels]) -> None:
-        self.resumed += 1
-        control.runtime_handles.handle = HandleBox(f"resumed:{control.runtime_state.resource_id}")
+    async def on_context_resume(self) -> None:
+        self.resumed_hooks += 1
+        self.runtime_state.resumed = True
 
 
-def test_new_session_uses_layer_runtime_schemas() -> None:
-    compositor: Compositor[PlainPromptType, PlainToolType] = Compositor(
-        layers=OrderedDict([("handle", HandleLayer())])
-    )
-    session = compositor.new_session()
+def test_snapshot_contains_runtime_state_only_not_config_deps_or_resources() -> None:
+    compositor = Compositor([LayerNode("state", StateLayer)])
 
-    assert isinstance(session.layer("handle").runtime_state, HandleState)
-    assert isinstance(session.layer("handle").runtime_handles, HandleModels)
+    async def get_snapshot() -> dict[str, object]:
+        async with compositor.enter() as active_run:
+            state_layer = active_run.get_layer("state", StateLayer)
+            state_layer.runtime_state.resource_id = "abc"
+        assert active_run.session_snapshot is not None
+        return active_run.session_snapshot.model_dump(mode="json")
 
-
-def test_enter_rejects_bad_session_runtime_schemas_before_layer_hooks() -> None:
-    layer = HandleLayer()
-    compositor: Compositor[PlainPromptType, PlainToolType] = Compositor(layers=OrderedDict([("handle", layer)]))
-    bad_session = CompositorSession(OrderedDict([("handle", LayerControl())]))
-
-    async def run() -> None:
-        async with compositor.enter(bad_session):
-            pass
-
-    try:
-        asyncio.run(run())
-    except TypeError as e:
-        assert str(e) == (
-            "CompositorSession layer 'handle' runtime_state must be HandleState, "
-            "got EmptyRuntimeState."
-        )
-    else:
-        raise AssertionError("Expected TypeError.")
-
-    assert layer.created == 0
-
-
-def test_snapshot_rejects_active_sessions_and_excludes_handles() -> None:
-    compositor: Compositor[PlainPromptType, PlainToolType] = Compositor(
-        layers=OrderedDict([("handle", HandleLayer())])
-    )
-    session = compositor.session_from_snapshot(
-        {"layers": [{"name": "handle", "state": "new", "runtime_state": {"resource_id": "abc"}}]}
-    )
-
-    async def run() -> None:
-        async with compositor.enter(session):
-            try:
-                compositor.snapshot_session(session)
-            except RuntimeError as e:
-                assert str(e) == "Cannot snapshot active compositor session layers: handle."
-            else:
-                raise AssertionError("Expected RuntimeError.")
-
-    asyncio.run(run())
-
-    snapshot = compositor.snapshot_session(session)
-    dumped = snapshot.model_dump(mode="json")
+    dumped = asyncio.run(get_snapshot())
     assert dumped == {
         "schema_version": 1,
-        "layers": [{"name": "handle", "state": "closed", "runtime_state": {"resource_id": "abc"}}],
+        "layers": [
+            {
+                "name": "state",
+                "lifecycle_state": "closed",
+                "runtime_state": {"resource_id": "abc", "created": True, "resumed": False},
+            }
+        ],
     }
-    assert "_entry_stack" not in str(dumped)
-    assert "_owner" not in str(dumped)
 
 
-def test_restore_validates_runtime_state_and_resume_rehydrates_handles() -> None:
-    layer = HandleLayer()
-    compositor: Compositor[PlainPromptType, PlainToolType] = Compositor(layers=OrderedDict([("handle", layer)]))
+def test_hydrate_validates_runtime_state_and_resume_mutates_layer_self() -> None:
+    compositor = Compositor([LayerNode("state", StateLayer)])
 
-    try:
-        compositor.session_from_snapshot(
-            {"layers": [{"name": "handle", "state": "suspended", "runtime_state": {"wrong": "field"}}]}
-        )
-    except ValidationError:
-        pass
-    else:
-        raise AssertionError("Expected ValidationError.")
+    bad_snapshot = {"layers": [{"name": "state", "lifecycle_state": "suspended", "runtime_state": {"wrong": "field"}}]}
+    with pytest.raises(ValidationError):
+        asyncio.run(_enter_once(compositor, session_snapshot=bad_snapshot))
 
-    restored = compositor.session_from_snapshot(
-        {"layers": [{"name": "handle", "state": "suspended", "runtime_state": {"resource_id": "abc"}}]}
-    )
+    good_snapshot = {
+        "layers": [
+            {
+                "name": "state",
+                "lifecycle_state": "suspended",
+                "runtime_state": {"resource_id": "abc", "created": True, "resumed": False},
+            }
+        ]
+    }
 
     async def run() -> None:
-        async with compositor.enter(restored):
-            control = restored.layer("handle")
-            assert isinstance(control.runtime_handles, HandleModels)
-            assert control.runtime_handles.handle is not None
-            assert control.runtime_handles.handle.value == "resumed:abc"
+        async with compositor.enter(session_snapshot=good_snapshot) as active_run:
+            layer = active_run.get_layer("state", StateLayer)
+            assert layer.runtime_state.resource_id == "abc"
+            assert layer.runtime_state.resumed is True
+            assert layer.resumed_hooks == 1
 
     asyncio.run(run())
 
-    assert layer.resumed == 1
 
+def test_hydrate_rejects_mismatched_snapshot_layer_names() -> None:
+    compositor = Compositor([LayerNode("state", StateLayer)])
 
-def test_session_from_snapshot_rejects_active_layer_state() -> None:
-    compositor: Compositor[PlainPromptType, PlainToolType] = Compositor(
-        layers=OrderedDict([("handle", HandleLayer())])
-    )
-
-    try:
-        compositor.session_from_snapshot(
-            {"layers": [{"name": "handle", "state": "active", "runtime_state": {"resource_id": "abc"}}]}
+    with pytest.raises(ValueError, match=r"Expected \[state\], got \[other\]"):
+        asyncio.run(
+            _enter_once(
+                compositor,
+                session_snapshot={"layers": [{"name": "other", "lifecycle_state": "new", "runtime_state": {}}]},
+            )
         )
-    except ValueError as e:
-        assert str(e) == "Cannot restore active compositor session layers from snapshot: handle."
-    else:
-        raise AssertionError("Expected ValueError.")
+
+
+def test_removed_lifecycle_and_resource_apis_are_not_public_exports() -> None:
+    assert not hasattr(compositor_module, "CompositorBuilder")
+    assert not hasattr(compositor_module, "LayerRegistry")
+    assert not hasattr(compositor_module, "LayerDescriptor")
+    assert not hasattr(layers_module, "LayerControl")
+    assert not hasattr(layers_module, "EmptyRuntimeHandles")
+    assert not hasattr(Layer, "enter")
+    assert not hasattr(Layer, "hydrate_session_state")
+    assert not hasattr(Layer, "suspend_on_exit")
+    assert not hasattr(Layer, "delete_on_exit")
+    assert not hasattr(Layer, "runtime_handles")
+    assert not hasattr(Layer, "require_control")
+    assert not hasattr(Layer, "control_for")
+    assert not hasattr(Layer, "enter_async_resource")
+    assert not hasattr(Layer, "add_async_cleanup")
+
+
+def _object_provider(value: str) -> LayerProvider[ObjectLayer[str]]:
+    return LayerProvider.from_factory(layer_type=ObjectLayer, create=lambda config: ObjectLayer(value))
+
+
+async def _enter_once(
+    compositor: Compositor,
+    *,
+    configs: dict[str, object] | None = None,
+    session_snapshot: object | None = None,
+) -> None:
+    async with compositor.enter(
+        configs=configs,  # pyright: ignore[reportArgumentType]
+        session_snapshot=session_snapshot,  # pyright: ignore[reportArgumentType]
+    ):
+        pass

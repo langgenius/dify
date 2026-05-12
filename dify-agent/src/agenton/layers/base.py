@@ -1,37 +1,41 @@
-"""Core layer abstractions and typed dependency binding.
+"""Invocation-scoped core layer abstractions and typed dependency binding.
 
-Layers declare their dependency shape with ``Layer[DepsT, PromptT, ToolT, ...]``.
+Agenton core deliberately manages only three concerns: stateless layer graph
+composition, serializable ``runtime_state`` lifecycle, and session snapshots. It
+does not own live resources, process handles, HTTP clients, cleanup stacks, or
+any other non-serializable runtime object. Those belong to application layers or
+integration code outside the core.
+
+Layers declare their dependency shape with
+``Layer[DepsT, PromptT, UserPromptT, ToolT, ConfigT, RuntimeStateT]``.
 ``DepsT`` must be a ``LayerDeps`` subclass whose annotated members are concrete
-``Layer`` subclasses or modern optional dependencies such as ``SomeLayer |
-None``. The optional trailing generic slots declare Pydantic schemas for config,
-serializable runtime state, and live runtime handles. The base class infers
-``deps_type`` and schema class attributes from the generic base when possible,
-while still allowing subclasses to set them explicitly for unusual inheritance
-patterns.
+``Layer`` subclasses or modern optional dependencies such as ``SomeLayer | None``.
+Dependencies are direct layer instance relationships bound onto ``self.deps``
+for one compositor invocation; there is no dependency-control lookup API in the
+core.
 
-``LayerConfig`` is the DTO base for config schemas that can be embedded directly
-in serializable compositor config. Runtime state and handle schemas remain plain
-Pydantic models because they are not accepted as graph input.
+``LayerConfig`` is the DTO base for config schemas accepted by layer providers.
+The provider validates raw node-name keyed configs with a layer's
+``config_type`` before constructing the layer and assigning ``self.config``.
+``runtime_state_type`` is the only mutable schema managed by Agenton and the only
+per-layer data included in session snapshots. The base class infers
+``deps_type``, ``config_type``, and ``runtime_state_type`` from generic bases
+when possible, while still allowing subclasses to set them explicitly for
+unusual inheritance patterns.
 
-``Layer.bind_deps`` is the mutation point for dependency state. Layer
-implementations should treat ``self.deps`` as unavailable until a compositor or
-caller has resolved and bound dependencies. When a layer needs a dependency's
-session-local state or handles, use the current ``LayerControl.control_for`` API
-instead of storing dependency controls on layer instances.
+``Layer`` is an invocation-scoped business object. It owns ``config``, direct
+``deps``, and serializable ``runtime_state`` plus prompt/tool authoring surfaces,
+but it does not own lifecycle state, exit intent, graph owner tokens, entry
+stacks, resources, or cleanup callbacks. ``CompositorRun`` owns lifecycle state
+and exit intent for one entry. ``SessionSnapshot`` objects are the only supported
+cross-call state carrier.
 
-Layer async entry uses a caller-provided ``LayerControl`` as an explicit state
-machine and per-session runtime owner. A fresh control starts in
-``LifecycleState.NEW`` and enters create logic. A suspended control resumes,
-while active or closed controls are rejected to prevent ambiguous nested or
-post-delete reuse. Exit behavior is selected per entry with ``ExitIntent`` and
-resets to delete on every successful enter. Layer instances are shared graph and
-capability definitions, so session-local serializable ids, checkpoints, and
-other snapshot data belong in ``LayerControl.runtime_state``; live clients,
-connections, and process handles belong in ``LayerControl.runtime_handles``.
-Neither category should be stored on ``self`` when it is session-local. Live
-resources that need deterministic cleanup should be registered on the control's
-per-entry resource stack; the base lifecycle closes that stack after suspend and
-delete hooks, and also when create/resume fails.
+Lifecycle hooks are no-argument business hooks on the layer instance:
+``on_context_create/resume/suspend/delete(self)``. They should read dependencies
+from ``self.deps`` and read or mutate serializable invocation state through
+``self.runtime_state``. Resource acquisition and deterministic cleanup should be
+handled outside Agenton core, for example by integration-specific context
+managers that wrap compositor entry.
 
 ``Layer`` is framework-neutral over system prompt, user prompt, and tool item
 types. The native ``prefix_prompts``, ``suffix_prompts``, ``user_prompts``, and
@@ -42,24 +46,19 @@ native values without changing layer implementations.
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
-from dataclasses import dataclass, field
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from enum import StrEnum
 from types import UnionType
 from typing import (
     Any,
     ClassVar,
     Generic,
-    Mapping,
-    Protocol,
-    Sequence,
     Union,
     cast,
     get_args,
     get_origin,
     get_type_hints,
-    overload,
 )
 
 from pydantic import BaseModel, ConfigDict, JsonValue, SerializeAsAny
@@ -75,10 +74,10 @@ _ToolT = TypeVar("_ToolT")
 class LayerConfig(BaseModel):
     """Base DTO for serializable layer configuration.
 
-    Subclasses are safe to place in ``LayerNodeConfig.config``. The compositor
-    still accepts plain JSON values for wire input, but typed Python call sites can
-    use concrete ``LayerConfig`` subclasses and preserve their fields during JSON
-    serialization.
+    Layer providers validate raw config values with concrete ``LayerConfig``
+    subclasses before constructing a layer for one invocation. Serializable
+    compositor graph config references layer type ids and node metadata only;
+    per-call config travels through ``Compositor.enter(configs=...)``.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -89,34 +88,17 @@ type LayerConfigValue = JsonValue | SerializeAsAny[LayerConfig]
 
 _ConfigT = TypeVar("_ConfigT", bound=LayerConfig, default="EmptyLayerConfig")
 _RuntimeStateT = TypeVar("_RuntimeStateT", bound=BaseModel, default="EmptyRuntimeState")
-_RuntimeHandlesT = TypeVar("_RuntimeHandlesT", bound=BaseModel, default="EmptyRuntimeHandles")
-_DepRuntimeStateT = TypeVar("_DepRuntimeStateT", bound=BaseModel)
-_DepRuntimeHandlesT = TypeVar("_DepRuntimeHandlesT", bound=BaseModel)
-_ResourceT = TypeVar("_ResourceT")
-
-
-class _LayerControlOwnerSession(Protocol):
-    """Private structural API used by controls to resolve dependency controls."""
-
-    def _control_for_dependency(
-        self,
-        owner_layer_id: str,
-        dep_name: str | None,
-        dep_layer: "Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT]",
-    ) -> "LayerControl[_DepRuntimeStateT, _DepRuntimeHandlesT]": ...
-
-    def _layer_for_control_owner(self, owner_layer_id: str) -> "Layer[Any, Any, Any, Any, Any, Any, Any]": ...
 
 
 class LayerDeps:
-    """Typed dependency container for a Layer.
+    """Typed dependency container for a layer.
 
     Subclasses declare dependency members with annotations. Every annotated
     member must be a Layer subclass or ``LayerSubclass | None``. Optional deps
     are always assigned as attributes; missing optional values become ``None``.
     """
 
-    def __init__(self, **deps: "Layer[Any, Any, Any, Any, Any, Any, Any] | None") -> None:
+    def __init__(self, **deps: "Layer[Any, Any, Any, Any, Any, Any] | None") -> None:
         dep_specs = _get_dep_specs(type(self))
         missing_names = {name for name, spec in dep_specs.items() if not spec.optional} - deps.keys()
         if missing_names:
@@ -155,23 +137,17 @@ class EmptyLayerConfig(LayerConfig):
 
 
 class EmptyRuntimeState(BaseModel):
-    """Default serializable per-session runtime state schema."""
+    """Default serializable invocation runtime state schema."""
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 
-class EmptyRuntimeHandles(BaseModel):
-    """Default live per-session runtime handle schema.
-
-    Handles may contain arbitrary Python objects and are intentionally excluded
-    from session snapshots.
-    """
-
-    model_config = ConfigDict(extra="forbid", validate_assignment=True, arbitrary_types_allowed=True)
-
-
 class LifecycleState(StrEnum):
-    """Externally observable lifecycle state for a layer control."""
+    """Lifecycle state for one run slot.
+
+    ``ACTIVE`` is internal-only. It is used while an invocation is running and
+    must never appear in external session snapshots or hydrated input.
+    """
 
     NEW = "new"
     ACTIVE = "active"
@@ -180,165 +156,53 @@ class LifecycleState(StrEnum):
 
 
 class ExitIntent(StrEnum):
-    """Per-entry exit behavior requested for a layer control."""
+    """Run-slot exit behavior requested during active invocation."""
 
     DELETE = "delete"
     SUSPEND = "suspend"
-
-
-@dataclass(slots=True)
-class LayerControl(Generic[_RuntimeStateT, _RuntimeHandlesT]):
-    """Stateful control slot passed into a layer entry context.
-
-    ``Layer.enter`` requires the caller to provide this object. The control owns
-    the layer lifecycle state, the current entry's exit intent, and arbitrary
-    per-session runtime state and live handles. Call ``suspend_on_exit`` before leaving the
-    context to make a later entry resume; call ``delete_on_exit`` or do nothing
-    for the default delete behavior. Store session-local serializable ids,
-    checkpoints, and other snapshot data in ``runtime_state``. Store live
-    clients, connections, process handles, and other non-serializable objects in
-    ``runtime_handles``. Do not put either kind of session-local data on the
-    shared layer instance.
-
-    ``runtime_state`` intentionally persists after suspend and delete. Suspend,
-    resume, and delete hooks can inspect the same values created on entry, and
-    callers may inspect closed-session diagnostics after exit. Reuse is still
-    governed by ``state``: a closed control cannot be entered again. Runtime
-    handles are not serialized in snapshots and should be rehydrated from
-    runtime state in resume hooks. A compositor also binds private owner metadata
-    so ``control_for`` can find controls for this layer's dependencies in the
-    same session; those links are runtime-only and not part of snapshots. The
-    per-entry resource stack is also runtime-only and exists only while the layer
-    is entering, active, or exiting.
-    """
-
-    state: LifecycleState = LifecycleState.NEW
-    exit_intent: ExitIntent = ExitIntent.DELETE
-    runtime_state: _RuntimeStateT = field(default_factory=lambda: cast(_RuntimeStateT, EmptyRuntimeState()))
-    runtime_handles: _RuntimeHandlesT = field(default_factory=lambda: cast(_RuntimeHandlesT, EmptyRuntimeHandles()))
-    _owner_session: _LayerControlOwnerSession | None = field(default=None, init=False, repr=False, compare=False)
-    _owner_layer_id: str | None = field(default=None, init=False, repr=False, compare=False)
-    _entry_stack: AsyncExitStack | None = field(default=None, init=False, repr=False, compare=False)
-
-    def suspend_on_exit(self) -> None:
-        """Request suspend behavior when the current layer entry exits."""
-        self.exit_intent = ExitIntent.SUSPEND
-
-    def delete_on_exit(self) -> None:
-        """Request delete behavior when the current layer entry exits."""
-        self.exit_intent = ExitIntent.DELETE
-
-    async def enter_async_resource(self, cm: AbstractAsyncContextManager[_ResourceT]) -> _ResourceT:
-        """Enter ``cm`` on this control's current entry resource stack.
-
-        Resource registration is available only while a layer entry is in
-        progress or active. The base lifecycle closes registered resources after
-        suspend/delete hooks and when create/resume fails.
-        """
-        return await self._require_entry_stack().enter_async_context(cm)
-
-    def add_async_cleanup(self, callback: Callable[[], Awaitable[None]]) -> None:
-        """Register an async cleanup callback on the current entry resource stack."""
-        self._require_entry_stack().push_async_callback(callback)
-
-    @overload
-    def control_for(
-        self,
-        dep_layer: "Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT]",
-        /,
-    ) -> "LayerControl[_DepRuntimeStateT, _DepRuntimeHandlesT]": ...
-
-    @overload
-    def control_for(
-        self,
-        dep_name: str,
-        dep_layer: "Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT]",
-        /,
-    ) -> "LayerControl[_DepRuntimeStateT, _DepRuntimeHandlesT]": ...
-
-    def control_for(
-        self,
-        dep_name_or_layer: "str | Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT]",
-        dep_layer: "Layer[Any, Any, Any, Any, Any, _DepRuntimeStateT, _DepRuntimeHandlesT] | None" = None,
-        /,
-    ) -> "LayerControl[_DepRuntimeStateT, _DepRuntimeHandlesT]":
-        """Return the current session control for one resolved dependency.
-
-        ``control_for(dep_layer)`` is for the common case where exactly one
-        resolved dependency target of this control's owner layer is ``dep_layer``.
-        Use ``control_for(dep_name, dep_layer)`` when multiple dependency fields
-        can point at the same layer instance or when the name makes the lookup
-        clearer. Optional dependencies that resolved to ``None`` have no control
-        and raise ``KeyError`` when requested.
-        """
-        if isinstance(dep_name_or_layer, str):
-            if dep_layer is None:
-                raise TypeError("LayerControl.control_for(dep_name, dep_layer) requires dep_layer.")
-            dep_name = dep_name_or_layer
-            resolved_dep_layer = dep_layer
-        else:
-            if dep_layer is not None:
-                raise TypeError("LayerControl.control_for accepts either (dep_layer) or (dep_name, dep_layer).")
-            dep_name = None
-            resolved_dep_layer = dep_name_or_layer
-
-        if self._owner_session is None or self._owner_layer_id is None:
-            raise RuntimeError("LayerControl is not attached to a compositor session.")
-
-        return self._owner_session._control_for_dependency(self._owner_layer_id, dep_name, resolved_dep_layer)
-
-    def _bind_owner(self, session: _LayerControlOwnerSession, layer_id: str) -> None:
-        """Attach runtime owner metadata used by ``control_for``."""
-        self._owner_session = session
-        self._owner_layer_id = layer_id
-
-    def _require_entry_stack(self) -> AsyncExitStack:
-        if self._entry_stack is None:
-            raise RuntimeError("LayerControl entry resource stack is not active.")
-        return self._entry_stack
-
-    def _begin_entry_stack(self) -> None:
-        if self._entry_stack is not None:
-            raise RuntimeError("LayerControl entry resource stack is already active.")
-        self._entry_stack = AsyncExitStack()
-
-    async def _close_entry_stack(self) -> None:
-        stack = self._entry_stack
-        self._entry_stack = None
-        if stack is not None:
-            await stack.aclose()
 
 
 @dataclass(frozen=True, slots=True)
 class LayerDepSpec:
     """Runtime dependency specification derived from a deps annotation."""
 
-    layer_type: type["Layer[Any, Any, Any, Any, Any, Any, Any]"]
+    layer_type: type["Layer[Any, Any, Any, Any, Any, Any]"]
     optional: bool = False
 
 
 class Layer(
     ABC,
-    Generic[_DepsT, _PromptT, _UserPromptT, _ToolT, _ConfigT, _RuntimeStateT, _RuntimeHandlesT],
+    Generic[_DepsT, _PromptT, _UserPromptT, _ToolT, _ConfigT, _RuntimeStateT],
 ):
     """Framework-neutral base class for prompt/tool layers.
 
-    Subclasses expose optional prompt fragments and tools through typed
-    properties. They declare required dependencies in the ``DepsT`` container
-    rather than by accepting dependencies in ``__init__``. Layer instances can be
-    entered by multiple sessions, including concurrently, so lifecycle hooks
-    should store session-local runtime values on the passed ``LayerControl``.
-    The default async context manager handles create, resume, suspend, and
-    delete transitions; layers can override ``enter`` when they need to wrap
-    extra runtime resources.
+    A layer instance is invocation-scoped mutable business state, not a reusable
+    cross-session definition. ``CompositorRun`` creates fresh instances through
+    layer providers, assigns validated ``config``, binds direct dependency layer
+    instances to ``deps``, hydrates ``runtime_state`` from an optional session
+    snapshot, and then runs no-argument lifecycle hooks. The run owns lifecycle
+    state and exit intent; layers never expose a public entry context manager.
+
+    Live resources and handles are intentionally outside this abstraction. Only
+    ``runtime_state`` is managed and snapshotted by Agenton core. Lifecycle hooks
+    should operate on ``self`` and keep any non-serializable cleanup policy in
+    integration code that wraps the compositor.
     """
 
     deps_type: type[_DepsT]
+    config: _ConfigT
     deps: _DepsT
+    runtime_state: _RuntimeStateT
     type_id: ClassVar[str | None] = None
     config_type: ClassVar[type[LayerConfig]] = EmptyLayerConfig
     runtime_state_type: ClassVar[type[BaseModel]] = EmptyRuntimeState
-    runtime_handles_type: ClassVar[type[BaseModel]] = EmptyRuntimeHandles
+
+    def __new__(cls, *args: object, **kwargs: object) -> Self:
+        instance = cast(Self, super().__new__(cls))
+        runtime_state_type = getattr(cls, "runtime_state_type", None)
+        if isinstance(runtime_state_type, type) and issubclass(runtime_state_type, BaseModel):
+            instance.runtime_state = cast(Any, runtime_state_type.model_validate({}))
+        return instance
 
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
@@ -362,56 +226,38 @@ class Layer(
             _infer_schema_type(cls, 5, "runtime_state_type"),
             EmptyRuntimeState,
         )
-        _init_schema_type(
-            cls,
-            "runtime_handles_type",
-            _infer_schema_type(cls, 6, "runtime_handles_type"),
-            EmptyRuntimeHandles,
-        )
 
     @classmethod
     def from_config(cls: type[Self], config: _ConfigT) -> Self:
         """Create a layer from schema-validated serialized config.
 
-        Registries/builders validate raw config with ``config_type`` before
-        calling this method. Layers are not config-constructible by default.
-        Subclasses that accept config should override this method and consume
-        the typed Pydantic model for their schema.
+        ``LayerProvider.from_layer_type`` validates raw config with
+        ``config_type`` before calling this method. Layers without config use the
+        default no-argument construction path. Layers with a concrete config
+        schema should override this method and consume the typed Pydantic model.
         """
-        raise TypeError(f"{cls.__name__} cannot be created from config.")
+        if cls.config_type is not EmptyLayerConfig:
+            raise TypeError(f"{cls.__name__} cannot be created from config; override from_config or use a provider.")
+        EmptyLayerConfig.model_validate(config)
+        try:
+            return cast(Self, cls())
+        except TypeError as e:
+            raise TypeError(f"{cls.__name__} cannot be created from empty config; use a custom provider.") from e
 
     @classmethod
     def dependency_names(cls) -> frozenset[str]:
         """Return dependency field names declared by this layer's deps schema."""
         return frozenset(_get_dep_specs(cls.deps_type))
 
-    def new_control(
-        self,
-        *,
-        state: LifecycleState = LifecycleState.NEW,
-        runtime_state: object | None = None,
-    ) -> LayerControl[_RuntimeStateT, _RuntimeHandlesT]:
-        """Create a schema-validated per-session control for this layer.
-
-        ``runtime_state`` is validated through ``runtime_state_type`` and live
-        handles are always initialized empty through ``runtime_handles_type``.
-        """
-        raw_runtime_state = {} if runtime_state is None else runtime_state
-        return LayerControl(
-            state=state,
-            exit_intent=ExitIntent.DELETE,
-            runtime_state=cast(_RuntimeStateT, self.runtime_state_type.model_validate(raw_runtime_state)),
-            runtime_handles=cast(_RuntimeHandlesT, self.runtime_handles_type.model_validate({})),
-        )
-
-    def bind_deps(self, deps: Mapping[str, "Layer[Any, Any, Any, Any, Any, Any, Any] | None"]) -> None:
+    def bind_deps(self, deps: Mapping[str, "Layer[Any, Any, Any, Any, Any, Any] | None"]) -> None:
         """Bind this layer's declared dependencies from a name-to-layer mapping.
 
         The mapping may include more layers than the declared dependency fields.
         Only names declared by ``deps_type`` are selected and validated. Missing
-        optional deps are bound as ``None``.
+        optional deps are bound as ``None``. Bound values are direct layer
+        instances for this invocation graph.
         """
-        resolved_deps: dict[str, Layer[Any, Any, Any, Any, Any, Any, Any] | None] = {}
+        resolved_deps: dict[str, Layer[Any, Any, Any, Any, Any, Any] | None] = {}
         for name, spec in _get_dep_specs(self.deps_type).items():
             if name not in deps:
                 if spec.optional:
@@ -423,127 +269,17 @@ class Layer(
             resolved_deps[name] = deps[name]
         self.deps = self.deps_type(**resolved_deps)
 
-    def require_control(
-        self,
-        control: LayerControl[Any, Any],
-        *,
-        active: bool = False,
-    ) -> LayerControl[_RuntimeStateT, _RuntimeHandlesT]:
-        """Validate and return ``control`` as this layer's current session control.
+    async def on_context_create(self) -> None:
+        """Run when the run slot enters from ``LifecycleState.NEW``."""
 
-        Capability methods should accept their own layer control explicitly and
-        call this helper before reading runtime state or handles. The control must
-        be attached to a compositor session whose owner layer id resolves to this
-        exact layer instance. Runtime state and handle schemas are checked against
-        the layer's declared schema types; when ``active`` is true, the lifecycle
-        state must be ``LifecycleState.ACTIVE``.
-        """
-        if control._owner_session is None or control._owner_layer_id is None:
-            raise RuntimeError("LayerControl is not attached to a compositor session.")
-        try:
-            owner_layer = control._owner_session._layer_for_control_owner(control._owner_layer_id)
-        except KeyError as e:
-            raise RuntimeError(
-                f"LayerControl owner layer '{control._owner_layer_id}' is not defined in its compositor."
-            ) from e
-        if owner_layer is not self:
-            raise RuntimeError(
-                f"LayerControl belongs to layer '{control._owner_layer_id}', not this {type(self).__name__} instance."
-            )
-        if not isinstance(control.runtime_state, self.runtime_state_type):
-            raise TypeError(
-                f"{type(self).__name__} control runtime_state must be {self.runtime_state_type.__name__}, "
-                f"got {type(control.runtime_state).__name__}."
-            )
-        if not isinstance(control.runtime_handles, self.runtime_handles_type):
-            raise TypeError(
-                f"{type(self).__name__} control runtime_handles must be {self.runtime_handles_type.__name__}, "
-                f"got {type(control.runtime_handles).__name__}."
-            )
-        if active and control.state is not LifecycleState.ACTIVE:
-            raise RuntimeError(
-                f"{type(self).__name__} requires an active LayerControl; current state is {control.state.value}."
-            )
-        return cast(LayerControl[_RuntimeStateT, _RuntimeHandlesT], control)
+    async def on_context_delete(self) -> None:
+        """Run when the run slot exits with ``ExitIntent.DELETE``."""
 
-    def enter(self, control: LayerControl[_RuntimeStateT, _RuntimeHandlesT]) -> AbstractAsyncContextManager[None]:
-        """Return the layer's async entry context manager.
+    async def on_context_suspend(self) -> None:
+        """Run when the run slot exits with ``ExitIntent.SUSPEND``."""
 
-        ``control`` is the lifecycle control slot for this entry. Subclasses can
-        override this for unusual wrapping, but ordinary live resources should be
-        registered with ``control.enter_async_resource`` from lifecycle hooks.
-        """
-        return self.lifecycle_enter(control)
-
-    @asynccontextmanager
-    async def lifecycle_enter(self, control: LayerControl[_RuntimeStateT, _RuntimeHandlesT]) -> AsyncIterator[None]:
-        """Run the default explicit lifecycle and resource stack for one entry.
-
-        Exit state is recorded even when suspend/delete hooks fail because the
-        active entry is over once hook cleanup begins.
-        """
-        if control.state is LifecycleState.ACTIVE:
-            raise RuntimeError(
-                "LayerControl is already active; duplicate or nested enter is not allowed."
-            )
-        if control.state is LifecycleState.CLOSED:
-            raise RuntimeError(
-                "LayerControl is closed; create a new compositor session before entering again."
-            )
-
-        control._begin_entry_stack()
-        try:
-            if control.state is LifecycleState.NEW:
-                control.exit_intent = ExitIntent.DELETE
-                await self.on_context_create(control)
-                control.state = LifecycleState.ACTIVE
-            elif control.state is LifecycleState.SUSPENDED:
-                control.exit_intent = ExitIntent.DELETE
-                await self.on_context_resume(control)
-                control.state = LifecycleState.ACTIVE
-        except BaseException:
-            await control._close_entry_stack()
-            raise
-
-        try:
-            yield
-        finally:
-            hook_error: BaseException | None = None
-            if control.exit_intent is ExitIntent.SUSPEND:
-                try:
-                    await self.on_context_suspend(control)
-                except BaseException as exc:
-                    hook_error = exc
-                finally:
-                    control.state = LifecycleState.SUSPENDED
-            else:
-                try:
-                    await self.on_context_delete(control)
-                except BaseException as exc:
-                    hook_error = exc
-                finally:
-                    control.state = LifecycleState.CLOSED
-
-            try:
-                await control._close_entry_stack()
-            except BaseException:
-                if hook_error is not None:
-                    raise hook_error
-                raise
-            if hook_error is not None:
-                raise hook_error
-
-    async def on_context_create(self, control: LayerControl[_RuntimeStateT, _RuntimeHandlesT]) -> None:
-        """Run when the layer context is entered from ``LifecycleState.NEW``."""
-
-    async def on_context_delete(self, control: LayerControl[_RuntimeStateT, _RuntimeHandlesT]) -> None:
-        """Run when the layer context exits with ``ExitIntent.DELETE``."""
-
-    async def on_context_suspend(self, control: LayerControl[_RuntimeStateT, _RuntimeHandlesT]) -> None:
-        """Run when the layer context exits with ``ExitIntent.SUSPEND``."""
-
-    async def on_context_resume(self, control: LayerControl[_RuntimeStateT, _RuntimeHandlesT]) -> None:
-        """Run when the layer context enters from ``LifecycleState.SUSPENDED``."""
+    async def on_context_resume(self) -> None:
+        """Run when the run slot enters from ``LifecycleState.SUSPENDED``."""
 
     @property
     def prefix_prompts(self) -> Sequence[_PromptT]:
@@ -563,17 +299,17 @@ class Layer(
 
     @abstractmethod
     def wrap_prompt(self, prompt: _PromptT) -> object:
-        """Wrap a native prompt item for compositor aggregation."""
+        """Wrap a native prompt item for run-level aggregation."""
         raise NotImplementedError
 
     @abstractmethod
     def wrap_user_prompt(self, prompt: _UserPromptT) -> object:
-        """Wrap a native user prompt item for compositor aggregation."""
+        """Wrap a native user prompt item for run-level aggregation."""
         raise NotImplementedError
 
     @abstractmethod
     def wrap_tool(self, tool: _ToolT) -> object:
-        """Wrap a native tool item for compositor aggregation."""
+        """Wrap a native tool item for run-level aggregation."""
         raise NotImplementedError
 
 
@@ -606,14 +342,14 @@ def _as_dep_spec(annotation: object) -> LayerDepSpec | None:
     return LayerDepSpec(layer_type=layer_type)
 
 
-def _as_layer_type(annotation: object) -> type[Layer[Any, Any, Any, Any, Any, Any, Any]] | None:
+def _as_layer_type(annotation: object) -> type[Layer[Any, Any, Any, Any, Any, Any]] | None:
     runtime_type = get_origin(annotation) or annotation
     if isinstance(runtime_type, type) and issubclass(runtime_type, Layer):
-        return cast(type[Layer[Any, Any, Any, Any, Any, Any, Any]], runtime_type)
+        return cast(type[Layer[Any, Any, Any, Any, Any, Any]], runtime_type)
     return None
 
 
-def _infer_deps_type(layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]]) -> type[LayerDeps] | None:
+def _infer_deps_type(layer_type: type[Layer[Any, Any, Any, Any, Any, Any]]) -> type[LayerDeps] | None:
     inferred = _infer_layer_generic_arg(layer_type, 0, {})
     if inferred is None:
         return None
@@ -621,7 +357,7 @@ def _infer_deps_type(layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]])
 
 
 def _infer_schema_type(
-    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any]],
     index: int,
     attr_name: str,
 ) -> type[BaseModel] | None:
@@ -634,7 +370,7 @@ def _infer_schema_type(
     return schema_type
 
 
-def _infer_config_type(layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]]) -> type[LayerConfig] | None:
+def _infer_config_type(layer_type: type[Layer[Any, Any, Any, Any, Any, Any]]) -> type[LayerConfig] | None:
     inferred = _infer_schema_generic_arg(layer_type, "config_type", {}) or _infer_layer_generic_arg(layer_type, 4, {})
     if inferred is None:
         return None
@@ -645,7 +381,7 @@ def _infer_config_type(layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]
 
 
 def _infer_schema_generic_arg(
-    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any]],
     attr_name: str,
     substitutions: Mapping[object, object],
 ) -> object | None:
@@ -653,7 +389,6 @@ def _infer_schema_generic_arg(
     expected_names = {
         "config_type": {"ConfigT", "_ConfigT"},
         "runtime_state_type": {"RuntimeStateT", "_RuntimeStateT"},
-        "runtime_handles_type": {"RuntimeHandlesT", "_RuntimeHandlesT"},
     }[attr_name]
     for base in getattr(layer_type, "__orig_bases__", ()):
         origin = get_origin(base) or base
@@ -675,7 +410,7 @@ def _infer_schema_generic_arg(
 
 
 def _infer_layer_generic_arg(
-    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any]],
     index: int,
     substitutions: Mapping[object, object],
 ) -> object | None:
@@ -704,7 +439,7 @@ def _infer_layer_generic_arg(
 
 
 def _init_schema_type(
-    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any]],
     attr_name: str,
     inferred_schema_type: type[BaseModel] | None,
     default_schema_type: type[BaseModel],
@@ -718,7 +453,7 @@ def _init_schema_type(
 
 
 def _init_config_type(
-    layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]],
+    layer_type: type[Layer[Any, Any, Any, Any, Any, Any]],
     inferred_config_type: type[LayerConfig] | None,
 ) -> None:
     config_type = layer_type.__dict__.get("config_type")
@@ -784,7 +519,5 @@ def _as_config_type(value: object) -> type[LayerConfig] | None:
     return None
 
 
-def _is_generic_layer_template(layer_type: type[Layer[Any, Any, Any, Any, Any, Any, Any]]) -> bool:
-    return bool(getattr(layer_type, "__type_params__", ())) or bool(
-        getattr(layer_type, "__parameters__", ())
-    )
+def _is_generic_layer_template(layer_type: type[Layer[Any, Any, Any, Any, Any, Any]]) -> bool:
+    return bool(getattr(layer_type, "__type_params__", ())) or bool(getattr(layer_type, "__parameters__", ()))
