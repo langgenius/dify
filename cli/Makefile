@@ -57,7 +57,7 @@ clean: ## Remove build artifacts.
 
 sync-models: ## Regenerate TS models from API swagger spec.
 	@echo "→ Generating openapi swagger spec…"
-	cd ../api && uv run --project api dev/generate_swagger_specs.py
+	cd ../api && uv run --project . dev/generate_swagger_specs.py
 	@echo "→ Converting Swagger 2.0 → OpenAPI 3.x…"
 	npx swagger2openapi ../api/openapi/openapi-swagger.json -o /tmp/openapi-oas3.json --patch
 	@echo "→ Generating Zod schemas + TS types…"
