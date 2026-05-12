@@ -2,21 +2,11 @@ import json
 import os
 import threading
 
-from flask import Response, abort, request
+from flask import Response
 
 from configs import dify_config
+from controllers.console.admin import admin_required
 from dify_app import DifyApp
-
-
-def _check_admin_api_key():
-    """Validate request carries the correct ADMIN_API_KEY."""
-    api_key = dify_config.ADMIN_API_KEY
-    if not api_key:
-        abort(403)
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.removeprefix("Bearer ").strip()
-    if token != api_key:
-        abort(401)
 
 
 def init_app(app: DifyApp):
@@ -36,8 +26,8 @@ def init_app(app: DifyApp):
         )
 
     @app.route("/threads")
+    @admin_required
     def threads():  # pyright: ignore[reportUnusedFunction]
-        _check_admin_api_key()
         num_threads = threading.active_count()
         threads = threading.enumerate()
 
@@ -62,8 +52,8 @@ def init_app(app: DifyApp):
         }
 
     @app.route("/db-pool-stat")
+    @admin_required
     def pool_stat():  # pyright: ignore[reportUnusedFunction]
-        _check_admin_api_key()
         from extensions.ext_database import db
 
         engine = db.engine
