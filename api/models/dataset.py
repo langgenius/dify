@@ -8,7 +8,6 @@ import os
 import pickle
 import re
 import time
-from collections.abc import Sequence
 from datetime import datetime
 from json import JSONDecodeError
 from typing import Any, ClassVar, TypedDict, cast
@@ -831,7 +830,7 @@ class Document(Base):
         )
 
 
-class DocumentSegment(Base):
+class DocumentSegment(TypeBase):
     __tablename__ = "document_segments"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_segment_pkey"),
@@ -844,35 +843,40 @@ class DocumentSegment(Base):
     )
 
     # initial fields
-    id = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    document_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default_factory=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int]
-    content = mapped_column(LongText, nullable=False)
-    answer = mapped_column(LongText, nullable=True)
+    content: Mapped[str] = mapped_column(LongText, nullable=False)
     word_count: Mapped[int]
     tokens: Mapped[int]
 
-    # indexing fields
-    keywords = mapped_column(sa.JSON, nullable=True)
-    index_node_id = mapped_column(String(255), nullable=True)
-    index_node_hash = mapped_column(String(255), nullable=True)
-
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # basic fields
+    # indexing fields
+    index_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
+    answer: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True, default=None)
+    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    status: Mapped[SegmentStatus] = mapped_column(
+        EnumText(SegmentStatus, length=255), server_default=sa.text("'waiting'"), default=SegmentStatus.WAITING
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled_by = mapped_column(StringUUID, nullable=True)
-    status: Mapped[str] = mapped_column(EnumText(SegmentStatus, length=255), server_default=sa.text("'waiting'"))
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    indexing_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    error = mapped_column(LongText, nullable=True)
-    stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     @property
     def dataset(self):
@@ -899,7 +903,7 @@ class DocumentSegment(Base):
         )
 
     @property
-    def child_chunks(self) -> Sequence[Any]:
+    def child_chunks(self):
         if not self.document:
             return []
         process_rule = self.document.dataset_process_rule
@@ -914,7 +918,7 @@ class DocumentSegment(Base):
                     return child_chunks or []
         return []
 
-    def get_child_chunks(self) -> Sequence[Any]:
+    def get_child_chunks(self):
         if not self.document:
             return []
         process_rule = self.document.dataset_process_rule
