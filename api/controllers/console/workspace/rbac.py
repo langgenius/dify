@@ -115,7 +115,7 @@ def _pagination_options() -> svc.ListOption:
 
 
 def _filter_out_owner(paginated: svc.Paginated[svc.RBACRole]) -> svc.Paginated[svc.RBACRole]:
-    filtered = [r for r in paginated.data if r.name != "owner"]
+    filtered = [r for r in paginated.data if r.name != "所有者"]
     return svc.Paginated[svc.RBACRole](
         data=filtered,
         pagination=paginated.pagination,
