@@ -182,7 +182,6 @@ class TestCleanDatasetTask:
             Document: Created document instance
         """
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
@@ -926,7 +925,6 @@ class TestCleanDatasetTask:
         special_content = "Special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?`~"
 
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,

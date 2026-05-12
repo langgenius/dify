@@ -1,3 +1,5 @@
+from models import AccountStatus
+from models import TenantStatus
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -83,14 +85,14 @@ class TestDuplicateDocumentIndexingTasks:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -122,7 +124,6 @@ class TestDuplicateDocumentIndexingTasks:
         documents = []
         for i in range(document_count):
             document = Document(
-                id=fake.uuid4(),
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 position=i,

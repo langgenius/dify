@@ -102,7 +102,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create a document to set the doc_form property
         document_for_doc_form = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -162,7 +161,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create a document to set the doc_form property
         document_for_doc_form = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -182,7 +180,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create documents
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -265,7 +262,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create a document to set the doc_form property
         document_for_doc_form = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -285,7 +281,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -415,7 +410,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create document without segments
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -506,7 +500,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create a document to set the doc_form property
         document_for_doc_form = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -526,7 +519,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -604,7 +596,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -682,7 +673,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -760,7 +750,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create a document to set the doc_form property
         document_for_doc_form = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -865,7 +854,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create a document to set the doc_form property
         document_for_doc_form = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -885,7 +873,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create document
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -964,7 +951,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create a document to set the doc_form property
         document_for_doc_form = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -984,7 +970,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create enabled document
         enabled_document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -1003,7 +988,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create disabled document
         disabled_document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
@@ -1087,7 +1071,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create a document to set the doc_form property
         document_for_doc_form = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -1107,7 +1090,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create active document
         active_document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -1126,7 +1108,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create archived document
         archived_document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
@@ -1210,7 +1191,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create a document to set the doc_form property
         document_for_doc_form = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -1230,7 +1210,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create completed document
         completed_document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=0,
@@ -1249,7 +1228,6 @@ class TestDealDatasetVectorIndexTask:
 
         # Create incomplete document
         incomplete_document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
