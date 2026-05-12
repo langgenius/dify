@@ -32,7 +32,7 @@ def remove_document_from_index_task(document_id: str):
             logger.info(click.style(f"Document not found: {document_id}", fg="red"))
             return
 
-        if document.indexing_status != "completed":
+        if document.indexing_status != IndexingStatus.COMPLETED:
             logger.info(click.style(f"Document is not completed, remove is not allowed: {document_id}", fg="red"))
             return
 

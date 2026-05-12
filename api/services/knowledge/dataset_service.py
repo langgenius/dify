@@ -2151,7 +2151,7 @@ class DocumentService:
         knowledge_config: KnowledgeConfig,
         account: Account | Any,
         dataset_process_rule: DatasetProcessRule | None = None,
-        created_from: str = DocumentCreatedFrom.WEB,
+        created_from: DocumentCreatedFrom = DocumentCreatedFrom.WEB,
         *,
         session: Session,
     ) -> tuple[list[Document], str]:
@@ -2866,18 +2866,21 @@ class DocumentService:
         if dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True:
             need_summary = True
 
+        document_data_source_type: DataSourceType = DataSourceType(data_source_type)
+        document_created_from: DocumentCreatedFrom = DocumentCreatedFrom(created_from)
+        document_form_type: IndexStructureType = IndexStructureType(document_form)
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=position,
-            data_source_type=data_source_type,
+            data_source_type=document_data_source_type,
             data_source_info=json.dumps(data_source_info),
             dataset_process_rule_id=process_rule_id,
             batch=batch,
             name=name,
-            created_from=created_from,
+            created_from=document_created_from,
             created_by=account.id,
-            doc_form=document_form,
+            doc_form=document_form_type,
             doc_language=document_language,
             need_summary=need_summary,
         )
@@ -3029,7 +3032,10 @@ class DocumentService:
                             "only_main_content": website_info.only_main_content,
                             "mode": "crawl",
                         }
-            document.data_source_type = document_data.data_source.info_list.data_source_type
+            updated_data_source_type: DataSourceType = DataSourceType(
+                document_data.data_source.info_list.data_source_type
+            )
+            document.data_source_type = updated_data_source_type
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
 
@@ -3044,8 +3050,10 @@ class DocumentService:
         document.cleaning_completed_at = None
         document.splitting_completed_at = None
         document.updated_at = naive_utc_now()
-        document.created_from = created_from
-        document.doc_form = IndexStructureType(document_data.doc_form)
+        updated_created_from: DocumentCreatedFrom = DocumentCreatedFrom(created_from)
+        updated_doc_form: IndexStructureType = IndexStructureType(document_data.doc_form)
+        document.created_from = updated_created_from
+        document.doc_form = updated_doc_form
         session.add(document)
         session.commit()
         # update document segment

@@ -75,7 +75,7 @@ def _persist_document(
         name=f"Document {document_id}",
         created_from=DocumentCreatedFrom.WEB,
         created_by="account-1",
-        indexing_status="completed",
+        indexing_status=IndexingStatus.COMPLETED,
         enabled=True,
         archived=False,
         doc_form=doc_form,
