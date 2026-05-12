@@ -15,6 +15,7 @@ from core.rag.index_processor.index_processor_base import SummaryIndexSettingDic
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.protocols import IndexingResultDict, Preview, PreviewItem, QaPreview
 from models.dataset import Dataset, Document, DocumentSegment
+from models.enums import IndexingStatus
 
 from .index_processor_factory import IndexProcessorFactory
 from .processor.paragraph_index_processor import ParagraphIndexProcessor
@@ -122,7 +123,7 @@ class IndexProcessor:
         indexing_end_at = time.perf_counter()
 
         document.indexing_latency = indexing_end_at - indexing_start_at
-        document.indexing_status = "completed"
+        document.indexing_status = IndexingStatus.COMPLETED
         document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         document.word_count = (
             session.scalar(
