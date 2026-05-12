@@ -1,5 +1,5 @@
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useAccessControlStore from '@/context/access-control-store'
 import { SubjectType } from '@/models/access-control'
@@ -106,8 +106,7 @@ describe('AddMemberOrGroupDialog', () => {
 
     expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([baseGroup])
 
-    const memberCheckbox = screen.getByText(baseMember.name).parentElement?.previousElementSibling as HTMLElement
-    fireEvent.click(memberCheckbox)
+    await user.click(screen.getByRole('option', { name: /Member One/ }))
 
     expect(useAccessControlStore.getState().specificMembers).toEqual([baseMember])
   })
@@ -125,6 +124,6 @@ describe('AddMemberOrGroupDialog', () => {
 
     await user.click(screen.getByText('common.operation.add'))
 
-    expect(screen.getByText('app.accessControlDialog.operateGroupAndMember.noResult')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('app.accessControlDialog.operateGroupAndMember.noResult')
   })
 })
