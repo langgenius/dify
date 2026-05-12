@@ -96,6 +96,28 @@ describe('DatasetDetailLayout', () => {
       expect(mockUseDatasetRelatedApps).toHaveBeenCalledWith('dataset-1', { enabled: false })
       expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
     })
+
+    it('should redirect when the dataset detail error exposes status without being a Response', async () => {
+      // Arrange
+      mockUseDatasetDetail.mockReturnValue({
+        data: undefined,
+        error: { status: 403 },
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      // Act
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Pipeline content</div>
+        </DatasetDetailLayout>,
+      )
+
+      // Assert
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      })
+      expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
+    })
   })
 
   describe('Rendering', () => {
