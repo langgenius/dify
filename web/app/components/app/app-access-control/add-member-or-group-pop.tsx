@@ -48,6 +48,7 @@ export default function AddMemberOrGroupDialog() {
     ...specificMembers.map(memberToSubject),
   ]
   const hasResults = pages.length > 0 && subjects.length > 0
+  const shouldShowBreadcrumb = hasResults || selectedGroupsForBreadcrumb.length > 0
   const hasMore = pages[pages.length - 1]?.hasMore ?? false
 
   useEffect(() => {
@@ -135,24 +136,30 @@ export default function AddMemberOrGroupDialog() {
                   <Loading />
                 </ComboboxStatus>
               )
-            : hasResults
-              ? (
-                  <>
+            : (
+                <>
+                  {shouldShowBreadcrumb && (
                     <div className="flex h-7 items-center px-2 py-0.5">
                       <SelectedGroupsBreadCrumb />
                     </div>
-                    <ComboboxList className="max-h-none p-1">
-                      {(subject: Subject) => <SubjectItem key={getSubjectValue(subject)} subject={subject} />}
-                    </ComboboxList>
-                    {isFetchingNextPage && <Loading />}
-                    <div ref={anchorRef} className="h-0" />
-                  </>
-                )
-              : (
-                  <ComboboxEmpty className="flex h-7 items-center justify-center px-2 py-0.5">
-                    {t('accessControlDialog.operateGroupAndMember.noResult', { ns: 'app' })}
-                  </ComboboxEmpty>
-                )}
+                  )}
+                  {hasResults
+                    ? (
+                        <>
+                          <ComboboxList className="max-h-none p-1">
+                            {(subject: Subject) => <SubjectItem key={getSubjectValue(subject)} subject={subject} />}
+                          </ComboboxList>
+                          {isFetchingNextPage && <Loading />}
+                          <div ref={anchorRef} className="h-0" />
+                        </>
+                      )
+                    : (
+                        <ComboboxEmpty className="flex h-7 items-center justify-center px-2 py-0.5">
+                          {t('accessControlDialog.operateGroupAndMember.noResult', { ns: 'app' })}
+                        </ComboboxEmpty>
+                      )}
+                </>
+              )}
         </div>
       </ComboboxContent>
     </Combobox>
