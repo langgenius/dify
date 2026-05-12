@@ -152,6 +152,7 @@ describe('PluginsPanel', () => {
     render(<PluginsPanel />)
 
     expect(screen.getByTestId('filter-management').parentElement).toHaveClass('px-12')
+    expect(screen.getByTestId('filter-management').parentElement).not.toHaveClass('max-w-[1600px]')
     expect(screen.getByTestId('empty-state')).toHaveAttribute('data-content-inset', 'default')
   })
 
@@ -159,6 +160,7 @@ describe('PluginsPanel', () => {
     render(<PluginsPanel contentInset="compact" />)
 
     expect(screen.getByTestId('filter-management').parentElement).toHaveClass('px-6')
+    expect(screen.getByTestId('filter-management').parentElement).toHaveClass('max-w-[1600px]')
     expect(screen.getByTestId('empty-state')).toHaveAttribute('data-content-inset', 'compact')
   })
 

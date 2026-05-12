@@ -23,7 +23,7 @@ import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
-import { toolsContentInsetClassNames } from './content-inset'
+import { toolsContentFrameClassNames, toolsContentInsetClassNames } from './content-inset'
 import Marketplace from './marketplace'
 import { useMarketplace } from './marketplace/hooks'
 import MCPList from './mcp'
@@ -61,6 +61,7 @@ const ProviderList = ({
   const activeTab = category ?? categoryParam
   const isRouteCategory = !!category
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
+  const contentFrameClassName = cn(toolsContentFrameClassNames[contentInset], contentPaddingClassName)
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
     { value: 'api', text: t('type.custom', { ns: 'tools' }) },
@@ -146,7 +147,7 @@ const ProviderList = ({
           <div
             className={cn(
               'sticky top-0 z-10 flex flex-wrap items-center justify-start gap-x-4 gap-y-2 bg-background-body pt-4 pb-2',
-              contentPaddingClassName,
+              contentFrameClassName,
               currentProviderId && 'pr-6',
             )}
           >
@@ -182,7 +183,7 @@ const ProviderList = ({
             <div
               className={cn(
                 'relative grid shrink-0 grid-cols-1 content-start gap-4 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
-                contentPaddingClassName,
+                contentFrameClassName,
                 !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
               )}
             >
@@ -216,7 +217,7 @@ const ProviderList = ({
             </div>
           )}
           {!filteredCollectionList.length && activeTab === 'builtin' && (
-            <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', contentPaddingClassName)} />
+            <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', contentFrameClassName)} />
           )}
           <div ref={toolListTailRef} />
           {enable_marketplace && activeTab === 'builtin' && (

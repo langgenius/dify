@@ -13,7 +13,7 @@ import { useGetLanguage } from '@/context/i18n'
 import { renderI18nObject } from '@/i18n-config'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { usePluginsWithLatestVersion } from '../hooks'
-import { pluginPageContentInsetClassNames } from './content-inset'
+import { pluginPageContentFrameClassNames, pluginPageContentInsetClassNames } from './content-inset'
 import { usePluginPageContext } from './context'
 import Empty from './empty'
 import FilterManagement from './filter-management'
@@ -84,10 +84,11 @@ const PluginsPanel = ({
 
   const handleHide = () => setCurrentPluginID(undefined)
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
+  const contentFrameClassName = cn(pluginPageContentFrameClassNames[contentInset], contentPaddingClassName)
 
   return (
     <>
-      <div className={cn('flex flex-col items-start justify-center gap-3 self-stretch pt-1 pb-3', contentPaddingClassName)}>
+      <div className={cn('flex flex-col items-start justify-center gap-3 self-stretch pt-1 pb-3', contentFrameClassName)}>
         <div className="h-px self-stretch bg-divider-subtle"></div>
         <FilterManagement
           onFilterChange={handleFilterChange}
@@ -98,7 +99,7 @@ const PluginsPanel = ({
         <>
           {(filteredList?.length ?? 0) > 0
             ? (
-                <div className={cn('flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto', contentPaddingClassName)}>
+                <div className={cn('flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto', contentFrameClassName)}>
                   <div className="w-full">
                     <List pluginList={filteredList || []} />
                   </div>

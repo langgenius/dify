@@ -5,6 +5,7 @@ import type { IntegrationSection } from '@/app/components/tools/integration-rout
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { ToggleGroup, ToggleGroupItem } from '@langgenius/dify-ui/toggle-group'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -83,32 +84,31 @@ const PermissionQuickPanel = ({
               <div className="flex min-h-6 items-center system-sm-semibold whitespace-nowrap text-text-secondary">
                 {row.label}
               </div>
-              <div
-                role="group"
+              <ToggleGroup<PermissionType>
+                value={[row.value]}
+                onValueChange={(value) => {
+                  const nextValue = value[0]
+                  if (nextValue)
+                    onChange(row.key, nextValue)
+                }}
                 aria-label={row.label}
-                className="inline-flex w-fit items-center gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5"
+                className="w-fit"
               >
                 {permissionSettingOptions.map((option) => {
-                  const selected = row.value === option
                   const optionLabel = t(`privilege.${option}`, { ns: 'plugin' })
 
                   return (
-                    <button
+                    <ToggleGroupItem
                       key={option}
-                      type="button"
-                      aria-pressed={selected}
+                      value={option}
                       aria-label={`${row.label}: ${optionLabel}`}
-                      className={cn(
-                        'flex h-7 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium whitespace-nowrap text-text-secondary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
-                        selected && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-xs shadow-shadow-shadow-3 hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
-                      )}
-                      onClick={() => onChange(row.key, option)}
+                      className="shrink-0"
                     >
                       <span className="px-0.5 py-0.5">{optionLabel}</span>
-                    </button>
+                    </ToggleGroupItem>
                   )
                 })}
-              </div>
+              </ToggleGroup>
             </div>
           ))}
         </div>
@@ -222,18 +222,21 @@ export default function IntegrationsPage({
       section: 'custom-tool',
       label: t('settings.swaggerAPIAsTool', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-custom-tool',
+      activeIcon: 'i-custom-vender-integrations-custom-tool-active',
       iconClassName: 'h-[14.5px] w-[12.5px]',
     },
     {
       section: 'workflow-tool',
       label: t('common.workflowAsTool', { ns: 'workflow' }),
       icon: 'i-custom-vender-integrations-workflow-as-tool',
+      activeIcon: 'i-custom-vender-integrations-workflow-as-tool-active',
       iconClassName: 'h-3 w-[12.5px]',
     },
     {
       section: 'api-based-extension',
       label: t('settings.apiBasedExtension', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-api-extension',
+      activeIcon: 'i-custom-vender-integrations-api-extension-active',
       iconClassName: 'h-[13px] w-3.5',
     },
   ], [t])
@@ -242,24 +245,28 @@ export default function IntegrationsPage({
       section: 'data-source',
       label: t('settings.dataSource', { ns: 'common' }),
       icon: DatasourceIcon,
+      activeIcon: 'i-ri-database-2-fill',
       iconClassName: 'size-4',
     },
     {
       section: 'trigger',
       label: t('settings.trigger', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-trigger',
+      activeIcon: 'i-custom-vender-integrations-trigger-active',
       iconClassName: 'h-[13.5px] w-[13.5px]',
     },
     {
       section: 'agent-strategy',
       label: t('settings.agentStrategy', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-agent-strategy',
+      activeIcon: 'i-custom-vender-integrations-agent-strategy-active',
       iconClassName: 'h-[14.5px] w-[15.5px]',
     },
     {
       section: 'extension',
       label: t('settings.extension', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-extension',
+      activeIcon: 'i-custom-vender-integrations-extension-active',
       iconClassName: 'h-[13.5px] w-3',
     },
   ], [t])
@@ -385,18 +392,15 @@ export default function IntegrationsPage({
               <Popover>
                 <PopoverTrigger
                   render={(
-                    <button
-                      type="button"
+                    <Button
+                      variant="secondary"
                       disabled={!showPermissionQuickPanel}
-                      className={cn(
-                        'flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs transition-colors hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
-                        !showPermissionQuickPanel && 'cursor-not-allowed opacity-60 hover:bg-components-button-secondary-bg hover:text-components-button-secondary-text',
-                      )}
+                      className="size-8 shrink-0 p-0"
                       aria-label={t('privilege.permissions', { ns: 'plugin' })}
                       title={t('privilege.permissions', { ns: 'plugin' })}
                     >
                       <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-                    </button>
+                    </Button>
                   )}
                 />
                 {showPermissionQuickPanel && (
@@ -428,7 +432,11 @@ export default function IntegrationsPage({
                 )}
               >
                 <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
-                  <span className="i-custom-vender-integrations-tools h-3.5 w-[12.5px]" />
+                  <span className={cn(
+                    'h-3.5 w-[12.5px]',
+                    section === 'builtin' ? 'i-custom-vender-integrations-tools-active' : 'i-custom-vender-integrations-tools',
+                  )}
+                  />
                 </span>
                 {!sidebarCollapsed && (
                   <>

@@ -346,6 +346,7 @@ describe('MCPList', () => {
 
       const grid = document.querySelector('.grid')
       expect(grid).toHaveClass('px-6')
+      expect(grid).toHaveClass('max-w-[1600px]')
       expect(grid).not.toHaveClass('px-12')
     })
   })

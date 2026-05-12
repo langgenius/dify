@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import { getMarketplaceUrl } from '@/utils/var'
-import { toolsContentInsetClassNames } from '../content-inset'
+import { toolsContentFrameClassNames, toolsContentInsetClassNames } from '../content-inset'
 
 type MarketplaceProps = {
   searchPluginText: string
@@ -40,17 +40,18 @@ const Marketplace = ({
     page,
   } = marketplaceContext
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
+  const contentFrameClassName = cn(toolsContentFrameClassNames[contentInset], contentPaddingClassName)
 
   return (
     <>
-      <div className={cn('sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle pt-2 pb-[14px]', contentPaddingClassName)}>
+      <div className="sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle pt-2 pb-[14px]">
         {isMarketplaceArrowVisible && (
           <RiArrowUpDoubleLine
             className="absolute top-2 left-1/2 z-10 h-4 w-4 -translate-x-1/2 cursor-pointer text-text-quaternary"
             onClick={showMarketplacePanel}
           />
         )}
-        <div className="pt-4 pb-3">
+        <div className={cn('pt-4 pb-3', contentFrameClassName)}>
           <div className="bg-linear-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text title-2xl-semi-bold text-transparent">
             {t('marketplace.moreFrom', { ns: 'plugin' })}
           </div>
@@ -95,7 +96,7 @@ const Marketplace = ({
           </div>
         </div>
       </div>
-      <div className={cn('mt-[-14px] shrink-0 grow bg-background-default-subtle pb-2', contentPaddingClassName)}>
+      <div className="mt-[-14px] shrink-0 grow bg-background-default-subtle pb-2">
         {
           isLoading && page === 1 && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -105,12 +106,14 @@ const Marketplace = ({
         }
         {
           (!isLoading || page > 1) && (
-            <List
-              marketplaceCollections={marketplaceCollections || []}
-              marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
-              plugins={plugins}
-              showInstallButton
-            />
+            <div className={contentFrameClassName}>
+              <List
+                marketplaceCollections={marketplaceCollections || []}
+                marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
+                plugins={plugins}
+                showInstallButton
+              />
+            </div>
           )
         }
       </div>

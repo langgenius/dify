@@ -103,7 +103,7 @@ const WorkspaceCard = () => {
           type="button"
           className={cn(
             'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors',
-            open && 'bg-gradient-to-b from-background-section-burn to-background-section',
+            open && 'bg-linear-to-b from-background-section-burn to-background-section',
           )}
           aria-expanded={open}
           aria-label={t('mainNav.workspace.openMenu', { ns: 'common' })}
@@ -151,7 +151,7 @@ const WorkspaceCard = () => {
       </div>
       {open && (
         <div className="absolute top-0 right-0 left-0 z-20 flex flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
-          <div className="rounded-xl bg-gradient-to-b from-background-section-burn to-background-section pb-2">
+          <div className="rounded-xl bg-linear-to-b from-background-section-burn to-background-section pb-2">
             <button
               type="button"
               className="flex w-full items-start gap-2 rounded-xl p-3 text-left transition-colors hover:bg-state-base-hover"
@@ -160,7 +160,7 @@ const WorkspaceCard = () => {
               onClick={() => setOpen(false)}
             >
               <div className="flex min-w-0 grow flex-col items-start justify-center gap-1">
-                <div className="max-w-[120px] shrink-0 truncate system-xl-medium leading-5 text-text-primary" title={currentWorkspace.name}>{currentWorkspace.name}</div>
+                <div className="max-w-[120px] shrink-0 truncate text-base/5 font-medium text-text-primary" title={currentWorkspace.name}>{currentWorkspace.name}</div>
                 {renderWorkspaceStatus()}
               </div>
               <WorkspaceIcon name={currentWorkspace.name} className="h-9 w-9" />

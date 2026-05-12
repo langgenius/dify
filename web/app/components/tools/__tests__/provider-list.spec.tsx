@@ -281,14 +281,18 @@ describe('ProviderList', () => {
       const { container } = renderProviderList()
 
       expect(container.querySelector('.sticky')).toHaveClass('px-12')
+      expect(container.querySelector('.sticky')).not.toHaveClass('max-w-[1600px]')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-12')
+      expect(screen.getByTestId('card-google-search').closest('.grid')).not.toHaveClass('max-w-[1600px]')
     })
 
     it('uses compact content inset when rendered by integrations layout', () => {
       const { container } = renderProviderList(undefined, 'builtin', 'compact')
 
       expect(container.querySelector('.sticky')).toHaveClass('px-6')
+      expect(container.querySelector('.sticky')).toHaveClass('max-w-[1600px]')
       expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-6')
+      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('max-w-[1600px]')
     })
   })
 

@@ -188,9 +188,11 @@ describe('Marketplace', () => {
         />,
       )
 
-      const sections = container.querySelectorAll('.bg-background-default-subtle')
-      expect(sections[0]).toHaveClass('px-6')
-      expect(sections[1]).toHaveClass('px-6')
+      const contentFrames = Array.from(container.querySelectorAll('div'))
+        .filter(el => el.classList.contains('max-w-[1600px]'))
+      expect(contentFrames).toHaveLength(2)
+      expect(contentFrames[0]).toHaveClass('px-6')
+      expect(contentFrames[1]).toHaveClass('px-6')
     })
   })
 })

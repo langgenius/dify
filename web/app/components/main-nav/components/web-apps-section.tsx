@@ -13,6 +13,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
 import AppNavItem from '@/app/components/explore/sidebar/app-nav-item'
 import { usePathname } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
@@ -79,21 +80,23 @@ const WebAppsSection = () => {
       </div>
       {appsExpanded && searchVisible && (
         <div className="px-2 pb-2">
-          <input
+          <Input
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
+            onClear={() => setSearchText('')}
             placeholder={t('mainNav.webApps.searchPlaceholder', { ns: 'common' })}
-            className="h-8 w-full rounded-lg border border-transparent bg-components-input-bg-normal px-2 system-sm-regular text-text-secondary outline-none placeholder:text-text-quaternary hover:border-components-input-border-hover focus:border-components-input-border-active"
+            showClearIcon
+            className="h-8 px-2"
           />
         </div>
       )}
       {appsExpanded && (
         <div className="min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto px-2 pb-2">
           {isPending && (
-            <div className="px-2 py-1 system-xs-regular text-components-main-nav-text">{t('loading', { ns: 'common' })}</div>
+            <div className="text-components-main-nav-text px-2 py-1 system-xs-regular">{t('loading', { ns: 'common' })}</div>
           )}
           {!isPending && filteredApps.length === 0 && (
-            <div className="px-2 py-1 system-xs-regular text-components-main-nav-text">
+            <div className="text-components-main-nav-text px-2 py-1 system-xs-regular">
               {searchText ? t('mainNav.webApps.noResults', { ns: 'common' }) : t('sidebar.noApps.title', { ns: 'explore' })}
             </div>
           )}

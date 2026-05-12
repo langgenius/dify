@@ -17,7 +17,7 @@ import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import Line from '../../marketplace/empty/line'
-import { pluginPageContentInsetClassNames } from '../content-inset'
+import { pluginPageContentFrameClassNames, pluginPageContentInsetClassNames } from '../content-inset'
 import { usePluginPageContext } from '../context'
 
 type InstallMethod = {
@@ -77,11 +77,12 @@ const Empty = ({
     return methods
   }, [plugin_installation_permission, enable_marketplace, t])
   const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
+  const contentFrameClassName = cn(pluginPageContentFrameClassNames[contentInset], contentPaddingClassName)
 
   return (
     <div className="relative z-0 w-full grow">
       {/* skeleton */}
-      <div className={cn('absolute top-0 z-10 grid h-full w-full grid-cols-2 gap-2 overflow-hidden', contentPaddingClassName)}>
+      <div className={cn('absolute top-0 left-1/2 z-10 grid h-full -translate-x-1/2 grid-cols-2 gap-2 overflow-hidden', contentFrameClassName)}>
         {Array.from({ length: 20 }).fill(0).map((_, i) => (
           <div key={i} className="h-24 rounded-xl bg-components-card-bg" />
         ))}
