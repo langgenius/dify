@@ -113,6 +113,7 @@ class IndexingRunner:
                 if not current_user:
                     raise ValueError("no current user found")
                 current_user.set_tenant_id_with_session(dataset.tenant_id, session=session)
+                assert requeried_document.doc_language
                 documents = self._transform(
                     index_processor,
                     dataset,
@@ -207,6 +208,7 @@ class IndexingRunner:
             if not current_user:
                 raise ValueError("no current user found")
             current_user.set_tenant_id_with_session(dataset.tenant_id, session=session)
+            assert requeried_document.doc_language
             documents = self._transform(
                 index_processor,
                 dataset,
