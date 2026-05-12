@@ -1,3 +1,4 @@
+from models.enums import IndexingStatus
 import concurrent.futures
 import datetime
 import logging
@@ -101,7 +102,7 @@ class IndexProcessor:
 
         with session_factory.create_session() as session, session.begin():
             document.indexing_latency = indexing_end_at - indexing_start_at
-            document.indexing_status = "completed"
+            document.indexing_status = IndexingStatus.COMPLETED
             document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             document.word_count = (
                 session.scalar(

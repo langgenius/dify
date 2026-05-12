@@ -1,3 +1,4 @@
+from models.enums import IndexingStatus
 import logging
 import time
 from typing import cast
@@ -302,7 +303,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                     select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
                 )
                 if document:
-                    document.indexing_status = "error"
+                    document.indexing_status = IndexingStatus.ERROR
                     document.error = event.error or "Unknown error"
                     db.session.add(document)
                     db.session.commit()
