@@ -138,7 +138,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   if (!datasetRes && !error)
     return <Loading type="app" />
 
-  if (!datasetRes && shouldRedirect)
+  if (shouldRedirect)
     return <Loading type="app" />
 
   return (
