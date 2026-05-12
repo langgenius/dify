@@ -1383,9 +1383,7 @@ class TenantService:
 
         operator_role = TenantService.get_user_role(operator, tenant)
         target_role = TenantAccountRole(target_member_join.role)
-        if operator_role == TenantAccountRole.ADMIN and (
-            TenantAccountRole.OWNER in {target_role, new_tenant_role}
-        ):
+        if operator_role == TenantAccountRole.ADMIN and (TenantAccountRole.OWNER in {target_role, new_tenant_role}):
             raise NoPermissionError("No permission to update member.")
 
         if target_member_join.role == new_role:
