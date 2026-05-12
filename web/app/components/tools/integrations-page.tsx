@@ -1,47 +1,25 @@
 'use client'
 
+import type { IntegrationSection } from '@/app/components/tools/integration-routes'
 import { cn } from '@langgenius/dify-ui/cn'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatasourceIcon from '@/app/components/base/icons/src/vender/workflow/Datasource'
-import ApiBasedExtensionPage from '@/app/components/header/account-setting/api-based-extension-page'
-import DataSourcePage from '@/app/components/header/account-setting/data-source-page-new'
-import ModelProviderPage from '@/app/components/header/account-setting/model-provider-page'
+import {
+  buildIntegrationPath,
+  INTEGRATION_SECTION_VALUES,
+  sectionByToolCategory,
+  TOOL_CATEGORY_VALUES,
+  toolCategoryBySection,
+} from '@/app/components/tools/integration-routes'
 import Link from '@/next/link'
-import ToolProviderList from './provider-list'
+import IntegrationSectionRenderer from './integration-section-renderer'
 
-const INTEGRATION_SECTION_VALUES = [
-  'provider',
-  'builtin',
-  'mcp',
-  'custom-tool',
-  'workflow-tool',
-  'data-source',
-  'api-based-extension',
-] as const
-
-type IntegrationSection = typeof INTEGRATION_SECTION_VALUES[number]
-
-const TOOL_CATEGORY_VALUES = ['builtin', 'api', 'workflow', 'mcp'] as const
-type ToolCategory = typeof TOOL_CATEGORY_VALUES[number]
 type IconComponent = typeof DatasourceIcon
 
 const parseAsIntegrationSection = parseAsStringLiteral(INTEGRATION_SECTION_VALUES)
 const parseAsToolCategory = parseAsStringLiteral(TOOL_CATEGORY_VALUES)
-
-const toolCategoryBySection: Partial<Record<IntegrationSection, string>> = {
-  'builtin': 'builtin',
-  'mcp': 'mcp',
-  'custom-tool': 'api',
-  'workflow-tool': 'workflow',
-}
-const sectionByToolCategory: Record<ToolCategory, IntegrationSection> = {
-  builtin: 'builtin',
-  api: 'custom-tool',
-  workflow: 'workflow-tool',
-  mcp: 'mcp',
-}
 
 type NavItem = {
   activeIcon?: IconComponent | string
@@ -58,12 +36,7 @@ const inactiveNavItemClassName = 'text-components-menu-item-text hover:bg-state-
 const disabledNavItemClassName = 'cursor-not-allowed text-components-menu-item-text-disabled'
 
 const buildSectionHref = (section: IntegrationSection) => {
-  const category = toolCategoryBySection[section]
-  const params = new URLSearchParams({ section })
-  if (category)
-    params.set('category', category)
-
-  return `/tools?${params.toString()}`
+  return buildIntegrationPath(section)
 }
 
 type NavLinkItemProps = {
@@ -125,12 +98,18 @@ const NavLinkItem = ({ collapsed, item, section }: NavLinkItemProps) => {
   )
 }
 
-export default function IntegrationsPage() {
+type IntegrationsPageProps = {
+  section?: IntegrationSection
+}
+
+export default function IntegrationsPage({
+  section: routeSection,
+}: IntegrationsPageProps) {
   const { t } = useTranslation()
   const [sectionParam] = useQueryState('section', parseAsIntegrationSection)
   const [categoryParam] = useQueryState('category', parseAsToolCategory)
-  const section = sectionParam ?? (categoryParam ? sectionByToolCategory[categoryParam] : 'provider')
-  const [providerSearchText, setProviderSearchText] = useState('')
+  const section = routeSection ?? sectionParam ?? (categoryParam ? sectionByToolCategory[categoryParam] : 'provider')
+  const providerSearchText = ''
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const providerItem = useMemo<NavItem>(() => ({
     section: 'provider',
@@ -147,13 +126,13 @@ export default function IntegrationsPage() {
     },
     {
       section: 'custom-tool',
-      label: t('settings.customTool', { ns: 'common' }),
+      label: t('settings.swaggerAPIAsTool', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-custom-tool',
       iconClassName: 'h-[14.5px] w-[12.5px]',
     },
     {
       section: 'workflow-tool',
-      label: t('type.workflow', { ns: 'tools' }),
+      label: t('common.workflowAsTool', { ns: 'workflow' }),
       icon: 'i-custom-vender-integrations-workflow-as-tool',
       iconClassName: 'h-3 w-[12.5px]',
     },
@@ -172,26 +151,28 @@ export default function IntegrationsPage() {
       iconClassName: 'size-4',
     },
     {
+      section: 'trigger',
       label: t('settings.trigger', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-trigger',
       iconClassName: 'h-[13.5px] w-[13.5px]',
-      disabled: true,
     },
     {
+      section: 'agent-strategy',
       label: t('settings.agentStrategy', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-agent-strategy',
       iconClassName: 'h-[14.5px] w-[15.5px]',
-      disabled: true,
     },
     {
+      section: 'extension',
       label: t('settings.extension', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-extension',
       iconClassName: 'h-[13.5px] w-3',
-      disabled: true,
     },
   ], [t])
   const activeItem = [providerItem, ...toolItems, ...secondaryItems].find(item => item.section === section)
   const isToolSection = Boolean(toolCategoryBySection[section])
+  const isPluginCategorySection = section === 'trigger' || section === 'agent-strategy' || section === 'extension'
+  const useFillLayout = isToolSection || isPluginCategorySection
 
   return (
     <div className="flex h-full min-h-0 bg-background-body">
@@ -342,26 +323,15 @@ export default function IntegrationsPage() {
             </div>
           </div>
         )}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {section === 'provider' && (
-            <div className="px-6 pt-6">
-              <ModelProviderPage
-                searchText={providerSearchText}
-                onSearchTextChange={setProviderSearchText}
-              />
-            </div>
-          )}
-          {section === 'data-source' && (
-            <div className="px-6 pt-6">
-              <DataSourcePage />
-            </div>
-          )}
-          {section === 'api-based-extension' && (
-            <div className="px-6 pt-6">
-              <ApiBasedExtensionPage />
-            </div>
-          )}
-          {isToolSection && <ToolProviderList />}
+        <div className={cn(
+          'min-h-0 flex-1',
+          useFillLayout ? 'flex flex-col overflow-hidden' : 'overflow-y-auto',
+        )}
+        >
+          <IntegrationSectionRenderer
+            section={section}
+            providerSearchText={providerSearchText}
+          />
         </div>
       </section>
     </div>

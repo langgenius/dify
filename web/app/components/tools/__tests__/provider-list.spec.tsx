@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
@@ -6,6 +6,16 @@ import { renderWithNuqs } from '@/test/nuqs-testing'
 import { ToolTypeEnum } from '../../workflow/block-selector/types'
 import ProviderList from '../provider-list'
 import { getToolType } from '../utils'
+
+const { mockRouterPush } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
 
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
@@ -203,7 +213,7 @@ describe('getToolType', () => {
   })
 })
 
-const renderProviderList = (searchParams?: Record<string, string>) => {
+const renderProviderList = (searchParams?: Record<string, string>, category?: ComponentProps<typeof ProviderList>['category']) => {
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
     systemFeatures: { enable_marketplace: mockEnableMarketplace },
   })
@@ -211,7 +221,7 @@ const renderProviderList = (searchParams?: Record<string, string>) => {
     <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
   )
   return renderWithNuqs(
-    <Wrapped><ProviderList /></Wrapped>,
+    <Wrapped><ProviderList category={category} /></Wrapped>,
     { searchParams },
   )
 }
@@ -242,6 +252,16 @@ describe('ProviderList', () => {
       renderProviderList()
       fireEvent.click(screen.getByText('tools.type.custom'))
       expect(screen.getByTestId('custom-create-card')).toBeInTheDocument()
+    })
+
+    it('uses canonical integration routes when controlled by route category', () => {
+      renderProviderList(undefined, 'mcp')
+
+      expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByText('tools.type.workflow'))
+
+      expect(mockRouterPush).toHaveBeenCalledWith('/integrations/tools/workflow')
     })
 
     it('resets current provider when switching to a different tab', () => {

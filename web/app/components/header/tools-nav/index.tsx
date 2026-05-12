@@ -6,6 +6,7 @@ import {
   RiHammerLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 
@@ -18,11 +19,11 @@ const ToolsNav = ({
 }: ToolsNavProps) => {
   const { t } = useTranslation()
   const selectedSegment = useSelectedLayoutSegment()
-  const activated = selectedSegment === 'tools'
+  const activated = selectedSegment === 'integrations' || selectedSegment === 'tools'
 
   return (
     <Link
-      href="/tools"
+      href={buildIntegrationPath('builtin')}
       className={cn('group text-sm font-medium', activated && 'hover:bg-components-main-nav-nav-button-bg-active-hover bg-components-main-nav-nav-button-bg-active font-semibold shadow-md', activated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover', className)}
     >
       {

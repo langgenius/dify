@@ -657,6 +657,7 @@
   "settings.members": "Members",
   "settings.plugin": "Plugins",
   "settings.provider": "Model Provider",
+  "settings.swaggerAPIAsTool": "Swagger API as Tool",
   "settings.trigger": "Trigger",
   "settings.workplaceGroup": "WORKSPACE",
   "settings.workspaceSettings": "Workspace Settings",

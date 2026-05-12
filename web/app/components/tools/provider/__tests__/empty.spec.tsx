@@ -42,18 +42,18 @@ describe('Empty', () => {
 
   // Tests for different type prop values
   describe('Type Props', () => {
-    it('should render with Custom type and include link to /tools?category=api', () => {
+    it('should render with Custom type and include link to Swagger API as Tool', () => {
       render(<Empty type={ToolTypeEnum.Custom} />)
 
-      const link = document.querySelector('a[href="/tools?category=api"]')
+      const link = document.querySelector('a[href="/integrations/tools/swagger-api"]')
       expect(link).toBeInTheDocument()
       expect(link).toHaveAttribute('target', '_blank')
     })
 
-    it('should render with MCP type and include link to /tools?category=mcp', () => {
+    it('should render with MCP type and include link to the MCP route', () => {
       render(<Empty type={ToolTypeEnum.MCP} />)
 
-      const link = document.querySelector('a[href="/tools?category=mcp"]')
+      const link = document.querySelector('a[href="/integrations/tools/mcp"]')
       expect(link).toBeInTheDocument()
       expect(link).toHaveAttribute('target', '_blank')
     })

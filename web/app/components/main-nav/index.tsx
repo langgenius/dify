@@ -7,6 +7,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
+import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
 import { useAppContext } from '@/context/app-context'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
@@ -59,9 +60,9 @@ const MainNav = ({
     ...(!isCurrentWorkspaceDatasetOperator
       ? [
           {
-            href: '/tools?section=provider',
+            href: buildIntegrationPath('provider'),
             label: t('mainNav.integrations', { ns: 'common' }),
-            active: (path: string) => path.startsWith('/tools'),
+            active: (path: string) => path.startsWith('/integrations') || path.startsWith('/tools'),
             icon: 'i-custom-vender-main-nav-integrations',
             activeIcon: 'i-custom-vender-main-nav-integrations-active',
           },

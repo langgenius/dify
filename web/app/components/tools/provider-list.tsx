@@ -1,5 +1,6 @@
 'use client'
 import type { Collection } from './types'
+import type { ToolCategory } from '@/app/components/tools/integration-routes'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
@@ -12,10 +13,12 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
+import { buildIntegrationPath, sectionByToolCategory, TOOL_CATEGORY_VALUES } from '@/app/components/tools/integration-routes'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
+import { useRouter } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
@@ -24,21 +27,26 @@ import { useMarketplace } from './marketplace/hooks'
 import MCPList from './mcp'
 import { getToolType } from './utils'
 
-const TOOL_PROVIDER_CATEGORY_VALUES = ['builtin', 'api', 'workflow', 'mcp'] as const
-type ToolProviderCategory = typeof TOOL_PROVIDER_CATEGORY_VALUES[number]
-const toolProviderCategorySet = new Set<string>(TOOL_PROVIDER_CATEGORY_VALUES)
+const toolProviderCategorySet = new Set<string>(TOOL_CATEGORY_VALUES)
 
-const isToolProviderCategory = (value: string): value is ToolProviderCategory => {
+const isToolProviderCategory = (value: string): value is ToolCategory => {
   return toolProviderCategorySet.has(value)
 }
 
-const parseAsToolProviderCategory = parseAsStringLiteral(TOOL_PROVIDER_CATEGORY_VALUES)
+const parseAsToolProviderCategory = parseAsStringLiteral(TOOL_CATEGORY_VALUES)
   .withDefault('builtin')
 
-const ProviderList = () => {
+type ProviderListProps = {
+  category?: ToolCategory
+}
+
+const ProviderList = ({
+  category,
+}: ProviderListProps) => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
   const { t } = useTranslation()
+  const router = useRouter()
   const { getTagLabel } = useTags()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -46,7 +54,8 @@ const ProviderList = () => {
   })
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const [activeTab, setActiveTab] = useQueryState('category', parseAsToolProviderCategory)
+  const [categoryParam, setCategoryParam] = useQueryState('category', parseAsToolProviderCategory)
+  const activeTab = category ?? categoryParam
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
     { value: 'api', text: t('type.custom', { ns: 'tools' }) },
@@ -139,7 +148,11 @@ const ProviderList = () => {
               onChange={(state) => {
                 if (!isToolProviderCategory(state))
                   return
-                setActiveTab(state)
+                if (category)
+                  router.push(buildIntegrationPath(sectionByToolCategory[state]))
+                else
+                  setCategoryParam(state)
+
                 if (state !== activeTab)
                   setCurrentProviderId(undefined)
               }}

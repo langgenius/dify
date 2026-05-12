@@ -651,6 +651,7 @@
   "settings.members": "成员",
   "settings.plugin": "插件",
   "settings.provider": "模型供应商",
+  "settings.swaggerAPIAsTool": "Swagger API as Tool",
   "settings.trigger": "Trigger",
   "settings.workplaceGroup": "工作空间",
   "settings.workspaceSettings": "工作空间设置",

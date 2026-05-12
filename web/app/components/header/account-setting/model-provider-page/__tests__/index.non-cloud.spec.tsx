@@ -102,7 +102,7 @@ vi.mock('@/service/client', async (importOriginal) => {
 
 describe('ModelProviderPage non-cloud branch', () => {
   it('should skip the quota panel when cloud edition is disabled', () => {
-    renderWithSystemFeatures(<ModelProviderPage searchText="" onSearchTextChange={vi.fn()} />, {
+    renderWithSystemFeatures(<ModelProviderPage searchText="" />, {
       systemFeatures: { enable_marketplace: false },
     })
 

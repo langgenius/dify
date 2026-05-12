@@ -2,6 +2,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { buildIntegrationPath } from '@/app/components/tools/integration-routes'
 import useTheme from '@/hooks/use-theme'
 import Link from '@/next/link'
 import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
@@ -15,11 +16,11 @@ type Props = {
 const getLink = (type?: ToolTypeEnum) => {
   switch (type) {
     case ToolTypeEnum.Custom:
-      return '/tools?category=api'
+      return buildIntegrationPath('custom-tool')
     case ToolTypeEnum.MCP:
-      return '/tools?category=mcp'
+      return buildIntegrationPath('mcp')
     default:
-      return '/tools?category=api'
+      return buildIntegrationPath('custom-tool')
   }
 }
 const Empty = ({

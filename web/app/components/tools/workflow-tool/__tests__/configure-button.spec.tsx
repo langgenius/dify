@@ -399,7 +399,7 @@ describe('WorkflowToolConfigureButton', () => {
       await user.click(screen.getByText('workflow.common.manageInTools'))
 
       // Assert
-      expect(mockPush).toHaveBeenCalledWith('/tools?category=workflow')
+      expect(mockPush).toHaveBeenCalledWith('/integrations/tools/workflow')
     })
   })
 
