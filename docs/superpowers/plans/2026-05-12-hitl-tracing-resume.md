@@ -10,6 +10,15 @@
 
 ---
 
+## Strong Typing Guidance
+
+- Prefer existing Pydantic generate entities over raw dict payloads.
+- Do not introduce ad hoc dicts for test capture state; use typed local variables.
+- The implementation should only use a small `model_copy(update=...)` mapping because that is the Pydantic API for replacing an excluded field on an existing model.
+- Do not add a new Pydantic model solely for the `trace_manager` update payload; that would add indirection without improving the app-generator contract.
+
+---
+
 ## File Structure
 
 - Modify `api/core/app/apps/workflow/app_generator.py`
@@ -72,11 +81,12 @@ class TestWorkflowAppGeneratorResume:
             "core.app.apps.workflow.app_generator.TraceQueueManager",
             DummyTraceQueueManager,
         )
-        captured = {}
+        captured_entity: WorkflowAppGenerateEntity | None = None
 
         def _fake_generate(**kwargs):
-            captured.update(kwargs)
-            return {"ok": True}
+            nonlocal captured_entity
+            captured_entity = kwargs["application_generate_entity"]
+            return SimpleNamespace(ok=True)
 
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
@@ -90,8 +100,9 @@ class TestWorkflowAppGeneratorResume:
             workflow_node_execution_repository=SimpleNamespace(),
         )
 
-        assert result == {"ok": True}
-        trace_manager = captured["application_generate_entity"].trace_manager
+        assert result.ok is True
+        assert captured_entity is not None
+        trace_manager = captured_entity.trace_manager
         assert isinstance(trace_manager, DummyTraceQueueManager)
         assert trace_manager.app_id == "app-id"
         assert trace_manager.user_id == "session-id"
@@ -105,7 +116,7 @@ Run:
 uv run --project api pytest api/tests/unit_tests/core/app/apps/workflow/test_app_generator_extra.py::TestWorkflowAppGeneratorResume::test_resume_restores_trace_manager_when_missing -q
 ```
 
-Expected: FAIL because `captured["application_generate_entity"].trace_manager` is still `None`.
+Expected: FAIL because `captured_entity.trace_manager` is still `None`.
 
 - [ ] **Step 3: Write the failing workflow preservation test**
 
@@ -136,11 +147,12 @@ Add this method inside `TestWorkflowAppGeneratorResume`:
             workflow_execution_id="run-id",
             call_depth=0,
         )
-        captured = {}
+        captured_entity: WorkflowAppGenerateEntity | None = None
 
         def _fake_generate(**kwargs):
-            captured.update(kwargs)
-            return {"ok": True}
+            nonlocal captured_entity
+            captured_entity = kwargs["application_generate_entity"]
+            return SimpleNamespace(ok=True)
 
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
@@ -154,8 +166,9 @@ Add this method inside `TestWorkflowAppGeneratorResume`:
             workflow_node_execution_repository=SimpleNamespace(),
         )
 
-        assert result == {"ok": True}
-        assert captured["application_generate_entity"].trace_manager is existing_trace_manager
+        assert result.ok is True
+        assert captured_entity is not None
+        assert captured_entity.trace_manager is existing_trace_manager
 ```
 
 - [ ] **Step 4: Run workflow resume tests**
@@ -230,11 +243,12 @@ class TestAdvancedChatAppGeneratorResume:
             "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
             DummyTraceQueueManager,
         )
-        captured = {}
+        captured_entity: AdvancedChatAppGenerateEntity | None = None
 
         def _fake_generate(**kwargs):
-            captured.update(kwargs)
-            return {"ok": True}
+            nonlocal captured_entity
+            captured_entity = kwargs["application_generate_entity"]
+            return SimpleNamespace(ok=True)
 
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
@@ -250,8 +264,9 @@ class TestAdvancedChatAppGeneratorResume:
             graph_runtime_state=SimpleNamespace(),
         )
 
-        assert result == {"ok": True}
-        trace_manager = captured["application_generate_entity"].trace_manager
+        assert result.ok is True
+        assert captured_entity is not None
+        trace_manager = captured_entity.trace_manager
         assert isinstance(trace_manager, DummyTraceQueueManager)
         assert trace_manager.app_id == "app-id"
         assert trace_manager.user_id == "session-id"
@@ -265,7 +280,7 @@ Run:
 uv run --project api pytest api/tests/unit_tests/core/app/apps/advanced_chat/test_app_generator.py::TestAdvancedChatAppGeneratorResume::test_resume_restores_trace_manager_when_missing -q
 ```
 
-Expected: FAIL because `captured["application_generate_entity"].trace_manager` is still `None`.
+Expected: FAIL because `captured_entity.trace_manager` is still `None`.
 
 - [ ] **Step 3: Write the advanced-chat preservation test**
 
@@ -291,11 +306,12 @@ Add this method inside `TestAdvancedChatAppGeneratorResume`:
             trace_manager=existing_trace_manager,
             workflow_run_id="run-id",
         )
-        captured = {}
+        captured_entity: AdvancedChatAppGenerateEntity | None = None
 
         def _fake_generate(**kwargs):
-            captured.update(kwargs)
-            return {"ok": True}
+            nonlocal captured_entity
+            captured_entity = kwargs["application_generate_entity"]
+            return SimpleNamespace(ok=True)
 
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
@@ -311,8 +327,9 @@ Add this method inside `TestAdvancedChatAppGeneratorResume`:
             graph_runtime_state=SimpleNamespace(),
         )
 
-        assert result == {"ok": True}
-        assert captured["application_generate_entity"].trace_manager is existing_trace_manager
+        assert result.ok is True
+        assert captured_entity is not None
+        assert captured_entity.trace_manager is existing_trace_manager
 ```
 
 - [ ] **Step 4: Run advanced-chat resume tests**
