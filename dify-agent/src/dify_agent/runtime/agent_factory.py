@@ -2,11 +2,14 @@
 
 The run request carries model/provider selection in the layer graph. This helper
 keeps Agent construction details out of ``AgentRunRunner`` while accepting an
-already resolved Pydantic AI model from the configured model layer.
+already resolved Pydantic AI model from the configured model layer. Prompt and
+tool values arriving here are already transformed by Agenton's
+``PYDANTIC_AI_TRANSFORMERS`` preset; this module registers those pydantic-ai
+objects without reimplementing plain/pydantic-ai conversion logic.
 """
 
 from collections.abc import Sequence
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 from pydantic_ai import Agent
 from pydantic_ai.messages import UserContent
@@ -22,28 +25,17 @@ def create_agent(
     tools: Sequence[PydanticAITool[object]],
 ) -> Agent[None, object]:
     """Create the pydantic-ai agent for one run."""
-    return cast(
+    agent = cast(
         Agent[None, object],
         Agent[None, str](
             model,
             output_type=str,
-            system_prompt=materialize_static_system_prompts(system_prompts),
             tools=tools,
         ),
     )
-
-
-def materialize_static_system_prompts(system_prompts: Sequence[PydanticAIPrompt[object]]) -> list[str]:
-    """Convert MVP static prompt callables into strings for pydantic-ai."""
-    result: list[str] = []
     for prompt in system_prompts:
-        if isinstance(prompt, str):
-            result.append(prompt)
-        elif callable(prompt):
-            result.append(cast(Callable[[], str], prompt)())
-        else:
-            raise TypeError(f"Unsupported system prompt type: {type(prompt).__qualname__}")
-    return result
+        _ = agent.system_prompt(cast(Any, prompt))
+    return agent
 
 
 def normalize_user_input(user_prompts: Sequence[UserContent]) -> str | Sequence[UserContent]:
@@ -53,4 +45,4 @@ def normalize_user_input(user_prompts: Sequence[UserContent]) -> str | Sequence[
     return list(user_prompts)
 
 
-__all__ = ["create_agent", "materialize_static_system_prompts", "normalize_user_input"]
+__all__ = ["create_agent", "normalize_user_input"]

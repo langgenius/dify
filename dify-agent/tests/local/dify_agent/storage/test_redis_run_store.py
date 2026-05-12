@@ -35,7 +35,9 @@ class FakeRedis:
         entries.append((event_id, dict(fields)))
         return event_id
 
-    async def xrange(self, key: str, *, min: str = "-", count: int | None = None) -> list[tuple[str, dict[str, object]]]:
+    async def xrange(
+        self, key: str, *, min: str = "-", count: int | None = None
+    ) -> list[tuple[str, dict[str, object]]]:
         self.commands.append(("xrange", key, min, count))
         entries = [entry for entry in self.streams.get(key, []) if self._is_after_min(entry[0], min)]
         if count is not None:
@@ -114,7 +116,7 @@ def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> N
         layers=[
             LayerSessionSnapshot(
                 name="prompt",
-                state=LifecycleState.SUSPENDED,
+                lifecycle_state=LifecycleState.SUSPENDED,
                 runtime_state={"resource_id": "abc"},
             )
         ]

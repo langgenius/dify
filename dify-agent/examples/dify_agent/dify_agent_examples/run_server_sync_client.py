@@ -5,7 +5,6 @@ does not retry ``POST /runs``; if a timeout occurs, inspect server state or crea
 a new run explicitly rather than assuming the original request was not accepted.
 """
 
-from agenton.compositor import CompositorConfig, LayerNodeConfig
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
 from dify_agent.layers.dify_plugin import (
@@ -13,7 +12,7 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginLLMLayerConfig,
     DifyPluginLayerConfig,
 )
-from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, RunComposition, RunLayerSpec
 
 
 API_BASE_URL = "http://localhost:8000"
@@ -28,9 +27,9 @@ def main() -> None:
     with Client(base_url=API_BASE_URL) as client:
         run = client.create_run_sync(
             CreateRunRequest(
-                compositor=CompositorConfig(
+                composition=RunComposition(
                     layers=[
-                        LayerNodeConfig(
+                        RunLayerSpec(
                             name="prompt",
                             type="plain.prompt",
                             config=PromptLayerConfig(
@@ -38,12 +37,12 @@ def main() -> None:
                                 user="Say hello from the synchronous Dify Agent client example.",
                             ),
                         ),
-                        LayerNodeConfig(
+                        RunLayerSpec(
                             name="plugin",
                             type="dify.plugin",
                             config=DifyPluginLayerConfig(tenant_id=TENANT_ID, plugin_id=PLUGIN_ID),
                         ),
-                        LayerNodeConfig(
+                        RunLayerSpec(
                             name=DIFY_AGENT_MODEL_LAYER_ID,
                             type="dify.plugin.llm",
                             deps={"plugin": "plugin"},

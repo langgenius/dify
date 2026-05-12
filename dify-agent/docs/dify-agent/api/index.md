@@ -1,8 +1,8 @@
 # Dify Agent Run API
 
-The Dify Agent API exposes asynchronous agent runs backed by Agenton compositor
-configuration, Pydantic AI runtime execution, Redis run records, and per-run Redis
-Streams event logs. The FastAPI application lives at
+The Dify Agent API exposes asynchronous agent runs backed by Agenton state-only
+layer composition, Pydantic AI runtime execution, Redis run records, and per-run
+Redis Streams event logs. The FastAPI application lives at
 `dify-agent/src/dify_agent/server/app.py`.
 
 Public Python DTOs and event models are exported from
@@ -11,14 +11,14 @@ server-only and should not be used by API consumers.
 
 ## Input model
 
-Create-run requests accept a `CompositorConfig` and an optional
+Create-run requests accept a public `RunComposition` and an optional
 `CompositorSessionSnapshot`. There is **no top-level `user_prompt` or model
 profile field**. User input and model/provider selection are supplied by Agenton
-layers. `layer_exit_signals` optionally controls whether layers suspend or delete
-when the run leaves the active session; the default is suspend for all layers. In
-the MVP server, the safe config-constructible layer registry includes
-`plain.prompt`, `dify.plugin`, and `dify.plugin.llm`. The runtime reads the LLM
-model layer named by `DIFY_AGENT_MODEL_LAYER_ID`, whose public value is `"llm"`.
+layers. `on_exit` optionally controls whether layers suspend or delete when the
+run leaves the active session; the default is suspend for all layers. In the MVP
+server, the safe provider set includes `plain.prompt`, `dify.plugin`, and
+`dify.plugin.llm`. The runtime reads the LLM model layer named by
+`DIFY_AGENT_MODEL_LAYER_ID`, whose public value is `"llm"`.
 
 Blank user input is rejected. A request with no user prompt, an empty string, or
 only whitespace strings such as `"user": ["", "   "]` returns `422` before a run
@@ -38,7 +38,7 @@ Request:
 
 ```json
 {
-  "compositor": {
+  "composition": {
     "schema_version": 1,
     "layers": [
       {
@@ -77,7 +77,7 @@ Request:
     ]
   },
   "session_snapshot": null,
-  "layer_exit_signals": {
+  "on_exit": {
     "default": "suspend",
     "layers": {
       "prompt": "delete"
@@ -100,16 +100,16 @@ same FastAPI process. Redis is not used as a job queue. Run records and per-run
 event streams expire after `DIFY_AGENT_RUN_RETENTION_SECONDS`, which defaults to
 `259200` seconds (3 days).
 
-`dify.plugin` receives tenant/plugin identity only; daemon URL, API key, and
-timeout are server settings. `dify.plugin.llm.credentials` accepts scalar values
-only (`string`, `number`, `boolean`, or `null`). Unknown
-`layer_exit_signals.layers` keys return `422` before a run record is created.
+`dify.plugin` receives tenant/plugin identity only; daemon URL, API key, timeout,
+and connection limits are server settings. `dify.plugin.llm.credentials` accepts
+scalar values only (`string`, `number`, `boolean`, or `null`). Unknown
+`on_exit.layers` keys return `422` before a run record is created.
 
 Validation error example (`422`):
 
 ```json
 {
-  "detail": "compositor.user_prompts must not be empty"
+  "detail": "run.user_prompts must not be empty"
 }
 ```
 
@@ -196,24 +196,30 @@ Use `dify_agent.client.Client` for both async and sync code. Async methods use
 normal names; sync methods add `_sync`.
 
 ```python {test="skip" lint="skip"}
-from agenton.compositor import CompositorConfig, LayerNodeConfig
+from agenton.layers import ExitIntent
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginLayerConfig
-from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, LayerExitSignals
+from dify_agent.protocol import (
+    DIFY_AGENT_MODEL_LAYER_ID,
+    CreateRunRequest,
+    LayerExitSignals,
+    RunComposition,
+    RunLayerSpec,
+)
 
 
 async def main() -> None:
     request = CreateRunRequest(
-        compositor=CompositorConfig(
+        composition=RunComposition(
             layers=[
-                LayerNodeConfig(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
-                LayerNodeConfig(
+                RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+                RunLayerSpec(
                     name="plugin",
                     type="dify.plugin",
                     config=DifyPluginLayerConfig(tenant_id="tenant-id", plugin_id="langgenius/openai"),
                 ),
-                LayerNodeConfig(
+                RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
                     type="dify.plugin.llm",
                     deps={"plugin": "plugin"},
@@ -225,7 +231,7 @@ async def main() -> None:
                 ),
             ]
         ),
-        layer_exit_signals=LayerExitSignals(layers={"prompt": "delete"}),
+        on_exit=LayerExitSignals(layers={"prompt": ExitIntent.DELETE}),
     )
     async with Client(base_url="http://localhost:8000") as client:
         run = await client.create_run(request)
@@ -234,23 +240,22 @@ async def main() -> None:
 ```
 
 ```python {test="skip" lint="skip"}
-from agenton.compositor import CompositorConfig, LayerNodeConfig
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginLayerConfig
-from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, RunComposition, RunLayerSpec
 
 
 request = CreateRunRequest(
-    compositor=CompositorConfig(
+    composition=RunComposition(
         layers=[
-            LayerNodeConfig(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
-            LayerNodeConfig(
+            RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user="hello")),
+            RunLayerSpec(
                 name="plugin",
                 type="dify.plugin",
                 config=DifyPluginLayerConfig(tenant_id="tenant-id", plugin_id="langgenius/openai"),
             ),
-            LayerNodeConfig(
+            RunLayerSpec(
                 name=DIFY_AGENT_MODEL_LAYER_ID,
                 type="dify.plugin.llm",
                 deps={"plugin": "plugin"},
@@ -297,7 +302,7 @@ Each event keeps the same envelope shape and has typed `data`: `run_started` use
 CompositorSessionSnapshot }`, and `run_failed` uses `{ "error": string,
 "reason": string | null }`. The session snapshot from `run_succeeded.data` can
 be sent as `session_snapshot` in a later create-run request with the same
-compositor layer names and order.
+composition layer names and order.
 
 ## Consumer examples
 

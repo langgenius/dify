@@ -1,48 +1,44 @@
 # Agenton API reference
 
-This page summarizes the public Agenton API. Import paths are shown for the
-symbols commonly used by layer authors and compositor callers.
+This page summarizes the public Agenton API. Import paths are shown for symbols
+commonly used by layer authors and compositor callers.
 
 ## Layers: `agenton.layers`
 
-### `Layer[DepsT, PromptT, UserPromptT, ToolT, ConfigT, RuntimeStateT, RuntimeHandlesT]`
+### `Layer[DepsT, PromptT, UserPromptT, ToolT, ConfigT, RuntimeStateT]`
 
-Framework-neutral base class for prompt/tool layers.
+Framework-neutral base class for invocation-scoped prompt/tool layers.
 
 Class attributes:
 
-- `type_id: str | None`: registry id for config-backed plugin layers.
-- `config_type: type[LayerConfig]`: Pydantic schema for serialized layer config.
+- `type_id: str | None`: provider id for config-backed graph nodes.
+- `config_type: type[LayerConfig]`: Pydantic schema for per-run layer config.
 - `runtime_state_type: type[BaseModel]`: Pydantic schema for snapshot-safe
-  per-session state.
-- `runtime_handles_type: type[BaseModel]`: Pydantic schema for live runtime
-  handles; use `arbitrary_types_allowed=True` for client/process objects.
+  per-layer state.
 - `deps_type: type[LayerDeps]`: inferred from the layer generic base or declared
   explicitly.
 
+Invocation attributes assigned by `CompositorRun`:
+
+- `config: ConfigT`
+- `deps: DepsT`
+- `runtime_state: RuntimeStateT`
+
 Construction and dependency APIs:
 
-- `from_config(config: ConfigT) -> Self`: create a layer from schema-validated
-  config. The default implementation raises `TypeError`.
+- `from_config(config: ConfigT) -> Self`: create a fresh layer from
+  schema-validated config. The default implementation supports only empty config.
 - `dependency_names() -> frozenset[str]`: dependency fields declared by
   `deps_type`.
-- `bind_deps(deps: Mapping[str, Layer | None]) -> None`: bind graph dependencies.
-- `new_control(state=LifecycleState.NEW, runtime_state=None) -> LayerControl`: create
-  a schema-validated per-session control.
-- `require_control(control, active=False) -> LayerControl`: validate that a
-  capability method received this layer's own control with the expected runtime
-  schemas, optionally requiring `LifecycleState.ACTIVE`.
+- `bind_deps(deps: Mapping[str, Layer | None]) -> None`: bind direct layer
+  instance dependencies for one invocation.
 
 Lifecycle hooks:
 
-- `on_context_create(control)`
-- `on_context_resume(control)`
-- `on_context_suspend(control)`
-- `on_context_delete(control)`
-- `enter(control)` / `lifecycle_enter(control)`: async context manager entry
-  surface. The base lifecycle owns the per-entry resource stack; override
-  `enter()` only for unusual wrapping that cannot be expressed as registered
-  resources.
+- `on_context_create() -> None`
+- `on_context_resume() -> None`
+- `on_context_suspend() -> None`
+- `on_context_delete() -> None`
 
 Prompt/tool authoring surfaces:
 
@@ -57,50 +53,23 @@ Aggregation adapters implemented by typed layer families:
 - `wrap_user_prompt(prompt: UserPromptT) -> object`
 - `wrap_tool(tool: ToolT) -> object`
 
-### `LayerControl[RuntimeStateT, RuntimeHandlesT]`
-
-Per-layer, per-session lifecycle control.
-
-Fields:
-
-- `state: LifecycleState`
-- `exit_intent: ExitIntent`
-- `runtime_state: RuntimeStateT`
-- `runtime_handles: RuntimeHandlesT`
-
-Methods:
-
-- `suspend_on_exit() -> None`
-- `delete_on_exit() -> None`
-- `enter_async_resource(cm) -> T`: enter an async context manager on the current
-  entry resource stack and return its resource.
-- `add_async_cleanup(callback) -> None`: register an async cleanup callback on the
-  current entry resource stack.
-- `control_for(dep_layer) -> LayerControl`: resolve the unique dependency control
-  whose resolved target is `dep_layer` in the same session.
-- `control_for(dep_name, dep_layer) -> LayerControl`: resolve a named dependency
-  control when multiple dependency fields could point at the same layer instance.
-
-`runtime_state` is serialized in session snapshots. `runtime_handles` is never
-serialized and should be rehydrated from runtime state in resume hooks. Private
-owner links used by `control_for` and the per-entry resource stack are
-runtime-only and are not snapshotted. Resource-stack APIs are available only
-while a layer entry is being created/resumed, active, or exiting.
-
 ### Schema defaults and lifecycle enums
 
-- `EmptyLayerConfig`
-- `LayerConfig`: base DTO for serializable layer config schemas
-- `LayerConfigValue`: JSON value or concrete `LayerConfig` DTO
-- `EmptyRuntimeState`
-- `EmptyRuntimeHandles`
-- `LifecycleState`: `NEW`, `ACTIVE`, `SUSPENDED`, `CLOSED`
-- `ExitIntent`: `DELETE`, `SUSPEND`
+- `LayerConfig`: base DTO for serializable layer config schemas.
+- `LayerConfigValue`: JSON value or concrete `LayerConfig` DTO.
+- `EmptyLayerConfig`: default config schema for layers without config.
+- `EmptyRuntimeState`: default serializable runtime-state schema.
+- `LayerDeps`: typed dependency container base.
+- `NoLayerDeps`: dependency container for layers with no dependencies.
+- `LifecycleState`: `NEW`, `ACTIVE`, `SUSPENDED`, `CLOSED`.
+- `ExitIntent`: `DELETE`, `SUSPEND`.
+
+`ACTIVE` is internal to an entered run and is rejected in external snapshots.
 
 ### Typed layer families: `agenton.layers.types`
 
-- `PlainLayer[DepsT, ConfigT, RuntimeStateT, RuntimeHandlesT]`
-- `PydanticAILayer[DepsT, AgentDepsT, ConfigT, RuntimeStateT, RuntimeHandlesT]`
+- `PlainLayer[DepsT, ConfigT, RuntimeStateT]`
+- `PydanticAILayer[DepsT, AgentDepsT, ConfigT, RuntimeStateT]`
 
 Tagged aggregate item types:
 
@@ -112,47 +81,71 @@ Tagged aggregate item types:
 
 ### Config models
 
-- `LayerNodeConfig`: `name`, `type`, `config`, `deps`, `metadata`
-- `CompositorConfig`: `schema_version`, `layers`
+- `LayerNodeConfig`: `name`, `type`, `deps`, `metadata`.
+- `CompositorConfig`: `schema_version`, `layers`.
+- `LayerConfigInput`: accepted per-run config input for one node.
 
-Config nodes are pure serializable graph input. `LayerNodeConfig.config` accepts
-plain JSON values or concrete `LayerConfig` DTO instances and serializes DTOs as
-JSON objects. Use live instances for Python objects and callables.
+Config nodes are pure serializable graph topology. Per-run layer config is passed
+separately to `Compositor.enter(configs=...)` keyed by node name.
 
-### Registry
+### Providers and graph nodes
 
-`LayerRegistry` manually registers config-backed layer classes.
+`LayerProvider[LayerT]` is a reusable validated factory for one concrete layer
+class.
 
-- `register_layer(layer_type, type_id=None, factory=None) -> None`
-- `resolve(type_id) -> LayerDescriptor`
-- `descriptors() -> Mapping[str, LayerDescriptor]`
+- `LayerProvider.from_layer_type(layer_type) -> LayerProvider`: construct through
+  `layer_type.from_config`.
+- `LayerProvider.from_factory(layer_type=..., create=...) -> LayerProvider`:
+  construct through a custom typed-config factory.
+- `type_id -> str | None`: provider id declared by the layer type.
+- `validate_config(config=None) -> LayerConfig`: validate config without invoking
+  the factory.
+- `create_layer(config=None) -> LayerT`: validate config and create a fresh layer.
+- `create_layer_from_config(config) -> LayerT`: create from already validated
+  config and enforce fresh-instance semantics.
 
-`LayerDescriptor` exposes `type_id`, `layer_type`, `config_type`,
-`runtime_state_type`, `runtime_handles_type`, and optional `factory`.
+`LayerNode(name, implementation, deps=None, metadata=None)` creates a stateless
+graph node from a `Layer` subclass or `LayerProvider`. `deps` maps dependency
+field names on the node's layer class to other node names.
 
-### Builder
-
-`CompositorBuilder(registry)` mixes config-backed nodes and live instances.
-
-- `add_config(config) -> Self`
-- `add_config_layer(name, type, config=None, deps=None) -> Self`
-- `add_instance(name, layer, deps=None) -> Self`
-- `build(prompt_transformer=None, user_prompt_transformer=None, tool_transformer=None) -> Compositor`
-
-### Compositor
+### `Compositor`
 
 `Compositor[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT]`
-owns the ordered layer graph.
-
-Dependency binding uses explicit `deps={dep_name: target_layer_name}` mappings
-first, then implicit same-name layer binding. Optional dependencies without a
-target are recorded as absent so `LayerControl.control_for(...)` raises `KeyError`
-rather than returning a control.
+owns the ordered graph plan and provider construction plans.
 
 Construction:
 
-- `Compositor(layers=..., deps_name_mapping=..., ...)`
-- `Compositor.from_config(conf, registry=..., ...)`
+- `Compositor(nodes, prompt_transformer=None, user_prompt_transformer=None, tool_transformer=None)`.
+- `Compositor.from_config(conf, providers=..., node_providers=None, prompt_transformer=None, user_prompt_transformer=None, tool_transformer=None)`.
+
+Public properties and entry API:
+
+- `nodes -> tuple[LayerNode, ...]`: stateless graph plan in order.
+- `enter(configs=None, session_snapshot=None) -> AsyncIterator[CompositorRun]`:
+  validate per-run configs and optional snapshot, create fresh layers, bind direct
+  dependencies, enter hooks in graph order, and exit hooks in reverse order.
+
+`providers` resolve graph node `type` ids. `node_providers` are keyed by node name
+and override type-id providers for node-specific construction.
+
+### `CompositorRun`
+
+`CompositorRun` is the single-invocation runtime object yielded by
+`Compositor.enter(...)`.
+
+Fields:
+
+- `slots: OrderedDict[str, LayerRunSlot]`
+- `session_snapshot: CompositorSessionSnapshot | None`
+
+Layer access and exit intent:
+
+- `get_layer(name) -> Layer`
+- `get_layer(name, layer_type) -> LayerT`
+- `suspend_on_exit() -> None`
+- `delete_on_exit() -> None`
+- `suspend_layer_on_exit(name) -> None`
+- `delete_layer_on_exit(name) -> None`
 
 Aggregation properties:
 
@@ -162,27 +155,24 @@ Aggregation properties:
   `user_prompt_transformer`.
 - `tools -> list[ToolT]`: tools in layer order, then optional `tool_transformer`.
 
-Session APIs:
+Snapshot API:
 
-- `new_session() -> CompositorSession`
-- `enter(session=None) -> AsyncIterator[CompositorSession]`
-- `snapshot_session(session) -> CompositorSessionSnapshot`
-- `session_from_snapshot(snapshot) -> CompositorSession`
+- `snapshot_session() -> CompositorSessionSnapshot`: snapshot non-active layer
+  lifecycle state and runtime state.
 
-### Sessions and snapshots
+`session_snapshot` is populated after context exit. Core run slots default to
+delete-on-exit; request suspend before exit when the next snapshot must be
+resumable.
 
-`CompositorSession` owns ordered layer controls.
+### Run slots and snapshots
 
-- `suspend_on_exit() -> None`
-- `delete_on_exit() -> None`
-- `layer(name) -> LayerControl`
+- `LayerRunSlot`: `layer`, `lifecycle_state`, `exit_intent`.
+- `LayerSessionSnapshot`: `name`, `lifecycle_state`, `runtime_state`.
+- `CompositorSessionSnapshot`: `schema_version`, `layers`.
 
-Snapshot models:
-
-- `LayerSessionSnapshot`: `name`, `state`, `runtime_state`
-- `CompositorSessionSnapshot`: `schema_version`, `layers`
-
-Snapshots reject active sessions and exclude `runtime_handles` and `exit_intent`.
+Snapshots include ordered layer lifecycle state and JSON-safe runtime state only.
+They exclude live resources, dependencies, prompts, tools, per-run config, and
+exit intent.
 
 ## Collection layers and transformers
 
@@ -190,9 +180,11 @@ Snapshots reject active sessions and exclude `runtime_handles` and `exit_intent`
 
 - `PromptLayer`: config-backed layer with `PromptLayerConfig(prefix, user,
   suffix)` and `type_id = "plain.prompt"`.
-- `ObjectLayer`: instance-only layer for Python objects.
-- `ToolsLayer`: instance-only layer for callables.
-- `DynamicToolsLayer`: instance-only layer for object-bound callables.
+- `ObjectLayer`: factory-backed layer for Python objects.
+- `ToolsLayer`: factory-backed layer for plain callables.
+- `DynamicToolsLayer`: factory-backed layer for object-bound callables.
+- `with_object`: decorator for dynamic tools whose first argument is supplied by
+  an `ObjectLayer` dependency.
 
 ### Pydantic AI bridge
 
@@ -200,8 +192,10 @@ Snapshots reject active sessions and exclude `runtime_handles` and `exit_intent`
 pydantic-ai system prompts, user prompts, and tools while depending on an
 `ObjectLayer` for `RunContext.deps`.
 
-`agenton_collections.transformers.PYDANTIC_AI_TRANSFORMERS` provides:
+`agenton_collections.transformers.pydantic_ai.PYDANTIC_AI_TRANSFORMERS` provides:
 
-- `prompt_transformer`: maps `compositor.prompts` to pydantic-ai system prompt functions.
-- `user_prompt_transformer`: maps `compositor.user_prompts` to pydantic-ai `UserContent`.
-- `tool_transformer`: maps `compositor.tools` to pydantic-ai tools.
+- `prompt_transformer`: maps tagged Agenton prompt items to pydantic-ai system
+  prompt functions.
+- `user_prompt_transformer`: maps tagged Agenton user prompt items to pydantic-ai
+  `UserContent` values.
+- `tool_transformer`: maps tagged Agenton tool items to pydantic-ai tools.

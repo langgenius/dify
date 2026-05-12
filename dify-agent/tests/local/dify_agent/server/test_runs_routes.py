@@ -1,14 +1,15 @@
 from fastapi.testclient import TestClient
 
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID
-from dify_agent.runtime.run_scheduler import SchedulerStoppingError
+from dify_agent.runtime.run_scheduler import RunRequestValidationError, SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
 
 
 class FakeScheduler:
     async def create_run(self, request: object) -> object:
-        raise AssertionError("blank prompt requests must be rejected before scheduling")
+        del request
+        raise RunRequestValidationError("run.user_prompts must not be empty")
 
 
 class FakeStore:
@@ -27,7 +28,7 @@ def test_create_run_rejects_effectively_blank_user_prompt_list() -> None:
     response = client.post(
         "/runs",
         json={
-            "compositor": {
+            "composition": {
                 "schema_version": 1,
                 "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": ["", "   "]}}],
             }
@@ -35,7 +36,7 @@ def test_create_run_rejects_effectively_blank_user_prompt_list() -> None:
     )
 
     assert response.status_code == 422
-    assert response.json()["detail"] == "compositor.user_prompts must not be empty"
+    assert response.json()["detail"] == "run.user_prompts must not be empty"
 
 
 def test_create_run_returns_running_from_scheduler() -> None:
@@ -55,7 +56,7 @@ def test_create_run_returns_running_from_scheduler() -> None:
     response = client.post(
         "/runs",
         json={
-            "compositor": {
+            "composition": {
                 "schema_version": 1,
                 "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
             }
@@ -83,7 +84,7 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
     response = client.post(
         "/runs",
         json={
-            "compositor": {
+            "composition": {
                 "schema_version": 1,
                 "layers": [
                     {"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}},
@@ -115,25 +116,68 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
 def test_create_run_rejects_unknown_layer_exit_signal_before_scheduling() -> None:
     from fastapi import FastAPI
 
+    class UnknownSignalScheduler:
+        async def create_run(self, request: object) -> RunRecord:
+            del request
+            raise RunRequestValidationError("on_exit.layers references unknown layer ids: missing.")
+
     app = FastAPI()
     app.include_router(
-        create_runs_router(lambda: FakeStore(), lambda: FakeScheduler())  # pyright: ignore[reportArgumentType]
+        create_runs_router(lambda: FakeStore(), lambda: UnknownSignalScheduler())  # pyright: ignore[reportArgumentType]
     )
     client = TestClient(app)
 
     response = client.post(
         "/runs",
         json={
-            "compositor": {
+            "composition": {
                 "schema_version": 1,
                 "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
             },
-            "layer_exit_signals": {"layers": {"missing": "delete"}},
+            "on_exit": {"layers": {"missing": "delete"}},
         },
     )
 
     assert response.status_code == 422
     assert "missing" in response.json()["detail"]
+
+
+def test_create_run_rejects_closed_session_snapshot_with_422() -> None:
+    from fastapi import FastAPI
+
+    class ClosedSnapshotScheduler:
+        async def create_run(self, request: object) -> RunRecord:
+            del request
+            raise RunRequestValidationError("Layer 'prompt' is closed; CLOSED snapshots cannot be entered.")
+
+    app = FastAPI()
+    app.include_router(
+        create_runs_router(lambda: FakeStore(), lambda: ClosedSnapshotScheduler())  # pyright: ignore[reportArgumentType]
+    )
+    client = TestClient(app)
+
+    response = client.post(
+        "/runs",
+        json={
+            "composition": {
+                "schema_version": 1,
+                "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
+            },
+            "session_snapshot": {
+                "schema_version": 1,
+                "layers": [
+                    {
+                        "name": "prompt",
+                        "lifecycle_state": "closed",
+                        "runtime_state": {},
+                    }
+                ],
+            },
+        },
+    )
+
+    assert response.status_code == 422
+    assert "CLOSED snapshots cannot be entered" in response.json()["detail"]
 
 
 def test_create_run_returns_503_when_scheduler_is_stopping() -> None:
@@ -153,7 +197,7 @@ def test_create_run_returns_503_when_scheduler_is_stopping() -> None:
     response = client.post(
         "/runs",
         json={
-            "compositor": {
+            "composition": {
                 "schema_version": 1,
                 "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
             }
@@ -181,7 +225,7 @@ def test_create_run_does_not_map_infrastructure_failure_to_422() -> None:
     response = client.post(
         "/runs",
         json={
-            "compositor": {
+            "composition": {
                 "schema_version": 1,
                 "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
             }

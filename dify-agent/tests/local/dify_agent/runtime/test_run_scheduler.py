@@ -1,21 +1,28 @@
 import asyncio
 from collections import defaultdict
-from typing import cast
 
+import httpx
 import pytest
-from pydantic import JsonValue
 
-from agenton.compositor import CompositorConfig, LayerNodeConfig
-from agenton.layers import ExitIntent
-from dify_agent.protocol.schemas import CreateRunRequest, LayerExitSignals, RunEvent, RunStatus
-from dify_agent.runtime.run_scheduler import RunScheduler, SchedulerStoppingError
+from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
+from agenton.layers import ExitIntent, LifecycleState
+from agenton_collections.layers.plain import PromptLayerConfig
+from dify_agent.protocol.schemas import (
+    CreateRunRequest,
+    LayerExitSignals,
+    RunComposition,
+    RunEvent,
+    RunLayerSpec,
+    RunStatus,
+)
+from dify_agent.runtime.run_scheduler import RunRequestValidationError, RunScheduler, SchedulerStoppingError, validate_run_request
 from dify_agent.server.schemas import RunRecord
 
 
 def _request(user: str | list[str] = "hello") -> CreateRunRequest:
     return CreateRunRequest(
-        compositor=CompositorConfig(
-            layers=[LayerNodeConfig(name="prompt", type="plain.prompt", config=cast(JsonValue, {"user": user}))]
+        composition=RunComposition(
+            layers=[RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user=user))]
         )
     )
 
@@ -82,20 +89,22 @@ def test_create_run_starts_background_task_and_returns_running() -> None:
         store = FakeStore()
         started = asyncio.Event()
         release = asyncio.Event()
-        scheduler = RunScheduler(
-            store=store,
-            runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
-        )
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
+            )
 
-        record = await scheduler.create_run(_request())
-        await asyncio.wait_for(started.wait(), timeout=1)
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
 
-        assert record.status == "running"
-        assert list(scheduler.active_tasks) == [record.run_id]
-        _ = release.set()
-        await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
-        await asyncio.sleep(0)
-        assert scheduler.active_tasks == {}
+            assert record.status == "running"
+            assert list(scheduler.active_tasks) == [record.run_id]
+            _ = release.set()
+            await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
+            await asyncio.sleep(0)
+            assert scheduler.active_tasks == {}
 
     asyncio.run(scenario())
 
@@ -104,21 +113,23 @@ def test_shutdown_marks_unfinished_runs_failed_and_appends_event() -> None:
     async def scenario() -> None:
         store = FakeStore()
         started = asyncio.Event()
-        scheduler = RunScheduler(
-            store=store,
-            shutdown_grace_seconds=0,
-            runner_factory=lambda _record, _request: ControlledRunner(started=started, release=asyncio.Event()),
-        )
-        record = await scheduler.create_run(_request())
-        await asyncio.wait_for(started.wait(), timeout=1)
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=asyncio.Event()),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
 
-        await scheduler.shutdown()
+            await scheduler.shutdown()
 
-        assert scheduler.stopping is True
-        assert scheduler.active_tasks == {}
-        assert store.statuses[record.run_id] == "failed"
-        assert store.errors[record.run_id] == "run cancelled during server shutdown"
-        assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
+            assert scheduler.stopping is True
+            assert scheduler.active_tasks == {}
+            assert store.statuses[record.run_id] == "failed"
+            assert store.errors[record.run_id] == "run cancelled during server shutdown"
+            assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
 
     asyncio.run(scenario())
 
@@ -126,12 +137,21 @@ def test_shutdown_marks_unfinished_runs_failed_and_appends_event() -> None:
 def test_create_run_rejects_blank_prompt_before_persisting() -> None:
     async def scenario() -> None:
         store = FakeStore()
-        scheduler = RunScheduler(store=store)
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
 
-        with pytest.raises(ValueError, match="compositor.user_prompts must not be empty"):
-            await scheduler.create_run(_request(["", "   "]))
+            with pytest.raises(ValueError, match="run.user_prompts must not be empty"):
+                await scheduler.create_run(_request(["", "   "]))
 
         assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_validate_run_request_honors_explicit_empty_layer_providers() -> None:
+    async def scenario() -> None:
+        with pytest.raises(RunRequestValidationError, match="plain.prompt"):
+            await validate_run_request(_request(), layer_providers=())
 
     asyncio.run(scenario())
 
@@ -139,12 +159,51 @@ def test_create_run_rejects_blank_prompt_before_persisting() -> None:
 def test_create_run_rejects_unknown_layer_exit_signal_before_persisting() -> None:
     async def scenario() -> None:
         store = FakeStore()
-        scheduler = RunScheduler(store=store)
-        request = _request()
-        request.layer_exit_signals = LayerExitSignals(layers={"missing": ExitIntent.DELETE})
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            request = _request()
+            request.on_exit = LayerExitSignals(layers={"missing": ExitIntent.DELETE})
 
-        with pytest.raises(ValueError, match="missing"):
-            await scheduler.create_run(request)
+            with pytest.raises(ValueError, match="missing"):
+                await scheduler.create_run(request)
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_honors_explicit_empty_layer_providers_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, layer_providers=())
+
+            with pytest.raises(RunRequestValidationError, match="plain.prompt"):
+                await scheduler.create_run(_request())
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_closed_session_snapshot_before_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            request = _request()
+            request.session_snapshot = CompositorSessionSnapshot(
+                layers=[
+                    LayerSessionSnapshot(
+                        name="prompt",
+                        lifecycle_state=LifecycleState.CLOSED,
+                        runtime_state={},
+                    )
+                ]
+            )
+
+            with pytest.raises(ValueError, match="CLOSED snapshots cannot be entered"):
+                _ = await scheduler.create_run(request)
 
         assert store.records == {}
 
@@ -153,11 +212,27 @@ def test_create_run_rejects_unknown_layer_exit_signal_before_persisting() -> Non
 
 def test_create_run_rejects_after_shutdown_starts() -> None:
     async def scenario() -> None:
-        scheduler = RunScheduler(store=FakeStore())
-        await scheduler.shutdown()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=FakeStore(), plugin_daemon_http_client=client)
+            await scheduler.shutdown()
 
-        with pytest.raises(SchedulerStoppingError):
-            await scheduler.create_run(_request())
+            with pytest.raises(SchedulerStoppingError):
+                await scheduler.create_run(_request())
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_invalid_request_after_shutdown_without_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            await scheduler.shutdown()
+
+            with pytest.raises(SchedulerStoppingError):
+                _ = await scheduler.create_run(_request(["", "   "]))
+
+        assert store.records == {}
 
     asyncio.run(scenario())
 
@@ -168,30 +243,34 @@ def test_shutdown_waits_for_in_flight_create_to_register_before_cancelling() -> 
         release_create = asyncio.Event()
         runner_started = asyncio.Event()
         store = SlowCreateStore(create_started=create_started, release_create=release_create)
-        scheduler = RunScheduler(
-            store=store,
-            shutdown_grace_seconds=0,
-            runner_factory=lambda _record, _request: ControlledRunner(started=runner_started, release=asyncio.Event()),
-        )
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(
+                    started=runner_started, release=asyncio.Event()
+                ),
+            )
 
-        create_task = asyncio.create_task(scheduler.create_run(_request()))
-        await asyncio.wait_for(create_started.wait(), timeout=1)
-        shutdown_task = asyncio.create_task(scheduler.shutdown())
-        await asyncio.sleep(0)
+            create_task = asyncio.create_task(scheduler.create_run(_request()))
+            await asyncio.wait_for(create_started.wait(), timeout=1)
+            shutdown_task = asyncio.create_task(scheduler.shutdown())
+            await asyncio.sleep(0)
 
-        assert shutdown_task.done() is False
-        assert scheduler.stopping is False
+            assert shutdown_task.done() is False
+            assert scheduler.stopping is False
 
-        _ = release_create.set()
-        record = await asyncio.wait_for(create_task, timeout=1)
-        await asyncio.wait_for(shutdown_task, timeout=1)
+            _ = release_create.set()
+            record = await asyncio.wait_for(create_task, timeout=1)
+            await asyncio.wait_for(shutdown_task, timeout=1)
 
-        assert scheduler.stopping is True
-        assert scheduler.active_tasks == {}
-        assert store.statuses[record.run_id] == "failed"
-        assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
+            assert scheduler.stopping is True
+            assert scheduler.active_tasks == {}
+            assert store.statuses[record.run_id] == "failed"
+            assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
 
-        with pytest.raises(SchedulerStoppingError):
-            await scheduler.create_run(_request())
+            with pytest.raises(SchedulerStoppingError):
+                await scheduler.create_run(_request())
 
     asyncio.run(scenario())

@@ -56,4 +56,4 @@ def test_agenton_session_snapshot_example_smoke() -> None:
 
     assert result.returncode == 0, result.stderr
     assert "Snapshot:" in result.stdout
-    assert "Rehydrated handle: restored:demo-connection" in result.stdout
+    assert "Rehydrated external handle: restored:demo-connection" in result.stdout

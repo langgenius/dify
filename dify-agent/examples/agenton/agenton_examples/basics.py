@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 from inspect import signature
+from typing import cast
 
 from typing_extensions import override
 
-from agenton.compositor import CompositorBuilder, LayerRegistry
-from agenton.layers import LayerControl, LayerDeps, NoLayerDeps, PlainLayer
+from agenton.compositor import Compositor, LayerNode, LayerProvider
+from agenton.layers import LayerDeps, NoLayerDeps, PlainLayer, PlainToolType
 from agenton_collections.layers.plain import DynamicToolsLayer, ObjectLayer, PromptLayer, ToolsLayer, with_object
+from agenton_collections.layers.plain.basic import PromptLayerConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,19 +43,19 @@ class TraceLayer(PlainLayer[NoLayerDeps]):
     events: list[str] = field(default_factory=list)
 
     @override
-    async def on_context_create(self, control: LayerControl) -> None:
+    async def on_context_create(self) -> None:
         self.events.append("create")
 
     @override
-    async def on_context_suspend(self, control: LayerControl) -> None:
+    async def on_context_suspend(self) -> None:
         self.events.append("suspend")
 
     @override
-    async def on_context_resume(self, control: LayerControl) -> None:
+    async def on_context_resume(self) -> None:
         self.events.append("resume")
 
     @override
-    async def on_context_delete(self, control: LayerControl) -> None:
+    async def on_context_delete(self) -> None:
         self.events.append("delete")
 
 
@@ -72,64 +74,68 @@ async def main() -> None:
         audience="engineers composing agent capabilities",
         tone="precise and friendly",
     )
-    trace = TraceLayer()
-
-    registry = LayerRegistry()
-    registry.register_layer(PromptLayer)
-    compositor = (
-        CompositorBuilder(registry)
-        .add_config(
-            {
-                "layers": [
-                    {
-                        "name": "base_prompt",
-                        "type": "plain.prompt",
-                        "config": {
-                            "prefix": "Use config dicts for serializable layers.",
-                            "user": "Explain how the composed agent should use its layers.",
-                            "suffix": "Before finalizing, make the result easy to scan.",
-                        },
-                    },
-                    {
-                        "name": "extra_prompt",
-                        "type": "plain.prompt",
-                        "config": {
-                            "prefix": "Use constructed instances for objects, local code, and callables.",
-                        },
-                    },
-                ]
-            }
-        )
-        .add_instance(name="profile", layer=ObjectLayer[AgentProfile](profile))
-        .add_instance(name="profile_prompt", layer=ProfilePromptLayer())
-        .add_instance(name="tools", layer=ToolsLayer(tool_entries=(count_words,)))
-        .add_instance(
-            name="dynamic_tools",
-            deps={"object_layer": "profile"},
-            layer=DynamicToolsLayer[AgentProfile](tool_entries=(write_tagline,)),
-        )
-        .add_instance(name="trace", layer=trace)
-        .build()
+    trace_events: list[str] = []
+    compositor = Compositor(
+        [
+            LayerNode("base_prompt", PromptLayer),
+            LayerNode("extra_prompt", PromptLayer),
+            LayerNode(
+                "profile",
+                LayerProvider.from_factory(
+                    layer_type=ObjectLayer,
+                    create=lambda _config: ObjectLayer[AgentProfile](profile),
+                ),
+            ),
+            LayerNode("profile_prompt", ProfilePromptLayer, deps={"profile": "profile"}),
+            LayerNode(
+                "tools",
+                LayerProvider.from_factory(
+                    layer_type=ToolsLayer,
+                    create=lambda _config: ToolsLayer(tool_entries=(count_words,)),
+                ),
+            ),
+            LayerNode(
+                "dynamic_tools",
+                LayerProvider.from_factory(
+                    layer_type=DynamicToolsLayer,
+                    create=lambda _config: DynamicToolsLayer[AgentProfile](tool_entries=(write_tagline,)),
+                ),
+                deps={"object_layer": "profile"},
+            ),
+            LayerNode(
+                "trace",
+                LayerProvider.from_factory(layer_type=TraceLayer, create=lambda _config: TraceLayer(trace_events)),
+            ),
+        ]
     )
+    configs = {
+        "base_prompt": PromptLayerConfig(
+            prefix="Use config dicts for serializable layers.",
+            user="Explain how the composed agent should use its layers.",
+            suffix="Before finalizing, make the result easy to scan.",
+        ),
+        "extra_prompt": PromptLayerConfig(prefix="Use constructed instances for objects, local code, and callables."),
+    }
 
-    print("Prompts:")
-    for prompt in compositor.prompts:
-        print(f"- {prompt.value}")
+    async with compositor.enter(configs=configs) as run:
+        print("Prompts:")
+        for prompt in run.prompts:
+            print(f"- {prompt.value}")
 
-    print("\nUser prompts:")
-    for prompt in compositor.user_prompts:
-        print(f"- {prompt.value}")
+        print("\nUser prompts:")
+        for prompt in run.user_prompts:
+            print(f"- {prompt.value}")
 
-    print("\nTools:")
-    for tool in compositor.tools:
-        print(f"- {tool.value.__name__}{signature(tool.value)}")
-    print([tool.value("layer composition") for tool in compositor.tools])
+        print("\nTools:")
+        plain_tools = [cast(PlainToolType, tool) for tool in run.tools]
+        for tool in plain_tools:
+            print(f"- {tool.value.__name__}{signature(tool.value)}")
+        print([tool.value("layer composition") for tool in plain_tools])
+        run.suspend_on_exit()
 
-    async with compositor.enter() as lifecycle_control:
-        lifecycle_control.suspend_on_exit()
-    async with compositor.enter(lifecycle_control):
+    async with compositor.enter(configs=configs, session_snapshot=run.session_snapshot):
         pass
-    print("\nLifecycle:", trace.events)
+    print("\nLifecycle:", trace_events)
 
 
 if __name__ == "__main__":

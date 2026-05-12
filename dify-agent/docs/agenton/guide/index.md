@@ -1,175 +1,184 @@
 # Agenton user guide
 
-Agenton composes shared `Layer` instances into a named graph. Treat layer
-instances as reusable capability definitions: config and dependency declarations
-belong on the layer class or instance, while per-session runtime values belong
-on the `LayerControl` created for that layer in a `CompositorSession`.
+Agenton composes reusable graph plans from `LayerNode`s and `LayerProvider`s.
+The core is state-only: a `Compositor` stores no live layer instances, clients,
+cleanup stacks, or run state. Each `Compositor.enter(...)` call creates a fresh
+`CompositorRun` with new layer instances, direct dependency bindings, lifecycle
+state, and an optional hydrated session snapshot.
 
-## Config, runtime state, and runtime handles
+## Config and runtime state
 
-- **Config** is serializable graph input. Config-constructible layers declare a
-  `type_id` and a Pydantic `LayerConfig` schema; builders validate node config
-  before calling `Layer.from_config(validated_config)`.
-- **Runtime state** is serializable per-layer/per-session state. Layers declare a
-  Pydantic `runtime_state_type`; session snapshots persist this model with
-  `model_dump(mode="json")`.
-- **Runtime handles** are live Python objects such as clients, open files, or
-  process handles. Layers declare a Pydantic `runtime_handles_type` with
-  `arbitrary_types_allowed=True`. Handles are never serialized; resume hooks
-  should rehydrate them from runtime state. Register handles that need async
-  cleanup with the control's entry resource stack rather than closing them
-  manually in layer instances.
+- **Graph config** is serializable topology: node `name`, provider `type`,
+  dependency mappings, and metadata. `LayerNodeConfig` deliberately contains no
+  layer config.
+- **Per-run layer config** is passed to `Compositor.enter(configs=...)` as a
+  mapping keyed by node name. Providers validate each value with the layer's
+  `config_type` before any factory runs.
+- **Runtime state** is serializable per-layer invocation state on
+  `layer.runtime_state`. Session snapshots persist only lifecycle state and this
+  model's JSON-safe data.
+- **Live Python resources** such as clients, files, sockets, or process handles
+  stay outside Agenton core. Own them in application code or integration-specific
+  context managers that wrap compositor entry.
 
 ## Define a config-backed layer
 
-Use a `LayerConfig` model for config and pass it through the typed layer family so
-`Layer.__init_subclass__` can infer the schema:
+Use a `LayerConfig` model for per-run config and inherit from a typed layer family
+so `Layer.__init_subclass__` can infer schemas:
 
 ```python {test="skip" lint="skip"}
+from dataclasses import dataclass
+
+from pydantic import ConfigDict
+from typing_extensions import Self, override
+
+from agenton.layers import LayerConfig, NoLayerDeps, PlainLayer
+
+
 class GreetingConfig(LayerConfig):
     prefix: str
 
     model_config = ConfigDict(extra="forbid")
 
 
-@dataclass
+@dataclass(slots=True)
 class GreetingLayer(PlainLayer[NoLayerDeps, GreetingConfig]):
     type_id = "example.greeting"
+
     prefix: str
 
     @classmethod
+    @override
     def from_config(cls, config: GreetingConfig) -> Self:
         return cls(prefix=config.prefix)
 
     @property
+    @override
     def prefix_prompts(self) -> list[str]:
         return [self.prefix]
 ```
 
-Omitted schema slots default to `EmptyLayerConfig`, `EmptyRuntimeState`, and
-`EmptyRuntimeHandles`. Lifecycle hooks can annotate controls as
-`LayerControl[MyState, MyHandles]` to get static checking and IDE completion for
-runtime state and handles.
+Omitted schema slots default to `EmptyLayerConfig` and `EmptyRuntimeState`.
+Lifecycle hooks are no-argument methods on the layer instance; use `self.deps`
+for dependencies and `self.runtime_state` for serializable mutable state.
 
 ## Live resources
 
-The base lifecycle creates a resource stack for each `LayerControl` entry before
-`on_context_create` or `on_context_resume` runs. Enter async resources through the
-control, store the live handle in `runtime_handles`, and clear the handle in
-`on_context_suspend`/`on_context_delete`; the resource stack performs the actual
-close after those hooks and also cleans up if create/resume or the context body
-raises.
+Agenton does not own resource cleanup. Keep live resources in the surrounding
+application and pass them to capability methods explicitly:
 
 ```python {test="skip" lint="skip"}
-class ClientHandles(BaseModel):
-    client: httpx.AsyncClient | None = None
+@dataclass(slots=True)
+class ClientUserLayer(PlainLayer[NoLayerDeps]):
+    def make_client_user(self, *, http_client: httpx.AsyncClient) -> ClientUser:
+        return ClientUser(http_client)
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-
-@dataclass
-class ClientLayer(PlainLayer[NoLayerDeps, EmptyLayerConfig, EmptyRuntimeState, ClientHandles]):
-    async def on_context_create(self, control: LayerControl[EmptyRuntimeState, ClientHandles]) -> None:
-        control.runtime_handles.client = await control.enter_async_resource(httpx.AsyncClient())
-
-    async def on_context_delete(self, control: LayerControl[EmptyRuntimeState, ClientHandles]) -> None:
-        control.runtime_handles.client = None
-
-    def make_client_user(self, control: LayerControl) -> ClientUser:
-        control = self.require_control(control, active=True)
-        if control.runtime_handles.client is None:
-            raise RuntimeError("client is not available")
-        return ClientUser(control.runtime_handles.client)
+compositor = Compositor([LayerNode("client_user", ClientUserLayer)])
+async with httpx.AsyncClient() as http_client:
+    async with compositor.enter() as run:
+        layer = run.get_layer("client_user", ClientUserLayer)
+        user = layer.make_client_user(http_client=http_client)
 ```
 
-`Layer.require_control(control, active=True)` is the recommended first line for
-capability methods that read runtime state or handles. It verifies that callers
-passed this layer's own control from the current session and, when requested, that
-the control is active.
+This keeps deterministic cleanup at the integration boundary and leaves Agenton
+snapshots limited to serializable runtime state.
 
-## Register layers and build a compositor
+## Build a compositor
 
-Register config-constructible layers manually:
+Use providers for config-backed layers and pass per-run config at entry time:
 
 ```python {test="skip" lint="skip"}
-registry = LayerRegistry()
-registry.register_layer(PromptLayer)  # uses PromptLayer.type_id == "plain.prompt"
-```
+from agenton.compositor import Compositor, CompositorConfig, LayerNodeConfig, LayerProvider
+from agenton_collections.layers.plain import PromptLayer, PromptLayerConfig
 
-Use `CompositorBuilder` to mix serializable config nodes with live instances:
 
-```python {test="skip" lint="skip"}
-compositor = (
-    CompositorBuilder(registry)
-    .add_config(
-        {
-            "layers": [
-                {
-                    "name": "prompt",
-                    "type": "plain.prompt",
-                    "config": {"prefix": "Hi", "user": "Answer with examples."},
-                }
-            ]
-        }
-    )
-    .add_instance(name="profile", layer=ObjectLayer(profile))
-    .build()
+providers = (
+    LayerProvider.from_layer_type(PromptLayer),
+    LayerProvider.from_layer_type(GreetingLayer),
 )
+compositor = Compositor.from_config(
+    CompositorConfig(
+        layers=[
+            LayerNodeConfig(name="prompt", type="plain.prompt"),
+            LayerNodeConfig(name="greeting", type="example.greeting"),
+        ]
+    ),
+    providers=providers,
+)
+
+async with compositor.enter(
+    configs={
+        "prompt": PromptLayerConfig(user="Answer with examples."),
+        "greeting": GreetingConfig(prefix="Hi"),
+    }
+) as run:
+    prompts = run.prompts
 ```
 
-Use `.add_instance()` for layers that require Python objects or callables, such
-as `ObjectLayer`, `ToolsLayer`, and dynamic tool layers.
+Use `LayerProvider.from_factory(...)` when construction needs Python objects or
+callables. Provider factories receive only validated config and must return a
+fresh layer instance for every invocation. For node-specific construction with
+`Compositor.from_config`, pass a `node_providers={"node_name": provider}` mapping
+to override the provider selected by type id for that node.
 
-## Dependency controls
+## Dependencies
 
-Layer dependencies bind layer instances on `self.deps`. When a layer method also
-needs the dependency's per-session state or handles, pass the current layer's
-`LayerControl` into that method and resolve the dependency control from the same
-session:
+Layer dependencies bind direct layer instances onto `self.deps` for one run.
+Dependency mappings use dependency field names as keys and compositor node names
+as values:
 
 ```python {test="skip" lint="skip"}
 class ModelDeps(LayerDeps):
     plugin: PluginLayer
 
 
-@dataclass
+@dataclass(slots=True)
 class ModelLayer(PlainLayer[ModelDeps]):
-    def make_model(self, control: LayerControl) -> Model:
-        plugin_control = control.control_for(self.deps.plugin)
-        return self.deps.plugin.make_provider(plugin_control)
+    def make_model(self) -> Model:
+        return self.deps.plugin.make_provider()
 ```
 
-Use `control.control_for(dep_name, dep_layer)` when more than one dependency
-field can point at the same layer instance. Optional dependencies that were not
-bound have no control and raise `KeyError` if requested.
+Optional dependencies are assigned `None` when absent. Missing required
+dependencies, unknown dependency keys, and dependency targets with the wrong layer
+type fail before lifecycle hooks run.
 
-## System prompts and user prompts
+## System prompts, user prompts, and tools
 
-Layers expose three prompt surfaces:
+Layers expose four authoring surfaces:
 
 - `prefix_prompts`: system prompt fragments collected in layer order.
 - `suffix_prompts`: system prompt fragments collected in reverse layer order.
 - `user_prompts`: user-message fragments collected in layer order.
+- `tools`: tool entries collected in layer order.
 
-`PromptLayer` accepts `prefix`, `user`, and `suffix` config fields. For
-pydantic-ai, `PYDANTIC_AI_TRANSFORMERS` maps `compositor.prompts` to system
-prompt functions and `compositor.user_prompts` to values suitable for
-`Agent.run(user_prompt=...)`.
+`PromptLayer` accepts `prefix`, `user`, and `suffix` config fields. Aggregation is
+available on the active `CompositorRun` as `run.prompts`, `run.user_prompts`, and
+`run.tools`. For pydantic-ai, import
+`agenton_collections.transformers.pydantic_ai.PYDANTIC_AI_TRANSFORMERS` and pass
+it to `Compositor(...)` or `Compositor.from_config(...)` so tagged layer items are
+converted to Pydantic AI prompt, user prompt, and tool values.
 
 ## Session snapshot and restore
 
-`Compositor.snapshot_session(session)` serializes non-active sessions, including
-layer lifecycle state and runtime state. It rejects active sessions because live
-handles cannot be snapshotted safely. Restore with
-`Compositor.session_from_snapshot(snapshot)`; restored controls validate runtime
-state with each layer schema and initialize empty runtime handles. Suspended
-sessions resume through `on_context_resume`, where handles should be hydrated
-from the restored runtime state.
+Core Agenton run slots default to delete-on-exit. Call `run.suspend_on_exit()` or
+`run.suspend_layer_on_exit(name)` inside the active context when the next snapshot
+should be resumable:
 
-Create sessions with `Compositor.new_session()` or
-`Compositor.session_from_snapshot()`. `Compositor.enter()` validates that every
-session control uses the target layer's runtime state and handle schemas before
-any lifecycle hook runs.
+```python {test="skip" lint="skip"}
+async with compositor.enter(configs=configs) as run:
+    run.suspend_on_exit()
+
+snapshot = run.session_snapshot
+async with compositor.enter(configs=configs, session_snapshot=snapshot) as restored_run:
+    restored_layer = restored_run.get_layer("stateful", StatefulLayer)
+```
+
+`run.session_snapshot` is populated after context exit. Snapshots include ordered
+layer names, non-active lifecycle states, and JSON-safe runtime state only. Active
+state is rejected at the DTO boundary, and closed layers cannot be entered again.
+To resume, pass the snapshot to a later `Compositor.enter(...)` call with the same
+layer names and order.
 
 See also:
 

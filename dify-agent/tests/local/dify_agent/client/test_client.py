@@ -31,7 +31,7 @@ from dify_agent.protocol.schemas import (
 
 def _create_run_payload() -> dict[str, object]:
     return {
-        "compositor": {
+        "composition": {
             "schema_version": 1,
             "layers": [{"name": "prompt", "type": "plain.prompt", "config": {"user": "hello"}}],
         }
@@ -76,9 +76,10 @@ def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST" and request.url.path == "/runs":
             payload = cast(dict[str, object], json.loads(request.content))
-            compositor = cast(dict[str, object], payload["compositor"])
-            layers = cast(list[dict[str, object]], compositor["layers"])
+            composition = cast(dict[str, object], payload["composition"])
+            layers = cast(list[dict[str, object]], composition["layers"])
             assert layers[0]["config"] == {"user": "hello"}
+            assert "compositor" not in payload
             assert "agent_profile" not in payload
             return httpx.Response(202, json={"run_id": "run-1", "status": "running"})
         if request.method == "GET" and request.url.path == "/runs/run-1":
@@ -207,7 +208,7 @@ def test_create_run_is_not_retried_after_timeout() -> None:
 def test_sync_sse_parser_supports_comments_multiline_data_and_id_fill() -> None:
     payload = RUN_EVENT_ADAPTER.dump_json(RunStartedEvent(run_id="run-1"), exclude={"id"}).decode()
     before_type, after_type = payload.split('"type"', maxsplit=1)
-    body = f": keepalive\nid: 5-0\nevent: run_started\ndata: {before_type}\ndata: \"type\"{after_type}\n\n"
+    body = f': keepalive\nid: 5-0\nevent: run_started\ndata: {before_type}\ndata: "type"{after_type}\n\n'
 
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.params["after"] == "0-0"

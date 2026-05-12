@@ -12,8 +12,9 @@ from pydantic_ai.messages import BuiltinToolCallPart, ModelMessage, ToolCallPart
 from pydantic_ai.models.openai import OpenAIChatModel  # pyright: ignore[reportDeprecated]
 from pydantic_ai.models.test import TestModel
 
-from agenton.compositor import CompositorBuilder, LayerRegistry
+from agenton.compositor import Compositor, LayerNode, LayerProvider
 from agenton_collections.layers.plain import ObjectLayer, PromptLayer, ToolsLayer
+from agenton_collections.layers.plain.basic import PromptLayerConfig
 from agenton_collections.layers.pydantic_ai import PydanticAIBridgeLayer
 from agenton_collections.transformers import PYDANTIC_AI_TRANSFORMERS
 
@@ -49,41 +50,47 @@ async def main() -> None:
         audience="engineers composing agent capabilities",
         tone="precise and friendly",
     )
-    pydantic_ai_bridge = PydanticAIBridgeLayer[AgentProfile](
-        prefix=("Prefer concrete details.", profile_prompt, tone_prompt),
-        user="Use the tools for 'layer composition'.",
-        tool_entries=(write_tagline,),
+    compositor = Compositor(
+        [
+            LayerNode("base_prompt", PromptLayer),
+            LayerNode(
+                "profile",
+                LayerProvider.from_factory(
+                    layer_type=ObjectLayer,
+                    create=lambda _config: ObjectLayer[AgentProfile](profile),
+                ),
+            ),
+            LayerNode(
+                "plain_tools",
+                LayerProvider.from_factory(
+                    layer_type=ToolsLayer,
+                    create=lambda _config: ToolsLayer(tool_entries=(count_words,)),
+                ),
+            ),
+            LayerNode(
+                "pydantic_ai_bridge",
+                LayerProvider.from_factory(
+                    layer_type=PydanticAIBridgeLayer,
+                    create=lambda _config: PydanticAIBridgeLayer[AgentProfile](
+                        prefix=("Prefer concrete details.", profile_prompt, tone_prompt),
+                        user="Use the tools for 'layer composition'.",
+                        tool_entries=(write_tagline,),
+                    ),
+                ),
+                deps={"object_layer": "profile"},
+            ),
+        ],
+        **PYDANTIC_AI_TRANSFORMERS,
     )
 
-    registry = LayerRegistry()
-    registry.register_layer(PromptLayer)
-    compositor = (
-        CompositorBuilder(registry)
-        .add_config(
-            {
-                "layers": [
-                    {
-                        "name": "base_prompt",
-                        "type": "plain.prompt",
-                        "config": {
-                            "prefix": "Use the available tools before answering.",
-                            "suffix": "Return concise, inspectable output.",
-                        },
-                    },
-                ]
-            }
-        )
-        .add_instance(name="profile", layer=ObjectLayer[AgentProfile](profile))
-        .add_instance(name="plain_tools", layer=ToolsLayer(tool_entries=(count_words,)))
-        .add_instance(
-            name="pydantic_ai_bridge",
-            deps={"object_layer": "profile"},
-            layer=pydantic_ai_bridge,
-        )
-        .build(**PYDANTIC_AI_TRANSFORMERS)
-    )
-
-    async with compositor.enter():
+    async with compositor.enter(
+        configs={
+            "base_prompt": PromptLayerConfig(
+                prefix="Use the available tools before answering.",
+                suffix="Return concise, inspectable output.",
+            )
+        }
+    ) as run:
         model = (
             OpenAIChatModel("gpt-5.5")  # pyright: ignore[reportDeprecated]
             if os.getenv("OPENAI_API_KEY")
@@ -92,12 +99,13 @@ async def main() -> None:
         agent = Agent[AgentProfile](
             model=model,
             deps_type=AgentProfile,
-            tools=compositor.tools,
+            tools=run.tools,
         )
-        for prompt in compositor.prompts:
+        for prompt in run.prompts:
             _ = agent.system_prompt(prompt)
 
-        result = await agent.run(compositor.user_prompts, deps=pydantic_ai_bridge.run_deps)
+        bridge_layer = run.get_layer("pydantic_ai_bridge", PydanticAIBridgeLayer)
+        result = await agent.run(run.user_prompts, deps=bridge_layer.run_deps)
 
     for line in _format_messages(result.all_messages()):
         print(line)

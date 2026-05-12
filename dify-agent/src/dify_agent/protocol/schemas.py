@@ -1,17 +1,24 @@
 """Public HTTP protocol schemas for the Dify Agent run API.
 
 This module is the shared wire contract for the FastAPI server, runtime event
-producers, storage adapters, and Python client. The server accepts only
-registry-backed Agenton compositor configs, keeping HTTP input data-only and
-preventing unsafe import-path construction. Run events are append-only records;
-Redis stream ids (or in-memory equivalents in tests) are the public cursors used
-by polling and SSE replay. Event envelopes keep the public
-``id``/``run_id``/``type``/``data``/``created_at`` shape, while each ``type`` has
-a typed ``data`` model so OpenAPI, Redis replay, and clients parse the same
-payload contract. Model/provider selection is part of the submitted Agenton
-layer graph, not a top-level run field; the runtime reads the model layer named
-by ``DIFY_AGENT_MODEL_LAYER_ID``. Request-level layer exit signals decide whether
-each layer control is suspended or deleted when the active entry exits, with
+producers, storage adapters, and Python client. Create-run requests expose a
+Dify-friendly ``composition.layers[].config`` shape so callers can describe one
+layer in one place; the server normalizes that public DTO into Agenton's
+state-only ``CompositorConfig`` plus node-name keyed per-run configs before
+calling ``Compositor.enter(configs=...)``. Session snapshots and ``on_exit`` stay
+top-level because they are per-run resume state and exit policy, not graph node
+definition.
+
+The server still constructs layers only from explicit provider type ids, keeping
+HTTP input data-only and preventing unsafe import-path construction. Run events
+are append-only records; Redis stream ids (or in-memory equivalents in tests) are
+the public cursors used by polling and SSE replay. Event envelopes keep the
+public ``id``/``run_id``/``type``/``data``/``created_at`` shape, while each
+``type`` has a typed ``data`` model so OpenAPI, Redis replay, and clients parse
+the same payload contract. Model/provider selection is part of the submitted
+composition, not a top-level run field; the runtime reads the model layer named
+by ``DIFY_AGENT_MODEL_LAYER_ID``. Request-level ``on_exit`` signals decide
+whether each active layer is suspended or deleted when the run exits, with
 suspend as the default so successful terminal events can include resumable
 snapshots. Successful runs publish the final JSON-safe agent output and the
 resumable Agenton session snapshot together on the terminal ``run_succeeded``
@@ -24,7 +31,7 @@ from typing import Annotated, ClassVar, Final, Literal, TypeAlias
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 from pydantic_ai.messages import AgentStreamEvent
 
-from agenton.compositor import CompositorConfig, CompositorSessionSnapshot
+from agenton.compositor import CompositorConfig, CompositorSessionSnapshot, LayerConfigInput, LayerNodeConfig
 from agenton.layers import ExitIntent
 
 
@@ -44,7 +51,7 @@ def utc_now() -> datetime:
 
 
 class LayerExitSignals(BaseModel):
-    """Requested per-layer lifecycle behavior when a run leaves its active session."""
+    """Requested per-layer lifecycle behavior for the top-level ``on_exit`` field."""
 
     default: ExitIntent = ExitIntent.SUSPEND
     layers: dict[str, ExitIntent] = Field(default_factory=dict)
@@ -52,20 +59,83 @@ class LayerExitSignals(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class RunLayerSpec(BaseModel):
+    """Public graph node plus per-run layer config for one Dify Agent layer.
+
+    ``name``/``type``/``deps``/``metadata`` are normalized into Agenton's
+    provider-backed graph config. ``config`` is kept separate at the Agenton
+    boundary and passed to ``Compositor.enter(configs=...)`` keyed by ``name``;
+    existing layer config DTO instances are preserved so client code can stay
+    DTO-first without being forced into raw dictionaries.
+    """
+
+    name: str
+    type: str
+    deps: dict[str, str] = Field(default_factory=dict)
+    metadata: dict[str, JsonValue] = Field(default_factory=dict)
+    config: LayerConfigInput = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class RunComposition(BaseModel):
+    """Public create-run composition DTO.
+
+    The public shape intentionally differs from Agenton's internal
+    ``CompositorConfig`` by carrying each layer's per-run config next to its graph
+    node fields. Use ``normalize_composition`` at server/runtime boundaries before
+    constructing a ``Compositor``.
+    """
+
+    schema_version: int = 1
+    layers: list[RunLayerSpec]
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
 class CreateRunRequest(BaseModel):
     """Request body for creating one async agent run.
 
-    Model/provider configuration must be supplied through the compositor layer
-    named by ``DIFY_AGENT_MODEL_LAYER_ID``. ``layer_exit_signals`` defaults every
+    Model/provider configuration must be supplied through the composition layer
+    named by ``DIFY_AGENT_MODEL_LAYER_ID``. ``on_exit`` defaults every active
     layer to suspend so callers receive a resumable success snapshot unless they
     explicitly request delete for one or more layers.
     """
 
-    compositor: CompositorConfig
+    composition: RunComposition
     session_snapshot: CompositorSessionSnapshot | None = None
-    layer_exit_signals: LayerExitSignals = Field(default_factory=LayerExitSignals)
+    on_exit: LayerExitSignals = Field(default_factory=LayerExitSignals)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+def normalize_composition(composition: RunComposition) -> tuple[CompositorConfig, dict[str, LayerConfigInput]]:
+    """Split public Dify composition into Agenton's graph config and layer configs.
+
+    Returns:
+        A ``CompositorConfig`` containing only graph fields and a node-name keyed
+        config mapping suitable for ``Compositor.enter(configs=...)``.
+
+    The helper is the stable public-to-Agenton boundary: it preserves concrete
+    ``LayerConfig`` DTO inputs where possible, does not accept legacy
+    ``LayerNodeConfig(config=...)`` payloads, and keeps session snapshots plus
+    exit signals out of graph normalization.
+    """
+
+    graph_config = CompositorConfig(
+        schema_version=composition.schema_version,
+        layers=[
+            LayerNodeConfig(
+                name=layer.name,
+                type=layer.type,
+                deps=dict(layer.deps),
+                metadata=dict(layer.metadata),
+            )
+            for layer in composition.layers
+        ],
+    )
+    layer_configs = {layer.name: layer.config for layer in composition.layers}
+    return graph_config, layer_configs
 
 
 class CreateRunResponse(BaseModel):
@@ -152,10 +222,7 @@ class RunFailedEvent(BaseRunEvent):
 
 
 RunEvent: TypeAlias = Annotated[
-    RunStartedEvent
-    | PydanticAIStreamRunEvent
-    | RunSucceededEvent
-    | RunFailedEvent,
+    RunStartedEvent | PydanticAIStreamRunEvent | RunSucceededEvent | RunFailedEvent,
     Field(discriminator="type"),
 ]
 RUN_EVENT_ADAPTER: TypeAdapter[RunEvent] = TypeAdapter(RunEvent)
@@ -180,6 +247,7 @@ __all__ = [
     "LayerExitSignals",
     "PydanticAIStreamRunEvent",
     "RUN_EVENT_ADAPTER",
+    "RunComposition",
     "RunEvent",
     "RunEventType",
     "RunEventsResponse",
@@ -190,5 +258,7 @@ __all__ = [
     "RunStatusResponse",
     "RunSucceededEvent",
     "RunSucceededEventData",
+    "RunLayerSpec",
+    "normalize_composition",
     "utc_now",
 ]

@@ -2,8 +2,9 @@ import pytest
 from pydantic import ValidationError
 from pydantic_ai.messages import FinalResultEvent
 
-from agenton.layers import ExitIntent
 from agenton.compositor import CompositorSessionSnapshot
+from agenton.layers import ExitIntent
+from agenton_collections.layers.plain import PromptLayerConfig
 import dify_agent.protocol as protocol_exports
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID
 from dify_agent.protocol.schemas import (
@@ -11,12 +12,16 @@ from dify_agent.protocol.schemas import (
     CreateRunRequest,
     LayerExitSignals,
     PydanticAIStreamRunEvent,
+    RunComposition,
     RunFailedEvent,
     RunFailedEventData,
+    RunLayerSpec,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
+    normalize_composition,
 )
+from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig, DifyPluginLayerConfig
 
 
 def test_run_event_adapter_round_trips_typed_variants() -> None:
@@ -54,38 +59,84 @@ def test_pydantic_ai_event_data_uses_agent_stream_event_model() -> None:
     assert isinstance(event.data, FinalResultEvent)
 
 
-def test_create_run_request_rejects_agent_profile_and_model_layer_id_is_public() -> None:
+def test_create_run_request_rejects_old_compositor_payload_and_model_layer_id_is_public() -> None:
     assert DIFY_AGENT_MODEL_LAYER_ID == "llm"
     with pytest.raises(ValidationError):
         _ = CreateRunRequest.model_validate(
             {
                 "compositor": {"layers": []},
-                "agent_profile": {"provider": "test", "output_text": "done"},
             }
         )
 
 
-def test_layer_exit_signals_default_to_suspend_and_are_public() -> None:
+def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_graph_config() -> None:
+    prompt_config = PromptLayerConfig(prefix="system", user="hello")
+    plugin_config = DifyPluginLayerConfig(tenant_id="tenant-1", plugin_id="langgenius/openai")
+    llm_config = DifyPluginLLMLayerConfig(
+        model_provider="openai",
+        model="demo-model",
+        credentials={"api_key": "secret"},
+    )
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(name="prompt", type="plain.prompt", config=prompt_config),
+                RunLayerSpec(name="plugin", type="dify.plugin", config=plugin_config),
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="dify.plugin.llm",
+                    deps={"plugin": "plugin"},
+                    config=llm_config,
+                ),
+            ]
+        )
+    )
+
+    graph_config, layer_configs = normalize_composition(request.composition)
+    payload = request.model_dump(mode="json")
+
+    assert payload["composition"]["layers"][0]["config"] == {"prefix": "system", "user": "hello", "suffix": []}
+    assert [layer.model_dump(mode="json") for layer in graph_config.layers] == [
+        {"name": "prompt", "type": "plain.prompt", "deps": {}, "metadata": {}},
+        {"name": "plugin", "type": "dify.plugin", "deps": {}, "metadata": {}},
+        {
+            "name": DIFY_AGENT_MODEL_LAYER_ID,
+            "type": "dify.plugin.llm",
+            "deps": {"plugin": "plugin"},
+            "metadata": {},
+        },
+    ]
+    assert layer_configs == {
+        "prompt": prompt_config,
+        "plugin": plugin_config,
+        DIFY_AGENT_MODEL_LAYER_ID: llm_config,
+    }
+
+
+def test_on_exit_default_to_suspend_and_are_public() -> None:
     assert protocol_exports.LayerExitSignals is LayerExitSignals
-    request = CreateRunRequest.model_validate({"compositor": {"layers": []}})
+    assert protocol_exports.RunComposition is RunComposition
+    assert protocol_exports.RunLayerSpec is RunLayerSpec
+    assert protocol_exports.normalize_composition is normalize_composition
+    request = CreateRunRequest.model_validate({"composition": {"layers": []}})
 
-    assert request.layer_exit_signals.default is ExitIntent.SUSPEND
-    assert request.layer_exit_signals.layers == {}
+    assert request.on_exit.default is ExitIntent.SUSPEND
+    assert request.on_exit.layers == {}
 
 
-def test_layer_exit_signals_accept_layer_overrides() -> None:
+def test_on_exit_accept_layer_overrides() -> None:
     request = CreateRunRequest.model_validate(
         {
-            "compositor": {"layers": []},
-            "layer_exit_signals": {
+            "composition": {"layers": []},
+            "on_exit": {
                 "default": "delete",
                 "layers": {"prompt": "suspend", "llm": "delete"},
             },
         }
     )
 
-    assert request.layer_exit_signals.default is ExitIntent.DELETE
-    assert request.layer_exit_signals.layers == {"prompt": ExitIntent.SUSPEND, "llm": ExitIntent.DELETE}
+    assert request.on_exit.default is ExitIntent.DELETE
+    assert request.on_exit.layers == {"prompt": ExitIntent.SUSPEND, "llm": ExitIntent.DELETE}
 
 
 def test_layer_exit_signals_reject_extra_fields() -> None:

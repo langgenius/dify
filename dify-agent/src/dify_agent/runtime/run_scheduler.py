@@ -5,6 +5,11 @@ The scheduler is intentionally process-local: it persists a run record, starts a
 task registry. Redis remains the durable source for status and event streams, but
 there is no Redis job queue or cross-process handoff. If the process crashes,
 currently active runs are lost until an external operator marks or retries them.
+Create-run validation enters a lightweight Agenton run before persistence so the
+same transformed user prompts and top-level ``on_exit`` policy used by execution
+are checked without relying on removed session/control APIs; Dify's default
+layers keep lifecycle hooks side-effect free so this validation does not open
+plugin daemon clients.
 """
 
 import asyncio
@@ -12,11 +17,14 @@ import logging
 from collections.abc import Callable
 from typing import Protocol
 
-from agenton.compositor import LayerRegistry
-from dify_agent.protocol.schemas import CreateRunRequest
-from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_registry
+import httpx
+
+from agenton.compositor import LayerProviderInput
+from dify_agent.protocol.schemas import CreateRunRequest, normalize_composition
+from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
+from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
 from dify_agent.runtime.event_sink import RunEventSink, emit_run_failed
-from dify_agent.runtime.layer_exit_signals import validate_layer_exit_signals
+from dify_agent.runtime.layer_exit_signals import apply_layer_exit_signals, validate_layer_exit_signals
 from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 from dify_agent.server.schemas import RunRecord
@@ -26,6 +34,10 @@ logger = logging.getLogger(__name__)
 
 class SchedulerStoppingError(RuntimeError):
     """Raised when a create-run request arrives after shutdown has started."""
+
+
+class RunRequestValidationError(ValueError):
+    """Raised when a create-run request cannot produce an executable Agenton run."""
 
 
 class RunStore(RunEventSink, Protocol):
@@ -53,9 +65,9 @@ class RunScheduler:
     ``active_tasks`` is mutated only on the event loop that calls ``create_run``
     and ``shutdown``. The task registry is not durable; it exists so the lifespan
     hook can wait for in-flight work and mark cancelled runs failed before Redis is
-    closed. A lock guards the stopping flag, run persistence, and task
-    registration so shutdown cannot complete while a run is between record
-    creation and active-task tracking.
+    closed. A lock guards the stopping flag, lightweight request validation, run
+    persistence, and task registration so shutdown cannot begin after a request is
+    admitted and no validation runs once stopping has been set.
     """
 
     store: RunStore
@@ -63,22 +75,25 @@ class RunScheduler:
     active_tasks: dict[str, asyncio.Task[None]]
     stopping: bool
     runner_factory: RunRunnerFactory
-    layer_registry: LayerRegistry
+    layer_providers: tuple[LayerProviderInput, ...]
+    plugin_daemon_http_client: httpx.AsyncClient
     _lifecycle_lock: asyncio.Lock
 
     def __init__(
         self,
         *,
         store: RunStore,
+        plugin_daemon_http_client: httpx.AsyncClient,
         shutdown_grace_seconds: float = 30,
-        layer_registry: LayerRegistry | None = None,
+        layer_providers: tuple[LayerProviderInput, ...] | None = None,
         runner_factory: RunRunnerFactory | None = None,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.active_tasks = {}
         self.stopping = False
-        self.layer_registry = layer_registry or create_default_layer_registry()
+        self.plugin_daemon_http_client = plugin_daemon_http_client
+        self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
         self.runner_factory = runner_factory or self._default_runner_factory
         self._lifecycle_lock = asyncio.Lock()
 
@@ -88,14 +103,10 @@ class RunScheduler:
         The returned record is already ``running``. The background task is removed
         from ``active_tasks`` when it finishes, regardless of success or failure.
         """
-        compositor = build_pydantic_ai_compositor(request.compositor, registry=self.layer_registry)
-        validate_layer_exit_signals(compositor, request.layer_exit_signals)
-        if not has_non_blank_user_prompt(compositor.user_prompts):
-            raise ValueError(EMPTY_USER_PROMPTS_ERROR)
-
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
+            await validate_run_request(request, layer_providers=self.layer_providers)
             record = await self.store.create_run()
             task = asyncio.create_task(self._run_record(record, request), name=f"dify-agent-run-{record.run_id}")
             self.active_tasks[record.run_id] = task
@@ -136,7 +147,8 @@ class RunScheduler:
             sink=self.store,
             request=request,
             run_id=record.run_id,
-            layer_registry=self.layer_registry,
+            plugin_daemon_http_client=self.plugin_daemon_http_client,
+            layer_providers=self.layer_providers,
         )
 
     async def _mark_cancelled_run_failed(self, run_id: str) -> None:
@@ -149,4 +161,42 @@ class RunScheduler:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})
 
 
-__all__ = ["RunScheduler", "SchedulerStoppingError"]
+async def validate_run_request(
+    request: CreateRunRequest,
+    *,
+    layer_providers: tuple[LayerProviderInput, ...] | None = None,
+) -> None:
+    """Validate create-run semantics that require an entered Agenton run.
+
+    This boundary rejects unknown ``on_exit`` layer ids, effectively empty
+    transformed user prompts, and known enter-time snapshot lifecycle errors
+    before the scheduler persists a run record. It also exercises provider config
+    validation and snapshot hydration without touching external services because
+    Dify plugin daemon clients are owned by the FastAPI lifespan, not Agenton
+    lifecycle hooks.
+    """
+    resolved_layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
+    entered_run = False
+    try:
+        graph_config, layer_configs = normalize_composition(request.composition)
+        compositor = build_pydantic_ai_compositor(
+            graph_config,
+            providers=resolved_layer_providers,
+        )
+        validate_layer_exit_signals(compositor, request.on_exit)
+        async with compositor.enter(configs=layer_configs, session_snapshot=request.session_snapshot) as run:
+            entered_run = True
+            apply_layer_exit_signals(run, request.on_exit)
+            if not has_non_blank_user_prompt(run.user_prompts):
+                raise RunRequestValidationError(EMPTY_USER_PROMPTS_ERROR)
+    except RunRequestValidationError:
+        raise
+    except RuntimeError as exc:
+        if not entered_run and is_agenton_enter_validation_runtime_error(exc):
+            raise RunRequestValidationError(str(exc)) from exc
+        raise
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RunRequestValidationError(str(exc)) from exc
+
+
+__all__ = ["RunRequestValidationError", "RunScheduler", "SchedulerStoppingError", "validate_run_request"]

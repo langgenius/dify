@@ -13,7 +13,6 @@ recover after client-side uncertainty.
 
 import asyncio
 
-from agenton.compositor import CompositorConfig, LayerNodeConfig
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.client import Client
 from dify_agent.layers.dify_plugin import (
@@ -21,7 +20,7 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginLLMLayerConfig,
     DifyPluginLayerConfig,
 )
-from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, RunComposition, RunLayerSpec
 
 
 API_BASE_URL = "http://localhost:8000"
@@ -36,9 +35,9 @@ async def main() -> None:
     async with Client(base_url=API_BASE_URL) as client:
         run = await client.create_run(
             CreateRunRequest(
-                compositor=CompositorConfig(
+                composition=RunComposition(
                     layers=[
-                        LayerNodeConfig(
+                        RunLayerSpec(
                             name="prompt",
                             type="plain.prompt",
                             config=PromptLayerConfig(
@@ -46,12 +45,12 @@ async def main() -> None:
                                 user="Say hello from the Dify Agent API server example.",
                             ),
                         ),
-                        LayerNodeConfig(
+                        RunLayerSpec(
                             name="plugin",
                             type="dify.plugin",
                             config=DifyPluginLayerConfig(tenant_id=TENANT_ID, plugin_id=PLUGIN_ID),
                         ),
-                        LayerNodeConfig(
+                        RunLayerSpec(
                             name=DIFY_AGENT_MODEL_LAYER_ID,
                             type="dify.plugin.llm",
                             deps={"plugin": "plugin"},
