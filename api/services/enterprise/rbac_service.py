@@ -69,6 +69,7 @@ class RBACRole(_RBACModel):
     description: str = ""
     is_builtin: bool = False
     permission_keys: list[str] = Field(default_factory=list)
+    role_tag: str = ""
 
     @field_validator("permission_keys", mode="before")
     @classmethod

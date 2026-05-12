@@ -106,8 +106,20 @@ class _PaginationQuery(BaseModel):
         return svc.ListOption.model_validate(self.model_dump())
 
 
+class _RolesListQuery(_PaginationQuery):
+    include_owner: int = Field(default=0, ge=0, le=1)
+
+
 def _pagination_options() -> svc.ListOption:
     return _PaginationQuery.model_validate(request.args.to_dict(flat=True)).to_inner_options()
+
+
+def _filter_out_owner(paginated: svc.Paginated[svc.RBACRole]) -> svc.Paginated[svc.RBACRole]:
+    filtered = [r for r in paginated.data if r.name != "owner"]
+    return svc.Paginated[svc.RBACRole](
+        data=filtered,
+        pagination=paginated.pagination,
+    )
 
 
 def _legacy_workspace_roles(options: svc.ListOption | None = None) -> svc.Paginated[svc.RBACRole]:
@@ -127,6 +139,7 @@ def _legacy_workspace_roles(options: svc.ListOption | None = None) -> svc.Pagina
             description="",
             is_builtin=True,
             permission_keys=list(_LEGACY_ROLE_PERMISSION_KEYS[role_name]),
+            role_tag="owner" if role_name == "owner" else "",
         )
         for role_name in ("owner", "admin", "editor", "normal", "dataset_operator")
     ]
@@ -207,10 +220,15 @@ class RBACRolesApi(Resource):
     @login_required
     def get(self):
         tenant_id, account_id = _current_ids()
-        options = _pagination_options()
+        query = _RolesListQuery.model_validate(request.args.to_dict(flat=True))
+        options = query.to_inner_options()
         if not dify_config.RBAC_ENABLED:
-            return _dump(_legacy_workspace_roles(options))
-        return _dump(svc.RBACService.Roles.list(tenant_id, account_id, options=options))
+            result = _legacy_workspace_roles(options)
+        else:
+            result = svc.RBACService.Roles.list(tenant_id, account_id, options=options)
+        if query.include_owner == 0:
+            result = _filter_out_owner(result)
+        return _dump(result)
 
     @login_required
     def post(self):

@@ -120,7 +120,7 @@ class TestPydanticModels:
 class TestPaginationMapping:
     def test_roles_get_returns_legacy_compatible_roles_when_rbac_disabled(self, app):
         with (
-            app.test_request_context("/workspaces/current/rbac/roles?page=1&limit=2"),
+            app.test_request_context("/workspaces/current/rbac/roles?page=1&limit=2&include_owner=1"),
             patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
@@ -147,6 +147,7 @@ class TestPaginationMapping:
                     "dataset.acl.edit",
                     "dataset.acl.use",
                 ],
+                "role_tag": "owner",
             },
             {
                 "id": "admin",
@@ -167,6 +168,7 @@ class TestPaginationMapping:
                     "dataset.acl.edit",
                     "dataset.acl.use",
                 ],
+                "role_tag": "",
             },
         ]
         assert response["pagination"] == {
@@ -177,9 +179,45 @@ class TestPaginationMapping:
         }
         mock_list.assert_not_called()
 
+    def test_roles_get_filters_out_owner_when_include_owner_is_zero(self, app):
+        with (
+            app.test_request_context("/workspaces/current/rbac/roles?include_owner=0"),
+            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", False),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
+        ):
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+
+        names = [r["name"] for r in response["data"]]
+        assert "owner" not in names
+
+    def test_roles_get_keeps_owner_when_include_owner_is_one(self, app):
+        with (
+            app.test_request_context("/workspaces/current/rbac/roles?include_owner=1"),
+            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", False),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
+        ):
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+
+        names = [r["name"] for r in response["data"]]
+        assert "owner" in names
+
+    def test_roles_get_filters_out_owner_by_default(self, app):
+        with (
+            app.test_request_context("/workspaces/current/rbac/roles"),
+            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", False),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
+        ):
+            response = inspect.unwrap(rbac_mod.RBACRolesApi.get)(rbac_mod.RBACRolesApi())
+
+        names = [r["name"] for r in response["data"]]
+        assert "owner" not in names
+
     def test_roles_get_forwards_outer_pagination_params(self, app):
         with (
-            app.test_request_context("/workspaces/current/rbac/roles?page=2&limit=50&reverse=true"),
+            app.test_request_context("/workspaces/current/rbac/roles?page=2&limit=50&reverse=true&include_owner=1"),
             patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", True),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
