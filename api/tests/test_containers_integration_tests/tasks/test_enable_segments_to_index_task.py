@@ -1,3 +1,5 @@
+from models import TenantStatus
+from models import AccountStatus
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -52,14 +54,14 @@ class TestEnableSegmentsToIndexTask:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -89,7 +91,6 @@ class TestEnableSegmentsToIndexTask:
 
         # Create document
         document = Document(
-            id=fake.uuid4(),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             position=1,
@@ -291,7 +292,7 @@ class TestEnableSegmentsToIndexTask:
             # Reset document status
             document.enabled = True
             document.archived = False
-            document.indexing_status = "completed"
+            document.indexing_status = IndexingStatus.COMPLETED
             db_session_with_containers.commit()
 
             # Set invalid status
