@@ -6,14 +6,13 @@ import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-// eslint-disable-next-line no-restricted-imports -- legacy overlay migration is handled separately from this change
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { CollectionType } from '@/app/components/tools/types'
 import Link from '@/next/link'
 import {
@@ -134,9 +133,7 @@ const ToolSelector: FC<Props> = ({
   )
 
   return (
-    <PortalToFollowElem
-      placement={placement}
-      offset={offset}
+    <Popover
       open={portalOpen}
       onOpenChange={handlePortalOpenChange}
     >
@@ -186,43 +183,6 @@ const ToolSelector: FC<Props> = ({
         alignOffset={alignOffset}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        {trigger}
-
-        {/* Default trigger - no value */}
-        {!trigger && !value?.provider_name && (
-          <ToolTrigger
-            isConfigure
-            open={isShow}
-            value={value}
-            provider={currentProvider}
-          />
-        )}
-
-        {/* Default trigger - with value */}
-        {!trigger && value?.provider_name && (
-          <ToolItem
-            open={isShow}
-            icon={currentProvider?.icon || manifestIcon}
-            isMCPTool={currentProvider?.type === CollectionType.mcp}
-            providerName={value.provider_name}
-            providerShowName={value.provider_show_name}
-            toolLabel={value.tool_label || value.tool_name}
-            showSwitch={supportEnableSwitch}
-            switchValue={value.enabled}
-            onSwitchChange={handleEnabledChange}
-            onDelete={onDelete}
-            noAuth={currentProvider && currentTool && !currentProvider.is_team_authorization}
-            uninstalled={!currentProvider && inMarketPlace}
-            versionMismatch={currentProvider && inMarketPlace && !currentTool}
-            installInfo={manifest?.latest_package_identifier}
-            onInstall={handleInstall}
-            isError={(!currentProvider || !currentTool) && !inMarketPlace}
-            errorTip={renderErrorTip()}
-          />
-        )}
-      </PortalToFollowElemTrigger>
-
-      <PortalToFollowElemContent className="z-10">
         <div className={cn(
           'relative max-h-[642px] min-h-20 w-[361px] rounded-xl',
           'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
@@ -277,8 +237,8 @@ const ToolSelector: FC<Props> = ({
             onParamsFormChange={handleParamsFormChange}
           />
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 
