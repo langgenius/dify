@@ -924,6 +924,39 @@ class TestTenantService:
             "add",
         )
 
+    def test_admin_can_remove_non_owner_member(self, mock_db_dependencies):
+        """Test admin can remove a non-owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+        mock_member_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="admin"
+        )
+        mock_db_dependencies["db"].session.scalar.side_effect = [mock_operator_join, mock_member_join]
+
+        TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
+    def test_admin_cannot_remove_owner_member(self, mock_db_dependencies):
+        """Test admin cannot remove an owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        mock_operator_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="operator-123", role="admin"
+        )
+        mock_member_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="member-789", role="owner"
+        )
+        mock_db_dependencies["db"].session.scalar.side_effect = [mock_operator_join, mock_member_join]
+
+        with pytest.raises(NoPermissionError):
+            TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
 
 class TestRegisterService:
     """
