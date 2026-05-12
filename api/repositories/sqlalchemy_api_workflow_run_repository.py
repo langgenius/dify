@@ -464,6 +464,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         runs: Sequence[WorkflowRun],
         delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        session: Session | None = None,
     ) -> RunsWithRelatedCountsDict:
         if not runs:
             return {
@@ -476,45 +477,74 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 "pause_reasons": 0,
             }
 
-        with self._session_maker() as session:
-            run_ids = [run.id for run in runs]
-            if delete_node_executions:
-                node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
-            else:
-                node_executions_deleted, offloads_deleted = 0, 0
+        if session is not None:
+            return self._delete_runs_with_related_in_session(
+                session=session,
+                runs=runs,
+                delete_node_executions=delete_node_executions,
+                delete_trigger_logs=delete_trigger_logs,
+                commit=False,
+            )
 
-            app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
-            app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
+        with self._session_maker() as managed_session:
+            return self._delete_runs_with_related_in_session(
+                session=managed_session,
+                runs=runs,
+                delete_node_executions=delete_node_executions,
+                delete_trigger_logs=delete_trigger_logs,
+                commit=True,
+            )
 
-            pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
-            pause_ids = session.scalars(pause_stmt).all()
-            pause_reasons_deleted = 0
-            pauses_deleted = 0
+    def _delete_runs_with_related_in_session(
+        self,
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None,
+        *,
+        commit: bool,
+    ) -> RunsWithRelatedCountsDict:
+        run_ids = [run.id for run in runs]
+        if delete_node_executions:
+            node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
+        else:
+            node_executions_deleted, offloads_deleted = 0, 0
 
-            if pause_ids:
-                pause_reasons_result = session.execute(
-                    delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
-                )
-                pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
-                pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
-                pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
+        app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
+        app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
 
-            trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
+        pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
+        pause_ids = session.scalars(pause_stmt).all()
+        pause_reasons_deleted = 0
+        pauses_deleted = 0
 
-            runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
-            runs_deleted = cast(CursorResult, runs_result).rowcount or 0
+        if pause_ids:
+            pause_reasons_result = session.execute(
+                delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
+            )
+            pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
+            pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
+            pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
 
+        trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
+
+        runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
+        runs_deleted = cast(CursorResult, runs_result).rowcount or 0
+
+        if commit:
             session.commit()
+        else:
+            session.flush()
 
-            return {
-                "runs": runs_deleted,
-                "node_executions": node_executions_deleted,
-                "offloads": offloads_deleted,
-                "app_logs": app_logs_deleted,
-                "trigger_logs": trigger_logs_deleted,
-                "pauses": pauses_deleted,
-                "pause_reasons": pause_reasons_deleted,
-            }
+        return {
+            "runs": runs_deleted,
+            "node_executions": node_executions_deleted,
+            "offloads": offloads_deleted,
+            "app_logs": app_logs_deleted,
+            "trigger_logs": trigger_logs_deleted,
+            "pauses": pauses_deleted,
+            "pause_reasons": pause_reasons_deleted,
+        }
 
     def get_app_logs_by_run_id(
         self,

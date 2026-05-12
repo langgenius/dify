@@ -26,8 +26,12 @@ class CreditPoolService:
         )
 
     @classmethod
-    def create_default_pool(cls, tenant_id: str) -> TenantCreditPool:
-        """create default credit pool for new tenant"""
+    def create_default_pool(cls, tenant_id: str, *, commit: bool = True) -> TenantCreditPool:
+        """Create the default credit pool for a new tenant.
+
+        When ``commit`` is ``False``, the new pool is flushed into the caller-owned
+        transaction so outer workflows can keep a single transaction owner.
+        """
         credit_pool = TenantCreditPool(
             tenant_id=tenant_id,
             quota_limit=dify_config.HOSTED_POOL_CREDITS,
@@ -35,7 +39,10 @@ class CreditPoolService:
             pool_type=ProviderQuotaType.TRIAL,
         )
         db.session.add(credit_pool)
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         return credit_pool
 
     @classmethod

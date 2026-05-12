@@ -343,10 +343,14 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         runs: Sequence[WorkflowRun],
         delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        session: Session | None = None,
     ) -> RunsWithRelatedCountsDict:
         """
         Delete workflow runs and their related records (node executions, offloads, app logs,
         trigger logs, pauses, pause reasons).
+
+        When ``session`` is provided, the caller owns the transaction boundary and
+        this method must not commit independently.
         """
         ...
 

@@ -271,8 +271,14 @@ class AccountService:
         password: str | None = None,
         interface_theme: str = "light",
         is_setup: bool | None = False,
+        *,
+        commit: bool = True,
     ) -> Account:
-        """create account"""
+        """Create an account.
+
+        When ``commit`` is ``False``, the new row is flushed so the caller can
+        keep a larger workflow inside a single transaction.
+        """
         if not FeatureService.get_system_features().is_allow_register and not is_setup:
             from controllers.console.error import AccountNotFound
 
@@ -313,7 +319,10 @@ class AccountService:
         )
 
         db.session.add(account)
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         return account
 
     @staticmethod
@@ -386,8 +395,8 @@ class AccountService:
         delete_account_task.delay(account.id)
 
     @staticmethod
-    def link_account_integrate(provider: str, open_id: str, account: Account):
-        """Link account integrate"""
+    def link_account_integrate(provider: str, open_id: str, account: Account, *, commit: bool = True):
+        """Link an external identity to an account."""
         try:
             # Query whether there is an existing binding record for the same provider
             account_integrate: AccountIntegrate | None = db.session.scalar(
@@ -408,7 +417,10 @@ class AccountService:
                 )
                 db.session.add(account_integrate)
 
-            db.session.commit()
+            if commit:
+                db.session.commit()
+            else:
+                db.session.flush()
             logger.info("Account %s linked %s account %s.", account.id, provider, open_id)
         except Exception as e:
             logger.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
@@ -1053,8 +1065,18 @@ class AccountService:
 
 class TenantService:
     @staticmethod
-    def create_tenant(name: str, is_setup: bool | None = False, is_from_dashboard: bool | None = False) -> Tenant:
-        """Create tenant"""
+    def create_tenant(
+        name: str,
+        is_setup: bool | None = False,
+        is_from_dashboard: bool | None = False,
+        *,
+        commit: bool = True,
+    ) -> Tenant:
+        """Create a tenant.
+
+        When ``commit`` is ``False``, the caller owns the surrounding
+        transaction and this method only flushes intermediate rows.
+        """
         if (
             not FeatureService.get_system_features().is_allow_create_workspace
             and not is_setup
@@ -1066,7 +1088,7 @@ class TenantService:
         tenant = Tenant(name=name)
 
         db.session.add(tenant)
-        db.session.commit()
+        db.session.flush()
 
         plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
             tenant_id=tenant.id,
@@ -1077,20 +1099,29 @@ class TenantService:
             include_plugins=[],
         )
         db.session.add(plugin_upgrade_strategy)
-        db.session.commit()
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
-        db.session.commit()
 
         from services.credit_pool_service import CreditPoolService
 
-        CreditPoolService.create_default_pool(tenant.id)
+        CreditPoolService.create_default_pool(tenant.id, commit=False)
+
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
         return tenant
 
     @staticmethod
-    def create_owner_tenant_if_not_exist(account: Account, name: str | None = None, is_setup: bool | None = False):
-        """Check if user have a workspace or not"""
+    def create_owner_tenant_if_not_exist(
+        account: Account,
+        name: str | None = None,
+        is_setup: bool | None = False,
+        *,
+        commit: bool = True,
+    ):
+        """Create an owner workspace when the account does not have one."""
         available_ta = db.session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.account_id == account.id)
@@ -1110,17 +1141,26 @@ class TenantService:
             raise WorkspacesLimitExceededError()
 
         if name:
-            tenant = TenantService.create_tenant(name=name, is_setup=is_setup)
+            tenant = TenantService.create_tenant(name=name, is_setup=is_setup, commit=False)
         else:
-            tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup)
-        TenantService.create_tenant_member(tenant, account, role="owner")
+            tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup, commit=False)
+        TenantService.create_tenant_member(tenant, account, role="owner", commit=False)
         account.current_tenant = tenant
-        db.session.commit()
-        tenant_was_created.send(tenant)
+        if commit:
+            db.session.commit()
+            tenant_was_created.send(tenant)
+        else:
+            db.session.flush()
 
     @staticmethod
-    def create_tenant_member(tenant: Tenant, account: Account, role: str = "normal") -> TenantAccountJoin:
-        """Create tenant member"""
+    def create_tenant_member(
+        tenant: Tenant,
+        account: Account,
+        role: str = "normal",
+        *,
+        commit: bool = True,
+    ) -> TenantAccountJoin:
+        """Create a tenant membership for the account."""
         if role == TenantAccountRole.OWNER:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
                 logger.error("Tenant %s has already an owner.", tenant.id)
@@ -1137,7 +1177,10 @@ class TenantService:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             db.session.add(ta)
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
         return ta
@@ -1469,8 +1512,8 @@ class RegisterService:
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
     ) -> Account:
-        db.session.begin_nested()
-        """Register account"""
+        """Register an account with transaction boundaries owned by this method."""
+        tenant: Tenant | None = None
         try:
             account = AccountService.create_account(
                 email=email,
@@ -1478,12 +1521,15 @@ class RegisterService:
                 interface_language=get_valid_language(language),
                 password=password,
                 is_setup=is_setup,
+                commit=False,
             )
             account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
+            db.session.commit()
 
             if open_id is not None and provider is not None:
-                AccountService.link_account_integrate(provider, open_id, account)
+                AccountService.link_account_integrate(provider, open_id, account, commit=False)
+                db.session.commit()
 
             if (
                 FeatureService.get_system_features().is_allow_create_workspace
@@ -1491,15 +1537,14 @@ class RegisterService:
                 and FeatureService.get_system_features().license.workspaces.is_available()
             ):
                 try:
-                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(tenant, account, role="owner")
+                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace", commit=False)
+                    TenantService.create_tenant_member(tenant, account, role="owner", commit=False)
                     account.current_tenant = tenant
                     tenant_was_created.send(tenant)
+                    db.session.commit()
                 except Exception:
                     _try_join_enterprise_default_workspace(str(account.id))
                     raise
-
-            db.session.commit()
 
             _try_join_enterprise_default_workspace(str(account.id))
         except WorkSpaceNotAllowedCreateError:

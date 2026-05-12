@@ -4,7 +4,6 @@ import time
 from collections.abc import Sequence
 
 import click
-from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import app
@@ -75,8 +74,13 @@ def clean_workflow_runlogs_precise() -> None:
 
             last_seen = (run_rows[-1].created_at, run_rows[-1].id)
             batch_count += 1
-            with session_factory.begin() as session:
-                success = _delete_batch(session, workflow_run_repo, run_rows, failed_batches)
+            try:
+                with session_factory.begin() as session:
+                    _delete_batch(session, workflow_run_repo, run_rows)
+                success = True
+            except Exception:
+                logger.exception("Batch deletion failed (attempt %s)", failed_batches + 1)
+                success = False
 
             if success:
                 total_deleted += len(run_rows)
@@ -108,61 +112,53 @@ def _delete_batch(
     session: Session,
     workflow_run_repo,
     workflow_runs: Sequence[WorkflowRun],
-    attempt_count: int,
-) -> bool:
-    """Delete a single batch of workflow runs and all related data within a nested transaction."""
-    try:
-        with session.begin_nested():
-            workflow_run_ids = [run.id for run in workflow_runs]
-            message_data = session.execute(
-                select(Message.id, Message.conversation_id).where(Message.workflow_run_id.in_(workflow_run_ids))
-            ).all()
-            message_id_list = [msg.id for msg in message_data]
-            conversation_id_list = list({msg.conversation_id for msg in message_data if msg.conversation_id})
-            if message_id_list:
-                message_related_models = [
-                    AppAnnotationHitHistory,
-                    DatasetRetrieverResource,
-                    MessageAgentThought,
-                    MessageChain,
-                    MessageFile,
-                    MessageAnnotation,
-                    MessageFeedback,
-                    SavedMessage,
-                ]
-                for model in message_related_models:
-                    session.execute(delete(model).where(model.message_id.in_(message_id_list)))  # type: ignore
-                    # error: "DeclarativeAttributeIntercept" has no attribute "message_id". But this type is only in lib
-                    # and these 6 types all have the message_id field.
+) -> None:
+    """Delete a single batch of workflow runs inside the caller-owned transaction."""
+    workflow_run_ids = [run.id for run in workflow_runs]
+    message_data = (
+        session.query(Message.id, Message.conversation_id).where(Message.workflow_run_id.in_(workflow_run_ids)).all()
+    )
+    message_id_list = [msg.id for msg in message_data]
+    conversation_id_list = list({msg.conversation_id for msg in message_data if msg.conversation_id})
+    if message_id_list:
+        message_related_models = [
+            AppAnnotationHitHistory,
+            DatasetRetrieverResource,
+            MessageAgentThought,
+            MessageChain,
+            MessageFile,
+            MessageAnnotation,
+            MessageFeedback,
+            SavedMessage,
+        ]
+        for model in message_related_models:
+            session.query(model).where(model.message_id.in_(message_id_list)).delete(synchronize_session=False)  # type: ignore
+            # error: "DeclarativeAttributeIntercept" has no attribute "message_id". But this type is only in lib
+            # and these 6 types all have the message_id field.
 
-                session.execute(delete(Message).where(Message.workflow_run_id.in_(workflow_run_ids)))
+        session.query(Message).where(Message.workflow_run_id.in_(workflow_run_ids)).delete(synchronize_session=False)
 
-            if conversation_id_list:
-                session.execute(
-                    delete(ConversationVariable).where(ConversationVariable.conversation_id.in_(conversation_id_list))
-                )
+    if conversation_id_list:
+        session.query(ConversationVariable).where(
+            ConversationVariable.conversation_id.in_(conversation_id_list)
+        ).delete(synchronize_session=False)
 
-                session.execute(delete(Conversation).where(Conversation.id.in_(conversation_id_list)))
+        session.query(Conversation).where(Conversation.id.in_(conversation_id_list)).delete(synchronize_session=False)
 
-            def _delete_node_executions(active_session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
-                run_ids = [run.id for run in runs]
-                repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-                    session_maker=sessionmaker(bind=active_session.get_bind(), expire_on_commit=False)
-                )
-                return repo.delete_by_runs(active_session, run_ids)
+    def _delete_node_executions(active_session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
+        run_ids = [run.id for run in runs]
+        repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            session_maker=sessionmaker(bind=active_session.get_bind(), expire_on_commit=False)
+        )
+        return repo.delete_by_runs(active_session, run_ids)
 
-            def _delete_trigger_logs(active_session: Session, run_ids: Sequence[str]) -> int:
-                trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(active_session)
-                return trigger_repo.delete_by_run_ids(run_ids)
+    def _delete_trigger_logs(active_session: Session, run_ids: Sequence[str]) -> int:
+        trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(active_session)
+        return trigger_repo.delete_by_run_ids(run_ids)
 
-            workflow_run_repo.delete_runs_with_related(
-                workflow_runs,
-                delete_node_executions=_delete_node_executions,
-                delete_trigger_logs=_delete_trigger_logs,
-            )
-
-            return True
-
-    except Exception:
-        logger.exception("Batch deletion failed (attempt %s)", attempt_count + 1)
-        return False
+    workflow_run_repo.delete_runs_with_related(
+        workflow_runs,
+        delete_node_executions=_delete_node_executions,
+        delete_trigger_logs=_delete_trigger_logs,
+        session=session,
+    )

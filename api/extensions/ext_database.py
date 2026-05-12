@@ -1,6 +1,5 @@
 import logging
 
-import gevent
 from sqlalchemy import event
 from sqlalchemy.pool import Pool
 
@@ -37,15 +36,9 @@ def _setup_gevent_compatibility():
         if reset_state.terminate_only:
             return
 
-        # Safe rollback for connection
-        try:
-            hub = gevent.get_hub()
-            if hasattr(hub, "loop") and getattr(hub.loop, "in_callback", False):
-                gevent.spawn_later(0, lambda: _safe_rollback(dbapi_connection))
-            else:
-                _safe_rollback(dbapi_connection)
-        except (AttributeError, ImportError):
-            _safe_rollback(dbapi_connection)
+        # Reset must complete before the connection can be reused; a delayed
+        # rollback can race with a new transaction and invalidate its savepoints.
+        _safe_rollback(dbapi_connection)
 
     _gevent_compatibility_setup = True
 

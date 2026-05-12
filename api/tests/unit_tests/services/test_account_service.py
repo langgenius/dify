@@ -1128,9 +1128,10 @@ class TestRegisterService:
                     interface_language="en-US",
                     password="password123",
                     is_setup=False,
+                    commit=False,
                 )
-                mock_create_tenant.assert_called_once_with("Test User's Workspace")
-                mock_create_member.assert_called_once_with(mock_tenant, mock_account, role="owner")
+                mock_create_tenant.assert_called_once_with("Test User's Workspace", commit=False)
+                mock_create_member.assert_called_once_with(mock_tenant, mock_account, role="owner", commit=False)
                 mock_event.send.assert_called_once_with(mock_tenant)
                 self._assert_database_operations_called(mock_db_dependencies["db"])
 
@@ -1230,7 +1231,7 @@ class TestRegisterService:
                 )
 
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
-            mock_db_dependencies["db"].session.commit.assert_not_called()
+            mock_db_dependencies["db"].session.commit.assert_called_once()
 
     def test_register_still_calls_default_workspace_join_when_workspace_limit_exceeded(
         self, mock_db_dependencies, mock_external_service_dependencies, monkeypatch
@@ -1269,7 +1270,7 @@ class TestRegisterService:
                 )
 
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
-            mock_db_dependencies["db"].session.commit.assert_not_called()
+            mock_db_dependencies["db"].session.commit.assert_called_once()
 
     def test_register_with_oauth(self, mock_db_dependencies, mock_external_service_dependencies):
         """Test account registration with OAuth integration."""
@@ -1312,7 +1313,7 @@ class TestRegisterService:
 
                 # Verify results
                 assert result == mock_account
-                mock_link_account.assert_called_once_with("google", "oauth123", mock_account)
+                mock_link_account.assert_called_once_with("google", "oauth123", mock_account, commit=False)
                 self._assert_database_operations_called(mock_db_dependencies["db"])
 
     def test_register_with_pending_status(self, mock_db_dependencies, mock_external_service_dependencies):
