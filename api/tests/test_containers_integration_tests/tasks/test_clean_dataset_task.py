@@ -954,8 +954,6 @@ class TestCleanDatasetTask:
             status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash_" + "x" * 50,  # Long hash within limits
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
         db_session_with_containers.add(segment)
         db_session_with_containers.commit()

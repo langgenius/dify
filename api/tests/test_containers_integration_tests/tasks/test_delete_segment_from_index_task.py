@@ -227,7 +227,6 @@ class TestDeleteSegmentFromIndexTask:
                 status=SegmentStatus.COMPLETED,
                 created_by=account.id,
                 updated_by=account.id,
-                updated_at=created_at,
             )
 
             db_session_with_containers.add(segment)

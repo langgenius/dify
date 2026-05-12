@@ -791,7 +791,6 @@ class TestDealDatasetVectorIndexTask:
         for i, document in enumerate(documents):
             for j in range(2):
                 segment = DocumentSegment(
-                    id=str(uuid.uuid4()),
                     tenant_id=tenant.id,
                     dataset_id=dataset.id,
                     document_id=document.id,
@@ -817,6 +816,7 @@ class TestDealDatasetVectorIndexTask:
             updated_document = db_session_with_containers.scalar(
                 select(Document).where(Document.id == document.id).limit(1)
             )
+            assert updated_document
             assert updated_document.indexing_status == IndexingStatus.COMPLETED
 
         # Verify index processor load was called multiple times

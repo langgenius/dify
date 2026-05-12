@@ -1,3 +1,4 @@
+from models.enums import SegmentStatus
 import logging
 import time
 
@@ -30,7 +31,7 @@ def disable_segment_from_index_task(segment_id: str):
             logger.info(click.style(f"Segment not found: {segment_id}", fg="red"))
             return
 
-        if segment.status != "completed":
+        if segment.status != SegmentStatus.COMPLETED:
             logger.info(click.style(f"Segment is not completed, disable is not allowed: {segment_id}", fg="red"))
             return
 
@@ -59,6 +60,7 @@ def disable_segment_from_index_task(segment_id: str):
 
             index_type = dataset_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
+            assert segment.index_node_id
             index_processor.clean(dataset, [segment.index_node_id])
 
             # Disable summary index for this segment
