@@ -2,6 +2,58 @@ import { fireEvent, screen } from '@testing-library/react'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import IntegrationsPage from '../integrations-page'
 
+const { mockRouterPush } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+}))
+
+const {
+  mockCanSetPermissions,
+  mockReferenceSetting,
+  mockSetReferenceSettings,
+} = vi.hoisted(() => ({
+  mockCanSetPermissions: vi.fn(() => true),
+  mockReferenceSetting: vi.fn(() => ({
+    permission: {
+      install_permission: 'everyone',
+      debug_permission: 'admins',
+    },
+    auto_upgrade: {},
+  })),
+  mockSetReferenceSettings: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
+
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  default: () => ({
+    referenceSetting: mockReferenceSetting(),
+    canSetPermissions: mockCanSetPermissions(),
+    setReferenceSettings: mockSetReferenceSettings,
+  }),
+}))
+
+vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
+  __esModule: true,
+  default: ({ onHide }: { onHide: () => void }) => (
+    <div data-testid="reference-setting-modal">
+      <button type="button" onClick={onHide}>close</button>
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/plugins/plugin-page/install-plugin-dropdown', () => ({
+  __esModule: true,
+  default: ({ onSwitchToMarketplaceTab }: { onSwitchToMarketplaceTab: () => void }) => (
+    <button type="button" aria-label="plugin install" onClick={onSwitchToMarketplaceTab}>
+      install dropdown
+    </button>
+  ),
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
   __esModule: true,
   default: ({
@@ -48,6 +100,14 @@ const renderIntegrationsPage = (searchParams?: Record<string, string>, section?:
 describe('IntegrationsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCanSetPermissions.mockReturnValue(true)
+    mockReferenceSetting.mockReturnValue({
+      permission: {
+        install_permission: 'everyone',
+        debug_permission: 'admins',
+      },
+      auto_upgrade: {},
+    })
   })
 
   it('defaults to the model provider section when no query is provided', () => {
@@ -119,6 +179,97 @@ describe('IntegrationsPage', () => {
     expect(screen.getByTestId('tool-provider-list')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute('href', '/integrations/tools/mcp')
+  })
+
+  it('renders the tools header for tool sections', () => {
+    renderIntegrationsPage({ section: 'builtin' })
+
+    expect(screen.getAllByText('common.menus.tools')).toHaveLength(2)
+    expect(screen.getByText('common.toolsPage.description')).toBeInTheDocument()
+  })
+
+  it('renders the mcp header for the mcp section', () => {
+    renderIntegrationsPage({ section: 'mcp' })
+
+    expect(screen.getAllByText('MCP')).toHaveLength(2)
+    expect(screen.getByText('common.mcpPage.description')).toBeInTheDocument()
+    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+  })
+
+  it('renders the swagger API header for the custom tool section', () => {
+    renderIntegrationsPage({ section: 'custom-tool' })
+
+    expect(screen.getAllByText('common.settings.swaggerAPIAsTool')).toHaveLength(2)
+    expect(screen.getByText('common.swaggerAPIAsToolPage.description')).toBeInTheDocument()
+    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['workflow-tool', 'workflow.common.workflowAsTool', 'common.workflowAsToolPage.description'],
+    ['api-based-extension', 'common.settings.apiBasedExtension', 'common.apiBasedExtensionPage.description'],
+    ['data-source', 'common.settings.dataSource', 'common.dataSourcePage.description'],
+    ['trigger', 'common.settings.trigger', 'common.triggerPage.description'],
+    ['extension', 'common.settings.extension', 'common.extensionPage.description'],
+    ['agent-strategy', 'common.settings.agentStrategy', 'common.agentStrategyPage.description'],
+  ] as const)('renders the %s header', (section, title, description) => {
+    renderIntegrationsPage({ section })
+
+    expect(screen.getAllByText(title)).toHaveLength(2)
+    expect(screen.getByText(description)).toBeInTheDocument()
+    expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
+  })
+
+  it.each(['extension', 'agent-strategy'] as const)('renders plugin update settings action for %s', (section) => {
+    renderIntegrationsPage({ section })
+
+    expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.strategy.fixOnly.name')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('common.modelProvider.updateSetting'))
+
+    expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
+  })
+
+  it('opens the original plugins marketplace path from the install dropdown marketplace action', () => {
+    renderIntegrationsPage({ section: 'builtin' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'plugin install' }))
+
+    expect(mockRouterPush).toHaveBeenCalledWith('/plugins?tab=discover')
+  })
+
+  it('opens the sidebar plugin permissions quick settings and updates permissions', () => {
+    renderIntegrationsPage({ section: 'provider' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.privilege.permissions' }))
+
+    expect(screen.getByText('plugin.privilege.permissions')).toBeInTheDocument()
+    expect(screen.getByText('plugin.privilege.quickWhoCanInstall')).toBeInTheDocument()
+    expect(screen.getByText('plugin.privilege.quickWhoCanDebug')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.privilege.quickWhoCanInstall: plugin.privilege.noone' }))
+
+    expect(mockSetReferenceSettings).toHaveBeenCalledWith({
+      permission: {
+        install_permission: 'noone',
+        debug_permission: 'admins',
+      },
+      auto_upgrade: {},
+    })
+  })
+
+  it('disables the sidebar plugin permissions quick settings when permission management is unavailable', () => {
+    mockCanSetPermissions.mockReturnValue(false)
+    renderIntegrationsPage({ section: 'provider' })
+
+    const trigger = screen.getByRole('button', { name: 'plugin.privilege.permissions' })
+
+    expect(trigger).toBeDisabled()
+
+    fireEvent.click(trigger)
+
+    expect(screen.queryByText('plugin.privilege.quickWhoCanInstall')).not.toBeInTheDocument()
+    expect(screen.queryByText('plugin.privilege.quickWhoCanDebug')).not.toBeInTheDocument()
   })
 
   it('collapses and expands the integrations sidebar', () => {

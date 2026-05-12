@@ -340,5 +340,13 @@ describe('MCPList', () => {
       const grid = document.querySelector('.grid')
       expect(grid).not.toHaveClass('overflow-hidden')
     })
+
+    it('should use compact content inset when requested by parent layout', () => {
+      render(<MCPList searchText="" contentInset="compact" />)
+
+      const grid = document.querySelector('.grid')
+      expect(grid).toHaveClass('px-6')
+      expect(grid).not.toHaveClass('px-12')
+    })
   })
 })

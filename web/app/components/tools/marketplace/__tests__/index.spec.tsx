@@ -174,6 +174,24 @@ describe('Marketplace', () => {
       const marketplaceLink = screen.getByRole('link', { name: /plugin.marketplace.difyMarketplace/i })
       expect(marketplaceLink).toHaveAttribute('href', 'https://marketplace.test/market')
     })
+
+    it('should use compact content inset when requested by parent layout', () => {
+      const marketplaceContext = createMarketplaceContext()
+      const { container } = render(
+        <Marketplace
+          searchPluginText=""
+          filterPluginTags={[]}
+          isMarketplaceArrowVisible={false}
+          showMarketplacePanel={vi.fn()}
+          marketplaceContext={marketplaceContext}
+          contentInset="compact"
+        />,
+      )
+
+      const sections = container.querySelectorAll('.bg-background-default-subtle')
+      expect(sections[0]).toHaveClass('px-6')
+      expect(sections[1]).toHaveClass('px-6')
+    })
   })
 })
 

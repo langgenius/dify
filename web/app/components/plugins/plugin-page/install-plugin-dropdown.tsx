@@ -1,5 +1,6 @@
 'use client'
 
+import type { ButtonProps } from '@langgenius/dify-ui/button'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -23,6 +24,12 @@ import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
+  popupClassName?: string
+  rootClassName?: string
+  triggerClassName?: string
+  triggerLabel?: string
+  triggerOpenClassName?: string
+  triggerVariant?: ButtonProps['variant']
 }
 
 type InstallMethod = {
@@ -33,6 +40,12 @@ type InstallMethod = {
 
 const InstallPluginDropdown = ({
   onSwitchToMarketplaceTab,
+  popupClassName,
+  rootClassName,
+  triggerClassName,
+  triggerLabel,
+  triggerOpenClassName = 'bg-state-base-hover',
+  triggerVariant,
 }: Props) => {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -112,7 +125,7 @@ const InstallPluginDropdown = ({
 
   return (
     <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen} modal={false}>
-      <div className="relative">
+      <div className={cn('relative', rootClassName)}>
         <input
           type="file"
           ref={fileInputRef}
@@ -123,20 +136,25 @@ const InstallPluginDropdown = ({
         <DropdownMenuTrigger
           render={(
             <Button
-              className={cn('h-full w-full p-2 text-components-button-secondary-text', isMenuOpen && 'bg-state-base-hover')}
+              variant={triggerVariant}
+              className={cn(
+                'h-full w-full p-2',
+                triggerClassName,
+                isMenuOpen && triggerOpenClassName,
+              )}
             />
           )}
         >
           <>
             <RiAddLine className="h-4 w-4" />
-            <span className="pl-1">{t('installPlugin', { ns: 'plugin' })}</span>
+            <span className="pl-1">{triggerLabel ?? t('installPlugin', { ns: 'plugin' })}</span>
             <RiArrowDownSLine className="ml-1 h-4 w-4" />
           </>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={4}
-          popupClassName="w-[200px] pb-2"
+          popupClassName={cn('w-[200px] pb-2', popupClassName)}
         >
           <span className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-3 system-xs-medium-uppercase text-text-tertiary">
             {t('installFrom', { ns: 'plugin' })}

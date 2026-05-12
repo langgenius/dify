@@ -2,12 +2,16 @@ import type {
   ModelProvider,
 } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useMemo } from 'react'
+import { noop } from 'es-toolkit/function'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import SearchInput from '@/app/components/base/search-input'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
+import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
+import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
@@ -34,9 +38,19 @@ type Props = {
 
 const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
 
-const ModelProviderPage = ({ searchText }: Props) => {
+const ModelProviderPage = ({
+  onSearchTextChange,
+  searchText,
+}: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
+  const {
+    referenceSetting,
+    canSetPermissions,
+    setReferenceSettings,
+  } = useReferenceSetting()
+  const [showPluginSettingModal, setShowPluginSettingModal] = useState(false)
+  const [warningDismissed, setWarningDismissed] = useState(false)
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(ModelTypeEnum.rerank)
@@ -132,21 +146,30 @@ const ModelProviderPage = ({ searchText }: Props) => {
 
   return (
     <div className="relative -mt-2 pt-1">
-      <div className={cn('mb-2 flex items-center')}>
-        <div className="grow system-md-semibold text-text-primary">{t('modelProvider.models', { ns: 'common' })}</div>
-        <div className={cn(
-          'relative flex shrink-0 items-center justify-end gap-2 rounded-lg border border-transparent p-px',
-          showWarning && 'border-components-panel-border bg-components-panel-bg-blur pl-2 shadow-xs',
-        )}
-        >
-          {showWarning && <div className="absolute top-0 right-0 bottom-0 left-0 opacity-40" style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
-          {showWarning && (
-            <div className="flex items-center gap-1 system-xs-medium text-text-primary">
-              <span className="i-ri-alert-fill h-4 w-4 text-text-warning-secondary" />
-              <span className="max-w-[460px] truncate" title={t(warningTextKey, { ns: 'common' })}>{t(warningTextKey, { ns: 'common' })}</span>
-            </div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <SearchInput
+          className="w-[200px] shrink-0"
+          placeholder={t('modelProvider.searchModels', { ns: 'common' })}
+          value={searchText}
+          onChange={onSearchTextChange ?? noop}
+        />
+        <div className="flex shrink-0 items-center justify-end gap-2">
+          {canSetPermissions && referenceSetting && (
+            <Button
+              variant="secondary"
+              className="h-8 gap-0.5 px-3 system-sm-medium"
+              onClick={() => setShowPluginSettingModal(true)}
+            >
+              <span aria-hidden className="i-ri-flashlight-line size-4" />
+              <span className="px-0.5">{t('modelProvider.updateSetting', { ns: 'common' })}</span>
+              <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                {t('autoUpdate.strategy.latest.name', { ns: 'plugin' })}
+              </span>
+              <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+            </Button>
           )}
           <SystemModelSelector
+            className="h-8 px-3 system-sm-medium"
             notConfigured={showWarning}
             textGenerationDefaultModel={textGenerationDefaultModel}
             embeddingsDefaultModel={embeddingsDefaultModel}
@@ -157,6 +180,24 @@ const ModelProviderPage = ({ searchText }: Props) => {
           />
         </div>
       </div>
+      {showWarning && !warningDismissed && (
+        <div className="fixed top-2 right-2 z-50 p-2">
+          <div className="flex items-center gap-2 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 shadow-xs backdrop-blur-[5px]">
+            <span aria-hidden className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
+            <span className="shrink-0 system-xs-medium whitespace-nowrap text-text-primary" title={t(warningTextKey, { ns: 'common' })}>
+              {t(warningTextKey, { ns: 'common' })}
+            </span>
+            <button
+              type="button"
+              className="flex size-4 shrink-0 items-center justify-center text-text-tertiary hover:text-text-secondary"
+              aria-label={t('operation.close', { ns: 'common' })}
+              onClick={() => setWarningDismissed(true)}
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </button>
+          </div>
+        </div>
+      )}
       {IS_CLOUD_EDITION && <QuotaPanel providers={providers} />}
       {!filteredConfiguredProviders?.length && (
         <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
@@ -201,6 +242,13 @@ const ModelProviderPage = ({ searchText }: Props) => {
           />
         )
       }
+      {showPluginSettingModal && referenceSetting && (
+        <ReferenceSettingModal
+          payload={referenceSetting}
+          onHide={() => setShowPluginSettingModal(false)}
+          onSave={setReferenceSettings}
+        />
+      )}
     </div>
   )
 }

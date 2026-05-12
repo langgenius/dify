@@ -1,16 +1,19 @@
 'use client'
+import type { ToolsContentInset } from '../content-inset'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo, useState } from 'react'
 import {
   useAllToolProviders,
 } from '@/service/use-tools'
+import { toolsContentInsetClassNames } from '../content-inset'
 import NewMCPCard from './create-card'
 import MCPDetailPanel from './detail/provider-detail'
 import MCPCard from './provider-card'
 
 type Props = {
   searchText: string
+  contentInset?: ToolsContentInset
 }
 
 function renderDefaultCard() {
@@ -34,6 +37,7 @@ function renderDefaultCard() {
 
 const MCPList = ({
   searchText,
+  contentInset = 'default',
 }: Props) => {
   const { data: list = [] as ToolWithProvider[], refetch } = useAllToolProviders()
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
@@ -63,11 +67,13 @@ const MCPList = ({
     setCurrentProviderID(providerID)
     setIsTriggerAuthorize(true)
   }
+  const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   return (
     <>
       <div
         className={cn(
-          'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pt-2 pb-4 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+          'relative grid shrink-0 grid-cols-1 content-start gap-4 pt-2 pb-4 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+          contentPaddingClassName,
           !list.length && 'h-[calc(100vh-136px)] overflow-hidden',
         )}
       >

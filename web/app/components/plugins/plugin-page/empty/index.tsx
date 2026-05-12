@@ -1,9 +1,11 @@
 'use client'
+import type { PluginPageContentInset } from '../content-inset'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
@@ -15,6 +17,7 @@ import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import Line from '../../marketplace/empty/line'
+import { pluginPageContentInsetClassNames } from '../content-inset'
 import { usePluginPageContext } from '../context'
 
 type InstallMethod = {
@@ -23,7 +26,13 @@ type InstallMethod = {
   action: string
 }
 
-const Empty = () => {
+type EmptyProps = {
+  contentInset?: PluginPageContentInset
+}
+
+const Empty = ({
+  contentInset = 'default',
+}: EmptyProps) => {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
@@ -55,26 +64,24 @@ const Empty = () => {
       return t('list.notFound', { ns: 'plugin' })
   }, [pluginList?.plugins.length, t, filters.categories.length, filters.tags.length, filters.searchQuery])
 
-  const [installMethods, setInstallMethods] = useState<InstallMethod[]>([])
-  useEffect(() => {
-    const methods = []
+  const installMethods = useMemo<InstallMethod[]>(() => {
+    const methods: InstallMethod[] = []
     if (enable_marketplace)
       methods.push({ icon: MagicBox, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
 
-    if (plugin_installation_permission.restrict_to_marketplace_only) {
-      setInstallMethods(methods)
-    }
-    else {
-      methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
-      methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
-      setInstallMethods(methods)
-    }
+    if (plugin_installation_permission.restrict_to_marketplace_only)
+      return methods
+
+    methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
+    methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
+    return methods
   }, [plugin_installation_permission, enable_marketplace, t])
+  const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
 
   return (
     <div className="relative z-0 w-full grow">
       {/* skeleton */}
-      <div className="absolute top-0 z-10 grid h-full w-full grid-cols-2 gap-2 overflow-hidden px-12">
+      <div className={cn('absolute top-0 z-10 grid h-full w-full grid-cols-2 gap-2 overflow-hidden', contentPaddingClassName)}>
         {Array.from({ length: 20 }).fill(0).map((_, i) => (
           <div key={i} className="h-24 rounded-xl bg-components-card-bg" />
         ))}

@@ -9,11 +9,13 @@ import PluginCategoryPage from './plugin-category-page'
 import ToolProviderList from './provider-list'
 
 type IntegrationSectionRendererProps = {
+  onProviderSearchTextChange: (value: string) => void
   providerSearchText: string
   section: IntegrationSection
 }
 
 const IntegrationSectionRenderer = ({
+  onProviderSearchTextChange,
   providerSearchText,
   section,
 }: IntegrationSectionRendererProps) => {
@@ -21,17 +23,20 @@ const IntegrationSectionRenderer = ({
     case 'provider':
       return (
         <div className="px-6 pt-6">
-          <ModelProviderPage searchText={providerSearchText} />
+          <ModelProviderPage
+            searchText={providerSearchText}
+            onSearchTextChange={onProviderSearchTextChange}
+          />
         </div>
       )
     case 'builtin':
-      return <ToolProviderList category="builtin" />
+      return <ToolProviderList category="builtin" contentInset="compact" />
     case 'mcp':
-      return <ToolProviderList category="mcp" />
+      return <ToolProviderList category="mcp" contentInset="compact" />
     case 'custom-tool':
-      return <ToolProviderList category="api" />
+      return <ToolProviderList category="api" contentInset="compact" />
     case 'workflow-tool':
-      return <ToolProviderList category="workflow" />
+      return <ToolProviderList category="workflow" contentInset="compact" />
     case 'data-source':
       return (
         <div className="px-6 pt-6">

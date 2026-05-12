@@ -21,7 +21,7 @@ const PluginCategoryPage = ({
   return (
     <PluginPageContextProvider key={category} initialFilters={initialFilters}>
       <div className="flex h-0 grow flex-col overflow-hidden bg-background-body">
-        <PluginsPanel />
+        <PluginsPanel contentInset="compact" />
       </div>
     </PluginPageContextProvider>
   )

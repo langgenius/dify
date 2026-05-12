@@ -66,7 +66,7 @@ vi.mock('../filter-management', () => ({
 }))
 
 vi.mock('../empty', () => ({
-  default: () => <div data-testid="empty-state">empty</div>,
+  default: ({ contentInset }: { contentInset?: string }) => <div data-testid="empty-state" data-content-inset={contentInset}>empty</div>,
 }))
 
 vi.mock('../list', () => ({
@@ -146,6 +146,20 @@ describe('PluginsPanel', () => {
     render(<PluginsPanel />)
 
     expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('uses default content inset for the standalone plugins page', () => {
+    render(<PluginsPanel />)
+
+    expect(screen.getByTestId('filter-management').parentElement).toHaveClass('px-12')
+    expect(screen.getByTestId('empty-state')).toHaveAttribute('data-content-inset', 'default')
+  })
+
+  it('uses compact content inset for integrations plugin categories', () => {
+    render(<PluginsPanel contentInset="compact" />)
+
+    expect(screen.getByTestId('filter-management').parentElement).toHaveClass('px-6')
+    expect(screen.getByTestId('empty-state')).toHaveAttribute('data-content-inset', 'compact')
   })
 
   it('filters the list and exposes the load-more action', () => {

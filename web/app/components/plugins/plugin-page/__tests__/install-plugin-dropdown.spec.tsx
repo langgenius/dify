@@ -39,9 +39,13 @@ vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
   MagicBox: () => <span data-testid="magic-box-icon">magic</span>,
 }))
 
+type MockButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: string
+}
+
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type="button" data-testid="button-content" className={className} onClick={onClick} {...props}>{children}</button>
+  Button: ({ children, onClick, className, variant, ...props }: MockButtonProps) => (
+    <button type="button" data-testid="button-content" data-variant={variant} className={className} onClick={onClick} {...props}>{children}</button>
   ),
 }))
 
@@ -97,9 +101,11 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
     },
     DropdownMenuContent: ({
       children,
+      popupClassName,
     }: {
       children: React.ReactNode
-    }) => portalOpen ? <div data-testid="dropdown-content">{children}</div> : null,
+      popupClassName?: string
+    }) => portalOpen ? <div data-testid="dropdown-content" className={popupClassName}>{children}</div> : null,
     DropdownMenuItem: ({
       children,
       onClick,
@@ -165,6 +171,32 @@ describe('InstallPluginDropdown', () => {
     expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
+  })
+
+  it('applies custom trigger label and presentation props', () => {
+    const { container } = render(
+      <InstallPluginDropdown
+        onSwitchToMarketplaceTab={vi.fn()}
+        rootClassName="custom-root"
+        triggerClassName="custom-trigger"
+        triggerLabel="Install"
+        triggerOpenClassName="custom-open"
+        triggerVariant="primary"
+        popupClassName="custom-popup"
+      />,
+    )
+
+    const trigger = screen.getByTestId('dropdown-trigger')
+
+    expect(container.querySelector('.custom-root')).toBeInTheDocument()
+    expect(trigger).toHaveTextContent('Install')
+    expect(trigger).toHaveClass('custom-trigger')
+    expect(trigger).toHaveAttribute('data-variant', 'primary')
+
+    fireEvent.click(trigger)
+
+    expect(trigger).toHaveClass('custom-open')
+    expect(screen.getByTestId('dropdown-content')).toHaveClass('custom-popup')
   })
 
   it('shows only marketplace when installation is restricted', () => {

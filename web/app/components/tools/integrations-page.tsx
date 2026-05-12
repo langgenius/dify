@@ -1,11 +1,18 @@
 'use client'
 
+import type { Permissions, ReferenceSetting } from '@/app/components/plugins/types'
 import type { IntegrationSection } from '@/app/components/tools/integration-routes'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatasourceIcon from '@/app/components/base/icons/src/vender/workflow/Datasource'
+import InstallPluginDropdown from '@/app/components/plugins/plugin-page/install-plugin-dropdown'
+import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
+import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
+import { PermissionType } from '@/app/components/plugins/types'
 import {
   buildIntegrationPath,
   INTEGRATION_SECTION_VALUES,
@@ -14,6 +21,7 @@ import {
   toolCategoryBySection,
 } from '@/app/components/tools/integration-routes'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import IntegrationSectionRenderer from './integration-section-renderer'
 
 type IconComponent = typeof DatasourceIcon
@@ -28,6 +36,85 @@ type NavItem = {
   iconClassName?: string
   label: string
   section?: IntegrationSection
+}
+
+type PermissionSettingKey = keyof Permissions
+
+const permissionSettingOptions = [
+  PermissionType.everyone,
+  PermissionType.admin,
+  PermissionType.noOne,
+] as const
+
+const PermissionQuickPanel = ({
+  permission,
+  onChange,
+}: {
+  permission: Permissions
+  onChange: (key: PermissionSettingKey, value: PermissionType) => void
+}) => {
+  const { t } = useTranslation()
+  const rows: Array<{
+    key: PermissionSettingKey
+    label: string
+    value: PermissionType
+  }> = [
+    {
+      key: 'install_permission',
+      label: t('privilege.quickWhoCanInstall', { ns: 'plugin' }),
+      value: permission.install_permission || PermissionType.noOne,
+    },
+    {
+      key: 'debug_permission',
+      label: t('privilege.quickWhoCanDebug', { ns: 'plugin' }),
+      value: permission.debug_permission || PermissionType.noOne,
+    },
+  ]
+
+  return (
+    <div className="w-[249px] overflow-hidden rounded-2xl border-t border-components-panel-border bg-components-panel-bg shadow-xl">
+      <div className="border-b-[0.5px] border-black/5 py-2">
+        <div className="flex flex-col gap-1 px-1 pt-0.5 pb-1">
+          <div className="px-3 pt-1 pb-0.5 system-sm-semibold-uppercase text-text-secondary">
+            {t('privilege.permissions', { ns: 'plugin' })}
+          </div>
+          {rows.map(row => (
+            <div key={row.key} className="flex flex-col gap-0.5 px-3 py-1">
+              <div className="flex min-h-6 items-center system-sm-semibold whitespace-nowrap text-text-secondary">
+                {row.label}
+              </div>
+              <div
+                role="group"
+                aria-label={row.label}
+                className="inline-flex w-fit items-center gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5"
+              >
+                {permissionSettingOptions.map((option) => {
+                  const selected = row.value === option
+                  const optionLabel = t(`privilege.${option}`, { ns: 'plugin' })
+
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={selected}
+                      aria-label={`${row.label}: ${optionLabel}`}
+                      className={cn(
+                        'flex h-7 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium whitespace-nowrap text-text-secondary transition-colors hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+                        selected && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-accent-light-mode-only shadow-xs shadow-shadow-shadow-3 hover:bg-components-segmented-control-item-active-bg hover:text-text-accent-light-mode-only',
+                      )}
+                      onClick={() => onChange(row.key, option)}
+                    >
+                      <span className="px-0.5 py-0.5">{optionLabel}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const navItemClassName = 'flex h-8 w-full items-center gap-2 rounded-lg py-1 pr-1 pl-3 text-left system-sm-medium transition-colors'
@@ -106,11 +193,18 @@ export default function IntegrationsPage({
   section: routeSection,
 }: IntegrationsPageProps) {
   const { t } = useTranslation()
+  const router = useRouter()
+  const {
+    referenceSetting,
+    canSetPermissions,
+    setReferenceSettings,
+  } = useReferenceSetting()
   const [sectionParam] = useQueryState('section', parseAsIntegrationSection)
   const [categoryParam] = useQueryState('category', parseAsToolCategory)
   const section = routeSection ?? sectionParam ?? (categoryParam ? sectionByToolCategory[categoryParam] : 'provider')
-  const providerSearchText = ''
+  const [providerSearchText, setProviderSearchText] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [showPluginSettingModal, setShowPluginSettingModal] = useState(false)
   const providerItem = useMemo<NavItem>(() => ({
     section: 'provider',
     label: t('settings.provider', { ns: 'common' }),
@@ -173,6 +267,71 @@ export default function IntegrationsPage({
   const isToolSection = Boolean(toolCategoryBySection[section])
   const isPluginCategorySection = section === 'trigger' || section === 'agent-strategy' || section === 'extension'
   const useFillLayout = isToolSection || isPluginCategorySection
+  const integrationHeader = useMemo(() => {
+    switch (section) {
+      case 'builtin':
+        return {
+          title: t('menus.tools', { ns: 'common' }),
+          description: t('toolsPage.description', { ns: 'common' }),
+        }
+      case 'mcp':
+        return {
+          title: 'MCP',
+          description: t('mcpPage.description', { ns: 'common' }),
+        }
+      case 'custom-tool':
+        return {
+          title: t('settings.swaggerAPIAsTool', { ns: 'common' }),
+          description: t('swaggerAPIAsToolPage.description', { ns: 'common' }),
+        }
+      case 'workflow-tool':
+        return {
+          title: t('common.workflowAsTool', { ns: 'workflow' }),
+          description: t('workflowAsToolPage.description', { ns: 'common' }),
+        }
+      case 'api-based-extension':
+        return {
+          title: t('settings.apiBasedExtension', { ns: 'common' }),
+          description: t('apiBasedExtensionPage.description', { ns: 'common' }),
+        }
+      case 'data-source':
+        return {
+          title: t('settings.dataSource', { ns: 'common' }),
+          description: t('dataSourcePage.description', { ns: 'common' }),
+        }
+      case 'trigger':
+        return {
+          title: t('settings.trigger', { ns: 'common' }),
+          description: t('triggerPage.description', { ns: 'common' }),
+        }
+      case 'extension':
+        return {
+          title: t('settings.extension', { ns: 'common' }),
+          description: t('extensionPage.description', { ns: 'common' }),
+        }
+      case 'agent-strategy':
+        return {
+          title: t('settings.agentStrategy', { ns: 'common' }),
+          description: t('agentStrategyPage.description', { ns: 'common' }),
+        }
+      default:
+        return null
+    }
+  }, [section, t])
+  const showHeaderPluginSetting = (section === 'extension' || section === 'agent-strategy') && canSetPermissions && !!referenceSetting
+  const showPermissionQuickPanel = canSetPermissions && !!referenceSetting
+  const handlePermissionChange = (key: PermissionSettingKey, value: PermissionType) => {
+    if (!referenceSetting)
+      return
+
+    setReferenceSettings({
+      ...referenceSetting,
+      permission: {
+        ...referenceSetting.permission,
+        [key]: value,
+      },
+    } satisfies ReferenceSetting)
+  }
 
   return (
     <div className="flex h-full min-h-0 bg-background-body">
@@ -214,25 +373,45 @@ export default function IntegrationsPage({
           </div>
           {!sidebarCollapsed && (
             <div className="mt-6 flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                disabled
-                className="flex h-8 min-w-0 flex-1 cursor-not-allowed items-center justify-center gap-0.5 rounded-lg border-[0.5px] border-components-button-primary-border bg-components-button-primary-bg px-2 system-sm-medium text-components-button-primary-text opacity-60 shadow-xs"
-                title={t('installAction', { ns: 'plugin' })}
-              >
-                <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                <span className="min-w-0 truncate pl-1">{t('installAction', { ns: 'plugin' })}</span>
-                <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
-              </button>
-              <button
-                type="button"
-                disabled
-                className="flex size-8 shrink-0 cursor-not-allowed items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text opacity-60 shadow-xs"
-                aria-label={t('settings.filter', { ns: 'common' })}
-                title={t('settings.filter', { ns: 'common' })}
-              >
-                <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-              </button>
+              <InstallPluginDropdown
+                rootClassName="min-w-0 flex-1"
+                triggerVariant="primary"
+                triggerClassName="h-8 min-w-0 gap-0.5 p-2 system-sm-medium"
+                triggerLabel={t('installAction', { ns: 'plugin' })}
+                triggerOpenClassName="bg-components-button-primary-bg-hover"
+                popupClassName="w-[240px] rounded-2xl py-2 shadow-xl"
+                onSwitchToMarketplaceTab={() => router.push('/plugins?tab=discover')}
+              />
+              <Popover>
+                <PopoverTrigger
+                  render={(
+                    <button
+                      type="button"
+                      disabled={!showPermissionQuickPanel}
+                      className={cn(
+                        'flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs transition-colors hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+                        !showPermissionQuickPanel && 'cursor-not-allowed opacity-60 hover:bg-components-button-secondary-bg hover:text-components-button-secondary-text',
+                      )}
+                      aria-label={t('privilege.permissions', { ns: 'plugin' })}
+                      title={t('privilege.permissions', { ns: 'plugin' })}
+                    >
+                      <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+                    </button>
+                  )}
+                />
+                {showPermissionQuickPanel && (
+                  <PopoverContent
+                    placement="bottom-start"
+                    sideOffset={4}
+                    popupClassName="border-0 bg-transparent p-0 shadow-none"
+                  >
+                    <PermissionQuickPanel
+                      permission={referenceSetting.permission}
+                      onChange={handlePermissionChange}
+                    />
+                  </PopoverContent>
+                )}
+              </Popover>
             </div>
           )}
           <nav className="mt-6 shrink-0 space-y-0.5">
@@ -254,7 +433,6 @@ export default function IntegrationsPage({
                 {!sidebarCollapsed && (
                   <>
                     <span className="min-w-0 flex-1 truncate">{t('menus.tools', { ns: 'common' })}</span>
-                    <span aria-hidden className="i-ri-arrow-down-s-fill size-4 shrink-0" />
                   </>
                 )}
               </Link>
@@ -311,7 +489,35 @@ export default function IntegrationsPage({
         )}
       </aside>
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {!isToolSection && (
+        {integrationHeader && (
+          <div className="flex min-h-14 shrink-0 items-start border-b border-divider-subtle px-6 pt-2 pb-2">
+            <div className="flex min-w-0 flex-1 items-end justify-between gap-3">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <div className="system-xl-semibold text-text-primary">
+                  {integrationHeader.title}
+                </div>
+                <div className="system-sm-regular text-text-tertiary">
+                  {integrationHeader.description}
+                </div>
+              </div>
+              {showHeaderPluginSetting && (
+                <Button
+                  variant="secondary"
+                  className="h-8 shrink-0 gap-0.5 px-3 system-sm-medium"
+                  onClick={() => setShowPluginSettingModal(true)}
+                >
+                  <span aria-hidden className="i-ri-flashlight-line size-4" />
+                  <span className="px-0.5">{t('modelProvider.updateSetting', { ns: 'common' })}</span>
+                  <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                    {t('autoUpdate.strategy.fixOnly.name', { ns: 'plugin' })}
+                  </span>
+                  <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {!integrationHeader && !isToolSection && (
           <div className="flex min-h-14 shrink-0 items-center justify-between border-b border-divider-subtle px-6 py-2">
             <div>
               <div className="system-xl-semibold text-text-primary">{activeItem?.label}</div>
@@ -331,9 +537,17 @@ export default function IntegrationsPage({
           <IntegrationSectionRenderer
             section={section}
             providerSearchText={providerSearchText}
+            onProviderSearchTextChange={setProviderSearchText}
           />
         </div>
       </section>
+      {showPluginSettingModal && referenceSetting && (
+        <ReferenceSettingModal
+          payload={referenceSetting}
+          onHide={() => setShowPluginSettingModal(false)}
+          onSave={setReferenceSettings}
+        />
+      )}
     </div>
   )
 }

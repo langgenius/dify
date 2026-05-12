@@ -7,16 +7,6 @@ import { ToolTypeEnum } from '../../workflow/block-selector/types'
 import ProviderList from '../provider-list'
 import { getToolType } from '../utils'
 
-const { mockRouterPush } = vi.hoisted(() => ({
-  mockRouterPush: vi.fn(),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockRouterPush,
-  }),
-}))
-
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     tags: [],
@@ -169,11 +159,12 @@ vi.mock('@/app/components/plugins/marketplace/empty', () => ({
 
 const mockHandleScroll = vi.fn()
 vi.mock('../marketplace', () => ({
-  default: ({ showMarketplacePanel, isMarketplaceArrowVisible }: {
+  default: ({ showMarketplacePanel, isMarketplaceArrowVisible, contentInset }: {
     showMarketplacePanel: () => void
     isMarketplaceArrowVisible: boolean
+    contentInset?: string
   }) => (
-    <div data-testid="marketplace">
+    <div data-testid="marketplace" data-content-inset={contentInset}>
       <button data-testid="marketplace-arrow" onClick={showMarketplacePanel}>
         {isMarketplaceArrowVisible ? 'arrow-visible' : 'arrow-hidden'}
       </button>
@@ -193,8 +184,8 @@ vi.mock('../marketplace/hooks', () => ({
 }))
 
 vi.mock('../mcp', () => ({
-  default: ({ searchText }: { searchText: string }) => (
-    <div data-testid="mcp-list">
+  default: ({ searchText, contentInset }: { searchText: string, contentInset?: string }) => (
+    <div data-testid="mcp-list" data-content-inset={contentInset}>
       MCP List:
       {searchText}
     </div>
@@ -213,7 +204,11 @@ describe('getToolType', () => {
   })
 })
 
-const renderProviderList = (searchParams?: Record<string, string>, category?: ComponentProps<typeof ProviderList>['category']) => {
+const renderProviderList = (
+  searchParams?: Record<string, string>,
+  category?: ComponentProps<typeof ProviderList>['category'],
+  contentInset?: ComponentProps<typeof ProviderList>['contentInset'],
+) => {
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
     systemFeatures: { enable_marketplace: mockEnableMarketplace },
   })
@@ -221,7 +216,7 @@ const renderProviderList = (searchParams?: Record<string, string>, category?: Co
     <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
   )
   return renderWithNuqs(
-    <Wrapped><ProviderList category={category} /></Wrapped>,
+    <Wrapped><ProviderList category={category} contentInset={contentInset} /></Wrapped>,
     { searchParams },
   )
 }
@@ -254,14 +249,14 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('custom-create-card')).toBeInTheDocument()
     })
 
-    it('uses canonical integration routes when controlled by route category', () => {
-      renderProviderList(undefined, 'mcp')
+    it('hides category tabs when controlled by route category', () => {
+      renderProviderList(undefined, 'builtin')
 
-      expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByText('tools.type.workflow'))
-
-      expect(mockRouterPush).toHaveBeenCalledWith('/integrations/tools/workflow')
+      expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
+      expect(screen.queryByText('tools.type.builtIn')).not.toBeInTheDocument()
+      expect(screen.queryByText('tools.type.custom')).not.toBeInTheDocument()
+      expect(screen.queryByText('tools.type.workflow')).not.toBeInTheDocument()
+      expect(screen.queryByText('MCP')).not.toBeInTheDocument()
     })
 
     it('resets current provider when switching to a different tab', () => {
@@ -278,6 +273,22 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('provider-detail')).toBeInTheDocument()
       fireEvent.click(screen.getByText('tools.type.builtIn'))
       expect(screen.getByTestId('provider-detail')).toBeInTheDocument()
+    })
+  })
+
+  describe('Layout', () => {
+    it('uses default content inset outside compact integrations layout', () => {
+      const { container } = renderProviderList()
+
+      expect(container.querySelector('.sticky')).toHaveClass('px-12')
+      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-12')
+    })
+
+    it('uses compact content inset when rendered by integrations layout', () => {
+      const { container } = renderProviderList(undefined, 'builtin', 'compact')
+
+      expect(container.querySelector('.sticky')).toHaveClass('px-6')
+      expect(screen.getByTestId('card-google-search').closest('.grid')).toHaveClass('px-6')
     })
   })
 
@@ -302,6 +313,14 @@ describe('ProviderList', () => {
       fireEvent.change(input, { target: { value: 'Google' } })
       expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
       expect(screen.queryByTestId('card-weather-tool')).not.toBeInTheDocument()
+    })
+
+    it('filters search within the current route category', () => {
+      renderProviderList(undefined, 'builtin')
+      const input = screen.getByRole('textbox')
+      fireEvent.change(input, { target: { value: 'My API' } })
+      expect(screen.queryByTestId('card-my-api')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('card-google-search')).not.toBeInTheDocument()
     })
 
     it('filters collections by tag', () => {
@@ -396,6 +415,12 @@ describe('ProviderList', () => {
       renderProviderList({ category: 'mcp' })
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
     })
+
+    it('passes compact content inset to MCPList when rendered by integrations layout', () => {
+      renderProviderList(undefined, 'mcp', 'compact')
+
+      expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-content-inset', 'compact')
+    })
   })
 
   describe('Provider Detail', () => {
@@ -453,6 +478,13 @@ describe('ProviderList', () => {
       mockEnableMarketplace = true
       renderProviderList()
       expect(screen.getByTestId('marketplace')).toBeInTheDocument()
+    })
+
+    it('passes compact content inset to marketplace when rendered by integrations layout', () => {
+      mockEnableMarketplace = true
+      renderProviderList(undefined, 'builtin', 'compact')
+
+      expect(screen.getByTestId('marketplace')).toHaveAttribute('data-content-inset', 'compact')
     })
 
     it('does not show marketplace when enable_marketplace is false', () => {

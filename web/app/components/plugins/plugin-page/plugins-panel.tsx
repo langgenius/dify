@@ -1,7 +1,9 @@
 'use client'
 import type { PluginDetail } from '../types'
+import type { PluginPageContentInset } from './content-inset'
 import type { FilterState } from './filter-management'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useDebounceFn } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +13,7 @@ import { useGetLanguage } from '@/context/i18n'
 import { renderI18nObject } from '@/i18n-config'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { usePluginsWithLatestVersion } from '../hooks'
+import { pluginPageContentInsetClassNames } from './content-inset'
 import { usePluginPageContext } from './context'
 import Empty from './empty'
 import FilterManagement from './filter-management'
@@ -41,7 +44,13 @@ const matchesSearchQuery = (plugin: PluginDetail & { latest_version: string }, q
   return false
 }
 
-const PluginsPanel = () => {
+type PluginsPanelProps = {
+  contentInset?: PluginPageContentInset
+}
+
+const PluginsPanel = ({
+  contentInset = 'default',
+}: PluginsPanelProps) => {
   const { t } = useTranslation()
   const locale = useGetLanguage()
   const filters = usePluginPageContext(v => v.filters) as FilterState
@@ -74,10 +83,11 @@ const PluginsPanel = () => {
   }, [currentPluginID, pluginListWithLatestVersion])
 
   const handleHide = () => setCurrentPluginID(undefined)
+  const contentPaddingClassName = pluginPageContentInsetClassNames[contentInset]
 
   return (
     <>
-      <div className="flex flex-col items-start justify-center gap-3 self-stretch px-12 pt-1 pb-3">
+      <div className={cn('flex flex-col items-start justify-center gap-3 self-stretch pt-1 pb-3', contentPaddingClassName)}>
         <div className="h-px self-stretch bg-divider-subtle"></div>
         <FilterManagement
           onFilterChange={handleFilterChange}
@@ -88,7 +98,7 @@ const PluginsPanel = () => {
         <>
           {(filteredList?.length ?? 0) > 0
             ? (
-                <div className="flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto px-12">
+                <div className={cn('flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto', contentPaddingClassName)}>
                   <div className="w-full">
                     <List pluginList={filteredList || []} />
                   </div>
@@ -106,7 +116,7 @@ const PluginsPanel = () => {
                 </div>
               )
             : (
-                <Empty />
+                <Empty contentInset={contentInset} />
               )}
         </>
       )}

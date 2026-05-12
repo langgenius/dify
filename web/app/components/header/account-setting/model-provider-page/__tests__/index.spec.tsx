@@ -1,4 +1,4 @@
-import { act, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
@@ -7,6 +7,10 @@ import {
   QuotaUnitEnum,
 } from '../declarations'
 import ModelProviderPage from '../index'
+
+const { mockSetReferenceSettings } = vi.hoisted(() => ({
+  mockSetReferenceSettings: vi.fn(),
+}))
 
 const mockQuotaConfig = {
   quota_type: CurrentSystemQuotaTypeEnum.free,
@@ -83,6 +87,22 @@ vi.mock('../system-model-selector', () => ({
   default: () => <div data-testid="system-model-selector" />,
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  default: () => ({
+    referenceSetting: { permission: {}, auto_upgrade: {} },
+    canSetPermissions: true,
+    setReferenceSettings: mockSetReferenceSettings,
+  }),
+}))
+
+vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
+  default: ({ onHide }: { onHide: () => void }) => (
+    <div data-testid="reference-setting-modal">
+      <button type="button" onClick={onHide}>close</button>
+    </div>
+  ),
+}))
+
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
   const originalPlugins = actual.consoleQuery.plugins as unknown as Record<string, unknown>
@@ -147,9 +167,18 @@ describe('ModelProviderPage', () => {
 
   it('should render main elements', () => {
     renderModelProviderPage()
-    expect(screen.getByText('common.modelProvider.models')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('common.modelProvider.searchModels')).toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.updateSetting')).toBeInTheDocument()
     expect(screen.getByTestId('system-model-selector')).toBeInTheDocument()
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
+  })
+
+  it('should open plugin reference settings from the update setting button', () => {
+    renderModelProviderPage()
+
+    fireEvent.click(screen.getByText('common.modelProvider.updateSetting'))
+
+    expect(screen.getByTestId('reference-setting-modal')).toBeInTheDocument()
   })
 
   it('should render configured and not configured providers sections', () => {

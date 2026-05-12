@@ -1,5 +1,7 @@
 'use client'
+import type { ToolsContentInset } from './content-inset'
 import type { Collection } from './types'
+import type { Plugin } from '@/app/components/plugins/types'
 import type { ToolCategory } from '@/app/components/tools/integration-routes'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -13,15 +15,15 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
-import { buildIntegrationPath, sectionByToolCategory, TOOL_CATEGORY_VALUES } from '@/app/components/tools/integration-routes'
+import { TOOL_CATEGORY_VALUES } from '@/app/components/tools/integration-routes'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
-import { useRouter } from '@/next/navigation'
 import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
+import { toolsContentInsetClassNames } from './content-inset'
 import Marketplace from './marketplace'
 import { useMarketplace } from './marketplace/hooks'
 import MCPList from './mcp'
@@ -38,15 +40,16 @@ const parseAsToolProviderCategory = parseAsStringLiteral(TOOL_CATEGORY_VALUES)
 
 type ProviderListProps = {
   category?: ToolCategory
+  contentInset?: ToolsContentInset
 }
 
 const ProviderList = ({
   category,
+  contentInset = 'default',
 }: ProviderListProps) => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
   const { t } = useTranslation()
-  const router = useRouter()
   const { getTagLabel } = useTags()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -56,6 +59,8 @@ const ProviderList = ({
 
   const [categoryParam, setCategoryParam] = useQueryState('category', parseAsToolProviderCategory)
   const activeTab = category ?? categoryParam
+  const isRouteCategory = !!category
+  const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
     { value: 'api', text: t('type.custom', { ns: 'tools' }) },
@@ -138,26 +143,27 @@ const ProviderList = ({
           ref={containerRef}
           className="relative flex grow flex-col overflow-y-auto bg-background-body"
         >
-          <div className={cn(
-            'sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-4 pb-2 leading-[56px]',
-            currentProviderId && 'pr-6',
-          )}
+          <div
+            className={cn(
+              'sticky top-0 z-10 flex flex-wrap items-center justify-start gap-x-4 gap-y-2 bg-background-body pt-4 pb-2',
+              contentPaddingClassName,
+              currentProviderId && 'pr-6',
+            )}
           >
-            <TabSliderNew
-              value={activeTab}
-              onChange={(state) => {
-                if (!isToolProviderCategory(state))
-                  return
-                if (category)
-                  router.push(buildIntegrationPath(sectionByToolCategory[state]))
-                else
+            {!isRouteCategory && (
+              <TabSliderNew
+                value={activeTab}
+                onChange={(state) => {
+                  if (!isToolProviderCategory(state))
+                    return
                   setCategoryParam(state)
 
-                if (state !== activeTab)
-                  setCurrentProviderId(undefined)
-              }}
-              options={options}
-            />
+                  if (state !== activeTab)
+                    setCurrentProviderId(undefined)
+                }}
+                options={options}
+              />
+            )}
             <div className="flex items-center gap-2">
               {activeTab !== 'mcp' && (
                 <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
@@ -173,10 +179,12 @@ const ProviderList = ({
             </div>
           </div>
           {activeTab !== 'mcp' && (
-            <div className={cn(
-              'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
-              !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
-            )}
+            <div
+              className={cn(
+                'relative grid shrink-0 grid-cols-1 content-start gap-4 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+                contentPaddingClassName,
+                !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
+              )}
             >
               {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
               {filteredCollectionList.map(collection => (
@@ -195,7 +203,7 @@ const ProviderList = ({
                       brief: collection.description,
                       org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
                       name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
-                    } as any}
+                    } as unknown as Plugin}
                     footer={(
                       <CardMoreInfo
                         tags={collection.labels?.map(label => getTagLabel(label)) || []}
@@ -208,7 +216,7 @@ const ProviderList = ({
             </div>
           )}
           {!filteredCollectionList.length && activeTab === 'builtin' && (
-            <Empty lightCard text={t('noTools', { ns: 'tools' })} className="h-[224px] shrink-0 px-12" />
+            <Empty lightCard text={t('noTools', { ns: 'tools' })} className={cn('h-[224px] shrink-0', contentPaddingClassName)} />
           )}
           <div ref={toolListTailRef} />
           {enable_marketplace && activeTab === 'builtin' && (
@@ -218,10 +226,11 @@ const ProviderList = ({
               isMarketplaceArrowVisible={isMarketplaceArrowVisible}
               showMarketplacePanel={showMarketplacePanel}
               marketplaceContext={marketplaceContext}
+              contentInset={contentInset}
             />
           )}
           {activeTab === 'mcp' && (
-            <MCPList searchText={keywords} />
+            <MCPList searchText={keywords} contentInset={contentInset} />
           )}
         </div>
       </div>

@@ -1,14 +1,17 @@
+import type { ToolsContentInset } from '../content-inset'
 import type { useMarketplace } from './hooks'
+import { useLocale } from '#i18n'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightUpLine,
   RiArrowUpDoubleLine,
 } from '@remixicon/react'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import { getMarketplaceUrl } from '@/utils/var'
+import { toolsContentInsetClassNames } from '../content-inset'
 
 type MarketplaceProps = {
   searchPluginText: string
@@ -16,6 +19,7 @@ type MarketplaceProps = {
   isMarketplaceArrowVisible: boolean
   showMarketplacePanel: () => void
   marketplaceContext: ReturnType<typeof useMarketplace>
+  contentInset?: ToolsContentInset
 }
 const Marketplace = ({
   searchPluginText,
@@ -23,6 +27,7 @@ const Marketplace = ({
   isMarketplaceArrowVisible,
   showMarketplacePanel,
   marketplaceContext,
+  contentInset = 'default',
 }: MarketplaceProps) => {
   const locale = useLocale()
   const { t } = useTranslation()
@@ -34,10 +39,11 @@ const Marketplace = ({
     plugins,
     page,
   } = marketplaceContext
+  const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
 
   return (
     <>
-      <div className="sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle px-12 pt-2 pb-[14px]">
+      <div className={cn('sticky bottom-0 flex shrink-0 flex-col bg-background-default-subtle pt-2 pb-[14px]', contentPaddingClassName)}>
         {isMarketplaceArrowVisible && (
           <RiArrowUpDoubleLine
             className="absolute top-2 left-1/2 z-10 h-4 w-4 -translate-x-1/2 cursor-pointer text-text-quaternary"
@@ -89,7 +95,7 @@ const Marketplace = ({
           </div>
         </div>
       </div>
-      <div className="mt-[-14px] shrink-0 grow bg-background-default-subtle px-12 pb-2">
+      <div className={cn('mt-[-14px] shrink-0 grow bg-background-default-subtle pb-2', contentPaddingClassName)}>
         {
           isLoading && page === 1 && (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
