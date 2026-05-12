@@ -197,6 +197,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
     def test_resume_delegates_to_generate(self, monkeypatch: pytest.MonkeyPatch):
         generator = AdvancedChatAppGenerator()
+        existing_trace_manager = SimpleNamespace(app_id="existing-app", user_id="existing-user")
         application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
             task_id="task",
             app_config=self._build_app_config(),
@@ -207,22 +208,25 @@ class TestAdvancedChatAppGeneratorInternals:
             stream=True,
             invoke_from=InvokeFrom.WEB_APP,
             extras={},
-            trace_manager=None,
+            trace_manager=existing_trace_manager,
             workflow_run_id="run-id",
         )
 
-        captured: dict[str, object] = {}
+        captured_entity: AdvancedChatAppGenerateEntity | None = None
+        captured_graph_runtime_state: object | None = None
 
         def _fake_generate(**kwargs):
-            captured.update(kwargs)
-            return {"resumed": True}
+            nonlocal captured_entity, captured_graph_runtime_state
+            captured_entity = kwargs["application_generate_entity"]
+            captured_graph_runtime_state = kwargs["graph_runtime_state"]
+            return SimpleNamespace(resumed=True)
 
         monkeypatch.setattr(generator, "_generate", _fake_generate)
 
         result = generator.resume(
-            app_model=SimpleNamespace(),
+            app_model=SimpleNamespace(id="app-id"),
             workflow=SimpleNamespace(),
-            user=SimpleNamespace(),
+            user=SimpleNamespace(id="end-user-id", session_id="session-id"),
             conversation=SimpleNamespace(id="conversation-id"),
             message=SimpleNamespace(id="message-id"),
             application_generate_entity=application_generate_entity,
@@ -232,8 +236,10 @@ class TestAdvancedChatAppGeneratorInternals:
             pause_state_config=None,
         )
 
-        assert result == {"resumed": True}
-        assert captured["graph_runtime_state"] is not None
+        assert result.resumed is True
+        assert captured_entity is not None
+        assert captured_entity.trace_manager is existing_trace_manager
+        assert captured_graph_runtime_state is not None
 
     def test_single_iteration_generate_builds_debug_task(self, monkeypatch: pytest.MonkeyPatch):
         generator = AdvancedChatAppGenerator()
