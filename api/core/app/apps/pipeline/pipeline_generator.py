@@ -791,10 +791,25 @@ class PipelineGenerator(BaseAppGenerator):
         all_files: list,
         datasource_info: Mapping[str, Any],
         next_page_parameters: dict[str, Any] | None = None,
+        _visited_folder_ids: set[str] | None = None,
     ):
         """
         Get files in a folder.
+
+        Recursively lists all files inside the given folder prefix.
+        ``_visited_folder_ids`` tracks folders already expanded so that a
+        self-referencing folder (where the API returns the folder as its own
+        child) cannot cause infinite recursion.
         """
+        if _visited_folder_ids is None:
+            _visited_folder_ids = set()
+
+        # Guard: skip folders we have already expanded to prevent infinite
+        # recursion from self-referencing folder entries in the API response.
+        if prefix in _visited_folder_ids:
+            return
+        _visited_folder_ids.add(prefix)
+
         result_generator = datasource_runtime.online_drive_browse_files(
             user_id=user_id,
             request=OnlineDriveBrowseFilesRequest(
@@ -806,10 +821,14 @@ class PipelineGenerator(BaseAppGenerator):
             provider_type=datasource_runtime.datasource_provider_type(),
         )
         is_truncated = False
+        has_files = False
         for result in result_generator:
             for files in result.result:
                 for file in files.files:
+                    has_files = True
                     if file.type == "folder":
+                        if file.id in _visited_folder_ids:
+                            continue
                         self._get_files_in_folder(
                             datasource_runtime,
                             file.id,
@@ -818,6 +837,7 @@ class PipelineGenerator(BaseAppGenerator):
                             all_files,
                             datasource_info,
                             None,
+                            _visited_folder_ids,
                         )
                     else:
                         all_files.append(
@@ -830,7 +850,17 @@ class PipelineGenerator(BaseAppGenerator):
                 is_truncated = files.is_truncated
                 next_page_parameters = files.next_page_parameters
 
-        if is_truncated:
+        # Guard: only follow pagination when the API actually returned files.
+        # An empty folder that incorrectly reports ``is_truncated=True`` would
+        # otherwise recurse forever on the same empty page.
+        if is_truncated and has_files:
             self._get_files_in_folder(
-                datasource_runtime, prefix, bucket, user_id, all_files, datasource_info, next_page_parameters
+                datasource_runtime,
+                prefix,
+                bucket,
+                user_id,
+                all_files,
+                datasource_info,
+                next_page_parameters,
+                _visited_folder_ids,
             )

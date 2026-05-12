@@ -35,31 +35,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-// Type definitions for mock props
-type CreateModalProps = {
-  open: boolean
-  setOpen: (open: boolean) => void
-  trigger: React.ReactNode
-  onSave: (data: BuiltInMetadataItem) => void
-}
-
-// Mock CreateModal to expose callbacks
-vi.mock('@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal', () => ({
-  default: ({ open, setOpen, trigger, onSave }: CreateModalProps) => (
-    <div data-testid="create-modal-wrapper">
-      <div data-testid="create-trigger" onClick={() => setOpen(true)}>{trigger}</div>
-      {open && (
-        <div data-testid="create-modal">
-          <button data-testid="create-save" onClick={() => onSave({ name: 'new_field', type: DataType.string })}>
-            Save
-          </button>
-          <button data-testid="create-close" onClick={() => setOpen(false)}>Close</button>
-        </div>
-      )}
-    </div>
-  ),
-}))
-
 describe('DatasetMetadataDrawer', () => {
   const mockUserMetadata: MetadataItemWithValueLength[] = [
     { id: '1', name: 'field_one', type: DataType.string, count: 5 },
@@ -88,6 +63,20 @@ describe('DatasetMetadataDrawer', () => {
 
   const clickFirstMetadataAction = (name: string) => {
     fireEvent.click(screen.getAllByRole('button', { name })[0]!)
+  }
+
+  const openCreateMetadata = async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'dataset.metadata.datasetMetadata.addMetaData' }))
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' })).toBeInTheDocument()
+    })
+  }
+
+  const saveCreatedMetadata = (name = 'new_field') => {
+    fireEvent.change(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }), {
+      target: { value: name },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
   }
 
   describe('Rendering', () => {
@@ -125,7 +114,7 @@ describe('DatasetMetadataDrawer', () => {
     it('should render add metadata button', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
-        expect(screen.getByTestId('create-trigger'))!.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'dataset.metadata.datasetMetadata.addMetaData' }))!.toBeInTheDocument()
       })
     })
 
@@ -180,12 +169,9 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      const trigger = screen.getByTestId('create-trigger')
-      fireEvent.click(trigger)
+      await openCreateMetadata()
 
-      await waitFor(() => {
-        expect(screen.getByTestId('create-modal'))!.toBeInTheDocument()
-      })
+      expect(screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }))!.toBeInTheDocument()
     })
 
     it('should call onAdd and show success toast when metadata is added', async () => {
@@ -197,15 +183,10 @@ describe('DatasetMetadataDrawer', () => {
       })
 
       // Open create modal
-      const trigger = screen.getByTestId('create-trigger')
-      fireEvent.click(trigger)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('create-modal'))!.toBeInTheDocument()
-      })
+      await openCreateMetadata()
 
       // Save new metadata
-      fireEvent.click(screen.getByTestId('create-save'))
+      saveCreatedMetadata()
 
       await waitFor(() => {
         expect(onAdd).toHaveBeenCalled()
@@ -229,16 +210,12 @@ describe('DatasetMetadataDrawer', () => {
       })
 
       // Open create modal
-      fireEvent.click(screen.getByTestId('create-trigger'))
+      await openCreateMetadata()
+
+      saveCreatedMetadata()
 
       await waitFor(() => {
-        expect(screen.getByTestId('create-modal'))!.toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByTestId('create-save'))
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('create-modal')).not.toBeInTheDocument()
+        expect(screen.queryByRole('textbox', { name: 'dataset.metadata.createMetadata.name' })).not.toBeInTheDocument()
       })
     })
   })
@@ -276,7 +253,7 @@ describe('DatasetMetadataDrawer', () => {
         expect(inputs.length).toBeGreaterThan(0)
       })
 
-      const input = screen.getByPlaceholderText('dataset.metadata.datasetMetadata.namePlaceholder')
+      const input = screen.getByRole('textbox', { name: 'dataset.metadata.datasetMetadata.name' })
       fireEvent.change(input, { target: { value: 'renamed_field' } })
 
       // Find and click save button
@@ -311,7 +288,7 @@ describe('DatasetMetadataDrawer', () => {
       })
 
       // Change name first
-      const input = screen.getByPlaceholderText('dataset.metadata.datasetMetadata.namePlaceholder')
+      const input = screen.getByRole('textbox', { name: 'dataset.metadata.datasetMetadata.name' })
       fireEvent.change(input, { target: { value: 'changed_name' } })
 
       // Find and click cancel button

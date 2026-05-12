@@ -52,7 +52,13 @@ vi.mock('../invited-modal', () => ({
   ),
 }))
 vi.mock('../operation', () => ({
-  default: () => <div>Member Operation</div>,
+  default: ({ member }: { member: Member }) => (
+    <div>
+      Member Operation
+      {' '}
+      {member.role}
+    </div>
+  ),
 }))
 vi.mock('../operation/transfer-ownership', () => ({
   default: ({ onOperate }: { onOperate: () => void }) => <button onClick={onOperate}>Transfer ownership</button>,
@@ -294,6 +300,37 @@ describe('MembersPage', () => {
 
     expect(screen.getByRole('button', { name: /invite/i }))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
+  })
+
+  it('should allow admins to operate other non-owner members only', () => {
+    vi.mocked(useAppContext).mockReturnValue({
+      userProfile: { email: 'admin@example.com' },
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      isCurrentWorkspaceOwner: false,
+      isCurrentWorkspaceManager: true,
+    } as unknown as AppContextValue)
+    vi.mocked(useMembers).mockReturnValue({
+      data: {
+        accounts: [
+          mockAccounts[0],
+          mockAccounts[1],
+          { ...mockAccounts[1]!, id: '3', email: 'editor@example.com', name: 'Editor User', role: 'editor' },
+          { ...mockAccounts[1]!, id: '4', email: 'normal@example.com', name: 'Normal User', role: 'normal' },
+          { ...mockAccounts[1]!, id: '5', email: 'dataset@example.com', name: 'Dataset User', role: 'dataset_operator' },
+          { ...mockAccounts[1]!, id: '6', email: 'other-admin@example.com', name: 'Other Admin User', role: 'admin' },
+        ],
+      },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    renderMembersPage()
+
+    expect(screen.getByText('Member Operation editor'))!.toBeInTheDocument()
+    expect(screen.getByText('Member Operation normal'))!.toBeInTheDocument()
+    expect(screen.getByText('Member Operation dataset_operator'))!.toBeInTheDocument()
+    expect(screen.getByText('Member Operation admin'))!.toBeInTheDocument()
+    expect(screen.getAllByText('common.members.admin')).toHaveLength(1)
+    expect(screen.queryByText('Member Operation owner')).not.toBeInTheDocument()
   })
 
   it('should use created_at as fallback when last_active_at is empty', () => {

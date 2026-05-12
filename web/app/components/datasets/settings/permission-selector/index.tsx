@@ -101,7 +101,7 @@ const PermissionSelector = ({
       <div className="relative">
         <PopoverTrigger
           render={(
-            <div className={cn('flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt', disabled && 'cursor-not-allowed! bg-components-input-bg-disabled! hover:bg-components-input-bg-disabled!')}>
+            <div className={cn('group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt', disabled && 'cursor-not-allowed! bg-components-input-bg-disabled! hover:bg-components-input-bg-disabled!')}>
               {
                 isOnlyMe && (
                   <>
@@ -169,8 +169,7 @@ const PermissionSelector = ({
               }
               <RiArrowDownSLine
                 className={cn(
-                  'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
-                  open && 'text-text-secondary',
+                  'size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary group-data-popup-open:text-text-secondary',
                   disabled && 'text-components-input-text-placeholder!',
                 )}
               />

@@ -48,20 +48,23 @@ def build_file_from_mapping_without_lookup(*, file_mapping: Mapping[str, Any]) -
     """Build a graph `File` directly from serialized metadata."""
 
     def _coerce_file_type(value: Any) -> FileType:
-        if isinstance(value, FileType):
-            return value
-        if isinstance(value, str):
-            return FileType.value_of(value)
-        raise ValueError("file type is required in file mapping")
+        match value:
+            case FileType():
+                return value
+            case str():
+                return FileType.value_of(value)
+            case _:
+                raise ValueError("file type is required in file mapping")
 
     mapping = dict(file_mapping)
     transfer_method_value = mapping.get("transfer_method")
-    if isinstance(transfer_method_value, FileTransferMethod):
-        transfer_method = transfer_method_value
-    elif isinstance(transfer_method_value, str):
-        transfer_method = FileTransferMethod.value_of(transfer_method_value)
-    else:
-        raise ValueError("transfer_method is required in file mapping")
+    match transfer_method_value:
+        case FileTransferMethod():
+            transfer_method = transfer_method_value
+        case str():
+            transfer_method = FileTransferMethod.value_of(transfer_method_value)
+        case _:
+            raise ValueError("transfer_method is required in file mapping")
 
     file_id = mapping.get("file_id")
     if not isinstance(file_id, str) or not file_id:
@@ -151,15 +154,15 @@ def rebuild_serialized_graph_files_without_lookup(value: Any) -> Any:
     so historical JSON blobs remain readable without reintroducing global graph
     patches or test-local coercion.
     """
-    if isinstance(value, list):
-        return [rebuild_serialized_graph_files_without_lookup(item) for item in value]
-
-    if isinstance(value, dict):
-        if maybe_file_object(value):
-            return build_file_from_mapping_without_lookup(file_mapping=value)
-        return {key: rebuild_serialized_graph_files_without_lookup(item) for key, item in value.items()}
-
-    return value
+    match value:
+        case list():
+            return [rebuild_serialized_graph_files_without_lookup(item) for item in value]
+        case dict():
+            if maybe_file_object(value):
+                return build_file_from_mapping_without_lookup(file_mapping=value)
+            return {key: rebuild_serialized_graph_files_without_lookup(item) for key, item in value.items()}
+        case _:
+            return value
 
 
 def build_file_from_stored_mapping(

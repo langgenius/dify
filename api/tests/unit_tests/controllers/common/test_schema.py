@@ -4,6 +4,7 @@ from typing import Literal
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 from flask_restx import Namespace
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -45,6 +46,20 @@ class QueryModel(BaseModel):
     app_id: str = Field(..., alias="appId", description="Application ID")
     tag_ids: list[str] = Field(default_factory=list, min_length=1, max_length=3, description="Tag IDs")
     ambiguous: int | str | None = Field(default=None, description="Ambiguous query parameter")
+
+
+class HelperQueryModel(BaseModel):
+    page: int = 1
+    limit: int = 20
+    status: list[str] = Field(default_factory=list)
+    keyword: str | None = None
+
+
+class NullableSchemaModel(BaseModel):
+    name: str | None = None
+    tags: list[str] | None = None
+    owner: UserModel | None = None
+    ambiguous: int | str | None = None
 
 
 class ResponseAliasModel(BaseModel):
@@ -162,6 +177,27 @@ def test_register_response_schema_model_uses_serialized_field_names():
     assert model_name == "ResponseAliasModel"
     assert "public_name" in schema["properties"]
     assert "internal_name" not in schema["properties"]
+
+
+def test_register_schema_model_flattens_simple_nullable_any_of_for_swagger_2():
+    from controllers.common.schema import register_schema_model
+
+    namespace = MagicMock(spec=Namespace)
+
+    register_schema_model(namespace, NullableSchemaModel)
+
+    called_schemas = {call.args[0]: call.args[1] for call in namespace.schema_model.call_args_list}
+    properties = called_schemas["NullableSchemaModel"]["properties"]
+
+    assert properties["name"]["type"] == "string"
+    assert properties["name"]["x-nullable"] is True
+    assert "anyOf" not in properties["name"]
+    assert properties["tags"]["type"] == "array"
+    assert properties["tags"]["items"] == {"type": "string"}
+    assert properties["tags"]["x-nullable"] is True
+    assert properties["owner"]["$ref"] == "#/definitions/UserModel"
+    assert properties["owner"]["x-nullable"] is True
+    assert "anyOf" in properties["ambiguous"]
 
 
 def test_get_or_create_model_returns_existing_model(mock_console_ns):
@@ -292,3 +328,41 @@ def test_query_params_from_model_builds_flask_restx_doc_params():
         "required": False,
         "description": "Ambiguous query parameter",
     }
+
+
+def test_query_params_from_request_preserves_repeated_list_params():
+    from controllers.common.schema import query_params_from_request
+
+    app = Flask(__name__)
+    with app.test_request_context("/?page=2&limit=30&status=active&status=inactive&keyword=hello"):
+        query = query_params_from_request(HelperQueryModel, list_fields=("status",))
+
+    assert query.page == 2
+    assert query.limit == 30
+    assert query.status == ["active", "inactive"]
+    assert query.keyword == "hello"
+
+
+def test_query_params_from_request_raises_for_malformed_ints_by_default():
+    from controllers.common.schema import query_params_from_request
+
+    app = Flask(__name__)
+    with app.test_request_context("/?page=bad&limit="):
+        with pytest.raises(ValueError):
+            query_params_from_request(HelperQueryModel, list_fields=("status",))
+
+
+def test_query_params_from_request_can_use_model_default_for_malformed_defaulted_ints():
+    from controllers.common.schema import query_params_from_request
+
+    app = Flask(__name__)
+    with app.test_request_context("/?page=bad&limit="):
+        query = query_params_from_request(
+            HelperQueryModel,
+            list_fields=("status",),
+            use_defaults_for_malformed_ints=True,
+        )
+
+    assert query.page == 1
+    assert query.limit == 20
+    assert query.status == []

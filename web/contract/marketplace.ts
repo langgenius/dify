@@ -67,3 +67,17 @@ export const templateDetailContract = base
     }
   }>())
   .output(type<{ data: MarketplaceTemplate }>())
+
+export const downloadPluginContract = base
+  .route({
+    path: '/plugins/{organization}/{pluginName}/{version}/download',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      organization: string
+      pluginName: string
+      version: string
+    }
+  }>())
+  .output(type<Blob>())

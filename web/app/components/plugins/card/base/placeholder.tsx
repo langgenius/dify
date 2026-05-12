@@ -17,13 +17,13 @@ const Placeholder = ({
   loadingFileName,
 }: Props) => {
   return (
-    <div className={wrapClassName}>
+    <div className={cn(wrapClassName, 'p-3')}>
       <SkeletonRow>
         <div
           className="flex h-10 w-10 items-center justify-center gap-2 rounded-[10px] border-[0.5px]
               border-components-panel-border bg-background-default p-1 backdrop-blur-xs"
         >
-          <div className="flex h-5 w-5 items-center justify-center">
+          <div className="flex size-5 items-center justify-center">
             <Group className="text-text-tertiary" />
           </div>
         </div>

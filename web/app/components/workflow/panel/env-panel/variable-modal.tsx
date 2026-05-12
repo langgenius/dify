@@ -87,10 +87,10 @@ const VariableModal = ({
         {!env ? t('env.modal.title', { ns: 'workflow' }) : t('env.modal.editTitle', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
-            className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            className="flex size-6 cursor-pointer items-center justify-center"
             onClick={onClose}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>
@@ -131,7 +131,7 @@ const VariableModal = ({
               <span>Secret</span>
               <Infotip
                 aria-label={t('env.modal.secretTip', { ns: 'workflow' })}
-                className="ml-0.5 h-3.5 w-3.5"
+                className="ml-0.5 size-3.5"
                 iconClassName="h-3.5 w-3.5"
                 popupClassName="w-[240px]"
               >

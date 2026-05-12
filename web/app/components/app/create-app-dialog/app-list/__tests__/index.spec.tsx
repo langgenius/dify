@@ -247,7 +247,9 @@ describe('Apps', () => {
     })
 
     expect(mockTrackCreateApp).toHaveBeenCalledWith({
+      source: 'studio_template_list',
       appMode: AppModeEnum.CHAT,
+      templateId: 'Alpha',
     })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()

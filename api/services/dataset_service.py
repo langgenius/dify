@@ -7,9 +7,10 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from typing import Any, Literal, TypedDict, cast
+from typing import Annotated, Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -115,6 +116,121 @@ class ProcessRulesDict(TypedDict):
 class AutoDisableLogsDict(TypedDict):
     document_ids: list[str]
     count: int
+
+
+class _EstimatePreProcessingRule(BaseModel):
+    id: str = Field(min_length=1)
+    enabled: bool
+
+    @field_validator("id")
+    @classmethod
+    def _validate_id(cls, v: str) -> str:
+        if v not in DatasetProcessRule.PRE_PROCESSING_RULES:
+            raise ValueError("Process rule pre_processing_rules id is invalid")
+        return v
+
+
+class _EstimateSegmentation(BaseModel):
+    separator: str = Field(min_length=1)
+    max_tokens: int = Field(gt=0)
+
+
+class _EstimateRules(BaseModel):
+    pre_processing_rules: list[_EstimatePreProcessingRule]
+    segmentation: _EstimateSegmentation
+
+    @field_validator("pre_processing_rules")
+    @classmethod
+    def _deduplicate(cls, v: list[_EstimatePreProcessingRule]) -> list[_EstimatePreProcessingRule]:
+        seen: dict[str, _EstimatePreProcessingRule] = {}
+        for rule in v:
+            seen[rule.id] = rule
+        return list(seen.values())
+
+
+class _EstimateHierarchicalRules(_EstimateRules):
+    parent_mode: Literal["full-doc", "paragraph"] | None = None
+    subchunk_segmentation: _EstimateSegmentation | None = None
+
+
+class _SummaryIndexSettingDisabled(BaseModel):
+    enable: Literal[False] = False
+
+
+class _SummaryIndexSettingEnabled(BaseModel):
+    enable: Literal[True]
+    model_name: str = Field(min_length=1)
+    model_provider_name: str = Field(min_length=1)
+
+
+_SummaryIndexSetting = Annotated[
+    _SummaryIndexSettingDisabled | _SummaryIndexSettingEnabled,
+    Field(discriminator="enable"),
+]
+
+
+class _AutomaticProcessRule(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    mode: Literal[ProcessRuleMode.AUTOMATIC]
+    summary_index_setting: _SummaryIndexSetting | None = None
+
+    @field_validator("summary_index_setting", mode="before")
+    @classmethod
+    def _normalize_summary_index_setting(cls, v: Any) -> Any:
+        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        if v is None:
+            return None
+        if isinstance(v, dict) and v.get("enable") is None:
+            return None
+        return v
+
+
+class _CustomProcessRule(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    mode: Literal[ProcessRuleMode.CUSTOM]
+    rules: _EstimateRules
+    summary_index_setting: _SummaryIndexSetting | None = None
+
+    @field_validator("summary_index_setting", mode="before")
+    @classmethod
+    def _normalize_summary_index_setting(cls, v: Any) -> Any:
+        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        if v is None:
+            return None
+        if isinstance(v, dict) and v.get("enable") is None:
+            return None
+        return v
+
+
+class _HierarchicalProcessRule(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    mode: Literal[ProcessRuleMode.HIERARCHICAL]
+    rules: _EstimateHierarchicalRules
+    summary_index_setting: _SummaryIndexSetting | None = None
+
+    @field_validator("summary_index_setting", mode="before")
+    @classmethod
+    def _normalize_summary_index_setting(cls, v: Any) -> Any:
+        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        if v is None:
+            return None
+        if isinstance(v, dict) and v.get("enable") is None:
+            return None
+        return v
+
+
+_EstimateProcessRule = Annotated[
+    _AutomaticProcessRule | _CustomProcessRule | _HierarchicalProcessRule,
+    Field(discriminator="mode"),
+]
+
+
+class _EstimateArgs(BaseModel):
+    info_list: dict[str, Any]
+    process_rule: _EstimateProcessRule
 
 
 class DatasetService:
@@ -669,7 +785,7 @@ class DatasetService:
                             knowledge_index_node_data["embedding_model_provider"] = dataset.embedding_model_provider
                             knowledge_index_node_data["retrieval_model"] = dataset.retrieval_model
                             knowledge_index_node_data["chunk_structure"] = dataset.chunk_structure
-                            knowledge_index_node_data["indexing_technique"] = dataset.indexing_technique  # pyright: ignore[reportAttributeAccessIssue]
+                            knowledge_index_node_data["indexing_technique"] = dataset.indexing_technique
                             knowledge_index_node_data["keyword_number"] = dataset.keyword_number
                             knowledge_index_node_data["summary_index_setting"] = dataset.summary_index_setting
                             node["data"] = knowledge_index_node_data
@@ -1214,7 +1330,7 @@ class DatasetService:
     def get_dataset_auto_disable_logs(dataset_id: str) -> AutoDisableLogsDict:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
         if not features.billing.enabled or features.billing.subscription.plan == CloudPlan.SANDBOX:
             return {
                 "document_ids": [],
@@ -1896,7 +2012,7 @@ class DocumentService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
 
         if features.billing.enabled:
             if not knowledge_config.original_document_id:
@@ -2057,7 +2173,7 @@ class DocumentService:
                         )
                         documents_map = {document.name: document for document in db_documents}
                         for file in files:
-                            data_source_info: dict[str, str | bool] = {
+                            data_source_info: dict[str, object] = {
                                 "upload_file_id": file.id,
                             }
                             document = documents_map.get(file.name)
@@ -2218,15 +2334,15 @@ class DocumentService:
     #             if knowledge_config.data_source:
     #                 if knowledge_config.data_source.info_list.data_source_type == "upload_file":
     #                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
-    # # type: ignore
+    #
     #                     count = len(upload_file_list)
     #                 elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
     #                     notion_info_list = knowledge_config.data_source.info_list.notion_info_list
-    #                     for notion_info in notion_info_list:  # type: ignore
+    #                     for notion_info in notion_info_list:
     #                         count = count + len(notion_info.pages)
     #                 elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
     #                     website_info = knowledge_config.data_source.info_list.website_info_list
-    #                     count = len(website_info.urls)  # type: ignore
+    #                     count = len(website_info.urls)
     #                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
 
     #                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
@@ -2238,7 +2354,7 @@ class DocumentService:
 
     #     # if dataset is empty, update dataset data_source_type
     #     if not dataset.data_source_type:
-    #         dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type  # type: ignore
+    #         dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type
 
     #     if not dataset.indexing_technique:
     #         if knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
@@ -2275,7 +2391,7 @@ class DocumentService:
     #                     knowledge_config.retrieval_model.model_dump()
     #                     if knowledge_config.retrieval_model
     #                     else default_retrieval_model
-    #                 )  # type: ignore
+    #                 )
 
     #     documents = []
     #     if knowledge_config.original_document_id:
@@ -2314,8 +2430,8 @@ class DocumentService:
     #             position = DocumentService.get_documents_position(dataset.id)
     #             document_ids = []
     #             duplicate_document_ids = []
-    #             if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
-    #                 upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
+    #             if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+    #                 upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
     #                 for file_id in upload_file_list:
     #                     file = (
     #                         db.session.query(UploadFile)
@@ -2341,7 +2457,7 @@ class DocumentService:
     #                             name=file_name,
     #                         ).first()
     #                         if document:
-    #                             document.dataset_process_rule_id = dataset_process_rule.id  # type: ignore
+    #                             document.dataset_process_rule_id = dataset_process_rule.id
     #                             document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
     #                             document.created_from = created_from
     #                             document.doc_form = knowledge_config.doc_form
@@ -2355,8 +2471,8 @@ class DocumentService:
     #                             continue
     #                     document = DocumentService.build_document(
     #                         dataset,
-    #                         dataset_process_rule.id,  # type: ignore
-    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                         dataset_process_rule.id,
+    #                         knowledge_config.data_source.info_list.data_source_type,
     #                         knowledge_config.doc_form,
     #                         knowledge_config.doc_language,
     #                         data_source_info,
@@ -2371,8 +2487,8 @@ class DocumentService:
     #                     document_ids.append(document.id)
     #                     documents.append(document)
     #                     position += 1
-    #             elif knowledge_config.data_source.info_list.data_source_type == "notion_import":  # type: ignore
-    #                 notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
+    #             elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
+    #                 notion_info_list = knowledge_config.data_source.info_list.notion_info_list
     #                 if not notion_info_list:
     #                     raise ValueError("No notion info list found.")
     #                 exist_page_ids = []
@@ -2412,8 +2528,8 @@ class DocumentService:
     #                             truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
     #                             document = DocumentService.build_document(
     #                                 dataset,
-    #                                 dataset_process_rule.id,  # type: ignore
-    #                                 knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                                 dataset_process_rule.id,
+    #                                 knowledge_config.data_source.info_list.data_source_type,
     #                                 knowledge_config.doc_form,
     #                                 knowledge_config.doc_language,
     #                                 data_source_info,
@@ -2433,8 +2549,8 @@ class DocumentService:
     #                 # delete not selected documents
     #                 if len(exist_document) > 0:
     #                     clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
-    #             elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":  # type: ignore
-    #                 website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
+    #             elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
+    #                 website_info = knowledge_config.data_source.info_list.website_info_list
     #                 if not website_info:
     #                     raise ValueError("No website info list found.")
     #                 urls = website_info.urls
@@ -2452,8 +2568,8 @@ class DocumentService:
     #                         document_name = url
     #                     document = DocumentService.build_document(
     #                         dataset,
-    #                         dataset_process_rule.id,  # type: ignore
-    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                         dataset_process_rule.id,
+    #                         knowledge_config.data_source.info_list.data_source_type,
     #                         knowledge_config.doc_form,
     #                         knowledge_config.doc_language,
     #                         data_source_info,
@@ -2590,7 +2706,7 @@ class DocumentService:
         # update document data source
         if document_data.data_source:
             file_name = ""
-            data_source_info: dict[str, str | bool] = {}
+            data_source_info: dict[str, object] = {}
             if document_data.data_source.info_list.data_source_type == "upload_file":
                 if not document_data.data_source.info_list.file_info_list:
                     raise ValueError("No file info list found.")
@@ -2687,7 +2803,7 @@ class DocumentService:
         assert current_user.current_tenant_id is not None
         assert knowledge_config.data_source
 
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
 
         if features.billing.enabled:
             count = 0
@@ -2851,94 +2967,20 @@ class DocumentService:
 
     @classmethod
     def estimate_args_validate(cls, args: dict[str, Any]):
-        if "info_list" not in args or not args["info_list"]:
-            raise ValueError("Data source info is required")
-
-        if not isinstance(args["info_list"], dict):
-            raise ValueError("Data info is invalid")
-
-        if "process_rule" not in args or not args["process_rule"]:
-            raise ValueError("Process rule is required")
-
-        if not isinstance(args["process_rule"], dict):
-            raise ValueError("Process rule is invalid")
-
-        if "mode" not in args["process_rule"] or not args["process_rule"]["mode"]:
-            raise ValueError("Process rule mode is required")
-
-        if args["process_rule"]["mode"] not in DatasetProcessRule.MODES:
-            raise ValueError("Process rule mode is invalid")
-
-        if args["process_rule"]["mode"] == ProcessRuleMode.AUTOMATIC:
-            args["process_rule"]["rules"] = {}
-        else:
-            if "rules" not in args["process_rule"] or not args["process_rule"]["rules"]:
-                raise ValueError("Process rule rules is required")
-
-            if not isinstance(args["process_rule"]["rules"], dict):
-                raise ValueError("Process rule rules is invalid")
-
-            if (
-                "pre_processing_rules" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["pre_processing_rules"] is None
-            ):
-                raise ValueError("Process rule pre_processing_rules is required")
-
-            if not isinstance(args["process_rule"]["rules"]["pre_processing_rules"], list):
-                raise ValueError("Process rule pre_processing_rules is invalid")
-
-            unique_pre_processing_rule_dicts = {}
-            for pre_processing_rule in args["process_rule"]["rules"]["pre_processing_rules"]:
-                if "id" not in pre_processing_rule or not pre_processing_rule["id"]:
-                    raise ValueError("Process rule pre_processing_rules id is required")
-
-                if pre_processing_rule["id"] not in DatasetProcessRule.PRE_PROCESSING_RULES:
-                    raise ValueError("Process rule pre_processing_rules id is invalid")
-
-                if "enabled" not in pre_processing_rule or pre_processing_rule["enabled"] is None:
-                    raise ValueError("Process rule pre_processing_rules enabled is required")
-
-                if not isinstance(pre_processing_rule["enabled"], bool):
-                    raise ValueError("Process rule pre_processing_rules enabled is invalid")
-
-                unique_pre_processing_rule_dicts[pre_processing_rule["id"]] = pre_processing_rule
-
-            args["process_rule"]["rules"]["pre_processing_rules"] = list(unique_pre_processing_rule_dicts.values())
-
-            if (
-                "segmentation" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["segmentation"] is None
-            ):
-                raise ValueError("Process rule segmentation is required")
-
-            if not isinstance(args["process_rule"]["rules"]["segmentation"], dict):
-                raise ValueError("Process rule segmentation is invalid")
-
-            if (
-                "separator" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["separator"]
-            ):
-                raise ValueError("Process rule segmentation separator is required")
-
-            if not isinstance(args["process_rule"]["rules"]["segmentation"]["separator"], str):
-                raise ValueError("Process rule segmentation separator is invalid")
-
-            if (
-                "max_tokens" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["max_tokens"]
-            ):
-                raise ValueError("Process rule segmentation max_tokens is required")
-
-            if not isinstance(args["process_rule"]["rules"]["segmentation"]["max_tokens"], int):
-                raise ValueError("Process rule segmentation max_tokens is invalid")
-
-        # valid summary index setting
-        summary_index_setting = args["process_rule"].get("summary_index_setting")
-        if summary_index_setting and summary_index_setting.get("enable"):
-            if "model_name" not in summary_index_setting or not summary_index_setting["model_name"]:
-                raise ValueError("Summary index model name is required")
-            if "model_provider_name" not in summary_index_setting or not summary_index_setting["model_provider_name"]:
-                raise ValueError("Summary index model provider name is required")
+        try:
+            validated = _EstimateArgs.model_validate(args)
+        except ValidationError as e:
+            first = e.errors()[0]
+            original = first.get("ctx", {}).get("error")
+            raise ValueError(str(original) if isinstance(original, ValueError) else first["msg"]) from e
+        process_rule_dict = validated.process_rule.model_dump(exclude_none=True)
+        if validated.process_rule.mode == ProcessRuleMode.AUTOMATIC:
+            process_rule_dict["rules"] = {}
+        elif validated.process_rule.mode == ProcessRuleMode.HIERARCHICAL:
+            rules = process_rule_dict.get("rules")
+            if isinstance(rules, dict) and not rules.get("parent_mode"):
+                rules["parent_mode"] = "paragraph"
+        args["process_rule"] = process_rule_dict
 
     @staticmethod
     def batch_update_document_status(

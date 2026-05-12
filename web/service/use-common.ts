@@ -7,40 +7,24 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   AccountIntegrate,
-  ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
   FileUploadConfigResponse,
-  ICurrentWorkspace,
   IWorkspace,
   LangGeniusVersionResponse,
   Member,
   PluginProvider,
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
-  UserProfileResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { IS_DEV } from '@/config'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, post } from './base'
-
-/**
- * True iff `err` is a 401 Response thrown by `service/base.ts`.
- *
- * Narrow on purpose: oRPC throws `ORPCError`, not `Response`, so this predicate
- * returns `false` for oRPC 401s. Naming makes that scope visible. If you need
- * 401 detection for an oRPC path, add a separate `isOrpc401` helper.
- */
-export const isLegacyBase401 = (err: unknown): boolean =>
-  err instanceof Response && err.status === 401
 
 const NAME_SPACE = 'common'
 
 export const commonQueryKeys = {
   fileUploadConfig: [NAME_SPACE, 'file-upload-config'] as const,
-  userProfile: [NAME_SPACE, 'user-profile'] as const,
-  currentWorkspace: [NAME_SPACE, 'current-workspace'] as const,
   workspaces: [NAME_SPACE, 'workspaces'] as const,
   members: [NAME_SPACE, 'members'] as const,
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
@@ -52,7 +36,6 @@ export const commonQueryKeys = {
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
   pluginProviders: [NAME_SPACE, 'plugin-providers'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
-  apiBasedExtensions: [NAME_SPACE, 'api-based-extensions'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
   invitationCheck: (params?: { workspace_id?: string, email?: string, token?: string }) => [
     NAME_SPACE,
@@ -75,61 +58,11 @@ export const useFileUploadConfig = () => {
   })
 }
 
-type UserProfileWithMeta = {
-  profile: UserProfileResponse
-  meta: {
-    currentVersion: string | null
-    currentEnv: string | null
-  }
-}
-
-/**
- * Session probe for `/account/profile`. Helper (not hook) because oRPC can't
- * express the `x-version` / `x-env` response headers we post-process.
- *
- * Bindings:
- *   commonLayout -> `useSuspenseQuery(userProfileQueryOptions())`
- *   signin/oauth -> `useQuery({ ...userProfileQueryOptions(), throwOnError: err => !isLegacyBase401(err) })`
- *
- * `silent: true` + `retry: !isLegacyBase401` makes 401 a synchronous *state* (no toast,
- * no ~7s retry storm). Transient errors still get the default 3 retries.
- */
-export const userProfileQueryOptions = () =>
-  queryOptions<UserProfileWithMeta>({
-    queryKey: commonQueryKeys.userProfile,
-    queryFn: async () => {
-      const response = await get<Response>('/account/profile', {}, {
-        needAllResponseContent: true,
-        silent: true,
-      }) as Response
-      const profile = await response.clone().json() as UserProfileResponse
-      return {
-        profile,
-        meta: {
-          currentVersion: response.headers.get('x-version'),
-          currentEnv: IS_DEV
-            ? 'DEVELOPMENT'
-            : response.headers.get('x-env'),
-        },
-      }
-    },
-    staleTime: 0,
-    gcTime: 0,
-    retry: (failureCount, error) => !isLegacyBase401(error) && failureCount < 3,
-  })
-
 export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: boolean) => {
   return useQuery<LangGeniusVersionResponse>({
     queryKey: commonQueryKeys.langGeniusVersion(currentVersion || undefined),
     queryFn: () => get<LangGeniusVersionResponse>('/version', { params: { current_version: currentVersion } }),
     enabled: !!currentVersion && (enabled ?? true),
-  })
-}
-
-export const useCurrentWorkspace = () => {
-  return useQuery<ICurrentWorkspace>({
-    queryKey: commonQueryKeys.currentWorkspace,
-    queryFn: () => post<ICurrentWorkspace>('/workspaces/current'),
   })
 }
 
@@ -178,7 +111,13 @@ export type MailRegisterResponse = { result: string, data: {} }
 export const useMailRegister = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-register'],
-    mutationFn: (body: { token: string, new_password: string, password_confirm: string }) => {
+    mutationFn: (body: {
+      token: string
+      new_password: string
+      password_confirm: string
+      language?: string
+      timezone?: string
+    }) => {
       return post<MailRegisterResponse>('/email-register', { body })
     },
   })
@@ -246,7 +185,7 @@ export const useLogout = () => {
   })
 }
 
-type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string }
+type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string, token: string }
 export const useVerifyForgotPasswordToken = (token?: string | null) => {
   return useQuery<ForgotPasswordValidity>({
     queryKey: commonQueryKeys.forgotPasswordValidity(token),
@@ -310,13 +249,6 @@ export const useCodeBasedExtensions = (module: string) => {
   return useQuery<CodeBasedExtension>({
     queryKey: commonQueryKeys.codeBasedExtensions(module),
     queryFn: () => get<CodeBasedExtension>(`/code-based-extension?module=${module}`),
-  })
-}
-
-export const useApiBasedExtensions = () => {
-  return useQuery<ApiBasedExtension[]>({
-    queryKey: commonQueryKeys.apiBasedExtensions,
-    queryFn: () => get<ApiBasedExtension[]>('/api-based-extension'),
   })
 }
 

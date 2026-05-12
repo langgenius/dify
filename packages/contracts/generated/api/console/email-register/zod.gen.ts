@@ -3,6 +3,23 @@
 import * as z from 'zod'
 
 /**
+ * SimpleResultDataResponse
+ */
+export const zSimpleResultDataResponse = z.object({
+  data: z.string(),
+  result: z.string(),
+})
+
+/**
+ * VerificationTokenResponse
+ */
+export const zVerificationTokenResponse = z.object({
+  email: z.string(),
+  is_valid: z.boolean(),
+  token: z.string(),
+})
+
+/**
  * Success
  */
 export const zPostEmailRegisterResponse = z.record(z.string(), z.unknown())
@@ -10,9 +27,9 @@ export const zPostEmailRegisterResponse = z.record(z.string(), z.unknown())
 /**
  * Success
  */
-export const zPostEmailRegisterSendEmailResponse = z.record(z.string(), z.unknown())
+export const zPostEmailRegisterSendEmailResponse = zSimpleResultDataResponse
 
 /**
  * Success
  */
-export const zPostEmailRegisterValidityResponse = z.record(z.string(), z.unknown())
+export const zPostEmailRegisterValidityResponse = zVerificationTokenResponse

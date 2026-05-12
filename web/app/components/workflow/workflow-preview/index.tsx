@@ -86,7 +86,7 @@ const WorkflowPreview = ({
     <div
       id="workflow-container"
       className={cn(
-        'relative h-full w-full',
+        'relative size-full',
         className,
       )}
     >

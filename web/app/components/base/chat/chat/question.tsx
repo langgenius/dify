@@ -176,11 +176,11 @@ const Question: FC<QuestionProps> = ({
                 toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
               }}
             >
-              <div className="i-ri-clipboard-line h-4 w-4" aria-hidden="true" />
+              <div className="i-ri-clipboard-line size-4" aria-hidden="true" />
             </ActionButton>
             {enableEdit && (
               <ActionButton aria-label={editLabel} onClick={handleEdit}>
-                <div className="i-ri-edit-line h-4 w-4" aria-hidden="true" />
+                <div className="i-ri-edit-line size-4" aria-hidden="true" />
               </ActionButton>
             )}
           </div>
@@ -242,11 +242,11 @@ const Question: FC<QuestionProps> = ({
         <div className="mt-1 h-[18px]" />
       </div>
       {!hideAvatar && (
-        <div className="h-10 w-10 shrink-0">
+        <div className="size-10 shrink-0">
           {
             questionIcon || (
               <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-                <User className="question-default-user-icon h-full w-full" />
+                <User className="question-default-user-icon size-full" />
               </div>
             )
           }

@@ -54,7 +54,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
     >
       <DropdownMenuTrigger
         disabled={disabled}
-        className={cn('flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1', disabled ? 'cursor-not-allowed bg-components-input-bg-disabled!' : 'cursor-pointer hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt', className)}
+        className={cn('group flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 data-popup-open:bg-state-base-hover-alt', disabled ? 'cursor-not-allowed bg-components-input-bg-disabled!' : 'cursor-pointer hover:bg-state-base-hover-alt', className)}
       >
         <div className="flex items-center p-1">
           <span
@@ -64,7 +64,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
             {selectedItem && isOperationItem(selectedItem) ? t(`nodes.assigner.operations.${selectedItem.name}`, { ns: 'workflow' }) : t('nodes.assigner.operations.title', { ns: 'workflow' })}
           </span>
         </div>
-        <span aria-hidden className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary', disabled && 'text-components-input-text-placeholder', open && 'text-text-secondary')} />
+        <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4 text-text-quaternary group-data-popup-open:text-text-secondary', disabled && 'text-components-input-text-placeholder')} />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
@@ -90,7 +90,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                     </div>
                     {item.value === value && (
                       <div className="flex items-center justify-center">
-                        <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
+                        <span aria-hidden className="i-ri-check-line size-4 text-text-accent" />
                       </div>
                     )}
                   </DropdownMenuItem>

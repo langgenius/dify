@@ -1,4 +1,5 @@
 from urllib.parse import quote
+from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource
@@ -45,17 +46,19 @@ class ToolFileApi(Resource):
             415: "Unsupported file type",
         }
     )
-    def get(self, file_id, extension):
-        file_id = str(file_id)
+    def get(self, file_id: UUID, extension: str):
+        file_id_str = str(file_id)
 
         args = ToolFileQuery.model_validate(request.args.to_dict())
-        if not verify_tool_file_signature(file_id=file_id, timestamp=args.timestamp, nonce=args.nonce, sign=args.sign):
+        if not verify_tool_file_signature(
+            file_id=file_id_str, timestamp=args.timestamp, nonce=args.nonce, sign=args.sign
+        ):
             raise Forbidden("Invalid request.")
 
         try:
             tool_file_manager = ToolFileManager()
             stream, tool_file = tool_file_manager.get_file_generator_by_tool_file_id(
-                file_id,
+                file_id_str,
             )
 
             if not stream or not tool_file:

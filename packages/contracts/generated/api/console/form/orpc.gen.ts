@@ -6,6 +6,7 @@ import * as z from 'zod'
 import {
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
+  zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
 } from './zod.gen'
@@ -14,10 +15,16 @@ import {
  * Get human input form definition by form token
  *
  * GET /console/api/form/human_input/<form_token>
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const get = oc
   .route({
-    description: 'GET /console/api/form/human_input/<form_token>',
+    deprecated: true,
+    description:
+      'GET /console/api/form/human_input/<form_token>\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFormHumanInputByFormToken',
@@ -40,11 +47,16 @@ export const get = oc
  * },
  * "action": "Approve"
  * }
+ *
+ * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
+ *
+ * @deprecated
  */
 export const post = oc
   .route({
+    deprecated: true,
     description:
-      'POST /console/api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
+      'POST /console/api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputByFormToken',
@@ -52,7 +64,12 @@ export const post = oc
     summary: 'Submit human input form by form token',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostFormHumanInputByFormTokenPath }))
+  .input(
+    z.object({
+      body: zPostFormHumanInputByFormTokenBody,
+      params: zPostFormHumanInputByFormTokenPath,
+    }),
+  )
   .output(zPostFormHumanInputByFormTokenResponse)
 
 export const byFormToken = {

@@ -58,7 +58,7 @@ describe('PageSelector', () => {
     const user = userEvent.setup()
     render(<PageSelector value={new Set()} disabledValue={new Set()} searchValue="" pagesMap={mockPagesMap} list={[mockList[0]!, mockList[1]!, mockList[2]!]} onSelect={handleSelect} />)
 
-    const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-root-1')
+    const checkbox = screen.getByRole('checkbox', { name: 'Root 1' })
     await user.click(checkbox)
 
     expect(handleSelect).toHaveBeenCalledWith(new Set(['root-1', 'child-1', 'grandchild-1']))
@@ -69,7 +69,7 @@ describe('PageSelector', () => {
     const user = userEvent.setup()
     render(<PageSelector value={new Set(['root-1', 'child-1', 'grandchild-1'])} disabledValue={new Set()} searchValue="" pagesMap={mockPagesMap} list={mockList} onSelect={handleSelect} />)
 
-    const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-root-1')
+    const checkbox = screen.getByRole('checkbox', { name: 'Root 1' })
     await user.click(checkbox)
 
     expect(handleSelect).toHaveBeenCalledWith(new Set())
@@ -103,7 +103,7 @@ describe('PageSelector', () => {
     const user = userEvent.setup()
     render(<PageSelector value={new Set()} disabledValue={new Set()} searchValue="Child" pagesMap={mockPagesMap} list={mockList} onSelect={handleSelect} />)
 
-    const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-child-1')
+    const checkbox = screen.getByRole('checkbox', { name: 'Child 1' })
     await user.click(checkbox)
 
     expect(handleSelect).toHaveBeenCalledWith(new Set(['child-1']))
@@ -135,7 +135,7 @@ describe('PageSelector', () => {
     const user = userEvent.setup()
     render(<PageSelector value={new Set()} disabledValue={new Set(['root-1'])} searchValue="" pagesMap={mockPagesMap} list={mockList} onSelect={handleSelect} />)
 
-    const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-root-1')
+    const checkbox = screen.getByRole('checkbox', { name: 'Root 1' })
     await user.click(checkbox)
     expect(handleSelect).not.toHaveBeenCalled()
   })
@@ -169,8 +169,8 @@ describe('PageSelector', () => {
     const user = userEvent.setup()
     const { rerender } = render(<PageSelector value={new Set()} disabledValue={new Set()} searchValue="Child" pagesMap={mockPagesMap} list={mockList} onSelect={handleSelect} />)
 
-    const checkbox1 = screen.getByTestId('checkbox-notion-page-checkbox-child-1')
-    const checkbox2 = screen.getByTestId('checkbox-notion-page-checkbox-child-2')
+    const checkbox1 = screen.getByRole('checkbox', { name: 'Child 1' })
+    const checkbox2 = screen.getByRole('checkbox', { name: 'Child 2' })
 
     await user.click(checkbox1)
     expect(handleSelect).toHaveBeenCalledWith(new Set(['child-1']))
@@ -219,7 +219,7 @@ describe('PageSelector', () => {
     const user = userEvent.setup()
     render(<PageSelector value={new Set(['root-1', 'child-1', 'grandchild-1', 'child-2'])} disabledValue={new Set()} searchValue="" pagesMap={mockPagesMap} list={mockList} onSelect={handleSelect} />)
 
-    const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-root-1')
+    const checkbox = screen.getByRole('checkbox', { name: 'Root 1' })
     await user.click(checkbox)
 
     expect(handleSelect).toHaveBeenCalledWith(new Set())
@@ -230,7 +230,7 @@ describe('PageSelector', () => {
     const user = userEvent.setup()
     render(<PageSelector value={new Set()} disabledValue={new Set()} searchValue="Child" pagesMap={mockPagesMap} list={[mockList[1]!]} onSelect={handleSelect} />)
 
-    const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-child-1')
+    const checkbox = screen.getByRole('checkbox', { name: 'Child 1' })
     await user.click(checkbox)
 
     // When searching, only the item itself is selected, not descendants
@@ -242,7 +242,7 @@ describe('PageSelector', () => {
     const user = userEvent.setup()
     render(<PageSelector value={new Set(['child-1'])} disabledValue={new Set()} searchValue="Child" pagesMap={mockPagesMap} list={[mockList[1]!]} onSelect={handleSelect} />)
 
-    const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-child-1')
+    const checkbox = screen.getByRole('checkbox', { name: 'Child 1' })
     await user.click(checkbox)
 
     expect(handleSelect).toHaveBeenCalledWith(new Set())

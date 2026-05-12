@@ -1,11 +1,12 @@
 import type { Edge, Node } from '../types'
+import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect } from 'react'
 import { useEdges, useNodes, useStoreApi } from 'reactflow'
 import { createEdge, createNode } from '../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../__tests__/workflow-test-env'
-import EdgeContextmenu from '../edge-contextmenu'
+import { EdgeContextmenu } from '../edge-contextmenu'
 import { useEdgesInteractions } from '../hooks/use-edges-interactions'
 
 const mockSaveStateToHistory = vi.fn()
@@ -148,7 +149,9 @@ const EdgeMenuHarness = () => {
       >
         remove-e1
       </button>
-      <EdgeContextmenu />
+      <ContextMenu open>
+        <EdgeContextmenu onClose={vi.fn()} />
+      </ContextMenu>
     </div>
   )
 }
@@ -176,13 +179,18 @@ describe('EdgeContextmenu', () => {
     latestEdges = []
   })
 
-  it('should not render when edgeMenu is absent', () => {
-    renderWorkflowFlowComponent(<EdgeContextmenu />, {
-      nodes: createFlowNodes(),
-      edges: createFlowEdges(),
-      hooksStoreProps,
-      reactFlowProps: { fitView: false },
-    })
+  it('should not render when edge context menu target is absent', () => {
+    renderWorkflowFlowComponent(
+      <ContextMenu open>
+        <EdgeContextmenu onClose={vi.fn()} />
+      </ContextMenu>,
+      {
+        nodes: createFlowNodes(),
+        edges: createFlowEdges(),
+        hooksStoreProps,
+        reactFlowProps: { fitView: false },
+      },
+    )
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
@@ -209,11 +217,7 @@ describe('EdgeContextmenu', () => {
         }),
       ],
       initialStoreState: {
-        edgeMenu: {
-          clientX: 320,
-          clientY: 180,
-          edgeId: 'e2',
-        },
+        contextMenuTarget: { type: 'edge', edgeId: 'e2' },
       },
     })
 
@@ -225,33 +229,32 @@ describe('EdgeContextmenu', () => {
       expect(latestEdges).toHaveLength(1)
       expect(latestEdges[0]!.id).toBe('e1')
       expect(latestEdges[0]!.selected).toBe(true)
-      expect(store.getState().edgeMenu).toBeUndefined()
+      expect(store.getState().contextMenuTarget).toBeUndefined()
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('EdgeDelete')
   })
 
   it('should not render the menu when the referenced edge no longer exists', () => {
-    renderWorkflowFlowComponent(<EdgeContextmenu />, {
-      nodes: createFlowNodes(),
-      edges: createFlowEdges(),
-      initialStoreState: {
-        edgeMenu: {
-          clientX: 320,
-          clientY: 180,
-          edgeId: 'missing-edge',
+    renderWorkflowFlowComponent(
+      <ContextMenu open>
+        <EdgeContextmenu onClose={vi.fn()} />
+      </ContextMenu>,
+      {
+        nodes: createFlowNodes(),
+        edges: createFlowEdges(),
+        initialStoreState: {
+          contextMenuTarget: { type: 'edge', edgeId: 'missing-edge' },
         },
+        hooksStoreProps,
+        reactFlowProps: { fitView: false },
       },
-      hooksStoreProps,
-      reactFlowProps: { fitView: false },
-    })
+    )
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('should open the edge menu at the right-click position', async () => {
-    const fromRectSpy = vi.spyOn(DOMRect, 'fromRect')
-
+  it('should open the edge menu for the right-clicked edge', async () => {
     renderEdgeMenu()
 
     fireEvent.contextMenu(screen.getByRole('button', { name: 'Right-click edge e2' }), {
@@ -261,12 +264,6 @@ describe('EdgeContextmenu', () => {
 
     expect(await screen.findByRole('menu'))!.toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /common:operation\.delete/i }))!.toBeInTheDocument()
-    expect(fromRectSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-      x: 320,
-      y: 180,
-      width: 0,
-      height: 0,
-    }))
   })
 
   it('should delete the right-clicked edge and close the menu when delete is clicked', async () => {
@@ -362,8 +359,6 @@ describe('EdgeContextmenu', () => {
   })
 
   it('should retarget the menu and selected edge when right-clicking a different edge', async () => {
-    const fromRectSpy = vi.spyOn(DOMRect, 'fromRect')
-
     renderEdgeMenu()
     const edgeOneButton = screen.getByLabelText('Right-click edge e1')
     const edgeTwoButton = screen.getByLabelText('Right-click edge e2')
@@ -381,10 +376,6 @@ describe('EdgeContextmenu', () => {
 
     await waitFor(() => {
       expect(screen.getAllByRole('menu')).toHaveLength(1)
-      expect(fromRectSpy).toHaveBeenLastCalledWith(expect.objectContaining({
-        x: 360,
-        y: 240,
-      }))
       expect(latestEdges.find(edge => edge.id === 'e1')?.selected).toBe(false)
       expect(latestEdges.find(edge => edge.id === 'e2')?.selected).toBe(true)
       expect(latestEdges.every(edge => !getEdgeRuntimeState(edge)._isBundled)).toBe(true)

@@ -3,7 +3,7 @@ import { Popover } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DataType } from '../../types'
-import CreateContent from '../create-content'
+import { CreateContent } from '../create-content'
 
 const renderCreateContent = (props: CreateContentProps) => {
   return render(

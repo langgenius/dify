@@ -60,7 +60,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           onCancel()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="overflow-visible">
+      <DialogContent backdropProps={{ forceRender: true }}>
         <DialogCloseButton />
 
         <form

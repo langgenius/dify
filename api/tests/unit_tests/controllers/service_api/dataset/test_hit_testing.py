@@ -18,15 +18,57 @@ import uuid
 from unittest.mock import Mock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.service_api.dataset.hit_testing import HitTestingApi, HitTestingPayload
 from models.account import Account
+from models.dataset import Dataset
+from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 
 # ---------------------------------------------------------------------------
 # HitTestingPayload Model Tests
 # ---------------------------------------------------------------------------
+
+
+def hit_testing_record() -> dict[str, object]:
+    return {
+        "segment": {
+            "id": "segment-1",
+            "position": 1,
+            "document_id": "document-1",
+            "content": "Chunk text",
+            "sign_content": "Chunk text",
+            "answer": None,
+            "word_count": 2,
+            "tokens": 3,
+            "keywords": None,
+            "index_node_id": None,
+            "index_node_hash": None,
+            "hit_count": 0,
+            "enabled": True,
+            "disabled_at": None,
+            "disabled_by": None,
+            "status": "completed",
+            "created_by": "account-1",
+            "created_at": 1_700_000_000,
+            "indexing_at": None,
+            "completed_at": None,
+            "error": None,
+            "stopped_at": None,
+            "document": {
+                "id": "document-1",
+                "data_source_type": "upload_file",
+                "name": "guide.md",
+                "doc_type": None,
+                "doc_metadata": None,
+            },
+        },
+        "child_chunks": None,
+        "files": None,
+        "score": 0.9,
+    }
 
 
 class TestHitTestingPayload:
@@ -47,7 +89,7 @@ class TestHitTestingPayload:
         }
         payload = HitTestingPayload(
             query="test query",
-            retrieval_model=retrieval_model_data,
+            retrieval_model=RetrievalModel.model_validate(retrieval_model_data),
             external_retrieval_model={"provider": "openai"},
             attachment_ids=["att_1", "att_2"],
         )
@@ -67,6 +109,12 @@ class TestHitTestingPayload:
         payload = HitTestingPayload(query="x" * 250)
         assert len(payload.query) == 250
 
+    def test_payload_ignores_unknown_fields_for_compatibility(self):
+        """Top-level fields outside the documented schema remain ignored as before."""
+        payload = HitTestingPayload.model_validate({"query": "test query", "top_k": 3})
+
+        assert payload.model_dump(exclude_none=True) == {"query": "test query"}
+
 
 # ---------------------------------------------------------------------------
 # HitTestingApi Tests
@@ -79,8 +127,11 @@ class TestHitTestingPayload:
 class TestHitTestingApiPost:
     """Tests for HitTestingApi.post() via __wrapped__ to skip billing decorator."""
 
+    @staticmethod
+    def _dataset(dataset_id: str, tenant_id: str) -> Dataset:
+        return Dataset(id=dataset_id, tenant_id=tenant_id, name="Dataset", created_by="account-1")
+
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
-    @patch("controllers.console.datasets.hit_testing_base.marshal")
     @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
@@ -89,23 +140,20 @@ class TestHitTestingApiPost:
         mock_current_user,
         mock_dataset_svc,
         mock_hit_svc,
-        mock_marshal,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Test successful hit testing request."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
+        mock_dataset = self._dataset(dataset_id, tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
 
-        mock_hit_svc.retrieve.return_value = {"query": "test query", "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "test query"}, "records": []}
         mock_hit_svc.hit_testing_args_check.return_value = None
-        mock_marshal.return_value = []
 
         mock_ns.payload = {"query": "test query"}
 
@@ -114,11 +162,10 @@ class TestHitTestingApiPost:
             # Skip billing decorator via __wrapped__
             response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
 
-        assert response["query"] == "test query"
+        assert response["query"] == {"content": "test query"}
         mock_hit_svc.retrieve.assert_called_once()
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
-    @patch("controllers.console.datasets.hit_testing_base.marshal")
     @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
@@ -127,16 +174,14 @@ class TestHitTestingApiPost:
         mock_current_user,
         mock_dataset_svc,
         mock_hit_svc,
-        mock_marshal,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Test hit testing with custom retrieval model."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
+        mock_dataset = self._dataset(dataset_id, tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
@@ -149,9 +194,8 @@ class TestHitTestingApiPost:
             "score_threshold": 0.8,
         }
 
-        mock_hit_svc.retrieve.return_value = {"query": "complex query", "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "complex query"}, "records": []}
         mock_hit_svc.hit_testing_args_check.return_value = None
-        mock_marshal.return_value = []
 
         mock_ns.payload = {
             "query": "complex query",
@@ -163,7 +207,7 @@ class TestHitTestingApiPost:
             api = HitTestingApi()
             response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
 
-        assert response["query"] == "complex query"
+        assert response["query"] == {"content": "complex query"}
         call_kwargs = mock_hit_svc.retrieve.call_args
         # retrieval_model is serialized via model_dump, verify key fields
         passed_retrieval_model = call_kwargs.kwargs.get("retrieval_model")
@@ -172,7 +216,6 @@ class TestHitTestingApiPost:
         assert passed_retrieval_model["top_k"] == 10
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
-    @patch("controllers.console.datasets.hit_testing_base.marshal")
     @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
@@ -181,22 +224,19 @@ class TestHitTestingApiPost:
         mock_current_user,
         mock_dataset_svc,
         mock_hit_svc,
-        mock_marshal,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Service API retrieval payload should not drop metadata filters."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
+        mock_dataset = self._dataset(dataset_id, tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
-        mock_hit_svc.retrieve.return_value = {"query": "filtered query", "records": []}
+        mock_hit_svc.retrieve.return_value = {"query": {"content": "filtered query"}, "records": []}
         mock_hit_svc.hit_testing_args_check.return_value = None
-        mock_marshal.return_value = []
 
         metadata_filtering_conditions = {
             "logical_operator": "and",
@@ -228,39 +268,31 @@ class TestHitTestingApiPost:
         assert passed_retrieval_model["metadata_filtering_conditions"] == metadata_filtering_conditions
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
-    @patch("controllers.console.datasets.hit_testing_base.marshal")
     @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
-    def test_post_normalizes_legacy_query_and_nullable_list_fields(
+    def test_post_prepares_nullable_list_fields(
         self,
         mock_current_user,
         mock_dataset_svc,
         mock_hit_svc,
-        mock_marshal,
         mock_ns,
-        app,
+        app: Flask,
     ):
-        """Test service API normalizes legacy query shape and nullable list fields."""
+        """Test service API prepares nullable list fields from retrieval records."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
+        mock_dataset = self._dataset(dataset_id, tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
 
-        mock_hit_svc.retrieve.return_value = {"query": {"content": "legacy query"}, "records": ["placeholder"]}
+        mock_hit_svc.retrieve.return_value = {
+            "query": {"content": "legacy query"},
+            "records": [hit_testing_record()],
+        }
         mock_hit_svc.hit_testing_args_check.return_value = None
-        mock_marshal.return_value = [
-            {
-                "segment": {"id": "segment-1", "keywords": None},
-                "child_chunks": None,
-                "files": None,
-                "score": 0.9,
-            }
-        ]
 
         mock_ns.payload = {"query": "legacy query"}
 
@@ -268,15 +300,15 @@ class TestHitTestingApiPost:
             api = HitTestingApi()
             response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
 
-        assert response["query"] == "legacy query"
-        assert response["records"] == [
-            {
-                "segment": {"id": "segment-1", "keywords": []},
-                "child_chunks": [],
-                "files": [],
-                "score": 0.9,
-            }
-        ]
+        assert response["query"] == {"content": "legacy query"}
+        record = response["records"][0]
+        assert record["segment"]["id"] == "segment-1"
+        assert record["segment"]["keywords"] == []
+        assert record["child_chunks"] == []
+        assert record["files"] == []
+        assert record["score"] == 0.9
+        assert record["tsne_position"] is None
+        assert record["summary"] is None
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
@@ -286,7 +318,7 @@ class TestHitTestingApiPost:
         mock_current_user,
         mock_dataset_svc,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Test hit testing with non-existent dataset."""
         dataset_id = str(uuid.uuid4())
@@ -308,14 +340,13 @@ class TestHitTestingApiPost:
         mock_current_user,
         mock_dataset_svc,
         mock_ns,
-        app,
+        app: Flask,
     ):
         """Test hit testing when user lacks dataset permission."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
 
-        mock_dataset = Mock()
-        mock_dataset.id = dataset_id
+        mock_dataset = self._dataset(dataset_id, tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.side_effect = services.errors.account.NoPermissionError(

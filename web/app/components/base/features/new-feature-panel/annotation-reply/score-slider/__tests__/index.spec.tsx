@@ -17,7 +17,7 @@ describe('ScoreSlider', () => {
   it('should display easy match and accurate match labels', () => {
     render(<ScoreSlider value={90} onChange={vi.fn()} />)
 
-    expect(screen.getByText('0.8')).toBeInTheDocument()
+    expect(screen.getByText('0.0')).toBeInTheDocument()
     expect(screen.getByText('1.0')).toBeInTheDocument()
     expect(screen.getByText(/feature\.annotation\.scoreThreshold\.easyMatch/)).toBeInTheDocument()
     expect(screen.getByText(/feature\.annotation\.scoreThreshold\.accurateMatch/)).toBeInTheDocument()
@@ -35,5 +35,12 @@ describe('ScoreSlider', () => {
 
     expect(getSliderInput()).toHaveValue('95')
     expect(screen.getByText('0.95')).toBeInTheDocument()
+  })
+
+  it('should allow zero as the minimum score threshold', () => {
+    render(<ScoreSlider value={0} onChange={vi.fn()} />)
+
+    expect(getSliderInput()).toHaveValue('0')
+    expect(screen.getByText('0.00')).toBeInTheDocument()
   })
 })

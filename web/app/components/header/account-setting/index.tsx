@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
+import { SearchInput } from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
@@ -16,7 +16,7 @@ import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import ApiBasedExtensionPage from './api-based-extension-page'
+import { ApiBasedExtensionPage } from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
 import LanguagePage from './language-page'
 import MembersPage from './members-page'
@@ -197,7 +197,7 @@ export default function AccountSetting({
               aria-label={t('operation.close', { ns: 'common' })}
               onClick={handleClose}
             >
-              <span className="i-ri-close-line h-5 w-5" />
+              <span className="i-ri-close-line size-5" />
             </Button>
             <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
           </div>
@@ -218,8 +218,8 @@ export default function AccountSetting({
               {activeItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <div className="flex grow justify-end">
                   <SearchInput
-                    className="w-[200px]"
-                    onChange={setSearchValue}
+                    className="w-52"
+                    onValueChange={setSearchValue}
                     value={searchValue}
                   />
                 </div>

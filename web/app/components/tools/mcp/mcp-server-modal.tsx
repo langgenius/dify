@@ -4,11 +4,11 @@ import type {
 } from '@/app/components/tools/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Textarea from '@/app/components/base/textarea'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import {
@@ -141,7 +141,7 @@ const MCPServerModal = ({
           className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onHide}
         >
-          <RiCloseLine className="h-5 w-5 text-text-tertiary" aria-hidden="true" />
+          <RiCloseLine className="size-5 text-text-tertiary" aria-hidden="true" />
         </button>
         <div className="relative shrink-0 p-6 pr-12 pb-3 title-2xl-semi-bold text-xl wrap-break-word text-text-primary">
           {!data ? t('mcp.server.modal.addTitle', { ns: 'tools' }) : t('mcp.server.modal.editTitle', { ns: 'tools' })}
@@ -154,12 +154,12 @@ const MCPServerModal = ({
                 <div className="system-xs-regular text-text-destructive-secondary">*</div>
               </div>
               <Textarea
+                aria-label={t('mcp.server.modal.description', { ns: 'tools' })}
                 className="h-[96px] resize-none"
                 value={description}
                 placeholder={t('mcp.server.modal.descriptionPlaceholder', { ns: 'tools' })}
-                onChange={e => setDescription(e.target.value)}
-              >
-              </Textarea>
+                onValueChange={value => setDescription(value)}
+              />
             </div>
 
             {latestParams.length > 0 && (

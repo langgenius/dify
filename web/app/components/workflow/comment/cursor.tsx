@@ -14,7 +14,7 @@ export const CommentCursor: FC = memo(() => {
 
   return (
     <div
-      className="pointer-events-none absolute z-50 flex h-6 w-6 items-center justify-center"
+      className="pointer-events-none absolute z-50 flex size-6 items-center justify-center"
       style={{
         left: mousePosition.elementX,
         top: mousePosition.elementY,

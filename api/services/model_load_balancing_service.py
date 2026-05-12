@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from sqlalchemy import or_, select
 
@@ -620,7 +620,7 @@ class ModelLoadBalancingService:
 
         for key, value in credentials.items():
             if key in provider_credential_secret_variables:
-                credentials[key] = encrypter.encrypt_token(tenant_id, value)
+                credentials[key] = encrypter.encrypt_token(tenant_id, cast(str, value))
 
         return credentials
 

@@ -151,9 +151,9 @@ class TestErrorHandling:
 
     def test_clean_dataset_task_rollback_failure_still_closes_session(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -198,9 +198,9 @@ class TestPipelineAndWorkflowDeletion:
 
     def test_clean_dataset_task_with_pipeline_id(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         pipeline_id,
         mock_db_session,
         mock_storage,
@@ -231,9 +231,9 @@ class TestPipelineAndWorkflowDeletion:
 
     def test_clean_dataset_task_without_pipeline_id(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -271,9 +271,9 @@ class TestSegmentAttachmentCleanup:
 
     def test_clean_dataset_task_with_attachments(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -321,9 +321,9 @@ class TestSegmentAttachmentCleanup:
 
     def test_clean_dataset_task_attachment_storage_failure(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -375,9 +375,9 @@ class TestEdgeCases:
 
     def test_clean_dataset_task_session_always_closed(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,
@@ -413,9 +413,9 @@ class TestIndexProcessorParameters:
 
     def test_clean_dataset_task_passes_correct_parameters_to_index_processor(
         self,
-        dataset_id,
-        tenant_id,
-        collection_binding_id,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
         mock_db_session,
         mock_storage,
         mock_index_processor_factory,

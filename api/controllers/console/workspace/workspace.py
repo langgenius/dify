@@ -16,7 +16,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
@@ -25,13 +25,15 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     only_edition_enterprise,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.helper import TimestampField
-from libs.login import current_account_with_tenant, login_required
-from models.account import Tenant, TenantCustomConfigDict, TenantStatus
+from libs.helper import TimestampField, dump_response, to_timestamp
+from libs.login import login_required
+from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
@@ -56,6 +58,11 @@ class WorkspaceCustomConfigPayload(BaseModel):
     replace_webapp_logo: str | None = None
 
 
+class WorkspaceCustomConfigResponse(ResponseModel):
+    remove_webapp_brand: bool | None = None
+    replace_webapp_logo: str | None = None
+
+
 class WorkspaceInfoPayload(BaseModel):
     name: str
 
@@ -69,7 +76,7 @@ class TenantInfoResponse(ResponseModel):
     role: str | None = None
     in_trial: bool | None = None
     trial_end_reason: str | None = None
-    custom_config: dict | None = None
+    custom_config: WorkspaceCustomConfigResponse | None = None
     trial_credits: int | None = None
     trial_credits_used: int | None = None
     next_credit_reset_date: int | None = None
@@ -86,9 +93,13 @@ class TenantInfoResponse(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None):
-        if isinstance(value, datetime):
-            return int(value.timestamp())
-        return value
+        return to_timestamp(value)
+
+
+class WorkspacePermissionResponse(ResponseModel):
+    workspace_id: str
+    allow_member_invite: bool
+    allow_owner_transfer: bool
 
 
 register_schema_models(
@@ -97,7 +108,12 @@ register_schema_models(
     SwitchWorkspacePayload,
     WorkspaceCustomConfigPayload,
     WorkspaceInfoPayload,
+)
+register_response_schema_models(
+    console_ns,
     TenantInfoResponse,
+    WorkspaceCustomConfigResponse,
+    WorkspacePermissionResponse,
 )
 
 provider_fields = {
@@ -139,8 +155,9 @@ class TenantListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account):
         tenants = TenantService.get_join_tenants(current_user)
         tenant_dicts = []
         is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
@@ -161,10 +178,10 @@ class TenantListApi(Resource):
                 if tenant_plan:
                     plan = tenant_plan["plan"] or CloudPlan.SANDBOX
                 else:
-                    features = FeatureService.get_features(tenant.id)
+                    features = FeatureService.get_features(tenant.id, exclude_vector_space=True)
                     plan = features.billing.subscription.plan or CloudPlan.SANDBOX
             elif not is_enterprise_only:
-                features = FeatureService.get_features(tenant.id)
+                features = FeatureService.get_features(tenant.id, exclude_vector_space=True)
                 plan = features.billing.subscription.plan or CloudPlan.SANDBOX
 
             # Create a dictionary with tenant attributes
@@ -214,11 +231,11 @@ class TenantApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[TenantInfoResponse.__name__])
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
 
-        current_user, _ = current_account_with_tenant()
         tenant = current_user.current_tenant
         if not tenant:
             raise ValueError("No current tenant")
@@ -233,13 +250,7 @@ class TenantApi(Resource):
             else:
                 raise Unauthorized("workspace is archived")
 
-        return (
-            TenantInfoResponse.model_validate(
-                WorkspaceService.get_tenant_info(tenant),
-                from_attributes=True,
-            ).model_dump(mode="json"),
-            200,
-        )
+        return dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant)), 200
 
 
 @console_ns.route("/workspaces/switch")
@@ -248,8 +259,8 @@ class SwitchWorkspaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = SwitchWorkspacePayload.model_validate(payload)
 
@@ -273,8 +284,8 @@ class CustomConfigWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
-    def post(self):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         payload = console_ns.payload or {}
         args = WorkspaceCustomConfigPayload.model_validate(payload)
         tenant = db.get_or_404(Tenant, current_tenant_id)
@@ -300,8 +311,8 @@ class WebappLogoWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -341,8 +352,8 @@ class WorkspaceInfoApi(Resource):
     @login_required
     @account_initialization_required
     # Change workspace name
-    def post(self):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         payload = console_ns.payload or {}
         args = WorkspaceInfoPayload.model_validate(payload)
 
@@ -359,17 +370,17 @@ class WorkspaceInfoApi(Resource):
 class WorkspacePermissionApi(Resource):
     """Get workspace permissions for the current workspace."""
 
+    @console_ns.response(200, "Success", console_ns.models[WorkspacePermissionResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @only_edition_enterprise
-    def get(self):
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
         """
         Get workspace permission settings.
         Returns permission flags that control workspace features like member invitations and owner transfer.
         """
-        _, current_tenant_id = current_account_with_tenant()
-
         if not current_tenant_id:
             raise ValueError("No current tenant")
 

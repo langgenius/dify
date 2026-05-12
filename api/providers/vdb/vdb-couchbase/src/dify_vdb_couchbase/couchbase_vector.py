@@ -59,7 +59,7 @@ class CouchbaseVector(BaseVector):
 
         auth = PasswordAuthenticator(config.user, config.password)
         options = ClusterOptions(auth)
-        self._cluster = Cluster(config.connection_string, options)  # pyright: ignore[reportArgumentType]
+        self._cluster = Cluster(config.connection_string, options)
         self._bucket = self._cluster.bucket(config.bucket_name)
         self._scope = self._bucket.scope(config.scope_name)
         self._bucket_name = config.bucket_name
@@ -306,7 +306,7 @@ class CouchbaseVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         try:
-            CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))  # pyright: ignore[reportCallIssue]
+            CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))  # pyrefly: ignore[bad-argument-count]
             search_iter = self._scope.search(
                 self._collection_name + "_search", CBrequest, SearchOptions(limit=top_k, fields=["*"])
             )

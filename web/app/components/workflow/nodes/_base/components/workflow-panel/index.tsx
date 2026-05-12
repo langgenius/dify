@@ -67,6 +67,7 @@ import {
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
@@ -157,6 +158,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
   const pendingSingleRun = useStore(s => s.pendingSingleRun)
   const setPendingSingleRun = useStore(s => s.setPendingSingleRun)
+  const setNodePanelWidthStorage = useSetLocalStorage<string>('workflow-node-panel-width', { raw: true })
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -169,10 +171,10 @@ const BasePanel: FC<BasePanelProps> = ({
     const newValue = clampNodePanelWidth(width, maxNodePanelWidth)
 
     if (source === 'user')
-      localStorage.setItem('workflow-node-panel-width', `${newValue}`)
+      setNodePanelWidthStorage(`${newValue}`)
 
     setNodePanelWidth(newValue)
-  }, [maxNodePanelWidth, setNodePanelWidth])
+  }, [maxNodePanelWidth, setNodePanelWidth, setNodePanelWidthStorage])
 
   const handleResize = useCallback((width: number) => {
     updateNodePanelWidth(width, 'user')
@@ -531,7 +533,7 @@ const BasePanel: FC<BasePanelProps> = ({
                         <button
                           type="button"
                           aria-label={singleRunActionLabel}
-                          className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+                          className="mr-1 flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
                           onClick={() => {
                             if (isSingleRunning)
                               handleStop()
@@ -541,8 +543,8 @@ const BasePanel: FC<BasePanelProps> = ({
                         >
                           {
                             isSingleRunning
-                              ? <Stop aria-hidden className="h-4 w-4 text-text-tertiary" />
-                              : <RiPlayLargeLine aria-hidden className="h-4 w-4 text-text-tertiary" />
+                              ? <Stop aria-hidden className="size-4 text-text-tertiary" />
+                              : <RiPlayLargeLine aria-hidden className="size-4 text-text-tertiary" />
                           }
                         </button>
                       )}
@@ -557,10 +559,10 @@ const BasePanel: FC<BasePanelProps> = ({
               <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <div
-                className="flex h-6 w-6 cursor-pointer items-center justify-center"
+                className="flex size-6 cursor-pointer items-center justify-center"
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+                <RiCloseLine className="size-4 text-text-tertiary" />
               </div>
             </div>
           </div>

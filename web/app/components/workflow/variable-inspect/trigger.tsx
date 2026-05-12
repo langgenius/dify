@@ -61,10 +61,10 @@ const VariableInspectTrigger: FC = () => {
     return null
 
   return (
-    <div className={cn('flex items-center gap-1')}>
+    <div className={cn('flex shrink-0 flex-nowrap items-center gap-1 whitespace-nowrap')}>
       {!isRunning && !currentVars.length && (
         <div
-          className={cn('flex h-5 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-2xs-semibold-uppercase text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-background-default-hover', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
+          className={cn('flex h-5 shrink-0 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-2xs-semibold-uppercase text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-background-default-hover', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
           onClick={() => {
             if (getNodesReadOnly())
               return
@@ -77,7 +77,7 @@ const VariableInspectTrigger: FC = () => {
       {!isRunning && currentVars.length > 0 && (
         <>
           <div
-            className={cn('flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
+            className={cn('flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
             onClick={() => {
               if (getNodesReadOnly())
                 return
@@ -87,7 +87,7 @@ const VariableInspectTrigger: FC = () => {
             {t('debug.variableInspect.trigger.cached', { ns: 'workflow' })}
           </div>
           <div
-            className={cn('flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 system-xs-medium text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent hover:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
+            className={cn('flex h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 system-xs-medium text-text-tertiary shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent hover:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
             onClick={() => {
               if (getNodesReadOnly())
                 return
@@ -101,10 +101,10 @@ const VariableInspectTrigger: FC = () => {
       {isRunning && (
         <>
           <div
-            className="flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
+            className="flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 system-xs-medium text-text-accent shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
             onClick={() => setShowVariableInspectPanel(true)}
           >
-            <RiLoader2Line className="h-4 w-4 animate-spin" />
+            <RiLoader2Line className="size-4 shrink-0 animate-spin" />
             <span className="text-text-accent">{t('debug.variableInspect.trigger.running', { ns: 'workflow' })}</span>
           </div>
           {isPreviewRunning && (
@@ -112,10 +112,10 @@ const VariableInspectTrigger: FC = () => {
               <TooltipTrigger
                 render={(
                   <div
-                    className="flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
+                    className="flex h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-xs hover:bg-components-actionbar-bg-accent"
                     onClick={handleStop}
                   >
-                    <RiStopCircleFill className="h-4 w-4 text-text-accent" />
+                    <RiStopCircleFill className="size-4 shrink-0 text-text-accent" />
                   </div>
                 )}
               />

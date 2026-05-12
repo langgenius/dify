@@ -111,7 +111,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
           aria-label={t('operation.close', { ns: 'common' })}
           onClick={onClose}
         >
-          <span className="i-ri-close-line h-5 w-5 text-text-tertiary" aria-hidden="true" />
+          <span className="i-ri-close-line size-5 text-text-tertiary" aria-hidden="true" />
         </button>
         {step === STEP.start && (
           <>

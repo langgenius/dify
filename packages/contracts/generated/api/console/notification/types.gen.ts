@@ -4,6 +4,10 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type GetNotificationData = {
   body?: never
   path?: never
@@ -44,9 +48,7 @@ export type PostNotificationDismissError
   = PostNotificationDismissErrors[keyof PostNotificationDismissErrors]
 
 export type PostNotificationDismissResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostNotificationDismissResponse

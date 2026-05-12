@@ -33,7 +33,7 @@ const Log: FC<LogProps> = ({
       }}
     >
       <ActionButton>
-        <RiFileList3Line className="h-4 w-4" />
+        <RiFileList3Line className="size-4" />
       </ActionButton>
     </div>
   )

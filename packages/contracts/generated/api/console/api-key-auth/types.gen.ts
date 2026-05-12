@@ -4,12 +4,25 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type ApiKeyAuthDataSourceListResponse = {
+  sources: Array<ApiKeyAuthDataSourceItem>
+}
+
 export type ApiKeyAuthBindingPayload = {
   category: string
   credentials: {
     [key: string]: unknown
   }
   provider: string
+}
+
+export type ApiKeyAuthDataSourceItem = {
+  category: string
+  created_at: number
+  disabled: boolean
+  id: string
+  provider: string
+  updated_at: number
 }
 
 export type GetApiKeyAuthDataSourceData = {
@@ -20,9 +33,7 @@ export type GetApiKeyAuthDataSourceData = {
 }
 
 export type GetApiKeyAuthDataSourceResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ApiKeyAuthDataSourceListResponse
 }
 
 export type GetApiKeyAuthDataSourceResponse
@@ -54,8 +65,8 @@ export type DeleteApiKeyAuthDataSourceByBindingIdData = {
 }
 
 export type DeleteApiKeyAuthDataSourceByBindingIdResponses = {
-  200: {
-    [key: string]: unknown
+  204: {
+    [key: string]: never
   }
 }
 

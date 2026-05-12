@@ -1,4 +1,4 @@
-import type { FormInputItem, HumanInputNodeType } from '../../types'
+import type { HumanInputNodeType, ParagraphFormInput } from '../../types'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import useFormContent from '../use-form-content'
@@ -15,8 +15,8 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   default: (...args: unknown[]) => mockUseNodeCrud(...args),
 }))
 
-const createFormInput = (overrides: Partial<FormInputItem> = {}): FormInputItem => ({
-  type: InputVarType.textInput,
+const createFormInput = (overrides: Partial<ParagraphFormInput> = {}): ParagraphFormInput => ({
+  type: InputVarType.paragraph,
   output_variable_name: 'old_name',
   default: {
     selector: [],
@@ -94,6 +94,26 @@ describe('human-input/use-form-content', () => {
     }))
     expect(mockHandleOutVarRenameChange).toHaveBeenCalledWith('human-input-node', ['human-input-node', 'old_name'], ['human-input-node', 'new_name'])
     expect(result.current.editorKey).toBe(1)
+  })
+
+  it('should not rename an input to an existing variable name', () => {
+    currentInputs = createPayload({
+      inputs: [
+        createFormInput(),
+        createFormInput({ output_variable_name: 'existing_name' }),
+      ],
+    })
+    const { result } = renderHook(() => useFormContent('human-input-node', currentInputs))
+
+    act(() => {
+      result.current.handleFormInputItemRename(createFormInput({
+        output_variable_name: 'existing_name',
+      }), 'old_name')
+    })
+
+    expect(mockSetInputs).not.toHaveBeenCalled()
+    expect(mockHandleOutVarRenameChange).not.toHaveBeenCalled()
+    expect(result.current.editorKey).toBe(0)
   })
 
   it('should remove an input placeholder and its form input metadata', () => {

@@ -64,7 +64,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
               ref={triggerRef}
               onClick={e => e.preventDefault()}
             >
-              <RiMoreFill className="h-3 w-3" />
+              <RiMoreFill className="size-3" />
             </div>
           )}
         />

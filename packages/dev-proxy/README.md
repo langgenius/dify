@@ -13,7 +13,7 @@ Add a script in your frontend project:
 ```json
 {
   "scripts": {
-    "dev:proxy": "dev-proxy --config ./dev-proxy.config.ts --env-file ./.env"
+    "dev:proxy": "dev-proxy --config ./dev-proxy.config.ts --env-file ./.env.local"
   }
 }
 ```
@@ -36,9 +36,13 @@ Supported options:
 - `--env-file`: load environment variables before evaluating the config file.
 - `--host`: override `server.host` from config.
 - `--port`: override `server.port` from config.
+- `--watch`: reload config and env file changes. Enabled by default.
+- `--no-watch`: disable config and env file reloads.
 - `--help`, `-h`: print help.
 
 `--target` is not supported. Put targets in the config file so routes and upstreams stay explicit.
+
+The CLI watches the config file and the explicit `--env-file` by default. Route, CORS, target, and cookie rewrite changes are applied in the running process. If the resolved host or port changes, the proxy closes the old server and starts a new one.
 
 ## Config Shape
 
@@ -108,8 +112,10 @@ DEV_PROXY_PORT=5001
 Command:
 
 ```bash
-dev-proxy --config ./dev-proxy.config.ts --env-file ./.env
+dev-proxy --config ./dev-proxy.config.ts --env-file ./.env.local
 ```
+
+Edits to `./.env.local` reload the proxy automatically.
 
 ## Scenario 2: Proxy Two Route Groups To Two Local Backends
 
@@ -186,6 +192,22 @@ export default defineDevProxyConfig({
 ```
 
 Set `cookieRewrite: false` to disable cookie rewriting for a route.
+
+When one local proxy can point to multiple online targets, use `localCookieScope: 'target-origin'`
+for auth cookies. The proxy stores configured cookies under target-specific local names,
+forwards only the active target's cookies upstream, and can override a stale frontend CSRF
+header from the active scoped cookie:
+
+```ts
+const cookieRewrite: CookieRewriteOptions = {
+  hostPrefixCookies: ['access_token', 'csrf_token', 'refresh_token'],
+  localCookieScope: 'target-origin',
+  csrfHeader: {
+    cookieName: 'csrf_token',
+    headerName: 'X-CSRF-Token',
+  },
+}
+```
 
 ## Behavior
 

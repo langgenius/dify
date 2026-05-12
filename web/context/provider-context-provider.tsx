@@ -15,6 +15,7 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import {
   useModelListByType,
@@ -26,6 +27,39 @@ import { ProviderContext } from './provider-context'
 
 type ProviderContextProviderProps = {
   children: ReactNode
+}
+
+type MemberInviteLimit = {
+  size: number
+  limit: number
+}
+
+const unlimitedMemberInviteLimit: MemberInviteLimit = {
+  size: 0,
+  limit: 0,
+}
+
+const ANTHROPIC_QUOTA_NOTICE_STORAGE_KEY = 'anthropic_quota_notice'
+
+const resolveMemberInviteLimit = (data: Awaited<ReturnType<typeof fetchCurrentPlanInfo>>): MemberInviteLimit => {
+  if (!data)
+    return unlimitedMemberInviteLimit
+
+  if (data.workspace_members?.enabled) {
+    return {
+      size: data.workspace_members.size,
+      limit: data.workspace_members.limit,
+    }
+  }
+
+  if (data.billing?.enabled && data.members?.limit > 0) {
+    return {
+      size: data.members.size,
+      limit: data.members.limit,
+    }
+  }
+
+  return unlimitedMemberInviteLimit
 }
 
 export const ProviderContextProvider = ({
@@ -87,8 +121,7 @@ export const ProviderContextProvider = ({
         setDatasetOperatorEnabled(true)
       if (data.webapp_copyright_enabled)
         setWebappCopyrightEnabled(true)
-      if (data.workspace_members)
-        setLicenseLimit({ workspace_members: data.workspace_members })
+      setLicenseLimit({ workspace_members: resolveMemberInviteLimit(data) })
       if (data.is_allow_transfer_workspace)
         setIsAllowTransferWorkspace(data.is_allow_transfer_workspace)
       if (data.knowledge_pipeline?.publish_enabled)
@@ -124,8 +157,14 @@ export const ProviderContextProvider = ({
   // #endregion Zendesk conversation fields
 
   const { t } = useTranslation()
+  const [anthropicQuotaNotice, setAnthropicQuotaNotice] = useLocalStorage<string>(
+    ANTHROPIC_QUOTA_NOTICE_STORAGE_KEY,
+    'false',
+    { raw: true },
+  )
+
   useEffect(() => {
-    if (localStorage.getItem('anthropic_quota_notice') === 'true')
+    if (anthropicQuotaNotice === 'true')
       return
 
     if (dayjs().isAfter(dayjs('2025-03-17')))
@@ -136,14 +175,14 @@ export const ProviderContextProvider = ({
       if (anthropic && anthropic.system_configuration.current_quota_type === CurrentSystemQuotaTypeEnum.trial) {
         const quota = anthropic.system_configuration.quota_configurations.find(item => item.quota_type === anthropic.system_configuration.current_quota_type)
         if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
-          localStorage.setItem('anthropic_quota_notice', 'true')
+          setAnthropicQuotaNotice('true')
           toast.info(t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }), {
             timeout: 60000,
           })
         }
       }
     }
-  }, [providersData, t])
+  }, [anthropicQuotaNotice, providersData, setAnthropicQuotaNotice, t])
 
   return (
     <ProviderContext.Provider value={{

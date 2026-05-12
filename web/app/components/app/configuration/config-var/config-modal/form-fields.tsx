@@ -3,6 +3,7 @@ import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -12,13 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { Trans } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -49,6 +49,7 @@ type ConfigModalFormFieldsProps = {
   onVarNameChange: (event: ChangeEvent<HTMLInputElement>) => void
   options?: string[]
   selectOptions: SelectOptionItem[]
+  showHiddenField?: boolean
   tempPayload: InputVar
   t: Translate
 }
@@ -67,6 +68,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   onVarNameChange,
   options,
   selectOptions,
+  showHiddenField = true,
   tempPayload,
   t,
 }) => {
@@ -121,8 +123,9 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       {type === InputVarType.paragraph && (
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Textarea
+            aria-label={t('variableConfig.defaultValue', { ns: 'appDebug' })}
             value={String(tempPayload.default ?? '')}
-            onChange={e => onPayloadChange('default')(e.target.value || undefined)}
+            onValueChange={value => onPayloadChange('default')(value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
         </Field>
@@ -232,16 +235,26 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         </Field>
       )}
 
-      <div className="mt-5! flex h-6 items-center space-x-2">
-        <Checkbox checked={tempPayload.required} disabled={!isFileInput && tempPayload.hide} onCheck={() => onPayloadChange('required')(!tempPayload.required)} />
+      <label className="mt-5! flex h-6 items-center space-x-2">
+        <Checkbox
+          checked={tempPayload.required}
+          disabled={!isFileInput && tempPayload.hide}
+          onCheckedChange={checked => onPayloadChange('required')(checked)}
+        />
         <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
-      </div>
+      </label>
 
-      {!isFileInput && (
-        <div className="mt-5! flex h-6 items-center space-x-2">
-          <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => onPayloadChange('hide')(!tempPayload.hide)} />
-          <div className="flex items-center gap-1">
+      {showHiddenField && !isFileInput && (
+        <div className="mt-5! flex h-6 items-center gap-2">
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={tempPayload.hide}
+              disabled={tempPayload.required}
+              onCheckedChange={checked => onPayloadChange('hide')(checked)}
+            />
             <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
+          </label>
+          <div className="flex items-center gap-1">
             <Infotip
               aria-label={hiddenDescriptionAriaLabel}
               popupClassName="max-w-[300px]"

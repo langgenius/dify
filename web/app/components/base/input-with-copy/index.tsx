@@ -73,8 +73,8 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
                   className="hover:bg-components-button-ghost-bg-hover"
                 >
                   {copied
-                    ? (<span className="i-ri-clipboard-fill h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />)
-                    : (<span className="i-ri-clipboard-line h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />)}
+                    ? (<span className="i-ri-clipboard-fill size-3.5 text-text-tertiary" aria-hidden="true" />)
+                    : (<span className="i-ri-clipboard-line size-3.5 text-text-tertiary" aria-hidden="true" />)}
                 </ActionButton>
               )}
             />

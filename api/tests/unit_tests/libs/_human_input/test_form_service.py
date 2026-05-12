@@ -7,11 +7,10 @@ from datetime import timedelta
 import pytest
 
 from graphon.nodes.human_input.entities import (
-    FormInput,
-    UserAction,
+    ParagraphInputConfig,
+    UserActionConfig,
 )
 from graphon.nodes.human_input.enums import (
-    FormInputType,
     TimeoutUnit,
 )
 from libs.datetime_utils import naive_utc_now
@@ -50,8 +49,8 @@ class TestFormService:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "# Test Form\n\nInput: {{#$output.input#}}",
-            "inputs": [FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="input", default=None)],
-            "user_actions": [UserAction(id="submit", title="Submit")],
+            "inputs": [ParagraphInputConfig(output_variable_name="input")],
+            "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 1,
             "timeout_unit": TimeoutUnit.HOUR,
             "form_token": "token-xyz",
@@ -304,8 +303,8 @@ class TestFormValidation:
             "tenant_id": "tenant-abc",
             "app_id": "app-def",
             "form_content": "Test form",
-            "inputs": [FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="required_input", default=None)],
-            "user_actions": [UserAction(id="submit", title="Submit")],
+            "inputs": [ParagraphInputConfig(output_variable_name="required_input")],
+            "user_actions": [UserActionConfig(id="submit", title="Submit")],
             "timeout": 1,
             "timeout_unit": TimeoutUnit.HOUR,
         }

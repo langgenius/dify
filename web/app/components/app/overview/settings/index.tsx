@@ -8,6 +8,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
@@ -18,7 +19,6 @@ import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
-import Textarea from '@/app/components/base/textarea'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -251,9 +251,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   return (
     <>
       <Dialog open={isShow} onOpenChange={open => !open && onHide()}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[520px] overflow-visible p-0">
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
           {/* header */}
-          <div className="pt-5 pr-5 pb-3 pl-6">
+          <div className="shrink-0 pt-5 pr-5 pb-3 pl-6">
             <div className="flex items-center gap-1">
               <DialogTitle className="grow title-2xl-semi-bold text-text-primary">{t(`${prefixSettings}.title`, { ns: 'appOverview' })}</DialogTitle>
               <DialogCloseButton className="relative top-auto right-auto shrink-0" />
@@ -263,7 +263,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </div>
           </div>
           {/* form body */}
-          <div className="space-y-5 px-6 py-3">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 py-3">
             {/* name & icon */}
             <div className="flex gap-4">
               <div className="grow">
@@ -289,9 +289,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             <div className="relative">
               <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}</div>
               <Textarea
+                aria-label={t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}
                 className="mt-1"
                 value={inputInfo.desc}
-                onChange={e => onDesChange(e.target.value)}
+                onValueChange={onDesChange}
                 placeholder={t(`${prefixSettings}.webDescPlaceholder`, { ns: 'appOverview' }) as string}
               />
               <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.webDescTip`, { ns: 'appOverview' })}</p>
@@ -381,7 +382,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     {t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' })}
                   </p>
                 </div>
-                <span aria-hidden="true" className="ml-1 i-ri-arrow-right-s-line h-4 w-4 shrink-0 text-text-secondary" />
+                <span aria-hidden="true" className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-secondary" />
               </div>
             )}
             {/* more settings */}
@@ -464,9 +465,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
                   <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
                   <Textarea
+                    aria-label={t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}
                     className="mt-1"
                     value={inputInfo.customDisclaimer}
-                    onChange={onChange('customDisclaimer')}
+                    onValueChange={value => setInputInfo(item => ({ ...item, customDisclaimer: value }))}
                     placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`, { ns: 'appOverview' }) as string}
                   />
                 </div>
@@ -474,26 +476,20 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             )}
           </div>
           {/* footer */}
-          <div className="flex justify-end p-6 pt-5">
+          <div className="flex shrink-0 justify-end p-6 pt-5">
             <Button className="mr-2" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
             <Button variant="primary" onClick={onClickSave} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
           </div>
-          {showAppIconPicker && (
-            <div onClick={e => e.stopPropagation()}>
-              <AppIconPicker
-                onSelect={(payload) => {
-                  setAppIcon(payload)
-                  setShowAppIconPicker(false)
-                }}
-                onClose={() => {
-                  setAppIcon(createAppIcon(appInfo))
-                  setShowAppIconPicker(false)
-                }}
-              />
-            </div>
-          )}
         </DialogContent>
       </Dialog>
+      <AppIconPicker
+        open={showAppIconPicker}
+        initialEmoji={appIcon.type === 'emoji'
+          ? { icon: appIcon.icon, background: appIcon.background }
+          : undefined}
+        onOpenChange={setShowAppIconPicker}
+        onSelect={setAppIcon}
+      />
     </>
   )
 }

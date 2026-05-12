@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin, VersionProps } from '../../../types'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import Card from '../../../card'
 import useGetIcon from '../../base/use-get-icon'
@@ -36,7 +36,8 @@ const LoadedItem: FC<Props> = ({
         disabled={!canInstall}
         className="shrink-0"
         checked={checked}
-        onCheck={() => onCheckedChange(payload)}
+        aria-label={payload.name}
+        onCheckedChange={() => onCheckedChange(payload)}
       />
       <Card
         className="grow"

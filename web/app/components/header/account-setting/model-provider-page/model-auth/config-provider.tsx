@@ -45,7 +45,7 @@ const ConfigProvider = ({
         variant={!authorized ? 'secondary-accent' : 'secondary'}
         title={text}
       >
-        <RiEqualizer2Line className="mr-1 h-3.5 w-3.5 shrink-0" />
+        <RiEqualizer2Line className="mr-1 size-3.5 shrink-0" />
         <span className="w-0 grow truncate text-left">
           {text}
         </span>
