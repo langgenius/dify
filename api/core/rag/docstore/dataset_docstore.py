@@ -50,6 +50,7 @@ class DatasetDocumentStore:
 
         output = {}
         for document_segment in document_segments:
+            assert document_segment.index_node_id
             doc_id = document_segment.index_node_id
             output[doc_id] = Document(
                 page_content=document_segment.content,

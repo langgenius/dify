@@ -231,7 +231,6 @@ class TestCleanDatasetTask:
             status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash",
-            updated_at=datetime.now(),
         )
 
         db_session_with_containers.add(segment)
@@ -623,8 +622,6 @@ class TestCleanDatasetTask:
             status=SegmentStatus.COMPLETED,
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash",
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
         )
 
         db_session_with_containers.add(segment)
@@ -726,8 +723,6 @@ class TestCleanDatasetTask:
                 type=DatasetMetadataType.STRING,
                 created_by=account.id,
             )
-            metadata.id = str(uuid.uuid4())
-            metadata.created_at = datetime.now()
             metadata_items.append(metadata)
 
             # Create binding for each metadata item
@@ -738,8 +733,6 @@ class TestCleanDatasetTask:
                 document_id=documents[i % len(documents)].id,
                 created_by=account.id,
             )
-            binding.id = str(uuid.uuid4())
-            binding.created_at = datetime.now()
             bindings.append(binding)
 
         db_session_with_containers.add_all(metadata_items)
