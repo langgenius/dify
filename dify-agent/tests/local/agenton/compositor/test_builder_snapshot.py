@@ -7,9 +7,29 @@ from typing_extensions import override
 
 import agenton.compositor as compositor_module
 import agenton.layers as layers_module
-from agenton.compositor import Compositor, LayerNode, LayerNodeConfig, LayerProvider
+from agenton.compositor import Compositor, LayerConfigInput, LayerNode, LayerNodeConfig, LayerProvider, LayerProviderInput
 from agenton.layers import EmptyLayerConfig, Layer, LayerDeps, NoLayerDeps, PlainLayer
 from agenton_collections.layers.plain import ObjectLayer, PromptLayer, PromptLayerConfig
+
+
+EXPECTED_FACADE_EXPORTS = [
+    "Compositor",
+    "CompositorConfig",
+    "CompositorConfigValue",
+    "CompositorRun",
+    "CompositorSessionSnapshot",
+    "CompositorSessionSnapshotValue",
+    "CompositorTransformer",
+    "CompositorTransformerKwargs",
+    "LayerFactory",
+    "LayerNode",
+    "LayerNodeConfig",
+    "LayerProvider",
+    "LayerRunSlot",
+    "LayerSessionSnapshot",
+]
+
+EXPECTED_DIRECT_IMPORT_COMPAT_NAMES = ["LayerConfigInput", "LayerProviderInput"]
 
 
 @dataclass(slots=True)
@@ -264,6 +284,33 @@ def test_removed_lifecycle_and_resource_apis_are_not_public_exports() -> None:
     assert not hasattr(Layer, "control_for")
     assert not hasattr(Layer, "enter_async_resource")
     assert not hasattr(Layer, "add_async_cleanup")
+
+
+def test_facade_keeps_direct_import_type_aliases_without_expanding___all__() -> None:
+    assert compositor_module.LayerConfigInput is LayerConfigInput
+    assert compositor_module.LayerProviderInput is LayerProviderInput
+    assert LayerConfigInput.__module__ == "agenton.compositor"
+    assert LayerProviderInput.__module__ == "agenton.compositor"
+    assert LayerConfigInput.__name__ == "LayerConfigInput"
+    assert LayerProviderInput.__name__ == "LayerProviderInput"
+    assert "LayerConfigInput" not in compositor_module.__all__
+    assert "LayerProviderInput" not in compositor_module.__all__
+
+
+def test_facade_export_surface_matches_split_contract() -> None:
+    compatibility_names = [*EXPECTED_FACADE_EXPORTS, *EXPECTED_DIRECT_IMPORT_COMPAT_NAMES]
+
+    assert compositor_module.__all__ == EXPECTED_FACADE_EXPORTS
+
+    namespace: dict[str, object] = {}
+    exec(
+        "from agenton.compositor import " + ", ".join(compatibility_names),
+        {},
+        namespace,
+    )
+
+    for name in compatibility_names:
+        assert namespace[name] is getattr(compositor_module, name)
 
 
 def _object_provider(value: str) -> LayerProvider[ObjectLayer[str]]:
