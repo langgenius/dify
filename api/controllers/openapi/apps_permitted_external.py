@@ -10,12 +10,11 @@ from __future__ import annotations
 import sqlalchemy as sa
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import ValidationError
 from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import (
-    MAX_PAGE_LIMIT,
     AppListRow,
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
@@ -31,7 +30,6 @@ from libs.oauth_bearer import (
     validate_bearer,
 )
 from models import App, Tenant
-from models.model import AppMode
 from services.enterprise.app_permitted_service import list_permitted_apps
 from services.openapi.license_gate import license_required
 from services.openapi.visibility import apply_openapi_gate
@@ -54,7 +52,9 @@ class PermittedExternalAppsListApi(Resource):
         enterprise_only,
     ]
 
-    @openapi_ns.response(200, "Permitted external apps list", openapi_ns.models[PermittedExternalAppsListResponse.__name__])
+    @openapi_ns.response(
+        200, "Permitted external apps list", openapi_ns.models[PermittedExternalAppsListResponse.__name__]
+    )
     def get(self):
         try:
             query = PermittedExternalAppsListQuery.model_validate(request.args.to_dict(flat=True))
@@ -76,9 +76,9 @@ class PermittedExternalAppsListApi(Resource):
 
         apps_by_id = {
             str(a.id): a
-            for a in db.session.execute(
-                apply_openapi_gate(sa.select(App).where(App.id.in_(page_result.app_ids)))
-            ).scalars().all()
+            for a in db.session.execute(apply_openapi_gate(sa.select(App).where(App.id.in_(page_result.app_ids))))
+            .scalars()
+            .all()
         }
         tenant_ids = list({a.tenant_id for a in apps_by_id.values()})
         tenants_by_id = {
@@ -107,7 +107,10 @@ class PermittedExternalAppsListApi(Resource):
 
         # total/has_more reflect the EE-side allow-list; len(items) may be < limit when local rows are dropped.
         env = PermittedExternalAppsListResponse(
-            page=query.page, limit=query.limit, total=page_result.total,
-            has_more=query.page * query.limit < page_result.total, data=items
+            page=query.page,
+            limit=query.limit,
+            total=page_result.total,
+            has_more=query.page * query.limit < page_result.total,
+            data=items,
         )
         return env.model_dump(mode="json"), 200

@@ -34,12 +34,14 @@ def test_app_run_request_strips_blank_conversation_id():
 
 def test_app_run_request_rejects_invalid_uuid_conversation_id():
     from pydantic import ValidationError
+
     with pytest.raises(ValidationError, match="conversation_id must be a valid UUID"):
         AppRunRequest(inputs={}, conversation_id="not-a-uuid")
 
 
 def test_app_run_request_accepts_valid_uuid_conversation_id():
     import uuid as _uuid
+
     cid = str(_uuid.uuid4())
     payload = AppRunRequest(inputs={}, conversation_id=cid)
     assert payload.conversation_id == cid

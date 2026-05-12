@@ -24,8 +24,8 @@ from pydantic import BaseModel, ValidationError
 from werkzeug.exceptions import BadRequest
 
 from configs import dify_config
-from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.common.schema import query_params_from_model
+from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import (
     AccountPayload,

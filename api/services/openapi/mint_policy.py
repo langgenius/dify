@@ -33,9 +33,7 @@ def validate_mint_policy(
     """
     profile = MINTABLE_PROFILES.get(subject_type)
     if profile is None:
-        raise MintPolicyViolation(
-            f"mint_policy_violation: unknown subject_type={subject_type!r}"
-        )
+        raise MintPolicyViolation(f"mint_policy_violation: unknown subject_type={subject_type!r}")
 
     drift = []
     if profile.prefix != prefix:
@@ -46,6 +44,4 @@ def validate_mint_policy(
         drift.append(f"scopes got={got} expected={want}")
 
     if drift:
-        raise MintPolicyViolation(
-            f"mint_policy_violation: subject_type={subject_type.value} — " + "; ".join(drift)
-        )
+        raise MintPolicyViolation(f"mint_policy_violation: subject_type={subject_type.value} — " + "; ".join(drift))

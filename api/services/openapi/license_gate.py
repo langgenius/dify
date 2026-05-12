@@ -26,9 +26,7 @@ from services.feature_service import FeatureService, LicenseStatus
 
 logger = logging.getLogger(__name__)
 
-_VALID_LICENSE_STATUSES: frozenset[LicenseStatus] = frozenset(
-    {LicenseStatus.ACTIVE, LicenseStatus.EXPIRING}
-)
+_VALID_LICENSE_STATUSES: frozenset[LicenseStatus] = frozenset({LicenseStatus.ACTIVE, LicenseStatus.EXPIRING})
 
 
 def license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:

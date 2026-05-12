@@ -62,12 +62,13 @@ sync-models: ## Regenerate TS models from API swagger spec.
 	npx swagger2openapi ../api/openapi/openapi-swagger.json -o /tmp/openapi-oas3.json --patch
 	@echo "→ Generating Zod schemas + TS types…"
 	npx openapi-zod-client /tmp/openapi-oas3.json -o src/types/openapi-schemas.ts -t scripts/schemas-only.hbs --export-schemas
-	sed -i '' 's/z\.record(z\.string())/z.record(z.string(), z.string())/g' src/types/openapi-schemas.ts
-	sed -i '' 's/\.passthrough()/.loose()/g' src/types/openapi-schemas.ts
-	sed -i '' 's/z\.object({})\.partial()/z.record(z.string(), z.any())/g' src/types/openapi-schemas.ts
-	sed -i '' 's/z\.unknown()/z.null()/g' src/types/openapi-schemas.ts
-	sed -i '' 's/\.loose()//g' src/types/openapi-schemas.ts
-	sed -i '' 's/\.partial()//g' src/types/openapi-schemas.ts
+	sed -i.bak 's/z\.record(z\.string())/z.record(z.string(), z.string())/g' src/types/openapi-schemas.ts
+	sed -i.bak 's/\.passthrough()/.loose()/g' src/types/openapi-schemas.ts
+	sed -i.bak 's/z\.object({})\.partial()/z.record(z.string(), z.any())/g' src/types/openapi-schemas.ts
+	sed -i.bak 's/z\.unknown()/z.null()/g' src/types/openapi-schemas.ts
+	sed -i.bak 's/\.loose()//g' src/types/openapi-schemas.ts
+	sed -i.bak 's/\.partial()//g' src/types/openapi-schemas.ts
+	@rm -f src/types/openapi-schemas.ts.bak
 	@echo "→ Fixing lint style…"
 	@$(PNPM) lint:fix src/types/openapi-schemas.ts
 	@rm -f /tmp/openapi-oas3.json

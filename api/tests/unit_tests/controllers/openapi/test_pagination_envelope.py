@@ -109,19 +109,32 @@ def test_response_models_dump_per_mode():
         WorkflowRunData,
         WorkflowRunResponse,
     )
+
     chat = ChatMessageResponse(
-        event="message", task_id="t1", id="m1", message_id="m1",
-        conversation_id="c1", mode="chat", answer="hi", created_at=0,
+        event="message",
+        task_id="t1",
+        id="m1",
+        message_id="m1",
+        conversation_id="c1",
+        mode="chat",
+        answer="hi",
+        created_at=0,
     )
     assert chat.model_dump(mode="json")["mode"] == "chat"
     wf = WorkflowRunResponse(
-        workflow_run_id="r1", task_id="t1",
+        workflow_run_id="r1",
+        task_id="t1",
         data=WorkflowRunData(id="r1", workflow_id="w1", status="succeeded"),
     )
     assert wf.model_dump(mode="json")["data"]["status"] == "succeeded"
     assert wf.model_dump(mode="json")["mode"] == "workflow"
     comp = CompletionMessageResponse(
-        event="message", task_id="t2", id="m2", message_id="m2",
-        mode="completion", answer="ok", created_at=0,
+        event="message",
+        task_id="t2",
+        id="m2",
+        message_id="m2",
+        mode="completion",
+        answer="ok",
+        created_at=0,
     )
     assert comp.model_dump(mode="json")["mode"] == "completion"

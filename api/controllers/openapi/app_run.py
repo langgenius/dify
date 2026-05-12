@@ -5,12 +5,11 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from typing import Any, Literal
-from uuid import UUID
+from typing import Any
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, ValidationError, field_validator
+from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, HTTPException, InternalServerError, NotFound, UnprocessableEntity
 
 import services
@@ -40,7 +39,6 @@ from core.errors.error import (
 )
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import UUIDStrOrEmpty
 from libs.oauth_bearer import Scope
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService

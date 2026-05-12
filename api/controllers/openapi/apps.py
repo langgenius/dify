@@ -12,22 +12,20 @@ from typing import Any
 import sqlalchemy as sa
 from flask import g, request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import ValidationError
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
 from controllers.common.fields import Parameters
+from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
-from controllers.common.schema import query_params_from_model
 from controllers.openapi._models import (
-    MAX_PAGE_LIMIT,
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
     AppListQuery,
     AppListResponse,
     AppListRow,
-    PaginationEnvelope,
     TagItem,
 )
 from controllers.openapi.auth.surface_gate import accept_subjects
@@ -44,7 +42,6 @@ from libs.oauth_bearer import (
     validate_bearer,
 )
 from models import App, Tenant
-from models.model import AppMode
 from services.app_service import AppListParams, AppService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
@@ -198,8 +195,9 @@ class AppListApi(Resource):
         require_workspace_member(ctx, workspace_id)
 
         empty = (
-            AppListResponse(page=query.page, limit=query.limit, total=0, has_more=False, data=[])
-            .model_dump(mode="json"),
+            AppListResponse(page=query.page, limit=query.limit, total=0, has_more=False, data=[]).model_dump(
+                mode="json"
+            ),
             200,
         )
 
@@ -213,12 +211,7 @@ class AppListApi(Resource):
 
         if parsed_uuid is not None:
             app = db.session.get(App, str(parsed_uuid))
-            if (
-                not app
-                or app.status != "normal"
-                or str(app.tenant_id) != workspace_id
-                or not is_openapi_visible(app)
-            ):
+            if not app or app.status != "normal" or str(app.tenant_id) != workspace_id or not is_openapi_visible(app):
                 return empty
             tenant_name = db.session.execute(
                 sa.select(Tenant.name).where(Tenant.id == workspace_id)

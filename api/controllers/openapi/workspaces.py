@@ -16,8 +16,8 @@ from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi import openapi_ns
-from controllers.openapi.auth.surface_gate import accept_subjects
 from controllers.openapi._models import WorkspaceDetailResponse, WorkspaceListResponse, WorkspaceSummaryResponse
+from controllers.openapi.auth.surface_gate import accept_subjects
 from extensions.ext_database import db
 from libs.oauth_bearer import (
     ACCEPT_USER_ANY,

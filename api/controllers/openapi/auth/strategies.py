@@ -61,9 +61,7 @@ class AclStrategy:
         ),
     }
 
-    _MODES_REQUIRING_INNER_CHECK: frozenset[WebAppAccessMode] = frozenset(
-        {WebAppAccessMode.PRIVATE}
-    )
+    _MODES_REQUIRING_INNER_CHECK: frozenset[WebAppAccessMode] = frozenset({WebAppAccessMode.PRIVATE})
 
     def authorize(self, ctx: Context) -> bool:
         if ctx.app is None:
@@ -88,9 +86,7 @@ class AclStrategy:
             return None
 
     @classmethod
-    def _subject_allowed_for_mode(
-        cls, subject_type: SubjectType, access_mode: WebAppAccessMode
-    ) -> bool:
+    def _subject_allowed_for_mode(cls, subject_type: SubjectType, access_mode: WebAppAccessMode) -> bool:
         return access_mode in cls._ALLOWED_MODES_BY_SUBJECT.get(subject_type, frozenset())
 
     def _inner_permission_check(self, ctx: Context) -> bool:
