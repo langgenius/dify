@@ -1,5 +1,7 @@
 import type { AccessPolicyWithBindings } from '@/models/access-control'
-import { useWorkspaceAppAccessRules } from '@/service/access-control/use-workspace-access-rules'
+import {
+  useWorkspaceAppAccessRules,
+} from '@/service/access-control/use-workspace-access-rules'
 import AccessRuleSection from './access-rule-section'
 
 type AppAccessRuleSectionProps = {
