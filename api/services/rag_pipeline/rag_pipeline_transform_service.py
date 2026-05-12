@@ -171,7 +171,7 @@ class RagPipelineTransformService:
         node: dict[str, Any],
     ):
         knowledge_configuration_dict = node.get("data", {})
-
+        assert dataset.embedding_model and dataset.embedding_model_provider
         if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             knowledge_configuration.embedding_model = dataset.embedding_model
             knowledge_configuration.embedding_model_provider = dataset.embedding_model_provider
@@ -281,6 +281,7 @@ class RagPipelineTransformService:
             PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
 
     def _transform_to_empty_pipeline(self, dataset: Dataset):
+        assert dataset.description
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
@@ -314,6 +315,7 @@ class RagPipelineTransformService:
             data_source_info_dict = document.data_source_info_dict
             if not data_source_info_dict:
                 continue
+            assert dataset.pipeline_id
             if document.data_source_type == DataSourceType.UPLOAD_FILE:
                 document.data_source_type = DataSourceType.LOCAL_FILE
                 file_id = data_source_info_dict.get("upload_file_id")

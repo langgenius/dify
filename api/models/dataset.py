@@ -181,11 +181,6 @@ class Dataset(TypeBase):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(LongText, nullable=True)
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
-    permission: Mapped[DatasetPermissionEnum] = mapped_column(
-        EnumText(DatasetPermissionEnum, length=255),
-        server_default=sa.text("'only_me'"),
-        default=DatasetPermissionEnum.ONLY_ME,
-    )
     data_source_type: Mapped[DataSourceType] = mapped_column(EnumText(DataSourceType, length=255))
     indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
     index_struct: Mapped[str | None] = mapped_column(LongText, nullable=True)
@@ -209,6 +204,11 @@ class Dataset(TypeBase):
     pipeline_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    permission: Mapped[DatasetPermissionEnum] = mapped_column(
+        EnumText(DatasetPermissionEnum, length=255),
+        server_default=sa.text("'only_me'"),
+        default=DatasetPermissionEnum.ONLY_ME,
+    )
     is_multimodal: Mapped[bool] = mapped_column(
         sa.Boolean, default=False, nullable=False, server_default=sa.text("false")
     )
