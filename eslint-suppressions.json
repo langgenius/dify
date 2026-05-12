@@ -4740,11 +4740,6 @@
       "count": 1
     }
   },
-  "web/types/feature.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 3
-    }
-  },
   "web/types/lamejs.d.ts": {
     "ts/no-explicit-any": {
       "count": 3
