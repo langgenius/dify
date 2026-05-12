@@ -154,8 +154,8 @@ class _SummaryIndexSettingDisabled(BaseModel):
 
 class _SummaryIndexSettingEnabled(BaseModel):
     enable: Literal[True]
-    model_name: str
-    model_provider_name: str
+    model_name: str = Field(min_length=1)
+    model_provider_name: str = Field(min_length=1)
 
 
 _SummaryIndexSetting = Annotated[
