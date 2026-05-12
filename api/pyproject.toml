@@ -22,7 +22,6 @@ dependencies = [
     "redis[hiredis]>=7.4.0",
     "sendgrid>=6.12.5",
     "sseclient-py>=1.8.0",
-
     # Stable: production-proven, cap below the next major
     "aliyun-log-python-sdk>=0.9.44,<1.0.0",
     "azure-identity>=1.25.3,<2.0.0",
@@ -42,8 +41,8 @@ dependencies = [
     "opentelemetry-propagator-b3>=1.41.1,<2.0.0",
     "readabilipy>=0.3.0,<1.0.0",
     "resend>=2.27.0,<3.0.0",
-
     # Emerging: newer and fast-moving, use compatible pins
+    "dify-agent",
     "fastopenapi[flask]~=0.7.0",
     "graphon~=0.3.1",
     "httpx-sse~=0.4.0",
@@ -60,6 +59,7 @@ members = ["providers/vdb/*", "providers/trace/*"]
 exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 
 [tool.uv.sources]
+dify-agent = { path = "../dify-agent" }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }
