@@ -15,6 +15,7 @@ from core.rag.index_processor.processor.qa_index_processor import QAIndexProcess
 from core.rag.models.document import AttachmentDocument, Document
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.enums import DataSourceType, DocumentCreatedFrom
 
 
 class _ImmediateThread:
@@ -48,7 +49,17 @@ class TestQAIndexProcessor:
 
     @pytest.fixture
     def dataset_document(self) -> DatasetDocument:
-        return DatasetDocument(id="doc-1", created_by="user-1")
+        return DatasetDocument(
+            id="doc-1",
+            tenant_id="tenant-1",
+            dataset_id="dataset-1",
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="batch-1",
+            name="qa.txt",
+            created_from=DocumentCreatedFrom.WEB,
+            created_by="user-1",
+        )
 
     @pytest.fixture
     def process_rule(self) -> dict:

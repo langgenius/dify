@@ -95,7 +95,7 @@ def _document_row(
     archived: bool = False,
     is_paused: bool = False,
 ) -> Document:
-    return Document(
+    document = Document(
         id=document_id,
         tenant_id=tenant_id,
         dataset_id=dataset_id,
@@ -106,8 +106,6 @@ def _document_row(
         name=name,
         created_from=DocumentCreatedFrom.API,
         created_by="user-1",
-        created_at=datetime(2026, 1, 1),
-        updated_at=datetime(2026, 1, 2),
         indexing_status=indexing_status,
         doc_form=IndexStructureType.PARAGRAPH_INDEX,
         word_count=10,
@@ -116,6 +114,9 @@ def _document_row(
         is_paused=is_paused,
         completed_at=datetime(2026, 1, 2) if indexing_status == IndexingStatus.COMPLETED else None,
     )
+    document.created_at = datetime(2026, 1, 1)
+    document.updated_at = datetime(2026, 1, 2)
+    return document
 
 
 def _upload_file(*, file_id: str, tenant_id: str = "tenant-1", name: str = "upload.txt") -> UploadFile:

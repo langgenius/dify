@@ -318,10 +318,11 @@ def _make_document(
     archived: bool = False,
     indexing_status: str = "completed",
 ) -> Document:
-    return Document(
+    document = Document(
         id=document_id,
         dataset_id=dataset_id,
         tenant_id=tenant_id,
+        position=1,
         batch=batch,
         doc_form=doc_form,
         word_count=word_count,
@@ -336,10 +337,12 @@ def _make_document(
         parsing_completed_at="parsed",
         cleaning_completed_at="cleaned",
         splitting_completed_at="split",
-        updated_at=None,
         created_from=None,
+        created_by="user-1",
         dataset_process_rule_id="process-rule-1",
     )
+    document.updated_at = None  # type: ignore[assignment]
+    return document
 
 
 def _make_segment(

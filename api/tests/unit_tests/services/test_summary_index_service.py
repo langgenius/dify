@@ -17,7 +17,7 @@ from sqlalchemy.orm import sessionmaker
 import services.summary_index_service as summary_module
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import DocumentSegmentSummary
-from models.enums import SegmentStatus, SummaryStatus
+from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
 from services.summary_index_service import SummaryIndexService
 
 
@@ -40,6 +40,21 @@ def _dataset(*, indexing_technique: str = IndexTechniqueType.HIGH_QUALITY) -> Ma
     dataset.embedding_model_provider = "openai"
     dataset.embedding_model = "text-embedding"
     return dataset
+
+
+def _document() -> summary_module.DatasetDocument:
+    return summary_module.DatasetDocument(
+        id="doc-1",
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name="Document",
+        created_from=DocumentCreatedFrom.API,
+        created_by="user-1",
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
 
 
 def _segment(*, has_document: bool = True) -> MagicMock:
@@ -626,7 +641,7 @@ def test_generate_and_vectorize_summary_creates_missing_record_and_logs_usage(
 
 def test_generate_summaries_for_document_skip_conditions(monkeypatch: pytest.MonkeyPatch) -> None:
     dataset = _dataset(indexing_technique=IndexTechniqueType.ECONOMY)
-    document = summary_module.DatasetDocument(id="doc-1", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+    document = _document()
     assert SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}) == []
 
     dataset = _dataset()
@@ -638,7 +653,7 @@ def test_generate_summaries_for_document_skip_conditions(monkeypatch: pytest.Mon
 
 def test_generate_summaries_for_document_runs_and_handles_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     dataset = _dataset()
-    document = summary_module.DatasetDocument(id="doc-1", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+    document = _document()
 
     seg1 = _segment()
     seg2 = _segment()
@@ -668,7 +683,7 @@ def test_generate_summaries_for_document_runs_and_handles_errors(monkeypatch: py
 
 def test_generate_summaries_for_document_no_segments_returns_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     dataset = _dataset()
-    document = summary_module.DatasetDocument(id="doc-1", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+    document = _document()
 
     session = MagicMock()
     session.scalars.return_value.all.return_value = []
@@ -685,7 +700,7 @@ def test_generate_summaries_for_document_applies_segment_ids_and_only_parent_chu
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     dataset = _dataset()
-    document = summary_module.DatasetDocument(id="doc-1", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+    document = _document()
     seg = _segment()
 
     session = MagicMock()

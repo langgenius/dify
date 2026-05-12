@@ -56,7 +56,7 @@ from libs.login import login_required
 from libs.pagination import paginate_query
 from models import Account, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum, DocumentPipelineExecutionLog
-from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
+from models.enums import DataSourceType, DocumentDocType, IndexingStatus, ProcessRuleMode, SegmentStatus
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -835,7 +835,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 raise DocumentAlreadyFinishedError()
             data_source_info = document.data_source_info_dict
             match document.data_source_type:
-                case "upload_file":
+                case DataSourceType.UPLOAD_FILE:
                     if not data_source_info:
                         continue
                     file_id = data_source_info["upload_file_id"]
@@ -852,7 +852,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                         datasource_type=DatasourceType.FILE, upload_file=file_detail, document_model=document.doc_form
                     )
                     extract_settings.append(extract_setting)
-                case "notion_import":
+                case DataSourceType.NOTION_IMPORT:
                     if not data_source_info:
                         continue
                     extract_setting = ExtractSetting(
@@ -869,7 +869,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                         document_model=document.doc_form,
                     )
                     extract_settings.append(extract_setting)
-                case "website_crawl":
+                case DataSourceType.WEBSITE_CRAWL:
                     if not data_source_info:
                         continue
                     extract_setting = ExtractSetting(
@@ -1335,16 +1335,17 @@ class DocumentMetadataApi(DocumentResource):
             raise ValueError("doc_metadata must be a dictionary.")
         metadata_schema: dict[str, Any] = cast(dict[str, Any], DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type])
 
-        document.doc_metadata = {}
+        updated_metadata: dict[str, Any] = {}
         if doc_type == "others":
-            document.doc_metadata = doc_metadata
+            updated_metadata = doc_metadata
         else:
             for key, value_type in metadata_schema.items():
                 value = doc_metadata.get(key)
                 if value is not None and isinstance(value, value_type):
-                    document.doc_metadata[key] = value
+                    updated_metadata[key] = value
 
-        document.doc_type = doc_type
+        document.doc_metadata = updated_metadata
+        document.doc_type = DocumentDocType(doc_type)
         document.updated_at = naive_utc_now()
 
         return SimpleResultMessageResponse(result="success", message="Document metadata updated.").model_dump(
