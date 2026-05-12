@@ -129,6 +129,31 @@ describe('HITLInputComponent', () => {
     expect(onChange.mock.calls[0]![0][0].output_variable_name).toBe('renamed_name')
   })
 
+  it('should ignore rename when the target variable name already exists', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <HITLInputComponent
+        nodeKey="node-key-duplicate"
+        nodeId="node-duplicate"
+        varName="user_name"
+        formInputs={[
+          createInput(),
+          createInput({ output_variable_name: 'renamed_name' }),
+        ]}
+        onChange={onChange}
+        onRename={vi.fn()}
+        onRemove={vi.fn()}
+        workflowNodesMap={{}}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'emit-rename' }))
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('should update existing payload when variable name stays the same', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

@@ -213,6 +213,29 @@ describe('HITLInputComponentUI', () => {
 
       expect(queryByRole('textbox')).not.toBeInTheDocument()
     })
+
+    it('should prevent renaming to an existing variable name', async () => {
+      const {
+        findByRole,
+        onChange,
+        onRename,
+      } = renderComponent({
+        unavailableVariableNames: ['existing_name'],
+      })
+
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+
+      const textbox = await findByRole('textbox')
+      fireEvent.change(textbox, { target: { value: 'existing_name' } })
+
+      expect(screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameDuplicated')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(onChange).not.toHaveBeenCalled()
+      expect(onRename).not.toHaveBeenCalled()
+    })
   })
 
   describe('Default formInput', () => {

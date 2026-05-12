@@ -64,6 +64,7 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
 vi.mock('../add-input-field', () => ({
   __esModule: true,
   default: (props: {
+    unavailableVariableNames?: string[]
     onSave: (payload: {
       type: string
       output_variable_name: string
@@ -229,6 +230,41 @@ describe('FormContent', () => {
     }))
     expect(screen.queryByText('save-input')).not.toBeInTheDocument()
     expect(container.firstChild).toHaveClass('pointer-events-none')
+  })
+
+  it('should not insert a new input when the variable name already exists', () => {
+    render(
+      <FormContent
+        nodeId="node-2"
+        value="Initial content"
+        onChange={onChange}
+        formInputs={[{
+          type: 'paragraph',
+          output_variable_name: 'approval',
+          default: {
+            type: 'constant',
+            selector: [],
+            value: '',
+          },
+        } as never]}
+        onFormInputsChange={onFormInputsChange}
+        onFormInputItemRename={onFormInputItemRename}
+        onFormInputItemRemove={onFormInputItemRemove}
+        editorKey={1}
+        isExpand={false}
+        availableVars={[]}
+        availableNodes={[]}
+      />,
+    )
+
+    expect(mockAddInputField).toHaveBeenCalledWith(expect.objectContaining({
+      unavailableVariableNames: ['approval'],
+    }))
+
+    fireEvent.click(screen.getByText('save-input'))
+
+    expect(mockOnInsert).not.toHaveBeenCalled()
+    expect(onFormInputsChange).not.toHaveBeenCalled()
   })
 
   it('should render the mac hotkey hint when focused on macOS', () => {

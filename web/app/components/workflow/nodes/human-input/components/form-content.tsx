@@ -60,6 +60,9 @@ const FormContent: FC<FormContentProps> = ({
   const [newFormInputs, setNewFormInputs] = useState<FormInputItem[]>([])
   const handleInsertHITLNode = (onInsert: (command: LexicalCommand<unknown>, params: any) => void) => {
     return (payload: FormInputItem) => {
+      if (formInputs.some(input => input.output_variable_name === payload.output_variable_name))
+        return
+
       const newFormInputs = [...(formInputs || []), payload]
       onInsert(INSERT_HITL_INPUT_BLOCK_COMMAND, {
         variableName: payload.output_variable_name,
@@ -148,6 +151,7 @@ const FormContent: FC<FormContentProps> = ({
                 Popup: ({ onClose, onInsert }) => (
                   <AddInputField
                     nodeId={nodeId}
+                    unavailableVariableNames={formInputs.map(input => input.output_variable_name)}
                     onSave={handleInsertHITLNode(onInsert!)}
                     onCancel={onClose}
                   />

@@ -637,6 +637,7 @@
   "nodes.humanInput.insertInputField.useConstantInstead": "使用常量代替",
   "nodes.humanInput.insertInputField.useVarInstead": "使用变量代替",
   "nodes.humanInput.insertInputField.variable": "变量",
+  "nodes.humanInput.insertInputField.variableNameDuplicated": "变量名已存在",
   "nodes.humanInput.insertInputField.variableNameInvalid": "只能包含字母、数字和下划线，且不能以数字开头",
   "nodes.humanInput.log.backstageInputURL": "表单输入 URL：",
   "nodes.humanInput.log.reason": "原因：",

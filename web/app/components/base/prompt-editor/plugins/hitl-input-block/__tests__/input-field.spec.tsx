@@ -116,6 +116,31 @@ describe('InputField', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it('should disable save and show validation error when variable name already exists', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <InputField
+        nodeId="node-duplicate-name"
+        isEdit={false}
+        payload={createPayload()}
+        unavailableVariableNames={['existing_name']}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    const inputs = screen.getAllByRole('textbox')
+    await user.clear(inputs[0]!)
+    await user.type(inputs[0]!, 'existing_name')
+
+    expect(screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameDuplicated')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i })).toBeDisabled()
+    await user.keyboard('{Control>}{Enter}{/Control}')
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('should call onChange when saving a valid payload in edit mode', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

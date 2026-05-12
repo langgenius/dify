@@ -31,6 +31,7 @@ type InputFieldProps = {
   nodeId: string
   isEdit: boolean
   payload?: FormInputItem
+  unavailableVariableNames?: string[]
   onChange: (newPayload: FormInputItem) => void
   onCancel: () => void
 }
@@ -38,6 +39,7 @@ const InputField: React.FC<InputFieldProps> = ({
   nodeId,
   isEdit,
   payload,
+  unavailableVariableNames = [],
   onChange,
   onCancel,
 }) => {
@@ -73,14 +75,24 @@ const InputField: React.FC<InputFieldProps> = ({
 
     return createDefaultParagraphFormInput(tempPayload.output_variable_name)
   }, [tempPayload])
-  const nameValid = useMemo(() => {
+  const unavailableVariableNameSet = useMemo(() => {
+    return new Set(unavailableVariableNames.map(name => name.trim()).filter(Boolean))
+  }, [unavailableVariableNames])
+  const variableNameError = useMemo(() => {
     const name = tempPayload.output_variable_name.trim()
     if (!name)
-      return false
+      return null
     if (name.includes(' '))
-      return false
-    return /^[a-z_]\w{0,29}$/.test(name)
-  }, [tempPayload.output_variable_name])
+      return 'variableNameInvalid'
+    if (!/^[a-z_]\w{0,29}$/.test(name))
+      return 'variableNameInvalid'
+    if (unavailableVariableNameSet.has(name))
+      return 'variableNameDuplicated'
+    return null
+  }, [tempPayload.output_variable_name, unavailableVariableNameSet])
+  const nameValid = useMemo(() => {
+    return !!tempPayload.output_variable_name.trim() && !variableNameError
+  }, [tempPayload.output_variable_name, variableNameError])
   const handleSave = useCallback(() => {
     if (!nameValid)
       return
@@ -223,9 +235,9 @@ const InputField: React.FC<InputFieldProps> = ({
           }}
           autoFocus
         />
-        {tempPayload.output_variable_name && !nameValid && (
+        {tempPayload.output_variable_name && variableNameError && (
           <div className="mt-1 px-1 system-xs-regular text-text-destructive-secondary">
-            {t(`${i18nPrefix}.variableNameInvalid`, { ns: 'workflow' })}
+            {t(`${i18nPrefix}.${variableNameError}`, { ns: 'workflow' })}
           </div>
         )}
       </div>
