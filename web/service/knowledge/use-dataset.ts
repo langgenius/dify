@@ -108,7 +108,7 @@ export const datasetDetailQueryKeyPrefix = [NAME_SPACE, 'detail']
 export const useDatasetDetail = (datasetId: string) => {
   return useQuery({
     queryKey: [...datasetDetailQueryKeyPrefix, datasetId],
-    queryFn: () => get<DataSet>(`/datasets/${datasetId}`, {}, { silent: true }),
+    queryFn: () => get<DataSet>(`/datasets/${datasetId}`),
     enabled: !!datasetId,
     retry: (failureCount, error) => {
       if (error instanceof Response && [403, 404].includes(error.status))
