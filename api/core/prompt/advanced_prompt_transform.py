@@ -161,8 +161,9 @@ class AdvancedPromptTransform(PromptTransform):
         prompt_messages: list[PromptMessage] = []
         for prompt_item in prompt_template:
             raw_prompt = prompt_item.text
-            match prompt_item.edition_type:
-                case "basic" | None:
+            edition_type = prompt_item.edition_type or "basic"
+            match edition_type:
+                case "basic":
                     if self.with_variable_tmpl:
                         vp = VariablePool.empty()
                         for k, v in inputs.items():
