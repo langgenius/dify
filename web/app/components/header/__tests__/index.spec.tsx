@@ -44,6 +44,10 @@ vi.mock('@/app/components/header/tools-nav', () => ({
   default: createMockComponent('tools-nav'),
 }))
 
+vi.mock('@/features/deployments/nav', () => ({
+  DeploymentsNav: createMockComponent('deployments-nav'),
+}))
+
 vi.mock('@/app/components/header/plan-badge', () => ({
   PlanBadge: ({ onClick, plan }: { onClick?: () => void, plan?: string }) => (
     <button data-testid="plan-badge" onClick={onClick} data-plan={plan} />
@@ -66,6 +70,7 @@ let mockPlanType = 'sandbox'
 let mockBrandingEnabled = false
 let mockBrandingTitle: string | null = null
 let mockBrandingLogo: string | null = null
+let mockEnableAppDeploy = false
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 
@@ -103,6 +108,7 @@ const renderHeader = (ui: ReactElement = <Header />) =>
         application_title: mockBrandingTitle ?? '',
         workspace_logo: mockBrandingLogo ?? '',
       },
+      enable_app_deploy: mockEnableAppDeploy,
     },
   })
 
@@ -117,6 +123,7 @@ describe('Header', () => {
     mockBrandingEnabled = false
     mockBrandingTitle = null
     mockBrandingLogo = null
+    mockEnableAppDeploy = false
   })
 
   it('should render header with main nav components', () => {
@@ -212,6 +219,24 @@ describe('Header', () => {
     expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
     expect(screen.getByTestId('explore-nav')).toBeInTheDocument()
     expect(screen.getByTestId('app-nav')).toBeInTheDocument()
+  })
+
+  it('should hide deployments nav when app deploy is disabled', () => {
+    mockIsWorkspaceEditor = true
+    mockEnableAppDeploy = false
+
+    renderHeader()
+
+    expect(screen.queryByTestId('deployments-nav')).not.toBeInTheDocument()
+  })
+
+  it('should show deployments nav for editors when app deploy is enabled', () => {
+    mockIsWorkspaceEditor = true
+    mockEnableAppDeploy = true
+
+    renderHeader()
+
+    expect(screen.getByTestId('deployments-nav')).toBeInTheDocument()
   })
 
   it('should hide dataset nav when neither editor nor dataset operator', () => {

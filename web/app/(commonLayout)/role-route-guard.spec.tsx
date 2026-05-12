@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import RoleRouteGuard from './role-route-guard'
 
 const mockReplace = vi.fn()
@@ -34,6 +35,16 @@ const setAppContext = (overrides: Partial<AppContextMock> = {}) => {
   })
 }
 
+const renderRoleRouteGuard = (systemFeatures: { enable_app_deploy?: boolean } = {}) =>
+  renderWithSystemFeatures(
+    (
+      <RoleRouteGuard>
+        <div>content</div>
+      </RoleRouteGuard>
+    ),
+    { systemFeatures },
+  )
+
 describe('RoleRouteGuard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -46,11 +57,7 @@ describe('RoleRouteGuard', () => {
       isLoadingCurrentWorkspace: true,
     })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    renderRoleRouteGuard()
 
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.queryByText('content')).not.toBeInTheDocument()
@@ -62,11 +69,7 @@ describe('RoleRouteGuard', () => {
       isCurrentWorkspaceDatasetOperator: true,
     })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    renderRoleRouteGuard()
 
     expect(screen.queryByText('content')).not.toBeInTheDocument()
     await waitFor(() => {
@@ -80,11 +83,7 @@ describe('RoleRouteGuard', () => {
       isCurrentWorkspaceDatasetOperator: true,
     })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    renderRoleRouteGuard()
 
     expect(screen.getByText('content')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
@@ -96,14 +95,30 @@ describe('RoleRouteGuard', () => {
       isLoadingCurrentWorkspace: true,
     })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    renderRoleRouteGuard()
 
     expect(screen.getByText('content')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('should redirect deployments routes when app deploy is disabled', async () => {
+    mockPathname = '/deployments'
+
+    renderRoleRouteGuard({ enable_app_deploy: false })
+
+    expect(screen.queryByText('content')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/apps')
+    })
+  })
+
+  it('should allow deployments routes when app deploy is enabled', () => {
+    mockPathname = '/deployments/app-1/overview'
+
+    renderRoleRouteGuard({ enable_app_deploy: true })
+
+    expect(screen.getByText('content')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 })

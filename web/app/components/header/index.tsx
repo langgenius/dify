@@ -37,6 +37,7 @@ export function Header() {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isFreePlan = plan.type === Plan.sandbox
   const isBrandingEnabled = systemFeatures.branding.enabled
+  const canUseAppDeploy = isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
 
   function handlePlanClick() {
     if (isFreePlan)
@@ -86,7 +87,7 @@ export function Header() {
           {!isCurrentWorkspaceDatasetOperator && <AppNav />}
           {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
           {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
-          {isCurrentWorkspaceEditor && <DeploymentsNav />}
+          {canUseAppDeploy && <DeploymentsNav />}
         </div>
       </div>
     )
@@ -107,7 +108,7 @@ export function Header() {
         {!isCurrentWorkspaceDatasetOperator && <AppNav />}
         {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
         {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
-        {isCurrentWorkspaceEditor && <DeploymentsNav />}
+        {canUseAppDeploy && <DeploymentsNav />}
       </div>
       <div className="flex min-w-0 flex-1 items-center justify-end gap-2 pr-3 pl-2 min-[1280px]:pl-3">
         <EnvNav />

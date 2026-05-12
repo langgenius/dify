@@ -159,6 +159,7 @@ class PluginManagerModel(BaseModel):
 
 class SystemFeatureModel(BaseModel):
     app_dsl_version: str = ""
+    enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
@@ -233,6 +234,7 @@ class FeatureService:
         cls._fulfill_system_params_from_env(system_features)
 
         if dify_config.ENTERPRISE_ENABLED:
+            system_features.enable_app_deploy = True
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
