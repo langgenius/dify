@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { debounce, useQueryState } from 'nuqs'
 import { useEffect, useRef } from 'react'
@@ -15,6 +16,7 @@ import { NewInstanceCard } from './new-instance-card'
 import { envFilterQueryState, keywordsQueryState } from './query-state'
 
 const INSTANCE_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
+const EMPTY_INSTANCE_CARD_KEYS = Array.from({ length: 36 }, (_, index) => `empty-instance-card-${index}`)
 
 function DeploymentsListState({ children }: {
   children: ReactNode
@@ -23,6 +25,26 @@ function DeploymentsListState({ children }: {
     <div className="col-span-full rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur px-4 py-12 text-center system-sm-regular text-text-tertiary">
       {children}
     </div>
+  )
+}
+
+function DeploymentsListEmpty() {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <>
+      {EMPTY_INSTANCE_CARD_KEYS.map(key => (
+        <div
+          key={key}
+          className="inline-flex h-40 rounded-xl bg-background-default-lighter"
+        />
+      ))}
+      <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-linear-to-t from-background-body to-transparent">
+        <span className="system-md-medium text-text-tertiary">
+          {t('list.empty')}
+        </span>
+      </div>
+    </>
   )
 }
 
@@ -140,6 +162,7 @@ export function DeploymentsList() {
   const pages = data?.pages ?? []
   const apps = pages.flatMap(page => page.data ?? [])
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
+  const showEmptyState = !showSkeleton && !isError && apps.length === 0
 
   useEffect(() => {
     if (!hasNextPage || isLoading || isFetchingNextPage || error)
@@ -166,14 +189,18 @@ export function DeploymentsList() {
   return (
     <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
       <DeploymentsListControls />
-      <div className="relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
+      <div className={cn(
+        'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+        showEmptyState && 'overflow-hidden',
+      )}
+      >
         <NewInstanceCard />
         {showSkeleton
           ? <DeploymentsListSkeleton />
           : isError
             ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
             : apps.length === 0
-              ? <DeploymentsListState>{t('list.empty')}</DeploymentsListState>
+              ? <DeploymentsListEmpty />
               : apps.map(app => (
                   <InstanceCard
                     key={app.id}
