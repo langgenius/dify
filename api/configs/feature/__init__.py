@@ -1,3 +1,4 @@
+from datetime import timedelta
 from enum import StrEnum
 from typing import Literal
 
@@ -22,9 +23,9 @@ class SecurityConfig(BaseSettings):
     """
 
     SECRET_KEY: str = Field(
-        description="Secret key for secure session cookie signing."
-        "Make sure you are changing this key for your deployment with a strong key."
-        "Generate a strong key using `openssl rand -base64 42` or set via the `SECRET_KEY` environment variable.",
+        description="Secret key for secure session cookie signing. "
+        "Leave empty to let Dify generate a persistent key in the storage directory, "
+        "or set a strong value via the `SECRET_KEY` environment variable.",
         default="",
     )
 
@@ -46,6 +47,16 @@ class SecurityConfig(BaseSettings):
     OWNER_TRANSFER_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a owner transfer token remains valid",
         default=5,
+    )
+
+    WEB_FORM_SUBMIT_RATE_LIMIT_MAX_ATTEMPTS: PositiveInt = Field(
+        description="Maximum number of web form submissions allowed per IP within the rate limit window",
+        default=30,
+    )
+
+    WEB_FORM_SUBMIT_RATE_LIMIT_WINDOW_SECONDS: PositiveInt = Field(
+        description="Time window in seconds for web form submission rate limiting",
+        default=60,
     )
 
     LOGIN_DISABLED: bool = Field(
@@ -80,6 +91,12 @@ class AppExecutionConfig(BaseSettings):
     APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
+    )
+
+    HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS: PositiveInt = Field(
+        description="Maximum seconds a workflow run can stay paused waiting for human input before global timeout.",
+        default=int(timedelta(days=7).total_seconds()),
+        ge=1,
     )
 
 
@@ -248,6 +265,11 @@ class PluginConfig(BaseSettings):
         default=60 * 60,
     )
 
+    PLUGIN_MAX_FILE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size (bytes) for plugin-generated files",
+        default=50 * 1024 * 1024,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """
@@ -262,6 +284,27 @@ class MarketplaceConfig(BaseSettings):
     MARKETPLACE_API_URL: HttpUrl = Field(
         description="Marketplace API URL",
         default=HttpUrl("https://marketplace.dify.ai"),
+    )
+
+
+class CreatorsPlatformConfig(BaseSettings):
+    """
+    Configuration for Creators Platform integration
+    """
+
+    CREATORS_PLATFORM_FEATURES_ENABLED: bool = Field(
+        description="Enable or disable Creators Platform features",
+        default=True,
+    )
+
+    CREATORS_PLATFORM_API_URL: HttpUrl = Field(
+        description="Creators Platform API URL",
+        default=HttpUrl("https://creators.dify.ai"),
+    )
+
+    CREATORS_PLATFORM_OAUTH_CLIENT_ID: str = Field(
+        description="OAuth client ID for Creators Platform integration",
+        default="",
     )
 
 
@@ -1094,6 +1137,18 @@ class MultiModalTransferConfig(BaseSettings):
     )
 
 
+class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
+        description="Maximum retry attempts for transient ops trace provider dispatch failures.",
+        default=60,
+    )
+
+    OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
+        description="Delay in seconds between transient ops trace provider dispatch retry attempts.",
+        default=5,
+    )
+
+
 class CeleryBeatConfig(BaseSettings):
     CELERY_BEAT_SCHEDULER_TIME: int = Field(
         description="Interval in days for Celery Beat scheduler execution, default to 1 day",
@@ -1134,6 +1189,14 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable queue monitor task",
         default=False,
     )
+    ENABLE_HUMAN_INPUT_TIMEOUT_TASK: bool = Field(
+        description="Enable human input timeout check task",
+        default=True,
+    )
+    HUMAN_INPUT_TIMEOUT_TASK_INTERVAL: PositiveInt = Field(
+        description="Human input timeout check interval in minutes",
+        default=1,
+    )
     ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: bool = Field(
         description="Enable check upgradable plugin task",
         default=True,
@@ -1153,6 +1216,16 @@ class CeleryScheduleTasksConfig(BaseSettings):
     WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: int = Field(
         description="Maximum schedules to dispatch per tick (0=unlimited, circuit breaker)",
         default=0,
+    )
+
+    # API token last_used_at batch update
+    ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK: bool = Field(
+        description="Enable periodic batch update of API token last_used_at timestamps",
+        default=True,
+    )
+    API_TOKEN_LAST_USED_UPDATE_INTERVAL: int = Field(
+        description="Interval in minutes for batch updating API token last_used_at (default 30)",
+        default=30,
     )
 
     # Trigger provider refresh (simple version)
@@ -1234,6 +1307,13 @@ class PositionConfig(BaseSettings):
         return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(",") if item.strip() != ""}
 
 
+class CollaborationConfig(BaseSettings):
+    ENABLE_COLLABORATION_MODE: bool = Field(
+        description="Whether to enable collaboration mode features across the workspace",
+        default=True,
+    )
+
+
 class LoginConfig(BaseSettings):
     ENABLE_EMAIL_CODE_LOGIN: bool = Field(
         description="whether to enable email code login",
@@ -1279,6 +1359,9 @@ class WorkflowLogConfig(BaseSettings):
     WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
         default=100, description="Batch size for workflow run log cleanup operations"
     )
+    WORKFLOW_LOG_CLEANUP_SPECIFIC_WORKFLOW_IDS: str = Field(
+        default="", description="Comma-separated list of workflow IDs to clean logs for"
+    )
 
 
 class SwaggerUIConfig(BaseSettings):
@@ -1309,6 +1392,10 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
         description="Maximum number of records to process in each batch",
         default=1000,
     )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL: PositiveInt = Field(
+        description="Maximum interval in milliseconds between batches",
+        default=200,
+    )
     SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
         description="Retention days for sandbox expired workflow_run records and message records",
         default=30,
@@ -1325,6 +1412,7 @@ class FeatureConfig(
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    CreatorsPlatformConfig,
     TriggerConfig,
     AsyncWorkflowConfig,
     PluginConfig,
@@ -1341,6 +1429,7 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
+    OpsTraceConfig,
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
@@ -1352,6 +1441,7 @@ class FeatureConfig(
     WorkflowConfig,
     WorkflowNodeExecutionConfig,
     WorkspaceConfig,
+    CollaborationConfig,
     LoginConfig,
     AccountConfig,
     SwaggerUIConfig,

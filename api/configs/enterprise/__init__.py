@@ -18,3 +18,56 @@ class EnterpriseFeatureConfig(BaseSettings):
         description="Allow customization of the enterprise logo.",
         default=False,
     )
+
+    ENTERPRISE_REQUEST_TIMEOUT: int = Field(
+        ge=1, description="Maximum timeout in seconds for enterprise requests", default=5
+    )
+
+
+class EnterpriseTelemetryConfig(BaseSettings):
+    """
+    Configuration for enterprise telemetry.
+    """
+
+    ENTERPRISE_TELEMETRY_ENABLED: bool = Field(
+        description="Enable enterprise telemetry collection (also requires ENTERPRISE_ENABLED=true).",
+        default=False,
+    )
+
+    ENTERPRISE_OTLP_ENDPOINT: str = Field(
+        description="Enterprise OTEL collector endpoint.",
+        default="",
+    )
+
+    ENTERPRISE_OTLP_HEADERS: str = Field(
+        description="Auth headers for OTLP export (key=value,key2=value2).",
+        default="",
+    )
+
+    ENTERPRISE_OTLP_PROTOCOL: str = Field(
+        description="OTLP protocol: 'http' or 'grpc' (default: http).",
+        default="http",
+    )
+
+    ENTERPRISE_OTLP_API_KEY: str = Field(
+        description="Bearer token for enterprise OTLP export authentication.",
+        default="",
+    )
+
+    ENTERPRISE_INCLUDE_CONTENT: bool = Field(
+        description="Include input/output content in traces (privacy toggle).",
+        # Setting the default value to False to avoid accidentally log PII data in traces.
+        default=False,
+    )
+
+    ENTERPRISE_SERVICE_NAME: str = Field(
+        description="Service name for OTEL resource.",
+        default="dify",
+    )
+
+    ENTERPRISE_OTEL_SAMPLING_RATE: float = Field(
+        description="Sampling rate for enterprise traces (0.0 to 1.0, default 1.0 = 100%).",
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+    )

@@ -4,23 +4,19 @@ on:
   workflow_run:
     workflows: ["Build and Push API & Web"]
     branches:
-      - "feat/hitl-frontend"
-      - "feat/hitl-backend"
+      - "build/feat/hitl"
     types:
       - completed
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     if: |
       github.event.workflow_run.conclusion == 'success' &&
-      (
-        github.event.workflow_run.head_branch == 'feat/hitl-frontend' ||
-        github.event.workflow_run.head_branch == 'feat/hitl-backend'
-      )
+      github.event.workflow_run.head_branch == 'build/feat/hitl'
     steps:
       - name: Deploy to server
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.HITL_SSH_HOST }}
           username: ${{ secrets.SSH_USER }}

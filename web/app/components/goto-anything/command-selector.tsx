@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import type { ActionItem } from './actions/types'
 import { Command } from 'cmdk'
-import { usePathname } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { usePathname } from '@/next/navigation'
 import { slashCommandRegistry } from './actions/commands/registry'
 
 type Props = {
@@ -64,7 +64,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
     if (allItems.length > 0 && onCommandValueChange) {
       const currentValueExists = allItems.some(item => item.shortcut === commandValue)
       if (!currentValueExists)
-        onCommandValueChange(allItems[0].shortcut)
+        onCommandValueChange(allItems[0]!.shortcut)
     }
   }, [searchFilter, allItems.length])
 
@@ -98,10 +98,10 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
             className="flex cursor-pointer items-center rounded-md
                      p-2
                      transition-all
-                     duration-150 hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt"
+                     duration-150 hover:bg-state-base-hover aria-selected:bg-state-base-hover-alt"
             onSelect={() => onCommandSelect(item.shortcut)}
           >
-            <span className="min-w-[4.5rem] text-left font-mono text-xs text-text-tertiary">
+            <span className="min-w-18 text-left font-mono text-xs text-text-tertiary">
               {item.shortcut}
             </span>
             <span className="ml-3 text-sm text-text-secondary">

@@ -1,6 +1,6 @@
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiErrorWarningFill } from '@remixicon/react'
 import * as React from 'react'
-import { cn } from '@/utils/classnames'
 
 type ErrorMessageProps = {
   className?: string
@@ -14,9 +14,8 @@ const ErrorMessage = ({
   errorMsg,
 }: ErrorMessageProps) => {
   return (
-    // eslint-disable-next-line tailwindcss/migration-from-tailwind-2
     <div className={cn(
-      'flex gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border bg-opacity-40 bg-toast-error-bg p-2 shadow-xs shadow-shadow-shadow-3',
+      'flex gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border bg-toast-error-bg p-2 shadow-xs shadow-shadow-shadow-3',
       className,
     )}
     >

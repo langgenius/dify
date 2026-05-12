@@ -1,5 +1,10 @@
 """
 Base parser interface and utilities for OpenTelemetry node parsers.
+
+Content gating: ``should_include_content()`` controls whether content-bearing
+span attributes (inputs, outputs, prompts, completions, documents) are written.
+Gate is only active in EE (``ENTERPRISE_ENABLED=True``) when
+``ENTERPRISE_INCLUDE_CONTENT=False``; CE behaviour is unchanged.
 """
 
 import json
@@ -9,12 +14,23 @@ from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from pydantic import BaseModel
 
-from core.file.models import File
-from core.variables import Segment
-from core.workflow.enums import NodeType
-from core.workflow.graph_events import GraphNodeEventBase
-from core.workflow.nodes.base.node import Node
+from configs import dify_config
 from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
+from graphon.enums import BuiltinNodeTypes
+from graphon.file import File
+from graphon.graph_events import GraphNodeEventBase
+from graphon.nodes.base.node import Node
+from graphon.variables import Segment
+
+
+def should_include_content() -> bool:
+    """Return True if content should be written to spans.
+
+    CE (ENTERPRISE_ENABLED=False): always True — no behaviour change.
+    """
+    if not dify_config.ENTERPRISE_ENABLED:
+        return True
+    return dify_config.ENTERPRISE_INCLUDE_CONTENT
 
 
 def safe_json_dumps(obj: Any, ensure_ascii: bool = False) -> str:
@@ -84,31 +100,28 @@ class DefaultNodeOTelParser:
         span.set_attribute("node.id", node.id)
         if node.execution_id:
             span.set_attribute("node.execution_id", node.execution_id)
-        if hasattr(node, "node_type") and node.node_type:
-            span.set_attribute("node.type", node.node_type.value)
+        span.set_attribute("node.type", node.node_type)
 
         span.set_attribute(GenAIAttributes.FRAMEWORK, "dify")
 
-        node_type = getattr(node, "node_type", None)
-        if isinstance(node_type, NodeType):
-            if node_type == NodeType.LLM:
-                span.set_attribute(GenAIAttributes.SPAN_KIND, "LLM")
-            elif node_type == NodeType.KNOWLEDGE_RETRIEVAL:
-                span.set_attribute(GenAIAttributes.SPAN_KIND, "RETRIEVER")
-            elif node_type == NodeType.TOOL:
-                span.set_attribute(GenAIAttributes.SPAN_KIND, "TOOL")
-            else:
-                span.set_attribute(GenAIAttributes.SPAN_KIND, "TASK")
+        node_type = node.node_type
+        if node_type == BuiltinNodeTypes.LLM:
+            span.set_attribute(GenAIAttributes.SPAN_KIND, "LLM")
+        elif node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+            span.set_attribute(GenAIAttributes.SPAN_KIND, "RETRIEVER")
+        elif node_type == BuiltinNodeTypes.TOOL:
+            span.set_attribute(GenAIAttributes.SPAN_KIND, "TOOL")
         else:
             span.set_attribute(GenAIAttributes.SPAN_KIND, "TASK")
 
         # Extract inputs and outputs from result_event
         if result_event and result_event.node_run_result:
             node_run_result = result_event.node_run_result
-            if node_run_result.inputs:
-                span.set_attribute(ChainAttributes.INPUT_VALUE, safe_json_dumps(node_run_result.inputs))
-            if node_run_result.outputs:
-                span.set_attribute(ChainAttributes.OUTPUT_VALUE, safe_json_dumps(node_run_result.outputs))
+            if should_include_content():
+                if node_run_result.inputs:
+                    span.set_attribute(ChainAttributes.INPUT_VALUE, safe_json_dumps(node_run_result.inputs))
+                if node_run_result.outputs:
+                    span.set_attribute(ChainAttributes.OUTPUT_VALUE, safe_json_dumps(node_run_result.outputs))
 
         if error:
             span.record_exception(error)

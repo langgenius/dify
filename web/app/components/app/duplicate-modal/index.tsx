@@ -1,18 +1,16 @@
 'use client'
 import type { AppIconType } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
-import Toast from '@/app/components/base/toast'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
 import AppIconPicker from '../../base/app-icon-picker'
 
 export type DuplicateAppModalProps = {
@@ -57,7 +55,7 @@ const DuplicateAppModal = ({
 
   const submit = () => {
     if (!name.trim()) {
-      Toast.notify({ type: 'error', message: t('appCustomize.nameRequired', { ns: 'explore' }) })
+      toast.error(t('appCustomize.nameRequired', { ns: 'explore' }))
       return
     }
     onConfirm({
@@ -71,40 +69,44 @@ const DuplicateAppModal = ({
 
   return (
     <>
-      <Modal
-        isShow={show}
-        onClose={noop}
-        className={cn('relative !max-w-[480px]', 'px-8')}
-      >
-        <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onHide}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-        </div>
-        <div className="relative mb-9 mt-3 text-xl font-semibold leading-[30px] text-text-primary">{t('duplicateTitle', { ns: 'app' })}</div>
-        <div className="system-sm-regular mb-9 text-text-secondary">
-          <div className="system-md-medium mb-2">{t('appCustomize.subTitle', { ns: 'explore' })}</div>
-          <div className="flex items-center justify-between space-x-2">
-            <AppIcon
-              size="large"
-              onClick={() => { setShowAppIconPicker(true) }}
-              className="cursor-pointer"
-              iconType={appIcon.type}
-              icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-              background={appIcon.type === 'image' ? undefined : appIcon.background}
-              imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-            />
-            <Input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="h-10"
-            />
+      <Dialog open={show}>
+        <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none px-8 text-left align-middle">
+
+          <button
+            type="button"
+            className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={onHide}
+          >
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          </button>
+          <div className="relative mt-3 mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('duplicateTitle', { ns: 'app' })}</div>
+          <div className="mb-9 system-sm-regular text-text-secondary">
+            <div className="mb-2 system-md-medium">{t('appCustomize.subTitle', { ns: 'explore' })}</div>
+            <div className="flex items-center justify-between space-x-2">
+              <AppIcon
+                size="large"
+                onClick={() => { setShowAppIconPicker(true) }}
+                className="cursor-pointer"
+                iconType={appIcon.type}
+                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                background={appIcon.type === 'image' ? undefined : appIcon.background}
+                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+              />
+              <Input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="h-10"
+              />
+            </div>
+            {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
           </div>
-          {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
-        </div>
-        <div className="flex flex-row-reverse">
-          <Button disabled={isAppsFull} className="ml-2 w-24" variant="primary" onClick={submit}>{t('duplicate', { ns: 'app' })}</Button>
-          <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-        </div>
-      </Modal>
+          <div className="flex flex-row-reverse">
+            <Button disabled={isAppsFull} className="ml-2 w-24" variant="primary" onClick={submit}>{t('duplicate', { ns: 'app' })}</Button>
+            <Button className="w-24" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {showAppIconPicker && (
         <AppIconPicker
           onSelect={(payload) => {

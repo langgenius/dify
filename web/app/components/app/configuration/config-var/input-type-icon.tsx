@@ -11,7 +11,7 @@ export type IInputTypeIconProps = {
 }
 
 const IconMap = (type: IInputTypeIconProps['type'], className: string) => {
-  const classNames = `w-3.5 h-3.5 ${className}`
+  const classNames = `h-3.5 w-3.5 ${className}`
   const icons = {
     string: (
       <InputVarTypeIcon type={InputVarType.textInput} className={classNames} />

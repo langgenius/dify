@@ -14,7 +14,7 @@ export const useWorkflowFinished = () => {
       setWorkflowRunningData,
     } = workflowStore.getState()
 
-    const isStringOutput = data.outputs && Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+    const isStringOutput = data.outputs && Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]!] === 'string'
 
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.result = {
@@ -24,7 +24,7 @@ export const useWorkflowFinished = () => {
       } as any
       if (isStringOutput) {
         draft.resultTabActive = true
-        draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+        draft.resultText = data.outputs[Object.keys(data.outputs)[0]!]
       }
     }))
   }, [workflowStore])

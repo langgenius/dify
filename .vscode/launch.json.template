@@ -2,21 +2,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Flask API",
+            "name": "Python: API (gevent)",
             "type": "debugpy",
             "request": "launch",
-            "module": "flask",
-            "env": {
-                "FLASK_APP": "app.py",
-                "FLASK_ENV": "development"
-            },
-            "args": [
-                "run",
-                "--host=0.0.0.0",
-                "--port=5001",
-                "--no-debugger",
-                "--no-reload"
-            ],
+            "program": "${workspaceFolder}/api/app.py",
             "jinja": true,
             "justMyCode": true,
             "cwd": "${workspaceFolder}/api",
@@ -37,7 +26,7 @@
                 "-c",
                 "1",
                 "-Q",
-                "dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention",
+                "dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution",
                 "--loglevel",
                 "INFO"
             ],

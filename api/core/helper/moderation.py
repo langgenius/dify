@@ -4,11 +4,11 @@ from typing import cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities import DEFAULT_PLUGIN_ID
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import InvokeBadRequestError
-from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
 from extensions.ext_hosting_provider import hosting_configuration
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
+from graphon.model_runtime.model_providers.base.moderation_model import ModerationModel
 from models.provider import ProviderType
 
 logger = logging.getLogger(__name__)
@@ -41,10 +41,8 @@ def check_moderation(tenant_id: str, model_config: ModelConfigWithCredentialsEnt
             text_chunk = secrets.choice(text_chunks)
 
             try:
-                model_provider_factory = ModelProviderFactory(tenant_id)
-
-                # Get model instance of LLM
-                model_type_instance = model_provider_factory.get_model_type_instance(
+                model_assembly = create_plugin_model_assembly(tenant_id=tenant_id)
+                model_type_instance = model_assembly.create_model_type_instance(
                     provider=openai_provider_name, model_type=ModelType.MODERATION
                 )
                 model_type_instance = cast(ModerationModel, model_type_instance)

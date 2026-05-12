@@ -1,16 +1,17 @@
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
 import { IS_CE_EDITION } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import Link from '@/next/link'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
-import { useIsLogin } from '@/service/use-common'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { isLegacyBase401, userProfileQueryOptions } from '@/service/use-common'
 import { LicenseStatus } from '@/types/feature'
-import { cn } from '@/utils/classnames'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -23,14 +24,20 @@ const NormalForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { isLoading: isCheckLoading, data: loginData } = useIsLogin()
-  const isLoggedIn = loginData?.logged_in
+  // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
+  // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
+  // prevents the redirect loop on 401.
+  const { isPending: isCheckLoading, data: userResp, error: probeError } = useQuery({
+    ...userProfileQueryOptions(),
+    throwOnError: err => !isLegacyBase401(err),
+  })
+  const isLoggedIn = !!userResp && !probeError
   const message = decodeURIComponent(searchParams.get('message') || '')
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isInitCheckLoading, setInitCheckLoading] = useState(true)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const isLoading = isCheckLoading || isInitCheckLoading || isRedirecting
-  const { systemFeatures } = useGlobalPublicStore()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
@@ -48,10 +55,7 @@ const NormalForm = () => {
       }
 
       if (message) {
-        Toast.notify({
-          type: 'error',
-          message,
-        })
+        toast.error(message)
       }
       setAllMethodsAreDisabled(!systemFeatures.enable_social_oauth_login && !systemFeatures.enable_email_code_login && !systemFeatures.enable_email_password_login && !systemFeatures.sso_enforced_for_signin)
       setShowORLine((systemFeatures.enable_social_oauth_login || systemFeatures.sso_enforced_for_signin) && (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login))
@@ -93,13 +97,13 @@ const NormalForm = () => {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
-          <div className="rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
+          <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseLost', { ns: 'login' })}</p>
-            <p className="system-xs-regular mt-1 text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -109,13 +113,13 @@ const NormalForm = () => {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
-          <div className="rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
+          <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseExpired', { ns: 'login' })}</p>
-            <p className="system-xs-regular mt-1 text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -125,13 +129,13 @@ const NormalForm = () => {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
-          <div className="rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
+          <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
             <div className="shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
               <RiContractLine className="h-5 w-5" />
-              <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
+              <RiErrorWarningFill className="absolute -top-1 -right-1 h-4 w-4 text-text-warning-secondary" />
             </div>
             <p className="system-sm-medium text-text-primary">{t('licenseInactive', { ns: 'login' })}</p>
-            <p className="system-xs-regular mt-1 text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -149,7 +153,7 @@ const NormalForm = () => {
                   {workspaceName}
                 </h2>
                 {!systemFeatures.branding.enabled && (
-                  <p className="body-md-regular mt-2 text-text-tertiary">
+                  <p className="mt-2 body-md-regular text-text-tertiary">
                     {t('joinTipStart', { ns: 'login' })}
                     {workspaceName}
                     {t('joinTipEnd', { ns: 'login' })}
@@ -160,7 +164,7 @@ const NormalForm = () => {
           : (
               <div className="mx-auto w-full">
                 <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t('pageTitleForE', { ns: 'login' }) : t('pageTitle', { ns: 'login' })}</h2>
-                <p className="body-md-regular mt-2 text-text-tertiary">{t('welcome', { ns: 'login' })}</p>
+                <p className="mt-2 body-md-regular text-text-tertiary">{t('welcome', { ns: 'login' })}</p>
               </div>
             )}
         <div className="relative">
@@ -176,9 +180,9 @@ const NormalForm = () => {
           {showORLine && (
             <div className="relative mt-6">
               <div className="flex items-center">
-                <div className="h-px flex-1 bg-gradient-to-r from-background-gradient-mask-transparent to-divider-regular"></div>
-                <span className="system-xs-medium-uppercase px-3 text-text-tertiary">{t('or', { ns: 'login' })}</span>
-                <div className="h-px flex-1 bg-gradient-to-l from-background-gradient-mask-transparent to-divider-regular"></div>
+                <div className="h-px flex-1 bg-linear-to-r from-background-gradient-mask-transparent to-divider-regular"></div>
+                <span className="px-3 system-xs-medium-uppercase text-text-tertiary">{t('or', { ns: 'login' })}</span>
+                <div className="h-px flex-1 bg-linear-to-l from-background-gradient-mask-transparent to-divider-regular"></div>
               </div>
             </div>
           )}
@@ -205,13 +209,13 @@ const NormalForm = () => {
                     )}
                   </>
                 )}
-                <Split className="mb-5 mt-4" />
+                <Split className="mt-4 mb-5" />
               </>
             )
           }
 
           {systemFeatures.is_allow_register && authType === 'password' && (
-            <div className="mb-3 text-[13px] font-medium leading-4 text-text-secondary">
+            <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t('signup.noAccount', { ns: 'login' })}</span>
               <Link
                 className="text-text-accent"
@@ -223,23 +227,23 @@ const NormalForm = () => {
           )}
           {allMethodsAreDisabled && (
             <>
-              <div className="rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
+              <div className="rounded-lg bg-linear-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
                 <div className="shadows-shadow-lg mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
                   <RiDoorLockLine className="h-5 w-5" />
                 </div>
                 <p className="system-sm-medium text-text-primary">{t('noLoginMethod', { ns: 'login' })}</p>
-                <p className="system-xs-regular mt-1 text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>
               </div>
               <div className="relative my-2 py-2">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div className="h-px w-full bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
+                  <div className="h-px w-full bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
                 </div>
               </div>
             </>
           )}
           {!systemFeatures.branding.enabled && (
             <>
-              <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
+              <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
                 {t('tosDesc', { ns: 'login' })}
               &nbsp;
                 <Link
@@ -261,7 +265,7 @@ const NormalForm = () => {
                 </Link>
               </div>
               {IS_CE_EDITION && (
-                <div className="w-hull system-xs-regular mt-2 block text-text-tertiary">
+                <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
                   {t('goToInit', { ns: 'login' })}
               &nbsp;
                   <Link

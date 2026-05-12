@@ -1,14 +1,15 @@
-import { RiCheckLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
 import IndeterminateIcon from './assets/indeterminate-icon'
 
 type CheckboxProps = {
   id?: string
   checked?: boolean
-  onCheck?: (event: React.MouseEvent<HTMLDivElement>) => void
+  onCheck?: (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => void
   className?: string
   disabled?: boolean
   indeterminate?: boolean
+  ariaLabel?: string
+  ariaLabelledBy?: string
 }
 
 const Checkbox = ({
@@ -18,6 +19,8 @@ const Checkbox = ({
   className,
   disabled,
   indeterminate,
+  ariaLabel,
+  ariaLabelledBy,
 }: CheckboxProps) => {
   const checkClassName = (checked || indeterminate)
     ? 'bg-components-checkbox-bg text-components-checkbox-icon hover:bg-components-checkbox-bg-hover'
@@ -30,7 +33,7 @@ const Checkbox = ({
     <div
       id={id}
       className={cn(
-        'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-[4px] shadow-xs shadow-shadow-shadow-3',
+        'flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-sm shadow-xs shadow-shadow-shadow-3',
         checkClassName,
         disabled && disabledClassName,
         className,
@@ -40,10 +43,25 @@ const Checkbox = ({
           return
         onCheck?.(event)
       }}
+      onKeyDown={(event) => {
+        if (disabled)
+          return
+        if (event.key === ' ' || event.key === 'Enter') {
+          if (event.key === ' ')
+            event.preventDefault()
+          onCheck?.(event)
+        }
+      }}
       data-testid={`checkbox-${id}`}
+      role="checkbox"
+      aria-checked={indeterminate ? 'mixed' : !!checked}
+      aria-disabled={!!disabled}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      tabIndex={disabled ? -1 : 0}
     >
       {!checked && indeterminate && <IndeterminateIcon />}
-      {checked && <RiCheckLine className="h-3 w-3" data-testid={`check-icon-${id}`} />}
+      {checked && <div className="i-ri-check-line h-3 w-3" data-testid={`check-icon-${id}`} />}
     </div>
   )
 }

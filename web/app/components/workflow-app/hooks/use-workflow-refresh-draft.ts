@@ -8,7 +8,7 @@ export const useWorkflowRefreshDraft = () => {
   const workflowStore = useWorkflowStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
-  const handleRefreshWorkflowDraft = useCallback(() => {
+  const handleRefreshWorkflowDraft = useCallback((notUpdateCanvas?: boolean) => {
     const {
       appId,
       setSyncWorkflowDraftHash,
@@ -31,12 +31,14 @@ export const useWorkflowRefreshDraft = () => {
     fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
       .then((response) => {
         // Ensure we have a valid workflow structure with viewport
-        const workflowData: WorkflowDataUpdater = {
-          nodes: response.graph?.nodes || [],
-          edges: response.graph?.edges || [],
-          viewport: response.graph?.viewport || { x: 0, y: 0, zoom: 1 },
+        if (!notUpdateCanvas) {
+          const workflowData: WorkflowDataUpdater = {
+            nodes: response.graph?.nodes || [],
+            edges: response.graph?.edges || [],
+            viewport: response.graph?.viewport || { x: 0, y: 0, zoom: 1 },
+          }
+          handleUpdateWorkflowCanvas(workflowData)
         }
-        handleUpdateWorkflowCanvas(workflowData)
         setSyncWorkflowDraftHash(response.hash)
         setEnvSecrets((response.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
           acc[env.id] = env.value

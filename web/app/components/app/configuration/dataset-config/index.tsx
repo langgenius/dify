@@ -8,6 +8,7 @@ import type {
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { intersectionBy } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -30,7 +31,6 @@ import {
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import { hasEditPermissionForDataset } from '@/utils/permission'
 import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
@@ -291,7 +291,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
           )
         : (
             <div className="mt-1 px-3 pb-3">
-              <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('feature.dataSet.noData', { ns: 'appDebug' })}</div>
+              <div className="pt-2 pb-1 text-xs text-text-tertiary">{t('feature.dataSet.noData', { ns: 'appDebug' })}</div>
             </div>
           )}
 

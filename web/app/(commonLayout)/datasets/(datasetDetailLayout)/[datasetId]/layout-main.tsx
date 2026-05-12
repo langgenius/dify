@@ -1,6 +1,7 @@
 'use client'
 import type { RemixiconComponentType } from '@remixicon/react'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiEqualizer2Fill,
   RiEqualizer2Line,
@@ -9,7 +10,6 @@ import {
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
-import { usePathname } from 'next/navigation'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,18 +23,18 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { usePathname } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
-import { cn } from '@/utils/classnames'
 
-export type IAppDetailLayoutProps = {
+type IAppDetailLayoutProps = {
   children: React.ReactNode
-  params: { datasetId: string }
+  datasetId: string
 }
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
     children,
-    params: { datasetId },
+    datasetId,
   } = props
   const { t } = useTranslation()
   const pathname = usePathname()

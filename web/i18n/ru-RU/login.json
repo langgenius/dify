@@ -35,6 +35,8 @@
   "error.emailEmpty": "Адрес электронной почты обязателен",
   "error.emailInValid": "Пожалуйста, введите действительный адрес электронной почты",
   "error.invalidEmailOrPassword": "Неверный адрес электронной почты или пароль.",
+  "error.invalidRedirectUrlOrAppCode": "Неверный URL перенаправления или код приложения",
+  "error.invalidSSOProtocol": "Неверный протокол SSO",
   "error.nameEmpty": "Имя обязательно",
   "error.passwordEmpty": "Пароль обязателен",
   "error.passwordInvalid": "Пароль должен содержать буквы и цифры, а длина должна быть больше 8",

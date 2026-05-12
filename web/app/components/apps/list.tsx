@@ -1,53 +1,34 @@
 'use client'
 
 import type { FC } from 'react'
-import {
-  RiApps2Line,
-  RiDragDropLine,
-  RiExchange2Line,
-  RiFile4Line,
-  RiMessage3Line,
-  RiRobot3Line,
-} from '@remixicon/react'
-import { useDebounceFn } from 'ahooks'
-import dynamic from 'next/dynamic'
-import {
-  useRouter,
-} from 'next/navigation'
-import { parseAsString, useQueryState } from 'nuqs'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import type { AppListQuery } from '@/contract/console/apps'
+import { cn } from '@langgenius/dify-ui/cn'
+import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useDebounce } from 'ahooks'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
-import TagFilter from '@/app/components/base/tag-management/filter'
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
-import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { CheckModal } from '@/hooks/use-pay'
-import { useInfiniteAppList } from '@/service/use-apps'
+import dynamic from '@/next/dynamic'
+import { consoleQuery } from '@/service/client'
+import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
+import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
 import Footer from './footer'
-import useAppsQueryState from './hooks/use-apps-query-state'
+import { isAppListCategory, useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
+import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 import NewAppCard from './new-app-card'
 
-// Define valid tabs at module scope to avoid re-creation on each render and stale closures
-const validTabs = new Set<string | AppModeEnum>([
-  'all',
-  AppModeEnum.WORKFLOW,
-  AppModeEnum.ADVANCED_CHAT,
-  AppModeEnum.CHAT,
-  AppModeEnum.AGENT_CHAT,
-  AppModeEnum.COMPLETION,
-])
-
-const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
+const TagManagementModal = dynamic(() => import('@/features/tag-management/components/tag-management-modal').then(mod => mod.TagManagementModal), {
   ssr: false,
 })
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
@@ -61,29 +42,23 @@ const List: FC<Props> = ({
   controlRefreshList = 0,
 }) => {
   const { t } = useTranslation()
-  const { systemFeatures } = useGlobalPublicStore()
-  const router = useRouter()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
-  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
-  const [activeTab, setActiveTab] = useQueryState(
-    'category',
-    parseAsString.withDefault('all').withOptions({ history: 'push' }),
-  )
 
-  const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
-  const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
-  const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
-  const [searchKeywords, setSearchKeywords] = useState(keywords)
+  // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
+  const {
+    query: { category, tagIDs, keywords, isCreatedByMe },
+    setCategory,
+    setKeywords,
+    setTagIDs,
+    setIsCreatedByMe,
+  } = useAppsQueryState()
+  const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
-  const setKeywords = useCallback((keywords: string) => {
-    setQuery(prev => ({ ...prev, keywords }))
-  }, [setQuery])
-  const setTagIDs = useCallback((tagIDs: string[]) => {
-    setQuery(prev => ({ ...prev, tagIDs }))
-  }, [setQuery])
 
   const handleDSLFileDropped = useCallback((file: File) => {
     setDroppedDSLFile(file)
@@ -96,14 +71,14 @@ const List: FC<Props> = ({
     enabled: isCurrentWorkspaceEditor,
   })
 
-  const appListQueryParams = {
+  const appListQuery = useMemo<AppListQuery>(() => ({
     page: 1,
     limit: 30,
-    name: searchKeywords,
-    tag_ids: tagIDs,
-    is_created_by_me: isCreatedByMe,
-    ...(activeTab !== 'all' ? { mode: activeTab as AppModeEnum } : {}),
-  }
+    name: debouncedKeywords,
+    ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
+    ...(isCreatedByMe ? { is_created_by_me: isCreatedByMe } : {}),
+    ...(category !== 'all' ? { mode: category } : {}),
+  }), [category, debouncedKeywords, isCreatedByMe, tagIDs])
 
   const {
     data,
@@ -114,23 +89,36 @@ const List: FC<Props> = ({
     hasNextPage,
     error,
     refetch,
-  } = useInfiniteAppList(appListQueryParams, { enabled: !isCurrentWorkspaceDatasetOperator })
+  } = useInfiniteQuery({
+    ...consoleQuery.apps.list.infiniteOptions({
+      input: pageParam => ({
+        query: {
+          ...appListQuery,
+          page: Number(pageParam),
+        },
+      }),
+      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+      initialPageParam: 1,
+      placeholderData: keepPreviousData,
+    }),
+    enabled: !isCurrentWorkspaceDatasetOperator,
+    refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
+  })
 
   useEffect(() => {
     if (controlRefreshList > 0) {
       refetch()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controlRefreshList])
+  }, [controlRefreshList, refetch])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <RiApps2Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <RiExchange2Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <RiRobot3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <RiFile4Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <span className="mr-1 i-ri-apps-2-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <span className="mr-1 i-ri-exchange-2-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <span className="mr-1 i-ri-message-3-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <span className="mr-1 i-ri-robot-3-line h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <span className="mr-1 i-ri-file-4-line h-[14px] w-[14px]" /> },
   ]
 
   useEffect(() => {
@@ -139,11 +127,6 @@ const List: FC<Props> = ({
       refetch()
     }
   }, [refetch])
-
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
-  }, [router, isCurrentWorkspaceDatasetOperator])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
@@ -163,7 +146,7 @@ const List: FC<Props> = ({
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
 
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
+        if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
           fetchNextPage()
       }, {
         root: containerRef.current,
@@ -175,29 +158,29 @@ const List: FC<Props> = ({
     return () => observer?.disconnect()
   }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
 
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchKeywords(keywords)
-  }, { wait: 500 })
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
-  }
-
-  const { run: handleTagsUpdate } = useDebounceFn(() => {
-    setTagIDs(tagFilterValue)
-  }, { wait: 500 })
-  const handleTagsChange = (value: string[]) => {
-    setTagFilterValue(value)
-    handleTagsUpdate()
-  }
-
   const handleCreatedByMeChange = useCallback(() => {
-    const newValue = !isCreatedByMe
-    setIsCreatedByMe(newValue)
-    setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
-  }, [isCreatedByMe, setQuery])
+    setIsCreatedByMe(!isCreatedByMe)
+  }, [isCreatedByMe, setIsCreatedByMe])
 
-  const pages = data?.pages ?? []
+  const pages = useMemo(() => data?.pages ?? [], [data?.pages])
+  const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
+
+  const workflowOnlineUserAppIds = useMemo(() => {
+    const appIds = new Set<string>()
+    apps.forEach((app) => {
+      if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
+        appIds.add(app.id)
+    })
+    return Array.from(appIds)
+  }, [apps])
+
+  const {
+    onlineUsersMap: workflowOnlineUsersMap,
+  } = useWorkflowOnlineUsers({
+    appIds: workflowOnlineUserAppIds,
+    enabled: systemFeatures.enable_collaboration_mode,
+  })
+
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
   // Show skeleton during initial load or when refetching with no previous data
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
@@ -210,32 +193,35 @@ const List: FC<Props> = ({
           </div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-7 pb-5">
           <TabSliderNew
-            value={activeTab}
-            onChange={setActiveTab}
+            value={category}
+            onChange={(nextValue) => {
+              if (isAppListCategory(nextValue))
+                setCategory(nextValue)
+            }}
             options={options}
           />
           <div className="flex items-center gap-2">
-            <CheckboxWithLabel
-              className="mr-2"
-              label={t('showMyCreatedAppsOnly', { ns: 'app' })}
-              isChecked={isCreatedByMe}
-              onChange={handleCreatedByMeChange}
-            />
-            <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} />
+            <label className="mr-2 flex h-7 items-center space-x-2">
+              <Checkbox checked={isCreatedByMe} onCheck={handleCreatedByMeChange} />
+              <div className="text-sm font-normal text-text-secondary">
+                {t('showMyCreatedAppsOnly', { ns: 'app' })}
+              </div>
+            </label>
+            <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
             <Input
               showLeftIcon
               showClearIcon
               wrapperClassName="w-[200px]"
               value={keywords}
-              onChange={e => handleKeywordsChange(e.target.value)}
-              onClear={() => handleKeywordsChange('')}
+              onChange={e => setKeywords(e.target.value)}
+              onClear={() => setKeywords('')}
             />
           </div>
         </div>
         <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
+          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
           !hasAnyApp && 'overflow-hidden',
         )}
         >
@@ -244,23 +230,23 @@ const List: FC<Props> = ({
               ref={newAppCardRef}
               isLoading={isLoadingCurrentWorkspace}
               onSuccess={refetch}
-              selectedAppType={activeTab}
+              selectedAppType={category}
               className={cn(!hasAnyApp && 'z-10')}
             />
           )}
-          {(() => {
-            if (showSkeleton)
-              return <AppCardSkeleton count={6} />
-
-            if (hasAnyApp) {
-              return pages.flatMap(({ data: apps }) => apps).map(app => (
-                <AppCard key={app.id} app={app} onRefresh={refetch} />
-              ))
-            }
-
-            // No apps - show empty state
-            return <Empty />
-          })()}
+          {showSkeleton
+            ? <AppCardSkeleton count={6} />
+            : hasAnyApp
+              ? apps.map(app => (
+                  <AppCard
+                    key={app.id}
+                    app={app}
+                    onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
+                    onRefresh={refetch}
+                    onOpenTagManagement={() => setShowTagManagementModal(true)}
+                  />
+                ))
+              : <Empty />}
           {isFetchingNextPage && (
             <AppCardSkeleton count={3} />
           )}
@@ -272,7 +258,7 @@ const List: FC<Props> = ({
             role="region"
             aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
           >
-            <RiDragDropLine className="h-4 w-4" />
+            <span className="i-ri-drag-drop-line h-4 w-4" />
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}
@@ -281,9 +267,12 @@ const List: FC<Props> = ({
         )}
         <CheckModal />
         <div ref={anchorRef} className="h-0"> </div>
-        {showTagManagementModal && (
-          <TagManagementModal type="app" show={showTagManagementModal} />
-        )}
+        <TagManagementModal
+          type="app"
+          show={showTagManagementModal}
+          onClose={() => setShowTagManagementModal(false)}
+          onTagsChange={refetch}
+        />
       </div>
 
       {showCreateFromDSLModal && (

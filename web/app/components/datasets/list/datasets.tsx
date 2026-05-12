@@ -12,12 +12,14 @@ type Props = {
   tags: string[]
   keywords: string
   includeAll: boolean
+  onOpenTagManagement?: () => void
 }
 
 const Datasets = ({
   tags,
   keywords,
   includeAll,
+  onOpenTagManagement = () => {},
 }: Props) => {
   const { t } = useTranslation()
   const isCurrentWorkspaceEditor = useAppContextWithSelector(state => state.isCurrentWorkspaceEditor)
@@ -45,7 +47,7 @@ const Datasets = ({
   useEffect(() => {
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetching)
+        if (entries[0]!.isIntersecting && hasNextPage && !isFetching)
           fetchNextPage()
       }, {
         rootMargin: '100px',
@@ -60,7 +62,7 @@ const Datasets = ({
       <nav className="grid grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {isCurrentWorkspaceEditor && <NewDatasetCard />}
         {datasetList?.pages.map(({ data: datasets }) => datasets.map(dataset => (
-          <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} />),
+          <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} onOpenTagManagement={onOpenTagManagement} />),
         ))}
         {isFetchingNextPage && <Loading />}
         <div ref={anchorRef} className="h-0" />

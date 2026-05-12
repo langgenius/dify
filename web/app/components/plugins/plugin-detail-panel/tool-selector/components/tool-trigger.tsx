@@ -1,5 +1,6 @@
 'use client'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowDownSLine,
   RiEqualizer2Line,
@@ -8,7 +9,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   open: boolean
@@ -37,17 +37,17 @@ const ToolTrigger = ({
       {value?.provider_name && provider && (
         <div className="mr-1 shrink-0 rounded-lg border border-components-panel-border bg-components-panel-bg p-px">
           <BlockIcon
-            className="!h-4 !w-4"
+            className="h-4! w-4!"
             type={BlockEnum.Tool}
             toolIcon={provider.icon}
           />
         </div>
       )}
       {value?.tool_name && (
-        <div className="system-sm-medium grow text-components-input-text-filled">{value.tool_name}</div>
+        <div className="grow system-sm-medium text-components-input-text-filled">{value.tool_name}</div>
       )}
       {!value?.provider_name && (
-        <div className="system-sm-regular grow text-components-input-text-placeholder">
+        <div className="grow system-sm-regular text-components-input-text-placeholder">
           {!isConfigure ? t('detailPanel.toolSelector.placeholder', { ns: 'plugin' }) : t('detailPanel.configureTool', { ns: 'plugin' })}
         </div>
       )}

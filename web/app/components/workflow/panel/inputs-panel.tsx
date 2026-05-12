@@ -1,4 +1,5 @@
 import type { StartNodeType } from '../nodes/start/types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   memo,
   useCallback,
@@ -6,7 +7,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import Button from '@/app/components/base/button'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import {
   getProcessedInputs,
@@ -44,15 +44,18 @@ const InputsPanel = ({ onRun }: Props) => {
   const startVariables = startNode?.data.variables
   const { checkInputsForm } = useCheckInputsForms()
 
-  const initialInputs = { ...inputs }
-  if (startVariables) {
-    startVariables.forEach((variable) => {
-      if (variable.default)
-        initialInputs[variable.variable] = variable.default
-      if (inputs[variable.variable] !== undefined)
-        initialInputs[variable.variable] = inputs[variable.variable]
-    })
-  }
+  const initialInputs = useMemo(() => {
+    const result = { ...inputs }
+    if (startVariables) {
+      startVariables.forEach((variable) => {
+        if (variable.default)
+          result[variable.variable] = variable.default
+        if (inputs[variable.variable] !== undefined)
+          result[variable.variable] = inputs[variable.variable]!
+      })
+    }
+    return result
+  }, [inputs, startVariables])
 
   const variables = useMemo(() => {
     const data = startVariables || []
@@ -97,15 +100,12 @@ const InputsPanel = ({ onRun }: Props) => {
   }, [files, handleRun, initialInputs, onRun, variables, checkInputsForm])
 
   const canRun = useMemo(() => {
-    if (files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
-      return false
-
-    return true
+    return !(files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
   }, [files])
 
   return (
     <>
-      <div className="px-4 pb-2 pt-3">
+      <div className="px-4 pt-3 pb-2">
         {
           variables.map((variable, index) => (
             <div
@@ -114,7 +114,7 @@ const InputsPanel = ({ onRun }: Props) => {
             >
               <FormItem
                 autoFocus={index === 0}
-                className="!block"
+                className="block!"
                 payload={variable}
                 value={initialInputs[variable.variable]}
                 onChange={v => handleValueChange(variable.variable, v)}

@@ -1,8 +1,7 @@
 import type { ChunkStructureEnum } from '../../types'
-import { RiAddLine } from '@remixicon/react'
+import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import OptionCard from '../option-card'
 import { useChunkStructure } from './hooks'
@@ -12,11 +11,13 @@ import Selector from './selector'
 type ChunkStructureProps = {
   chunkStructure?: ChunkStructureEnum
   onChunkStructureChange: (value: ChunkStructureEnum) => void
+  warningDot?: boolean
   readonly?: boolean
 }
 const ChunkStructure = ({
   chunkStructure,
   onChunkStructureChange,
+  warningDot = false,
   readonly = false,
 }: ChunkStructureProps) => {
   const { t } = useTranslation()
@@ -30,6 +31,7 @@ const ChunkStructure = ({
       fieldTitleProps={{
         title: t('nodes.knowledgeBase.chunkStructure', { ns: 'workflow' }),
         tooltip: t('nodes.knowledgeBase.chunkStructureTip.message', { ns: 'workflow' }),
+        warningDot,
         operation: chunkStructure && (
           <Selector
             options={options}
@@ -62,7 +64,7 @@ const ChunkStructure = ({
                   className="w-full"
                   variant="secondary-accent"
                 >
-                  <RiAddLine className="mr-1 h-4 w-4" />
+                  <span className="mr-1 i-ri-add-line h-4 w-4" />
                   {t('nodes.knowledgeBase.chooseChunkStructure', { ns: 'workflow' })}
                 </Button>
               )}

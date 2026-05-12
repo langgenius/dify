@@ -33,31 +33,42 @@ export const useWorkflowNodeStarted = () => {
       transform,
     } = store.getState()
     const nodes = getNodes()
-    setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-      draft.tracing!.push({
-        ...data,
-        status: NodeRunningStatus.Running,
-      })
-    }))
+    const currentIndex = workflowRunningData?.tracing?.findIndex(item => item.node_id === data.node_id)
+    if (currentIndex && currentIndex > -1) {
+      setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+        draft.tracing![currentIndex] = {
+          ...data,
+          status: NodeRunningStatus.Running,
+        }
+      }))
+    }
+    else {
+      setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+        draft.tracing!.push({
+          ...data,
+          status: NodeRunningStatus.Running,
+        })
+      }))
+    }
 
     const {
       setViewport,
     } = reactflow
     const currentNodeIndex = nodes.findIndex(node => node.id === data.node_id)
     const currentNode = nodes[currentNodeIndex]
-    const position = currentNode.position
+    const position = currentNode!.position
     const zoom = transform[2]
 
-    if (!currentNode.parentId) {
+    if (!currentNode!.parentId) {
       setViewport({
-        x: (containerParams.clientWidth - 400 - currentNode.width! * zoom) / 2 - position.x * zoom,
-        y: (containerParams.clientHeight - currentNode.height! * zoom) / 2 - position.y * zoom,
+        x: (containerParams.clientWidth - 400 - currentNode!.width! * zoom) / 2 - position.x * zoom,
+        y: (containerParams.clientHeight - currentNode!.height! * zoom) / 2 - position.y * zoom,
         zoom: transform[2],
       })
     }
     const newNodes = produce(nodes, (draft) => {
-      draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running
-      draft[currentNodeIndex].data._waitingRun = false
+      draft[currentNodeIndex]!.data._runningStatus = NodeRunningStatus.Running
+      draft[currentNodeIndex]!.data._waitingRun = false
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {

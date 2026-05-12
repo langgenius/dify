@@ -1,10 +1,10 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import languages
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -14,7 +14,6 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models import Account
@@ -24,8 +23,6 @@ from services.errors.account import AccountNotFoundError, AccountRegisterError
 
 from ..error import AccountInFreezeError, EmailSendIpLimitError
 from ..wraps import email_password_login_enabled, email_register_enabled, setup_required
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class EmailRegisterSendPayload(BaseModel):
@@ -50,8 +47,7 @@ class EmailRegisterResetPayload(BaseModel):
         return valid_password(value)
 
 
-for model in (EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload):
-    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
 
 
 @console_ns.route("/email-register/send-email")
@@ -73,8 +69,7 @@ class EmailRegisterSendEmailApi(Resource):
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
             raise AccountInFreezeError()
 
-        with Session(db.engine) as session:
-            account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
+        account = AccountService.get_account_by_email_with_case_fallback(args.email)
         token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
         return {"result": "success", "data": token}
 
@@ -145,17 +140,16 @@ class EmailRegisterResetApi(Resource):
         email = register_data.get("email", "")
         normalized_email = email.lower()
 
-        with Session(db.engine) as session:
-            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
+        account = AccountService.get_account_by_email_with_case_fallback(email)
 
-            if account:
-                raise EmailAlreadyInUseError()
-            else:
-                account = self._create_new_account(normalized_email, args.password_confirm)
-                if not account:
-                    raise AccountNotFoundError()
-                token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
-                AccountService.reset_login_error_rate_limit(normalized_email)
+        if account:
+            raise EmailAlreadyInUseError()
+        else:
+            account = self._create_new_account(normalized_email, args.password_confirm)
+            if not account:
+                raise AccountNotFoundError()
+            token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+            AccountService.reset_login_error_rate_limit(normalized_email)
 
         return {"result": "success", "data": token_pair.model_dump()}
 

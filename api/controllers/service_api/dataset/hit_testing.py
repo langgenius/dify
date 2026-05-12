@@ -1,6 +1,9 @@
-from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase
+from controllers.common.schema import register_schema_model
+from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
+
+register_schema_model(service_api_ns, HitTestingPayload)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/hit-testing", "/datasets/<uuid:dataset_id>/retrieve")
@@ -15,6 +18,7 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
             404: "Dataset not found",
         }
     )
+    @service_api_ns.expect(service_api_ns.models[HitTestingPayload.__name__])
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Perform hit testing on a dataset.

@@ -32,11 +32,6 @@ os.environ.setdefault("OPENDAL_SCHEME", "fs")
 os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
 os.environ.setdefault("STORAGE_TYPE", "opendal")
 
-# Add the API directory to Python path to ensure proper imports
-import sys
-
-sys.path.insert(0, PROJECT_DIR)
-
 from core.db.session_factory import configure_session_factory, session_factory
 from extensions import ext_redis
 
@@ -51,6 +46,8 @@ def _patch_redis_clients_on_loaded_modules():
             continue
         if hasattr(module, "redis_client"):
             module.redis_client = redis_mock
+        if hasattr(module, "_pubsub_redis_client"):
+            module.pubsub_redis_client = redis_mock
 
 
 @pytest.fixture
@@ -68,7 +65,10 @@ def _provide_app_context(app: Flask):
 def _patch_redis_clients():
     """Patch redis_client to MagicMock only for unit test executions."""
 
-    with patch.object(ext_redis, "redis_client", redis_mock):
+    with (
+        patch.object(ext_redis, "redis_client", redis_mock),
+        patch.object(ext_redis, "_pubsub_redis_client", redis_mock),
+    ):
         _patch_redis_clients_on_loaded_modules()
         yield
 
@@ -119,3 +119,34 @@ def _configure_session_factory(_unit_test_engine):
         session_factory.get_session_maker()
     except RuntimeError:
         configure_session_factory(_unit_test_engine, expire_on_commit=False)
+
+
+def setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_owner):
+    """
+    Helper to stub the tenant-owner execute result for service API app authentication.
+
+    The validate_app_token decorator currently resolves the active tenant owner
+    via db.session.execute(select(Tenant, Account)...).one_or_none().
+
+    Args:
+        mock_db: The mocked db object
+        mock_tenant: Mock tenant object to return
+        mock_owner: Mock owner object to return from the execute result
+    """
+    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_owner)
+
+
+def setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_tenant_account_join):
+    """
+    Helper to stub the tenant-owner execute result for dataset token authentication.
+
+    The validate_dataset_token decorator currently resolves the owner mapping via
+    db.session.execute(select(Tenant, TenantAccountJoin)...).one_or_none(), and
+    then loads the Account separately via db.session.get(...).
+
+    Args:
+        mock_db: The mocked db object
+        mock_tenant: Mock tenant object to return
+        mock_tenant_account_join: Mock tenant-account join object to return
+    """
+    mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_tenant_account_join)

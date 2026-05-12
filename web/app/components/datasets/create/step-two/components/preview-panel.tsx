@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
 import type { DataSourceType, FileIndexingEstimateResponse } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +12,6 @@ import FloatRightContainer from '@/app/components/base/float-right-container'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { FULL_DOC_PREVIEW_LENGTH } from '@/config'
 import { ChunkingMode } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 import { ChunkContainer, QAPreview } from '../../../chunk'
 import PreviewDocumentPicker from '../../../common/document-picker/preview-document-picker'
 import SummaryLabel from '../../../documents/detail/completed/common/summary-label'
@@ -54,7 +54,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
   const { t } = useTranslation()
 
   return (
-    <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop} footer={null}>
+    <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop}>
       <PreviewContainer
         header={(
           <PreviewHeader title={t('stepTwo.preview', { ns: 'datasetCreation' })}>

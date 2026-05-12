@@ -3,7 +3,7 @@ import hashlib
 import logging
 import uuid
 from collections.abc import Mapping
-from enum import StrEnum
+from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -12,28 +12,35 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging import version
 from packaging.version import parse as parse_version
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.helper import ssrf_proxy
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
-from core.workflow.enums import NodeType
+from core.trigger.constants import (
+    TRIGGER_PLUGIN_NODE_TYPE,
+    TRIGGER_SCHEDULE_NODE_TYPE,
+    TRIGGER_WEBHOOK_NODE_TYPE,
+)
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
-from core.workflow.nodes.llm.entities import LLMNodeData
-from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
-from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes.llm.entities import LLMNodeData
+from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.tool.entities import ToolNodeData
 from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
-from models.model import AppModelConfig, IconType
+from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
+from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -44,19 +51,7 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
-CURRENT_DSL_VERSION = "0.5.0"
-
-
-class ImportMode(StrEnum):
-    YAML_CONTENT = "yaml-content"
-    YAML_URL = "yaml-url"
-
-
-class ImportStatus(StrEnum):
-    COMPLETED = "completed"
-    COMPLETED_WITH_WARNINGS = "completed-with-warnings"
-    PENDING = "pending"
-    FAILED = "failed"
+CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
 
 
 class Import(BaseModel):
@@ -67,10 +62,6 @@ class Import(BaseModel):
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
-
-
-class CheckDependenciesResult(BaseModel):
-    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
 
 
 def _check_version_compatibility(imported_version: str) -> ImportStatus:
@@ -298,7 +289,7 @@ class AppDslService:
             )
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
-            draft_var_srv.delete_workflow_variables(app_id=app.id)
+            draft_var_srv.delete_app_workflow_variables(app_id=app.id)
             return Import(
                 id=import_id,
                 status=status,
@@ -410,7 +401,7 @@ class AppDslService:
         self,
         *,
         app: App | None,
-        data: dict,
+        data: dict[str, Any],
         account: Account,
         name: str | None = None,
         description: str | None = None,
@@ -428,17 +419,18 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
+        resolved_icon_type: IconType
         if icon_type_value in [IconType.EMOJI, IconType.IMAGE, IconType.LINK]:
-            icon_type = icon_type_value
+            resolved_icon_type = IconType(icon_type_value)
         else:
-            icon_type = IconType.EMOJI
+            resolved_icon_type = IconType.EMOJI
         icon = icon or str(app_data.get("icon", ""))
 
         if app:
             # Update existing app
             app.name = name or app_data.get("name", app.name)
             app.description = description or app_data.get("description", app.description)
-            app.icon_type = icon_type
+            app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
@@ -451,10 +443,10 @@ class AppDslService:
             app = App()
             app.id = str(uuid4())
             app.tenant_id = account.current_tenant_id
-            app.mode = app_mode.value
+            app.mode = app_mode
             app.name = name or app_data.get("name", "")
             app.description = description or app_data.get("description", "")
-            app.icon_type = icon_type
+            app.icon_type = resolved_icon_type
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", "#FFFFFF")
             app.enable_site = True
@@ -464,7 +456,7 @@ class AppDslService:
             app.updated_by = account.id
 
             self._session.add(app)
-            self._session.commit()
+            self._session.flush()
             app_was_created.send(app, account=account)
 
         # save dependencies
@@ -476,61 +468,67 @@ class AppDslService:
             )
 
         # Initialize app based on mode
-        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow_data = data.get("workflow")
-            if not workflow_data or not isinstance(workflow_data, dict):
-                raise ValueError("Missing workflow data for workflow/advanced chat app")
+        match app_mode:
+            case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
+                workflow_data = data.get("workflow")
+                if not workflow_data or not isinstance(workflow_data, dict):
+                    raise ValueError("Missing workflow data for workflow/advanced chat app")
 
-            environment_variables_list = workflow_data.get("environment_variables", [])
-            environment_variables = [
-                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-            ]
-            conversation_variables_list = workflow_data.get("conversation_variables", [])
-            conversation_variables = [
-                variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
-            ]
+                environment_variables_list = workflow_data.get("environment_variables", [])
+                environment_variables = [
+                    variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
+                ]
+                conversation_variables_list = workflow_data.get("conversation_variables", [])
+                conversation_variables = [
+                    variable_factory.build_conversation_variable_from_mapping(obj)
+                    for obj in conversation_variables_list
+                ]
 
-            workflow_service = WorkflowService()
-            current_draft_workflow = workflow_service.get_draft_workflow(app_model=app)
-            if current_draft_workflow:
-                unique_hash = current_draft_workflow.unique_hash
-            else:
-                unique_hash = None
-            graph = workflow_data.get("graph", {})
-            for node in graph.get("nodes", []):
-                if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL:
-                    dataset_ids = node["data"].get("dataset_ids", [])
-                    node["data"]["dataset_ids"] = [
-                        decrypted_id
-                        for dataset_id in dataset_ids
-                        if (decrypted_id := self.decrypt_dataset_id(encrypted_data=dataset_id, tenant_id=app.tenant_id))
-                    ]
-            workflow_service.sync_draft_workflow(
-                app_model=app,
-                graph=workflow_data.get("graph", {}),
-                features=workflow_data.get("features", {}),
-                unique_hash=unique_hash,
-                account=account,
-                environment_variables=environment_variables,
-                conversation_variables=conversation_variables,
-            )
-        elif app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION}:
-            # Initialize model config
-            model_config = data.get("model_config")
-            if not model_config or not isinstance(model_config, dict):
-                raise ValueError("Missing model_config for chat/agent-chat/completion app")
-            # Initialize or update model config
-            if not app.app_model_config:
-                app_model_config = AppModelConfig(
-                    app_id=app.id, created_by=account.id, updated_by=account.id
-                ).from_model_config_dict(model_config)
-                app_model_config.id = str(uuid4())
-                app.app_model_config_id = app_model_config.id
+                workflow_service = WorkflowService()
+                current_draft_workflow = workflow_service.get_draft_workflow(app_model=app)
+                if current_draft_workflow:
+                    unique_hash = current_draft_workflow.unique_hash
+                else:
+                    unique_hash = None
+                graph = workflow_data.get("graph", {})
+                for node in graph.get("nodes", []):
+                    if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+                        dataset_ids = node["data"].get("dataset_ids", [])
+                        node["data"]["dataset_ids"] = [
+                            decrypted_id
+                            for dataset_id in dataset_ids
+                            if (
+                                decrypted_id := self.decrypt_dataset_id(
+                                    encrypted_data=dataset_id, tenant_id=app.tenant_id
+                                )
+                            )
+                        ]
+                workflow_service.sync_draft_workflow(
+                    app_model=app,
+                    graph=workflow_data.get("graph", {}),
+                    features=workflow_data.get("features", {}),
+                    unique_hash=unique_hash,
+                    account=account,
+                    environment_variables=environment_variables,
+                    conversation_variables=conversation_variables,
+                )
+            case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
+                # Initialize model config
+                model_config = data.get("model_config")
+                if not model_config or not isinstance(model_config, dict):
+                    raise ValueError("Missing model_config for chat/agent-chat/completion app")
+                # Initialize or update model config
+                if not app.app_model_config:
+                    app_model_config = AppModelConfig(
+                        app_id=app.id, created_by=account.id, updated_by=account.id
+                    ).from_model_config_dict(cast(AppModelConfigDict, model_config))
+                    app_model_config.id = str(uuid4())
+                    app.app_model_config_id = app_model_config.id
 
-                self._session.add(app_model_config)
-                app_model_config_was_updated.send(app, app_model_config=app_model_config)
-        else:
-            raise ValueError("Invalid app mode")
+                    self._session.add(app_model_config)
+                    app_model_config_was_updated.send(app, app_model_config=app_model_config)
+            case _:
+                raise ValueError("Invalid app mode")
         return app
 
     @classmethod
@@ -548,9 +546,12 @@ class AppDslService:
             "kind": "app",
             "app": {
                 "name": app_model.name,
-                "mode": app_model.mode,
-                "icon": app_model.icon if app_model.icon_type == "image" else "🤖",
-                "icon_background": "#FFEAD5" if app_model.icon_type == "image" else app_model.icon_background,
+                "mode": app_model.mode.value if isinstance(app_model.mode, AppMode) else app_model.mode,
+                "icon": app_model.icon,
+                "icon_type": (
+                    app_model.icon_type.value if isinstance(app_model.icon_type, IconType) else app_model.icon_type
+                ),
+                "icon_background": app_model.icon_background,
                 "description": app_model.description,
                 "use_icon_as_answer_icon": app_model.use_icon_as_answer_icon,
             },
@@ -567,7 +568,7 @@ class AppDslService:
 
     @classmethod
     def _append_workflow_export_data(
-        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: str | None = None
+        cls, *, export_data: dict[str, Any], app_model: App, include_secret: bool, workflow_id: str | None = None
     ):
         """
         Append workflow export data
@@ -586,27 +587,27 @@ class AppDslService:
             if not node_data:
                 continue
             data_type = node_data.get("type", "")
-            if data_type == NodeType.KNOWLEDGE_RETRIEVAL:
+            if data_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node_data.get("dataset_ids", [])
                 node_data["dataset_ids"] = [
                     cls.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=app_model.tenant_id)
                     for dataset_id in dataset_ids
                 ]
             # filter credential id from tool node
-            if not include_secret and data_type == NodeType.TOOL:
+            if not include_secret and data_type == BuiltinNodeTypes.TOOL:
                 node_data.pop("credential_id", None)
             # filter credential id from agent node
-            if not include_secret and data_type == NodeType.AGENT:
+            if not include_secret and data_type == BuiltinNodeTypes.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
-            if data_type == NodeType.TRIGGER_SCHEDULE.value:
+            if data_type == TRIGGER_SCHEDULE_NODE_TYPE:
                 # override the config with the default config
                 node_data["config"] = TriggerScheduleNode.get_default_config()["config"]
-            if data_type == NodeType.TRIGGER_WEBHOOK.value:
+            if data_type == TRIGGER_WEBHOOK_NODE_TYPE:
                 # clear the webhook_url
                 node_data["webhook_url"] = ""
                 node_data["webhook_debug_url"] = ""
-            if data_type == NodeType.TRIGGER_PLUGIN.value:
+            if data_type == TRIGGER_PLUGIN_NODE_TYPE:
                 # clear the subscription_id
                 node_data["subscription_id"] = ""
 
@@ -620,7 +621,7 @@ class AppDslService:
         ]
 
     @classmethod
-    def _append_model_config_export_data(cls, export_data: dict, app_model: App):
+    def _append_model_config_export_data(cls, export_data: dict[str, Any], app_model: App):
         """
         Append model config export data
         :param export_data: export data
@@ -670,31 +671,31 @@ class AppDslService:
             try:
                 typ = node.get("data", {}).get("type")
                 match typ:
-                    case NodeType.TOOL:
+                    case BuiltinNodeTypes.TOOL:
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
                         )
-                    case NodeType.LLM:
+                    case BuiltinNodeTypes.LLM:
                         llm_entity = LLMNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
                         )
-                    case NodeType.QUESTION_CLASSIFIER:
+                    case BuiltinNodeTypes.QUESTION_CLASSIFIER:
                         question_classifier_entity = QuestionClassifierNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 question_classifier_entity.model.provider
                             ),
                         )
-                    case NodeType.PARAMETER_EXTRACTOR:
+                    case BuiltinNodeTypes.PARAMETER_EXTRACTOR:
                         parameter_extractor_entity = ParameterExtractorNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 parameter_extractor_entity.model.provider
                             ),
                         )
-                    case NodeType.KNOWLEDGE_RETRIEVAL:
+                    case BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                         knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":
                             if knowledge_retrieval_entity.multiple_retrieval_config:

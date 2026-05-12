@@ -63,7 +63,7 @@ export const getMarketplacePluginsByCollectionId = async (
       params: {
         collectionId,
       },
-      body: query,
+      body: query ?? {},
     }, {
       signal: options?.signal,
     })

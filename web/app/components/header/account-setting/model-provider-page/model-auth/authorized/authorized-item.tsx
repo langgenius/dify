@@ -70,7 +70,7 @@ export const AuthorizedItem = ({
               )
             }
             <div
-              className="system-md-medium mx-1 grow truncate text-text-primary"
+              className="mx-1 grow truncate system-md-medium text-text-primary"
               title={title ?? model?.model}
             >
               {title ?? model?.model}

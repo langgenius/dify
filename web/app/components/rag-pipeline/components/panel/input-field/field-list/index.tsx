@@ -1,10 +1,11 @@
 import type { InputVar } from '@/models/pipeline'
+import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
-import { cn } from '@/utils/classnames'
 import FieldListContainer from './field-list-container'
 import { useFieldList } from './hooks'
 
@@ -27,6 +28,7 @@ const FieldList = ({
   labelClassName,
   allVariableNames,
 }: FieldListProps) => {
+  const { t } = useTranslation()
   const onInputFieldsChange = useCallback((value: InputVar[]) => {
     handleInputFieldsChange(nodeId, value)
   }, [handleInputFieldsChange, nodeId])
@@ -53,12 +55,12 @@ const FieldList = ({
           {LabelRightContent}
         </div>
         <ActionButton
-          data-testid="field-list-add-btn"
+          aria-label={t('operation.add', { ns: 'common' })}
           onClick={() => handleOpenInputFieldEditor()}
           disabled={readonly}
           className={cn(readonly && 'cursor-not-allowed')}
         >
-          <RiAddLine className="h-4 w-4 text-text-tertiary" />
+          <RiAddLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
         </ActionButton>
       </div>
       <FieldListContainer

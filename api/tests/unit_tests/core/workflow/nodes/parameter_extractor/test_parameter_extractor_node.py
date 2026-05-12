@@ -7,18 +7,18 @@ from typing import Any
 
 import pytest
 
-from core.model_runtime.entities import LLMMode
-from core.variables.types import SegmentType
-from core.workflow.nodes.llm import ModelConfig, VisionConfig
-from core.workflow.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
-from core.workflow.nodes.parameter_extractor.exc import (
+from factories.variable_factory import build_segment_with_type
+from graphon.model_runtime.entities import LLMMode
+from graphon.nodes.llm import ModelConfig, VisionConfig
+from graphon.nodes.parameter_extractor.entities import ParameterConfig, ParameterExtractorNodeData
+from graphon.nodes.parameter_extractor.exc import (
     InvalidNumberOfParametersError,
     InvalidSelectValueError,
     InvalidValueTypeError,
     RequiredParameterMissingError,
 )
-from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from factories.variable_factory import build_segment_with_type
+from graphon.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from graphon.variables.types import SegmentType
 
 
 @dataclass

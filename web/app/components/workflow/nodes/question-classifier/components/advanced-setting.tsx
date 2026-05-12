@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import MemoryConfig from '../../_base/components/memory-config'
 
@@ -48,14 +48,14 @@ const AdvancedSetting: FC<Props> = ({
         title={(
           <div className="flex items-center space-x-1">
             <span className="uppercase">{t(`${i18nPrefix}.instruction`, { ns: 'workflow' })}</span>
-            <Tooltip
-              popupContent={(
-                <div className="w-[120px]">
-                  {t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
-                </div>
-              )}
-              triggerClassName="w-3.5 h-3.5 ml-0.5"
-            />
+            <Infotip
+              aria-label={t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
+              className="ml-0.5 h-3.5 w-3.5"
+              iconClassName="h-3.5 w-3.5"
+              popupClassName="w-[120px]"
+            >
+              {t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
+            </Infotip>
           </div>
         )}
         value={instruction}

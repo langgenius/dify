@@ -76,7 +76,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     const targetIndex = list.findIndex(file => file.fileID === fileItem.fileID)
     const newList = produce(list, (draft) => {
       draft[targetIndex] = {
-        ...draft[targetIndex],
+        ...draft[targetIndex]!,
         progress,
       }
     })

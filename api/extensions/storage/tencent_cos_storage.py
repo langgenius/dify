@@ -47,5 +47,5 @@ class TencentCosStorage(BaseStorage):
     def exists(self, filename):
         return self.client.object_exists(Bucket=self.bucket_name, Key=filename)
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)

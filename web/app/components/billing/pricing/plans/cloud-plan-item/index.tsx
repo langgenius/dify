@@ -1,15 +1,26 @@
 'use client'
 import type { FC } from 'react'
 import type { BasicPlan } from '../../../type'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient } from '@/service/client'
-import Toast from '../../../../base/toast'
 import { ALL_PLANS } from '../../../config'
+import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import { Plan } from '../../../type'
 import { Professional, Sandbox, Team } from '../../assets'
 import { PlanRange } from '../../plan-switcher/plan-range-switcher'
@@ -20,6 +31,10 @@ const ICON_MAP = {
   [Plan.sandbox]: <Sandbox />,
   [Plan.professional]: <Professional />,
   [Plan.team]: <Team />,
+}
+
+type ConfirmType = {
+  type: 'info' | 'warning'
 }
 
 type CloudPlanItemProps = {
@@ -33,6 +48,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   plan,
   currentPlan,
   planRange,
+  canPay,
 }) => {
   const { t } = useTranslation()
   const [loading, setLoading] = React.useState(false)
@@ -45,9 +61,23 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const isCurrentPaidPlan = isCurrent && !isFreePlan
   const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
   const { isCurrentWorkspaceManager } = useAppContext()
+  const { enableEducationPlan, isEducationAccount } = useProviderContext()
+  const isEducationDiscountMode = enableEducationPlan && isEducationAccount
+  const isEducationDiscountSupportedPlan = plan === Plan.professional && isYear
+  const selectedPlanName = t(`${i18nPrefix}.name`, { ns: 'billing' })
+  const selectedBillingPeriod = t(`educationPricingConfirm.billingPeriod.${isYear ? 'yearly' : 'monthly'}`, { ns: 'education' })
+  const educationDiscountWarningText = canPay && isEducationDiscountMode && !isFreePlan && !isEducationDiscountSupportedPlan
+    ? t('planNotSupportEducationDiscount', { ns: 'education' })
+    : undefined
   const openAsyncWindow = useAsyncWindowOpen()
+  const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
+  const [showEducationPricingConfirm, setShowEducationPricingConfirm] = React.useState(false)
+  const educationPricingConfirmInfo: ConfirmType = { type: 'warning' }
 
   const btnText = useMemo(() => {
+    if (canPay && isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrent)
+      return t('useEducationDiscount', { ns: 'education' })
+
     if (isCurrent)
       return t('plansCommon.currentPlan', { ns: 'billing' })
 
@@ -56,21 +86,22 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       [Plan.professional]: t('plansCommon.startBuilding', { ns: 'billing' }),
       [Plan.team]: t('plansCommon.getStarted', { ns: 'billing' }),
     })[plan]
-  }, [isCurrent, plan, t])
+  }, [canPay, isCurrent, isEducationDiscountMode, isEducationDiscountSupportedPlan, plan, t])
 
-  const handleGetPayUrl = async () => {
-    if (loading)
+  const handlePayCurrentPlan = async () => {
+    if (loading || isEducationDiscountLoading)
       return
 
     if (isPlanDisabled)
       return
 
+    if (isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrentPaidPlan) {
+      await handleEducationDiscount()
+      return
+    }
+
     if (!isCurrentWorkspaceManager) {
-      Toast.notify({
-        type: 'error',
-        message: t('buyPermissionDeniedTip', { ns: 'billing' }),
-        className: 'z-[1001]',
-      })
+      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
       return
     }
     setLoading(true)
@@ -83,7 +114,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           throw new Error('Failed to open billing page')
         }, {
           onError: (err) => {
-            Toast.notify({ type: 'error', message: err.message || String(err) })
+            toast.error(err.message || String(err))
           },
         })
         return
@@ -100,6 +131,18 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       setLoading(false)
     }
   }
+  const handleGetPayUrl = async () => {
+    if (educationDiscountWarningText && !isPlanDisabled) {
+      setShowEducationPricingConfirm(true)
+      return
+    }
+
+    await handlePayCurrentPlan()
+  }
+  const handleContinueCurrentPlan = async () => {
+    setShowEducationPricingConfirm(false)
+    await handlePayCurrentPlan()
+  }
   return (
     <div className="flex min-w-0 flex-1 flex-col pb-3">
       <div className="flex flex-col px-5 py-4">
@@ -107,7 +150,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           {ICON_MAP[plan]}
           <div className="flex min-h-[104px] flex-col gap-y-2">
             <div className="flex items-center gap-x-2.5">
-              <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
+              <div className="text-[30px] leading-[1.2] font-medium text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
               {
                 isMostPopularPlan && (
                   <div className="flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1">
@@ -122,7 +165,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           </div>
         </div>
         {/* Price */}
-        <div className="flex items-end gap-x-2 px-1 pb-8 pt-4">
+        <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
           {isFreePlan && (
             <span className="title-4xl-semi-bold text-text-primary">{t('plansCommon.free', { ns: 'billing' })}</span>
           )}
@@ -138,7 +181,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
                 $
                 {isYear ? planInfo.price * 10 : planInfo.price}
               </span>
-              <span className="system-md-regular pb-0.5 text-text-tertiary">
+              <span className="pb-0.5 system-md-regular text-text-tertiary">
                 {t('plansCommon.priceTip', { ns: 'billing' })}
                 {t(`plansCommon.${!isYear ? 'month' : 'year'}`, { ns: 'billing' })}
               </span>
@@ -150,9 +193,45 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           isPlanDisabled={isPlanDisabled}
           btnText={btnText}
           handleGetPayUrl={handleGetPayUrl}
+          warningText={educationDiscountWarningText}
         />
       </div>
       <List plan={plan} />
+      <AlertDialog
+        open={showEducationPricingConfirm}
+        onOpenChange={setShowEducationPricingConfirm}
+      >
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('educationPricingConfirm.title', { ns: 'education' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('educationPricingConfirm.description', {
+                ns: 'education',
+                planName: selectedPlanName,
+                billingPeriod: selectedBillingPeriod,
+              })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton
+              onClick={() => setShowEducationPricingConfirm(false)}
+              disabled={loading}
+            >
+              {t('educationPricingConfirm.cancel', { ns: 'education' })}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              tone={educationPricingConfirmInfo.type !== 'info' ? 'destructive' : 'default'}
+              onClick={handleContinueCurrentPlan}
+              disabled={loading}
+              loading={loading}
+            >
+              {t('educationPricingConfirm.continue', { ns: 'education' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

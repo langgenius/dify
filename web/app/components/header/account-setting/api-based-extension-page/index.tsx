@@ -1,8 +1,8 @@
+import { Button } from '@langgenius/dify-ui/button'
 import {
   RiAddLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import { useModalContext } from '@/context/modal-context'
 import { useApiBasedExtensions } from '@/service/use-common'
 import Empty from './empty'

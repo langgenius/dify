@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -28,12 +29,12 @@ def delete_segment_from_index_task(
     start_at = time.perf_counter()
     with session_factory.create_session() as session:
         try:
-            dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 logging.warning("Dataset %s not found, skipping index cleanup", dataset_id)
                 return
 
-            dataset_document = session.query(Document).where(Document.id == document_id).first()
+            dataset_document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             if not dataset_document:
                 return
 
@@ -59,18 +60,22 @@ def delete_segment_from_index_task(
             )
             if dataset.is_multimodal:
                 # delete segment attachment binding
-                segment_attachment_bindings = (
-                    session.query(SegmentAttachmentBinding)
-                    .where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
-                    .all()
-                )
+                segment_attachment_bindings = session.scalars(
+                    select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                ).all()
                 if segment_attachment_bindings:
                     attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
                     index_processor.clean(dataset=dataset, node_ids=attachment_ids, with_keywords=False)
-                    for binding in segment_attachment_bindings:
-                        session.delete(binding)
+                    segment_attachment_bind_ids = [i.id for i in segment_attachment_bindings]
+
+                    for i in range(0, len(segment_attachment_bind_ids), 1000):
+                        segment_attachment_bind_delete_stmt = delete(SegmentAttachmentBinding).where(
+                            SegmentAttachmentBinding.id.in_(segment_attachment_bind_ids[i : i + 1000])
+                        )
+                        session.execute(segment_attachment_bind_delete_stmt)
+
                     # delete upload file
-                    session.query(UploadFile).where(UploadFile.id.in_(attachment_ids)).delete(synchronize_session=False)
+                    session.execute(delete(UploadFile).where(UploadFile.id.in_(attachment_ids)))
                     session.commit()
 
             end_at = time.perf_counter()

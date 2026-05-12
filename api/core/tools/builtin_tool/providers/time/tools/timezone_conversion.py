@@ -2,7 +2,7 @@ from collections.abc import Generator
 from datetime import datetime
 from typing import Any
 
-import pytz
+import pytz  # type: ignore[import-untyped]
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage

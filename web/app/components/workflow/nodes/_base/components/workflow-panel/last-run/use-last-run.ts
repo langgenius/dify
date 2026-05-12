@@ -2,8 +2,8 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 // import
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useState } from 'react'
-import Toast from '@/app/components/base/toast'
 import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
@@ -15,6 +15,7 @@ import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/no
 import useCodeSingleRunFormParams from '@/app/components/workflow/nodes/code/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
 import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/http/use-single-run-form-params'
+import useHumanInputSingleRunFormParams from '@/app/components/workflow/nodes/human-input/hooks/use-single-run-form-params'
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/iteration/use-single-run-form-params'
 import useKnowledgeBaseSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-base/use-single-run-form-params'
@@ -22,15 +23,16 @@ import useKnowledgeRetrievalSingleRunFormParams from '@/app/components/workflow/
 import useLLMSingleRunFormParams from '@/app/components/workflow/nodes/llm/use-single-run-form-params'
 import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use-single-run-form-params'
 import useParameterExtractorSingleRunFormParams from '@/app/components/workflow/nodes/parameter-extractor/use-single-run-form-params'
-import useQuestionClassifierSingleRunFormParams from '@/app/components/workflow/nodes/question-classifier/use-single-run-form-params'
 
+import useQuestionClassifierSingleRunFormParams from '@/app/components/workflow/nodes/question-classifier/use-single-run-form-params'
 import useStartSingleRunFormParams from '@/app/components/workflow/nodes/start/use-single-run-form-params'
 import useTemplateTransformSingleRunFormParams from '@/app/components/workflow/nodes/template-transform/use-single-run-form-params'
-import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
 
-import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/use-single-run-form-params'
+import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/hooks/use-get-data-for-check-more'
+import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/hooks/use-single-run-form-params'
 import useTriggerPluginGetDataForCheckMore from '@/app/components/workflow/nodes/trigger-plugin/use-check-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
+
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
@@ -63,6 +65,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.IterationStart]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
+  [BlockEnum.HumanInput]: useHumanInputSingleRunFormParams,
   [BlockEnum.DataSource]: undefined,
   [BlockEnum.DataSourceEmpty]: undefined,
   [BlockEnum.TriggerWebhook]: undefined,
@@ -100,6 +103,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.Assigner]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
+  [BlockEnum.HumanInput]: undefined,
   [BlockEnum.DataSource]: undefined,
   [BlockEnum.DataSourceEmpty]: undefined,
   [BlockEnum.KnowledgeBase]: undefined,
@@ -129,6 +133,7 @@ const useLastRun = <T>({
   const isLoopNode = blockType === BlockEnum.Loop
   const isAggregatorNode = blockType === BlockEnum.VariableAggregator
   const isCustomRunNode = isSupportCustomRunForm(blockType)
+  const isHumanInputNode = blockType === BlockEnum.HumanInput
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     getData: getDataForCheckMore,
@@ -154,8 +159,11 @@ const useLastRun = <T>({
     if (!warningForNode)
       return false
 
-    const message = warningForNode.errorMessage || 'This node has unresolved checklist issues'
-    Toast.notify({ type: 'error', message })
+    if (warningForNode.unConnected && warningForNode.errorMessages.length === 0)
+      return false
+
+    const message = warningForNode.errorMessages[0] || 'This node has unresolved checklist issues'
+    toast.error(message)
     return true
   }, [warningNodes, id])
 
@@ -201,7 +209,7 @@ const useLastRun = <T>({
     const formattedData: Record<string, any> = {}
     Object.keys(allVarObject).forEach((key) => {
       const [varSectorStr, nodeId] = key.split(DELIMITER)
-      formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr]
+      formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr!]
     })
     if (isIterationNode) {
       const iteratorInputKey = `${id}.input_selector`
@@ -283,7 +291,7 @@ const useLastRun = <T>({
       return true
     return vars.every((varItem) => {
       const [nodeId, varName] = varItem.slice(0, 2)
-      const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
+      const inspectVarValue = hasSetInspectVar(nodeId!, varName!, systemVars, conversationVars) // also detect system var , env and  conversation var
       return inspectVarValue
     })
   }
@@ -293,7 +301,7 @@ const useLastRun = <T>({
       return true
     return vars.some((varItem) => {
       const [nodeId, varName] = varItem.slice(0, 2)
-      const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
+      const inspectVarValue = hasSetInspectVar(nodeId!, varName!, systemVars, conversationVars) // also detect system var , env and  conversation var
       return inspectVarValue
     })
   }
@@ -307,7 +315,7 @@ const useLastRun = <T>({
       const existVarValuesInForm = existVarValuesInForms[i]
       const newForm = { ...form }
       const inputs = form.inputs.filter((input) => {
-        return !(input.variable in existVarValuesInForm)
+        return !(input.variable in existVarValuesInForm!)
       })
       newForm.inputs = inputs
       return newForm
@@ -338,7 +346,7 @@ const useLastRun = <T>({
       return
     if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)
       setShowVariableInspectPanel(true)
-    if (isCustomRunNode) {
+    if (isCustomRunNode || isHumanInputNode) {
       showSingleRun()
       return
     }
