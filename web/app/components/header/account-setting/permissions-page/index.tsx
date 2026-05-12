@@ -18,7 +18,11 @@ type ModalState = {
 const PermissionsPage = () => {
   const [modalState, setModalState] = useState<ModalState>(null)
 
-  const { roleGroups } = useRoleGroups()
+  const { roleGroups } = useRoleGroups({
+    page: 1,
+    limit: 20,
+    include_owner: 1,
+  })
 
   const { mutateAsync: createWorkspaceRole } = useCreateWorkspaceRole()
   const { mutateAsync: updateWorkspaceRole } = useUpdateWorkspaceRole()

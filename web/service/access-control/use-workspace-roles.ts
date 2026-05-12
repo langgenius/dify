@@ -1,7 +1,7 @@
 import type {
   CreateRoleRequest,
-  PaginationParameters,
   Role,
+  RoleListRequest,
   RoleListResponse,
 } from '@/models/access-control'
 import type { CommonResponse } from '@/models/common'
@@ -10,7 +10,7 @@ import { del, get, post, put } from '../base'
 
 const NAME_SPACE = 'rbac-role-management'
 
-export const useWorkspaceRoleList = (params?: PaginationParameters) => {
+export const useWorkspaceRoleList = (params: RoleListRequest) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'workspace-role-list', params],
     queryFn: () => get<RoleListResponse>('/workspaces/current/rbac/roles', { params }),

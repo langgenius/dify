@@ -53,6 +53,11 @@ const RowMenu = ({
     })
   }, [deleteRole, role.id])
 
+  const hasViewAction = roleCategory === 'global_system_default' && role.role_tag === 'owner'
+  const hasEditAction = roleCategory === 'global_custom' || (roleCategory === 'global_system_default' && role.role_tag !== 'owner')
+  const hasDuplicateAction = roleCategory === 'global_custom'
+  const hasDeleteAction = roleCategory === 'global_custom'
+
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger render={<ActionButton size="l" className={open ? 'bg-state-base-hover' : ''} aria-label="More actions" />}>
@@ -60,21 +65,29 @@ const RowMenu = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
         {
-          roleCategory === 'global_system_default' && (
+          hasViewAction && (
             <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleView}>
               View
             </DropdownMenuItem>
           )
         }
         {
-          roleCategory === 'global_custom' && (
+          hasEditAction && (
+            <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleEdit}>
+              Edit
+            </DropdownMenuItem>
+          )
+        }
+        {
+          hasDuplicateAction && (
+            <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleDuplicate}>
+              Duplicate
+            </DropdownMenuItem>
+          )
+        }
+        {
+          hasDeleteAction && (
             <>
-              <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleEdit}>
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem className="system-sm-semibold text-text-secondary" onClick={handleDuplicate}>
-                Duplicate
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" className="system-sm-semibold" onClick={handleDelete}>
                 Delete

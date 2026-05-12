@@ -64,6 +64,7 @@ export type Role = {
   description: string
   is_builtin: boolean
   permission_keys: PermissionKey[]
+  role_tag: 'owner' | '' // Used for identifying the unique owner role, which has some special handlings
 }
 
 export type Pagination = {
@@ -77,6 +78,10 @@ export type PaginationParameters = {
   page?: number
   limit?: number
   reverse?: boolean
+}
+
+export type RoleListRequest = PaginationParameters & {
+  include_owner?: number
 }
 
 export type RoleListResponse = {
