@@ -5,7 +5,8 @@ import type { ValueSelector } from '@/app/components/workflow/types'
 
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 import HITLInputComponentUI from '../component-ui'
 import { HITLInputNode } from '../node'
 
@@ -215,7 +216,7 @@ describe('HITLInputComponentUI', () => {
   })
 
   describe('Default formInput', () => {
-    it('should pass default payload to InputField when formInput is undefined', async () => {
+    it('should open an empty default editor when formInput is undefined', async () => {
       const { findByRole } = renderComponent({
         formInput: undefined,
       })
@@ -223,10 +224,10 @@ describe('HITLInputComponentUI', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
       const textbox = await findByRole('textbox')
+      const saveButton = await screen.findByRole('button', { name: 'common.operation.save' })
 
-      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.save' }))
-
-      expect(textbox).toHaveValue('customer_name')
+      expect(textbox).toHaveValue('')
+      expect(saveButton).toBeDisabled()
     })
 
     it('should render variable selector when workflowNodesMap fallback is used', () => {
