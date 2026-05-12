@@ -1,4 +1,3 @@
-from models.enums import SegmentStatus
 import logging
 import time
 
@@ -10,6 +9,7 @@ from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
+from models.enums import SegmentStatus
 
 logger = logging.getLogger(__name__)
 
