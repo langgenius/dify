@@ -84,9 +84,7 @@ def test_compositor_transformer_kwargs_keys_match_constructor_parameters() -> No
     parameters = signature(Compositor).parameters
 
     assert CompositorTransformerKwargs.__optional_keys__ == frozenset()
-    assert transformer_kwargs == {
-        name for name in parameters if name.endswith("_transformer")
-    }
+    assert transformer_kwargs == {name for name in parameters if name.endswith("_transformer")}
     assert all(parameters[name].kind is Parameter.KEYWORD_ONLY for name in transformer_kwargs)
 
 
@@ -94,9 +92,7 @@ def test_compositor_transformer_kwargs_keys_match_from_config_parameters() -> No
     transformer_kwargs = set(CompositorTransformerKwargs.__required_keys__)
     parameters = signature(Compositor.from_config).parameters
 
-    assert transformer_kwargs == {
-        name for name in parameters if name.endswith("_transformer")
-    }
+    assert transformer_kwargs == {name for name in parameters if name.endswith("_transformer")}
     assert all(parameters[name].kind is Parameter.KEYWORD_ONLY for name in transformer_kwargs)
 
 

@@ -30,9 +30,7 @@ class PydanticAIBridgeLayerDeps[ObjectT](LayerDeps):
 
 
 @dataclass
-class PydanticAIBridgeLayer[ObjectT](
-    PydanticAILayer[PydanticAIBridgeLayerDeps[ObjectT], ObjectT]
-):
+class PydanticAIBridgeLayer[ObjectT](PydanticAILayer[PydanticAIBridgeLayerDeps[ObjectT], ObjectT]):
     """Bridge layer for pydantic-ai prompts and tools using one object deps."""
 
     prefix: str | PydanticAIPrompt[ObjectT] | Sequence[str | PydanticAIPrompt[ObjectT]] = ()

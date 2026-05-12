@@ -244,7 +244,9 @@ def test_existing_snapshot_model_instances_are_revalidated_before_factory_runs()
         calls += 1
         return TraceLayer()
 
-    compositor = Compositor([LayerNode("trace", LayerProvider.from_factory(layer_type=TraceLayer, create=create_layer))])
+    compositor = Compositor(
+        [LayerNode("trace", LayerProvider.from_factory(layer_type=TraceLayer, create=create_layer))]
+    )
     snapshot = CompositorSessionSnapshot.model_validate(
         {"layers": [{"name": "trace", "lifecycle_state": "suspended", "runtime_state": {}}]}
     )
@@ -352,7 +354,9 @@ def test_active_snapshot_input_is_rejected_before_factories_run() -> None:
         calls += 1
         return TraceLayer()
 
-    compositor = Compositor([LayerNode("trace", LayerProvider.from_factory(layer_type=TraceLayer, create=create_layer))])
+    compositor = Compositor(
+        [LayerNode("trace", LayerProvider.from_factory(layer_type=TraceLayer, create=create_layer))]
+    )
     active_snapshot = {"layers": [{"name": "trace", "lifecycle_state": "active", "runtime_state": {}}]}
 
     with pytest.raises(ValidationError, match="ACTIVE is internal-only"):
@@ -372,7 +376,9 @@ def test_closed_snapshot_enter_is_rejected_before_hooks_run() -> None:
         created_layers.append(layer)
         return layer
 
-    compositor = Compositor([LayerNode("trace", LayerProvider.from_factory(layer_type=TraceLayer, create=create_layer))])
+    compositor = Compositor(
+        [LayerNode("trace", LayerProvider.from_factory(layer_type=TraceLayer, create=create_layer))]
+    )
     closed_snapshot = {"layers": [{"name": "trace", "lifecycle_state": "closed", "runtime_state": {}}]}
 
     with pytest.raises(RuntimeError, match="CLOSED snapshots cannot be entered"):

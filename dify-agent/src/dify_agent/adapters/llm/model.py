@@ -86,6 +86,7 @@ class _DifyRequestInput:
     tools: list[PromptMessageTool] | None
     stop_sequences: list[str] | None
 
+
 @dataclass(slots=True)
 class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
     """Use a Dify plugin-daemon transport plus request-level model identity."""
@@ -131,12 +132,8 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
-        prepared_settings, prepared_params = self.prepare_request(
-            model_settings, model_request_parameters
-        )
-        request_input = self._build_request_input(
-            messages, prepared_settings, prepared_params
-        )
+        prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)
+        request_input = self._build_request_input(messages, prepared_settings, prepared_params)
 
         response = DifyStreamedResponse(
             model_request_parameters=prepared_params,
@@ -167,12 +164,8 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         run_context: object | None = None,
     ) -> AsyncGenerator[StreamedResponse, None]:
         del run_context
-        prepared_settings, prepared_params = self.prepare_request(
-            model_settings, model_request_parameters
-        )
-        request_input = self._build_request_input(
-            messages, prepared_settings, prepared_params
-        )
+        prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)
+        request_input = self._build_request_input(messages, prepared_settings, prepared_params)
 
         yield DifyStreamedResponse(
             model_request_parameters=prepared_params,
@@ -198,9 +191,7 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
     ) -> _DifyRequestInput:
         return _DifyRequestInput(
             credentials=dict(self.credentials),
-            prompt_messages=_map_messages_to_prompt_messages(
-                messages, model_request_parameters
-            ),
+            prompt_messages=_map_messages_to_prompt_messages(messages, model_request_parameters),
             model_parameters=_map_model_settings_to_parameters(model_settings),
             tools=_map_tool_definitions_to_prompt_tools(model_request_parameters),
             stop_sequences=_get_stop_sequences(model_settings),
@@ -213,9 +204,7 @@ class DifyStreamedResponse(StreamedResponse):
     response_model_name: str
     provider_name_value: str
     _timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    _embedded_thinking_parser: "_EmbeddedThinkingParser" = field(
-        default_factory=lambda: _EmbeddedThinkingParser()
-    )
+    _embedded_thinking_parser: "_EmbeddedThinkingParser" = field(default_factory=lambda: _EmbeddedThinkingParser())
 
     @override
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
@@ -223,9 +212,7 @@ class DifyStreamedResponse(StreamedResponse):
             if chunk.delta.usage is not None:
                 self._usage: RequestUsage = _map_usage(chunk.delta.usage)
             if chunk.delta.finish_reason is not None:
-                self.finish_reason: FinishReason | None = _normalize_finish_reason(
-                    chunk.delta.finish_reason
-                )
+                self.finish_reason: FinishReason | None = _normalize_finish_reason(chunk.delta.finish_reason)
 
             for event in _chunk_to_stream_events(
                 self._parts_manager,
@@ -235,9 +222,7 @@ class DifyStreamedResponse(StreamedResponse):
             ):
                 yield event
 
-        for event in self._embedded_thinking_parser.flush(
-            self._parts_manager, self.provider_name_value
-        ):
+        for event in self._embedded_thinking_parser.flush(self._parts_manager, self.provider_name_value):
             yield event
 
     @property
@@ -279,18 +264,12 @@ def _map_messages_to_prompt_messages(
 
     instruction_messages = [
         SystemPromptMessage(content=part.content)
-        for part in (
-            Model._get_instruction_parts(messages, model_request_parameters) or []
-        )
+        for part in (Model._get_instruction_parts(messages, model_request_parameters) or [])
         if part.content.strip()
     ]
     if instruction_messages:
         insert_at = next(
-            (
-                index
-                for index, message in enumerate(prompt_messages)
-                if not isinstance(message, SystemPromptMessage)
-            ),
+            (index for index, message in enumerate(prompt_messages) if not isinstance(message, SystemPromptMessage)),
             len(prompt_messages),
         )
         prompt_messages[insert_at:insert_at] = instruction_messages
@@ -305,9 +284,7 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
         if isinstance(part, SystemPromptPart):
             prompt_messages.append(SystemPromptMessage(content=part.content))
         elif isinstance(part, UserPromptPart):
-            prompt_messages.append(
-                UserPromptMessage(content=_map_user_prompt_content(part.content))
-            )
+            prompt_messages.append(UserPromptMessage(content=_map_user_prompt_content(part.content)))
         elif isinstance(part, ToolReturnPart):
             prompt_messages.append(_map_tool_return_part_to_prompt_message(part))
         elif isinstance(part, RetryPromptPart):
@@ -341,14 +318,10 @@ def _map_tool_return_part_to_prompt_message(part: ToolReturnPart) -> ToolPromptM
             elif _is_multi_modal_content(item):
                 content_items.append(_map_multi_modal_user_content(item))
             else:
-                raise UnexpectedModelBehavior(
-                    f"Unsupported daemon tool message content: {type(item).__name__}"
-                )
+                raise UnexpectedModelBehavior(f"Unsupported daemon tool message content: {type(item).__name__}")
         content = content_items or None
 
-    return ToolPromptMessage(
-        content=content, tool_call_id=part.tool_call_id, name=part.tool_name
-    )
+    return ToolPromptMessage(content=content, tool_call_id=part.tool_call_id, name=part.tool_name)
 
 
 def _map_model_response_to_prompt_message(
@@ -363,11 +336,7 @@ def _map_model_response_to_prompt_message(
                 content_parts.append(TextPromptMessageContent(data=part.content))
         elif isinstance(part, ThinkingPart):
             if part.content:
-                content_parts.append(
-                    TextPromptMessageContent(
-                        data=f"{_THINK_START}{part.content}{_THINK_END}"
-                    )
-                )
+                content_parts.append(TextPromptMessageContent(data=f"{_THINK_START}{part.content}{_THINK_END}"))
         elif isinstance(part, FilePart):
             content_parts.append(_map_binary_content_to_prompt_content(part.content))
         elif isinstance(part, ToolCallPart):
@@ -381,12 +350,8 @@ def _map_model_response_to_prompt_message(
                     ),
                 )
             )
-        elif isinstance(
-            part, BuiltinToolCallPart | BuiltinToolReturnPart | CompactionPart
-        ):
-            raise UnexpectedModelBehavior(
-                f"Unsupported response part for daemon adapter: {type(part).__name__}"
-            )
+        elif isinstance(part, BuiltinToolCallPart | BuiltinToolReturnPart | CompactionPart):
+            raise UnexpectedModelBehavior(f"Unsupported response part for daemon adapter: {type(part).__name__}")
         else:
             assert_never(part)
 
@@ -465,9 +430,7 @@ def _map_multi_modal_user_content(
     if isinstance(item, BinaryContent):
         return _map_binary_content_to_prompt_content(item)
     if isinstance(item, UploadedFile):
-        raise UnexpectedModelBehavior(
-            "UploadedFile content is not supported by the daemon adapter"
-        )
+        raise UnexpectedModelBehavior("UploadedFile content is not supported by the daemon adapter")
     assert_never(item)
 
 
@@ -509,9 +472,7 @@ def _map_binary_content_to_prompt_content(
             format=item.format,
             filename=filename,
         )
-    raise UnexpectedModelBehavior(
-        f"Unsupported binary media type for daemon adapter: {item.media_type}"
-    )
+    raise UnexpectedModelBehavior(f"Unsupported binary media type for daemon adapter: {item.media_type}")
 
 
 def _normalize_prompt_content(
@@ -568,9 +529,7 @@ def _get_stop_sequences(model_settings: ModelSettings | None) -> list[str] | Non
 
 
 def _map_usage(usage: LLMUsage) -> RequestUsage:
-    return RequestUsage(
-        input_tokens=usage.prompt_tokens, output_tokens=usage.completion_tokens
-    )
+    return RequestUsage(input_tokens=usage.prompt_tokens, output_tokens=usage.completion_tokens)
 
 
 def _normalize_finish_reason(finish_reason: str) -> FinishReason:
@@ -593,11 +552,7 @@ def _chunk_to_stream_events(
 
     if isinstance(message.content, str):
         if message.content:
-            events.extend(
-                embedded_thinking_parser.parse(
-                    parts_manager, message.content, provider_name
-                )
-            )
+            events.extend(embedded_thinking_parser.parse(parts_manager, message.content, provider_name))
     elif isinstance(message.content, list):
         for part in _map_assistant_content_to_response_parts(message.content):
             if isinstance(part, TextPart):
@@ -675,15 +630,11 @@ def _parse_assistant_text_parts(content: str) -> list[ModelResponsePart]:
 
     for match in _THINK_TAG_PATTERN.finditer(content):
         if match.start() > cursor:
-            response_parts.append(
-                TextPart(content=content[cursor : match.start()], provider_name=None)
-            )
+            response_parts.append(TextPart(content=content[cursor : match.start()], provider_name=None))
 
         thinking_content = match.group(1).strip("\n")
         if thinking_content:
-            response_parts.append(
-                ThinkingPart(content=thinking_content, provider_name=None)
-            )
+            response_parts.append(ThinkingPart(content=thinking_content, provider_name=None))
         cursor = match.end()
 
     if cursor < len(content):
@@ -725,9 +676,7 @@ class _EmbeddedThinkingParser:
                     self._inside_thinking = False
                     continue
 
-                safe_content, self._pending = _split_incomplete_tag_suffix(
-                    buffer, _THINK_CLOSE_TAG
-                )
+                safe_content, self._pending = _split_incomplete_tag_suffix(buffer, _THINK_CLOSE_TAG)
                 if safe_content:
                     events.extend(
                         parts_manager.handle_thinking_delta(
@@ -752,9 +701,7 @@ class _EmbeddedThinkingParser:
                 self._inside_thinking = True
                 continue
 
-            safe_content, self._pending = _split_incomplete_tag_suffix(
-                buffer, _THINK_OPEN_TAG
-            )
+            safe_content, self._pending = _split_incomplete_tag_suffix(buffer, _THINK_OPEN_TAG)
             if safe_content:
                 events.extend(
                     parts_manager.handle_text_delta(

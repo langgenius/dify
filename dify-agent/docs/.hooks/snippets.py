@@ -136,7 +136,7 @@ def parse_file_sections(file_path: Path) -> ParsedFile:
 
     output_line_number = 0
     for source_line_number, line in enumerate(input_lines):
-        section_match = re.search(r'\s*(?:###|///)\s*\[([^]]+)]\s*$', line)
+        section_match = re.search(r"\s*(?:###|///)\s*\[([^]]+)]\s*$", line)
         if section_match is None:
             output_lines.append(line)
             lines_mapping[output_line_number] = source_line_number

@@ -82,9 +82,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                         content={"city": "Paris"},
                         tool_call_id="tool-1",
                     ),
-                    RetryPromptPart(
-                        content="try again", tool_name="lookup", tool_call_id="tool-1"
-                    ),
+                    RetryPromptPart(content="try again", tool_name="lookup", tool_call_id="tool-1"),
                 ]
             ),
             ModelResponse(
@@ -144,9 +142,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                     model="demo-model",
                     delta=LLMResultChunkDelta(
                         index=0,
-                        message=AssistantPromptMessage(
-                            content="adapter response", tool_calls=[]
-                        ),
+                        message=AssistantPromptMessage(content="adapter response", tool_calls=[]),
                         usage=make_usage(prompt_tokens=11, completion_tokens=7),
                     ),
                 )
@@ -188,11 +184,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_request_returns_a_response(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
-            return build_stream_response(
-                *single_text_chunk(
-                    "adapter response", prompt_tokens=11, completion_tokens=7
-                )
-            )
+            return build_stream_response(*single_text_chunk("adapter response", prompt_tokens=11, completion_tokens=7))
 
         async with self.mock_daemon_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
@@ -283,9 +275,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_request_splits_embedded_thinking_tags_into_parts(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
-            return build_stream_response(
-                *single_text_chunk("before<think>reasoning</think>after")
-            )
+            return build_stream_response(*single_text_chunk("before<think>reasoning</think>after"))
 
         async with self.mock_daemon_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
@@ -301,9 +291,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
                 model_request_parameters=ModelRequestParameters(),
             )
 
-        self.assertEqual(
-            [part.part_kind for part in response.parts], ["text", "thinking", "text"]
-        )
+        self.assertEqual([part.part_kind for part in response.parts], ["text", "thinking", "text"])
         self.assertEqual(cast(TextPart, response.parts[0]).content, "before")
         self.assertEqual(cast(ThinkingPart, response.parts[1]).content, "reasoning")
         self.assertEqual(cast(TextPart, response.parts[2]).content, "after")
@@ -314,9 +302,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         def handler(_request: httpx.Request) -> httpx.Response:
             return build_stream_error(
                 "PluginInvokeError",
-                json.dumps(
-                    {"error_type": "InvokeRateLimitError", "message": "too many"}
-                ),
+                json.dumps({"error_type": "InvokeRateLimitError", "message": "too many"}),
             )
 
         async with self.mock_daemon_stream(httpx.MockTransport(handler)):
@@ -342,9 +328,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_request_maps_http_error_payload_to_http_error(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
-            return build_error_response(
-                "PluginDaemonUnauthorizedError", "invalid api key", status_code=401
-            )
+            return build_error_response("PluginDaemonUnauthorizedError", "invalid api key", status_code=401)
 
         async with self.mock_daemon_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(
@@ -372,9 +356,7 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_request_maps_endpoint_setup_error_to_user_error(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:
-            return build_stream_error(
-                "EndpointSetupFailedError", "missing endpoint config"
-            )
+            return build_stream_error("EndpointSetupFailedError", "missing endpoint config")
 
         async with self.mock_daemon_stream(httpx.MockTransport(handler)):
             adapter = DifyLLMAdapterModel(

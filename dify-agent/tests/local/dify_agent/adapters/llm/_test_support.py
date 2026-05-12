@@ -42,9 +42,7 @@ def single_text_chunk(
             delta=LLMResultChunkDelta(
                 index=0,
                 message=AssistantPromptMessage(content=text, tool_calls=[]),
-                usage=make_usage(
-                    prompt_tokens=prompt_tokens, completion_tokens=completion_tokens
-                ),
+                usage=make_usage(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens),
             ),
         )
     ]
@@ -67,21 +65,15 @@ def build_stream_response(*items: object, status_code: int = 200) -> httpx.Respo
     )
 
 
-def build_error_response(
-    error_type: str, message: str, *, status_code: int
-) -> httpx.Response:
+def build_error_response(error_type: str, message: str, *, status_code: int) -> httpx.Response:
     return httpx.Response(
         status_code=status_code,
         headers={"content-type": "application/json"},
-        content=json.dumps({"error_type": error_type, "message": message}).encode(
-            "utf-8"
-        ),
+        content=json.dumps({"error_type": error_type, "message": message}).encode("utf-8"),
     )
 
 
-def build_stream_error(
-    error_type: str, message: str, *, code: int = -500
-) -> httpx.Response:
+def build_stream_error(error_type: str, message: str, *, code: int = -500) -> httpx.Response:
     return httpx.Response(
         status_code=200,
         headers={"content-type": "text/event-stream"},

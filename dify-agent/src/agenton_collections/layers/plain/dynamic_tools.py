@@ -44,6 +44,7 @@ def with_object[ObjectT](
     /,
 ) -> Callable[[_ObjectToolCallable[ObjectT]], _ObjectToolEntry[ObjectT]]:
     """Mark a tool as requiring the bound object value as its first argument."""
+
     def decorator(tool_entry: _ObjectToolCallable[ObjectT]) -> _ObjectToolEntry[ObjectT]:
         _validate_object_tool_annotation(tool_entry, object_type)
         return _ObjectToolEntry(tool_entry=tool_entry, object_type=object_type)
@@ -107,8 +108,7 @@ def _validate_object_tool_annotation[ObjectT](
         return
 
     raise TypeError(
-        f"Object-bound tool '{_tool_name(tool_entry)}' first parameter should accept "
-        f"'{_type_name(object_type)}'."
+        f"Object-bound tool '{_tool_name(tool_entry)}' first parameter should accept '{_type_name(object_type)}'."
     )
 
 
@@ -142,8 +142,7 @@ def _annotation_accepts_object_type(annotation: object, object_type: type[Any]) 
         return True if not args else _annotation_accepts_object_type(args[0], object_type)
     if origin in (UnionType, Union):
         return any(
-            arg is type(None) or _annotation_accepts_object_type(arg, object_type)
-            for arg in get_args(annotation)
+            arg is type(None) or _annotation_accepts_object_type(arg, object_type) for arg in get_args(annotation)
         )
 
     runtime_type = origin or annotation

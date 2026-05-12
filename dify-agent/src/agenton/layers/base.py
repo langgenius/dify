@@ -263,9 +263,7 @@ class Layer(
                 if spec.optional:
                     resolved_deps[name] = None
                     continue
-                raise ValueError(
-                    f"Dependency '{name}' is required for layer '{type(self).__name__}' but not provided."
-                )
+                raise ValueError(f"Dependency '{name}' is required for layer '{type(self).__name__}' but not provided.")
             resolved_deps[name] = deps[name]
         self.deps = self.deps_type(**resolved_deps)
 
@@ -319,8 +317,7 @@ def _get_dep_specs(deps_type: type[LayerDeps]) -> dict[str, LayerDepSpec]:
         spec = _as_dep_spec(annotation)
         if spec is None:
             raise TypeError(
-                f"{deps_type.__name__}.{name} must be annotated with a Layer subclass "
-                "or Layer subclass | None."
+                f"{deps_type.__name__}.{name} must be annotated with a Layer subclass or Layer subclass | None."
             )
         dep_specs[name] = spec
     return dep_specs

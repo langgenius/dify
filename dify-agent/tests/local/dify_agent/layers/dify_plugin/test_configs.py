@@ -23,6 +23,8 @@ def test_dify_plugin_package_exports_client_safe_config_symbols_only() -> None:
     assert dify_plugin_exports.DIFY_PLUGIN_LLM_LAYER_TYPE_ID == "dify.plugin.llm"
     assert not hasattr(dify_plugin_exports, "DifyPluginLayer")
     assert not hasattr(dify_plugin_exports, "DifyPluginLLMLayer")
+
+
 def test_dify_plugin_layer_config_forbids_runtime_settings() -> None:
     config = DifyPluginLayerConfig(tenant_id="tenant-1", plugin_id="plugin-1", user_id="user-1")
 

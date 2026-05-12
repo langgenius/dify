@@ -7,7 +7,14 @@ from typing_extensions import override
 
 import agenton.compositor as compositor_module
 import agenton.layers as layers_module
-from agenton.compositor import Compositor, LayerConfigInput, LayerNode, LayerNodeConfig, LayerProvider, LayerProviderInput
+from agenton.compositor import (
+    Compositor,
+    LayerConfigInput,
+    LayerNode,
+    LayerNodeConfig,
+    LayerProvider,
+    LayerProviderInput,
+)
 from agenton.layers import EmptyLayerConfig, Layer, LayerDeps, NoLayerDeps, PlainLayer
 from agenton_collections.layers.plain import ObjectLayer, PromptLayer, PromptLayerConfig
 

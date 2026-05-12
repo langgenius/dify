@@ -204,7 +204,9 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
         snapshot = self._validate_session_snapshot(session_snapshot) if session_snapshot is not None else None
         layer_by_name = self._create_layers(typed_config_by_name)
 
-        snapshot_by_name = {layer_snapshot.name: layer_snapshot for layer_snapshot in snapshot.layers} if snapshot else {}
+        snapshot_by_name = (
+            {layer_snapshot.name: layer_snapshot for layer_snapshot in snapshot.layers} if snapshot else {}
+        )
         lifecycle_by_name: dict[str, LifecycleState] = {}
         for node in self._nodes:
             layer = layer_by_name[node.name]
@@ -231,16 +233,12 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
         config_by_name: Mapping[str, LayerConfig],
     ) -> OrderedDict[str, Layer[Any, Any, Any, Any, Any, Any]]:
         return OrderedDict(
-            (node.name, node.provider.create_layer_from_config(config_by_name[node.name]))
-            for node in self._nodes
+            (node.name, node.provider.create_layer_from_config(config_by_name[node.name])) for node in self._nodes
         )
 
     def _validate_layer_configs(self, config_by_name: Mapping[str, LayerConfigInput]) -> dict[str, LayerConfig]:
         """Validate every node config before any provider factory is invoked."""
-        return {
-            node.name: node.provider.validate_config(config_by_name.get(node.name))
-            for node in self._nodes
-        }
+        return {node.name: node.provider.validate_config(config_by_name.get(node.name)) for node in self._nodes}
 
     def _bind_deps(self, layer_by_name: Mapping[str, Layer[Any, Any, Any, Any, Any, Any]]) -> None:
         """Resolve dependency-name mappings and bind direct layer dependencies."""
