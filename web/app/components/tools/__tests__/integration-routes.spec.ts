@@ -10,7 +10,7 @@ describe('integration routes', () => {
     expect(integrationPathBySection).toEqual({
       'provider': '/integrations/model-provider',
       'builtin': '/integrations/tools/built-in',
-      'custom-tool': '/integrations/tools/swagger-api',
+      'custom-tool': '/integrations/tool/api',
       'workflow-tool': '/integrations/tools/workflow',
       'mcp': '/integrations/tools/mcp',
       'data-source': '/integrations/data-source',
@@ -19,7 +19,7 @@ describe('integration routes', () => {
       'agent-strategy': '/integrations/agent-strategy',
       'extension': '/integrations/extension',
     })
-    expect(buildIntegrationPath('custom-tool')).toBe('/integrations/tools/swagger-api')
+    expect(buildIntegrationPath('custom-tool')).toBe('/integrations/tool/api')
   })
 
   it.each([
@@ -28,7 +28,7 @@ describe('integration routes', () => {
     [['model-provider'], { type: 'section', section: 'provider' }],
     [['tools'], { type: 'redirect', destination: '/integrations/tools/built-in' }],
     [['tools', 'built-in'], { type: 'section', section: 'builtin' }],
-    [['tools', 'swagger-api'], { type: 'section', section: 'custom-tool' }],
+    [['tool', 'api'], { type: 'section', section: 'custom-tool' }],
     [['tools', 'workflow'], { type: 'section', section: 'workflow-tool' }],
     [['tools', 'mcp'], { type: 'section', section: 'mcp' }],
     [['data-source'], { type: 'section', section: 'data-source' }],
@@ -39,6 +39,7 @@ describe('integration routes', () => {
     [['model-providers'], { type: 'not-found' }],
     [['data-sources'], { type: 'not-found' }],
     [['api-extensions'], { type: 'not-found' }],
+    [['tools', 'swagger-api'], { type: 'not-found' }],
     [['tools', 'trigger'], { type: 'not-found' }],
     [['tools', 'agent-strategy'], { type: 'not-found' }],
     [['tools', 'extension'], { type: 'not-found' }],
@@ -52,12 +53,12 @@ describe('integration routes', () => {
     [{ section: 'provider' }, '/integrations/model-provider'],
     [{ section: 'builtin' }, '/integrations/tools/built-in'],
     [{ category: 'builtin' }, '/integrations/tools/built-in'],
-    [{ category: 'api' }, '/integrations/tools/swagger-api'],
+    [{ category: 'api' }, '/integrations/tool/api'],
     [{ category: 'workflow' }, '/integrations/tools/workflow'],
     [{ category: 'mcp' }, '/integrations/tools/mcp'],
     [{ section: 'data-source' }, '/integrations/data-source'],
     [{ section: 'api-based-extension' }, '/integrations/tools/api-extension'],
-    [{ section: 'custom-tool', category: 'api', q: 'slack', tags: ['a', 'b'] }, '/integrations/tools/swagger-api?q=slack&tags=a&tags=b'],
+    [{ section: 'custom-tool', category: 'api', q: 'slack', tags: ['a', 'b'] }, '/integrations/tool/api?q=slack&tags=a&tags=b'],
   ])('builds legacy /tools redirect for search params %j', (searchParams, expected) => {
     expect(getIntegrationRedirectPathByLegacyToolsSearchParams(searchParams)).toBe(expected)
   })

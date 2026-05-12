@@ -49,7 +49,7 @@ Not completed:
 | `/integrations/model-provider` | Existing model provider management page. |
 | `/integrations/tools` | Redirect to `/integrations/tools/built-in` unless a tools overview page is introduced. |
 | `/integrations/tools/built-in` | Existing built-in tools list. |
-| `/integrations/tools/swagger-api` | Existing custom API tool list, relabeled as Swagger API as Tool. |
+| `/integrations/tool/api` | Existing custom API tool list, relabeled as Swagger API as Tool. |
 | `/integrations/tools/workflow` | Existing Workflow as Tool management page. |
 | `/integrations/tools/mcp` | Existing MCP tools management page. |
 | `/integrations/trigger` | Existing plugin trigger list filtered from plugin management. |
@@ -92,9 +92,9 @@ Do not treat every plugin category as an Integrations navigation item automatica
 | `/tools?section=builtin` | `/integrations/tools/built-in` |
 | `/tools?section=builtin&category=builtin` | `/integrations/tools/built-in` |
 | `/tools?category=builtin` | `/integrations/tools/built-in` |
-| `/tools?section=custom-tool` | `/integrations/tools/swagger-api` |
-| `/tools?section=custom-tool&category=api` | `/integrations/tools/swagger-api` |
-| `/tools?category=api` | `/integrations/tools/swagger-api` |
+| `/tools?section=custom-tool` | `/integrations/tool/api` |
+| `/tools?section=custom-tool&category=api` | `/integrations/tool/api` |
+| `/tools?category=api` | `/integrations/tool/api` |
 | `/tools?section=workflow-tool` | `/integrations/tools/workflow` |
 | `/tools?section=workflow-tool&category=workflow` | `/integrations/tools/workflow` |
 | `/tools?category=workflow` | `/integrations/tools/workflow` |

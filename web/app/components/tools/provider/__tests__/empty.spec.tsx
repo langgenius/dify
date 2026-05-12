@@ -45,7 +45,7 @@ describe('Empty', () => {
     it('should render with Custom type and include link to Swagger API as Tool', () => {
       render(<Empty type={ToolTypeEnum.Custom} />)
 
-      const link = document.querySelector('a[href="/integrations/tools/swagger-api"]')
+      const link = document.querySelector('a[href="/integrations/tool/api"]')
       expect(link).toBeInTheDocument()
       expect(link).toHaveAttribute('target', '_blank')
     })

@@ -53,7 +53,7 @@ export const sectionByToolCategory: Record<ToolCategory, IntegrationSection> = {
 export const integrationPathBySection: Record<IntegrationSection, string> = {
   'provider': '/integrations/model-provider',
   'builtin': '/integrations/tools/built-in',
-  'custom-tool': '/integrations/tools/swagger-api',
+  'custom-tool': '/integrations/tool/api',
   'workflow-tool': '/integrations/tools/workflow',
   'mcp': '/integrations/tools/mcp',
   'data-source': '/integrations/data-source',
@@ -112,7 +112,7 @@ export const getIntegrationRouteTargetBySlug = (slug?: string[]): IntegrationRou
       return { type: 'redirect', destination: buildIntegrationPath('builtin') }
     case 'tools/built-in':
       return { type: 'section', section: 'builtin' }
-    case 'tools/swagger-api':
+    case 'tool/api':
       return { type: 'section', section: 'custom-tool' }
     case 'tools/workflow':
       return { type: 'section', section: 'workflow-tool' }
