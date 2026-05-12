@@ -87,7 +87,7 @@ The root `.env.example` file contains the essential startup settings. Optional a
 1. **Server Configuration**:
 
    - `LOG_LEVEL`, `DEBUG`, `FLASK_DEBUG`: Logging and debug settings.
-   - `SECRET_KEY`: A key for encrypting session cookies and other sensitive data.
+   - `SECRET_KEY`: A key for signing sessions, JWTs, and file URLs. Leave it empty to let Dify generate a persistent key in the storage directory, or set a unique value yourself.
 
 1. **Database Configuration**:
 

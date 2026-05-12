@@ -11,7 +11,7 @@ from models.enums import ConversationFromSource, MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
-from services.app_service import AppService
+from services.app_service import AppService, CreateAppParams
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -119,16 +119,16 @@ class TestAgentService:
         tenant = account.current_tenant
 
         # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "agent-chat",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="agent-chat",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)

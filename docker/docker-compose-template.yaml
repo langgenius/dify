@@ -220,7 +220,7 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.14.0
+    image: langgenius/dify-api:1.14.1
     environment:
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -264,7 +264,7 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.14.0
+    image: langgenius/dify-api:1.14.1
     profiles:
       - collaboration
     environment:
@@ -290,7 +290,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.14.0
+    image: langgenius/dify-api:1.14.1
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -333,7 +333,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.14.0
+    image: langgenius/dify-api:1.14.1
     environment:
       MODE: beat
     depends_on:
@@ -366,7 +366,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.14.0
+    image: langgenius/dify-web:1.14.1
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
