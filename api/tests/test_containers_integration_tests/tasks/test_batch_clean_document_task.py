@@ -140,7 +140,6 @@ class TestBatchCleanDocumentTask:
         fake = Faker()
 
         document = Document(
-            id=str(uuid.uuid4()),
             tenant_id=account.current_tenant.id,
             dataset_id=dataset.id,
             position=0,

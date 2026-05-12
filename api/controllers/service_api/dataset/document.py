@@ -459,7 +459,7 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
             dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
@@ -523,7 +523,7 @@ def _update_document_by_text(
             dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
@@ -852,7 +852,7 @@ class DocumentAddByFileApi(DatasetApiResource):
                 knowledge_config=knowledge_config,
                 account=get_dataset_creator(dataset, session=session),
                 dataset_process_rule=dataset_process_rule,
-                created_from="api",
+                created_from=DocumentCreatedFrom.API,
                 session=session,
             )
         except ProviderTokenNotInitError as ex:
@@ -933,7 +933,7 @@ def _update_document_by_file(
             dataset_process_rule=get_latest_dataset_process_rule(dataset, session=session)
             if "process_rule" not in args
             else None,
-            created_from="api",
+            created_from=DocumentCreatedFrom.API,
             session=session,
         )
     except ProviderTokenNotInitError as ex:
@@ -1324,6 +1324,7 @@ class DocumentApi(DatasetApiResource):
         metadata = query_params.metadata
         response_include: set[str] | None = None
         response_exclude: set[str] | None = None
+        response: dict[str, Any]
 
         # Calculate summary_index_status if needed
         summary_index_status = None
