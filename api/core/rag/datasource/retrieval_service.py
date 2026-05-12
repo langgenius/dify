@@ -1,6 +1,6 @@
-from typing import Sequence
 import concurrent.futures
 import logging
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, NotRequired, TypedDict
 

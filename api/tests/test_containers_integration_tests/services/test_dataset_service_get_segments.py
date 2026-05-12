@@ -8,14 +8,12 @@ Tests the retrieval of document segments with pagination and filtering:
 - Ordering by position and id (to avoid duplicate data)
 """
 
-from models import AccountStatus
-from models import TenantStatus
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, DatasetPermissionEnum, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
 from services.dataset_service import SegmentService
