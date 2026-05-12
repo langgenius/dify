@@ -98,6 +98,8 @@ describe('HITLInputNode', () => {
         expect(node.getConversationVariables()).toEqual(props.conversationVariables)
         expect(node.getRagVariables()).toEqual(props.ragVariables)
         expect(node.getReadonly()).toBe(true)
+        node.setReadonly(false)
+        expect(node.getReadonly()).toBe(false)
         expect(node.getTextContent()).toBe('{{#$output.user_name#}}')
       })
     })

@@ -4,7 +4,8 @@ import type { FormInputItem, ParagraphFormInput } from '@/app/components/workflo
 import type { ValueSelector } from '@/app/components/workflow/types'
 
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useEffect, useState } from 'react'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import HITLInputComponentUI from '../component-ui'
@@ -112,6 +113,57 @@ describe('HITLInputComponentUI', () => {
 
       expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'common.operation.remove' })).not.toBeInTheDocument()
+    })
+
+    it('should close the edit modal when readonly becomes true', async () => {
+      let setReadonlyValue: ((readonly: boolean) => void) | undefined
+      const Harness = () => {
+        const [readonly, setReadonly] = useState(false)
+        const [namespace] = useState(() => `hitl-input-test-${crypto.randomUUID()}`)
+
+        useEffect(() => {
+          setReadonlyValue = setReadonly
+          return () => {
+            setReadonlyValue = undefined
+          }
+        }, [])
+
+        return (
+          <LexicalComposer
+            initialConfig={{
+              namespace,
+              onError: (error: Error) => {
+                throw error
+              },
+              nodes: [HITLInputNode],
+            }}
+          >
+            <HITLInputComponentUI
+              nodeId="node-1"
+              varName="customer_name"
+              workflowNodesMap={createWorkflowNodesMap()}
+              onChange={vi.fn()}
+              onRename={vi.fn()}
+              onRemove={vi.fn()}
+              readonly={readonly}
+            />
+          </LexicalComposer>
+        )
+      }
+
+      render(<Harness />)
+
+      fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
+
+      expect(await screen.findByRole('textbox')).toBeInTheDocument()
+
+      act(() => {
+        setReadonlyValue?.(true)
+      })
+
+      await waitFor(() => {
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      })
     })
 
     it('should render select option summary for constant options', () => {

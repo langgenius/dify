@@ -66,6 +66,11 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
     setFalse: hideEditModal,
   }] = useBoolean(false)
 
+  useEffect(() => {
+    if (readonly)
+      hideEditModal()
+  }, [hideEditModal, readonly])
+
   // Lexical delegate the click make it unable to add click by the method of react
   const editBtnRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
