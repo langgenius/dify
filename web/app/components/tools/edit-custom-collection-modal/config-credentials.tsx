@@ -60,37 +60,61 @@ export default function ConfigCredential({
 
   return (
     <Drawer
-      open
-      modal
-      disablePointerDismissal
-      swipeDirection="right"
-      onOpenChange={(open) => {
-        if (!open)
-          onHide()
-      }}
-    >
-      <DrawerPortal>
-        <DrawerBackdrop forceRender />
-        <DrawerViewport>
-          <DrawerPopup
-            className={cn(
-              'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-auto data-[swipe-direction=right]:h-fit data-[swipe-direction=right]:max-h-[calc(100dvh-1rem)] data-[swipe-direction=right]:w-130 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
-              positionCenter
-                ? 'data-[swipe-direction=right]:right-[max(0.5rem,calc(50%_-_260px))]'
-                : 'data-[swipe-direction=right]:right-2',
-            )}
-          >
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-              <div className="shrink-0 border-b border-divider-regular py-4">
-                <div className="flex h-6 items-center justify-between pr-5 pl-6">
-                  <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
-                    {t('createTool.authMethod.title', { ns: 'tools' })}
-                  </DrawerTitle>
-                  <DrawerCloseButton
-                    aria-label={t('operation.close', { ns: 'common' })}
-                    className="h-6 w-6 rounded-md"
-                  />
-                </div>
+      isShow
+      positionCenter={positionCenter}
+      onHide={onHide}
+      title={t('createTool.authMethod.title', { ns: 'tools' })!}
+      dialogClassName="z-60"
+      dialogBackdropClassName="z-70"
+      panelClassName="mt-2 w-[520px]! h-fit z-80"
+      maxWidthClassName="max-w-[520px]!"
+      height="fit-content"
+      headerClassName="border-b-divider-regular!"
+      body={(
+        <div className="px-6 pt-2">
+          <div className="space-y-4">
+            <div>
+              <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.type', { ns: 'tools' })}</div>
+              <div className="flex space-x-3">
+                <SelectItem
+                  text={t('createTool.authMethod.types.none', { ns: 'tools' })}
+                  value={AuthType.none}
+                  isChecked={tempCredential.auth_type === AuthType.none}
+                  onClick={value => setTempCredential({
+                    auth_type: value as AuthType,
+                  })}
+                />
+                <SelectItem
+                  text={t('createTool.authMethod.types.api_key_header', { ns: 'tools' })}
+                  value={AuthType.apiKeyHeader}
+                  isChecked={tempCredential.auth_type === AuthType.apiKeyHeader}
+                  onClick={value => setTempCredential({
+                    auth_type: value as AuthType,
+                    api_key_header: tempCredential.api_key_header || 'Authorization',
+                    api_key_value: tempCredential.api_key_value || '',
+                    api_key_header_prefix: tempCredential.api_key_header_prefix || AuthHeaderPrefix.custom,
+                  })}
+                />
+                <SelectItem
+                  text={t('createTool.authMethod.types.api_key_query', { ns: 'tools' })}
+                  value={AuthType.apiKeyQuery}
+                  isChecked={tempCredential.auth_type === AuthType.apiKeyQuery}
+                  onClick={value => setTempCredential({
+                    auth_type: value as AuthType,
+                    api_key_query_param: tempCredential.api_key_query_param || 'key',
+                    api_key_value: tempCredential.api_key_value || '',
+                  })}
+                />
+                <SelectItem
+                  text={t('createTool.authMethod.types.basic_auth', { ns: 'tools' })}
+                  value={AuthType.basicAuth}
+                  isChecked={tempCredential.auth_type === AuthType.basicAuth}
+                  onClick={value => setTempCredential({
+                    auth_type: value as AuthType,
+                    basic_username: tempCredential.basic_username || '',
+                    basic_password: tempCredential.basic_password || '',
+                  })}
+                />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2">
                 <div className="space-y-4">
@@ -210,23 +234,46 @@ export default function ConfigCredential({
                     </>
                   )}
                 </div>
-              </div>
-              <div className="mt-4 flex shrink-0 justify-end space-x-2 py-4 pr-6 pl-6">
-                <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    onChange(tempCredential)
-                    onHide()
-                  }}
-                >
-                  {t('operation.save', { ns: 'common' })}
-                </Button>
-              </div>
-            </DrawerContent>
-          </DrawerPopup>
-        </DrawerViewport>
-      </DrawerPortal>
-    </Drawer>
+              </>
+            )}
+            {tempCredential.auth_type === AuthType.basicAuth && (
+              <>
+                <div>
+                  <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.basic.username', { ns: 'tools' })}</div>
+                  <Input
+                    value={tempCredential.basic_username ?? ''}
+                    onChange={e => setTempCredential({ ...tempCredential, basic_username: e.target.value })}
+                    placeholder={t('createTool.authMethod.basic.usernamePlaceholder', { ns: 'tools' })!}
+                  />
+                </div>
+                <div>
+                  <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.basic.password', { ns: 'tools' })}</div>
+                  <Input
+                    value={tempCredential.basic_password ?? ''}
+                    onChange={e => setTempCredential({ ...tempCredential, basic_password: e.target.value })}
+                    placeholder={t('createTool.authMethod.basic.passwordPlaceholder', { ns: 'tools' })!}
+                    type="password"
+                  />
+                </div>
+              </>
+            )}
+
+          </div>
+
+          <div className="mt-4 flex shrink-0 justify-end space-x-2 py-4">
+            <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                onChange(tempCredential)
+                onHide()
+              }}
+            >
+              {t('operation.save', { ns: 'common' })}
+            </Button>
+          </div>
+        </div>
+      )}
+    />
   )
 }

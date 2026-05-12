@@ -121,6 +121,7 @@ class ApiProviderAuthType(StrEnum):
     NONE = auto()
     API_KEY_HEADER = auto()
     API_KEY_QUERY = auto()
+    BASIC_AUTH = auto()
 
     @classmethod
     def value_of(cls, value: str) -> ApiProviderAuthType:

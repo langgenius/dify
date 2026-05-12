@@ -440,10 +440,62 @@ const ProviderDetail = ({
                   </AlertDialogContent>
                 </AlertDialog>
               </div>
-            </DrawerContent>
-          </DrawerPopup>
-        </DrawerViewport>
-      </DrawerPortal>
+            </>
+          )}
+        </div>
+        {showSettingAuth && (
+          <ConfigCredential
+            collection={collection}
+            onCancel={() => setShowSettingAuth(false)}
+            onSaved={async (value) => {
+              await updateBuiltInToolCredential(collection.name, value)
+              toast.success(t('api.actionSuccess', { ns: 'common' }))
+              await onRefreshData()
+              setShowSettingAuth(false)
+            }}
+            onRemove={async () => {
+              await removeBuiltInToolCredential(collection.name)
+              toast.success(t('api.actionSuccess', { ns: 'common' }))
+              await onRefreshData()
+              setShowSettingAuth(false)
+            }}
+          />
+        )}
+        {isShowEditCollectionToolModal && (
+          <EditCustomToolModal
+            payload={customCollection as CustomCollectionBackend | null}
+            onHide={() => setIsShowEditCustomCollectionModal(false)}
+            onEdit={doUpdateCustomToolCollection}
+            onRemove={onClickCustomToolDelete}
+          />
+        )}
+        {isShowEditWorkflowToolModal && (
+          <WorkflowToolModal
+            payload={customCollection as unknown as WorkflowToolModalPayload}
+            onHide={() => setIsShowEditWorkflowToolModal(false)}
+            onRemove={onClickWorkflowToolDelete}
+            onSave={updateWorkflowToolProvider}
+          />
+        )}
+        <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && setShowConfirmDelete(false)}>
+          <AlertDialogContent>
+            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                {t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                {t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
+              </AlertDialogDescription>
+            </div>
+            <AlertDialogActions>
+              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogConfirmButton onClick={handleConfirmDelete}>
+                {t('operation.confirm', { ns: 'common' })}
+              </AlertDialogConfirmButton>
+            </AlertDialogActions>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </Drawer>
   )
 }
