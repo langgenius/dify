@@ -228,6 +228,15 @@ class RBACRolesApi(Resource):
             result = svc.RBACService.Roles.list(tenant_id, account_id, options=options)
         if query.include_owner == 0:
             result = _filter_out_owner(result)
+
+        data = []
+        for role in result.data:
+            if role.name == "所有者":
+                role.role_tag = "owner"
+            else:
+                role.role_tag = ""
+            data.append(role)
+        result.data = data
         return _dump(result)
 
     @login_required
