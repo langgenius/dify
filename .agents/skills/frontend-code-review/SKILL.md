@@ -1,6 +1,6 @@
 ---
 name: frontend-code-review
-description: "Trigger when the user requests a review of frontend files (e.g., `.tsx`, `.ts`, `.js`). Support both pending-change reviews and focused file reviews while applying the checklist rules."
+description: "Trigger when the user requests a review of frontend files (e.g., `.tsx`, `.ts`, `.js`). Support pending-change and focused file reviews while applying checklist rules, shared component reuse checks, and React component structure guidance from how-to-write-component."
 ---
 
 # Frontend Code Review
@@ -16,10 +16,12 @@ Stick to the checklist below for every applicable file and mode.
 ## Checklist
 See [references/code-quality.md](references/code-quality.md), [references/performance.md](references/performance.md), [references/business-logic.md](references/business-logic.md) for the living checklist split by category—treat it as the canonical set of rules to follow.
 
+When reviewing React/TypeScript components, also apply the repo-local `how-to-write-component` skill as the component architecture checklist. In particular, check ownership boundaries, props and API types, query/mutation usage, navigation choices, effect usage, unnecessary wrappers, and unnecessary memoization.
+
 Flag each rule violation with urgency metadata so future reviewers can prioritize fixes.
 
 ## Review Process
-1. Open the relevant component/module. Gather lines that relate to class names, styling/CSS imports, file size and component boundaries, i18n keys, behavior-sensitive UI interactions, React Flow hooks, and prop memoization.
+1. Open the relevant component/module. Gather lines that relate to shared base/dify-ui component reuse, class names, styling/CSS imports, file size and component boundaries, i18n keys, behavior-sensitive UI interactions, React Flow hooks, and prop memoization.
 2. For each rule in the review point, note where the code deviates and capture a representative snippet.
 3. Compose the review section per the template below. Group violations first by **Urgent** flag, then by category order (Code Quality, Performance, Business Logic).
 

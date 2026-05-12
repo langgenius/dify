@@ -2,13 +2,21 @@
 
 Context: the desktop MainNav rewrite moved several workspace, account, tools, and marketplace entry points out of the old header/account-setting layout. These notes track product-contract questions that should be resolved before treating the rewrite as behavior-complete.
 
+Current status:
+
+- Open: account-setting modal navigation API, Marketplace install/error status parity, default account language entry.
+- Partially resolved: Apps/Datasets quick-switch/create parity.
+- Resolved: Integrations sidebar placeholder state, branding-gated Help trigger, workspace plan billing access.
+
 ## 1. Account-setting modal naming and moved destinations
+
+Status: Open.
 
 Current branch behavior:
 
-- `setShowAccountSettingModal(PROVIDER)` routes to `/tools?section=provider`.
-- `setShowAccountSettingModal(DATA_SOURCE)` routes to `/tools?section=data-source`.
-- `setShowAccountSettingModal(API_BASED_EXTENSION)` routes to `/tools?section=api-based-extension`.
+- `setShowAccountSettingModal(PROVIDER)` routes to `/integrations/model-provider`.
+- `setShowAccountSettingModal(DATA_SOURCE)` routes to `/integrations/data-source`.
+- `setShowAccountSettingModal(API_BASED_EXTENSION)` routes to `/integrations/tools/api-extension`.
 
 Old behavior: these calls opened the account-setting modal and switched to the matching tab.
 
@@ -23,21 +31,25 @@ Follow-up decision needed:
 
 ## 2. Integrations sidebar disabled entries
 
-Current branch behavior:
+Status: Resolved.
+
+Previous branch behavior:
 
 - Integrations includes disabled entries for Trigger, Agent Strategy, and Extension.
 - These are visible but not actionable.
 
-Status:
+Current branch behavior:
 
-- Currently being handled separately.
+- Trigger, Agent Strategy, and Extension are no longer disabled placeholders.
+- These sections route to `PluginCategoryPage` with the corresponding plugin category.
 
-Follow-up decision needed:
+Resolution:
 
-- Decide whether disabled future entries should remain visible, be hidden until supported, or be gated by feature flags/edition/role.
-- If they stay visible, define the tooltip or disabled-state copy so users understand why the option is unavailable.
+- No remaining disabled-entry gating decision is tracked here.
 
 ## 3. Plugin and marketplace status parity
+
+Status: Open.
 
 Old header behavior:
 
@@ -56,23 +68,28 @@ Follow-up decision needed:
 
 ## 4. Mobile/default account language entry
 
+Status: Open.
+
 Current branch behavior:
 
 - Desktop MainNav account menu includes Language and Timezone submenus.
-- Mobile still uses the default header/account dropdown path.
+- The main app layout now uses MainNav across breakpoints.
 - The default account dropdown does not expose the Language settings entry.
+- The default account dropdown still exists in non-MainNav account/header surfaces such as the account layout.
 
 Decision:
 
 - Preserve the old language-access contract across breakpoints.
-- The desktop MainNav path is acceptable; the missing case is mainly mobile/default account dropdown, including dataset-operator users on mobile.
+- The desktop MainNav path is acceptable; the missing case is default account-dropdown parity wherever that path remains active.
 
 Follow-up decision needed:
 
-- Add an equivalent language entry to the default/mobile account path, or otherwise ensure mobile users can still reach language settings.
+- Add an equivalent language entry to the default account path, or otherwise ensure users in those surfaces can still reach language settings.
 - Keep this as gate-contract parity, not a visual requirement to recreate the old Account Settings sidebar.
 
 ## 5. Apps and Datasets quick-switch/create parity
+
+Status: Partially resolved.
 
 Old header behavior:
 
@@ -81,8 +98,9 @@ Old header behavior:
 
 Current MainNav behavior:
 
-- Apps and Datasets are static navigation links.
-- App/dataset quick switching and create actions are not present in the desktop MainNav.
+- Apps is no longer only a static navigation link: MainNav includes a Web Apps section with installed web app search, pin, delete, and navigation behavior.
+- Apps still does not preserve the old `AppNav` current-app switcher, load-more behavior, or create-app flows.
+- Datasets is still a navigation link and does not preserve the old `DatasetNav` current-dataset switcher, load-more behavior, or dataset creation entry.
 
 Follow-up decision needed:
 
@@ -91,6 +109,8 @@ Follow-up decision needed:
 
 ## 6. Branding-gated Help and Support behavior
 
+Status: Resolved.
+
 Old account dropdown behavior:
 
 - When `systemFeatures.branding.enabled` is `true`, the whole Dify help/community group is hidden.
@@ -98,20 +118,20 @@ Old account dropdown behavior:
 
 Current MainNav behavior:
 
-- HelpMenu keeps the trigger visible, but its content is gated by `!systemFeatures.branding.enabled`.
-- This can produce an empty Help popup when branding is enabled.
+- `HelpMenu` returns `null` when `systemFeatures.branding.enabled` is `true`.
+- This prevents the empty Help trigger/popup path.
 
-Open question:
+Resolution:
 
-- The old coarse gate also hides Support, but Support can contain instance-specific channels such as configured Zendesk or support email in addition to Dify forum/Discord links.
-- Confirm whether branded deployments should hide Support entirely, or keep configured customer support channels while hiding Dify official/community links.
+- Current implementation follows strict old parity for MainNav: the whole Help trigger is hidden for branded deployments.
 
-Follow-up decision needed:
+Optional future product question:
 
-- If strict old parity is required, hide the HelpMenu trigger when branding is enabled.
-- If branded deployments should retain support access, split Support into customer-support and Dify-community items with separate gates.
+- If branded deployments should retain configured customer support channels, split Support into customer-support and Dify-community items with separate gates.
 
 ## 7. Paid plan Billing access from workspace plan
+
+Status: Resolved.
 
 Old header behavior:
 
@@ -122,17 +142,14 @@ Old header behavior:
 Current MainNav behavior:
 
 - Sandbox/free plans have an explicit Upgrade action in the WorkspaceCard credit row.
-- Non-sandbox paid plans show the workspace plan badge, but the badge is display-only.
+- Non-sandbox paid plans have an explicit View Plan action in the same plan-action row.
+- Both actions open the pricing modal.
+- The workspace plan badge is display-only.
 - The WorkspaceCard Settings menu item routes to Account Settings on the Billing tab.
 - Invite Members remains the Members entry, so Settings and Invite Members do not duplicate the same destination.
 
-Open question:
+Resolution:
 
-- Confirm whether product still wants the plan badge itself to be clickable, or whether the Settings-to-Billing menu item is the intended MainNav access path.
-- Avoid making the plan badge itself clickable unless the interaction is explicitly approved, because the WorkspaceCard already uses a button to open the workspace menu.
-
-Recommended default:
-
-- Keep sandbox/free behavior as the explicit Upgrade action.
-- Keep the plan badge display-only.
+- Keep sandbox/free and paid behavior as the explicit plan-action row.
+- Keep the workspace plan badge display-only.
 - Use the WorkspaceCard Settings item as the Billing entry.

@@ -42,7 +42,17 @@ Category: Code Quality
 
 When a frontend file grows large or mixes multiple responsibilities, suggest splitting it into focused components, hooks, or utilities. Prefer shallow local structure that matches existing repo patterns, such as a sibling `components/` folder, and avoid deep folder hierarchies unless the surrounding code already uses them.
 
-Update this file when adding, editing, or removing Code Quality rules so the catalog remains accurate.
+## Reuse base and dify-ui components before hand-rolling UI
+
+Category: Code Quality
+
+### Description
+
+Before approving new or modified frontend UI, check whether the code manually recreates behavior or styling already owned by `@langgenius/dify-ui/*` or `web/app/components/base/*`. Common examples include `Button`, `Input`, `ToggleGroup`, `Popover`, `DropdownMenu`, `AlertDialog`, `Switch`, `Avatar`, `ScrollArea`, `toast`, and existing feature components. Prefer composing existing primitives instead of duplicating borders, focus states, disabled states, segmented controls, inputs, overlays, or buttons.
+
+### Suggested Fix
+
+Replace hand-written UI chrome with the nearest shared primitive, keeping feature-specific layout, state ownership, labels, and workflow behavior local.
 
 ## Classname ordering for easy overrides
 
@@ -59,3 +69,5 @@ const Button = ({ className }) => {
   return <div className={cn('bg-primary-600', className)}></div>
 }
 ```
+
+Update this file when adding, editing, or removing Code Quality rules so the catalog remains accurate.
