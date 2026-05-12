@@ -179,3 +179,8 @@ export type UpdateRolesOfMemberRequest = {
   member_id: string
   role_ids: string[]
 }
+
+export type RemoveBindingPayload = {
+  policy_id: string
+  resource_type: AccessPolicyResourceType
+} & BindingsPayload
