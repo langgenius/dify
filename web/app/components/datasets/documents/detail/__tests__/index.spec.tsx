@@ -114,9 +114,20 @@ vi.mock('../batch-modal', () => ({
 }))
 
 vi.mock('../document-title', () => ({
-  DocumentTitle: ({ name, extension }: { name?: string, extension?: string }) => (
-    <div data-testid="document-title" data-extension={extension}>{name}</div>
-  ),
+  DocumentTitle: ({
+    document,
+  }: {
+    document?: {
+      name?: string
+      data_source_detail_dict?: { upload_file?: { extension?: string } }
+      data_source_info?: { upload_file?: { extension?: string } }
+    } | null
+  }) => {
+    const extension = document?.data_source_detail_dict?.upload_file?.extension
+      ?? document?.data_source_info?.upload_file?.extension
+
+    return <div data-testid="document-title" data-extension={extension}>{document?.name}</div>
+  },
 }))
 
 vi.mock('../segment-add', () => ({
